@@ -70,6 +70,13 @@ export const getStudentSettingsByEmail = async (email) => {
         approval_status,
         created_at,
         updated_at,
+        gap_in_studies,
+        gap_years,
+        gap_reason,
+        work_experience,
+        aadhar_number,
+        backlogs_history,
+        current_backlogs,
         school:organizations!students_school_id_fkey (
           id,
           name,
@@ -170,6 +177,15 @@ export const getStudentSettingsByEmail = async (email) => {
       resumeUrl: data.resumeUrl || '',
       profilePicture: data.profilePicture || '',
       bio: '', // Bio field removed from profile JSONB
+
+      // New fields for gap years, work experience, and academic info
+      gapInStudies: data.gap_in_studies || false,
+      gapYears: data.gap_years || 0,
+      gapReason: data.gap_reason || '',
+      workExperience: data.work_experience || '',
+      aadharNumber: data.aadhar_number || '',
+      backlogsHistory: data.backlogs_history || '',
+      currentBacklogs: data.current_backlogs || 0,
 
       // Notification settings from user_settings table
       notificationSettings: userSettings?.notification_preferences || {
@@ -277,10 +293,18 @@ export const updateStudentSettings = async (email, updates) => {
       portfolio: 'portfolio_link',
       resumeUrl: 'resumeUrl',
       profilePicture: 'profilePicture',
+      // New fields for gap years, work experience, and academic info
+      gapInStudies: 'gap_in_studies',
+      gapYears: 'gap_years',
+      gapReason: 'gap_reason',
+      workExperience: 'work_experience',
+      aadharNumber: 'aadhar_number',
+      backlogsHistory: 'backlogs_history',
+      currentBacklogs: 'current_backlogs',
     };
 
     // Define numeric fields that should be null instead of empty string
-    const numericFields = ['age', 'pincode', 'currentCgpa', 'semester'];
+    const numericFields = ['age', 'pincode', 'currentCgpa', 'semester', 'gapYears', 'currentBacklogs'];
 
     // Define UUID fields that should be null instead of empty string
     const uuidFields = ['universityCollegeId', 'schoolId', 'schoolClassId', 'collegeId', 'programId', 'universityId', 'programSectionId'];

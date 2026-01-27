@@ -84,6 +84,9 @@ import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActi
 import { supabase } from "../../lib/supabaseClient";
 // Debug utilities removed for production cleanliness
 
+// Import Tour Components - Now handled globally
+// Tours are managed by GlobalTourManager in App.tsx
+
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -253,7 +256,25 @@ const StudentDashboard = () => {
       ? tableProjects
       : userData.projects;
     if (!Array.isArray(projectsData)) return [];
-    return projectsData.filter((project) => project && project.enabled !== false);
+    return projectsData
+      .filter((project) => project && project.enabled !== false)
+      .sort((a, b) => {
+        // Sort by end date or completion date in descending order (most recent first)
+        const getDate = (project) => {
+          if (project.endDate) return new Date(project.endDate);
+          if (project.end_date) return new Date(project.end_date);
+          if (project.completedDate) return new Date(project.completedDate);
+          if (project.completed_date) return new Date(project.completed_date);
+          if (project.startDate) return new Date(project.startDate);
+          if (project.start_date) return new Date(project.start_date);
+          if (project.year) return new Date(project.year, 11, 31);
+          return new Date(0); // Default to epoch if no date found
+        };
+        
+        const dateA = getDate(a);
+        const dateB = getDate(b);
+        return dateB - dateA; // Descending order (most recent first)
+      });
   }, [tableProjects, userData.projects]);
 
   const enabledCertificates = useMemo(() => {
@@ -262,7 +283,23 @@ const StudentDashboard = () => {
       ? tableCertificates
       : userData.certificates;
     if (!Array.isArray(certificatesData)) return [];
-    return certificatesData.filter((cert) => cert && cert.enabled !== false);
+    return certificatesData
+      .filter((cert) => cert && cert.enabled !== false)
+      .sort((a, b) => {
+        // Sort by issue date or year in descending order (most recent first)
+        const getDate = (cert) => {
+          if (cert.issueDate) return new Date(cert.issueDate);
+          if (cert.issue_date) return new Date(cert.issue_date);
+          if (cert.issuedOn) return new Date(cert.issuedOn);
+          if (cert.date) return new Date(cert.date);
+          if (cert.year) return new Date(cert.year, 11, 31);
+          return new Date(0); // Default to epoch if no date found
+        };
+        
+        const dateA = getDate(a);
+        const dateB = getDate(b);
+        return dateB - dateA; // Descending order (most recent first)
+      });
   }, [tableCertificates, userData.certificates]);
 
   // Fetch opportunities data from Supabase
@@ -614,6 +651,7 @@ const StudentDashboard = () => {
     assessment: (
       <Card
         key="assessment"
+        data-tour="assessment-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -868,6 +906,7 @@ const StudentDashboard = () => {
     opportunities: (
       <Card
         key="opportunities"
+        data-tour="opportunities-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1036,6 +1075,7 @@ const StudentDashboard = () => {
     technicalSkills: (
       <Card
         key="technicalSkills"
+        data-tour="technical-skills-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1114,6 +1154,7 @@ const StudentDashboard = () => {
     projects: (
       <Card
         key="projects"
+        data-tour="projects-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1205,6 +1246,7 @@ const StudentDashboard = () => {
     education: (
       <Card
         key="education"
+        data-tour="education-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1246,6 +1288,12 @@ const StudentDashboard = () => {
                   education.enabled !== false &&
                   (education.approval_status === "verified" || education.approval_status === "approved")
                 )
+                .sort((a, b) => {
+                  // Sort by year in descending order (most recent first)
+                  const yearA = parseInt(a.yearOfPassing || a.year || a.endYear || 0);
+                  const yearB = parseInt(b.yearOfPassing || b.year || b.endYear || 0);
+                  return yearB - yearA; // Descending order
+                })
                 .map((education, idx) => (
                   <div
                     key={education.id || `edu-${idx}`}
@@ -1307,6 +1355,7 @@ const StudentDashboard = () => {
     training: (
       <Card
         key="training"
+        data-tour="training-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1381,6 +1430,23 @@ const StudentDashboard = () => {
               <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 blue-scrollbar">
                 {userData.training
                   .filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
+                  .sort((a, b) => {
+                    // Sort by completion date or start date in descending order (most recent first)
+                    const getDate = (training) => {
+                      if (training.completedDate) return new Date(training.completedDate);
+                      if (training.completed_date) return new Date(training.completed_date);
+                      if (training.endDate) return new Date(training.endDate);
+                      if (training.end_date) return new Date(training.end_date);
+                      if (training.startDate) return new Date(training.startDate);
+                      if (training.start_date) return new Date(training.start_date);
+                      if (training.year) return new Date(training.year, 11, 31);
+                      return new Date(0); // Default to epoch if no date found
+                    };
+                    
+                    const dateA = getDate(a);
+                    const dateB = getDate(b);
+                    return dateB - dateA; // Descending order (most recent first)
+                  })
                   .map((training, idx) => {
             // Calculate progress
             const statusLower = (training.status || "").toLowerCase();
@@ -1504,6 +1570,7 @@ const StudentDashboard = () => {
     certificates: (
       <Card
         key="certificates"
+        data-tour="certificates-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
          <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1610,6 +1677,7 @@ const StudentDashboard = () => {
        experience: (
   <Card
     key="experience"
+    data-tour="experience-card"
     className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
   >
     <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1650,6 +1718,25 @@ const StudentDashboard = () => {
           exp.enabled !== false &&
           (exp.approval_status === "verified" || exp.approval_status === "approved")
         )
+        .sort((a, b) => {
+          // Sort by end date/year in descending order (most recent first)
+          // Try multiple date field formats
+          const getEndDate = (exp) => {
+            if (exp.endDate) return new Date(exp.endDate);
+            if (exp.end_date) return new Date(exp.end_date);
+            if (exp.endYear) return new Date(exp.endYear, 11, 31); // December 31st of end year
+            if (exp.year) return new Date(exp.year, 11, 31);
+            // If no end date, use start date
+            if (exp.startDate) return new Date(exp.startDate);
+            if (exp.start_date) return new Date(exp.start_date);
+            if (exp.startYear) return new Date(exp.startYear, 0, 1); // January 1st of start year
+            return new Date(0); // Default to epoch if no date found
+          };
+          
+          const dateA = getEndDate(a);
+          const dateB = getEndDate(b);
+          return dateB - dateA; // Descending order (most recent first)
+        })
         .map((exp, idx) => (
           <div
           key={exp.id || `exp-${idx}`}
@@ -1706,6 +1793,7 @@ const StudentDashboard = () => {
     softSkills: (
       <Card
         key="softSkills"
+        data-tour="soft-skills-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
@@ -1834,17 +1922,18 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-6 px-4">
-      {/* Hot-toast notification container */}
+        
+        {/* Hot-toast notification container */}
       <Toaster
         position="top-right"
         toastOptions={{
           style: {
-            zIndex: 9999,
+            zIndex: 60,
           },
           duration: 5000,
         }}
         containerStyle={{
-          zIndex: 9999,
+          zIndex: 60,
         }}
       />
 
@@ -1857,6 +1946,7 @@ const StudentDashboard = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {/* Dashboard Tab */}
                 <button
+                  data-tour="dashboard-tab"
                   onClick={() => setActiveView('dashboard')}
                   className={`relative text-left p-4 rounded-lg transition-all ${
                     activeView === 'dashboard'
@@ -1887,6 +1977,7 @@ const StudentDashboard = () => {
 
                 {/* Analytics Tab */}
                 <button
+                  data-tour="analytics-tab"
                   onClick={() => setActiveView('analytics')}
                   className={`relative text-left p-4 rounded-lg transition-all ${
                     activeView === 'analytics'
@@ -1994,7 +2085,7 @@ const StudentDashboard = () => {
                 duration: 0.8,
                 ease: "easeInOut",
               }}
-              className="-mt-48 relative z-50"
+              className="-mt-48 relative z-10"
             >
               {render3x3Grid()}
             </motion.div>
@@ -2266,7 +2357,7 @@ const StudentDashboard = () => {
           onSave={(data) => handleSave("certificates", data)}
         />
       )}
-    </div>
+      </div>
   );
 };
 

@@ -74,8 +74,16 @@ export class ProfileValidationService {
       'state'
     ];
 
+    // Additional profile fields that are important for job applications
+    const additionalFields = [
+      'aadhar_number',
+      'gap_in_studies',
+      'current_backlogs'
+    ];
+
     const schoolFields = [
       ...baseFields,
+      ...additionalFields,
       'school_id',
       'grade',
       'section'
@@ -83,6 +91,7 @@ export class ProfileValidationService {
 
     const universityFields = [
       ...baseFields,
+      ...additionalFields,
       'university_college_id',
       'branch_field',
       'semester',
@@ -95,7 +104,7 @@ export class ProfileValidationService {
       case 'university':
         return universityFields;
       default:
-        return baseFields;
+        return [...baseFields, ...additionalFields];
     }
   }
 
@@ -141,7 +150,14 @@ export class ProfileValidationService {
       'university_college_id': 'University/College',
       'branch_field': 'Branch/Field of Study',
       'semester': 'Semester',
-      'cgpa': 'CGPA/Percentage'
+      'cgpa': 'CGPA/Percentage',
+      'gap_in_studies': 'Gap in Studies',
+      'gap_years': 'Gap Years',
+      'gap_reason': 'Gap Reason',
+      'work_experience': 'Work Experience',
+      'aadhar_number': 'Aadhar Number',
+      'backlogs_history': 'Backlogs History',
+      'current_backlogs': 'Current Backlogs'
     };
 
     return fieldNames[field] || field;
