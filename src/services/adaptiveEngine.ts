@@ -62,9 +62,9 @@ export interface ConfidenceTagResult {
  * Classifies a student into a tier (L/M/H) based on their diagnostic screener responses.
  * 
  * Classification logic:
- * - Low (L): 0-2 correct out of 6 (0-33% accuracy)
- * - Medium (M): 3-4 correct out of 6 (34-66% accuracy)
- * - High (H): 5-6 correct out of 6 (67-100% accuracy)
+ * - Low (L): 0-3 correct out of 8 (0-37% accuracy)
+ * - Medium (M): 4-5 correct out of 8 (38-62% accuracy)
+ * - High (H): 6-8 correct out of 8 (63-100% accuracy)
  * 
  * Requirements: 2.1
  * 
@@ -81,17 +81,17 @@ export function classifyTier(screenerResponses: Response[]): TierClassificationR
   const correctCount = diagnosticResponses.filter((r) => r.isCorrect).length;
   const accuracy = totalCount > 0 ? (correctCount / totalCount) * 100 : 0;
   
-  // Classify tier based on correct count
+  // Classify tier based on correct count (out of 8 questions)
   let tier: Tier;
   
-  if (correctCount <= 2) {
-    // 0-2 correct: Low tier
+  if (correctCount <= 3) {
+    // 0-3 correct: Low tier (0-37% accuracy)
     tier = 'L';
-  } else if (correctCount <= 4) {
-    // 3-4 correct: Medium tier
+  } else if (correctCount <= 5) {
+    // 4-5 correct: Medium tier (38-62% accuracy)
     tier = 'M';
   } else {
-    // 5-6 correct: High tier
+    // 6-8 correct: High tier (63-100% accuracy)
     tier = 'H';
   }
   
@@ -215,7 +215,7 @@ export function countDirectionChanges(difficultyPath: DifficultyLevel[]): number
  * Checks if the last N items in the difficulty path are consistent (within ±1 fluctuation).
  * 
  * @param difficultyPath - Array of difficulty levels
- * @param windowSize - Number of recent items to check (default: 5)
+ * @param windowSize - Number of recent items to check (default: 8)
  * @returns Whether the last items are consistent
  */
 export function checkLastItemsConsistency(
@@ -238,8 +238,8 @@ export function checkLastItemsConsistency(
  * Checks stop conditions for the adaptive core phase.
  * 
  * Stop conditions:
- * 1. Minimum 16 items completed
- * 2. Last 5-6 items show consistency
+ * 1. Minimum 40 items completed (8 screener + 32 adaptive)
+ * 2. Last 8 items show consistency
  * 3. Difficulty fluctuation ≤ ±1
  * 
  * Requirements: 3.3
@@ -293,7 +293,7 @@ export function checkStopConditions(
     reason = 'minimum_reached';
   }
   
-  // Calculate suggested aptitude level (mode of last 5 difficulties)
+  // Calculate suggested aptitude level (mode of last 8 difficulties)
   let suggestedAptitudeLevel: DifficultyLevel | null = null;
   let suggestedConfidenceTag: ConfidenceTag | null = null;
   
@@ -345,9 +345,9 @@ function calculateMode(values: DifficultyLevel[]): DifficultyLevel {
  * Determines the confidence tag based on performance consistency.
  * 
  * Confidence levels:
- * - High: Stable performance, consistent accuracy (≤1 direction changes)
- * - Medium: Minor fluctuations (2 direction changes)
- * - Low: Inconsistent performance (>2 direction changes)
+ * - High: Stable performance, consistent accuracy (≤2 direction changes)
+ * - Medium: Minor fluctuations (3-4 direction changes)
+ * - Low: Inconsistent performance (>4 direction changes)
  * 
  * Requirements: 3.4
  * 

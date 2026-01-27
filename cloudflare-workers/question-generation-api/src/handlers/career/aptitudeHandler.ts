@@ -127,13 +127,47 @@ export async function handleAptitudeGeneration(
 
     // Validate total count
     if (allQuestions.length < expectedTotal) {
-      console.warn(`⚠️ WARNING: Generated ${allQuestions.length} questions but expected ${expectedTotal}. This may affect assessment accuracy.`);
+      const missing = expectedTotal - allQuestions.length;
+      console.warn(`⚠️ WARNING: Generated ${allQuestions.length} questions but expected ${expectedTotal}. Missing ${missing} questions.`);
+      
+      // Try to generate missing questions from the category with the most deficit
+      console.log('🔄 Attempting to generate missing questions...');
+      try {
+        const missingQuestions = await generateMissingQuestions(
+          missing,
+          categories,
+          finalBreakdown,
+          isAfter10,
+          streamContext,
+          claudeKey,
+          openRouterKey
+        );
+        
+        if (missingQuestions.length > 0) {
+          console.log(`✅ Generated ${missingQuestions.length} additional questions`);
+          allQuestions.push(...missingQuestions.map((q: any, idx: number) => ({
+            ...q,
+            id: generateUUID(),
+            originalIndex: allQuestions.length + idx + 1,
+            subtype: q.category,
+            subject: q.subject || q.category,
+            moduleTitle: moduleTitles[q.category] || q.category
+          })));
+        }
+      } catch (err: any) {
+        console.error('❌ Failed to generate missing questions:', err.message);
+      }
+      
+      // Final check
+      if (allQuestions.length < expectedTotal) {
+        console.error(`❌ CRITICAL: Still missing ${expectedTotal - allQuestions.length} questions after retry. Assessment may be incomplete.`);
+      }
     } else if (allQuestions.length > expectedTotal) {
       console.log(`✂️ Trimming ${allQuestions.length - expectedTotal} extra questions to match expected count of ${expectedTotal}`);
       allQuestions.splice(expectedTotal); // Keep only the expected number
     }
 
-    console.log(`📊 Final question count: ${allQuestions.length}`);
+    console.log(`📊 Final question count: ${allQuestions.length}/${expectedTotal}`);
 
     // Save to cache
     if (studentId) {
@@ -258,4 +292,70 @@ async function generateBatch(
 
   const result = repairAndParseJSON(jsonText);
   return result.questions || [];
+}
+
+async function generateMissingQuestions(
+  missingCount: number,
+  allCategories: any[],
+  currentBreakdown: Record<string, number>,
+  isAfter10: boolean,
+  streamContext: any,
+  claudeKey?: string,
+  openRouterKey?: string
+): Promise<any[]> {
+  console.log(`🔧 Generating ${missingCount} missing questions...`);
+  
+  // Find which categories are short
+  const deficits = allCategories.map(cat => ({
+    ...cat,
+    current: currentBreakdown[cat.id] || 0,
+    deficit: cat.count - (currentBreakdown[cat.id] || 0)
+  })).filter(cat => cat.deficit > 0);
+  
+  if (deficits.length === 0) {
+    console.log('⚠️ No category deficits found, generating from first category');
+    deficits.push({
+      ...allCategories[0],
+      current: 0,
+      deficit: missingCount
+    });
+  }
+  
+  console.log('📊 Category deficits:', deficits.map(d => `${d.name}: ${d.deficit}`).join(', '));
+  
+  // Generate questions for the categories with deficits
+  const categoriesToGenerate = deficits.slice(0, Math.min(3, deficits.length)); // Max 3 categories
+  const categoriesText = categoriesToGenerate.map(c => 
+    `- ${c.name} (${Math.min(c.deficit, Math.ceil(missingCount / categoriesToGenerate.length))} questions): ${c.description}`
+  ).join('\n');
+  
+  const prompt = isAfter10
+    ? buildSchoolSubjectPrompt(categoriesText, streamContext.name)
+    : buildAptitudePrompt(categoriesText, streamContext);
+
+  const systemPrompt = `Generate EXACTLY ${missingCount} additional questions to complete the assessment. Generate ONLY valid JSON.`;
+
+  let jsonText: string;
+
+  if (claudeKey) {
+    jsonText = await callClaudeAPI(claudeKey, {
+      systemPrompt,
+      userPrompt: prompt,
+      maxTokens: 4000,
+      temperature: 0.8
+    });
+  } else if (openRouterKey) {
+    jsonText = await callOpenRouterWithRetry(openRouterKey, [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ]);
+  } else {
+    throw new Error('No API key configured');
+  }
+
+  const result = repairAndParseJSON(jsonText);
+  const questions = result.questions || [];
+  
+  // Trim to exact count needed
+  return questions.slice(0, missingCount);
 }

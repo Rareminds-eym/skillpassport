@@ -1,0 +1,6 @@
+exclude:
+  - docs/
+  - SKILL_PASSPORT_VISUAL_GUIDE.md
+  - "*.md"
+  - node_modules/
+  - vendor/

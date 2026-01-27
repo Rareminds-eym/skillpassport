@@ -336,7 +336,7 @@ export async function generateDiagnosticScreenerQuestions(
 
 /**
  * Generates fallback diagnostic questions when worker is unavailable
- * Phase 1: All 6 questions at Level 3 (baseline) to establish starting ability
+ * Phase 1: All 8 questions at Level 3 (baseline) to establish starting ability
  */
 function generateFallbackDiagnosticQuestions(gradeLevel: GradeLevel): QuestionGenerationResult {
   const phase: TestPhase = 'diagnostic_screener';
