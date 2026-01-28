@@ -3,7 +3,7 @@
  * Includes subtags, prompts, difficulty descriptions, and fallback questions
  */
 
-import type { Subtag, GradeLevel, Question, DifficultyLevel } from './types';
+import type { Subtag, GradeLevel, Question, DifficultyLevel } from './adaptive-types';
 
 export const ALL_SUBTAGS: Subtag[] = [
   'numerical_reasoning',

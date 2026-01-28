@@ -9,8 +9,10 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
  * Environment variables interface for Pages Functions
  */
 export interface PagesEnv {
-  VITE_SUPABASE_URL: string;
-  VITE_SUPABASE_ANON_KEY: string;
+  VITE_SUPABASE_URL?: string;
+  VITE_SUPABASE_ANON_KEY?: string;
+  SUPABASE_URL?: string;
+  SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 }
 
@@ -18,11 +20,14 @@ export interface PagesEnv {
  * Create a Supabase client with anon key (for authenticated requests)
  */
 export function createSupabaseClient(env: PagesEnv): SupabaseClient {
-  if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  const supabaseKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
     throw new Error('Missing required Supabase environment variables');
   }
 
-  return createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
+  return createClient(supabaseUrl, supabaseKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

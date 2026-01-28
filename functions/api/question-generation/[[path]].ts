@@ -19,8 +19,24 @@
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
 
+import { generateAptitudeQuestions } from './handlers/career-aptitude';
+import { generateKnowledgeQuestions } from './handlers/career-knowledge';
+import {
+  generateDiagnosticScreenerQuestions,
+  generateAdaptiveCoreQuestions,
+  generateStabilityConfirmationQuestions,
+  generateSingleQuestion
+} from './handlers/adaptive';
+import { generateAssessment } from './handlers/course-assessment';
+
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
+
+  // Validate critical environment variables
+  if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
+    // console.error('❌ Missing Supabase environment variables');
+    // Silent check - errors will be thrown by handlers if actually needed and missing
+  }
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
@@ -43,18 +59,31 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         status: 'ok',
         service: 'question-generation-api',
         timestamp: new Date().toISOString(),
+        env: {
+          hasSupabaseUrl: !!(env.SUPABASE_URL || env.VITE_SUPABASE_URL),
+          hasSupabaseKey: !!(env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY),
+          hasOpenRouter: !!(env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY),
+          hasClaude: !!(env.CLAUDE_API_KEY || env.VITE_CLAUDE_API_KEY)
+        }
       });
     }
 
     // Career Assessment Endpoints
     if (path === '/career-assessment/generate-aptitude' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Generate aptitude questions endpoint not yet implemented. See README.md for details.',
-        },
-        501
-      );
+      try {
+        const body = await request.json() as any;
+        const { streamId, questionsPerCategory = 5, studentId, attemptId, gradeLevel } = body;
+
+        if (!streamId) {
+          return jsonResponse({ error: 'Stream ID is required' }, 400);
+        }
+
+        const result = await generateAptitudeQuestions(env, streamId, questionsPerCategory, studentId, attemptId, gradeLevel);
+        return jsonResponse(result);
+      } catch (error: any) {
+        console.error('❌ Aptitude generation error:', error);
+        return jsonResponse({ error: error.message || 'Failed to generate aptitude questions' }, 500);
+      }
     }
 
     if (path === '/career-assessment/generate-aptitude/stream' && request.method === 'POST') {
@@ -68,45 +97,46 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     if (path === '/career-assessment/generate-knowledge' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Generate knowledge questions endpoint not yet implemented. See README.md for details.',
-        },
-        501
-      );
+      try {
+        const body = await request.json() as any;
+        const { streamId, streamName, topics, questionCount = 20, studentId, attemptId, gradeLevel } = body;
+
+        if (!streamId || !streamName || !topics) {
+          return jsonResponse({ error: 'Stream ID, name, and topics are required' }, 400);
+        }
+
+        const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId, gradeLevel);
+        return jsonResponse(result);
+      } catch (error: any) {
+        console.error('❌ Knowledge generation error:', error);
+        return jsonResponse({ error: error.message || 'Failed to generate knowledge questions' }, 500);
+      }
     }
 
-    // Course assessment
-    if (path === '/generate' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Course assessment generation not yet implemented. See README.md for details.',
-        },
-        501
-      );
-    }
+    // --- Adaptive Assessment Endpoints ---
 
-    // Adaptive Assessment Endpoints
     if (path === '/generate/diagnostic' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Diagnostic screener generation not yet implemented. See README.md for details.',
-        },
-        501
-      );
+      try {
+        const body = await request.json() as any;
+        const { gradeLevel, excludeQuestionIds, excludeQuestionTexts } = body;
+        const result = await generateDiagnosticScreenerQuestions(env, gradeLevel, excludeQuestionIds, excludeQuestionTexts);
+        return jsonResponse(result);
+      } catch (error: any) {
+        console.error('❌ Diagnostic generation error:', error);
+        return jsonResponse({ error: error.message }, 500);
+      }
     }
 
     if (path === '/generate/adaptive' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Adaptive core generation not yet implemented. See README.md for details.',
-        },
-        501
-      );
+      try {
+        const body = await request.json() as any;
+        const { gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts } = body;
+        const result = await generateAdaptiveCoreQuestions(env, gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts);
+        return jsonResponse(result);
+      } catch (error: any) {
+        console.error('❌ Adaptive generation error:', error);
+        return jsonResponse({ error: error.message }, 500);
+      }
     }
 
     if (path === '/generate/stability' && request.method === 'POST') {
@@ -120,13 +150,15 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     if (path === '/generate/single' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Single question generation not yet implemented. See README.md for details.',
-        },
-        501
-      );
+      try {
+        const body = await request.json() as any;
+        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds } = body;
+        const result = await generateSingleQuestion(env, gradeLevel, phase, difficulty, subtag, excludeQuestionIds);
+        return jsonResponse(result);
+      } catch (error: any) {
+        console.error('❌ Single question generation error:', error);
+        return jsonResponse({ error: error.message }, 500);
+      }
     }
 
     // 404 for unknown routes

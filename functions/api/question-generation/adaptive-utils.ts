@@ -2,8 +2,8 @@
  * Utility functions for Adaptive Aptitude API
  */
 
-import type { GradeLevel, TestPhase, DifficultyLevel, Subtag, Question } from './types';
-import { MIDDLE_SCHOOL_FALLBACKS, HIGH_SCHOOL_FALLBACKS } from './constants';
+import type { GradeLevel, TestPhase, DifficultyLevel, Subtag, Question } from './adaptive-types';
+import { MIDDLE_SCHOOL_FALLBACKS, HIGH_SCHOOL_FALLBACKS } from './adaptive-constants';
 
 export function generateQuestionId(
   gradeLevel: GradeLevel,
