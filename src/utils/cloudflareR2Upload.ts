@@ -3,8 +3,10 @@
  * Handles image uploads to Cloudflare R2 via storage-api worker
  */
 
-// Storage API worker URL - update this with your deployed worker URL
-const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.rareminds.workers.dev';
+import { getPagesApiUrl } from './pagesUrl';
+
+// Storage API worker URL
+const STORAGE_API_URL = getPagesApiUrl('storage');
 
 interface R2UploadResponse {
   success: boolean;

@@ -25,7 +25,11 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     headers: {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
     },
+  },
+  db: {
+    schema: 'public',
   },
 });
 

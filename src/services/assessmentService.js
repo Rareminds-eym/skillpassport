@@ -783,11 +783,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 export const getStudentAttempts = async (studentId) => {
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
-    .select(`
-      *,
-      stream:personal_assessment_streams(*),
-      results:personal_assessment_results(*)
-    `)
+    .select('*')
     .eq('student_id', studentId)
     .order('created_at', { ascending: false });
 
@@ -800,13 +796,9 @@ export const getStudentAttempts = async (studentId) => {
  * @param {string} attemptId - Attempt UUID
  */
 export const getAttemptWithResults = async (attemptId) => {
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from('personal_assessment_attempts')
-    .select(`
-      *,
-      stream:personal_assessment_streams(*),
-      results:personal_assessment_results(*)
-    `)
+    .select('*')
     .eq('id', attemptId)
     .single();
 
@@ -1102,11 +1094,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
   // Try direct lookup first (assuming it's student.id)
   let { data, error } = await supabase
     .from('personal_assessment_attempts')
-    .select(`
-      *,
-      stream:personal_assessment_streams(*),
-      responses:personal_assessment_responses(*)
-    `)
+    .select('*')
     .eq('student_id', studentIdOrUserId)
     .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
@@ -1190,11 +1178,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     // Now try again with the correct student.id
     const { data: attemptData, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
-      .select(`
-        *,
-        stream:personal_assessment_streams(*),
-        responses:personal_assessment_responses(*)
-      `)
+      .select('*')
       .eq('student_id', student.id)
       .eq('status', 'in_progress')
       .order('created_at', { ascending: false })

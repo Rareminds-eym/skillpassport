@@ -221,7 +221,8 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
         }
       }
 
-      const workerUrl = import.meta.env.VITE_CLOUDFLARE_CERTIFICATE_WORKER_URL || 'https://fetch-certificate.rareminds.workers.dev';
+      const { getPagesApiUrl } = await import('../../../utils/pagesUrl');
+      const workerUrl = getPagesApiUrl('fetch-certificate');
 
       const response = await fetch(workerUrl, {
         method: 'POST',

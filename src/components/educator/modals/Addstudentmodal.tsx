@@ -448,7 +448,6 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       }
 
       console.log('🔑 Token obtained, length:', token.length)
-      console.log('🌐 API URL:', import.meta.env.VITE_USER_API_URL)
 
       // Call Cloudflare Worker via userApiService
       console.log('Calling create-student via userApiService with data:', {

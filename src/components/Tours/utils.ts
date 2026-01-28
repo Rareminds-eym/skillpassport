@@ -167,182 +167,62 @@ export const isElementReady = (selector: string): boolean => {
 
 /**
  * Scroll Lock Utilities
- * Prevents user-initiated scrolling while allowing programmatic scrolling
+ * DISABLED - Tours should NOT lock scrolling as it causes app-wide scroll issues
+ * These functions are now no-ops to prevent scroll lock problems
  */
 
-let isScrollLocked = false;
-let scrollPosition = 0;
-let scrollbarWidth = 0;
-
 /**
- * Calculate scrollbar width to prevent layout shift
- */
-const getScrollbarWidth = (): number => {
-  if (scrollbarWidth > 0) return scrollbarWidth;
-  
-  // Create temporary elements to measure scrollbar width
-  const outer = document.createElement('div');
-  outer.style.visibility = 'hidden';
-  outer.style.overflow = 'scroll';
-  outer.style.msOverflowStyle = 'scrollbar';
-  document.body.appendChild(outer);
-
-  const inner = document.createElement('div');
-  outer.appendChild(inner);
-
-  scrollbarWidth = outer.offsetWidth - inner.offsetWidth;
-  document.body.removeChild(outer);
-  
-  return scrollbarWidth;
-};
-
-/**
- * Prevents accidental scroll events during tour
- */
-const preventAccidentalScroll = (e: Event) => {
-  // Prevent all scroll-related events during tour
-  if (e.type === 'wheel' || e.type === 'touchmove' || e.type === 'scroll') {
-    if (e.isTrusted) {
-      e.preventDefault();
-      return false;
-    }
-  }
-};
-
-/**
- * Locks scrolling by preventing mouse wheel, touch, and scrollbar scrolling
+ * Locks scrolling - DISABLED
  */
 export const lockScroll = (): void => {
-  if (isScrollLocked) return;
-  
-  // Store current scroll position
-  scrollPosition = window.pageYOffset || document.documentElement.scrollTop;
-  
-  // Calculate scrollbar width to prevent layout shift
-  const scrollbarWidthPx = getScrollbarWidth();
-  
-  // Prevent scroll events
-  document.addEventListener('wheel', preventAccidentalScroll, { passive: false });
-  document.addEventListener('touchmove', preventAccidentalScroll, { passive: false });
-  document.addEventListener('scroll', preventAccidentalScroll, { passive: false });
-  
-  // Hide scrollbar and fix position
-  document.body.style.overflow = 'hidden';
-  document.body.style.position = 'fixed';
-  document.body.style.top = `-${scrollPosition}px`;
-  document.body.style.width = '100%';
-  document.body.style.paddingRight = `${scrollbarWidthPx}px`; // Prevent layout shift
-  document.documentElement.style.overflow = 'hidden';
-  
-  // Add class for additional styling if needed
-  document.body.classList.add('tour-scroll-locked');
-  
-  isScrollLocked = true;
-  console.log('🔒 Tour scroll lock enabled (full lock with scrollbar hidden)');
+  console.log('🔒 Tour scroll lock called but DISABLED to prevent scroll issues');
+  // Do nothing - scrolling should always work
 };
 
 /**
- * Unlocks scrolling and restores normal behavior
+ * Unlocks scrolling - DISABLED
  */
 export const unlockScroll = (): void => {
-  if (!isScrollLocked) return;
-  
-  // Remove event listeners
-  document.removeEventListener('wheel', preventAccidentalScroll);
-  document.removeEventListener('touchmove', preventAccidentalScroll);
-  document.removeEventListener('scroll', preventAccidentalScroll);
-  
-  // Restore body styles
-  document.body.style.overflow = '';
-  document.body.style.position = '';
-  document.body.style.top = '';
-  document.body.style.width = '';
-  document.body.style.paddingRight = '';
-  document.documentElement.style.overflow = '';
-  
-  // Remove class
-  document.body.classList.remove('tour-scroll-locked');
-  
-  // Restore scroll position
-  window.scrollTo(0, scrollPosition);
-  
-  isScrollLocked = false;
-  console.log('🔓 Tour scroll lock disabled');
+  console.log('🔓 Tour scroll unlock called (no-op)');
+  // Do nothing - scrolling should always work
 };
 
 /**
- * Force unlock scroll - ensures scroll is always unlocked regardless of state
- * Used for cleanup and emergency unlock situations
+ * Force unlock scroll - ensures scroll is always unlocked
  */
 export const forceUnlockScroll = (): void => {
-  // Remove all possible event listeners
-  document.removeEventListener('wheel', preventAccidentalScroll);
-  document.removeEventListener('touchmove', preventAccidentalScroll);
-  document.removeEventListener('scroll', preventAccidentalScroll);
+  // Remove any tour-specific classes that might exist
+  document.body.classList.remove('tour-scroll-locked');
   
-  // Reset any CSS that might be blocking scroll
-  document.body.style.overflow = '';
-  document.body.style.position = '';
+  // Ensure body can scroll
+  document.body.style.setProperty('overflow', 'auto', 'important');
+  document.body.style.setProperty('position', 'static', 'important');
   document.body.style.top = '';
   document.body.style.width = '';
   document.body.style.paddingRight = '';
-  document.documentElement.style.overflow = '';
+  document.documentElement.style.setProperty('overflow', 'auto', 'important');
   
-  // Remove any scroll lock classes
-  document.body.classList.remove('tour-scroll-locked');
-  
-  // Restore scroll position if it was stored
-  if (scrollPosition > 0) {
-    window.scrollTo(0, scrollPosition);
-    scrollPosition = 0;
-  }
-  
-  isScrollLocked = false;
   console.log('🔓 Tour scroll force unlocked');
 };
 
 /**
- * Check if scroll is currently locked
+ * Check if scroll is currently locked - always returns false
  */
 export const isScrollCurrentlyLocked = (): boolean => {
-  return isScrollLocked;
+  return false;
 };
 
 /**
  * Initialize scroll utilities - ensures clean state on page load
  */
 export const initializeScrollUtils = (): void => {
-  // Force unlock on initialization to ensure clean state
   forceUnlockScroll();
-  console.log('🔄 Scroll utilities initialized');
+  console.log('🔄 Scroll utilities initialized (scroll lock disabled)');
 };
 
 /**
- * Temporarily unlocks scroll for programmatic scrolling, then re-locks
- * Used by the tour to scroll to elements while keeping user scrolling disabled
+ * Temporarily unlocks scroll for programmatic scrolling - just runs callback
  */
 export const temporaryUnlockForScroll = (callback: () => void): void => {
-  if (!isScrollLocked) {
-    callback();
-    return;
-  }
-  
-  // Temporarily unlock
-  const wasLocked = isScrollLocked;
-  const savedPosition = scrollPosition;
-  
-  // Unlock scroll
-  unlockScroll();
-  
-  // Execute callback (programmatic scroll)
   callback();
-  
-  // Re-lock if it was locked before
-  if (wasLocked) {
-    // Small delay to allow scroll to complete
-    setTimeout(() => {
-      scrollPosition = savedPosition; // Restore the original position reference
-      lockScroll();
-    }, 100);
-  }
 };

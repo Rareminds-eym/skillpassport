@@ -7,8 +7,7 @@ import {
   markTourCompleted,
   isEligibleForTour,
   forceUnlockScroll,
-  initializeScrollUtils,
-  lockScroll
+  initializeScrollUtils
 } from './utils';
 
 interface TourContextType {
@@ -131,9 +130,8 @@ export const TourProvider: React.FC<TourProviderProps> = ({
       tourKey,
     }));
     
-    // Lock scrolling when any tour starts
-    lockScroll();
-    console.log(`🔒 Scroll locked for tour: ${tourKey}`);
+    // Note: Scroll locking is disabled to prevent app-wide scroll issues
+    console.log(`🎯 Tour started: ${tourKey} (scroll lock disabled)`);
   }, []);
 
   const completeTour = useCallback(async (tourKey: TourKey) => {

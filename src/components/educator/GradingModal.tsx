@@ -23,10 +23,8 @@ const extractFileKey = (fileUrl: string): string | null => {
 
 // Helper function to generate accessible file URL
 const getAccessibleFileUrl = (fileUrl: string) => {
-  const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
-  if (!storageApiUrl) {
-    return fileUrl;
-  }
+  const { getPagesApiUrl } = require('../../utils/pagesUrl');
+  const storageApiUrl = getPagesApiUrl('storage');
   
   // Extract file key and use key parameter for better reliability
   const fileKey = extractFileKey(fileUrl);

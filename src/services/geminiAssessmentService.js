@@ -50,8 +50,8 @@ const updateProgress = (stage, message) => {
  * @returns {Promise<Object>} - The analyzed results from AI
  */
 const callOpenRouterAssessment = async (assessmentData) => {
-  const API_URL = import.meta.env.VITE_ASSESSMENT_API_URL || 
-                  'https://analyze-assessment-api.dark-mode-d021.workers.dev';
+  const { getPagesApiUrl } = await import('../utils/pagesUrl');
+  const API_URL = getPagesApiUrl('assessment');
 
   // Get auth token
   updateProgress('sending', 'Authenticating...');
