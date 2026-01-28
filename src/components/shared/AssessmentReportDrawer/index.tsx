@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from '../../Students/components/ui/dialog';
 import { formatStreamId } from '../../../utils/formatters';
+import { transformAssessmentResults } from '../../../services/assessmentResultTransformer';
 
 // Import section components from assessment-result
 import ProfileSection from '../../../features/assessment/assessment-result/components/sections/ProfileSection';
@@ -229,7 +230,13 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
         console.log('Using passed assessment result directly');
         console.log('Assessment result stream_id:', assessmentResult?.stream_id);
         console.log('Assessment result stream:', assessmentResult?.stream);
-        setResults(assessmentResult.gemini_results);
+        
+        // ✅ Transform the database result to PDF-compatible format
+        console.log('🔄 Transforming assessment results...');
+        const transformedResults = transformAssessmentResults(assessmentResult.gemini_results);
+        console.log('✅ Transformed results:', transformedResults);
+        
+        setResults(transformedResults);
         setStudentInfo({
           name: student?.name || '—',
           regNo: student?.registration_number || '—',
@@ -352,7 +359,12 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
       // Extract gemini_results which contains the full assessment data
       const geminiResults = data?.gemini_results;
       if (geminiResults) {
-        setResults(geminiResults);
+        // ✅ Transform the database result to PDF-compatible format
+        console.log('🔄 Transforming fetched assessment results...');
+        const transformedResults = transformAssessmentResults(geminiResults);
+        console.log('✅ Transformed results:', transformedResults);
+        
+        setResults(transformedResults);
       } else {
         setError('Assessment results not available.');
         return;
