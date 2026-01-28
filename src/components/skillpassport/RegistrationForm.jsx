@@ -262,6 +262,13 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
       .catch(() => setPaymentError('Payment gateway failed to load. Please refresh.'));
   }, []);
 
+  // Scroll to top when success view is shown
+  useEffect(() => {
+    if (success && orderDetails) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [success, orderDetails]);
+
   const updateField = useCallback((field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
@@ -409,11 +416,6 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
 
   // Success View
   if (success && orderDetails) {
-    // Scroll to top when success view is shown
-    useEffect(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, []);
-
     return (
       <section id="registration-form" className="py-8 sm:py-12 md:py-16 lg:py-20 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
         <div className="max-w-2xl mx-auto px-4 sm:px-6">
