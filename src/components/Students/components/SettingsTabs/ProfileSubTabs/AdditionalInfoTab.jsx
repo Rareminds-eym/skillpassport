@@ -29,6 +29,9 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange }) => {
           {profileData.aadharNumber && profileData.aadharNumber.length !== 12 && (
             <p className="text-xs text-red-500">Aadhar number must be exactly 12 digits</p>
           )}
+          {profileData.aadharNumber && profileData.aadharNumber.length === 12 && (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) && (
+            <p className="text-xs text-red-500">Aadhar number cannot start with 0 or 1</p>
+          )}
         </div>
 
         {/* Gap in Studies */}
