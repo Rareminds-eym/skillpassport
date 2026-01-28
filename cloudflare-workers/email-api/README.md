@@ -58,16 +58,6 @@ Generic email sending
 }
 ```
 
-### POST /password-reset
-Password reset email with OTP
-```json
-{
-  "to": "user@example.com",
-  "otp": "123456",
-  "expiryMinutes": 10
-}
-```
-
 ### POST /invitation
 Organization invitation email
 ```json

@@ -87,28 +87,29 @@ const TokenPasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // Generate a random token (32 character hex string)
-      const token = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-
-      // Send email via email-api
-      const emailApiUrl = import.meta.env.VITE_EMAIL_API_URL || 'http://localhost:8787';
-      const response = await fetch(`${emailApiUrl}/password-reset`, {
+      console.log('🔐 Sending password reset request for:', state.email);
+      
+      // Use user-api to send reset link
+      const userApiUrl = import.meta.env.VITE_USER_API_URL || 'http://localhost:3001';
+      console.log('📡 User API URL:', userApiUrl);
+      
+      const response = await fetch(`${userApiUrl}/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          to: state.email,
-          token: token,
-          expiryMinutes: 30
+          action: 'send',
+          email: state.email
         })
       });
 
+      console.log('📡 Response status:', response.status);
       const result = await response.json();
+      console.log('📡 Response data:', result);
 
       if (!response.ok || !result.success) {
+        console.error('❌ Failed to send reset link:', result.error);
         setState(prev => ({
           ...prev,
           loading: false,
@@ -117,6 +118,7 @@ const TokenPasswordReset = () => {
         return;
       }
 
+      console.log('✅ Reset link sent successfully');
       setState(prev => ({
         ...prev,
         loading: false,
@@ -125,7 +127,7 @@ const TokenPasswordReset = () => {
       }));
 
     } catch (error) {
-      console.error('Send reset link error:', error);
+      console.error('❌ Send reset link error:', error);
       setState(prev => ({
         ...prev,
         loading: false,
@@ -155,8 +157,13 @@ const TokenPasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
+      console.log('🔐 Resetting password with token');
+      console.log('Token:', state.token);
+      
       // Use user-api to reset password with token
       const userApiUrl = import.meta.env.VITE_USER_API_URL || 'http://localhost:3001';
+      console.log('📡 User API URL:', userApiUrl);
+      
       const response = await fetch(`${userApiUrl}/reset-password`, {
         method: 'POST',
         headers: {
@@ -169,9 +176,12 @@ const TokenPasswordReset = () => {
         })
       });
 
+      console.log('📡 Response status:', response.status);
       const result = await response.json();
+      console.log('📡 Response data:', result);
 
       if (!response.ok || !result.success) {
+        console.error('❌ Failed to reset password:', result.error);
         setState(prev => ({
           ...prev,
           loading: false,
@@ -180,6 +190,7 @@ const TokenPasswordReset = () => {
         return;
       }
 
+      console.log('✅ Password reset successfully');
       setState(prev => ({
         ...prev,
         loading: false,
@@ -188,7 +199,7 @@ const TokenPasswordReset = () => {
       }));
 
     } catch (error) {
-      console.error('Password reset error:', error);
+      console.error('❌ Password reset error:', error);
       setState(prev => ({
         ...prev,
         loading: false,

@@ -6,6 +6,7 @@ import { generateCountdownEmailHtml, getCountdownSubject } from '../templates/co
 import { sendEmail } from '../services/mailer.js';
 import { 
   checkEmailAlreadySent,
+  checkEmailSentToday,
   createEmailTracking,
   updateEmailTracking
 } from '../services/supabase.js';
@@ -15,7 +16,21 @@ export async function processIndividualCountdownEmail(supabase, env, preReg, day
   let trackingRecord = null;
   
   try {
-    // Check if email already sent for this countdown day
+    // Skip users with pending payment status
+    if (preReg.payment_status === 'pending') {
+      console.log(`Skipping ${preReg.email} - payment status is pending`);
+      return { status: 'skipped', email: preReg.email, reason: 'payment_pending' };
+    }
+
+    // FIRST: Check if ANY email was sent today (prevents duplicate sends on same day)
+    const { data: emailSentToday } = await checkEmailSentToday(supabase, preReg.id);
+    
+    if (emailSentToday) {
+      console.log(`Email already sent today to ${preReg.email} (countdown day ${emailSentToday.metadata?.countdown_day})`);
+      return { status: 'skipped', email: preReg.email, reason: 'already_sent_today' };
+    }
+
+    // SECOND: Check if email already sent for this specific countdown day
     const { data: existingEmail } = await checkEmailAlreadySent(
       supabase,
       preReg.id,

@@ -12,7 +12,6 @@ export interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string;
   VITE_SUPABASE_URL?: string;
   VITE_SUPABASE_ANON_KEY?: string;
-  EMAIL_API_URL?: string;
   // Note: RESEND_API_KEY removed - now using Supabase Edge Function with SMTP
 }
 
