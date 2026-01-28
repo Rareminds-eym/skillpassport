@@ -913,6 +913,7 @@ const MyJobsContent = ({
                           isSaved={savedJobs.has(opp.id)}
                           onApply={() => handleApply(opp)}
                           onToggleSave={handleToggleSave}
+                          studentData={studentData}
                         />
                       ))}
                     </div>
@@ -938,6 +939,7 @@ const MyJobsContent = ({
                 canApplyToJobs={canApplyToJobs}
                 needsProfileCompletion={needsProfileCompletion}
                 navigate={navigate}
+                studentData={studentData}
               />
             </div>
           </div>
