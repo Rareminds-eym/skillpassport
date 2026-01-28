@@ -62,7 +62,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     // Fetch conversation history if conversationId provided
     let conversationHistory: Array<{ role: string; content: string }> = [];
     let existingConversation: any = null;
-    
+
     if (conversationId) {
       const { data: conv } = await supabase
         .from('career_ai_conversations')
@@ -102,7 +102,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
         'X-Title': 'SkillPassport Career AI'
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-sonnet',
+        model: 'meta-llama/llama-3.2-3b-instruct:free',
         messages: aiMessages,
         stream: true,
         temperature: 0.7,
@@ -112,8 +112,15 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('OpenRouter error:', error);
-      return jsonResponse({ error: 'AI service error' }, 500);
+      console.error('OpenRouter API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error
+      });
+      return jsonResponse({
+        error: 'AI service error',
+        details: `OpenRouter returned ${response.status}: ${error.substring(0, 200)}`
+      }, 500);
     }
 
     // Stream response and collect assistant message
@@ -200,9 +207,9 @@ export async function handleCareerChat(request: Request, env: Record<string, str
           }
 
           // Send final metadata
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-            done: true, 
-            conversationId: finalConversationId 
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            done: true,
+            conversationId: finalConversationId
           })}\n\n`));
           controller.close();
         } catch (error) {
