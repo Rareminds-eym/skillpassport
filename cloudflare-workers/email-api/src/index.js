@@ -4,6 +4,7 @@
  * 
  * Supports:
  * - Generic email sending (POST /)
+ * - Password reset emails (POST /password-reset)
  * - Organization invitation emails (POST /invitation)
  * - Countdown emails (POST /countdown)
  * - Bulk countdown emails (POST /send-bulk-countdown)

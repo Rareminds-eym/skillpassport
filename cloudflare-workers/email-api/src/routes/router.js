@@ -8,6 +8,7 @@ import { handleCountdownEmail } from '../handlers/countdown.js';
 import { handleBulkCountdownEmail } from '../handlers/bulk-countdown.js';
 import { handleEventConfirmation, handleEventOTP } from '../handlers/event-registration.js';
 import { handlePDFReceipt } from '../handlers/pdf-receipt.js';
+import { handlePasswordResetEmail } from '../handlers/password-reset.js';
 import { jsonResponse, errorResponse } from '../utils/response.js';
 
 export async function routeRequest(request, env) {
@@ -45,6 +46,9 @@ export async function routeRequest(request, env) {
     
     case '/event-otp':
       return await handleEventOTP(body, env);
+    
+    case '/password-reset':
+      return await handlePasswordResetEmail(body, env);
     
     case '/':
     case '/send':

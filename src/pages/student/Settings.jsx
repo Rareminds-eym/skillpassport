@@ -7,7 +7,6 @@ import {
     Calendar,
     ChevronRight,
     CreditCard,
-    Download,
     Edit,
     Eye,
     EyeOff,
@@ -22,7 +21,6 @@ import {
     Save,
     Settings as SettingsIcon,
     Shield,
-    Trash2,
     Upload,
     User
 } from "lucide-react";
@@ -46,6 +44,8 @@ import { useToast } from "../../hooks/use-toast";
 import useStudentMessageNotifications from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import ResumeParser from "../../components/Students/components/ResumeParser";
+import { mergeResumeData } from "../../services/resumeParserService";
 
 const Settings = () => {
   const { user } = useAuth();
@@ -111,15 +111,12 @@ const Settings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
-  // Resume file handling state
-  const [resumeFile, setResumeFile] = useState(null);
-  const [resumeUploading, setResumeUploading] = useState(false);
-  const [resumeFileName, setResumeFileName] = useState("");
-  const [resumeUploadDate, setResumeUploadDate] = useState("");
-
   // Education management state
   const [educationData, setEducationData] = useState([]);
   const [showEducationModal, setShowEducationModal] = useState(false);
+
+  // Resume parser state
+  const [showResumeParser, setShowResumeParser] = useState(false);
 
   // State for custom institution entry (B2C students)
   const [showCustomSchool, setShowCustomSchool] = useState(false);
@@ -394,7 +391,14 @@ const Settings = () => {
     facebook: "",
     instagram: "",
     portfolio: "",
-    resumeUrl: "",
+    // Required fields for profile validation
+    aadharNumber: "",
+    gapInStudies: false,
+    gapYears: 0,
+    gapReason: "",
+    currentBacklogs: 0,
+    backlogsHistory: "",
+    workExperience: "",
   });
 
   // Password settings state
@@ -470,7 +474,6 @@ const Settings = () => {
         facebook: studentData.facebook || "",
         instagram: studentData.instagram || "",
         portfolio: studentData.portfolio || "",
-        resumeUrl: studentData.resumeUrl || "",
         // New fields for gap years, work experience, and academic info
         gapInStudies: studentData.gapInStudies || false,
         gapYears: studentData.gapYears || 0,
@@ -511,23 +514,6 @@ const Settings = () => {
         setPrivacySettings(studentData.privacySettings);
       }
 
-      // Initialize resume data
-      if (studentData.resumeUrl) {
-        // Extract filename from URL or use a default name
-        const urlParts = studentData.resumeUrl.split('/');
-        const fileName = urlParts[urlParts.length - 1] || 'resume.pdf';
-        setResumeFileName(fileName);
-        
-        // Set upload date if available, otherwise use a placeholder
-        setResumeUploadDate(studentData.resume_imported_at ? 
-          new Date(studentData.resume_imported_at).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: '2-digit'
-          }) : 'Previously uploaded'
-        );
-      }
-
       // Initialize education data
       if (studentDataWithEducation?.education && Array.isArray(studentDataWithEducation.education)) {
         setEducationData(studentDataWithEducation.education);
@@ -559,125 +545,6 @@ const Settings = () => {
 
   const handlePrivacyChange = (setting, value) => {
     setPrivacySettings((prev) => ({ ...prev, [setting]: value }));
-  };
-
-  // Resume file handling functions
-  const handleResumeFileSelect = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      // Validate file type
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/rtf'
-      ];
-      
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid File Type",
-          description: "Please upload a PDF, DOC, DOCX, or RTF file.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Validate file size (2MB limit)
-      if (file.size > 2 * 1024 * 1024) {
-        toast({
-          title: "File Too Large",
-          description: "Please upload a file smaller than 2MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setResumeFile(file);
-      setResumeFileName(file.name);
-    }
-  };
-
-  const handleResumeUpload = async () => {
-    if (!resumeFile) return;
-
-    setResumeUploading(true);
-    try {
-      // For now, we'll simulate the upload and store the file name
-      // In a real implementation, you would upload to your storage service
-      
-      // Simulate upload delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Create a mock URL (in real implementation, this would come from your storage service)
-      const mockUrl = `https://storage.example.com/resumes/${userEmail}/${resumeFile.name}`;
-      
-      // Update profile data with the new resume URL
-      const updatedProfileData = {
-        ...profileData,
-        resumeUrl: mockUrl
-      };
-      
-      setProfileData(updatedProfileData);
-      setResumeUploadDate(new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit'
-      }));
-
-      // Save to database
-      await updateProfile(updatedProfileData);
-
-      toast({
-        title: "Success",
-        description: "Resume uploaded successfully",
-      });
-
-      // Clear file input
-      setResumeFile(null);
-      
-    } catch (error) {
-      console.error('Resume upload error:', error);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to upload resume. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setResumeUploading(false);
-    }
-  };
-
-  const handleResumeDelete = async () => {
-    try {
-      const updatedProfileData = {
-        ...profileData,
-        resumeUrl: ""
-      };
-      
-      setProfileData(updatedProfileData);
-      setResumeFileName("");
-      setResumeUploadDate("");
-
-      await updateProfile(updatedProfileData);
-
-      toast({
-        title: "Success",
-        description: "Resume removed successfully",
-      });
-    } catch (error) {
-      console.error('Resume delete error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to remove resume. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleResumeDownload = () => {
-    if (profileData.resumeUrl) {
-      window.open(profileData.resumeUrl, '_blank');
-    }
   };
 
   // Education management functions
@@ -931,6 +798,53 @@ const Settings = () => {
     }
   };
 
+  // Handle resume data extraction and auto-fill
+  const handleResumeDataExtracted = async (parsedData) => {
+    try {
+      // Merge parsed data with existing profile data
+      const currentProfile = profileData;
+      const mergedData = mergeResumeData(currentProfile, parsedData);
+      
+      // Update profile data state
+      setProfileData(mergedData);
+      
+      // Save to database
+      await updateProfile(mergedData);
+      
+      // Update education if present
+      if (parsedData.education && parsedData.education.length > 0) {
+        setEducationData(parsedData.education);
+        if (updateEducation) {
+          await updateEducation(parsedData.education);
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: "Profile auto-filled from resume successfully!",
+      });
+      
+      // Close the resume parser modal
+      setShowResumeParser(false);
+      
+      // Refresh recent updates if available
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error saving resume data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to auto-fill profile from resume. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const tabs = [
     { id: "profile", label: "Profile", icon: User },
     { id: "security", label: "Security", icon: Lock },
@@ -976,232 +890,224 @@ const Settings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+        `
+      }} />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-10">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-sm shadow-blue-500/20">
-              <SettingsIcon className="w-7 h-7 text-white" />
+        <div className="mb-6 lg:mb-10">
+          <div className="flex items-center gap-3 lg:gap-4 mb-3">
+            <div className="p-2.5 lg:p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl lg:rounded-2xl shadow-sm shadow-blue-500/20">
+              <SettingsIcon className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
                 Settings
               </h1>
-              <p className="text-gray-600 mt-0.5">
+              <p className="text-sm lg:text-base text-gray-600 mt-0.5">
                 Manage your account preferences
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
           {/* LEFT SIDEBAR - Navigation & Updates */}
-          <div className="lg:col-span-1 space-y-6">
-            <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
-              <CardHeader className="pb-4 border-b border-gray-100">
-                <CardTitle className="text-sm font-semibold text-gray-800 tracking-wide flex items-center gap-2">
-                  <SettingsIcon className="w-4 h-4 text-blue-600" />
-                  Account Settings
-                </CardTitle>
-              </CardHeader>
-
-              <CardContent className="pt-4 px-3">
-                <nav className="space-y-3">
-                  {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id)}
-                        className={`w-full rounded-xl transition-all duration-300 group relative
-                ${
-                  isActive
-                    ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
-                    : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
-                }
-              `}
-                      >
-                        <div className="flex items-center justify-between px-3 py-3">
-                          {/* Left side: Icon + Label */}
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`
-                    p-2 rounded-lg transition-all duration-300
-                    ${
-                      isActive
-                        ? "bg-blue-500"
-                        : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
-                    }
-                  `}
-                            >
-                              <Icon
-                                className={`
-                      w-4 h-4 transition-colors
-                      ${
-                        isActive
-                          ? "text-white"
-                          : "text-gray-600 group-hover:text-gray-800"
-                      }
-                    `}
-                              />
-                            </div>
-
-                            <div className="text-left">
-                              <p
-                                className={`
-                      font-medium text-[0.9rem] transition-colors leading-tight
-                      ${
-                        isActive
-                          ? "text-gray-900"
-                          : "text-gray-700 group-hover:text-gray-900"
-                      }
-                    `}
-                              >
-                                {tab.label}
-                              </p>
-                              {tab.description && (
-                                <p
-                                  className={`
-                        text-xs transition-colors mt-0.5
-                        ${
-                          isActive
-                            ? "text-gray-600"
-                            : "text-gray-500 group-hover:text-gray-600"
-                        }
-                      `}
-                                >
-                                  {tab.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Right side: Badge + Chevron */}
-                          <div className="flex items-center gap-2">
-                            {tab.badge && (
-                              <Badge
-                                variant={isActive ? "default" : "secondary"}
-                                className={`
-                        text-xs font-medium px-2 py-0.5 border
-                        ${
-                          isActive
-                            ? "bg-blue-100 text-blue-700 border-blue-200 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
-                            : "bg-gray-100 text-gray-600 border-gray-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
-                        }
-                      `}
-                              >
-                                {tab.badge}
-                              </Badge>
-                            )}
-                            <ChevronRight
-                              className={`
-                      w-4 h-4 transition-all duration-300
-                      ${
-                        isActive
-                          ? "text-blue-500 translate-x-1"
-                          : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
-                      }
-                    `}
-                            />
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </nav>
-              </CardContent>
-            </Card>
-
-            {/* Recent Updates - Hidden per user request */}
-            {/* <RecentUpdatesCard
-              ref={recentUpdatesRef}
-              updates={recentUpdates}
-              loading={recentUpdatesLoading}
-              error={
-                recentUpdatesError ? "Failed to load recent updates" : null
-              }
-              onRetry={refreshRecentUpdates}
-              emptyMessage="No recent updates available"
-              isExpanded={showAllRecentUpdates}
-              onToggle={(next) => setShowAllRecentUpdates(next)}
-              badgeContent={
-                unreadCount > 0 ? (
-                  <Badge className="bg-red-500 hover:bg-red-500 text-white px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 flex-nowrap text-nowrap">
-                    <MessageCircleIcon className="w-3.5 h-3.5" />
-                    {unreadCount} {unreadCount === 1 ? "message" : "messages"}
-                  </Badge>
-                ) : null
-              }
-              getUpdateClassName={(update) => {
-                switch (update.type) {
-                  case "shortlist_added":
-                    return "bg-yellow-50 border-yellow-300";
-                  case "offer_extended":
-                    return "bg-green-50 border-green-300";
-                  case "offer_accepted":
-                    return "bg-emerald-50 border-emerald-300";
-                  case "placement_hired":
-                    return "bg-purple-50 border-purple-300";
-                  case "stage_change":
-                    return "bg-indigo-50 border-indigo-300";
-                  case "application_rejected":
-                    return "bg-red-50 border-red-300";
-                  default:
-                    return "bg-gray-50 border-gray-200";
-                }
-              }}
-            /> */}
-          </div>
-
-          {/* RIGHT CONTENT AREA */}
-          <div className="lg:col-span-3">
-            {/* Profile Settings */}
-            {activeTab === "profile" && (
+          <div className="lg:col-span-1 space-y-6 order-2 lg:order-1">
+            <div className="sticky top-8">
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
-                <CardHeader className="border-b border-slate-100 pb-5">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-50 rounded-xl">
-                      <User className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <span className="text-xl font-bold text-gray-900">
-                      Profile Information
-                    </span>
+                <CardHeader className="pb-4 border-b border-gray-100">
+                  <CardTitle className="text-sm font-semibold text-gray-800 tracking-wide flex items-center gap-2">
+                    <SettingsIcon className="w-4 h-4 text-blue-600" />
+                    Account Settings
                   </CardTitle>
                 </CardHeader>
-                
-                {/* Horizontal Tabs for Profile Sections */}
-                <div className="bg-white rounded-2xl border border-gray-200 p-2 shadow-sm mb-6">
-                  <div className="flex justify-between gap-2 overflow-x-auto">
-                    {[
-                      { id: "personal", label: "Personal Info", icon: User },
-                      { id: "institution", label: "Institution Details", icon: Briefcase },
-                      { id: "academic", label: "Academic Details", icon: Briefcase },
-                      { id: "guardian", label: "Guardian Info", icon: Shield },
-                      { id: "social", label: "Social Links", icon: Globe },
-                    ].map((tab) => {
+
+                <CardContent className="pt-4 px-3">
+                  <nav className="space-y-3">
+                    {tabs.map((tab) => {
                       const Icon = tab.icon;
-                      const isActive = (profileActiveTab || "personal") === tab.id;
+                      const isActive = activeTab === tab.id;
+
                       return (
                         <button
                           key={tab.id}
-                          onClick={() => setProfileActiveTab(tab.id)}
-                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                            isActive
-                              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
-                              : "text-gray-600 hover:bg-gray-100"
-                          }`}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`w-full rounded-xl transition-all duration-300 group relative
+                  ${
+                    isActive
+                      ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
+                      : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
+                  }
+                `}
                         >
-                          <Icon className="h-4 w-4" />
-                          {tab.label}
+                          <div className="flex items-center justify-between px-3 py-3">
+                            {/* Left side: Icon + Label */}
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`
+                      p-2 rounded-lg transition-all duration-300
+                      ${
+                        isActive
+                          ? "bg-blue-500"
+                          : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+                      }
+                    `}
+                              >
+                                <Icon
+                                  className={`
+                        w-4 h-4 transition-colors
+                        ${
+                          isActive
+                            ? "text-white"
+                            : "text-gray-600 group-hover:text-gray-800"
+                        }
+                      `}
+                                />
+                              </div>
+
+                              <div className="text-left">
+                                <p
+                                  className={`
+                        font-medium text-[0.9rem] transition-colors leading-tight
+                        ${
+                          isActive
+                            ? "text-gray-900"
+                            : "text-gray-700 group-hover:text-gray-900"
+                        }
+                      `}
+                                >
+                                  {tab.label}
+                                </p>
+                                {tab.description && (
+                                  <p
+                                    className={`
+                          text-xs transition-colors mt-0.5
+                          ${
+                            isActive
+                              ? "text-gray-600"
+                              : "text-gray-500 group-hover:text-gray-600"
+                          }
+                        `}
+                                  >
+                                    {tab.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right side: Badge + Chevron */}
+                            <div className="flex items-center gap-2">
+                              {tab.badge && (
+                                <Badge
+                                  variant={isActive ? "default" : "secondary"}
+                                  className={`
+                          text-xs font-medium px-2 py-0.5 border
+                          ${
+                            isActive
+                              ? "bg-blue-100 text-blue-700 border-blue-200 shadow-[0_1px_2px_rgba(0,0,0,0.05)]"
+                              : "bg-gray-100 text-gray-600 border-gray-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+                          }
+                        `}
+                                >
+                                  {tab.badge}
+                                </Badge>
+                              )}
+                              <ChevronRight
+                                className={`
+                        w-4 h-4 transition-all duration-300
+                        ${
+                          isActive
+                            ? "text-blue-500 translate-x-1"
+                            : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
+                        }
+                      `}
+                              />
+                            </div>
+                          </div>
                         </button>
                       );
                     })}
+                  </nav>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* RIGHT CONTENT AREA */}
+          <div className="lg:col-span-3 order-1 lg:order-2">
+            {/* Profile Settings */}
+            {activeTab === "profile" && (
+              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
+                {/* Sticky Header */}
+                <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-slate-100">
+                  <CardHeader className="pb-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                      <CardTitle className="flex items-center gap-3">
+                        <div className="p-2.5 bg-blue-50 rounded-xl">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <span className="text-xl font-bold text-gray-900">
+                          Profile Information
+                        </span>
+                      </CardTitle>
+                      
+                      {/* Upload Resume Button */}
+                      <Button
+                        onClick={() => setShowResumeParser(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2 text-sm sm:text-base"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span className="hidden sm:inline">Resume Auto-Fill</span>
+                        <span className="sm:hidden">Auto-Fill</span>
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  
+                  {/* Sticky Horizontal Tabs */}
+                  <div className="px-6 pb-4">
+                    <div className="flex gap-1 overflow-x-auto border-b border-gray-200 scrollbar-hide">
+                      {[
+                        { id: "personal", label: "Personal Info", icon: User },
+                        { id: "additional", label: "Additional Info", icon: FileText },
+                        { id: "institution", label: "Institution Details", icon: Briefcase },
+                        { id: "academic", label: "Academic Details", icon: Briefcase },
+                        { id: "guardian", label: "Guardian Info", icon: Shield },
+                        { id: "social", label: "Social Links", icon: Globe },
+                      ].map((tab) => {
+                        const Icon = tab.icon;
+                        const isActive = (profileActiveTab || "personal") === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            onClick={() => setProfileActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-3 sm:px-4 py-3 font-medium text-xs sm:text-sm whitespace-nowrap border-b-2 transition-colors min-w-fit ${
+                              isActive
+                                ? "text-blue-600 border-blue-600 bg-blue-50"
+                                : "text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                          >
+                            <Icon className="h-4 w-4 flex-shrink-0" />
+                            <span className="hidden sm:inline">{tab.label}</span>
+                            <span className="sm:hidden">
+                              {tab.label.split(' ')[0]}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-
+                
                 <CardContent className="pt-6 p-6 space-y-8">
                   {/* Personal Information */}
                   {(profileActiveTab === "personal") && (
@@ -1214,7 +1120,7 @@ const Settings = () => {
                       {/* Name */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          Full Name *
+                          Full Name <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -1230,7 +1136,7 @@ const Settings = () => {
                       {/* Email */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          Email Address
+                          Email Address <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="email"
@@ -1243,7 +1149,7 @@ const Settings = () => {
                       {/* Phone */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          Phone Number
+                          Phone Number <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="tel"
@@ -1360,7 +1266,7 @@ const Settings = () => {
                         {/* City */}
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-gray-700">
-                            City
+                            City <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -1376,7 +1282,7 @@ const Settings = () => {
                         {/* State */}
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-gray-700">
-                            State
+                            State <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -1423,149 +1329,150 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    {/* Additional Profile Information */}
-                    <div className="pt-6 border-t border-slate-100 mt-8">
-                      <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-blue-500" />
-                        Additional Information
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Aadhar Number */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-gray-700">
-                            Aadhar Number
-                          </label>
-                          <input
-                            type="text"
-                            value={profileData.aadharNumber}
-                            onChange={(e) => {
-                              // Only allow digits and limit to 12 characters
-                              const value = e.target.value.replace(/\D/g, '').slice(0, 12);
-                              handleProfileChange("aadharNumber", value);
-                            }}
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                            placeholder="Enter 12-digit Aadhar number"
-                            maxLength="12"
-                          />
-                          {profileData.aadharNumber && profileData.aadharNumber.length !== 12 && (
-                            <p className="text-xs text-red-500">Aadhar number must be exactly 12 digits</p>
-                          )}
-                        </div>
+                  </div>
+                  )}
 
-                        {/* Gap in Studies */}
-                        <div className="space-y-2">
-                          <label className="text-sm font-semibold text-gray-700">
-                            Gap in Studies
-                          </label>
-                          <select
-                            value={profileData.gapInStudies}
-                            onChange={(e) => {
-                              const hasGap = e.target.value === 'true';
-                              handleProfileChange("gapInStudies", hasGap);
-                              // Reset gap years and reason if no gap
-                              if (!hasGap) {
-                                handleProfileChange("gapYears", 0);
-                                handleProfileChange("gapReason", "");
-                              }
-                            }}
-                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                          >
-                            <option value={false}>No Gap</option>
-                            <option value={true}>Yes, I have gap years</option>
-                          </select>
-                        </div>
-
-                        {/* Gap Years - Only show if gap in studies is true */}
-                        {profileData.gapInStudies && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">
-                              Number of Gap Years
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="10"
-                              value={profileData.gapYears}
-                              onChange={(e) =>
-                                handleProfileChange("gapYears", parseInt(e.target.value) || 0)
-                              }
-                              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                              placeholder="Enter number of gap years"
-                            />
-                          </div>
+                  {/* Additional Information */}
+                  {(profileActiveTab === "additional") && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      Additional Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Aadhar Number */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Aadhar Number <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={profileData.aadharNumber}
+                          onChange={(e) => {
+                            // Only allow digits and limit to 12 characters
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                            handleProfileChange("aadharNumber", value);
+                          }}
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Enter 12-digit Aadhar number"
+                          maxLength="12"
+                        />
+                        {profileData.aadharNumber && profileData.aadharNumber.length !== 12 && (
+                          <p className="text-xs text-red-500">Aadhar number must be exactly 12 digits</p>
                         )}
+                      </div>
 
-                        {/* Gap Reason - Only show if gap in studies is true */}
-                        {profileData.gapInStudies && (
-                          <div className="space-y-2 md:col-span-2">
-                            <label className="text-sm font-semibold text-gray-700">
-                              Reason for Gap
-                            </label>
-                            <textarea
-                              value={profileData.gapReason}
-                              onChange={(e) =>
-                                handleProfileChange("gapReason", e.target.value)
-                              }
-                              rows={3}
-                              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
-                              placeholder="Explain the reason for gap in studies (e.g., health issues, family reasons, preparation for competitive exams, etc.)"
-                            />
-                          </div>
-                        )}
-
-                        {/* Work Experience */}
-                        <div className="space-y-2 md:col-span-2">
-                          <label className="text-sm font-semibold text-gray-700">
-                            Work Experience
-                          </label>
-                          <textarea
-                            value={profileData.workExperience}
-                            onChange={(e) =>
-                              handleProfileChange("workExperience", e.target.value)
+                      {/* Gap in Studies */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Gap in Studies <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          value={profileData.gapInStudies}
+                          onChange={(e) => {
+                            const hasGap = e.target.value === 'true';
+                            handleProfileChange("gapInStudies", hasGap);
+                            // Reset gap years and reason if no gap
+                            if (!hasGap) {
+                              handleProfileChange("gapYears", 0);
+                              handleProfileChange("gapReason", "");
                             }
-                            rows={4}
-                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
-                            placeholder="Describe your work experience, internships, part-time jobs, or any professional experience (include company names, roles, duration, and key responsibilities)"
-                          />
-                        </div>
+                          }}
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        >
+                          <option value={false}>No Gap</option>
+                          <option value={true}>Yes, I have gap years</option>
+                        </select>
+                      </div>
 
-                        {/* Current Backlogs */}
+                      {/* Gap Years - Only show if gap in studies is true */}
+                      {profileData.gapInStudies && (
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-gray-700">
-                            Current Backlogs
+                            Number of Gap Years
                           </label>
                           <input
                             type="number"
                             min="0"
-                            max="50"
-                            value={profileData.currentBacklogs}
+                            max="10"
+                            value={profileData.gapYears}
                             onChange={(e) =>
-                              handleProfileChange("currentBacklogs", parseInt(e.target.value) || 0)
+                              handleProfileChange("gapYears", parseInt(e.target.value) || 0)
                             }
                             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                            placeholder="Number of current pending backlogs"
+                            placeholder="Enter number of gap years"
                           />
                         </div>
+                      )}
 
-                        {/* Backlogs History */}
-                        <div className="space-y-2">
+                      {/* Gap Reason - Only show if gap in studies is true */}
+                      {profileData.gapInStudies && (
+                        <div className="space-y-2 md:col-span-2">
                           <label className="text-sm font-semibold text-gray-700">
-                            Backlogs History
+                            Reason for Gap
                           </label>
                           <textarea
-                            value={profileData.backlogsHistory}
+                            value={profileData.gapReason}
                             onChange={(e) =>
-                              handleProfileChange("backlogsHistory", e.target.value)
+                              handleProfileChange("gapReason", e.target.value)
                             }
                             rows={3}
                             className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
-                            placeholder="Describe your academic backlogs history, subjects, reasons, and how you cleared them (if applicable)"
+                            placeholder="Explain the reason for gap in studies (e.g., health issues, family reasons, preparation for competitive exams, etc.)"
                           />
                         </div>
+                      )}
+
+                      {/* Work Experience */}
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Work Experience
+                        </label>
+                        <textarea
+                          value={profileData.workExperience}
+                          onChange={(e) =>
+                            handleProfileChange("workExperience", e.target.value)
+                          }
+                          rows={4}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                          placeholder="Describe your work experience, internships, part-time jobs, or any professional experience (include company names, roles, duration, and key responsibilities)"
+                        />
+                      </div>
+
+                      {/* Current Backlogs */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Current Backlogs <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="50"
+                          value={profileData.currentBacklogs}
+                          onChange={(e) =>
+                            handleProfileChange("currentBacklogs", parseInt(e.target.value) || 0)
+                          }
+                          className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                          placeholder="Number of current pending backlogs"
+                        />
+                      </div>
+
+                      {/* Backlogs History */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">
+                          Backlogs History
+                        </label>
+                        <textarea
+                          value={profileData.backlogsHistory}
+                          onChange={(e) =>
+                            handleProfileChange("backlogsHistory", e.target.value)
+                          }
+                          rows={3}
+                          className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+                          placeholder="Describe your academic backlogs history, subjects, reasons, and how you cleared them (if applicable)"
+                        />
                       </div>
                     </div>
-
-
                   </div>
                   )}
 
@@ -1637,7 +1544,7 @@ const Settings = () => {
                       {/* School */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          School
+                          School <span className="text-red-500">*</span>
                         </label>
                         {!showCustomSchool ? (
                           <>
@@ -1792,7 +1699,7 @@ const Settings = () => {
                       {/* University */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          University
+                          University <span className="text-red-500">*</span>
                         </label>
                         {!showCustomUniversity ? (
                           <>
@@ -1868,7 +1775,7 @@ const Settings = () => {
                       {/* College (University College) */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          College
+                          College <span className="text-red-500">*</span>
                         </label>
                         {!showCustomCollege ? (
                           <>
@@ -1944,7 +1851,7 @@ const Settings = () => {
                       {/* Program */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          Program
+                          Program <span className="text-red-500">*</span>
                         </label>
                         {!showCustomProgram ? (
                           <>
@@ -2018,7 +1925,7 @@ const Settings = () => {
                       {/* Semester/Section */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          Semester / Section
+                          Semester / Section <span className="text-red-500">*</span>
                         </label>
                         {!showCustomSemester ? (
                           <>
@@ -2164,7 +2071,7 @@ const Settings = () => {
                       {/* Current CGPA */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          Current CGPA
+                          Current CGPA <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
@@ -2183,7 +2090,7 @@ const Settings = () => {
                       {/* Grade */}
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">
-                          Grade/Class
+                          Grade/Class <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={profileData.grade}
@@ -2294,10 +2201,10 @@ const Settings = () => {
                                       {education.yearOfPassing && (
                                         <span>{education.yearOfPassing}</span>
                                       )}
-                                      {education.status && (
+                                      {education.cgpa && (
                                         <>
                                           {education.yearOfPassing && <span>|</span>}
-                                          <span className="capitalize">{education.status}</span>
+                                          <span className="font-medium">{education.cgpa}</span>
                                         </>
                                       )}
                                     </div>
@@ -2435,145 +2342,6 @@ const Settings = () => {
                           placeholder="Tell us about yourself..."
                         />
                       </div>
-                    </div>
-
-                    {/* Resume Upload Section */}
-                    <div className="pt-6 border-t border-slate-100 mb-8">
-                      <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-blue-500" />
-                        Resume
-                      </h4>
-                      
-                      {profileData.resumeUrl ? (
-                        // Show existing resume
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-blue-100 rounded-lg">
-                                <FileText className="w-5 h-5 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-gray-900">{resumeFileName}</p>
-                                <p className="text-sm text-gray-500">Uploaded on {resumeUploadDate}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleResumeDownload}
-                                className="flex items-center gap-1"
-                              >
-                                <Download className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={handleResumeDelete}
-                                className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                          
-                          {/* Update Resume Button */}
-                          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50/50">
-                            <input
-                              type="file"
-                              id="resume-update"
-                              accept=".pdf,.doc,.docx,.rtf"
-                              onChange={handleResumeFileSelect}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor="resume-update"
-                              className="cursor-pointer flex flex-col items-center gap-2"
-                            >
-                              <div className="p-3 bg-blue-100 rounded-full">
-                                <Upload className="w-6 h-6 text-blue-600" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-blue-600">Update resume</p>
-                                <p className="text-sm text-gray-500">Supported Formats: doc, docx, rtf, pdf, upto 2 MB</p>
-                              </div>
-                            </label>
-                          </div>
-                        </div>
-                      ) : (
-                        // Show upload area when no resume exists
-                        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center bg-gray-50/50">
-                          <input
-                            type="file"
-                            id="resume-upload"
-                            accept=".pdf,.doc,.docx,.rtf"
-                            onChange={handleResumeFileSelect}
-                            className="hidden"
-                          />
-                          <label
-                            htmlFor="resume-upload"
-                            className="cursor-pointer flex flex-col items-center gap-3"
-                          >
-                            <div className="p-4 bg-blue-100 rounded-full">
-                              <Upload className="w-8 h-8 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-blue-600 text-lg">Update resume</p>
-                              <p className="text-sm text-gray-500 mt-1">Supported Formats: doc, docx, rtf, pdf, upto 2 MB</p>
-                            </div>
-                          </label>
-                        </div>
-                      )}
-
-                      {/* Upload Progress/Button */}
-                      {resumeFile && (
-                        <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <FileText className="w-5 h-5 text-blue-600" />
-                              <div>
-                                <p className="font-medium text-blue-900">{resumeFile.name}</p>
-                                <p className="text-sm text-blue-600">
-                                  {(resumeFile.size / (1024 * 1024)).toFixed(2)} MB
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                onClick={handleResumeUpload}
-                                disabled={resumeUploading}
-                                className="bg-blue-600 hover:bg-blue-700 text-white"
-                              >
-                                {resumeUploading ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                    Uploading...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    Upload
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => {
-                                  setResumeFile(null);
-                                  setResumeFileName("");
-                                }}
-                                disabled={resumeUploading}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     {/* Social Links */}
@@ -3145,48 +2913,7 @@ const Settings = () => {
                     ))}
                   </div>
 
-                  {/* Danger Zone */}
-                  {/* <div className="pt-6 border-t border-slate-100">
-                    <h3 className="text-sm font-bold text-gray-900 mb-3">
-                      Danger Zone
-                    </h3>
-                    <div className="p-5 rounded-xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200/50">
-                      <div className="flex items-start gap-4">
-                        <div className="p-2.5 bg-white rounded-xl shadow-sm">
-                          <Trash2 className="w-5 h-5 text-red-600" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-gray-900 mb-1">
-                            Delete Account
-                          </p>
-                          <p className="text-xs text-gray-600 mb-4 leading-relaxed">
-                            Permanently delete your account and all data. This
-                            action cannot be undone.
-                          </p>
-                          <Button
-                            variant="outline"
-                            className="border-2 border-red-600 text-red-600 hover:bg-red-50 hover:border-red-700 rounded-xl transition-all"
-                            // onClick={() => {
-                            //   if (
-                            //     window.confirm(
-                            //       "Are you sure you want to delete your account? This action cannot be undone."
-                            //     )
-                            //   ) {
-                            //     toast({
-                            //       title: "Account Deletion",
-                            //       description:
-                            //         "Please contact support to delete your account",
-                            //     });
-                            //   }
-                            // }}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete Account
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div> */}
+                 
 
                   <div className="flex justify-end pt-6 border-t border-slate-100">
                     <Button
@@ -3229,6 +2956,17 @@ const Settings = () => {
           onClose={() => setShowEducationModal(false)}
           data={educationData}
           onSave={handleEducationSave}
+        />
+      )}
+
+      {/* Resume Parser Modal */}
+      {showResumeParser && (
+        <ResumeParser
+          onDataExtracted={handleResumeDataExtracted}
+          onClose={() => setShowResumeParser(false)}
+          userEmail={userEmail}
+          studentData={studentData}
+          user={user}
         />
       )}
     </div>

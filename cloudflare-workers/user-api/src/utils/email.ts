@@ -75,30 +75,42 @@ export async function sendWelcomeEmail(
 }
 
 /**
- * Send password reset OTP email
+ * Send password reset link email
  */
 export async function sendPasswordResetEmail(
   env: Env,
   email: string,
-  otp: string
+  token: string
 ): Promise<boolean> {
-  const html = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>Password Reset Request</h2>
-      <p>Your verification code is:</p>
-      <h1 style="color: #2563eb; letter-spacing: 5px;">${otp}</h1>
-      <p>This code will expire in 10 minutes.</p>
-    </div>
-  `;
+  try {
+    // Use local development URL when running locally
+    const emailApiUrl = env.EMAIL_API_URL || 'http://127.0.0.1:8787';
+    
+    const response = await fetch(`${emailApiUrl}/password-reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: email,
+        token: token,
+        expiryMinutes: 30,
+      }),
+    });
 
-  return sendEmailViaWorker(
-    env,
-    email,
-    'Your Password Reset Code',
-    html,
-    'noreply@rareminds.in',
-    'Skill Passport'
-  );
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Password reset email sending failed:', response.status, errorText);
+      return false;
+    }
+
+    const result = await response.json();
+    console.log('Password reset email sent successfully:', result);
+    return true;
+  } catch (error) {
+    console.error('Failed to send password reset email:', error);
+    return false;
+  }
 }
 
 /**
