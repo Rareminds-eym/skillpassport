@@ -120,5 +120,40 @@ const stream = await supabase
 ```
 
 ## Summary
-The 406 error is now fixed by removing embedded selects and using simple queries. After a hard refresh, assessment queries should work correctly without errors.
+The 406 error is now fixed by:
+1. Removing embedded selects and using simple queries
+2. **Using `.maybeSingle()` instead of `.single()`** - This is important because `.single()` returns a 406 error when no rows are found (PGRST116), while `.maybeSingle()` returns null gracefully
+
+After a hard refresh, assessment queries should work correctly without errors.
+
+---
+
+## Additional Fix (2026-01-28): 406 Errors on Empty Results
+
+### Problem
+Even after removing embedded selects, 406 errors were still occurring when querying for in-progress attempts that don't exist.
+
+### Root Cause
+The `getInProgressAttempt()` function was using `.single()` which expects exactly one row. When no rows are found, PostgREST returns a 406 error with code `PGRST116`.
+
+```javascript
+// ❌ PROBLEMATIC - Returns 406 when no rows found
+.limit(1)
+.single()
+```
+
+### Solution Applied
+Changed to `.maybeSingle()` which returns `null` instead of throwing an error when no rows are found:
+
+```javascript
+// ✅ WORKING - Returns null when no rows found
+.limit(1)
+.maybeSingle()
+```
+
+### Validation Fix
+Also removed the validation requirement for embedded `stream` and `responses` objects since those were removed from the query in the previous fix.
+
+### Files Modified
+- `src/services/assessmentService.js` - `getInProgressAttempt()` function (lines ~1095 and ~1180)
 
