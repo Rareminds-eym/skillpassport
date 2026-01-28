@@ -72,7 +72,10 @@ const CoursePlayer = () => {
   const lastSavedVideoPositionRef = useRef(0);
 
   // Check if user is a student (for progress tracking)
-  const isStudent = user?.role === 'student';
+  console.log('user?.role', user?.role);
+  const isStudent = user?.role === 'student' ||
+                    user?.role === 'school_student' ||
+                    user?.role === 'college_student';
 
   // Session restore hook - only for students
   const {
