@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { TourState, TourProgress, TourKey } from './types';
 import { 
@@ -19,6 +19,8 @@ interface TourContextType {
   updateProgress: (progress: Partial<TourProgress>) => Promise<void>;
   isEligible: (tourKey: TourKey) => boolean;
   loading: boolean;
+  // New centralized scroll control
+  isTourRunning: boolean;
 }
 
 const TourContext = createContext<TourContextType | undefined>(undefined);
@@ -31,8 +33,7 @@ interface TourProviderProps {
 
 export const TourProvider: React.FC<TourProviderProps> = ({ 
   children, 
-  studentId,
-  userEmail 
+  studentId
 }) => {
   const [state, setState] = useState<TourState>({
     isRunning: false,
@@ -41,6 +42,12 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     progress: {},
   });
   const [loading, setLoading] = useState(true);
+  
+  // Single source of truth for tour running state
+  const [isTourRunning, setIsTourRunning] = useState(false);
+  
+  // Prevent duplicate eligibility checks
+  const lastEligibilityCheck = useRef<{ [key: string]: boolean }>({});
 
   // Load tour progress from database or localStorage
   const loadTourProgress = useCallback(async () => {
@@ -116,14 +123,55 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     loadTourProgress();
   }, [loadTourProgress]);
 
+  // CRITICAL: Centralized scroll lock management
+  // Scroll is locked ONLY when isTourRunning is true
+  useEffect(() => {
+    if (isTourRunning) {
+      lockScroll();
+      console.log('🔒 Scroll locked - tour is running');
+    } else {
+      forceUnlockScroll();
+      console.log('🔓 Scroll unlocked - no tour running');
+    }
+  }, [isTourRunning]);
+
   // Cleanup on unmount - ensure scroll is unlocked
   useEffect(() => {
     return () => {
+      setIsTourRunning(false);
       forceUnlockScroll();
+      console.log('🔓 TourProvider unmounted - scroll unlocked');
     };
   }, []);
 
+  // Cleanup on route changes - ensure scroll is unlocked
+  useEffect(() => {
+    const handleRouteChange = () => {
+      if (isTourRunning) {
+        console.log('🔄 Route change detected - stopping tour and unlocking scroll');
+        setIsTourRunning(false);
+        setState(prev => ({
+          ...prev,
+          isRunning: false,
+          stepIndex: 0,
+          tourKey: null,
+        }));
+      }
+    };
+
+    // Listen for route changes
+    window.addEventListener('popstate', handleRouteChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, [isTourRunning]);
+
+  // FIXED: startTour now only sets state, does NOT lock scroll
+  // Scroll lock is handled by the centralized effect above
   const startTour = useCallback((tourKey: TourKey) => {
+    console.log(`🎯 Starting tour: ${tourKey}`);
+    
     setState(prev => ({
       ...prev,
       isRunning: true,
@@ -131,17 +179,18 @@ export const TourProvider: React.FC<TourProviderProps> = ({
       tourKey,
     }));
     
-    // Lock scrolling when any tour starts
-    lockScroll();
-    console.log(`🔒 Scroll locked for tour: ${tourKey}`);
+    // Set the centralized tour running state
+    setIsTourRunning(true);
   }, []);
 
   const completeTour = useCallback(async (tourKey: TourKey) => {
+    console.log(`✅ Completing tour: ${tourKey}`);
+    
     const updatedProgress = markTourCompleted(tourKey, state.progress);
     await saveTourProgress(updatedProgress);
     
-    // Ensure scroll is unlocked when tour completes
-    forceUnlockScroll();
+    // Stop tour and unlock scroll via centralized state
+    setIsTourRunning(false);
     
     setState(prev => ({
       ...prev,
@@ -152,8 +201,10 @@ export const TourProvider: React.FC<TourProviderProps> = ({
   }, [state.progress, saveTourProgress]);
 
   const skipTour = useCallback(async (tourKey: TourKey) => {
-    // Ensure scroll is unlocked when tour is skipped
-    forceUnlockScroll();
+    console.log(`⏭️ Skipping tour: ${tourKey}`);
+    
+    // Stop tour and unlock scroll via centralized state
+    setIsTourRunning(false);
     
     // Mark as completed when skipped
     await completeTour(tourKey);
@@ -164,8 +215,19 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     await saveTourProgress(updatedProgress);
   }, [state.progress, saveTourProgress]);
 
+  // FIXED: Pure eligibility check with caching to prevent duplicate checks
   const isEligible = useCallback((tourKey: TourKey) => {
-    return isEligibleForTour(tourKey, state.progress);
+    // Prevent duplicate checks during rapid re-renders
+    const cacheKey = `${tourKey}_${JSON.stringify(state.progress)}`;
+    if (lastEligibilityCheck.current[cacheKey] !== undefined) {
+      return lastEligibilityCheck.current[cacheKey];
+    }
+    
+    const eligible = isEligibleForTour(tourKey, state.progress);
+    lastEligibilityCheck.current[cacheKey] = eligible;
+    
+    console.log(`🎯 Eligibility check for ${tourKey}: ${eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'}`);
+    return eligible;
   }, [state.progress]);
 
   const value: TourContextType = {
@@ -176,6 +238,7 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     updateProgress,
     isEligible,
     loading,
+    isTourRunning, // Expose centralized tour running state
   };
 
   return (

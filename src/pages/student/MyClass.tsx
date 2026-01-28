@@ -368,17 +368,32 @@ const MyClass: React.FC = () => {
 
   // Get upcoming assignments (next 5 due)
   const upcomingAssignments = useMemo(() => {
+    // Normalize today to start of day (00:00)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     return assignments
       .filter(a => {
         if (a.status === 'graded') return false;
-        const dueDate = parseAsLocalDate(a.due_date);
-        dueDate.setHours(0, 0, 0, 0);
-        return dueDate.getTime() >= today.getTime();
+        
+        // Parse due date and normalize to start of day (00:00)
+        const dueDateStr = a.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+        const dueDay = new Date(dueDateStr);
+        dueDay.setHours(0, 0, 0, 0);
+        
+        return dueDay.getTime() >= today.getTime();
       })
-      .sort((a, b) => parseAsLocalDate(a.due_date).getTime() - parseAsLocalDate(b.due_date).getTime())
+      .sort((a, b) => {
+        const dueDateStrA = a.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+        const dueDayA = new Date(dueDateStrA);
+        dueDayA.setHours(0, 0, 0, 0);
+        
+        const dueDateStrB = b.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+        const dueDayB = new Date(dueDateStrB);
+        dueDayB.setHours(0, 0, 0, 0);
+        
+        return dueDayA.getTime() - dueDayB.getTime();
+      })
       .slice(0, 5);
   }, [assignments]);
 
@@ -548,82 +563,81 @@ const MyClass: React.FC = () => {
   };
 
   const getDaysRemaining = (dueDate: string) => {
-    const now = new Date();
+    // Normalize today to start of day (00:00)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    // Parse the due date and treat it as local time
+    // Parse due date and normalize to start of day (00:00)
     const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
-    const localDue = new Date(dueDateStr);
+    const dueDay = new Date(dueDateStr);
+    dueDay.setHours(0, 0, 0, 0);
     
-    // Calculate difference in milliseconds
-    const diffTime = localDue.getTime() - now.getTime();
+    // Calculate calendar day difference
+    const diffTime = dueDay.getTime() - today.getTime();
+    const daysDifference = Math.round(diffTime / (1000 * 60 * 60 * 24));
     
-    // If overdue, calculate how many days/hours overdue
-    if (diffTime < 0) {
-      const overdueDays = Math.floor(Math.abs(diffTime) / (1000 * 60 * 60 * 24));
-      const overdueHours = Math.floor((Math.abs(diffTime) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      
-      if (overdueDays > 0) {
-        return <span className="text-red-700 font-medium">{overdueDays} day{overdueDays > 1 ? 's' : ''} overdue</span>;
-      } else if (overdueHours > 0) {
-        return <span className="text-red-700 font-medium">{overdueHours} hour{overdueHours > 1 ? 's' : ''} overdue</span>;
-      } else {
-        return <span className="text-red-700 font-medium">Just overdue</span>;
-      }
-    }
-    
-    // If not overdue, calculate remaining time
-    const remainingDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const remainingHours = Math.floor((diffTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const remainingMinutes = Math.floor((diffTime % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (remainingDays > 1) {
-      return <span className="text-gray-600">{remainingDays} days left</span>;
-    } else if (remainingDays === 1) {
+    // Handle different cases based on calendar day difference
+    if (daysDifference === 0) {
+      return <span className="text-orange-600 font-medium">Today</span>;
+    } else if (daysDifference === 1) {
       return <span className="text-orange-500 font-medium">Tomorrow</span>;
-    } else if (remainingHours > 1) {
-      return <span className="text-orange-600 font-medium">{remainingHours} hours left</span>;
-    } else if (remainingHours === 1) {
-      return <span className="text-orange-600 font-medium">1 hour left</span>;
-    } else if (remainingMinutes > 0) {
-      return <span className="text-red-500 font-medium">{remainingMinutes} minutes left</span>;
+    } else if (daysDifference > 1) {
+      return <span className="text-gray-600">In {daysDifference} days</span>;
+    } else if (daysDifference === -1) {
+      return <span className="text-red-700 font-medium">Overdue by 1 day</span>;
     } else {
-      return <span className="text-orange-600 font-medium">Due now</span>;
+      const overdueDays = Math.abs(daysDifference);
+      return <span className="text-red-700 font-medium">Overdue by {overdueDays} days</span>;
     }
   };
 
   const isOverdue = (dueDate: string) => {
-    const now = new Date();
+    // Normalize today to start of day (00:00)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
-    // Parse the due date and treat it as local time
+    // Parse due date and normalize to start of day (00:00)
     const dueDateStr = dueDate.replace('Z', '').replace('+00:00', '').replace('T', ' ');
-    const localDue = new Date(dueDateStr);
+    const dueDay = new Date(dueDateStr);
+    dueDay.setHours(0, 0, 0, 0);
     
-    return localDue < now;
+    // Assignment is overdue if due date is before today (calendar day comparison)
+    return dueDay.getTime() < today.getTime();
   };
 
   const isAssignmentOverdue = (assignment: any) => {
     // If assignment was submitted, check if it was submitted on time
     if (assignment.submission_date) {
+      // Normalize submission date to start of day
       const submissionDate = new Date(assignment.submission_date);
-      const dueDateStr = assignment.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
-      const localDue = new Date(dueDateStr);
+      submissionDate.setHours(0, 0, 0, 0);
       
-      // If submitted before due date, it's not overdue regardless of current time
-      return submissionDate > localDue;
+      // Normalize due date to start of day
+      const dueDateStr = assignment.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+      const dueDay = new Date(dueDateStr);
+      dueDay.setHours(0, 0, 0, 0);
+      
+      // Assignment was submitted late if submission day is after due day
+      return submissionDate.getTime() > dueDay.getTime();
     }
     
-    // If not submitted, check if current time is past due date
+    // If not submitted, check if current day is past due day
     return isOverdue(assignment.due_date);
   };
 
   const getAssignmentTimeStatus = (assignment: any) => {
     // If assignment was submitted, show submission status instead of overdue
     if (assignment.submission_date) {
+      // Normalize submission date to start of day
       const submissionDate = new Date(assignment.submission_date);
-      const dueDateStr = assignment.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
-      const localDue = new Date(dueDateStr);
+      submissionDate.setHours(0, 0, 0, 0);
       
-      if (submissionDate <= localDue) {
+      // Normalize due date to start of day
+      const dueDateStr = assignment.due_date.replace('Z', '').replace('+00:00', '').replace('T', ' ');
+      const dueDay = new Date(dueDateStr);
+      dueDay.setHours(0, 0, 0, 0);
+      
+      if (submissionDate.getTime() <= dueDay.getTime()) {
         return <span className="text-green-600 font-medium">Submitted</span>;
       } else {
         return <span className="text-orange-600 font-medium">Submitted late</span>;
@@ -1110,7 +1124,7 @@ const MyClass: React.FC = () => {
                   <div>
                     <div className="grid gap-6 mb-6">
                       {paginatedAssignments.map(assignment => {
-                        const overdueStatus = isOverdue(assignment.due_date);
+                        const overdueStatus = isAssignmentOverdue(assignment);
                         const isSubmitted = assignment.status === 'submitted' || assignment.status === 'graded';
                         
                         return (
