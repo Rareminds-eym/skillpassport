@@ -87,14 +87,22 @@ const TokenPasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const response = await fetch('/api/user/reset-password', {
+      // Generate a random token (32 character hex string)
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      // Send email via email-api
+      const emailApiUrl = import.meta.env.VITE_EMAIL_API_URL || 'http://localhost:8787';
+      const response = await fetch(`${emailApiUrl}/password-reset`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'send',
-          email: state.email
+          to: state.email,
+          token: token,
+          expiryMinutes: 30
         })
       });
 
@@ -147,7 +155,9 @@ const TokenPasswordReset = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const response = await fetch('/api/user/reset-password', {
+      // Use user-api to reset password with token
+      const userApiUrl = import.meta.env.VITE_USER_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${userApiUrl}/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
