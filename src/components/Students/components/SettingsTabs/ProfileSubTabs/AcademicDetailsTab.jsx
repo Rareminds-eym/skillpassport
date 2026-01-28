@@ -139,13 +139,9 @@ const AcademicDetailsTab = ({
             <p className="text-gray-500 text-sm mt-1">
               Add your educational qualifications to showcase your academic background
             </p>
-            {/* Debug info */}
-            <p className="text-xs text-gray-400 mt-2">
-              Debug: {educationData.length} total records
-            </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
             {educationData
               .sort((a, b) => {
                 const yearA = parseInt(a.yearOfPassing) || 0;
