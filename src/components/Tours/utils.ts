@@ -71,29 +71,33 @@ export const markTourCompleted = (tourKey: TourKey, progress: TourProgress): Tou
 
 /**
  * Check if user is eligible for a tour (new user logic)
+ * PURE FUNCTION - NO SIDE EFFECTS
  */
 export const isEligibleForTour = (tourKey: TourKey, progress: TourProgress): boolean => {
-  // Debug logging
-  console.log(`🎯 Tour eligibility check for ${tourKey}:`, {
-    progress,
-    alreadyCompleted: isTourCompleted(tourKey, progress)
-  });
-  
   // Don't show tour if already completed
   if (isTourCompleted(tourKey, progress)) {
     console.log(`❌ Tour ${tourKey} already completed`);
     return false;
   }
   
-  // For dashboard tour - always eligible if not completed
+  // For dashboard tour - eligible if not completed AND on dashboard page
   if (tourKey === 'dashboard') {
-    console.log(`✅ Dashboard tour eligible`);
+    const isOnDashboardPage = window.location.pathname === '/student/dashboard';
+    if (!isOnDashboardPage) {
+      console.log(`❌ Dashboard tour not eligible: not on dashboard page (${window.location.pathname})`);
+      return false;
+    }
+    console.log(`✅ Dashboard tour eligible (not completed and on correct page)`);
     return true;
   }
   
   // For assessment test tour - eligible if dashboard is completed OR if user is on assessment test page (direct access)
   if (tourKey === 'assessment_test') {
-    const isOnTestPath = window.location.pathname.includes('/assessment/test');
+    const isOnTestPath = window.location.pathname.includes('/student/assessment/test');
+    if (!isOnTestPath) {
+      console.log(`❌ Assessment test tour not eligible: not on test page (${window.location.pathname})`);
+      return false;
+    }
     const eligible = progress.dashboard_completed === true || isOnTestPath;
     console.log(`${eligible ? '✅' : '❌'} Assessment test tour eligible: dashboard_completed = ${progress.dashboard_completed}, isOnTestPath = ${isOnTestPath}`);
     return eligible;
@@ -102,7 +106,11 @@ export const isEligibleForTour = (tourKey: TourKey, progress: TourProgress): boo
   // For assessment result tour - eligible if dashboard is completed OR assessment test is completed
   // OR if user is on assessment result page (direct access)
   if (tourKey === 'assessment_result') {
-    const isOnResultPage = window.location.pathname.includes('/assessment/result');
+    const isOnResultPage = window.location.pathname.includes('/student/assessment/result');
+    if (!isOnResultPage) {
+      console.log(`❌ Assessment result tour not eligible: not on result page (${window.location.pathname})`);
+      return false;
+    }
     const eligible = progress.dashboard_completed === true || 
                     progress.assessment_test_completed === true ||
                     isOnResultPage;

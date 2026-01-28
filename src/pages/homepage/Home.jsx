@@ -12,6 +12,7 @@ import {
   AssessmentPromotionalModal,
 } from '../../components/Homepage';
 import { useAssessmentPromotionalContext } from '../../contexts/AssessmentPromotionalContext';
+import SEOHead from '../../components/SEO/SEOHead';
 
 const Home = () => {
   const { 
@@ -22,6 +23,12 @@ const Home = () => {
 
   return (
     <div className="min-h-screen">
+      <SEOHead
+        title="Skill Ecosystem - Educational Management & Career Development Platform"
+        description="Transform education with AI-powered career guidance, student management, and recruitment solutions. Trusted by schools, colleges, and universities worldwide."
+        keywords="educational management, AI career guidance, student management, school management system, college management, university management, recruitment platform"
+        url="https://skillpassport.rareminds.in/"
+      />
       <Hero />
       <div id="next-section">
         <Features />

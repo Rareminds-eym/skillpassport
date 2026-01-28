@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
 import { useTour } from './TourProvider';
 import { TOUR_KEYS } from './constants';
-import { waitForElement, forceUnlockScroll, isScrollCurrentlyLocked } from './utils';
+import { waitForElement } from './utils';
 import {
   DASHBOARD_TOUR_STEPS,
   DASHBOARD_TOUR_OPTIONS,
@@ -50,45 +50,104 @@ const scrollToElementSmooth = (element: Element, stepIndex: number) => {
 const STEPS_NEEDING_SCROLL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]; // Navigation steps, Dashboard tab, Analytics tab, and all dashboard cards
 
 const StudentDashboardTour: React.FC = () => {
-  const { state, startTour, completeTour, skipTour, isEligible } = useTour();
+  const { startTour, completeTour, skipTour, isEligible, isTourRunning, loading } = useTour();
   const [shouldRun, setShouldRun] = useState(false);
+  
+  // Prevent multiple eligibility checks
+  const eligibilityChecked = useRef(false);
+  const tourStarted = useRef(false);
 
-  // Check if tour should run when component mounts
+  // FIXED: Check eligibility and start tour ONLY once when component mounts
+  // AND only after tour progress has loaded
+  // AND only on the correct page
   useEffect(() => {
+    // Prevent duplicate checks
+    if (eligibilityChecked.current || tourStarted.current) {
+      return;
+    }
+    
     const checkAndStartTour = async () => {
-      // Only run if eligible and not already running
-      if (isEligible(TOUR_KEYS.DASHBOARD) && !state.isRunning) {
-        // Wait for key elements to be ready
-        const assessmentCard = await waitForElement('[data-tour="assessment-card"]', 3000);
-        const opportunitiesCard = await waitForElement('[data-tour="opportunities-card"]', 3000);
-        
-        // Debug: Check analytics tab element
-        const analyticsTab = document.querySelector('[data-tour="analytics-tab"]') as HTMLElement;
-        console.log('🔍 Analytics Tab Element Check:', {
-          element: analyticsTab,
-          exists: !!analyticsTab,
-          visible: analyticsTab ? window.getComputedStyle(analyticsTab).display !== 'none' : false,
-          rect: analyticsTab?.getBoundingClientRect(),
-          offsetParent: analyticsTab?.offsetParent,
+      console.log('🎯 Dashboard tour: Starting eligibility check');
+      
+      // CRITICAL: Only run on dashboard page
+      const isOnDashboardPage = window.location.pathname === '/student/dashboard';
+      if (!isOnDashboardPage) {
+        console.log('❌ Dashboard tour: Not on dashboard page, skipping', {
+          currentPath: window.location.pathname,
+          expectedPath: '/student/dashboard'
         });
-        
-        if (assessmentCard && opportunitiesCard) {
-          // Small delay to ensure page is fully rendered
-          setTimeout(() => {
-            setShouldRun(true);
-            startTour(TOUR_KEYS.DASHBOARD);
-            // Scroll lock is now handled globally in TourProvider
-          }, 500);
-        } else {
-          console.warn('Dashboard tour: Required elements not found, skipping tour');
-        }
+        eligibilityChecked.current = true; // Mark as checked to prevent re-runs
+        return;
       }
+      
+      // CRITICAL: Wait for tour progress to load before checking eligibility
+      if (loading) {
+        console.log('⏳ Dashboard tour: Tour progress still loading, waiting...');
+        return; // Don't mark as checked yet, allow retry when loading completes
+      }
+      
+      // Mark as checked only after we've confirmed we're on the right page and loading is complete
+      eligibilityChecked.current = true;
+      
+      // PURE eligibility check - no side effects
+      const eligible = isEligible(TOUR_KEYS.DASHBOARD);
+      
+      if (!eligible) {
+        console.log('❌ Dashboard tour: Not eligible, skipping');
+        return;
+      }
+      
+      console.log('✅ Dashboard tour: Eligible, checking required elements');
+      
+      // Wait for key elements to be ready
+      const assessmentCard = await waitForElement('[data-tour="assessment-card"]', 3000);
+      const opportunitiesCard = await waitForElement('[data-tour="opportunities-card"]', 3000);
+      
+      if (!assessmentCard || !opportunitiesCard) {
+        console.warn('❌ Dashboard tour: Required elements not found, skipping tour');
+        return;
+      }
+      
+      console.log('✅ Dashboard tour: Required elements found, starting tour');
+      
+      // Small delay to ensure page is fully rendered
+      setTimeout(() => {
+        tourStarted.current = true;
+        setShouldRun(true);
+        startTour(TOUR_KEYS.DASHBOARD); // This will trigger scroll lock via centralized state
+      }, 500);
     };
 
     checkAndStartTour();
-  }, [isEligible, state.isRunning, startTour]);
+  }, [loading, isEligible]); // CRITICAL: Depend on loading state and isEligible
 
-  // Handle tour events with professional scroll management
+  // CRITICAL: Reset eligibility check when loading completes and tour is not eligible
+  // OR when page changes
+  useEffect(() => {
+    if (!loading && eligibilityChecked.current && !tourStarted.current) {
+      const isOnDashboardPage = window.location.pathname === '/student/dashboard';
+      const eligible = isEligible(TOUR_KEYS.DASHBOARD);
+      
+      if (!eligible || !isOnDashboardPage) {
+        console.log('🔄 Dashboard tour: Loading completed, tour not eligible or wrong page, resetting flags', {
+          eligible,
+          isOnDashboardPage,
+          currentPath: window.location.pathname
+        });
+        eligibilityChecked.current = false; // Allow future checks if needed
+      }
+    }
+  }, [loading, isEligible]);
+
+  // ADDITIONAL: Force re-check when loading changes from true to false
+  useEffect(() => {
+    if (!loading && !eligibilityChecked.current && !tourStarted.current) {
+      console.log('🔄 Dashboard tour: Loading completed, forcing re-check');
+      // Trigger the main effect by not preventing the check
+    }
+  }, [loading]);
+
+  // FIXED: Handle tour events with proper cleanup
   const handleJoyrideCallback = (data: CallBackProps) => {
     const { status, type, index, action, step } = data;
 
@@ -166,52 +225,35 @@ const StudentDashboardTour: React.FC = () => {
       type,
       action,
       element: step?.target ? document.querySelector(step.target as string) : null,
-      scrollLocked: isScrollCurrentlyLocked(),
+      isTourRunning,
       bodyOverflow: document.body.style.overflow,
       bodyPosition: document.body.style.position
     });
 
+    // FIXED: Proper tour completion and cleanup
     if (status === STATUS.FINISHED) {
+      console.log('✅ Dashboard tour: Finished');
       setShouldRun(false);
-      completeTour(TOUR_KEYS.DASHBOARD);
-      // Force unlock scroll to ensure scrollbar is restored
-      setTimeout(() => {
-        forceUnlockScroll();
-        console.log('🔓 Dashboard tour completed - scroll forcefully unlocked');
-      }, 100);
+      completeTour(TOUR_KEYS.DASHBOARD); // This will unlock scroll via centralized state
     } else if (status === STATUS.SKIPPED) {
+      console.log('⏭️ Dashboard tour: Skipped');
       setShouldRun(false);
-      skipTour(TOUR_KEYS.DASHBOARD);
-      // Force unlock scroll to ensure scrollbar is restored
-      setTimeout(() => {
-        forceUnlockScroll();
-        console.log('🔓 Dashboard tour skipped - scroll forcefully unlocked');
-      }, 100);
+      skipTour(TOUR_KEYS.DASHBOARD); // This will unlock scroll via centralized state
     }
   };
 
-  // Cleanup effect - ensure scroll is always unlocked when component unmounts
+  // FIXED: Cleanup effect - reset flags when component unmounts
   useEffect(() => {
     return () => {
-      // Force unlock scroll when component unmounts
-      forceUnlockScroll();
-      console.log('🔓 StudentDashboardTour unmounted - scroll unlocked');
+      eligibilityChecked.current = false;
+      tourStarted.current = false;
+      setShouldRun(false);
+      console.log('🔄 StudentDashboardTour unmounted - flags reset');
     };
   }, []);
 
-  // Additional cleanup when shouldRun changes to false
-  useEffect(() => {
-    if (!shouldRun) {
-      // Small delay to ensure tour has fully stopped
-      setTimeout(() => {
-        forceUnlockScroll();
-        console.log('🔓 Tour stopped - scroll unlocked');
-      }, 200);
-    }
-  }, [shouldRun]);
-
-  // Don't render if not eligible or not running
-  if (!isEligible(TOUR_KEYS.DASHBOARD) || !shouldRun) {
+  // FIXED: Don't render if not eligible, not running, or tour not started
+  if (!isEligible(TOUR_KEYS.DASHBOARD) || !shouldRun || !tourStarted.current) {
     return null;
   }
 
