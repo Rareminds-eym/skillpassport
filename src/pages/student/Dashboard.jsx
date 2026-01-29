@@ -91,6 +91,26 @@ const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Helper function to calculate duration in simple format
+  const calculateDuration = (startDate, endDate) => {
+    if (!startDate) return "";
+    
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : new Date();
+    
+    if (isNaN(start.getTime())) return "";
+    if (endDate && isNaN(end.getTime())) return "";
+    
+    const formatDate = (date) => {
+      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    };
+    
+    const startLabel = formatDate(start);
+    const endLabel = endDate ? formatDate(end) : 'Present';
+    
+    return `${startLabel} - ${endLabel}`;
+  };
+
   // State for view toggle (dashboard or analytics)
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'analytics'
 
@@ -152,6 +172,7 @@ const StudentDashboard = () => {
     updateEducation,
     updateTraining,
     updateExperience,
+    updateSkills,
     updateTechnicalSkills,
     updateSoftSkills,
     updateProjects,
@@ -495,6 +516,15 @@ const StudentDashboard = () => {
           case "experience":
             result = await updateExperience(data);
             break;
+          case "skills":
+            // Ensure all skills have type: "technical" when coming from Technical Skills card
+            const skillsWithType = data.map(skill => ({
+              ...skill,
+              type: "technical" // Force technical type for skills from Technical Skills card
+            }));
+            console.log('🔧 Dashboard: Skills data being saved:', skillsWithType);
+            result = await updateSkills(skillsWithType);
+            break;
           case "technicalSkills":
             result = await updateTechnicalSkills(data);
             break;
@@ -536,10 +566,12 @@ const StudentDashboard = () => {
   };
 
   const renderStars = (level) => {
+    const numericLevel = parseInt(level) || 0;
+    
     return [...Array(5)].map((_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${i < level ? "fill-[#FFD700] text-[#FFD700]" : "text-gray-300"
+        className={`w-4 h-4 ${i < numericLevel ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
           }`}
       />
     ));
@@ -1092,7 +1124,7 @@ const StudentDashboard = () => {
               <button
                 className="p-2 rounded-md hover:bg-blue-100 transition-colors"
                 title="View All Technical Skills"
-                onClick={() => setActiveModal("technicalSkills")}
+                onClick={() => setActiveModal("skills")}
               >
                 <Eye className="w-5 h-5 text-blue-600" />
               </button>
@@ -1197,10 +1229,20 @@ const StudentDashboard = () => {
                       {project.title || project.name || "Untitled Project"}
                     </h4>
 
+                    {/* Role */}
+                    {project.role && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <Briefcase className="w-4 h-4 text-blue-600" />
+                        <p className="text-sm text-blue-600 font-medium">
+                          {project.role}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Date + Status Badge */}
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <p className="text-sm text-gray-900 leading-relaxed font-medium">
-                        {project.duration || project.timeline || project.period || ""}
+                        {calculateDuration(project.start_date || project.startDate, project.end_date || project.endDate) || project.duration || project.timeline || project.period || ""}
                       </p>
                       {project.status && (
                         <Badge className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${
@@ -1486,10 +1528,12 @@ const StudentDashboard = () => {
                       <span className="font-medium">{training.provider}</span>
                     </div>
                   )}
-                  {training.duration && (
+                  {(training.duration || training.start_date || training.startDate) && (
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium">{training.duration}</span>
+                      <span className="font-medium">
+                        {calculateDuration(training.start_date || training.startDate, training.end_date || training.endDate) || training.duration}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1744,15 +1788,25 @@ const StudentDashboard = () => {
         >
           {/* Title + Status Badge */}
           <div className="flex items-center justify-between gap-3 mb-3">
-            <h4 className="text-base font-bold text-gray-900">
-              {exp.role || "Experience Role"}
-            </h4>
-            {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
-              <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5" />
-                Verified
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              <h4 className="text-base font-bold text-gray-900">
+                {exp.role || "Experience Role"}
+              </h4>
+              {/* Present Badge for ongoing experiences */}
+              {(!exp.end_date && !exp.endDate) && (
+                <Badge className="!bg-gradient-to-r !from-blue-100 !to-blue-200 !text-blue-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm">
+                  Present
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
+                <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Verified
+                </Badge>
+              )}
+            </div>
           </div>
 
           {/* Type */}
@@ -1775,12 +1829,21 @@ const StudentDashboard = () => {
           )}
 
           {/* Date */}
-          {(exp.duration || exp.period) && (
-            <div className="flex items-center gap-2">
+          {(exp.duration || exp.period || exp.start_date || exp.startDate) && (
+            <div className="flex items-center gap-2 mb-3">
               <Calendar className="w-4 h-4 text-gray-600" />
               <span className="text-sm text-gray-600 font-medium">
-                {exp.duration || exp.period}
+                {calculateDuration(exp.start_date || exp.startDate, exp.end_date || exp.endDate) || exp.duration || exp.period}
               </span>
+            </div>
+          )}
+
+          {/* Description */}
+          {exp.description && (
+            <div className="mt-3">
+              <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+                {exp.description}
+              </p>
             </div>
           )}
         </div>
@@ -2327,6 +2390,16 @@ const StudentDashboard = () => {
           data={userData.softSkills}
           onSave={(data) => handleSave("softSkills", data)}
           title="Soft Skills"
+        />
+      )}
+
+      {activeModal === "skills" && (
+        <SkillsEditModal
+          isOpen
+          onClose={() => setActiveModal(null)}
+          data={userData.technicalSkills || []}
+          onSave={(data) => handleSave("skills", data)}
+          title="Skills"
         />
       )}
 

@@ -15,12 +15,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useAuth } from "../../../../context/AuthContext";
 import { useStudentSettings } from "../../../../hooks/useStudentSettings";
 import { useStudentDataByEmail } from "../../../../hooks/useStudentDataByEmail";
+import { useStudentCertificates } from "../../../../hooks/useStudentCertificates";
 import { useInstitutions } from "../../../../hooks/useInstitutions";
 import { SubscriptionSettingsSection } from "../../../Subscription/SubscriptionSettingsSection";
 import { 
   EducationEditModal, 
   SoftSkillsEditModal, 
-  TechnicalSkillsEditModal, 
+  SkillsEditModal, 
   ExperienceEditModal, 
   CertificatesEditModal, 
   ProjectsEditModal 
@@ -59,6 +60,7 @@ const MainSettings = () => {
     updateEducation,
     updateTechnicalSkills,
     updateSoftSkills,
+    updateSkills,
     updateExperience,
     updateProjects,
     updateCertificates,
@@ -66,6 +68,14 @@ const MainSettings = () => {
 
   // Get student ID for messaging
   const studentId = studentData?.id;
+
+  // Fetch certificates from dedicated table
+  const {
+    certificates: tableCertificates,
+    loading: certificatesLoading,
+    error: certificatesError,
+    refresh: refreshCertificates
+  } = useStudentCertificates(studentId, !!studentId);
 
   // Setup message notifications with hot-toast
   useStudentMessageNotifications({
@@ -117,7 +127,10 @@ const MainSettings = () => {
   const experienceData = studentDataWithEducation?.experience || [];
   const [showExperienceModal, setShowExperienceModal] = useState(false);
   
-  const certificatesData = studentDataWithEducation?.certificates || [];
+  // Use certificates from dedicated table, fallback to profile data
+  const certificatesData = Array.isArray(tableCertificates) && tableCertificates.length > 0 
+    ? tableCertificates 
+    : studentDataWithEducation?.certificates || [];
   const [showCertificatesModal, setShowCertificatesModal] = useState(false);
   
   const projectsData = studentDataWithEducation?.projects || [];
@@ -458,7 +471,16 @@ const MainSettings = () => {
     try {
       setIsSaving(true);
       
-      const result = await updateTechnicalSkills(skillsList);
+      // Ensure all skills have type: "technical" when coming from Technical Skills (matching Dashboard)
+      const skillsWithType = skillsList.map(skill => ({
+        ...skill,
+        type: "technical" // Force technical type for skills from Technical Skills
+      }));
+      
+      console.log('🔧 Settings: Technical skills data being saved:', skillsWithType);
+      
+      // Use updateSkills (same as Dashboard) instead of updateTechnicalSkills
+      const result = await updateSkills(skillsWithType);
       
       if (result.success) {
         setShowTechnicalSkillsModal(false);
@@ -520,6 +542,11 @@ const MainSettings = () => {
       
       if (result.success) {
         setShowCertificatesModal(false);
+        
+        // Refresh certificates from table
+        if (refreshCertificates) {
+          refreshCertificates();
+        }
         
         toast({
           title: "Success",
@@ -1126,13 +1153,14 @@ const MainSettings = () => {
         />
       )}
 
-      {/* Technical Skills Edit Modal */}
+      {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
       {showTechnicalSkillsModal && (
-        <TechnicalSkillsEditModal
+        <SkillsEditModal
           isOpen={showTechnicalSkillsModal}
           onClose={() => setShowTechnicalSkillsModal(false)}
-          data={technicalSkillsData}
+          data={technicalSkillsData || []}
           onSave={handleTechnicalSkillsSave}
+          title="Skills"
         />
       )}
 

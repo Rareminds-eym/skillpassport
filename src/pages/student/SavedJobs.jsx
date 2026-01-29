@@ -10,6 +10,7 @@ import {
     Trash2
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import OpportunityCard from '../../components/Students/components/OpportunityCard';
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
