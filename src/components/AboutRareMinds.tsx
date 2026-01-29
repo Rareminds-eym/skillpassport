@@ -143,6 +143,66 @@ function AboutRareMinds() {
   // Hero image ref for cursor interaction
   const heroImageRef = useRef<HTMLDivElement>(null);
 
+  // Schema markup for SEO
+  const schemaMarkup = [
+    // WebPage Schema
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "@id": "https://skillpassport.rareminds.in/about#webpage",
+      "url": "https://skillpassport.rareminds.in/about",
+      "name": "Skill Passport | India's Verified Talent Infrastructure",
+      "description": "Skill Passport is India's verified talent infrastructure that validates skills at source to enable faster, trust-based hiring.",
+      "inLanguage": "en-IN",
+      "isPartOf": {
+        "@type": "WebSite",
+        "@id": "https://www.rareminds.in/#website"
+      },
+      "about": {
+        "@type": "Product",
+        "name": "Skill Passport"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://www.rareminds.in/#organization"
+      }
+    },
+    // Organization Schema
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "@id": "https://www.rareminds.in/#organization",
+      "name": "Rareminds",
+      "url": "https://www.rareminds.in",
+      "description": "Rareminds builds workforce readiness and verified talent infrastructure connecting learners, institutions, and employers.",
+      "sameAs": [
+        "https://www.linkedin.com/company/rareminds",
+        "https://www.instagram.com/rareminds"
+      ],
+      "brand": {
+        "@type": "Brand",
+        "name": "Skill Passport"
+      }
+    },
+    // Product Schema
+    {
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "@id": "https://skillpassport.rareminds.in/about#product",
+      "name": "Skill Passport",
+      "description": "Skill Passport is a verified talent infrastructure that validates skills at source and enables faster, trust-based hiring.",
+      "brand": {
+        "@type": "Brand",
+        "name": "Rareminds"
+      },
+      "category": "Talent Verification Infrastructure",
+      "audience": {
+        "@type": "Audience",
+        "audienceType": ["Employers", "Educational Institutions", "Students"]
+      }
+    }
+  ];
+
   // GSAP Timeline Animations for Why We Exist
   useEffect(() => {
     const section = timelineSectionRef.current;
@@ -324,10 +384,14 @@ function AboutRareMinds() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <SEOHead
-        title="About Skill Passport - India's Verified Talent Infrastructure"
-        description="Skill Passport is India's national skill verification and talent deployment infrastructure—built to move hiring from assumption to assurance."
-        keywords="skill passport, verified talent, skill verification, talent deployment, India, hiring infrastructure"
+        title="Skill Passport | India's Verified Talent Infrastructure by Rareminds"
+        description="Skill Passport is India's verified talent infrastructure—validating skills at source to enable faster, trust-based hiring for employers, institutions, and learners."
+        keywords="Skill Passport, verified skills India, talent verification platform, pre-verified talent, faster hiring India, employability infrastructure, Rareminds Skill Passport"
         url="https://skillpassport.rareminds.in/about"
+        siteName="Rareminds"
+        robots="index, follow"
+        twitterCard="summary_large_image"
+        schemaMarkup={schemaMarkup}
       />
 
       {/* Grain Overlay */}
