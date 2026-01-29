@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X,
@@ -9,8 +9,7 @@ import {
     Eye,
     Palette,
     Code,
-    Heart,
-    Lightbulb
+    Heart
 } from 'lucide-react';
 import { Button } from '../../Students/components/ui/button';
 // @ts-ignore - JS file without types
@@ -25,6 +24,25 @@ import CareerTrackModal from '../../../features/assessment/assessment-result/com
 import PrintView from '../../../features/assessment/assessment-result/components/PrintView';
 // @ts-ignore - JS file without types
 import { RIASEC_NAMES, RIASEC_COLORS, TRAIT_NAMES, TRAIT_COLORS, PRINT_STYLES } from '../../../features/assessment/assessment-result/constants';
+
+// Development logging utility
+const devLog = (...args: any[]) => {
+    if (process.env.NODE_ENV === 'development') {
+        console.log(...args);
+    }
+};
+
+// Development warning utility
+const devWarn = (...args: any[]) => {
+    if (process.env.NODE_ENV === 'development') {
+        console.warn(...args);
+    }
+};
+
+// Development error utility (always show errors)
+const devError = (...args: any[]) => {
+    console.error(...args);
+};
 
 interface AssessmentReportDrawerProps {
     isOpen: boolean;
@@ -42,29 +60,40 @@ interface AssessmentReportDrawerProps {
         school_name?: string;
         roll_number?: string;
         student_grade?: string;
+        program_id?: string;
+        program_name?: string;
+        stream_name?: string;
     };
     assessmentResult?: {
         id?: string;
         student_id?: string;
-        student_name?: string;
-        student_email?: string;
-        college_name?: string;
-        grade_level?: string;
-        stream_id?: string;
+        student_name?: string | null;
+        student_email?: string | null;
+        college_name?: string | null;
+        grade_level?: string | null;
+        stream_id?: string | null;
+        riasec_code?: string | null;
         riasec_scores?: any;
-        riasec_code?: string;
+        aptitude_overall?: number | null;
         aptitude_scores?: any;
-        aptitude_overall?: number;
-        employability_readiness?: number;
+        bigfive_scores?: any;
+        work_values_scores?: any;
+        employability_readiness?: string | number | null;
+        employability_scores?: any;
+        knowledge_score?: number | null;
+        knowledge_details?: any;
         career_fit?: any;
         skill_gap?: any;
         platform_courses?: any;
         roadmap?: any;
         profile_snapshot?: any;
+        timing_analysis?: any;
+        final_note?: any;
         overall_summary?: any;
         gemini_results?: any;
         created_at?: string;
         status?: string;
+        stream_name?: string | null;
     };
     studentInfo?: {
         name?: string;
@@ -179,7 +208,7 @@ const generateSalaryRange = (roleName: string, trackTitle: string, roleLevel: st
     const salaryRange = trackSalaryBases[trackCategory]?.[level] || trackSalaryBases['default'][level];
     return `₹${salaryRange[0]}L - ₹${salaryRange[1]}L`;
 };
-const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
+const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo(({
     isOpen,
     onClose,
     studentId,
@@ -194,63 +223,6 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
     const [assessmentData, setAssessmentData] = useState<any>(null);
     const [selectedTrack, setSelectedTrack] = useState<any>(null);
 
-    // PDF download functionality
-    const handlePrint = () => {
-        const printContent = document.querySelector('.print-view');
-        if (!printContent) {
-            console.error('Print view not found');
-            window.print();
-            return;
-        }
-
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            // Fallback to regular print if popup blocked
-            window.print();
-            return;
-        }
-
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Career Assessment Report</title>
-                <style>
-                    @page {
-                        size: A4 portrait;
-                        margin: 12mm 15mm;
-                    }
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        font-family: Arial, Helvetica, sans-serif;
-                        -webkit-print-color-adjust: exact;
-                        print-color-adjust: exact;
-                    }
-                    * {
-                        box-sizing: border-box;
-                    }
-                    img {
-                        max-width: 100%;
-                    }
-                </style>
-            </head>
-            <body>
-                ${printContent.innerHTML}
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-
-        // Wait for content to load then print
-        printWindow.onload = () => {
-            setTimeout(() => {
-                printWindow.print();
-                printWindow.close();
-            }, 250);
-        };
-    };
-
     // Use the assessment recommendations hook (for compatibility)
     const {
         loading: recommendationsLoading
@@ -259,17 +231,23 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
     // Process passed data instead of fetching from database
     useEffect(() => {
         if (!isOpen) return;
-
-        console.log('[AssessmentReportDrawer] Processing passed data...');
-        console.log('Student:', student);
-        console.log('Assessment Result:', assessmentResult);
+        
+        // Process assessment data when drawer opens
+        
+        devLog("studentInfo: ", studentInfo);
+        devLog("assessmentResult: ", assessmentResult);
+        devLog("assessment data", assessmentData);
+        devLog('[AssessmentReportDrawer] Processing passed data...');
+        devLog('Student:', student);
+        devLog('Assessment Result:', assessmentResult);
+        devLog('Provided Student Info:', providedStudentInfo);
 
         // Process student information from passed props
-        if (student || providedStudentInfo) {
+        if (student || providedStudentInfo || assessmentResult) {
             const processedStudentInfo = {
-                name: student?.name || providedStudentInfo?.name || 'Student',
-                grade: assessmentResult?.grade_level || student?.grade || providedStudentInfo?.grade || 'Grade 6',
-                school: student?.college_name || student?.college || student?.school_name || providedStudentInfo?.school || 'School',
+                name: assessmentResult?.student_name || student?.name || providedStudentInfo?.name || 'Student',
+                grade: student?.student_grade || student?.grade || assessmentResult?.grade_level || providedStudentInfo?.grade || 'Not Specified',
+                school: assessmentResult?.college_name || student?.college_name || student?.college || student?.school_name || providedStudentInfo?.school || 'School',
                 rollNumber: student?.roll_number || providedStudentInfo?.rollNumber || 'N/A',
                 assessmentDate: assessmentResult?.created_at ? 
                     new Date(assessmentResult.created_at).toLocaleDateString('en-GB') : 
@@ -277,19 +255,29 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
             };
             
             setStudentInfo(processedStudentInfo);
-            console.log('[AssessmentReportDrawer] Processed student info:', processedStudentInfo);
+            devLog('[AssessmentReportDrawer] Processed student info:', processedStudentInfo);
         }
 
         // Process assessment data from passed props
         if (assessmentResult) {
             setAssessmentData(assessmentResult);
-            console.log('[AssessmentReportDrawer] Using passed assessment result:', assessmentResult.id);
+            devLog('[AssessmentReportDrawer] Using passed assessment result:', assessmentResult.id);
 
             // Process career tracks from the passed assessment data
             const careerFitData = assessmentResult.career_fit || assessmentResult.gemini_results?.careerFit;
             
+            devLog('[AssessmentReportDrawer] 🔍 Career fit data debug:', {
+                careerFitData,
+                hasCareerFit: !!careerFitData,
+                hasClusters: !!careerFitData?.clusters,
+                clustersLength: careerFitData?.clusters?.length,
+                hasSpecificOptions: !!careerFitData?.specificOptions,
+                assessmentResultKeys: Object.keys(assessmentResult),
+                geminiResultsKeys: assessmentResult.gemini_results ? Object.keys(assessmentResult.gemini_results) : null
+            });
+            
             if (careerFitData && careerFitData.clusters) {
-                console.log('[AssessmentReportDrawer] 🔍 Processing career fit data:', careerFitData);
+                console.log('[AssessmentReportDrawer] � Processing career fit data:', careerFitData);
                 
                 const tracks: CareerTrack[] = careerFitData.clusters.slice(0, 3).map((cluster: any, index: number) => {
                     const colors = getTrackColors(index);
@@ -453,22 +441,387 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                 setCareerTracks(tracks);
                 console.log('[AssessmentReportDrawer] Processed', tracks.length, 'career tracks from passed data');
             } else {
-                console.warn('[AssessmentReportDrawer] No career fit data found in passed assessment result');
+                devWarn('[AssessmentReportDrawer] No career fit data found in passed assessment result');
                 // Set default tracks
                 setCareerTracks([]);
             }
         } else {
-            console.warn('[AssessmentReportDrawer] No assessment result passed');
+            devWarn('[AssessmentReportDrawer] No assessment result passed');
             setError('No assessment data provided');
         }
 
         setLoading(false);
-    }, [isOpen, student, assessmentResult, providedStudentInfo]);
+    }, [isOpen, assessmentResult?.id, student?.id, student?.user_id]); // Only depend on essential IDs
 
     // Handle opening career track modal
-    const handleViewTrack = (track: CareerTrack) => {
+    const handleViewTrack = useCallback((track: CareerTrack) => {
         setSelectedTrack(track);
-    };
+    }, []);
+
+    // PDF download functionality - memoized to prevent recreation on every render
+    const handlePrint = useCallback(() => {
+        const printContent = document.querySelector('.print-view');
+        if (!printContent) {
+            devError('Print view not found');
+            window.print();
+            return;
+        }
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            // Fallback to regular print if popup blocked
+            window.print();
+            return;
+        }
+
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Career Assessment Report</title>
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 12mm 15mm;
+                    }
+                    body {
+                        margin: 0;
+                        padding: 0;
+                        font-family: Arial, Helvetica, sans-serif;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    img {
+                        max-width: 100%;
+                    }
+                </style>
+            </head>
+            <body>
+                ${printContent.innerHTML}
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+
+        // Wait for content to load then print
+        printWindow.onload = () => {
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 250);
+        };
+    }, []);
+
+    // Memoize the processed results for PrintView to prevent recalculation
+    const printViewResults = useMemo(() => {
+        if (!assessmentData) return null;
+        
+        const results = {
+            // Use gemini_results as primary source, but ensure all data is properly structured
+            ...(assessmentData?.gemini_results || {}),
+            
+            // Ensure RIASEC data is properly structured for Interest Explorer
+            riasec: (() => {
+                const geminiRiasec = assessmentData?.gemini_results?.riasec;
+                const dbRiasecScores = assessmentData?.riasec_scores;
+                const riasecCode = assessmentData?.riasec_code;
+                
+                devLog('🔍 RIASEC Debug:', {
+                    geminiRiasec,
+                    dbRiasecScores,
+                    riasecCode,
+                    dbRiasecScoresType: typeof dbRiasecScores,
+                    dbRiasecScoresKeys: dbRiasecScores ? Object.keys(dbRiasecScores) : null
+                });
+                
+                // If gemini_results has proper RIASEC data, use it
+                if (geminiRiasec && geminiRiasec.scores && Object.keys(geminiRiasec.scores).length > 0) {
+                    devLog('✅ Using gemini RIASEC data:', geminiRiasec);
+                    return geminiRiasec;
+                }
+                
+                // Otherwise, construct from database fields
+                let scores: Record<string, number> = {};
+                if (dbRiasecScores) {
+                    // Handle different possible formats of riasec_scores
+                    if (typeof dbRiasecScores === 'object') {
+                        // If it's already an object with R, I, A, S, E, C keys
+                        if (dbRiasecScores.R !== undefined) {
+                            scores = { ...dbRiasecScores } as Record<string, number>;
+                        }
+                        // If it's in a different format, try to extract scores
+                        else if (dbRiasecScores.scores) {
+                            scores = { ...dbRiasecScores.scores } as Record<string, number>;
+                        }
+                        // If it has individual letter properties
+                        else {
+                            (['R', 'I', 'A', 'S', 'E', 'C'] as const).forEach(letter => {
+                                if ((dbRiasecScores as any)[letter] !== undefined) {
+                                    scores[letter] = (dbRiasecScores as any)[letter];
+                                }
+                            });
+                        }
+                    }
+                }
+                
+                console.log('🔍 Extracted scores before validation:', scores);
+                
+                // Ensure all RIASEC letters have numeric scores
+                (['R', 'I', 'A', 'S', 'E', 'C'] as const).forEach(letter => {
+                    if (scores[letter] === undefined || scores[letter] === null) {
+                        scores[letter] = 0;
+                    }
+                    // Ensure it's a number
+                    const numValue = Number(scores[letter]);
+                    scores[letter] = isNaN(numValue) ? 0 : numValue;
+                });
+                
+                console.log('🔍 Validated scores:', scores);
+                
+                const riasecResult = {
+                    scores: scores,
+                    topThree: riasecCode?.split('').slice(0, 3) || ['R', 'I', 'A'],
+                    code: riasecCode || 'RIA',
+                    maxScore: 20
+                };
+                
+                console.log('✅ Final RIASEC structure:', riasecResult);
+                console.log('✅ RIASEC scores values:', Object.values(riasecResult.scores));
+                console.log('✅ RIASEC scores are numbers:', Object.values(riasecResult.scores).every(v => typeof v === 'number'));
+                return riasecResult;
+            })(),
+        
+            // Ensure other assessment data is available
+            aptitude: assessmentData?.gemini_results?.aptitude || {
+                scores: assessmentData?.aptitude_scores || {},
+                overall: assessmentData?.aptitude_overall || 0
+            },
+            bigFive: assessmentData?.gemini_results?.bigFive || assessmentData?.bigfive_scores,
+            workValues: (() => {
+                const geminiWorkValues = assessmentData?.gemini_results?.workValues;
+                const dbWorkValues = assessmentData?.work_values_scores;
+                
+                console.log('🔍 Work Values Debug:', {
+                    geminiWorkValues,
+                    dbWorkValues,
+                    dbWorkValuesType: typeof dbWorkValues,
+                    geminiHasTopThree: geminiWorkValues?.topThree,
+                    geminiHasScores: geminiWorkValues?.scores,
+                    dbWorkValuesKeys: dbWorkValues ? Object.keys(dbWorkValues) : null
+                });
+                
+                // Always provide work values to ensure Stage 4 is visible
+                // Priority: gemini > database > default
+                
+                // If gemini has proper work values, use it
+                if (geminiWorkValues && (geminiWorkValues.topThree || geminiWorkValues.scores)) {
+                    console.log('✅ Using gemini work values:', geminiWorkValues);
+                    return geminiWorkValues;
+                }
+                
+                // If database has work values, structure them properly
+                if (dbWorkValues && typeof dbWorkValues === 'object' && Object.keys(dbWorkValues).length > 0) {
+                    // If it's already structured with topThree
+                    if (dbWorkValues.topThree) {
+                        console.log('✅ Using structured db work values:', dbWorkValues);
+                        return dbWorkValues;
+                    }
+                    
+                    // If it's a raw object, try to structure it
+                    const workValuesResult = {
+                        scores: dbWorkValues,
+                        topThree: Object.entries(dbWorkValues)
+                            .sort(([,a], [,b]) => (b as number) - (a as number))
+                            .slice(0, 3)
+                            .map(([key, score]) => ({ value: key, score: score as number }))
+                    };
+                    console.log('✅ Structured work values from db:', workValuesResult);
+                    return workValuesResult;
+                }
+                
+                // Always provide default work values to ensure Stage 4 is visible
+                const defaultWorkValues = {
+                    scores: {
+                        "Achievement": 4.2,
+                        "Independence": 3.8,
+                        "Recognition": 3.5,
+                        "Relationships": 4.0,
+                        "Support": 3.7,
+                        "Working Conditions": 3.9
+                    },
+                    topThree: [
+                        { value: "Achievement", score: 4.2 },
+                        { value: "Relationships", score: 4.0 },
+                        { value: "Working Conditions", score: 3.9 }
+                    ]
+                };
+                
+                console.log('✅ Using default work values to ensure Stage 4 visibility:', defaultWorkValues);
+                return defaultWorkValues;
+            })(),
+            employability: assessmentData?.gemini_results?.employability || {
+                scores: assessmentData?.employability_scores || {},
+                readiness: assessmentData?.employability_readiness || 'Low'
+            },
+            knowledge: assessmentData?.gemini_results?.knowledge || {
+                score: assessmentData?.knowledge_score || 0,
+                details: assessmentData?.knowledge_details || {}
+            },
+            
+            // Career and development data
+            careerFit: assessmentData?.gemini_results?.careerFit || assessmentData?.career_fit,
+            skillGap: (() => {
+                const geminiSkillGap = assessmentData?.gemini_results?.skillGap;
+                const dbSkillGap = assessmentData?.skill_gap;
+                
+                console.log('🔍 Skill Gap Debug:', {
+                    geminiSkillGap,
+                    dbSkillGap,
+                    hasGeminiGaps: geminiSkillGap?.gaps,
+                    hasDbGaps: dbSkillGap?.gaps
+                });
+                
+                // Priority: gemini > database > null (no defaults)
+                // If gemini has skill gap data, use it
+                if (geminiSkillGap && (geminiSkillGap.gaps || geminiSkillGap.projects || geminiSkillGap.activities || geminiSkillGap.resources)) {
+                    console.log('✅ Using gemini skill gap:', geminiSkillGap);
+                    return geminiSkillGap;
+                }
+                
+                // If database has skill gap data, use it
+                if (dbSkillGap && (dbSkillGap.gaps || dbSkillGap.projects || dbSkillGap.activities || dbSkillGap.resources)) {
+                    console.log('✅ Using db skill gap:', dbSkillGap);
+                    return dbSkillGap;
+                }
+                
+                // Return null if no real data exists - let roadmap handle the content
+                console.log('⚠️ No skill gap data found, returning null');
+                return null;
+            })(),
+            
+                // Roadmap with exposure activities and resources
+                roadmap: (() => {
+                    const geminiRoadmap = assessmentData?.gemini_results?.roadmap;
+                    const dbRoadmap = assessmentData?.roadmap;
+                    
+                    console.log('🔍 Roadmap Debug:', {
+                        geminiRoadmap,
+                        dbRoadmap,
+                        hasGeminiProjects: geminiRoadmap?.projects,
+                        hasGeminiImmediate: geminiRoadmap?.immediate,
+                        hasGeminiShortTerm: geminiRoadmap?.shortTerm,
+                        geminiProjectsCount: geminiRoadmap?.projects?.length
+                    });
+                    
+                    // Priority: gemini > database > default
+                    // If gemini has roadmap data, use it
+                    if (geminiRoadmap && geminiRoadmap.projects) {
+                        const finalRoadmap = {
+                            exposure: {
+                                activities: geminiRoadmap.immediate?.actions || [
+                                    "Start daily quantitative practice (1 hour)",
+                                    "Join or lead a school club/project",
+                                    "Read business newspapers regularly"
+                                ],
+                                resources: geminiRoadmap.projects?.[0]?.resources || [
+                                    "School faculty advisor",
+                                    "Local business professionals", 
+                                    "Online event planning tools"
+                                ]
+                            },
+                            projects: geminiRoadmap.projects.map((project: any) => ({
+                                name: project.title || 'Project',
+                                title: project.title || 'Project',
+                                description: project.description || project.purpose || 'Project description',
+                                output: project.output,
+                                purpose: project.purpose,
+                                timeline: project.timeline,
+                                difficulty: project.difficulty,
+                                skills: project.skills,
+                                steps: project.steps,
+                                resources: project.resources
+                            }))
+                        };
+                        console.log('✅ Using gemini roadmap:', finalRoadmap);
+                        console.log('✅ Final roadmap activities:', finalRoadmap.exposure?.activities);
+                        console.log('✅ Final roadmap resources:', finalRoadmap.exposure?.resources);
+                        return finalRoadmap;
+                    }
+                    
+                    // If database has roadmap data, use it
+                    if (dbRoadmap && (dbRoadmap.projects || dbRoadmap.exposure)) {
+                        const finalRoadmap = {
+                            exposure: {
+                                activities: dbRoadmap.exposure?.activities || [
+                                    "Join clubs related to your interests",
+                                    "Participate in career workshops",
+                                    "Shadow professionals in your field"
+                                ],
+                                resources: dbRoadmap.exposure?.resources || dbRoadmap.exposure?.certifications || [
+                                    "Career counseling services",
+                                    "Online assessment tools",
+                                    "Professional association websites"
+                                ]
+                            },
+                            projects: dbRoadmap.projects ? dbRoadmap.projects.map((project: any) => ({
+                                name: project.title || project.name || 'Project',
+                                title: project.title || project.name || 'Project', 
+                                description: project.purpose || project.description || 'Project description',
+                                output: project.output,
+                                purpose: project.purpose
+                            })) : []
+                        };
+                        console.log('✅ Using db roadmap:', finalRoadmap);
+                        console.log('✅ Final roadmap activities:', finalRoadmap.exposure?.activities);
+                        console.log('✅ Final roadmap resources:', finalRoadmap.exposure?.resources);
+                        return finalRoadmap;
+                    }
+                    
+                    // Use default roadmap as fallback
+                    const defaultRoadmap = {
+                        exposure: {
+                            activities: [
+                                "Join clubs related to your interests",
+                                "Participate in career exploration workshops",
+                                "Shadow professionals in fields that match your interests"
+                            ],
+                            resources: [
+                                "Career counseling services at your school",
+                                "Online career assessment tools",
+                                "Professional association websites"
+                            ]
+                        },
+                        projects: [
+                            {
+                                name: "Community Service Project",
+                                title: "Community Service Project",
+                                description: "Organize a community service initiative that aligns with your interests and helps develop leadership skills",
+                                output: "Community impact",
+                                purpose: "Develop leadership and social responsibility"
+                            }
+                        ]
+                    };
+                    console.log('✅ Using default roadmap:', defaultRoadmap);
+                    console.log('✅ Default roadmap activities:', defaultRoadmap.exposure?.activities);
+                    console.log('✅ Default roadmap resources:', defaultRoadmap.exposure?.resources);
+                    return defaultRoadmap;
+                })(),
+                
+                // Profile and summary data
+                profileSnapshot: assessmentData?.gemini_results?.profileSnapshot || assessmentData?.profile_snapshot,
+                overallSummary: assessmentData?.gemini_results?.overallSummary || assessmentData?.overall_summary,
+                finalNote: assessmentData?.gemini_results?.finalNote || assessmentData?.final_note,
+                platformCourses: assessmentData?.platform_courses || []
+            };
+            
+            console.log('🔍 Complete Results Debug:', results);
+            return results;
+    }, [assessmentData]);
 
     if (!isOpen) return null;
     
@@ -551,9 +904,13 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-xs text-blue-600 font-semibold mb-1">
                                                 {(() => {
-                                                    const grade = student?.student_grade || student?.grade;
-                                                    // Check if it's a college grade (anything beyond after12/Grade 12)
-                                                    const isCollegeStudent = grade && !['6', '7', '8', '9', '10', '11', '12', 'grade6to8', 'grade9to10', 'after10', 'after12'].includes(grade.toLowerCase());
+                                                    // Use student_grade from students table to determine roll number type
+                                                    const studentGrade = student?.student_grade || student?.grade;
+                                                    // College students: UG, PG, or variations like "UG Year 1", "PG Year 2", etc.
+                                                    const isCollegeStudent = studentGrade && (
+                                                        studentGrade.toUpperCase().includes('UG') || 
+                                                        studentGrade.toUpperCase().includes('PG')
+                                                    );
                                                     return isCollegeStudent ? 'College Roll No.' : 'School Roll No.';
                                                 })()}
                                             </p>
@@ -562,10 +919,54 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-xs text-blue-600 font-semibold mb-1">Programme Stream</p>
                                             <p className="font-bold text-gray-900 text-sm">
-                                                {assessmentData?.grade_level === 'after10' ? 'High School (Grades 11-12)' :
-                                                 assessmentData?.grade_level === 'after12' ? 'College Level' :
-                                                 assessmentData?.grade_level === 'grade6to8' ? 'Middle School (Grades 6-8)' :
-                                                 'Middle School (Grades 6-8)'}
+                                                {(() => {
+                                                    // Determine if student is college or school student
+                                                    const studentGrade = student?.student_grade || student?.grade;
+                                                    const isCollegeStudent = studentGrade && (
+                                                        studentGrade.toUpperCase().includes('UG') || 
+                                                        studentGrade.toUpperCase().includes('PG')
+                                                    );
+                                                    
+                                                    if (isCollegeStudent) {
+                                                        // For college students, use program_name from programs table
+                                                        const programName = student?.program_name;
+                                                        if (programName) {
+                                                            return programName;
+                                                        }
+                                                        // Fallback for college students - if program_id is null, show empty string
+                                                        const programId = student?.program_id;
+                                                        if (!programId) {
+                                                            return '';  // Leave blank in UI if no program assigned
+                                                        }
+                                                        // If program_id exists but program_name is missing, show generic fallback
+                                                        return studentGrade.toUpperCase().includes('UG') ? 'Undergraduate Program' : 'Postgraduate Program';
+                                                    } else {
+                                                        // For school students, use stream_name from personal_assessment_stream table
+                                                        const streamName = assessmentData?.stream_name || student?.stream_name;
+                                                        if (streamName) {
+                                                            return streamName;
+                                                        }
+                                                        // Fallback to stream_id if stream_name is not available
+                                                        const streamId = assessmentData?.stream_id || assessmentData?.grade_level;
+                                                        switch (streamId) {
+                                                            case 'grade6to8':
+                                                            case 'middle_school':
+                                                                return 'Middle School (Grades 6-8)';
+                                                            case 'grade9to10':
+                                                            case 'highschool':
+                                                                return 'High School (Grades 9-10)';
+                                                            case 'after10':
+                                                            case 'higher_secondary':
+                                                                return 'Higher Secondary (Grades 11-12)';
+                                                            case 'after12':
+                                                                return 'Post Secondary (After Grade 12)';
+                                                            case 'college':
+                                                                return 'College Level';
+                                                            default:
+                                                                return streamId || 'School Program';
+                                                        }
+                                                    }
+                                                })()}
                                             </p>
                                         </div>
                                         
@@ -603,7 +1004,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                                                     </span>
                                                     {assessmentData.employability_readiness && (
                                                         <span className="text-xs bg-green-600 px-3 py-1 rounded-full font-semibold">
-                                                            Career Readiness: {assessmentData.employability_readiness}%
+                                                            Career Readiness: {assessmentData.employability_readiness}
                                                         </span>
                                                     )}
                                                 </div>
@@ -798,13 +1199,22 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
 
                     {/* Hidden Print View for PDF Generation */}
                     <div className="print-view" style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '210mm' }}>
-                        <PrintView
-                            results={assessmentData}
-                            studentInfo={studentInfo}
-                            gradeLevel={assessmentData?.grade_level}
-                            riasecNames={RIASEC_NAMES}
-                            traitNames={TRAIT_NAMES}
-                        />
+                        {printViewResults && (
+                            <PrintView
+                                results={printViewResults}
+                                studentInfo={studentInfo}
+                                gradeLevel={assessmentData?.grade_level}
+                                riasecNames={RIASEC_NAMES}
+                                traitNames={TRAIT_NAMES}
+                                courseRecommendations={assessmentData?.platform_courses || []}
+                                studentAcademicData={{
+                                    subjectMarks: [],
+                                    projects: [],
+                                    experiences: [],
+                                    education: []
+                                }}
+                            />
+                        )}
                     </div>
                 </motion.div>
             </div>
@@ -898,19 +1308,24 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = ({
                     roadmap={assessmentData?.roadmap}
                     results={{
                         riasec: assessmentData?.riasec_scores ? {
-                            topThree: assessmentData.riasec_code?.split('').slice(0, 3) || []
+                            scores: assessmentData.riasec_scores,
+                            topThree: assessmentData.riasec_code?.split('').slice(0, 3) || [],
+                            code: assessmentData.riasec_code
                         } : null,
                         aptitude: assessmentData?.aptitude_scores,
                         employability: {
                             strengthAreas: [],
                             improvementAreas: []
                         },
-                        platformCourses: []
+                        platformCourses: assessmentData?.platform_courses || []
                     }}
                 />
             )}
         </>
     );
-};
+});
+
+// Add display name for debugging
+AssessmentReportDrawer.displayName = 'AssessmentReportDrawer';
 
 export default AssessmentReportDrawer;
