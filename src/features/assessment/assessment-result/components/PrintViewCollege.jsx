@@ -12,6 +12,118 @@ import PrintStyles from './shared/PrintStyles';
 import PrintPage from './shared/PrintPage';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
+import {
+  CompleteCareerFitSection,
+  CompleteSkillGapSection,
+  CompleteRoadmapSection,
+  CompleteCourseRecommendationsSection,
+  ProfileSnapshotSection,
+  TimingAnalysisSection,
+  FinalNoteSection
+} from './shared/CompletePDFSections';
+
+/**
+ * Learning Styles Section
+ * Displays student's preferred learning approaches
+ */
+const LearningStylesSection = ({ learningStyles }) => {
+  if (!learningStyles || learningStyles.length === 0) return null;
+
+  const styleDescriptions = {
+    'Visual': 'You learn best through images, diagrams, and visual aids',
+    'Auditory': 'You learn best through listening and verbal instruction',
+    'Kinesthetic': 'You learn best through hands-on practice and movement',
+    'Reading/Writing': 'You learn best through reading and taking notes',
+    'Social': 'You learn best in group settings and through discussion',
+    'Solitary': 'You learn best when studying alone and self-paced'
+  };
+
+  return (
+    <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+      <h3 style={printStyles.subTitle}>Your Learning Preferences</h3>
+      <p style={{ fontSize: '10px', color: '#4b5563', marginBottom: '15px' }}>
+        Understanding how you learn best can help you choose effective study strategies and learning environments.
+      </p>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+        {learningStyles.map((style, index) => (
+          <div 
+            key={index}
+            style={{
+              padding: '12px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px'
+            }}
+          >
+            <div style={{ 
+              fontSize: '11px', 
+              fontWeight: 'bold', 
+              color: '#1e293b',
+              marginBottom: '4px'
+            }}>
+              {style}
+            </div>
+            <div style={{ fontSize: '9px', color: '#64748b', lineHeight: '1.4' }}>
+              {styleDescriptions[style] || 'Preferred learning approach'}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Work Preferences Section
+ * Displays ideal work environment characteristics
+ */
+const WorkPreferencesSection = ({ workPreferences }) => {
+  if (!workPreferences || workPreferences.length === 0) return null;
+
+  const preferenceIcons = {
+    'Remote Work': '🏠',
+    'Team Collaboration': '👥',
+    'Independent Work': '🎯',
+    'Flexible Hours': '⏰',
+    'Structured Environment': '📋',
+    'Creative Freedom': '🎨',
+    'Fast-Paced': '⚡',
+    'Stable & Predictable': '🔒'
+  };
+
+  return (
+    <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+      <h3 style={printStyles.subTitle}>Ideal Work Environment</h3>
+      <p style={{ fontSize: '10px', color: '#4b5563', marginBottom: '15px' }}>
+        These work environment characteristics align with your personality and preferences.
+      </p>
+      
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+        {workPreferences.map((pref, index) => (
+          <div 
+            key={index}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              borderRadius: '20px',
+              fontSize: '10px',
+              fontWeight: '600',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>{preferenceIcons[pref] || '✓'}</span>
+            <span>{pref}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
 /**
  * PrintViewCollege Component
@@ -62,7 +174,7 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
       <PrintStyles />
 
       {/* Cover Page */}
-      <CoverPage studentInfo={safeStudentInfo} />
+      <CoverPage studentInfo={safeStudentInfo} generatedAt={results.generatedAt} />
 
       {/* Watermarks */}
       <Watermarks />
@@ -78,20 +190,55 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
           gradeLevel="college"
         />
 
-        {/* Career Fit Analysis */}
-        {careerFit && (
-          <CareerFitAnalysisSection careerFit={careerFit} />
-        )}
-        
-        {/* Skill Gap & Development Plan */}
-        {skillGap && (
-          <SkillGapDevelopmentSection skillGap={skillGap} />
+        {/* ✅ NEW: Learning Styles Section */}
+        {results.learningStyles && results.learningStyles.length > 0 && (
+          <LearningStylesSection learningStyles={results.learningStyles} />
         )}
 
-        {/* Career Roadmap */}
-        {roadmap && (
-          <DetailedCareerRoadmapSection roadmap={roadmap} />
+        {/* ✅ NEW: Work Preferences Section */}
+        {results.workPreferences && results.workPreferences.length > 0 && (
+          <WorkPreferencesSection workPreferences={results.workPreferences} />
         )}
+
+        {/* OLD SECTIONS COMMENTED OUT - Data now shown in Detailed Assessment Breakdown */}
+        {/* Career Fit Analysis */}
+        {/* {careerFit && (
+          <CareerFitAnalysisSection careerFit={careerFit} />
+        )} */}
+        
+        {/* Skill Gap & Development Plan */}
+        {/* {skillGap && (
+          <SkillGapDevelopmentSection skillGap={skillGap} />
+        )} */}
+
+        {/* ========== NEW COMPLETE DATA SECTIONS - COMMENTED OUT TO AVOID DUPLICATES ON PAGE 2 ========== */}
+        {/* Profile Snapshot */}
+        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} /> */}
+        
+        {/* Complete Skill Gap - Additional details with resources */}
+        {/* <CompleteSkillGapSection skillGap={results.skillGap} /> */}
+        
+        {/* Complete Course Recommendations */}
+        {/* <CompleteCourseRecommendationsSection 
+          skillGapCourses={results.skillGapCourses}
+          platformCourses={results.platformCourses}
+          coursesByType={results.coursesByType}
+        /> */}
+        
+        {/* Complete Roadmap */}
+        {/* <CompleteRoadmapSection roadmap={results.roadmap} /> */}
+        
+        {/* Timing Analysis */}
+        {/* <TimingAnalysisSection timingAnalysis={results.timingAnalysis} /> */}
+        
+        {/* Final Note */}
+        {/* <FinalNoteSection finalNote={results.finalNote} /> */}
+        {/* ========== END OF NEW SECTIONS ========== */}
+
+        {/* Career Roadmap */}
+        {/* {roadmap && (
+          <DetailedCareerRoadmapSection roadmap={roadmap} />
+        )} */}
         
         {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
         {/* College students are already in a degree program, they don't need degree recommendations */}
@@ -100,9 +247,21 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         )} */}
 
         {/* Final Recommendations */}
-        {overallSummary && (
+        {/* {overallSummary && (
           <FinalRecommendationsSection overallSummary={overallSummary} />
-        )}
+        )} */}
+        
+        {/* ========== DUPLICATE SECTIONS COMMENTED OUT - Already shown above ========== */}
+        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} />
+        <CompleteCourseRecommendationsSection 
+          skillGapCourses={results.skillGapCourses}
+          platformCourses={results.platformCourses}
+          coursesByType={results.coursesByType}
+        />
+        <CompleteRoadmapSection roadmap={results.roadmap} />
+        <TimingAnalysisSection timingAnalysis={results.timingAnalysis} />
+        <FinalNoteSection finalNote={results.finalNote} /> */}
+        {/* ========== END OF DUPLICATE SECTIONS ========== */}
         
         <ReportDisclaimer />
       </div>
@@ -116,6 +275,17 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
           riasecNames={safeRiasecNames}
           gradeLevel="college"
         />
+
+        {/* ✅ NEW: Learning Styles Section */}
+        {results.learningStyles && results.learningStyles.length > 0 && (
+          <LearningStylesSection learningStyles={results.learningStyles} />
+        )}
+
+        {/* ✅ NEW: Work Preferences Section */}
+        {results.workPreferences && results.workPreferences.length > 0 && (
+          <WorkPreferencesSection workPreferences={results.workPreferences} />
+        )}
+
         {/* OLD SECTIONS COMMENTED OUT - Data now shown in Detailed Assessment Breakdown */}
         {/* <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
         <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
@@ -134,7 +304,7 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         {employability && (
           <EmployabilityScoreSection employability={employability} />
         )} */}
-        {careerFit && (
+        {/* {careerFit && (
           <CareerFitAnalysisSection careerFit={careerFit} />
         )}
         {skillGap && (
@@ -142,14 +312,27 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         )}
         {roadmap && (
           <DetailedCareerRoadmapSection roadmap={roadmap} />
-        )}
+        )} */}
         {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
         {/* {courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
         )} */}
-        {overallSummary && (
+        {/* {overallSummary && (
           <FinalRecommendationsSection overallSummary={overallSummary} />
-        )}
+        )} */}
+        
+        {/* ========== DUPLICATE SECTIONS COMMENTED OUT - Already shown above ========== */}
+        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} />
+        <CompleteCourseRecommendationsSection 
+          skillGapCourses={results.skillGapCourses}
+          platformCourses={results.platformCourses}
+          coursesByType={results.coursesByType}
+        />
+        <CompleteRoadmapSection roadmap={results.roadmap} />
+        <TimingAnalysisSection timingAnalysis={results.timingAnalysis} />
+        <FinalNoteSection finalNote={results.finalNote} /> */}
+        {/* ========== END OF DUPLICATE SECTIONS ========== */}
+        
         <ReportDisclaimer />
       </div>
     </div>

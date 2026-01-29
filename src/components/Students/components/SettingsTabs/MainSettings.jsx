@@ -17,7 +17,14 @@ import { useStudentSettings } from "../../../../hooks/useStudentSettings";
 import { useStudentDataByEmail } from "../../../../hooks/useStudentDataByEmail";
 import { useInstitutions } from "../../../../hooks/useInstitutions";
 import { SubscriptionSettingsSection } from "../../../Subscription/SubscriptionSettingsSection";
-import { EducationEditModal } from "../ProfileEditModals";
+import { 
+  EducationEditModal, 
+  SoftSkillsEditModal, 
+  TechnicalSkillsEditModal, 
+  ExperienceEditModal, 
+  CertificatesEditModal, 
+  ProjectsEditModal 
+} from "../ProfileEditModals";
 import { useToast } from "../../../../hooks/use-toast";
 import useStudentMessageNotifications from "../../../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../../../hooks/useStudentMessages";
@@ -50,6 +57,11 @@ const MainSettings = () => {
     studentData: studentDataWithEducation,
     loading: educationLoading,
     updateEducation,
+    updateTechnicalSkills,
+    updateSoftSkills,
+    updateExperience,
+    updateProjects,
+    updateCertificates,
   } = useStudentDataByEmail(userEmail);
 
   // Get student ID for messaging
@@ -91,9 +103,25 @@ const MainSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
-  // Education management state
-  const [educationData, setEducationData] = useState([]);
+  // Education management state - now using real data
+  const educationData = studentDataWithEducation?.education || [];
   const [showEducationModal, setShowEducationModal] = useState(false);
+
+  // Profile sections data - now using real data from studentDataWithEducation
+  const softSkillsData = studentDataWithEducation?.softSkills || [];
+  const [showSoftSkillsModal, setShowSoftSkillsModal] = useState(false);
+  
+  const technicalSkillsData = studentDataWithEducation?.technicalSkills || [];
+  const [showTechnicalSkillsModal, setShowTechnicalSkillsModal] = useState(false);
+  
+  const experienceData = studentDataWithEducation?.experience || [];
+  const [showExperienceModal, setShowExperienceModal] = useState(false);
+  
+  const certificatesData = studentDataWithEducation?.certificates || [];
+  const [showCertificatesModal, setShowCertificatesModal] = useState(false);
+  
+  const projectsData = studentDataWithEducation?.projects || [];
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
 
   // Resume parser state
   const [showResumeParser, setShowResumeParser] = useState(false);
@@ -290,22 +318,13 @@ const MainSettings = () => {
         setPrivacySettings(studentData.privacySettings);
       }
 
-      // Initialize education data
-      if (studentDataWithEducation?.education && Array.isArray(studentDataWithEducation.education)) {
-        setEducationData(studentDataWithEducation.education);
-      }
+      // Education data is now handled automatically by the hook
+      // No need to manually set education data
     }
   }, [studentData, userEmail]);
 
-  // Separate useEffect for education data
-  useEffect(() => {
-    if (studentDataWithEducation?.education && Array.isArray(studentDataWithEducation.education)) {
-      console.log('📚 Education data loaded:', studentDataWithEducation.education);
-      setEducationData(studentDataWithEducation.education);
-    } else {
-      console.log('📚 No education data found:', studentDataWithEducation);
-    }
-  }, [studentDataWithEducation]);
+  // Education data is now automatically available from studentDataWithEducation
+  // No separate useEffect needed
 
   const handleProfileChange = (field, value) => {
     setProfileData((prev) => ({ ...prev, [field]: value }));
@@ -376,7 +395,6 @@ const MainSettings = () => {
       const result = await updateEducation(educationList);
       
       if (result.success) {
-        setEducationData(educationList);
         setShowEducationModal(false);
         
         toast({
@@ -406,7 +424,173 @@ const MainSettings = () => {
     }
   };
 
+  // Soft Skills management functions
+  const handleSoftSkillsSave = async (skillsList) => {
+    try {
+      setIsSaving(true);
+      
+      const result = await updateSoftSkills(skillsList);
+      
+      if (result.success) {
+        setShowSoftSkillsModal(false);
+        
+        toast({
+          title: "Success",
+          description: "Soft skills updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update soft skills');
+      }
+    } catch (error) {
+      console.error('Soft skills save error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update soft skills. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Technical Skills management functions
+  const handleTechnicalSkillsSave = async (skillsList) => {
+    try {
+      setIsSaving(true);
+      
+      const result = await updateTechnicalSkills(skillsList);
+      
+      if (result.success) {
+        setShowTechnicalSkillsModal(false);
+        
+        toast({
+          title: "Success",
+          description: "Technical skills updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update technical skills');
+      }
+    } catch (error) {
+      console.error('Technical skills save error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update technical skills. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Experience management functions
+  const handleExperienceSave = async (experienceList) => {
+    try {
+      setIsSaving(true);
+      
+      const result = await updateExperience(experienceList);
+      
+      if (result.success) {
+        setShowExperienceModal(false);
+        
+        toast({
+          title: "Success",
+          description: "Experience updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update experience');
+      }
+    } catch (error) {
+      console.error('Experience save error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update experience. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Certificates management functions
+  const handleCertificatesSave = async (certificatesList) => {
+    try {
+      setIsSaving(true);
+      
+      const result = await updateCertificates(certificatesList);
+      
+      if (result.success) {
+        setShowCertificatesModal(false);
+        
+        toast({
+          title: "Success",
+          description: "Certificates updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update certificates');
+      }
+    } catch (error) {
+      console.error('Certificates save error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update certificates. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Projects management functions
+  const handleProjectsSave = async (projectsList) => {
+    try {
+      setIsSaving(true);
+      
+      const result = await updateProjects(projectsList);
+      
+      if (result.success) {
+        setShowProjectsModal(false);
+        
+        toast({
+          title: "Success",
+          description: "Projects updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update projects');
+      }
+    } catch (error) {
+      console.error('Projects save error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update projects. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveProfile = async () => {
+    // Validate Aadhar number before saving
+    if (profileData.aadharNumber) {
+      if (profileData.aadharNumber.length !== 12) {
+        toast({
+          title: "Validation Error",
+          description: "Aadhar number must be exactly 12 digits",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) {
+        toast({
+          title: "Validation Error",
+          description: "Aadhar number cannot start with 0 or 1",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     setIsSaving(true);
     try {
       await updateProfile(profileData);
@@ -427,9 +611,25 @@ const MainSettings = () => {
         console.warn('Could not refresh recent updates:', refreshError);
       }
     } catch (error) {
+      console.error('❌ Error updating profile:', error);
+      
+      // Show specific error message if available
+      let errorMessage = "Failed to update profile";
+      
+      if (error.message) {
+        // Check for specific error types
+        if (error.message.includes('Aadhar') || error.message.includes('aadhar')) {
+          errorMessage = error.message;
+        } else if (error.message.includes('Invalid') || error.message.includes('required')) {
+          errorMessage = error.message;
+        } else {
+          errorMessage = `Failed to update profile: ${error.message}`;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to update profile",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -612,7 +812,7 @@ const MainSettings = () => {
       await updateProfile(mergedData);
       
       if (parsedData.education && parsedData.education.length > 0) {
-        setEducationData(parsedData.education);
+        // Education data will be automatically updated by the hook
         if (updateEducation) {
           await updateEducation(parsedData.education);
         }
@@ -852,6 +1052,17 @@ const MainSettings = () => {
                 setCustomSemesterName={setCustomSemesterName}
                 educationData={educationData}
                 setShowEducationModal={setShowEducationModal}
+                // New profile section props - now using real data
+                softSkillsData={softSkillsData}
+                setShowSoftSkillsModal={setShowSoftSkillsModal}
+                technicalSkillsData={technicalSkillsData}
+                setShowTechnicalSkillsModal={setShowTechnicalSkillsModal}
+                experienceData={experienceData}
+                setShowExperienceModal={setShowExperienceModal}
+                certificatesData={certificatesData}
+                setShowCertificatesModal={setShowCertificatesModal}
+                projectsData={projectsData}
+                setShowProjectsModal={setShowProjectsModal}
                 studentData={studentData}
               />
             )}
@@ -902,6 +1113,56 @@ const MainSettings = () => {
           onClose={() => setShowEducationModal(false)}
           data={educationData}
           onSave={handleEducationSave}
+        />
+      )}
+
+      {/* Soft Skills Edit Modal */}
+      {showSoftSkillsModal && (
+        <SoftSkillsEditModal
+          isOpen={showSoftSkillsModal}
+          onClose={() => setShowSoftSkillsModal(false)}
+          data={softSkillsData}
+          onSave={handleSoftSkillsSave}
+        />
+      )}
+
+      {/* Technical Skills Edit Modal */}
+      {showTechnicalSkillsModal && (
+        <TechnicalSkillsEditModal
+          isOpen={showTechnicalSkillsModal}
+          onClose={() => setShowTechnicalSkillsModal(false)}
+          data={technicalSkillsData}
+          onSave={handleTechnicalSkillsSave}
+        />
+      )}
+
+      {/* Experience Edit Modal */}
+      {showExperienceModal && (
+        <ExperienceEditModal
+          isOpen={showExperienceModal}
+          onClose={() => setShowExperienceModal(false)}
+          data={experienceData}
+          onSave={handleExperienceSave}
+        />
+      )}
+
+      {/* Certificates Edit Modal */}
+      {showCertificatesModal && (
+        <CertificatesEditModal
+          isOpen={showCertificatesModal}
+          onClose={() => setShowCertificatesModal(false)}
+          data={certificatesData}
+          onSave={handleCertificatesSave}
+        />
+      )}
+
+      {/* Projects Edit Modal */}
+      {showProjectsModal && (
+        <ProjectsEditModal
+          isOpen={showProjectsModal}
+          onClose={() => setShowProjectsModal(false)}
+          data={projectsData}
+          onSave={handleProjectsSave}
         />
       )}
 

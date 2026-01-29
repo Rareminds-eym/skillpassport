@@ -201,11 +201,79 @@ export const FIELD_CONFIGS = {
         options: ["Technical", "Soft Skills", "Tools", "Languages", "Other"],
         defaultValue: "Technical"
       },
+      { name: "description", label: "Description", type: "textarea", placeholder: "Describe your experience with this skill..." },
     ],
     getDefaultValues: () => ({
       name: "",
       level: "Intermediate",
       category: "Technical",
+      description: "",
+    }),
+    getDisplayTitle: (item) => item.name || "Untitled",
+    getDisplaySubtitle: (item) => `${item.level || ""} - ${item.category || ""}`,
+  },
+
+  softSkills: {
+    title: "Soft Skills",
+    icon: CheckCircle,
+    listKey: "softSkillsList",
+    emptyMessage: "No soft skills added yet",
+    addButtonText: "Add Soft Skill",
+    fields: [
+      { name: "name", label: "Skill Name *", type: "text", required: true, placeholder: "e.g., Leadership, Communication" },
+      { 
+        name: "level", 
+        label: "Proficiency Level", 
+        type: "select", 
+        options: ["Beginner", "Intermediate", "Advanced", "Expert"],
+        defaultValue: "Intermediate"
+      },
+      { name: "description", label: "Description", type: "textarea", placeholder: "Describe how you've developed and applied this skill..." },
+      { name: "examples", label: "Examples/Evidence", type: "textarea", placeholder: "Provide specific examples or situations where you demonstrated this skill..." },
+    ],
+    getDefaultValues: () => ({
+      name: "",
+      level: "Intermediate",
+      description: "",
+      examples: "",
+    }),
+    getDisplayTitle: (item) => item.name || "Untitled",
+    getDisplaySubtitle: (item) => item.level || "",
+  },
+
+  technicalSkills: {
+    title: "Technical Skills",
+    icon: CheckCircle,
+    listKey: "technicalSkillsList",
+    emptyMessage: "No technical skills added yet",
+    addButtonText: "Add Technical Skill",
+    fields: [
+      { name: "name", label: "Skill Name *", type: "text", required: true, placeholder: "e.g., React, Python, AWS" },
+      { 
+        name: "level", 
+        label: "Proficiency Level", 
+        type: "select", 
+        options: ["Beginner", "Intermediate", "Advanced", "Expert"],
+        defaultValue: "Intermediate"
+      },
+      { 
+        name: "category", 
+        label: "Category", 
+        type: "select", 
+        options: ["Programming", "Framework", "Database", "Tools", "Cloud", "Other"],
+        defaultValue: "Programming"
+      },
+      { name: "yearsOfExperience", label: "Years of Experience", type: "number", placeholder: "2" },
+      { name: "description", label: "Description", type: "textarea", placeholder: "Describe your experience and projects with this technology..." },
+      { name: "certifications", label: "Related Certifications", type: "text", placeholder: "Any certifications related to this skill..." },
+    ],
+    getDefaultValues: () => ({
+      name: "",
+      level: "Intermediate",
+      category: "Programming",
+      yearsOfExperience: "",
+      description: "",
+      certifications: "",
     }),
     getDisplayTitle: (item) => item.name || "Untitled",
     getDisplaySubtitle: (item) => `${item.level || ""} - ${item.category || ""}`,
