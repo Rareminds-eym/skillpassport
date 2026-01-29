@@ -32,9 +32,17 @@ interface AssessmentResult {
   career_fit: any;
   skill_gap: any;
   gemini_results: any;
+  profile_snapshot:any;
+  riasec_scores:any;
   overall_summary: any;
+  aptitude_scores:any;
+  platform_courses: any;
+  roadmap: any;
   enrollmentNumber: string | null;
   student_grade: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  stream_name: string | null;
 }
 
 // Filter Section Component
@@ -342,7 +350,17 @@ const CollegeAdminAssessmentResults: React.FC = () => {
       // Get students from this college
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('user_id, name, email, enrollmentNumber, grade')
+        .select(`
+          user_id, 
+          name, 
+          email, 
+          enrollmentNumber, 
+          grade, 
+          program_id,
+          programs (
+            name
+          )
+        `)
         .eq('college_id', collegeId);
 
       if (studentsError) throw studentsError;
@@ -381,7 +399,15 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           career_fit,
           skill_gap,
           gemini_results,
-          overall_summary
+          overall_summary,
+          platform_courses,
+          riasec_scores,
+          aptitude_scores,
+          roadmap,
+          profile_snapshot,
+          personal_assessment_streams (
+            name
+          )
         `)
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
@@ -398,10 +424,27 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           college_name: org.name || null,
           enrollmentNumber: student?.enrollmentNumber || null,
           student_grade: student?.grade || null,
+          program_id: student?.program_id || null,
+          program_name: (() => {
+            if (!student?.programs) return null;
+            // Handle both single object and array cases
+            if (Array.isArray(student.programs)) {
+              return student.programs.length > 0 ? student.programs[0].name : null;
+            }
+            return (student.programs as any).name || null;
+          })(),
+          stream_name: (() => {
+            if (!r.personal_assessment_streams) return null;
+            // Handle both single object and array cases
+            if (Array.isArray(r.personal_assessment_streams)) {
+              return r.personal_assessment_streams.length > 0 ? r.personal_assessment_streams[0].name : null;
+            }
+            return (r.personal_assessment_streams as any).name || null;
+          })(),
         };
       });
 
-      setResults(enrichedResults);
+      setResults(enrichedResults as AssessmentResult[]);
     } catch (err: any) {
       console.error('Error fetching assessment results:', err);
       setError(err?.message || 'Failed to load assessment results');
@@ -923,7 +966,10 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           grade: selectedResult.stream_id || undefined,
           school_name: selectedResult.college_name || undefined,
           roll_number: selectedResult.enrollmentNumber || 'N/A',
-          student_grade: selectedResult.student_grade || undefined
+          student_grade: selectedResult.student_grade || undefined,
+          program_id: selectedResult.program_id || undefined,
+          program_name: selectedResult.program_name || undefined,
+          stream_name: selectedResult.stream_name || undefined
         } : undefined}
         assessmentResult={selectedResult ? {
           id: selectedResult.id,
@@ -931,9 +977,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           stream_id: selectedResult.stream_id,
           riasec_code: selectedResult.riasec_code || undefined,
           aptitude_overall: selectedResult.aptitude_overall ?? undefined,
-          employability_readiness: typeof selectedResult.employability_readiness === 'string' 
-            ? parseInt(selectedResult.employability_readiness) || undefined
-            : selectedResult.employability_readiness ?? undefined,
+          employability_readiness: selectedResult.employability_readiness ?? undefined,
           status: selectedResult.status,
           created_at: selectedResult.created_at,
           student_name: selectedResult.student_name || undefined,
@@ -943,7 +987,13 @@ const CollegeAdminAssessmentResults: React.FC = () => {
           career_fit: selectedResult.career_fit,
           skill_gap: selectedResult.skill_gap,
           gemini_results: selectedResult.gemini_results,
-          overall_summary: selectedResult.overall_summary
+          overall_summary: selectedResult.overall_summary,
+          platform_courses: selectedResult.platform_courses,
+          riasec_scores: selectedResult.riasec_scores,
+          aptitude_scores: selectedResult.aptitude_scores,
+          roadmap: selectedResult.roadmap,
+          profile_snapshot: selectedResult.profile_snapshot,
+          stream_name: selectedResult.stream_name || undefined
         } : undefined}
         isOpen={showDetailModal}
         onClose={() => {

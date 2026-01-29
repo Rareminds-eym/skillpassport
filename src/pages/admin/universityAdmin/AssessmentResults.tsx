@@ -19,9 +19,15 @@ interface AssessmentResult {
   student_id: string;
   stream_id: string;
   riasec_code: string | null;
+  riasec_scores: any;
   aptitude_overall: number | null;
+  aptitude_scores: any;
+  bigfive_scores: any;
+  work_values_scores: any;
   employability_readiness: string | null;
+  employability_scores: any;
   knowledge_score: number | null;
+  knowledge_details: any;
   status: string;
   created_at: string;
   student_name: string | null;
@@ -31,9 +37,17 @@ interface AssessmentResult {
   career_fit: any;
   skill_gap: any;
   gemini_results: any;
-  overall_summary:any;
+  overall_summary: any;
+  platform_courses: any;
+  roadmap: any;
+  profile_snapshot: any;
+  timing_analysis: any;
+  final_note: any;
   enrollmentNumber: string | null;
   student_grade: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  stream_name: string | null;
 }
 
 // Filter Section Component
@@ -249,15 +263,29 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           student_id,
           stream_id,
           riasec_code,
+          riasec_scores,
           aptitude_overall,
+          aptitude_scores,
+          bigfive_scores,
+          work_values_scores,
           employability_readiness,
+          employability_scores,
           knowledge_score,
+          knowledge_details,
           status,
           created_at,
           career_fit,
           skill_gap,
           gemini_results,
-          overall_summary
+          overall_summary,
+          platform_courses,
+          roadmap,
+          profile_snapshot,
+          timing_analysis,
+          final_note,
+          personal_assessment_streams (
+            name
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -269,7 +297,19 @@ const UniversityAdminAssessmentResults: React.FC = () => {
         
         const { data: studentsData } = await supabase
           .from('students')
-          .select('user_id, name, email, college_id, enrollmentNumber, grade')
+          .select(`
+            user_id, 
+            name, 
+            email, 
+            college_id, 
+            enrollmentNumber, 
+            grade, 
+            program_id,
+            programs (
+              id,
+              name
+            )
+          `)
           .in('user_id', studentIds);
 
         // Fetch colleges from organizations table
@@ -291,13 +331,30 @@ const UniversityAdminAssessmentResults: React.FC = () => {
             college_name: student?.college_id ? collegeMap.get(student.college_id) || null : null,
             enrollmentNumber: student?.enrollmentNumber || null,
             student_grade: student?.grade || null,
+            program_id: student?.program_id || null,
+            program_name: (() => {
+              if (!student?.programs) return null;
+              // Handle both single object and array cases
+              if (Array.isArray(student.programs)) {
+                return student.programs.length > 0 ? student.programs[0].name : null;
+              }
+              return (student.programs as any).name || null;
+            })(),
+            stream_name: (() => {
+              if (!r.personal_assessment_streams) return null;
+              // Handle both single object and array cases
+              if (Array.isArray(r.personal_assessment_streams)) {
+                return r.personal_assessment_streams.length > 0 ? r.personal_assessment_streams[0].name : null;
+              }
+              return (r.personal_assessment_streams as any).name || null;
+            })(),
           };
         });
 
         // Filter to only show students from affiliated colleges (exclude students without college)
         const filteredResults = enrichedResults.filter(r => r.college_id !== null && r.college_name !== null);
 
-        setResults(filteredResults);
+        setResults(filteredResults as AssessmentResult[]);
       } else {
         setResults([]);
       }
@@ -803,27 +860,41 @@ const UniversityAdminAssessmentResults: React.FC = () => {
           grade: selectedResult.stream_id || undefined,
           school_name: selectedResult.college_name || undefined,
           roll_number: selectedResult.enrollmentNumber || 'N/A',
-          student_grade: selectedResult.student_grade || undefined
+          student_grade: selectedResult.student_grade || undefined,
+          program_id: selectedResult.program_id || undefined,
+          program_name: selectedResult.program_name || undefined,
+          stream_name: selectedResult.stream_name || undefined
         } : undefined}
         assessmentResult={selectedResult ? {
           id: selectedResult.id,
           student_id: selectedResult.student_id,
           stream_id: selectedResult.stream_id,
-          riasec_code: selectedResult.riasec_code || undefined,
-          aptitude_overall: selectedResult.aptitude_overall ?? undefined,
-          employability_readiness: typeof selectedResult.employability_readiness === 'string' 
-            ? parseInt(selectedResult.employability_readiness) || undefined
-            : selectedResult.employability_readiness ?? undefined,
+          riasec_code: selectedResult.riasec_code,
+          riasec_scores: selectedResult.riasec_scores,
+          aptitude_overall: selectedResult.aptitude_overall,
+          aptitude_scores: selectedResult.aptitude_scores,
+          bigfive_scores: selectedResult.bigfive_scores,
+          work_values_scores: selectedResult.work_values_scores,
+          employability_readiness: selectedResult.employability_readiness,
+          employability_scores: selectedResult.employability_scores,
+          knowledge_score: selectedResult.knowledge_score,
+          knowledge_details: selectedResult.knowledge_details,
           status: selectedResult.status,
           created_at: selectedResult.created_at,
-          student_name: selectedResult.student_name || undefined,
-          student_email: selectedResult.student_email || undefined,
-          college_name: selectedResult.college_name || undefined,
-          grade_level: selectedResult.stream_id || undefined,
+          student_name: selectedResult.student_name,
+          student_email: selectedResult.student_email,
+          college_name: selectedResult.college_name,
+          grade_level: selectedResult.stream_id,
           career_fit: selectedResult.career_fit,
           skill_gap: selectedResult.skill_gap,
           gemini_results: selectedResult.gemini_results,
-          overall_summary: selectedResult.overall_summary
+          overall_summary: selectedResult.overall_summary,
+          platform_courses: selectedResult.platform_courses,
+          roadmap: selectedResult.roadmap,
+          profile_snapshot: selectedResult.profile_snapshot,
+          timing_analysis: selectedResult.timing_analysis,
+          final_note: selectedResult.final_note,
+          stream_name: selectedResult.stream_name || undefined
         } : undefined}
         isOpen={showDetailModal}
         onClose={() => {
