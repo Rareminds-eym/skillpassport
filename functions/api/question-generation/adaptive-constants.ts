@@ -143,12 +143,17 @@ Example format:
 }
 
 // AI Models to try in order of preference
-export const AI_MODELS = [
-  'google/gemini-2.0-flash-exp:free', // Google's Gemini 2.0 - free, fast, 1M context
-  'google/gemini-flash-1.5-8b', // Gemini 1.5 Flash 8B - fast and efficient
-  'anthropic/claude-3.5-sonnet', // Claude 3.5 Sonnet - best quality (paid)
-  'xiaomi/mimo-v2-flash:free', // Fallback: Xiaomi's free model
-];
+// Now imported from centralized config
+import { AI_MODELS } from '../shared/ai-config';
+
+// For backward compatibility, export the models used by this module
+// Using OpenRouter-compatible models only
+export const ADAPTIVE_AI_MODELS = [
+  AI_MODELS.GEMINI_FLASH_EXP,
+  AI_MODELS.GEMINI_FLASH_1_5_8B,
+  AI_MODELS.GPT_4O_MINI,
+  AI_MODELS.XIAOMI_MIMO,
+] as const;
 
 // Fallback questions for middle school
 export const MIDDLE_SCHOOL_FALLBACKS: Record<

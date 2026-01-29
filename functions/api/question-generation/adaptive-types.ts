@@ -40,6 +40,8 @@ export interface QuestionGenerationResult {
   fromCache: boolean;
   generatedCount: number;
   cachedCount: number;
+  generatedBy?: 'ai' | 'fallback';
+  modelUsed?: string;
 }
 
 export interface RawAIQuestion {

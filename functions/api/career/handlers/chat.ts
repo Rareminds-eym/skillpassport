@@ -5,6 +5,7 @@
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser, sanitizeInput } from '../utils/auth';
 import { checkRateLimit } from '../utils/rate-limit';
+import { getModelForUseCase, API_CONFIG, MODEL_PROFILES } from '../../shared/ai-config';
 import type { ChatRequest } from '../types';
 
 export async function handleCareerChat(request: Request, env: Record<string, string>): Promise<Response> {
@@ -91,36 +92,60 @@ export async function handleCareerChat(request: Request, env: Record<string, str
       ...conversationHistory,
       { role: 'user', content: sanitizedMessage }
     ];
+    // Get models to try (primary + fallbacks)
+    const chatProfile = MODEL_PROFILES['chat'];
+    const modelsToTry = [chatProfile.primary, ...chatProfile.fallbacks];
 
-    // Call OpenRouter API with streaming
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openRouterKey}`,
-        'HTTP-Referer': 'https://skillpassport.pages.dev',
-        'X-Title': 'SkillPassport Career AI'
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-3.2-3b-instruct:free',
-        messages: aiMessages,
-        stream: true,
-        temperature: 0.7,
-        max_tokens: 2000
-      })
-    });
+    let response: Response | null = null;
+    let usedModel: string = '';
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('OpenRouter API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error
+    // Try each model until one works
+    for (let i = 0; i < modelsToTry.length; i++) {
+      const model = modelsToTry[i];
+      const isRetry = i > 0;
+
+      if (isRetry) {
+        console.log(`🔄 [Chat] Fallback ${i}: Trying ${model}...`);
+      } else {
+        console.log(`[Chat] Trying model: ${model}`);
+      }
+
+      const attemptResponse = await fetch(API_CONFIG.OPENROUTER.endpoint, {
+        method: 'POST',
+        headers: {
+          ...API_CONFIG.OPENROUTER.headers,
+          'Authorization': `Bearer ${openRouterKey}`,
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: aiMessages,
+          stream: true,
+          temperature: 0.7,
+          max_tokens: 2000
+        })
       });
+
+      if (attemptResponse.ok) {
+        response = attemptResponse;
+        usedModel = model;
+        if (isRetry) {
+          console.log(`✅ [Chat] Fallback succeeded with ${model}`);
+        } else {
+          console.log(`✅ [Chat] Primary model ${model} succeeded`);
+        }
+        break;
+      } else {
+        const errorText = await attemptResponse.text();
+        console.error(`❌ [Chat] ${model} failed (${attemptResponse.status}):`, errorText.substring(0, 150));
+        // Continue to next model
+      }
+    }
+
+    if (!response) {
       return jsonResponse({
-        error: 'AI service error',
-        details: `OpenRouter returned ${response.status}: ${error.substring(0, 200)}`
-      }, 500);
+        error: 'AI service temporarily unavailable',
+        details: 'All models are currently rate-limited. Please try again in a moment.'
+      }, 503);
     }
 
     // Stream response and collect assistant message
@@ -135,28 +160,64 @@ export async function handleCareerChat(request: Request, env: Record<string, str
           const reader = response.body?.getReader();
           if (!reader) throw new Error('No response body');
 
+          // console.log(`[Chat] Starting stream read...`);
+          let totalChunks = 0;
+          let buffer = ''; // Buffer for incomplete chunks
+
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n').filter(line => line.trim().startsWith('data: '));
+            const chunk = decoder.decode(value, { stream: true });
+            totalChunks++;
+            buffer += chunk;
+
+            // Process complete lines from buffer
+            const lines = buffer.split('\n');
+            // Keep the last potentially incomplete line in buffer
+            buffer = lines.pop() || '';
 
             for (const line of lines) {
-              const data = line.replace('data: ', '').trim();
-              if (data === '[DONE]') continue;
+              const trimmedLine = line.trim();
+              if (!trimmedLine.startsWith('data: ')) continue;
+
+              const data = trimmedLine.replace('data: ', '').trim();
+              if (data === '[DONE]') {
+                // console.log(`[Chat] Stream DONE received`);
+                continue;
+              }
 
               try {
                 const parsed = JSON.parse(data);
-                const content = parsed.choices?.[0]?.delta?.content;
+
+                // Try multiple possible content paths
+                let content = parsed.choices?.[0]?.delta?.content;
+
+                // Fallback: some models use message.content instead of delta.content
+                if (!content && parsed.choices?.[0]?.message?.content) {
+                  content = parsed.choices[0].message.content;
+                }
+
+                // Fallback: some models return text directly
+                if (!content && parsed.choices?.[0]?.text) {
+                  content = parsed.choices[0].text;
+                }
+
                 if (content) {
                   assistantMessage += content;
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
                 }
               } catch (e) {
-                // Skip invalid JSON
+                /* Skip invalid JSON */
               }
             }
+          }
+
+          console.log(`[Chat] Stream complete. Total chunks: ${totalChunks}, Message length: ${assistantMessage.length}`);
+          if (assistantMessage.length === 0) {
+            console.warn(`[Chat] WARNING: Empty assistant message!`);
+          } else {
+            // console.log(`[Chat] First 100 chars: ${assistantMessage.substring(0, 100)}`);
           }
 
           // Prepare new messages to add

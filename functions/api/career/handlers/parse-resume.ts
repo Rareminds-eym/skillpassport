@@ -13,6 +13,7 @@ import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser } from '../utils/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';
+import { getModelForUseCase, callOpenRouterWithRetry } from '../../shared/ai-config';
 
 export async function handleParseResume(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
@@ -76,39 +77,31 @@ ${resumeText.slice(0, 15000)}
 `;
 
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getOpenRouterKey(env)}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': env.SUPABASE_URL || '',
-        'X-Title': 'Resume Parser'
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert resume parser. You extract structured data from resume text with high accuracy. You always return valid JSON.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 4096
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[AI ERROR]', response.status, errorText);
-      return jsonResponse({ error: `AI service error: ${response.status}` }, 500);
+    const openRouterKey = getOpenRouterKey(env);
+    if (!openRouterKey) {
+      return jsonResponse({ error: 'OpenRouter API key not configured' }, 500);
     }
 
-    const data = await response.json() as any;
-    const content = data.choices?.[0]?.message?.content;
+    // Use centralized AI call with retry logic
+    const content = await callOpenRouterWithRetry(
+      openRouterKey,
+      [
+        {
+          role: 'system',
+          content: 'You are an expert resume parser. You extract structured data from resume text with high accuracy. You always return valid JSON.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      {
+        models: [getModelForUseCase('resume_parsing')],
+        maxRetries: 3,
+        maxTokens: 4096,
+        temperature: 0.1
+      }
+    );
 
     if (!content) {
       return jsonResponse({ error: 'Empty response from AI' }, 500);

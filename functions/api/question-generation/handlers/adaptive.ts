@@ -3,101 +3,28 @@ import { PagesEnv } from '../../../../src/functions-lib/types';
 import { GradeLevel, DifficultyLevel, Subtag, QuestionGenerationResult, Question } from '../adaptive-types';
 import { getFallbackQuestion, reorderToPreventConsecutiveSubtags, generateQuestionId } from '../adaptive-utils';
 import { ALL_SUBTAGS, buildSystemPrompt } from '../adaptive-constants';
+import {
+    callOpenRouterWithRetry,
+    repairAndParseJSON,
+    delay,
+    getAPIKeys
+} from '../../shared/ai-config';
 
 // ---- AI Helpers ----
+// All AI utility functions are now imported from centralized ai-config.ts
 
-// Helper function to delay execution
-function delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// Helper function to repair and parse JSON from AI responses
-function repairAndParseJSON(text: string): any {
-    // Clean markdown
-    let cleaned = text
-        .replace(/```json\n?/gi, '')
-        .replace(/```\n?/g, '')
-        .trim();
-
-    // Find JSON boundaries
-    const startIdx = cleaned.indexOf('[');
-    const endIdx = cleaned.lastIndexOf(']');
-    if (startIdx === -1 || endIdx === -1) {
-        throw new Error('No JSON array found in response');
-    }
-    cleaned = cleaned.substring(startIdx, endIdx + 1);
-
-    try {
-        return JSON.parse(cleaned);
-    } catch (e) {
-        console.log('⚠️ JSON parse failed, trying aggressive repair...');
-        cleaned = cleaned.replace(/,\s*([\]}])/g, '$1'); // Remove trailing commas
-        return JSON.parse(cleaned);
-    }
-}
-
-// List of models to try in order (using reliable free models)
-const FREE_MODELS = [
-    'google/gemini-2.0-flash-001',
-    'meta-llama/llama-3-8b-instruct:free',
-    'google/gemini-pro',
-];
-
-// Call OpenRouter with retry
-async function callOpenRouterWithRetry(
+// Wrap callOpenRouterWithRetry to parse JSON and return array
+async function callOpenRouterAndParse(
     openRouterKey: string,
     messages: Array<{ role: string, content: string }>,
     maxRetries: number = 3
 ): Promise<any[]> {
-    let lastError: Error | null = null;
-
-    for (const model of FREE_MODELS) {
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-            try {
-                console.log(`🔄 Trying ${model} (attempt ${attempt + 1}/${maxRetries})`);
-
-                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${openRouterKey}`,
-                        'HTTP-Referer': 'https://skillpassport.pages.dev',
-                        'X-Title': 'SkillPassport Assessment'
-                    },
-                    body: JSON.stringify({
-                        model: model,
-                        max_tokens: 3000,
-                        temperature: 0.7,
-                        messages: messages
-                    })
-                });
-
-                if (response.status === 429) {
-                    const waitTime = Math.pow(2, attempt) * 2000;
-                    await delay(waitTime);
-                    continue;
-                }
-
-                if (!response.ok) {
-                    throw new Error(`${model} failed: ${await response.text()}`);
-                }
-
-                const data = await response.json() as any;
-                const content = data.choices?.[0]?.message?.content;
-
-                if (content) {
-                    return repairAndParseJSON(content);
-                }
-
-                throw new Error('Empty response');
-            } catch (e: any) {
-                console.error(`❌ ${model} error:`, e.message);
-                lastError = e;
-                if (attempt < maxRetries - 1) await delay(1000);
-            }
-        }
-    }
-    throw lastError || new Error('All models failed');
+    const content = await callOpenRouterWithRetry(openRouterKey, messages, {
+        maxRetries,
+        maxTokens: 3000,
+        temperature: 0.7,
+    });
+    return repairAndParseJSON(content);
 }
 
 /**
@@ -112,10 +39,9 @@ async function generateQuestionsWithAI(
     count: number,
     excludeTexts: Set<string>
 ): Promise<{ questions: Question[], usedAI: boolean }> {
-    const openRouterKey = env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;
-    const claudeKey = env.CLAUDE_API_KEY || env.VITE_CLAUDE_API_KEY;
+    const { openRouter: openRouterKey } = getAPIKeys(env);
 
-    if (openRouterKey || claudeKey) {
+    if (openRouterKey) {
         try {
             console.log(`🤖 Generating ${count} questions for ${gradeLevel} (${phase}) - Difficulty ${difficulty}`);
 
@@ -130,9 +56,8 @@ async function generateQuestionsWithAI(
       
       Output ONLY valid JSON array.`;
 
-            // Use helper to call AI
-            // For now assume OpenRouter logic carries over (can add Claude specific path if needed)
-            const aiQuestionsRaw = await callOpenRouterWithRetry(openRouterKey!, [
+            // Use centralized OpenRouter call with retry
+            const aiQuestionsRaw = await callOpenRouterAndParse(openRouterKey, [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
             ]);
@@ -158,7 +83,7 @@ async function generateQuestionsWithAI(
             console.error('⚠️ AI generation failed, falling back:', e.message);
         }
     } else {
-        console.warn('⚠️ No API keys found, skipping AI generation');
+        console.warn('⚠️ OpenRouter API key not configured, using fallback questions');
     }
 
     // Fallback Logic
@@ -201,6 +126,9 @@ export async function generateDiagnosticScreenerQuestions(
 
     return {
         questions: reordered,
+        fromCache: false,
+        generatedCount: reordered.length,
+        cachedCount: 0,
         generatedBy: result.usedAI ? 'ai' : 'fallback',
         modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
     };
@@ -230,6 +158,9 @@ export async function generateAdaptiveCoreQuestions(
 
     return {
         questions: reordered,
+        fromCache: false,
+        generatedCount: reordered.length,
+        cachedCount: 0,
         generatedBy: result.usedAI ? 'ai' : 'fallback',
         modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
     };
@@ -257,6 +188,9 @@ export async function generateStabilityConfirmationQuestions(
 
     return {
         questions: result.questions,
+        fromCache: false,
+        generatedCount: result.questions.length,
+        cachedCount: 0,
         generatedBy: result.usedAI ? 'ai' : 'fallback',
         modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
     };
@@ -283,6 +217,9 @@ export async function generateSingleQuestion(
 
     return {
         questions: result.questions,
+        fromCache: false,
+        generatedCount: result.questions.length,
+        cachedCount: 0,
         generatedBy: result.usedAI ? 'ai' : 'fallback',
         modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
     };
