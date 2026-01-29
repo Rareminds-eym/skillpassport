@@ -58,14 +58,17 @@ const Messages = () => {
   });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, conversationId: null, contactName: '' });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [showNewEducatorConversationModal, setShowNewEducatorConversationModal] = useState(false);
   const [showNewAdminConversationModal, setShowNewAdminConversationModal] = useState(false);
   const [showNewCollegeAdminConversationModal, setShowNewCollegeAdminConversationModal] = useState(false);
   const [showTabDropdown, setShowTabDropdown] = useState(false);
+  const [showNewEducatorDropdown, setShowNewEducatorDropdown] = useState(false);
   const [isTabSwitching, setIsTabSwitching] = useState(false);
   const messagesEndRef = useRef(null);
   const markedAsReadRef = useRef(new Set());
   const menuRef = useRef(null);
   const tabDropdownRef = useRef(null);
+  const newEducatorDropdownRef = useRef(null);
 
   // Get student data - same approach as Applications page
   const { user } = useAuth();
@@ -582,56 +585,104 @@ const Messages = () => {
         };
       });
     } else if (activeTab === 'educators') {
-      // Educator conversations
+      // Educator conversations (both school educators and college lecturers)
       return activeConversations.map(conv => {
         const educator = conv.educator;
-        const educatorName = educator?.first_name && educator?.last_name
-          ? `${educator.first_name} ${educator.last_name}`
-          : educator?.email || 'Educator';
+        
+        // Handle college lecturer conversations differently
+        if (conv.conversation_type === 'student_college_educator') {
+          // College lecturer conversation
+          const educatorName = educator?.first_name && educator?.last_name
+            ? `${educator.first_name} ${educator.last_name}`
+            : educator?.email || 'College Lecturer';
 
-        // Get class and subject info
-        const className = conv.school_class?.name || 'Class';
-        const grade = conv.school_class?.grade || '';
-        const section = conv.school_class?.section || '';
-        const subject = conv.subject || 'General';
-
-        // Build role string
-        let role = subject;
-        if (className && grade) {
-          role += ` • ${grade}`;
-          if (section) {
-            role += `-${section}`;
+          const subject = conv.subject || 'General Discussion';
+          
+          // For college lecturers, show subject and department/specialization if available
+          let role = subject;
+          if (educator?.department) {
+            role += ` • ${educator.department}`;
           }
-        }
 
-        // Generate avatar URL
-        const avatar = educator?.photo_url ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`;
+          // Generate avatar URL (no photo_url field in college_lecturers)
+          const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=9333EA&color=fff`;
 
-        // Format time
-        let timeDisplay = 'No messages';
-        if (conv.last_message_at) {
-          try {
-            timeDisplay = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
-          } catch (e) {
-            timeDisplay = conv.last_message_at;
+          // Format time
+          let timeDisplay = 'No messages';
+          if (conv.last_message_at) {
+            try {
+              timeDisplay = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
+            } catch (e) {
+              timeDisplay = conv.last_message_at;
+            }
           }
-        }
 
-        return {
-          id: conv.id,
-          name: educatorName,
-          role: role,
-          avatar: avatar,
-          lastMessage: conv.last_message_preview || 'No messages yet',
-          time: timeDisplay,
-          unread: conv.student_unread_count || 0,
-          online: isUserOnlineGlobal(conv.educator_id),
-          educatorId: conv.educator_id,
-          classId: conv.class_id,
-          subject: conv.subject,
-          type: 'educator'
-        };
+          return {
+            id: conv.id,
+            name: educatorName,
+            role: role,
+            avatar: avatar,
+            lastMessage: conv.last_message_preview || 'No messages yet',
+            time: timeDisplay,
+            unread: conv.student_unread_count || 0,
+            online: isUserOnlineGlobal(conv.educator_id),
+            educatorId: conv.educator_id,
+            programSectionId: conv.program_section_id,
+            subject: conv.subject,
+            type: 'college_lecturer',
+            conversationType: 'student_college_educator'
+          };
+        } else {
+          // School educator conversation (existing logic unchanged)
+          const educatorName = educator?.first_name && educator?.last_name
+            ? `${educator.first_name} ${educator.last_name}`
+            : educator?.email || 'Educator';
+
+          // Get class and subject info
+          const className = conv.school_class?.name || 'Class';
+          const grade = conv.school_class?.grade || '';
+          const section = conv.school_class?.section || '';
+          const subject = conv.subject || 'General';
+
+          // Build role string
+          let role = subject;
+          if (className && grade) {
+            role += ` • ${grade}`;
+            if (section) {
+              role += `-${section}`;
+            }
+          }
+
+          // Generate avatar URL
+          const avatar = educator?.photo_url ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`;
+
+          // Format time
+          let timeDisplay = 'No messages';
+          if (conv.last_message_at) {
+            try {
+              timeDisplay = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
+            } catch (e) {
+              timeDisplay = conv.last_message_at;
+            }
+          }
+
+          return {
+            id: conv.id,
+            name: educatorName,
+            role: role,
+            avatar: avatar,
+            lastMessage: conv.last_message_preview || 'No messages yet',
+            time: timeDisplay,
+            unread: conv.student_unread_count || 0,
+            online: isUserOnlineGlobal(conv.educator_id),
+            educatorId: conv.educator_id,
+            classId: conv.class_id,
+            subject: conv.subject,
+            type: 'educator',
+            conversationType: 'student_educator'
+          };
+        }
       });
     } else if (activeTab === 'admin') {
       // School admin conversations
@@ -748,15 +799,31 @@ const Messages = () => {
           }
         } else if (activeTab === 'educators') {
           // Send message to educator
-          await sendMessage({
-            senderId: studentId,
-            senderType: 'student',
-            receiverId: currentChat.educatorId,
-            receiverType: 'educator',
-            messageText: messageInput,
-            classId: currentChat.classId,
-            subject: currentChat.subject
-          });
+          // await sendMessage({
+          //   senderId: studentId,
+          //   senderType: 'student',
+          //   receiverId: currentChat.educatorId,
+          //   receiverType: 'educator',
+          //   messageText: messageInput,
+          //   classId: currentChat.classId,
+          //   subject: currentChat.subject
+          // });
+          
+  // Check if it's a college lecturer conversation
+  const receiverType = currentChat.conversationType === 'student_college_educator' 
+    ? 'college_educator'  // ✅ For college lecturers
+    : 'educator';         // ✅ For school educators (unchanged)
+    
+  await sendMessage({
+    senderId: studentId,
+    senderType: 'student',
+    receiverId: currentChat.educatorId,
+    receiverType: receiverType,  // ✅ Use dynamic type
+    messageText: messageInput,
+    classId: currentChat.classId,
+    subject: currentChat.subject
+  });
+
 
           // Send notification broadcast to educator
           try {
@@ -896,15 +963,18 @@ const Messages = () => {
     if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target)) {
       setShowTabDropdown(false);
     }
+    if (newEducatorDropdownRef.current && !newEducatorDropdownRef.current.contains(event.target)) {
+      setShowNewEducatorDropdown(false);
+    }
   }, []);
 
   useEffect(() => {
     // Only add listener when menu is open for better performance
-    if (showMenu !== null || showTabDropdown) {
+    if (showMenu !== null || showTabDropdown || showNewEducatorDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showMenu, showTabDropdown, handleClickOutside]);
+  }, [showMenu, showTabDropdown, showNewEducatorDropdown, handleClickOutside]);
 
   // Handle delete conversation using mutation
   const handleDeleteConversation = useCallback(async () => {
@@ -1072,17 +1142,64 @@ const Messages = () => {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold text-gray-900">Messages</h1>
 
-            <div className="flex items-center gap-2">
-              {/* New Button - Show only for Educators tab */}
+            <div className="flex items-center gap-3 ml-4">
+              {/* New Button - Show dropdown for Educators tab */}
               {activeTab === 'educators' && (
-                <button
-                  onClick={() => setShowNewConversationModal(true)}
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-                  title="Start new conversation with educator"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  New
-                </button>
+                <div className="relative" ref={newEducatorDropdownRef}>
+                  <button
+                    onClick={() => setShowNewEducatorDropdown(!showNewEducatorDropdown)}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                    title="Start new conversation with educator"
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    New
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  
+                  {showNewEducatorDropdown && (
+                    <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      {hasSchoolId && (
+                        <button
+                          onClick={() => {
+                            setShowNewEducatorConversationModal(true);
+                            setShowNewEducatorDropdown(false);
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <GraduationCap className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">School Teacher</div>
+                              <div className="text-xs text-gray-500">Message about classes and assignments</div>
+                            </div>
+                          </div>
+                        </button>
+                      )}
+                      
+                      {hasCollegeId && (
+                        <button
+                          onClick={() => {
+                            setShowNewEducatorConversationModal(true);
+                            setShowNewEducatorDropdown(false);
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                              <Building2 className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">College Lecturer</div>
+                              <div className="text-xs text-gray-500">Message about courses and programs</div>
+                            </div>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Tab Dropdown */}
@@ -1335,12 +1452,40 @@ const Messages = () => {
                   <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">No educator conversations yet</p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">Message your teachers about classes!</p>
-                  <button
-                    onClick={() => setShowNewConversationModal(true)}
-                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    Start New Conversation
-                  </button>
+                  
+                  {/* Show different buttons based on what's available */}
+                  {hasSchoolId && hasCollegeId ? (
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => setShowNewEducatorConversationModal(true)}
+                        className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Message School Teacher
+                      </button>
+                      <button
+                        onClick={() => setShowNewEducatorConversationModal(true)}
+                        className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Message College Lecturer
+                      </button>
+                    </div>
+                  ) : hasSchoolId ? (
+                    <button
+                      onClick={() => setShowNewEducatorConversationModal(true)}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      Message School Teacher
+                    </button>
+                  ) : hasCollegeId ? (
+                    <button
+                      onClick={() => setShowNewEducatorConversationModal(true)}
+                      className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      Message College Lecturer
+                    </button>
+                  ) : (
+                    <p className="text-gray-400 text-xs">No educators available</p>
+                  )}
                 </>
               ) : activeTab === 'admin' ? (
                 <>
@@ -1640,30 +1785,61 @@ const Messages = () => {
         isDeleting={deleteMutation.isPending}
       />
 
-      {/* New Educator Conversation Modal */}
+      {/* New School Educator Conversation Modal */}
       <NewEducatorConversationModal
-        isOpen={showNewConversationModal}
-        onClose={() => setShowNewConversationModal(false)}
+        isOpen={showNewEducatorConversationModal}
+        onClose={() => setShowNewEducatorConversationModal(false)}
         studentId={studentId}
-        onConversationCreated={async ({ educatorId, classId, subject, initialMessage }) => {
+        onConversationCreated={async ({ educatorId, educatorType, classId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating conversation with:', { educatorId, classId, subject, initialMessage });
-            const conversation = await MessageService.getOrCreateStudentEducatorConversation(
-              studentId,
-              educatorId,
-              classId,
-              subject
-            );
-            console.log('✅ Conversation created:', conversation);
+            console.log('🚀 Creating conversation with educator:', { educatorId, educatorType, classId, subject, initialMessage });
+            
+            let conversation;
+            if (educatorType === 'college_lecturer') {
+              // Create college lecturer conversation
+              conversation = await MessageService.getOrCreateStudentCollegeLecturerConversation(
+                studentId,
+                educatorId,
+                studentData?.university_college_id, // collegeId
+                null, // programSectionId - will be set by backend if available
+                subject
+              );
+              console.log('✅ College lecturer conversation created:', conversation);
+            } else {
+              // Create school educator conversation
+              conversation = await MessageService.getOrCreateStudentEducatorConversation(
+                studentId,
+                educatorId,
+                classId,
+                subject
+              );
+              console.log('✅ School educator conversation created:', conversation);
+            }
 
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
-              await MessageService.sendStudentEducatorMessage(
-                conversation.id,
-                studentId,
-                initialMessage.trim()
-              );
-              console.log('✅ Initial message sent');
+              if (educatorType === 'college_lecturer') {
+                await MessageService.sendMessage(
+                  conversation.id,
+                  studentId,
+                  'student',
+                  educatorId,
+                  'college_educator',
+                  initialMessage.trim(),
+                  null, // applicationId
+                  null, // opportunityId
+                  null, // classId
+                  subject
+                );
+                console.log('✅ Initial message sent to college lecturer');
+              } else {
+                await MessageService.sendStudentEducatorMessage(
+                  conversation.id,
+                  studentId,
+                  initialMessage.trim()
+                );
+                console.log('✅ Initial message sent to school educator');
+              }
             }
 
             // First refetch conversations to get the new conversation in the list
@@ -1677,9 +1853,10 @@ const Messages = () => {
               console.log('📝 Conversation should now be selected:', conversation.id);
             }, 100);
 
-            toast.success('Conversation started and message sent!');
+            const educatorTypeText = educatorType === 'college_lecturer' ? 'college lecturer' : 'school teacher';
+            toast.success(`Conversation started with ${educatorTypeText}!`);
           } catch (error) {
-            console.error('❌ Error creating conversation:', error);
+            console.error('❌ Error creating educator conversation:', error);
 
             // More specific error messages
             let errorMessage = 'Failed to start conversation';
