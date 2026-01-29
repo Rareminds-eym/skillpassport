@@ -35,6 +35,9 @@ interface AssessmentResult {
   career_fit: any;
   skill_gap: any;
   gemini_results: any;
+  overall_summary: any;
+  enrollmentNumber: string | null;
+  student_grade: string | null;
 }
 
 // Filter Section Component
@@ -130,7 +133,6 @@ const ReadinessBadge = ({ readiness }: { readiness: string | null }) => {
     </span>
   );
 };
-
 
 // Assessment Card Component
 const AssessmentCard = ({
@@ -238,7 +240,6 @@ const AssessmentCard = ({
   );
 };
 
-
 /* OLD Detail Modal Component - Commented out, replaced with AssessmentReportDrawer
 const AssessmentDetailModal = ({
   result,
@@ -295,7 +296,6 @@ const AssessmentDetailModal = ({
 };
 END OF OLD Detail Modal Component */
 
-
 // Main Component
 const SchoolAdminAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
@@ -323,6 +323,23 @@ const SchoolAdminAssessmentResults: React.FC = () => {
     readiness: [] as string[],
   });
 
+  // Test Supabase connection
+  const testConnection = async () => {
+    try {
+      console.log('🧪 Testing Supabase connection...');
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('count')
+        .limit(1);
+      
+      console.log('✅ Supabase connection test result:', { data, error });
+      return !error;
+    } catch (err) {
+      console.log('❌ Supabase connection test failed:', err);
+      return false;
+    }
+  };
+
   // Fetch assessment results for this school only
   const fetchResults = async () => {
     try {
@@ -332,10 +349,13 @@ const SchoolAdminAssessmentResults: React.FC = () => {
       // Get current user's email
       const userEmail = user?.email;
       if (!userEmail) {
-        setError('User not authenticated');
+        console.error('❌ User not authenticated');
+        setError('User not authenticated. Please log in again.');
         setLoading(false);
         return;
       }
+
+      console.log('🔍 Fetching results for user:', userEmail);
 
       // Find school by matching email in organizations table (case-insensitive)
       const { data: org, error: orgError } = await supabase
@@ -345,13 +365,32 @@ const SchoolAdminAssessmentResults: React.FC = () => {
         .ilike('email', userEmail)
         .maybeSingle();
 
-      if (orgError || !org?.id) {
-        console.error('Error fetching organization:', orgError, 'for email:', userEmail);
-        setError('No school associated with your account');
+      if (orgError) {
+        console.error('❌ Organization fetch error:', orgError);
+        
+        // Handle specific error types
+        if (orgError.message?.includes('Invalid login credentials')) {
+          setError('Authentication expired. Please log in again.');
+          // Optionally redirect to login
+          // window.location.href = '/login';
+          return;
+        } else if (orgError.message?.includes('CORS') || orgError.message?.includes('NetworkError')) {
+          setError('Connection error. Please check your internet connection and try again.');
+          return;
+        } else {
+          setError(`Database error: ${orgError.message}`);
+          return;
+        }
+      }
+
+      if (!org?.id) {
+        console.error('❌ No school found for email:', userEmail);
+        setError('No school associated with your account. Please contact support.');
         setLoading(false);
         return;
       }
 
+      console.log('✅ Found school:', org.name);
       const schoolId = org.id;
       
       // Set school name from the already fetched organization data
@@ -360,7 +399,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
       // Get students from this school
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('user_id, name, email')
+        .select('user_id, name, email, enrollmentNumber, grade')
         .eq('school_id', schoolId);
 
       if (studentsError) throw studentsError;
@@ -398,7 +437,8 @@ const SchoolAdminAssessmentResults: React.FC = () => {
           created_at,
           career_fit,
           skill_gap,
-          gemini_results
+          gemini_results,
+          overall_summary
         `)
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
@@ -412,7 +452,9 @@ const SchoolAdminAssessmentResults: React.FC = () => {
           student_name: student?.name || null,
           student_email: student?.email || null,
           school_id: schoolId,
-          school_name: school.name || null,
+          school_name: org.name || null,
+          enrollmentNumber: student?.enrollmentNumber || null,
+          student_grade: student?.grade || null,
         };
       });
 
@@ -426,8 +468,18 @@ const SchoolAdminAssessmentResults: React.FC = () => {
   };
 
   useEffect(() => {
+    console.log('🔍 Auth Debug - School Admin Assessment Results:');
+    console.log('User object:', user);
+    console.log('User email:', user?.email);
+    console.log('User authenticated:', !!user);
+    
     if (user?.email) {
+      console.log('✅ User authenticated, fetching results...');
       fetchResults();
+    } else {
+      console.log('❌ User not authenticated');
+      setError('Please log in to view assessment results');
+      setLoading(false);
     }
   }, [user?.email]);
 
@@ -777,12 +829,28 @@ const SchoolAdminAssessmentResults: React.FC = () => {
               </div>
               <h3 className="text-lg font-semibold text-red-900 mb-2">Error Loading Results</h3>
               <p className="text-red-800 mb-4">{error}</p>
-              <button
-                onClick={fetchResults}
-                className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Try Again
-              </button>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={fetchResults}
+                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={testConnection}
+                  className="inline-flex items-center px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  Test Connection
+                </button>
+                {error.includes('Authentication') && (
+                  <button
+                    onClick={() => window.location.href = '/login'}
+                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Re-login
+                  </button>
+                )}
+              </div>
             </div>
           ) : paginatedResults.length === 0 ? (
             <div className="text-center py-16">
@@ -1014,12 +1082,35 @@ const SchoolAdminAssessmentResults: React.FC = () => {
         student={selectedResult ? {
           id: selectedResult.student_id,
           user_id: selectedResult.student_id,
-          name: selectedResult.student_name,
-          email: selectedResult.student_email,
-          college: selectedResult.school_name,
-          college_name: selectedResult.school_name,
-        } : null}
-        assessmentResult={selectedResult}
+          name: selectedResult.student_name || undefined,
+          email: selectedResult.student_email || undefined,
+          college: selectedResult.school_name || undefined,
+          college_name: selectedResult.school_name || undefined,
+          grade: selectedResult.stream_id || undefined,
+          school_name: selectedResult.school_name || undefined,
+          roll_number: selectedResult.enrollmentNumber || 'N/A',
+          student_grade: selectedResult.student_grade || undefined
+        } : undefined}
+        assessmentResult={selectedResult ? {
+          id: selectedResult.id,
+          student_id: selectedResult.student_id,
+          stream_id: selectedResult.stream_id,
+          riasec_code: selectedResult.riasec_code || undefined,
+          aptitude_overall: selectedResult.aptitude_overall ?? undefined,
+          employability_readiness: typeof selectedResult.employability_readiness === 'string' 
+            ? parseInt(selectedResult.employability_readiness) || undefined
+            : selectedResult.employability_readiness ?? undefined,
+          status: selectedResult.status,
+          created_at: selectedResult.created_at,
+          student_name: selectedResult.student_name || undefined,
+          student_email: selectedResult.student_email || undefined,
+          college_name: selectedResult.school_name || undefined,
+          grade_level: selectedResult.stream_id || undefined,
+          career_fit: selectedResult.career_fit,
+          skill_gap: selectedResult.skill_gap,
+          gemini_results: selectedResult.gemini_results,
+          overall_summary: selectedResult.overall_summary
+        } : undefined}
         isOpen={showDetailModal}
         onClose={() => {
           setShowDetailModal(false);
