@@ -357,7 +357,266 @@ const RECOMMEND_CONFIG = {
 };
 
 /**
+ * Build enriched text for a certificate (for semantic embedding)
+ */
+function buildCertificateText(cert: any): string {
+  const parts: string[] = [];
+  if (cert.title) parts.push(`Certificate: ${cert.title}`);
+  if (cert.issuer) parts.push(`issued by ${cert.issuer}`);
+  if (cert.platform) parts.push(`on ${cert.platform}`);
+  if (cert.level) parts.push(`Level: ${cert.level}`);
+  if (cert.category) parts.push(`Category: ${cert.category}`);
+  if (cert.description) parts.push(cert.description);
+  return parts.join('. ');
+}
+
+/**
+ * Build enriched text for a project (for semantic embedding)
+ */
+function buildProjectText(proj: any): string {
+  const parts: string[] = [];
+  if (proj.title) parts.push(`Project: ${proj.title}`);
+  if (proj.role) parts.push(`Role: ${proj.role}`);
+  if (proj.organization) parts.push(`at ${proj.organization}`);
+  if (proj.tech_stack && proj.tech_stack.length > 0) {
+    parts.push(`Technologies: ${proj.tech_stack.join(', ')}`);
+  }
+  if (proj.description) parts.push(proj.description);
+  return parts.join('. ');
+}
+
+/**
+ * Build enriched text for a training (for semantic embedding)
+ */
+function buildTrainingText(training: any): string {
+  const parts: string[] = [];
+  if (training.title) parts.push(`Training: ${training.title}`);
+  if (training.organization) parts.push(`by ${training.organization}`);
+  if (training.source) parts.push(`via ${training.source}`);
+  if (training.duration) parts.push(`Duration: ${training.duration}`);
+  if (training.description) parts.push(training.description);
+  return parts.join('. ');
+}
+
+/**
+ * Build enriched text for a skill (for semantic embedding)
+ */
+function buildSkillText(skill: any): string {
+  const parts: string[] = [];
+  if (skill.name) parts.push(skill.name);
+  if (skill.type) parts.push(`(${skill.type} skill)`);
+  if (skill.proficiency_level) {
+    parts.push(`Proficiency: ${skill.proficiency_level}`);
+  } else if (skill.level) {
+    parts.push(`Level: ${skill.level}/5`);
+  }
+  if (skill.description) parts.push(skill.description);
+  return parts.join('. ');
+}
+
+/**
+ * Build enriched text for a course enrollment (for semantic embedding)
+ */
+function buildCourseEnrollmentText(enrollment: any): string {
+  const parts: string[] = [];
+  if (enrollment.course_title) parts.push(`Course: ${enrollment.course_title}`);
+  if (enrollment.status) parts.push(`Status: ${enrollment.status}`);
+  if (enrollment.progress && enrollment.progress > 0) {
+    parts.push(`Progress: ${enrollment.progress}%`);
+  }
+  if (enrollment.grade) parts.push(`Grade: ${enrollment.grade}`);
+  if (enrollment.skills_acquired && enrollment.skills_acquired.length > 0) {
+    parts.push(`Skills learned: ${enrollment.skills_acquired.join(', ')}`);
+  }
+  return parts.join('. ');
+}
+
+/**
+ * Generate embedding via OpenRouter API
+ */
+async function generateEmbeddingFromText(
+  text: string,
+  env: Env
+): Promise<number[] | null> {
+  const openRouterKey = getOpenRouterKey(env);
+  if (!openRouterKey) {
+    console.error('[EMBED] OpenRouter API key not configured');
+    return null;
+  }
+
+  try {
+    const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openRouterKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://skillpassport.rareminds.in',
+        'X-Title': 'SkillPassport Embedding',
+      },
+      body: JSON.stringify({
+        model: 'openai/text-embedding-3-small',
+        input: text.slice(0, 8000),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[EMBED] OpenRouter error:', response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json() as { data: Array<{ embedding: number[] }> };
+    return data.data[0]?.embedding || null;
+  } catch (error) {
+    console.error('[EMBED] Error:', error);
+    return null;
+  }
+}
+
+/**
+ * Generate embeddings for individual entities (certificates, projects, trainings)
+ * This enables granular semantic matching in the V2 matching function
+ */
+async function generateEntityEmbeddings(
+  supabase: SupabaseClient,
+  studentId: string,
+  env: Env
+): Promise<void> {
+  console.log(`[ENTITY-EMBED] Generating entity embeddings for student ${studentId}`);
+
+  // Fetch certificates without embeddings
+  const { data: certificates } = await supabase
+    .from('certificates')
+    .select('id, title, issuer, platform, level, category, description')
+    .eq('student_id', studentId)
+    .eq('enabled', true)
+    .is('embedding', null)
+    .limit(10);
+
+  // Generate embeddings for certificates
+  if (certificates && certificates.length > 0) {
+    for (const cert of certificates) {
+      const text = buildCertificateText(cert);
+      if (text.length > 20) {
+        const embedding = await generateEmbeddingFromText(text, env);
+        if (embedding) {
+          await supabase
+            .from('certificates')
+            .update({ embedding })
+            .eq('id', cert.id);
+          console.log(`[ENTITY-EMBED] Generated embedding for certificate: ${cert.title}`);
+        }
+      }
+    }
+  }
+
+  // Fetch projects without embeddings
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('id, title, role, organization, tech_stack, description')
+    .eq('student_id', studentId)
+    .eq('enabled', true)
+    .is('embedding', null)
+    .limit(10);
+
+  // Generate embeddings for projects
+  if (projects && projects.length > 0) {
+    for (const proj of projects) {
+      const text = buildProjectText(proj);
+      if (text.length > 20) {
+        const embedding = await generateEmbeddingFromText(text, env);
+        if (embedding) {
+          await supabase
+            .from('projects')
+            .update({ embedding })
+            .eq('id', proj.id);
+          console.log(`[ENTITY-EMBED] Generated embedding for project: ${proj.title}`);
+        }
+      }
+    }
+  }
+
+  // Fetch trainings without embeddings
+  const { data: trainings } = await supabase
+    .from('trainings')
+    .select('id, title, organization, source, duration, description')
+    .eq('student_id', studentId)
+    .is('embedding', null)
+    .limit(10);
+
+  // Generate embeddings for trainings
+  if (trainings && trainings.length > 0) {
+    for (const training of trainings) {
+      const text = buildTrainingText(training);
+      if (text.length > 20) {
+        const embedding = await generateEmbeddingFromText(text, env);
+        if (embedding) {
+          await supabase
+            .from('trainings')
+            .update({ embedding })
+            .eq('id', training.id);
+          console.log(`[ENTITY-EMBED] Generated embedding for training: ${training.title}`);
+        }
+      }
+    }
+  }
+
+  // Fetch skills without embeddings
+  const { data: skills } = await supabase
+    .from('skills')
+    .select('id, name, type, level, proficiency_level, description')
+    .eq('student_id', studentId)
+    .eq('enabled', true)
+    .is('embedding', null)
+    .limit(15);
+
+  // Generate embeddings for skills
+  if (skills && skills.length > 0) {
+    for (const skill of skills) {
+      const text = buildSkillText(skill);
+      if (text.length > 10) {
+        const embedding = await generateEmbeddingFromText(text, env);
+        if (embedding) {
+          await supabase
+            .from('skills')
+            .update({ embedding })
+            .eq('id', skill.id);
+          console.log(`[ENTITY-EMBED] Generated embedding for skill: ${skill.name}`);
+        }
+      }
+    }
+  }
+
+  // Fetch course enrollments without embeddings
+  const { data: courseEnrollments } = await supabase
+    .from('course_enrollments')
+    .select('id, course_title, status, progress, grade, skills_acquired')
+    .eq('student_id', studentId)
+    .in('status', ['completed', 'in_progress', 'active'])
+    .is('embedding', null)
+    .limit(10);
+
+  // Generate embeddings for course enrollments
+  if (courseEnrollments && courseEnrollments.length > 0) {
+    for (const enrollment of courseEnrollments) {
+      const text = buildCourseEnrollmentText(enrollment);
+      if (text.length > 20) {
+        const embedding = await generateEmbeddingFromText(text, env);
+        if (embedding) {
+          await supabase
+            .from('course_enrollments')
+            .update({ embedding })
+            .eq('id', enrollment.id);
+          console.log(`[ENTITY-EMBED] Generated embedding for course: ${enrollment.course_title}`);
+        }
+      }
+    }
+  }
+}
+
+/**
  * Generate embedding for a student internally (used by recommend-opportunities)
+ * V2: Uses enriched profile text with certificates, projects, and skills context
  * Fetches student data, builds text, generates embedding via OpenRouter, and saves to DB
  */
 async function generateStudentEmbeddingInternal(
@@ -369,7 +628,7 @@ async function generateStudentEmbeddingInternal(
     // Fetch student with related data
     const { data: student, error: studentError } = await supabase
       .from('students')
-      .select('id, name, branch_field, course_name, university')
+      .select('id, name, branch_field, course_name, university, bio')
       .eq('id', studentId)
       .single();
 
@@ -378,12 +637,30 @@ async function generateStudentEmbeddingInternal(
       return null;
     }
 
-    // Fetch skills
+    // Fetch skills with proficiency levels
     const { data: skills } = await supabase
       .from('skills')
-      .select('name, level, type')
+      .select('name, level, type, description')
       .eq('student_id', studentId)
-      .eq('enabled', true);
+      .eq('enabled', true)
+      .order('level', { ascending: false })
+      .limit(15);
+
+    // Fetch certificates with full context
+    const { data: certificates } = await supabase
+      .from('certificates')
+      .select('title, issuer, level, category, description, platform')
+      .eq('student_id', studentId)
+      .eq('enabled', true)
+      .limit(10);
+
+    // Fetch projects with tech stacks
+    const { data: projects } = await supabase
+      .from('projects')
+      .select('title, description, tech_stack, role, organization')
+      .eq('student_id', studentId)
+      .eq('enabled', true)
+      .limit(5);
 
     // Fetch course enrollments
     const { data: courseEnrollments } = await supabase
@@ -395,88 +672,108 @@ async function generateStudentEmbeddingInternal(
     // Fetch trainings
     const { data: trainings } = await supabase
       .from('trainings')
-      .select('title, organization, status')
-      .eq('student_id', studentId);
+      .select('title, organization, description, source')
+      .eq('student_id', studentId)
+      .limit(5);
 
-    // Build embedding text
+    // ========== Build ENRICHED Embedding Text ==========
     const parts: string[] = [];
 
+    // Section 1: Core Profile
+    parts.push('=== STUDENT PROFILE ===');
     if (student.name) parts.push(`Name: ${student.name}`);
     if (student.branch_field) parts.push(`Field of Study: ${student.branch_field}`);
     if (student.course_name) parts.push(`Course: ${student.course_name}`);
     if (student.university) parts.push(`University: ${student.university}`);
+    if (student.bio) parts.push(`Bio: ${student.bio}`);
 
-    // Add skills
+    // Section 2: Skills with Proficiency (critical for matching)
     if (skills && skills.length > 0) {
-      const skillNames = skills.map(s => s.name).filter(Boolean);
-      if (skillNames.length > 0) {
-        parts.push(`Technical Skills: ${skillNames.join(', ')}`);
+      parts.push('\n=== TECHNICAL SKILLS ===');
+      const skillStrings = skills.map(s => {
+        let skillStr = s.name;
+        if (s.level) skillStr += ` (Level ${s.level}/5)`;
+        if (s.type) skillStr += ` [${s.type}]`;
+        return skillStr;
+      });
+      parts.push(skillStrings.join(', '));
+    }
+
+    // Section 3: Certificates with FULL context (key differentiator)
+    if (certificates && certificates.length > 0) {
+      parts.push('\n=== CERTIFICATIONS ===');
+      for (const cert of certificates) {
+        let certStr = cert.title;
+        if (cert.issuer) certStr += ` from ${cert.issuer}`;
+        if (cert.platform) certStr += ` on ${cert.platform}`;
+        if (cert.level) certStr += ` (${cert.level})`;
+        if (cert.category) certStr += ` - Category: ${cert.category}`;
+        if (cert.description) certStr += `. ${cert.description}`;
+        parts.push(`• ${certStr}`);
       }
     }
 
-    // Add completed courses
+    // Section 4: Projects with Tech Stacks (proof of work)
+    if (projects && projects.length > 0) {
+      parts.push('\n=== PROJECTS ===');
+      for (const proj of projects) {
+        let projStr = proj.title;
+        if (proj.role) projStr += ` (${proj.role})`;
+        if (proj.organization) projStr += ` at ${proj.organization}`;
+        if (proj.tech_stack && proj.tech_stack.length > 0) {
+          projStr += ` | Technologies: ${proj.tech_stack.join(', ')}`;
+        }
+        if (proj.description) projStr += `. ${proj.description.slice(0, 200)}`;
+        parts.push(`• ${projStr}`);
+      }
+    }
+
+    // Section 5: Trainings
+    if (trainings && trainings.length > 0) {
+      parts.push('\n=== TRAINING PROGRAMS ===');
+      for (const training of trainings) {
+        let trainStr = training.title;
+        if (training.organization) trainStr += ` by ${training.organization}`;
+        if (training.source) trainStr += ` via ${training.source}`;
+        if (training.description) trainStr += `. ${training.description.slice(0, 150)}`;
+        parts.push(`• ${trainStr}`);
+      }
+    }
+
+    // Section 6: Completed Courses with Skills
     if (courseEnrollments && courseEnrollments.length > 0) {
-      const completedCourses = courseEnrollments
-        .filter(c => c.status === 'completed')
-        .map(c => c.course_title)
-        .filter(Boolean);
-      if (completedCourses.length > 0) {
-        parts.push(`Completed Courses: ${completedCourses.join(', ')}`);
+      const completed = courseEnrollments.filter(c => c.status === 'completed');
+      if (completed.length > 0) {
+        parts.push('\n=== COMPLETED COURSES ===');
+        for (const course of completed.slice(0, 5)) {
+          let courseStr = course.course_title;
+          if (course.skills_acquired && course.skills_acquired.length > 0) {
+            courseStr += ` | Skills: ${course.skills_acquired.join(', ')}`;
+          }
+          parts.push(`• ${courseStr}`);
+        }
       }
 
-      // Extract skills from courses
+      // Extract all acquired skills
       const acquiredSkills = courseEnrollments
         .filter(c => c.status === 'completed' && c.skills_acquired?.length > 0)
         .flatMap(c => c.skills_acquired)
         .filter(Boolean);
       if (acquiredSkills.length > 0) {
-        parts.push(`Skills from Courses: ${acquiredSkills.join(', ')}`);
-      }
-    }
-
-    // Add trainings
-    if (trainings && trainings.length > 0) {
-      const trainingNames = trainings.map(t => t.title).filter(Boolean);
-      if (trainingNames.length > 0) {
-        parts.push(`Training: ${trainingNames.join(', ')}`);
+        parts.push(`\nSkills from Courses: ${[...new Set(acquiredSkills)].join(', ')}`);
       }
     }
 
     const text = parts.join('\n');
-    if (text.length < 10) {
+    if (text.length < 50) {
       console.log(`[AUTO-EMBED] Insufficient data for student ${studentId}`);
       return null;
     }
 
+    console.log(`[AUTO-EMBED] Built enriched profile text (${text.length} chars) for student ${studentId}`);
+
     // Generate embedding via OpenRouter
-    const openRouterKey = getOpenRouterKey(env);
-    if (!openRouterKey) {
-      console.error('[AUTO-EMBED] OpenRouter API key not configured');
-      return null;
-    }
-
-    const embeddingResponse = await fetch('https://openrouter.ai/api/v1/embeddings', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openRouterKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://skillpassport.rareminds.in',
-        'X-Title': 'SkillPassport Auto-Embedding',
-      },
-      body: JSON.stringify({
-        model: 'openai/text-embedding-3-small',
-        input: text.slice(0, 8000),
-      }),
-    });
-
-    if (!embeddingResponse.ok) {
-      const errorText = await embeddingResponse.text();
-      console.error('[AUTO-EMBED] OpenRouter error:', embeddingResponse.status, errorText);
-      return null;
-    }
-
-    const data = await embeddingResponse.json() as { data: Array<{ embedding: number[] }> };
-    const embedding = data.data[0]?.embedding;
+    const embedding = await generateEmbeddingFromText(text, env);
 
     if (!embedding || !Array.isArray(embedding)) {
       console.error('[AUTO-EMBED] Invalid embedding response');
@@ -495,6 +792,12 @@ async function generateStudentEmbeddingInternal(
     }
 
     console.log(`[AUTO-EMBED] Generated ${embedding.length}-dim embedding for student ${studentId}`);
+
+    // Also generate entity embeddings for V2 matching (non-blocking)
+    generateEntityEmbeddings(supabase, studentId, env).catch(err => {
+      console.error('[ENTITY-EMBED] Background generation error:', err);
+    });
+
     return embedding;
 
   } catch (error) {
@@ -609,14 +912,41 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
 
   const dismissedIds = dismissed?.map(d => d.opportunity_id) || [];
 
-  // Run enhanced matching
-  const { data: recommendations, error: matchError } = await supabase.rpc('match_opportunities_enhanced', {
+  // ==================== HYBRID MATCHING (V2) ====================
+  // Try V2 matching first (with entity-level scoring for certificates/projects)
+  // Falls back to V1 if V2 function doesn't exist yet
+  let recommendations: any[] | null = null;
+  let matchError: any = null;
+  let algorithmVersion = 'v2.0';
+
+  // First, try the V2 enhanced matching function with entity-level scoring
+  const { data: v2Recommendations, error: v2MatchError } = await supabase.rpc('match_opportunities_enhanced_v2', {
     query_embedding: studentEmbedding,
     student_id_param: studentId,
     dismissed_ids: dismissedIds,
     match_threshold: RECOMMEND_CONFIG.MATCH_THRESHOLD,
     match_count: RECOMMEND_CONFIG.MAX_RECOMMENDATIONS
   });
+
+  if (!v2MatchError && v2Recommendations && v2Recommendations.length > 0) {
+    recommendations = v2Recommendations;
+    console.log(`[MATCH V2] Student ${studentId} - using entity-level scoring`);
+  } else {
+    // Fallback to V1 matching if V2 fails or doesn't exist
+    console.log(`[MATCH V1 FALLBACK] V2 error or no results, trying V1 for student ${studentId}`);
+    algorithmVersion = 'v1.0';
+    
+    const { data: v1Recommendations, error: v1MatchError } = await supabase.rpc('match_opportunities_enhanced', {
+      query_embedding: studentEmbedding,
+      student_id_param: studentId,
+      dismissed_ids: dismissedIds,
+      match_threshold: RECOMMEND_CONFIG.MATCH_THRESHOLD,
+      match_count: RECOMMEND_CONFIG.MAX_RECOMMENDATIONS
+    });
+    
+    recommendations = v1Recommendations;
+    matchError = v1MatchError;
+  }
 
   if (matchError) {
     console.error('Match error:', matchError);
@@ -627,13 +957,20 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
     return await getPopularFallback(supabase, studentId, safeLimit, startTime, 'no_matches');
   }
 
-  let finalRecommendations = recommendations;
-  
-  // If we have fewer matches than requested, DON'T pad with popular opportunities
-  // This ensures only quality AI matches are shown
-  // The frontend will display whatever matches we have (even if less than requested)
+  // ==================== RESPONSE ENRICHMENT ====================
+  // Add match breakdown info for V2 results
+  const enrichedRecommendations = recommendations.map(rec => ({
+    ...rec,
+    // Include entity-level scores if available (V2)
+    match_breakdown: rec.certificate_match_score !== undefined ? {
+      profile_similarity: Math.round((rec.similarity || 0) * 100),
+      skill_match: Math.round((rec.skill_match_score || 0) * 100),
+      certificate_relevance: Math.round((rec.certificate_match_score || 0) * 100),
+      project_relevance: Math.round((rec.project_match_score || 0) * 100)
+    } : undefined
+  }));
 
-  const topRecommendations = finalRecommendations.slice(0, safeLimit);
+  const topRecommendations = enrichedRecommendations.slice(0, safeLimit);
   const executionTime = Date.now() - startTime;
 
   // ==================== SAVE TO CACHE ====================
@@ -641,10 +978,10 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
   try {
     await supabase.rpc('save_job_matches_cache', {
       p_student_id: studentId,
-      p_matches: recommendations, // Save all matches, not just top N
-      p_algorithm_version: 'v1.0'
+      p_matches: enrichedRecommendations, // Save all matches, not just top N
+      p_algorithm_version: algorithmVersion
     });
-    console.log(`[CACHE SAVE] Student ${studentId} - saved ${recommendations.length} matches to cache`);
+    console.log(`[CACHE SAVE] Student ${studentId} - saved ${recommendations.length} matches to cache (${algorithmVersion})`);
   } catch (cacheSaveError) {
     console.error('[CACHE SAVE ERROR]', cacheSaveError);
     // Continue - caching failure shouldn't break the response
@@ -657,7 +994,10 @@ async function handleRecommendOpportunities(request: Request, env: Env): Promise
     computed_at: new Date().toISOString(),
     count: topRecommendations.length,
     totalMatches: recommendations.length,
-    executionTime
+    executionTime,
+    algorithmVersion,
+    // Include entity embedding status for debugging
+    entityEmbeddingsEnabled: algorithmVersion === 'v2.0'
   });
 }
 
@@ -1750,6 +2090,219 @@ ${resumeText.slice(0, 15000)}
 }
 
 
+// ==================== BACKFILL ENTITY EMBEDDINGS HANDLER ====================
+
+/**
+ * Backfill endpoint to generate embeddings for all entities missing them.
+ * This processes certificates, projects, trainings, skills, and course_enrollments.
+ * Can be called with a specific student_id or process all students.
+ */
+async function handleBackfillEntityEmbeddings(request: Request, env: Env): Promise<Response> {
+  if (request.method !== 'POST') {
+    return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+
+  let body: { studentId?: string; batchSize?: number; entityTypes?: string[] };
+  try {
+    body = await request.json() as { studentId?: string; batchSize?: number; entityTypes?: string[] };
+  } catch {
+    body = {};
+  }
+
+  const { studentId, batchSize = 20, entityTypes = ['certificates', 'projects', 'trainings', 'skills', 'course_enrollments'] } = body;
+  const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+  const results: Record<string, { processed: number; success: number; errors: number }> = {};
+
+  console.log(`[BACKFILL] Starting entity embedding backfill. StudentId: ${studentId || 'ALL'}, BatchSize: ${batchSize}`);
+
+  // Process certificates
+  if (entityTypes.includes('certificates')) {
+    results.certificates = { processed: 0, success: 0, errors: 0 };
+    let query = supabase
+      .from('certificates')
+      .select('id, student_id, title, issuer, platform, level, category, description')
+      .eq('enabled', true)
+      .is('embedding', null)
+      .limit(batchSize);
+    
+    if (studentId) query = query.eq('student_id', studentId);
+    
+    const { data: certificates } = await query;
+    if (certificates) {
+      for (const cert of certificates) {
+        results.certificates.processed++;
+        const text = buildCertificateText(cert);
+        if (text.length > 20) {
+          const embedding = await generateEmbeddingFromText(text, env);
+          if (embedding) {
+            const { error } = await supabase.from('certificates').update({ embedding }).eq('id', cert.id);
+            if (!error) {
+              results.certificates.success++;
+              console.log(`[BACKFILL] ✓ Certificate: ${cert.title}`);
+            } else {
+              results.certificates.errors++;
+            }
+          } else {
+            results.certificates.errors++;
+          }
+        }
+      }
+    }
+  }
+
+  // Process projects
+  if (entityTypes.includes('projects')) {
+    results.projects = { processed: 0, success: 0, errors: 0 };
+    let query = supabase
+      .from('projects')
+      .select('id, student_id, title, role, organization, tech_stack, description')
+      .eq('enabled', true)
+      .is('embedding', null)
+      .limit(batchSize);
+    
+    if (studentId) query = query.eq('student_id', studentId);
+    
+    const { data: projects } = await query;
+    if (projects) {
+      for (const proj of projects) {
+        results.projects.processed++;
+        const text = buildProjectText(proj);
+        if (text.length > 20) {
+          const embedding = await generateEmbeddingFromText(text, env);
+          if (embedding) {
+            const { error } = await supabase.from('projects').update({ embedding }).eq('id', proj.id);
+            if (!error) {
+              results.projects.success++;
+              console.log(`[BACKFILL] ✓ Project: ${proj.title}`);
+            } else {
+              results.projects.errors++;
+            }
+          } else {
+            results.projects.errors++;
+          }
+        }
+      }
+    }
+  }
+
+  // Process trainings
+  if (entityTypes.includes('trainings')) {
+    results.trainings = { processed: 0, success: 0, errors: 0 };
+    let query = supabase
+      .from('trainings')
+      .select('id, student_id, title, organization, source, duration, description')
+      .is('embedding', null)
+      .limit(batchSize);
+    
+    if (studentId) query = query.eq('student_id', studentId);
+    
+    const { data: trainings } = await query;
+    if (trainings) {
+      for (const training of trainings) {
+        results.trainings.processed++;
+        const text = buildTrainingText(training);
+        if (text.length > 20) {
+          const embedding = await generateEmbeddingFromText(text, env);
+          if (embedding) {
+            const { error } = await supabase.from('trainings').update({ embedding }).eq('id', training.id);
+            if (!error) {
+              results.trainings.success++;
+              console.log(`[BACKFILL] ✓ Training: ${training.title}`);
+            } else {
+              results.trainings.errors++;
+            }
+          } else {
+            results.trainings.errors++;
+          }
+        }
+      }
+    }
+  }
+
+  // Process skills
+  if (entityTypes.includes('skills')) {
+    results.skills = { processed: 0, success: 0, errors: 0 };
+    let query = supabase
+      .from('skills')
+      .select('id, student_id, name, type, level, proficiency_level, description')
+      .eq('enabled', true)
+      .is('embedding', null)
+      .limit(batchSize);
+    
+    if (studentId) query = query.eq('student_id', studentId);
+    
+    const { data: skills } = await query;
+    if (skills) {
+      for (const skill of skills) {
+        results.skills.processed++;
+        const text = buildSkillText(skill);
+        if (text.length > 10) {
+          const embedding = await generateEmbeddingFromText(text, env);
+          if (embedding) {
+            const { error } = await supabase.from('skills').update({ embedding }).eq('id', skill.id);
+            if (!error) {
+              results.skills.success++;
+              console.log(`[BACKFILL] ✓ Skill: ${skill.name}`);
+            } else {
+              results.skills.errors++;
+            }
+          } else {
+            results.skills.errors++;
+          }
+        }
+      }
+    }
+  }
+
+  // Process course enrollments
+  if (entityTypes.includes('course_enrollments')) {
+    results.course_enrollments = { processed: 0, success: 0, errors: 0 };
+    let query = supabase
+      .from('course_enrollments')
+      .select('id, student_id, course_title, status, progress, grade, skills_acquired')
+      .in('status', ['completed', 'in_progress', 'active'])
+      .is('embedding', null)
+      .limit(batchSize);
+    
+    if (studentId) query = query.eq('student_id', studentId);
+    
+    const { data: enrollments } = await query;
+    if (enrollments) {
+      for (const enrollment of enrollments) {
+        results.course_enrollments.processed++;
+        const text = buildCourseEnrollmentText(enrollment);
+        if (text.length > 20) {
+          const embedding = await generateEmbeddingFromText(text, env);
+          if (embedding) {
+            const { error } = await supabase.from('course_enrollments').update({ embedding }).eq('id', enrollment.id);
+            if (!error) {
+              results.course_enrollments.success++;
+              console.log(`[BACKFILL] ✓ Course: ${enrollment.course_title}`);
+            } else {
+              results.course_enrollments.errors++;
+            }
+          } else {
+            results.course_enrollments.errors++;
+          }
+        }
+      }
+    }
+  }
+
+  const totalProcessed = Object.values(results).reduce((sum, r) => sum + r.processed, 0);
+  const totalSuccess = Object.values(results).reduce((sum, r) => sum + r.success, 0);
+  const totalErrors = Object.values(results).reduce((sum, r) => sum + r.errors, 0);
+
+  console.log(`[BACKFILL] Complete. Processed: ${totalProcessed}, Success: ${totalSuccess}, Errors: ${totalErrors}`);
+
+  return jsonResponse({
+    success: true,
+    message: `Backfill complete. Processed ${totalProcessed} entities, ${totalSuccess} successful, ${totalErrors} errors.`,
+    results,
+    summary: { totalProcessed, totalSuccess, totalErrors }
+  });
+}
+
 // ==================== FIELD DOMAIN KEYWORDS HANDLER ====================
 
 /**
@@ -1900,25 +2453,117 @@ export default {
         return await handleParseResume(request, env);
       }
 
+      // Backfill entity embeddings (admin endpoint)
+      if (path === '/backfill-embeddings') {
+        if (!getOpenRouterKey(env)) {
+          return jsonResponse({ error: 'AI service not configured' }, 500);
+        }
+        return await handleBackfillEntityEmbeddings(request, env);
+      }
+
       // Health check
       if (path === '/health' || path === '/') {
         return jsonResponse({
           status: 'ok',
           service: 'career-api',
           version: '2.0-cloudflare',
-          endpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume'],
+          endpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume', '/backfill-embeddings'],
           timestamp: new Date().toISOString()
         });
       }
 
       return jsonResponse({ 
         error: 'Not found', 
-        availableEndpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume'] 
+        availableEndpoints: ['/chat', '/recommend-opportunities', '/analyze-assessment', '/generate-embedding', '/generate-field-keywords', '/parse-resume', '/backfill-embeddings'] 
       }, 404);
 
     } catch (error) {
       console.error('[ERROR] career-api:', error);
       return jsonResponse({ error: (error as Error)?.message || 'Internal server error' }, 500);
     }
+  },
+
+  // Scheduled event handler for automatic embedding backfill
+  // Runs every 6 hours via Cloudflare Cron Triggers
+  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    console.log(`[CRON] Embedding backfill triggered at ${new Date().toISOString()}`);
+    
+    const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const BATCH_SIZE = 30; // Process in batches to avoid timeouts
+    const entityTypes = ['certificates', 'projects', 'trainings', 'skills', 'course_enrollments'];
+    
+    let totalProcessed = 0;
+    let totalSuccess = 0;
+    
+    for (const entityType of entityTypes) {
+      try {
+        let query;
+        
+        switch (entityType) {
+          case 'certificates':
+            query = supabase.from('certificates')
+              .select('id, title, issuer, platform, level, category, description')
+              .eq('enabled', true)
+              .is('embedding', null)
+              .limit(BATCH_SIZE);
+            break;
+          case 'projects':
+            query = supabase.from('projects')
+              .select('id, title, role, organization, tech_stack, description')
+              .eq('enabled', true)
+              .is('embedding', null)
+              .limit(BATCH_SIZE);
+            break;
+          case 'trainings':
+            query = supabase.from('trainings')
+              .select('id, title, organization, source, duration, description')
+              .is('embedding', null)
+              .limit(BATCH_SIZE);
+            break;
+          case 'skills':
+            query = supabase.from('skills')
+              .select('id, name, type, level, proficiency_level, description')
+              .eq('enabled', true)
+              .is('embedding', null)
+              .limit(BATCH_SIZE);
+            break;
+          case 'course_enrollments':
+            query = supabase.from('course_enrollments')
+              .select('id, course_title, status, progress, grade, skills_acquired')
+              .in('status', ['completed', 'in_progress', 'active'])
+              .is('embedding', null)
+              .limit(BATCH_SIZE);
+            break;
+        }
+        
+        const { data: items } = await query!;
+        
+        if (items && items.length > 0) {
+          for (const item of items) {
+            let text = '';
+            switch (entityType) {
+              case 'certificates': text = buildCertificateText(item); break;
+              case 'projects': text = buildProjectText(item); break;
+              case 'trainings': text = buildTrainingText(item); break;
+              case 'skills': text = buildSkillText(item); break;
+              case 'course_enrollments': text = buildCourseEnrollmentText(item); break;
+            }
+            
+            if (text.length > 10) {
+              const embedding = await generateEmbeddingFromText(text, env);
+              if (embedding) {
+                await supabase.from(entityType).update({ embedding }).eq('id', item.id);
+                totalSuccess++;
+              }
+              totalProcessed++;
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`[CRON] Error processing ${entityType}:`, error);
+      }
+    }
+    
+    console.log(`[CRON] Backfill complete. Processed: ${totalProcessed}, Success: ${totalSuccess}`);
   }
 };

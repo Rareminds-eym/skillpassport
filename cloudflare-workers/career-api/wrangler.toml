@@ -6,6 +6,11 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "production"
 
+# Cron trigger for automatic embedding backfill
+# Runs every 6 hours to generate embeddings for new entities
+[triggers]
+crons = ["0 */6 * * *"]
+
 # Secrets to be set via `wrangler secret put`:
 # - VITE_SUPABASE_URL
 # - VITE_SUPABASE_ANON_KEY

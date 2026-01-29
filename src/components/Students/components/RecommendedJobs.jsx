@@ -309,7 +309,7 @@ const RecommendedJobsContent = ({
                 )}
               </div>
               <p className="text-sm text-gray-600">
-                Based on your profile, skills, and experience
+                Smart matching based on your profile, skills, certificates, projects, and experience
                 {cacheInfo?.computedAt && (
                   <span className="text-gray-400 ml-1">
                     • Updated {new Date(cacheInfo.computedAt).toLocaleDateString()}
