@@ -82,11 +82,24 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
     }));
 
     if (studentId && attemptId) {
+        // Use upsert to handle potential race conditions or re-generation
         const { error } = await supabase
-            .from('knowledge_questions')
-            .insert(processedQuestions);
+            .from('career_assessment_ai_questions')
+            .upsert({
+                student_id: studentId, // Use studentId (UUID) not attemptId
+                question_type: 'knowledge',
+                questions: processedQuestions, // Store the entire array as JSONB
+                stream_id: streamId,
+                created_at: new Date().toISOString()
+            }, {
+                onConflict: 'student_id, stream_id, question_type',
+                ignoreDuplicates: false // Update if exists
+            });
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Database error saving knowledge questions:', error);
+            // Don't throw error here to allow the generated questions to be returned to frontend
+        }
     }
 
     console.log(`📦 Returning ${processedQuestions.length} questions`);
