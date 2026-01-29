@@ -458,7 +458,9 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const response = await fetch(`https://streak-api.dark-mode-d021.workers.dev/${user.id}/complete`, {
+        const { getPagesApiUrl } = await import('../../utils/pagesUrl');
+        const STREAK_API_URL = getPagesApiUrl('streak');
+        const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

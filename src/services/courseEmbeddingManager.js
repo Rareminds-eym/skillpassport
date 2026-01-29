@@ -8,9 +8,10 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getPagesApiUrl } from '../utils/pagesUrl';
 
 // API URL for embedding generation (uses career-api Cloudflare worker)
-const EMBEDDING_API_URL = import.meta.env.VITE_CAREER_API_URL;
+const EMBEDDING_API_URL = getPagesApiUrl('career');
 
 /**
  * Generate embedding for text via the career-api Cloudflare worker

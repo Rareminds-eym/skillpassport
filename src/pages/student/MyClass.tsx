@@ -695,12 +695,8 @@ const MyClass: React.FC = () => {
       const userToken = session.access_token;
       
       // Check storage API configuration
-      const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
-      if (!storageApiUrl) {
-        console.error('Storage API URL not configured');
-        showNotificationModal('error', 'Configuration Error', 'Storage service not configured. Please contact support.');
-        return;
-      }
+      const { getPagesApiUrl } = await import('../../utils/pagesUrl');
+      const storageApiUrl = getPagesApiUrl('storage');
       
       // Simulate initial progress
       setUploadProgress(10);
@@ -793,11 +789,8 @@ const MyClass: React.FC = () => {
 
   // Helper function to generate accessible file URL
   const getAccessibleFileUrl = (fileUrl: string) => {
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
-    if (!storageApiUrl) {
-      console.error('VITE_STORAGE_API_URL not configured');
-      return fileUrl; // Fallback to direct URL
-    }
+    const { getPagesApiUrl } = require('../../utils/pagesUrl');
+    const storageApiUrl = getPagesApiUrl('storage');
     
     // Check if URL is already a proxy URL
     if (fileUrl.includes('/document-access')) {

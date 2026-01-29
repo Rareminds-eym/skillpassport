@@ -1,0 +1,47 @@
+/**
+ * Emergency Scroll Fix
+ * This file ensures scrolling always works
+ */
+
+/* Force enable scrolling on html and body */
+html {
+  overflow: auto !important;
+  overflow-y: scroll !important;
+  height: auto !important;
+  position: static !important;
+}
+
+body {
+  overflow: auto !important;
+  overflow-y: scroll !important;
+  position: static !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: auto !important;
+  padding-right: 0 !important;
+}
+
+/* Remove any tour scroll lock classes */
+body.tour-scroll-locked {
+  overflow: auto !important;
+  position: static !important;
+}
+
+/* Ensure root element doesn't block scroll */
+#root {
+  overflow: visible !important;
+  height: auto !important;
+  min-height: 100vh;
+}
+
+/* Remove any fixed positioning that might block scroll */
+body[style*="position: fixed"] {
+  position: static !important;
+}
+
+body[style*="overflow: hidden"] {
+  overflow: auto !important;
+}

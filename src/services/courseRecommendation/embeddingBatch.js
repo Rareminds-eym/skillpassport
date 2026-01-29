@@ -3,7 +3,9 @@
  * Handles parallel generation of multiple embeddings
  */
 
-import { EMBEDDING_API_URL } from './config';
+import { getPagesApiUrl } from '../../utils/pagesUrl';
+
+const EMBEDDING_API_URL = getPagesApiUrl('career');
 
 /**
  * Generate multiple embeddings in parallel
@@ -16,10 +18,6 @@ import { EMBEDDING_API_URL } from './config';
 export const generateEmbeddingsBatch = async (texts, maxConcurrent = 5) => {
   if (!texts || texts.length === 0) {
     return [];
-  }
-
-  if (!EMBEDDING_API_URL) {
-    throw new Error('VITE_CAREER_API_URL environment variable not configured');
   }
 
   // Validate all texts
