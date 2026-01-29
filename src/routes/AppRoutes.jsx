@@ -35,7 +35,7 @@ const SCHOOL_ADMIN_ROLES = ["school_admin"];
 const UNIVERSITY_ADMIN_ROLES = ["university_admin"];
 
 const Home = lazy(() => import("../pages/homepage/Home"));
-const About = lazy(() => import("../pages/homepage/About"));
+const About = lazy(() => import("../pages/AboutPage"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
 const TermsAndConditions = lazy(() => import("../pages/TermsAndConditions"));
 const PrivacyPolicy = lazy(() => import("../pages/PrivacyPolicy"));
@@ -102,6 +102,8 @@ const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
 const UnifiedSignup = lazy(() => import("../pages/auth/UnifiedSignup"));
 const UnifiedForgotPassword = lazy(() => import("../pages/auth/UnifiedForgotPassword"));
+const PasswordReset = lazy(() => import("../pages/auth/PasswordReset"));
+const TokenPasswordReset = lazy(() => import("../pages/auth/TokenPasswordReset"));
 const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 const DebugRoles = lazy(() => import("../pages/auth/DebugRoles"));
 const SignupRecruiter = lazy(() =>
@@ -539,6 +541,7 @@ const AppRoutes = () => {
           <Route path="/login" element={<UnifiedLogin />} />
           <Route path="/signup" element={<UnifiedSignup />} />
           <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
+          <Route path="/password-reset" element={<TokenPasswordReset />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/debug-roles" element={<DebugRoles />} />
 

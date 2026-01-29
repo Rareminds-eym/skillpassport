@@ -672,7 +672,8 @@ const OpportunityPreview = ({
   isApplying = false,
   canApplyToJobs = true,
   needsProfileCompletion = false,
-  navigate
+  navigate,
+  studentData
 }) => {
   // State for expanding sections
   const [showAllRequirements, setShowAllRequirements] = React.useState(false);
@@ -680,6 +681,11 @@ const OpportunityPreview = ({
   const [showAllSkills, setShowAllSkills] = React.useState(false);
   const [showDetailsModal, setShowDetailsModal] = React.useState(false);
   const [showApplicationModal, setShowApplicationModal] = React.useState(false);
+
+  // Check if student has current backlogs
+  const currentBacklogsValue = studentData?.currentBacklogs || 0;
+  const hasCurrentBacklogs = currentBacklogsValue > 0;
+  const isEligibleToApply = !hasCurrentBacklogs;
 
   // Reset expand states when opportunity changes
   React.useEffect(() => {
@@ -1369,7 +1375,10 @@ const OpportunityPreview = ({
                 {/* Primary Apply Button */}
                 <button 
                   onClick={() => {
-                    if (needsProfileCompletion && !isApplied) {
+                    if (hasCurrentBacklogs && !isApplied) {
+                      // Don't allow application if student has current backlogs
+                      return;
+                    } else if (needsProfileCompletion && !isApplied) {
                       // Navigate to settings page if profile is incomplete
                       if (navigate) {
                         navigate('/student/settings');
@@ -1378,19 +1387,21 @@ const OpportunityPreview = ({
                       setShowApplicationModal(true);
                     }
                   }}
-                  disabled={isApplied || isApplying}
+                  disabled={isApplied || isApplying || hasCurrentBacklogs}
                   className={`flex-1 relative overflow-hidden font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-md group ${
                     isApplied
                       ? 'bg-green-600 text-white cursor-not-allowed'
                       : isApplying
                       ? 'bg-gray-400 text-white cursor-wait'
+                      : hasCurrentBacklogs
+                      ? 'bg-red-600 text-white cursor-not-allowed'
                       : needsProfileCompletion
                       ? 'bg-amber-600 hover:bg-amber-700 text-white hover:shadow-xl active:scale-[0.98]'
                       : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-xl active:scale-[0.98]'
                   }`}
                 >
                   {/* Shine Effect */}
-                  {!isApplied && !isApplying && (
+                  {!isApplied && !isApplying && !hasCurrentBacklogs && (
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 group-hover:translate-x-full transition-all duration-500 -translate-x-full"></div>
                   )}
                   
@@ -1404,6 +1415,11 @@ const OpportunityPreview = ({
                       <>
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Submitting...
+                      </>
+                    ) : hasCurrentBacklogs ? (
+                      <>
+                        <X className="w-5 h-5" />
+                        Not Eligible to Apply
                       </>
                     ) : needsProfileCompletion ? (
                       <>
@@ -1450,6 +1466,8 @@ const OpportunityPreview = ({
               <p className="text-xs text-gray-500 text-center mt-3">
                 {isApplied 
                   ? '✓ Track your application in the Applications tab' 
+                  : hasCurrentBacklogs
+                  ? '❌ Clear your current backlogs to become eligible for job applications'
                   : needsProfileCompletion 
                   ? '⚠️ Complete your profile to apply for jobs' 
                   : '💡 One-click application with your saved profile'}
