@@ -279,6 +279,12 @@ const UnifiedProfileEditModal = ({
       }
     }
 
+    // DEBUG: Log processed data for projects
+    if (config.title === "Projects") {
+      console.log('🔍 Processing project data:', processedData);
+      console.log('🔍 Role field value:', processedData.role);
+    }
+
     // Calculate progress for training type
     if (config.hasProgress) {
       const completed = parsePositiveNumber(processedData.completedModules);
@@ -290,6 +296,28 @@ const UnifiedProfileEditModal = ({
         processedData.status = "completed";
         processedData.progress = 100;
       }
+    }
+
+    // Special processing for skills: map fields correctly to database
+    if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' || 
+        config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
+      console.log('🔧 UnifiedProfileEditModal: Processing skills data');
+      console.log('🔧 Config title:', config.title);
+      console.log('🔧 Before processing:', processedData);
+      
+      // Map rating (1-5) to level field in database
+      if (processedData.rating) {
+        processedData.level = parseInt(processedData.rating) || 3;
+      }
+      
+      // Map level text ("Intermediate", "Advanced") to proficiency_level field in database
+      if (processedData.level && typeof processedData.level === 'string') {
+        processedData.proficiency_level = processedData.level;
+        // Set level to the rating value instead
+        processedData.level = parseInt(processedData.rating) || 3;
+      }
+      
+      console.log('🔧 After processing:', processedData);
     }
 
     return processedData;
@@ -391,6 +419,8 @@ const UnifiedProfileEditModal = ({
   };
 
   const handleSaveItem = async (savedItem) => {
+    console.log('🔧 UnifiedProfileEditModal: handleSaveItem called with:', savedItem);
+    
     if (editingItem && editingItem.index !== undefined) {
       // Update existing item
       setItems(prev => prev.map((item, idx) => 
@@ -405,6 +435,7 @@ const UnifiedProfileEditModal = ({
         ...savedItem,
         processing: true,
       };
+      console.log('🔧 UnifiedProfileEditModal: Adding new item:', newItem);
       setItems(prev => [...prev, newItem]);
       toast({ title: "Added", description: `${config.title} added. Click 'Save All Changes' to save to database.` });
     }
@@ -414,8 +445,55 @@ const UnifiedProfileEditModal = ({
 
   const handleSubmit = async () => {
     setIsSaving(true);
+    
+    console.log('🔧 UnifiedProfileEditModal: handleSubmit called');
+    console.log('🔧 Current formData:', formData);
+    console.log('🔧 Current items before processing:', items);
+    
     try {
-      await onSave(items);
+      // Process all items with field mapping for skills
+      let processedItems = items;
+      
+      if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' || 
+          config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
+        console.log('🔧 UnifiedProfileEditModal: Processing skills array for save');
+        console.log('🔧 Original items:', items);
+        console.log('🔧 Config:', config);
+        
+        processedItems = items.map((item, index) => {
+          console.log(`🔧 Processing item ${index}:`, item);
+          const processedItem = { ...item };
+          
+          // Check what fields exist on the original item
+          console.log('🔧 Item keys:', Object.keys(item));
+          console.log('🔧 Item.level:', item.level, 'type:', typeof item.level);
+          console.log('🔧 Item.rating:', item.rating, 'type:', typeof item.rating);
+          console.log('🔧 Item.proficiency_level:', item.proficiency_level);
+          
+          // Store original level text as proficiency_level
+          if (processedItem.level && typeof processedItem.level === 'string') {
+            processedItem.proficiency_level = processedItem.level;
+            console.log('🔧 Set proficiency_level to:', processedItem.proficiency_level);
+          }
+          
+          // Map rating (1-5) to level field in database
+          if (processedItem.rating) {
+            processedItem.level = parseInt(processedItem.rating) || 3;
+            console.log('🔧 Set level to rating:', processedItem.level);
+          } else if (processedItem.level && typeof processedItem.level === 'string') {
+            // If no rating but has text level, default to 3
+            processedItem.level = 3;
+            console.log('🔧 Set level to default 3');
+          }
+          
+          console.log('🔧 Final processed item:', processedItem);
+          return processedItem;
+        });
+        
+        console.log('🔧 All processed items:', processedItems);
+      }
+      
+      await onSave(processedItems);
       toast({ title: "Saved!", description: `${config.title} saved successfully.` });
       onClose();
     } catch (error) {
@@ -622,7 +700,7 @@ const UnifiedProfileEditModal = ({
   // Render form for multi-item mode (add/edit within list)
   const renderForm = () => {
     // For types that should use separate modals, don't show inline form
-    const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+    const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
     if (usesSeparateModal.includes(type)) {
       return null; // The Add button is now in the header
     }
@@ -743,7 +821,7 @@ const UnifiedProfileEditModal = ({
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+              const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
               if (usesSeparateModal.includes(type)) {
                 handleEditItem(index);
               } else {
@@ -882,7 +960,7 @@ const UnifiedProfileEditModal = ({
                 Edit {config.title}
               </DialogTitle>
               {(() => {
-                const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+                const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
                 if (usesSeparateModal.includes(type)) {
                   return (
                     <Button 
@@ -980,7 +1058,7 @@ const UnifiedProfileEditModal = ({
 
       {/* Separate Item Modal */}
       {(() => {
-        const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+        const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
         if (usesSeparateModal.includes(type)) {
           return (
             <ProfileItemModal

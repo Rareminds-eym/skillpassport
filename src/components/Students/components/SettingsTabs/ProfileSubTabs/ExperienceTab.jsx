@@ -14,18 +14,26 @@ const ExperienceTab = ({
     const start = new Date(startDate);
     const end = endDate ? new Date(endDate) : new Date();
     
+    if (isNaN(start.getTime())) return "";
+    if (endDate && isNaN(end.getTime())) return "";
+    
+    // Calculate the difference in months
     const diffTime = Math.abs(end - start);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const diffMonths = Math.floor(diffDays / 30);
     const diffYears = Math.floor(diffMonths / 12);
+    const remainingMonths = diffMonths % 12;
     
     if (diffYears > 0) {
-      const remainingMonths = diffMonths % 12;
-      return `${diffYears} year${diffYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}` : ''}`;
+      if (remainingMonths > 0) {
+        return `${diffYears} year${diffYears > 1 ? 's' : ''} ${remainingMonths} month${remainingMonths > 1 ? 's' : ''}`;
+      } else {
+        return `${diffYears} year${diffYears > 1 ? 's' : ''}`;
+      }
     } else if (diffMonths > 0) {
       return `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
     } else {
-      return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+      return diffDays > 0 ? `${diffDays} day${diffDays > 1 ? 's' : ''}` : "Less than a day";
     }
   };
 
@@ -86,10 +94,6 @@ const ExperienceTab = ({
                       <h4 className="text-base font-bold text-gray-900">
                         {experience.role || experience.position || experience.title || experience.jobTitle || "Position"}
                       </h4>
-                      <div className="flex items-center gap-2 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                        <CheckCircle className="w-3 h-3" />
-                        <span>Verified</span>
-                      </div>
                       <Button
                         variant="ghost"
                         size="sm"

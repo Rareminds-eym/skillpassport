@@ -23,15 +23,17 @@ const ProjectsTab = ({
     const start = new Date(startDate);
     const end = endDate ? new Date(endDate) : new Date();
     
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const diffMonths = Math.floor(diffDays / 30);
+    if (isNaN(start.getTime())) return "";
+    if (endDate && isNaN(end.getTime())) return "";
     
-    if (diffMonths > 0) {
-      return `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
-    } else {
-      return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
-    }
+    const formatDate = (date) => {
+      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    };
+    
+    const startLabel = formatDate(start);
+    const endLabel = endDate ? formatDate(end) : 'Present';
+    
+    return `${startLabel} - ${endLabel}`;
   };
 
   const parseTechnologies = (technologies) => {
@@ -107,10 +109,6 @@ const ProjectsTab = ({
                         <h4 className="text-base font-bold text-gray-900">
                           {project.title || project.name || project.projectName || project.project_name || "Project"}
                         </h4>
-                        <div className="flex items-center gap-2 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                          <CheckCircle className="w-3 h-3" />
-                          <span>Verified</span>
-                        </div>
                         <Button
                           variant="ghost"
                           size="sm"

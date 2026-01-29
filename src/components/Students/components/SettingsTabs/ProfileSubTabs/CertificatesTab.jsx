@@ -91,12 +91,8 @@ const CertificatesTab = ({
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="text-base font-bold text-gray-900">
-                          {certificate.name || certificate.title || certificate.certificateName || certificate.certificate_name || "Certificate"}
+                          {certificate.title || certificate.name || certificate.certificateName || certificate.certificate_name || "Certificate"}
                         </h4>
-                        <div className="flex items-center gap-2 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                          <CheckCircle className="w-3 h-3" />
-                          <span>Verified</span>
-                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -115,10 +111,10 @@ const CertificatesTab = ({
                       </div>
 
                       <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                        {certificate.issueDate && (
+                        {certificate.issuedOn && (
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            <span>Issued: {formatDate(certificate.issueDate)}</span>
+                            <span>Issued: {formatDate(certificate.issuedOn)}</span>
                           </div>
                         )}
                         
@@ -131,10 +127,16 @@ const CertificatesTab = ({
                       </div>
 
                       <div className="flex items-center gap-3 mb-3">
-                        <Badge className={`px-3 py-1 text-xs font-medium border ${status.color}`}>
-                          {status.status === 'expired' ? 'Expired' : 
-                           status.status === 'expiring' ? 'Expiring Soon' : 'Valid'}
-                        </Badge>
+                        {status.status === 'valid' ? (
+                          <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium border border-green-200">
+                            <CheckCircle className="w-3 h-3" />
+                            <span>Verified</span>
+                          </div>
+                        ) : (
+                          <Badge className={`px-3 py-1 text-xs font-medium border ${status.color}`}>
+                            {status.status === 'expired' ? 'Expired' : 'Expiring Soon'}
+                          </Badge>
+                        )}
                         
                         {certificate.category && (
                           <Badge variant="secondary" className="text-xs px-2 py-1">
@@ -161,12 +163,12 @@ const CertificatesTab = ({
                         </p>
                       )}
 
-                      {certificate.credentialUrl && (
+                      {certificate.link && (
                         <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(certificate.credentialUrl, '_blank')}
+                            onClick={() => window.open(certificate.link, '_blank')}
                             className="text-xs px-3 py-1 h-7 flex items-center gap-1"
                           >
                             <ExternalLink className="w-3 h-3" />

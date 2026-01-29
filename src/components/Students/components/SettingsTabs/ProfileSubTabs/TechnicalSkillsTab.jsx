@@ -1,5 +1,5 @@
 import React from "react";
-import { Code, Plus, Edit, Star, Zap } from "lucide-react";
+import { Code, Plus, Edit, Star, Zap, Eye } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 
@@ -8,22 +8,22 @@ const TechnicalSkillsTab = ({
   setShowTechnicalSkillsModal 
 }) => {
 
-  const getLevelColor = (level) => {
-    // Ensure level is a string and handle null/undefined cases
-    const levelStr = level && typeof level === 'string' ? level.toLowerCase() : '';
-    
-    switch (levelStr) {
-      case 'beginner':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'intermediate':
-        return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'advanced':
-        return 'bg-green-100 text-green-700 border-green-200';
-      case 'expert':
-        return 'bg-purple-100 text-purple-700 border-purple-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
+  // Helper function to get skill level text (matching Dashboard exactly)
+  const getSkillLevelText = (level) => {
+    if (level >= 5) return "Expert";
+    if (level >= 4) return "Advanced";
+    if (level >= 3) return "Intermediate";
+    if (level >= 1) return "Beginner";
+    return "Beginner";
+  };
+
+  // Helper function to get skill level badge color (matching Dashboard exactly)
+  const getSkillLevelColor = (level) => {
+    if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300";
+    if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300";
+    if (level >= 3) return "bg-green-100 text-green-700 border-green-300";
+    if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300";
+    return "bg-gray-100 text-gray-700 border-gray-300";
   };
 
   const getCategoryIcon = (category) => {
@@ -44,29 +44,25 @@ const TechnicalSkillsTab = ({
     }
   };
 
+  // Render stars function (matching Dashboard exactly)
   const renderStars = (level) => {
-    // Ensure level is a string and handle null/undefined cases
-    const levelStr = level && typeof level === 'string' ? level.toLowerCase() : '';
-    const levels = { 'beginner': 1, 'intermediate': 2, 'advanced': 3, 'expert': 4 };
-    const stars = levels[levelStr] || 0;
+    const numericLevel = parseInt(level) || 0;
     
-    return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4].map((star) => (
-          <Star
-            key={star}
-            className={`w-3 h-3 ${
-              star <= stars 
-                ? 'text-yellow-400 fill-yellow-400' 
-                : 'text-gray-300'
-            }`}
-          />
-        ))}
-      </div>
-    );
+    return [...Array(5)].map((_, i) => (
+      <Star
+        key={i}
+        className={`w-4 h-4 ${i < numericLevel ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+          }`}
+      />
+    ));
   };
 
-  const groupedSkills = (technicalSkillsData || []).reduce((acc, skill) => {
+  // Filter skills to match Dashboard logic (only show approved/verified and enabled skills)
+  const filteredSkills = (technicalSkillsData || []).filter(
+    (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
+  );
+
+  const groupedSkills = filteredSkills.reduce((acc, skill) => {
     const category = skill.category || 'Other';
     if (!acc[category]) acc[category] = [];
     acc[category].push(skill);
@@ -80,16 +76,25 @@ const TechnicalSkillsTab = ({
           <Code className="w-5 h-5 text-blue-600" />
           Technical Skills
         </h3>
-        <Button
-          onClick={() => setShowTechnicalSkillsModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Technical Skill
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setShowTechnicalSkillsModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Technical Skill
+          </Button>
+          <button
+            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+            title="View All Technical Skills"
+            onClick={() => setShowTechnicalSkillsModal(true)}
+          >
+            <Eye className="w-5 h-5 text-blue-600" />
+          </button>
+        </div>
       </div>
 
-      {technicalSkillsData?.length === 0 ? (
+      {filteredSkills.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
           <Code className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-600 text-base font-medium">
@@ -100,53 +105,57 @@ const TechnicalSkillsTab = ({
           </p>
         </div>
       ) : (
-        <div className="max-h-96 overflow-y-auto space-y-6 pr-2">
-          {Object.entries(groupedSkills).map(([category, skills]) => (
-            <div key={category} className="space-y-3">
-              <h5 className="text-sm font-semibold text-gray-700 flex items-center gap-2 border-b border-gray-200 pb-2">
-                {getCategoryIcon(category)}
-                {category}
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  {skills.length}
+        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+          {filteredSkills.map((skill, idx) => (
+            <div
+              key={skill.id || `tech-skill-${idx}`}
+              className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+            >
+              {/* Skill Name + Level Badge (matching Dashboard exactly) */}
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h4 className="text-base font-bold text-gray-900">
+                  {skill.name}
+                </h4>
+                <Badge
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
+                    skill.level
+                  )}`}
+                >
+                  {getSkillLevelText(skill.level)}
                 </Badge>
-              </h5>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {skills
-                  .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
-                  .map((skill, idx) => (
-                    <div
-                      key={skill.id || `tech-skill-${idx}`}
-                      className="p-4 rounded-lg bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className="text-sm font-bold text-gray-900 flex-1">
-                          {skill.name || skill.skillName || skill.skill_name || skill.technology || "Technical Skill"}
-                        </h4>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowTechnicalSkillsModal(true)}
-                          className="p-1 h-5 w-5 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <Badge className={`px-2 py-1 text-xs font-medium border ${getLevelColor(skill.level)}`}>
-                          {skill.level || "Not specified"}
-                        </Badge>
-                        {renderStars(skill.level)}
-                      </div>
+              </div>
 
-                      {skill.description && (
-                        <p className="text-xs text-gray-600 mt-2">
-                          {skill.description}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+              {/* Category */}
+              {skill.category && (
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm text-blue-600 font-medium">
+                    {skill.category}
+                  </span>
+                </div>
+              )}
+
+              {/* Star Rating (matching Dashboard exactly) */}
+              <div className="flex gap-0.5">
+                {renderStars(skill.level)}
+              </div>
+
+              {/* Description */}
+              {skill.description && (
+                <p className="text-sm text-gray-600 mt-3">
+                  {skill.description}
+                </p>
+              )}
+
+              {/* Edit Button */}
+              <div className="flex justify-end mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTechnicalSkillsModal(true)}
+                  className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
               </div>
             </div>
           ))}
