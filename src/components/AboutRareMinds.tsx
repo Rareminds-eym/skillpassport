@@ -409,7 +409,7 @@ function AboutRareMinds() {
                 </span>
               </div>
               <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] text-slate-900" data-testid="hero-title">
-                Skill Passport
+                India's Verified Talent Infrastructure
               </h1>
               <p className="text-lg md:text-xl leading-relaxed text-slate-600 md:whitespace-nowrap">
                 Skills verified at source. Trusted by employers. Deployed at speed.
