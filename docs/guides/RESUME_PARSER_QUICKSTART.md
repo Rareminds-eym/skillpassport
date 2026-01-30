@@ -90,7 +90,7 @@ WHERE email = 'your-email@example.com';
 
 **Option 1: OpenRouter (Recommended - Free Tier)**
 ```env
-VITE_OPENROUTER_API_KEY=sk-or-v1-xxxxx
+OPENROUTER_API_KEY=sk-or-v1-xxxxx
 ```
 Get free key: https://openrouter.ai/keys
 

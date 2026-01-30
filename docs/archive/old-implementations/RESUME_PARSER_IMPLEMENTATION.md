@@ -172,7 +172,7 @@
 
 ```env
 # Option 1: OpenRouter (Recommended - cheaper)
-VITE_OPENROUTER_API_KEY=your_openrouter_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 # Option 2: OpenAI (Alternative)
 VITE_OPENAI_API_KEY=your_openai_api_key_here

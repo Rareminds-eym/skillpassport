@@ -27,7 +27,7 @@
 
 **Changes:**
 - Added `getAPIKeys` import from shared config
-- Changed `env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY` to `getAPIKeys(env).openRouter`
+- Changed `env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY` to `getAPIKeys(env).openRouter`
 
 **Impact:**
 - Now uses centralized API key retrieval

@@ -182,7 +182,7 @@ The course recommendation system uses the **career-api Cloudflare worker** for A
 **Purpose:** AI-powered field domain keyword generation
 **Dependencies:**
 - OpenRouter API (direct fetch, no worker)
-- Environment variables: `VITE_OPENROUTER_API_KEY`
+- Environment variables: `OPENROUTER_API_KEY`
 **Key Functions:**
 - `generateDomainKeywords()` - Calls AI to generate keywords
 - `getDomainKeywordsWithCache()` - Cached keyword retrieval
@@ -254,7 +254,7 @@ The course recommendation system uses the **career-api Cloudflare worker** for A
 **Model:** `google/gemini-2.0-flash-exp:free`
 **Called By:**
 - `fieldDomainService.js` → `generateDomainKeywords()`
-**Authentication:** `VITE_OPENROUTER_API_KEY` environment variable
+**Authentication:** `OPENROUTER_API_KEY` environment variable
 **Request:**
 ```json
 {
@@ -329,7 +329,7 @@ The course recommendation system uses the **career-api Cloudflare worker** for A
 ### Frontend (.env)
 ```env
 # OpenRouter API (for AI field keywords - NEW)
-VITE_OPENROUTER_API_KEY=sk-or-v1-...
+OPENROUTER_API_KEY=sk-or-v1-...
 
 # Career API Worker (for embeddings)
 VITE_CAREER_API_URL=https://career-api.your-worker.workers.dev

@@ -47,7 +47,7 @@ const ASSESSMENT_MODELS = [
 
 **Before:**
 ```typescript
-const openRouterKey = env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;
+const openRouterKey = env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY;
 if (!openRouterKey) {
   throw new Error('OpenRouter API key not configured');
 }
@@ -93,7 +93,7 @@ for (const model of ASSESSMENT_MODELS) {
 
 2. **`getAPIKeys(env)`** - Unified API key retrieval
    - Returns `{ openRouter, claude }`
-   - Handles both `OPENROUTER_API_KEY` and `VITE_OPENROUTER_API_KEY`
+   - Handles both `OPENROUTER_API_KEY` and `OPENROUTER_API_KEY`
 
 3. **`repairAndParseJSON(text)`** - JSON parsing with repair
    - Already in use ✅

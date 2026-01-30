@@ -7,7 +7,7 @@ When uploading a resume, all content was being dumped into a single field instea
 
 ### 1. Added OpenRouter API Support
 - Added support for OpenRouter API (z-ai/glm-4.5-air:free model)
-- Configured API key: `VITE_OPENROUTER_API_KEY` in `/app/.env`
+- Configured API key: `OPENROUTER_API_KEY` in `/app/.env`
 - New parser function: `parseWithOpenRouter()`
 
 ### 2. Enhanced Data Structure

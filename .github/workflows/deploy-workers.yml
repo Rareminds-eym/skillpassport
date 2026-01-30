@@ -168,8 +168,8 @@ jobs:
               fi
               ;;
             "career-api"|"assessment-api")
-              if [ -n "${{ secrets.VITE_OPENROUTER_API_KEY }}" ]; then
-                echo "${{ secrets.VITE_OPENROUTER_API_KEY }}" | wrangler secret put OPENROUTER_API_KEY 2>/dev/null || true
+              if [ -n "${{ secrets.OPENROUTER_API_KEY }}" ]; then
+                echo "${{ secrets.OPENROUTER_API_KEY }}" | wrangler secret put OPENROUTER_API_KEY 2>/dev/null || true
               fi
               ;;
             "payments-api")

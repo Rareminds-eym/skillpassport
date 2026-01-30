@@ -386,7 +386,7 @@ export function repairAndParseJSON(text: string, preferObject: boolean = false):
  */
 export function getAPIKeys(env: PagesEnv | Record<string, string>) {
     return {
-        openRouter: env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY,
+        openRouter: env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY,
         claude: env.CLAUDE_API_KEY || env.VITE_CLAUDE_API_KEY,
     };
 }

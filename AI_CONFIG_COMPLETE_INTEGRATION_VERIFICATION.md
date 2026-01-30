@@ -82,7 +82,7 @@ import { getModelForUseCase, API_CONFIG, MODEL_PROFILES } from '../../shared/ai-
 // ...
 
 // Get OpenRouter API key
-const openRouterKey = env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;  // ❌ Direct env access
+const openRouterKey = env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY;  // ❌ Direct env access
 if (!openRouterKey) {
   return jsonResponse({ error: 'AI service not configured' }, 500);
 }

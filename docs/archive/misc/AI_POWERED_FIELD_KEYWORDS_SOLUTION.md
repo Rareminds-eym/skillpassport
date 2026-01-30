@@ -142,7 +142,7 @@ Failed: 0 (0%)
 
 ### Environment Variables Required
 ```env
-VITE_OPENROUTER_API_KEY=your_openrouter_key
+OPENROUTER_API_KEY=your_openrouter_key
 # or
 OPENROUTER_API_KEY=your_openrouter_key
 

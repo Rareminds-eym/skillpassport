@@ -77,7 +77,7 @@ const result = repairAndParseJSON(content);
 ### 1. Don't Hardcode API Keys
 ```typescript
 // ❌ WRONG
-const openRouterKey = env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;
+const openRouterKey = env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY;
 
 // ✅ CORRECT
 const { openRouter } = getAPIKeys(env);

@@ -168,7 +168,7 @@ import { /* utilities */ } from '../shared/auth';
 All shared utilities expect these environment variables:
 
 **Required for AI:**
-- `OPENROUTER_API_KEY` or `VITE_OPENROUTER_API_KEY`
+- `OPENROUTER_API_KEY` or `OPENROUTER_API_KEY`
 - `CLAUDE_API_KEY` or `VITE_CLAUDE_API_KEY` (optional, for fallback)
 
 **Required for Auth:**

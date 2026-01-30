@@ -28,7 +28,7 @@
 **Changes:**
 - ✅ Added `getAPIKeys` import from shared config
 - ✅ Removed unused `getModelForUseCase` import
-- ✅ Changed `env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY` to `getAPIKeys(env).openRouter`
+- ✅ Changed `env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY` to `getAPIKeys(env).openRouter`
 - ✅ Uses `API_CONFIG.OPENROUTER.endpoint`
 - ✅ Uses `API_CONFIG.OPENROUTER.headers`
 - ✅ Uses `MODEL_PROFILES['chat']` for model fallback chain
@@ -58,7 +58,7 @@
 
 ### ✅ Check 2: No Direct env API Key Access
 ```bash
-# Search: env\.(OPENROUTER_API_KEY|VITE_OPENROUTER_API_KEY|CLAUDE_API_KEY|VITE_CLAUDE_API_KEY)
+# Search: env\.(OPENROUTER_API_KEY|OPENROUTER_API_KEY|CLAUDE_API_KEY|VITE_CLAUDE_API_KEY)
 # Result: No matches found in handlers (CORRECT!)
 ```
 **Status:** PASS ✅
