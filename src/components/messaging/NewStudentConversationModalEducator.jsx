@@ -3,7 +3,7 @@ import { XMarkIcon, MagnifyingGlassIcon, AcademicCapIcon, UserIcon } from '@hero
 import { supabase } from '../../lib/supabaseClient';
 import toast from 'react-hot-toast';
 
-const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversation, educatorId }) => {
+const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversation, educatorId, schoolId: propSchoolId }) => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -20,74 +20,78 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
       setLoading(true);
       try {
         console.log('🔍 Fetching students for educator:', educatorId);
+        console.log('🔍 Prop schoolId:', propSchoolId);
         
-        // Get current user to access email
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          console.log('❌ No authenticated user found');
-          setStudents([]);
-          setFilteredStudents([]);
-          setLoading(false);
-          return;
-        }
+        let schoolId = propSchoolId; // Use prop schoolId if provided
         
-        let schoolId = null;
-        let educatorData = null;
-        let userData = null;
-        
-        // Strategy 1: Try to get school from school_educators table using user_id
-        const { data: educatorResult } = await supabase
-          .from('school_educators')
-          .select('school_id, id')
-          .eq('user_id', educatorId)
-          .maybeSingle();
-
-        educatorData = educatorResult;
-
-        if (educatorData?.school_id) {
-          schoolId = educatorData.school_id;
-          console.log('✅ Found school from school_educators (user_id):', schoolId);
-        } else {
-          console.log('⚠️ No school found in school_educators by user_id, trying by email...');
+        // Only do complex lookup if schoolId not provided
+        if (!schoolId) {
+          // Get current user to access email
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            console.log('❌ No authenticated user found');
+            setStudents([]);
+            setFilteredStudents([]);
+            setLoading(false);
+            return;
+          }
+          let educatorData = null;
+          let userData = null;
           
-          // Strategy 2: Try using email (like useEducatorSchool hook)
-          const { data: educatorByEmailResult } = await supabase
+          // Strategy 1: Try to get school from school_educators table using user_id
+          const { data: educatorResult } = await supabase
             .from('school_educators')
-            .select('school_id, user_id, id')
-            .eq('email', user.email)
+            .select('school_id, id')
+            .eq('user_id', educatorId)
             .maybeSingle();
-          
-          if (educatorByEmailResult?.school_id) {
-            schoolId = educatorByEmailResult.school_id;
-            console.log('✅ Found school from school_educators (email):', schoolId);
+
+          educatorData = educatorResult;
+
+          if (educatorData?.school_id) {
+            schoolId = educatorData.school_id;
+            console.log('✅ Found school from school_educators (user_id):', schoolId);
           } else {
-            console.log('⚠️ No school found by email, trying by id...');
+            console.log('⚠️ No school found in school_educators by user_id, trying by email...');
             
-            // Strategy 3: Try using educatorId as the school_educators.id directly
-            const { data: educatorByIdResult } = await supabase
+            // Strategy 2: Try using email (like useEducatorSchool hook)
+            const { data: educatorByEmailResult } = await supabase
               .from('school_educators')
-              .select('school_id, user_id')
-              .eq('id', educatorId)
+              .select('school_id, user_id, id')
+              .eq('email', user.email)
               .maybeSingle();
             
-            if (educatorByIdResult?.school_id) {
-              schoolId = educatorByIdResult.school_id;
-              console.log('✅ Found school from school_educators (id):', schoolId);
+            if (educatorByEmailResult?.school_id) {
+              schoolId = educatorByEmailResult.school_id;
+              console.log('✅ Found school from school_educators (email):', schoolId);
             } else {
-              console.log('⚠️ No school found in school_educators by id, trying users table...');
+              console.log('⚠️ No school found by email, trying by id...');
               
-              // Strategy 4: Fallback to users table if it has school_id
-              const { data: userResult } = await supabase
-                .from('users')
-                .select('school_id')
+              // Strategy 3: Try using educatorId as the school_educators.id directly
+              const { data: educatorByIdResult } = await supabase
+                .from('school_educators')
+                .select('school_id, user_id')
                 .eq('id', educatorId)
                 .maybeSingle();
               
-              userData = userResult;
-              
-              if (userData?.school_id) {
-                schoolId = userData.school_id;
-                console.log('✅ Found school from users table:', schoolId);
+              if (educatorByIdResult?.school_id) {
+                schoolId = educatorByIdResult.school_id;
+                console.log('✅ Found school from school_educators (id):', schoolId);
+              } else {
+                console.log('⚠️ No school found in school_educators by id, trying users table...');
+                
+                // Strategy 4: Fallback to users table if it has school_id
+                const { data: userResult } = await supabase
+                  .from('users')
+                  .select('school_id')
+                  .eq('id', educatorId)
+                  .maybeSingle();
+                
+                userData = userResult;
+                
+                if (userData?.school_id) {
+                  schoolId = userData.school_id;
+                  console.log('✅ Found school from users table:', schoolId);
+                }
               }
             }
           }
@@ -145,7 +149,7 @@ const NewStudentConversationModalEducator = ({ isOpen, onClose, onCreateConversa
     };
 
     fetchStudents();
-  }, [isOpen, educatorId]);
+  }, [isOpen, educatorId, propSchoolId]);
 
   // Filter students based on search query
   useEffect(() => {

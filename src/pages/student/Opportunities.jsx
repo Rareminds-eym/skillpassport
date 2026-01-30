@@ -95,8 +95,8 @@ const Opportunities = () => {
 
   // Memoize student type to prevent unnecessary recalculations
   const studentType = React.useMemo(() => {
-    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+    const isSchoolStudent = !!(studentData?.school_id || studentData?.school_class_id);
+    const isUniversityStudent = !!(studentData?.university_college_id || studentData?.universityId);
     return { isSchoolStudent, isUniversityStudent };
   }, [studentData?.school_id, studentData?.school_class_id, studentData?.university_college_id, studentData?.universityId]);
 
@@ -135,6 +135,7 @@ const Opportunities = () => {
   }, [advancedFilters, studentType.isSchoolStudent]);
 
   // Fetch opportunities with server-side pagination
+  // IMPORTANT: Only fetch after studentData is loaded to ensure correct filters
   const [isLoading, setIsLoading] = useState(true);
   const { 
     opportunities, 
@@ -143,7 +144,7 @@ const Opportunities = () => {
     totalCount,
     totalPages 
   } = useOpportunities({
-    fetchOnMount: true,
+    fetchOnMount: !!studentData, // Only fetch when studentData is available
     activeOnly: true,
     searchTerm: debouncedSearch,
     page: currentPage,
@@ -186,6 +187,13 @@ const Opportunities = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [advancedFilters, sortBy]);
+
+  // Clamp current page to valid range when totalPages changes
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [totalPages, currentPage, totalCount]);
 
   // Pre-select opportunity from navigation state (from Dashboard)
   useEffect(() => {
@@ -905,6 +913,7 @@ const MyJobsContent = ({
                           isSaved={savedJobs.has(opp.id)}
                           onApply={() => handleApply(opp)}
                           onToggleSave={handleToggleSave}
+                          studentData={studentData}
                         />
                       ))}
                     </div>
@@ -930,6 +939,7 @@ const MyJobsContent = ({
                 canApplyToJobs={canApplyToJobs}
                 needsProfileCompletion={needsProfileCompletion}
                 navigate={navigate}
+                studentData={studentData}
               />
             </div>
           </div>
@@ -943,7 +953,10 @@ const MyJobsContent = ({
                   totalPages={totalPages}
                   totalItems={displayCount}
                   itemsPerPage={opportunitiesPerPage}
-                  onPageChange={setCurrentPage}
+                  onPageChange={(page) => {
+                    const validPage = Math.max(1, Math.min(page, totalPages));
+                    setCurrentPage(validPage);
+                  }}
                 />
               </div>
             </div>

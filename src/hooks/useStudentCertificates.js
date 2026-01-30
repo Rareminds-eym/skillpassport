@@ -88,7 +88,7 @@ export const useStudentCertificates = (studentId, enabled = true) => {
         .select('*')
         .eq('student_id', studentId)
         .is('training_id', null)
-        .in('approval_status', ['approved', 'verified']) // Only approved or verified
+        .eq('enabled', true) // Only fetch enabled certificates
         .order('issued_on', { ascending: false });
 
       if (fetchError) {
@@ -101,15 +101,19 @@ export const useStudentCertificates = (studentId, enabled = true) => {
         title: item.title || item.name,
         issuer: item.issuer || item.organization,
         issuedOn: item.issued_on,
+        expiryDate: item.expiry_date,
         level: item.level,
         description: item.description,
         credentialId: item.credential_id,
         link: item.link || item.certificate_url,
         documentUrl: item.document_url,
+        platform: item.platform,
+        instructor: item.instructor,
+        category: item.category,
         status: item.status || 'active',
         approval_status: item.approval_status,
-        verified: true, // Already filtered, so all are verified
-        processing: false, // Already filtered, so won't be pending
+        verified: item.approval_status === 'approved' || item.approval_status === 'verified',
+        processing: item.approval_status === 'pending',
         enabled: item.enabled !== false,
         createdAt: item.created_at,
         updatedAt: item.updated_at

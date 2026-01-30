@@ -46,6 +46,16 @@ export const useOpportunities = (options = {}) => {
       let count = 0;
 
       if (serverSidePagination) {
+        // Validate page number before fetching
+        if (page < 1) {
+          console.warn(`Invalid page number ${page}, skipping fetch`);
+          setOpportunities([]);
+          setTotalCount(0);
+          setTotalPages(1);
+          setLoading(false);
+          return;
+        }
+
         // Use paginated fetch
         const result = await opportunitiesService.getPaginatedOpportunities({
           page,
@@ -72,9 +82,11 @@ export const useOpportunities = (options = {}) => {
         opportunitiesService.formatOpportunityForDisplay(opp)
       );
 
+      const calculatedTotalPages = Math.max(1, Math.ceil(count / pageSize));
+
       setOpportunities(formattedOpportunities);
       setTotalCount(count);
-      setTotalPages(Math.max(1, Math.ceil(count / pageSize)));
+      setTotalPages(calculatedTotalPages);
     } catch (err) {
       console.error('❌ Error fetching opportunities:', err);
       setError(err.message || 'Failed to fetch opportunities');

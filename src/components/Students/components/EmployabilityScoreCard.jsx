@@ -115,14 +115,14 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
   };
 
   return (
-    <div className="space-y-3 bg-white/50 backdrop-blur-sm rounded-2xl p-4 border border-blue-100 shadow-md">
+    <div className="space-y-3 bg-white/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-blue-100 shadow-md">
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="font-bold text-gray-900 text-sm flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-blue-600" />
-          Employability Score
+          <TrendingUp className="w-4 h-4 text-blue-600 flex-shrink-0" />
+          <span className="break-words">Employability Score</span>
         </span>
-        <span className={`text-lg font-bold ${getTextColor()} drop-shadow-sm`}>
+        <span className={`text-lg font-bold ${getTextColor()} drop-shadow-sm flex-shrink-0`}>
           {employabilityScore}%
         </span>
       </div>
@@ -136,16 +136,18 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
       </div>
 
       {/* Label and Focus Area */}
-      <div className="flex items-center justify-between">
-        <span className={`text-xs ${getTextColor()} font-semibold flex items-center gap-1`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className={`text-xs ${getTextColor()} font-semibold flex items-center gap-1 flex-shrink-0`}>
           {getLevelIcon(level)}
-          {label}
+          <span className="hidden sm:inline">{label}</span>
+          <span className="sm:hidden">{label.length > 15 ? label.substring(0, 15) + '...' : label}</span>
         </span>
         {employabilityScore > 0 && focusArea && focusArea !== "All Areas" && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200">
-            <Target className="w-3 h-3 text-blue-600" />
-            <span className="text-xs text-blue-700">
-              Focus: <strong>{focusArea}</strong>
+          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 rounded-lg border border-blue-200 flex-shrink-0">
+            <Target className="w-3 h-3 text-blue-600 flex-shrink-0" />
+            <span className="text-xs text-blue-700 whitespace-nowrap">
+              Focus: <strong className="hidden sm:inline">{focusArea}</strong>
+              <strong className="sm:hidden">{focusArea.length > 10 ? focusArea.substring(0, 10) + '...' : focusArea}</strong>
             </span>
           </div>
         )}
@@ -172,21 +174,22 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
           </h4>
 
           {/* Radar Chart */}
-          <div className="h-52">
+          <div className="h-48 sm:h-52">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart
                 data={radarData}
-                margin={{ top: 10, right: 30, bottom: 10, left: 30 }}
+                margin={{ top: 10, right: 20, bottom: 10, left: 20 }}
               >
                 <PolarGrid stroke="#E5E7EB" />
                 <PolarAngleAxis
                   dataKey="category"
-                  tick={{ fill: "#6B7280", fontSize: 10 }}
+                  tick={{ fill: "#6B7280", fontSize: 9 }}
+                  className="text-xs"
                 />
                 <PolarRadiusAxis
                   angle={90}
                   domain={[0, 100]}
-                  tick={{ fill: "#9CA3AF", fontSize: 9 }}
+                  tick={{ fill: "#9CA3AF", fontSize: 8 }}
                 />
                 <Radar
                   name="Score"
@@ -202,15 +205,15 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
           </div>
 
           {/* Category List */}
-          <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
             {radarData.map((item) => (
               <div
                 key={item.category}
                 className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
               >
-                <span className="text-xs text-gray-600">{item.category}</span>
+                <span className="text-xs text-gray-600 break-words flex-1 mr-2">{item.category}</span>
                 <span
-                  className={`text-xs font-semibold ${
+                  className={`text-xs font-semibold flex-shrink-0 ${
                     item.score >= 70
                       ? "text-green-600"
                       : item.score >= 50
@@ -228,17 +231,17 @@ const EmployabilityScoreCard = ({ employabilityData }) => {
 
           {/* Score Legend */}
           <div className="mt-3 p-2 bg-gray-50 rounded-lg">
-            <div className="flex justify-center gap-3 text-xs flex-wrap">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+            <div className="flex justify-center gap-2 sm:gap-3 text-xs flex-wrap">
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
                 85+ Ready
               </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0"></span>
                 70+ Emerging
               </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <span className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></span>
                 50+ Developing
               </span>
             </div>
