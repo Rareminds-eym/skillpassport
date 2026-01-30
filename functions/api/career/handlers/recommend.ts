@@ -10,7 +10,7 @@
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { createClient } from '@supabase/supabase-js';
-import { isValidUUID } from '../utils/auth';
+import { isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 
 const RECOMMEND_CONFIG = {

@@ -3,7 +3,7 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser, sanitizeInput } from '../utils/auth';
+import { authenticateUser, sanitizeInput } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getModelForUseCase, API_CONFIG, MODEL_PROFILES } from '../../shared/ai-config';
 import type { ChatRequest } from '../types';

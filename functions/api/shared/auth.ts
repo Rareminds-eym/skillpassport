@@ -1,9 +1,11 @@
-// Authentication utilities for Career API
+// Authentication utilities for Cloudflare Pages Functions
+// Shared across all APIs
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export interface AuthUser {
   id: string;
+  email?: string;
 }
 
 export interface AuthResult {
@@ -27,12 +29,14 @@ export async function authenticateUser(
   let userId: string | null = null;
 
   // Method 1: Decode JWT directly (faster)
+  let userEmail: string | undefined;
   try {
     const parts = token.split('.');
     if (parts.length === 3) {
       const payload = JSON.parse(atob(parts[1]));
       if (payload.sub) {
         userId = payload.sub;
+        userEmail = payload.email;
         console.log(`Auth: User authenticated via JWT - ${userId}`);
       }
     }
@@ -48,6 +52,7 @@ export async function authenticateUser(
       
       if (!authError && authUser) {
         userId = authUser.id;
+        userEmail = authUser.email;
         console.log(`Auth: User authenticated via service role - ${userId}`);
       }
     } catch (authErr) {
@@ -64,7 +69,7 @@ export async function authenticateUser(
   });
 
   return {
-    user: { id: userId },
+    user: { id: userId, email: userEmail },
     supabase,
     supabaseAdmin,
   };
