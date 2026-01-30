@@ -7,7 +7,8 @@ import {
   markTourCompleted,
   isEligibleForTour,
   forceUnlockScroll,
-  initializeScrollUtils
+  initializeScrollUtils,
+  lockScroll
 } from './utils';
 
 interface TourContextType {

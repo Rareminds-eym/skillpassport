@@ -3,7 +3,6 @@ import { CheckCircle, ChevronRight, Sparkles, X } from 'lucide-react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 
 /**
  * AssessmentPromotionalModal - Promotional modal for taking assessment
@@ -39,7 +38,7 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
     return () => clearInterval(timer);
   }, [isOpen, getTimeRemaining]);
 
-  // Handle escape key and scroll lock
+  // Handle escape key
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose();
@@ -47,12 +46,10 @@ const AssessmentPromotionalModal = ({ isOpen, onClose, getTimeRemaining }) => {
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      lockScroll();
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      unlockScroll();
     };
   }, [isOpen, onClose]);
 
