@@ -104,6 +104,128 @@ async function callOpenRouter(
 }
 
 /**
+ * Validate assessment response structure
+ * Ensures the response has all required fields with correct types
+ */
+function validateAssessmentStructure(result: any): { valid: boolean; errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  // Must be an object
+  if (!result || typeof result !== 'object' || Array.isArray(result)) {
+    errors.push('Response must be a JSON object, not an array or primitive');
+    return { valid: false, errors, warnings };
+  }
+  
+  // Required top-level fields
+  const requiredFields = {
+    profileSnapshot: 'object',
+    riasec: 'object',
+    aptitude: 'object',
+    bigFive: 'object',
+    workValues: 'object',
+    employability: 'object',
+    knowledge: 'object',
+    careerFit: 'object',
+    skillGap: 'object',
+    roadmap: 'object',
+    finalNote: 'object'
+  };
+  
+  // Check required fields
+  for (const [field, expectedType] of Object.entries(requiredFields)) {
+    if (!result[field]) {
+      warnings.push(`Missing field: ${field}`);
+    } else if (typeof result[field] !== expectedType) {
+      errors.push(`Field '${field}' must be ${expectedType}, got ${typeof result[field]}`);
+    }
+  }
+  
+  // Validate careerFit structure (most critical)
+  if (result.careerFit) {
+    if (!result.careerFit.clusters || !Array.isArray(result.careerFit.clusters)) {
+      errors.push('careerFit.clusters must be an array');
+    } else {
+      if (result.careerFit.clusters.length !== 3) {
+        errors.push(`careerFit.clusters must have exactly 3 items, got ${result.careerFit.clusters.length}`);
+      }
+      
+      // Validate each cluster
+      result.careerFit.clusters.forEach((cluster: any, index: number) => {
+        const clusterNum = index + 1;
+        if (!cluster || typeof cluster !== 'object') {
+          errors.push(`Cluster ${clusterNum} must be an object`);
+          return;
+        }
+        
+        const requiredClusterFields = ['title', 'fit', 'matchScore', 'description', 'evidence', 'roles', 'domains', 'whyItFits'];
+        requiredClusterFields.forEach(field => {
+          if (!cluster[field]) {
+            warnings.push(`Cluster ${clusterNum} missing field: ${field}`);
+          }
+        });
+        
+        // Validate evidence structure
+        if (cluster.evidence && typeof cluster.evidence === 'object') {
+          const requiredEvidence = ['interest', 'aptitude', 'personality'];
+          requiredEvidence.forEach(field => {
+            if (!cluster.evidence[field]) {
+              warnings.push(`Cluster ${clusterNum} evidence missing: ${field}`);
+            }
+          });
+        }
+      });
+    }
+    
+    // Validate specificOptions
+    if (!result.careerFit.specificOptions) {
+      warnings.push('careerFit.specificOptions missing');
+    } else {
+      const requiredOptions = ['highFit', 'mediumFit', 'exploreLater'];
+      requiredOptions.forEach(field => {
+        if (!result.careerFit.specificOptions[field] || !Array.isArray(result.careerFit.specificOptions[field])) {
+          warnings.push(`careerFit.specificOptions.${field} must be an array`);
+        }
+      });
+    }
+  }
+  
+  // Validate RIASEC structure
+  if (result.riasec) {
+    if (!result.riasec.scores || typeof result.riasec.scores !== 'object') {
+      errors.push('riasec.scores must be an object');
+    } else {
+      const requiredScores = ['R', 'I', 'A', 'S', 'E', 'C'];
+      requiredScores.forEach(letter => {
+        if (typeof result.riasec.scores[letter] !== 'number') {
+          warnings.push(`riasec.scores.${letter} must be a number`);
+        }
+      });
+    }
+    
+    if (!result.riasec.code || typeof result.riasec.code !== 'string') {
+      warnings.push('riasec.code must be a string');
+    }
+  }
+  
+  // Validate aptitude structure
+  if (result.aptitude && result.aptitude.scores) {
+    const aptitudeTypes = ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'];
+    aptitudeTypes.forEach(type => {
+      if (!result.aptitude.scores[type]) {
+        warnings.push(`aptitude.scores.${type} missing`);
+      }
+    });
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings
+  };
+}
+
+/**
  * Analyze assessment data using OpenRouter AI
  */
 async function analyzeAssessment(
@@ -163,22 +285,31 @@ async function analyzeAssessment(
         console.log(`[AI] ℹ️ Note: ${failedModels.length} model(s) failed before success: ${failedModels.join(', ')}`);
       }
       
-      // Parse the JSON response using shared utility
-      const result = repairAndParseJSON(content);
+      // Log raw response for debugging
+      console.log(`[AI] 📄 RAW RESPONSE (first 500 chars):`);
+      console.log(content.substring(0, 500));
+      console.log(`[AI] 📄 RAW RESPONSE (last 500 chars):`);
+      console.log(content.substring(Math.max(0, content.length - 500)));
+      console.log(`[AI] 📄 Total response length: ${content.length} characters`);
       
-      // Validate that we got a complete response (not truncated)
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response: expected object, got ' + typeof result);
+      // Parse the JSON response using shared utility (prefer object for assessments)
+      const result = repairAndParseJSON(content, true);
+      
+      // Strict validation of response structure
+      const validation = validateAssessmentStructure(result);
+      
+      // Log validation results
+      if (validation.errors.length > 0) {
+        console.error(`[AI] ❌ Validation errors (${validation.errors.length}):`);
+        validation.errors.forEach(err => console.error(`  - ${err}`));
+        throw new Error(`Invalid response structure: ${validation.errors.join('; ')}`);
       }
       
-      // Check for required top-level fields to ensure completeness
-      const requiredFields = ['profileSnapshot', 'riasec', 'aptitude', 'careerFit'];
-      const missingFields = requiredFields.filter(field => !result[field]);
-      
-      if (missingFields.length > 0) {
-        console.warn(`[AI] ⚠️ Response missing fields: ${missingFields.join(', ')}`);
-        console.warn(`[AI] ⚠️ Response may be truncated. Available fields: ${Object.keys(result).join(', ')}`);
-        // Don't throw - allow partial responses, but log the issue
+      if (validation.warnings.length > 0) {
+        console.warn(`[AI] ⚠️ Validation warnings (${validation.warnings.length}):`);
+        validation.warnings.forEach(warn => console.warn(`  - ${warn}`));
+      } else {
+        console.log(`[AI] ✅ Response structure validated successfully`);
       }
       
       // Add metadata including seed for debugging
@@ -189,8 +320,12 @@ async function analyzeAssessment(
         deterministic: true,
         failedModels: failedModels.length > 0 ? failedModels : undefined,
         failureDetails: failureDetails.length > 0 ? failureDetails : undefined,
-        responseComplete: missingFields.length === 0,
-        missingFields: missingFields.length > 0 ? missingFields : undefined
+        validation: {
+          valid: validation.valid,
+          errorCount: validation.errors.length,
+          warningCount: validation.warnings.length,
+          warnings: validation.warnings.length > 0 ? validation.warnings : undefined
+        }
       };
       
       return result;

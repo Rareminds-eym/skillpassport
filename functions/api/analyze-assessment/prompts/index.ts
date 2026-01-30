@@ -50,11 +50,41 @@ export function getSystemMessage(gradeLevel: GradeLevel): string {
   const baseMessage = 'You are an expert career counselor and psychometric analyst. Provide detailed, deterministic career analysis.';
   
   const requirements = `
+
 CRITICAL REQUIREMENTS:
 1) Always return complete, valid JSON - never truncate.
 2) You MUST provide EXACTLY 3 career clusters (High fit, Medium fit, Explore fit) - this is MANDATORY.
 3) Ensure all arrays and objects are properly closed.
-4) Each cluster must have description, evidence, roles, domains, and whyItFits fields filled.`;
+4) Each cluster must have description, evidence, roles, domains, and whyItFits fields filled.
+
+CRITICAL JSON FORMAT RULES:
+1. Start your response with { (opening brace) - NOT with [ (bracket)
+2. End your response with } (closing brace) - NOT with ] (bracket)
+3. Return a SINGLE JSON OBJECT, NOT an array
+4. Do NOT wrap in markdown code blocks (no \`\`\`json)
+5. Do NOT add any text before or after the JSON object
+6. Ensure all strings are properly quoted with double quotes
+7. Ensure all commas are in the right places
+8. Ensure all nested objects and arrays are properly closed
+9. Keep text concise to avoid token limits
+10. If approaching token limit, prioritize completing the JSON structure over adding more detail
+11. NEVER truncate mid-object - always close all braces and brackets
+
+EXAMPLE OF CORRECT FORMAT:
+{
+  "profileSnapshot": {...},
+  "riasec": {...},
+  "aptitude": {...},
+  "careerFit": {...}
+}
+
+WRONG FORMAT (DO NOT USE):
+[
+  {"name": "..."},
+  {"name": "..."}
+]
+
+Return ONLY the JSON object (starting with {), nothing else.`;
 
   if (gradeLevel === 'middle') {
     return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;

@@ -166,24 +166,45 @@ export function generateUUID(): string {
 /**
  * Repair and parse JSON from AI responses
  * Handles common issues like markdown code blocks, trailing commas, etc.
+ * @param text - The text to parse
+ * @param preferObject - If true, look for objects first; if false, look for arrays first
  */
-export function repairAndParseJSON(text: string): any {
-    // Clean markdown
+export function repairAndParseJSON(text: string, preferObject: boolean = false): any {
+    // Clean markdown - be more aggressive
     let cleaned = text
-        .replace(/```json\n?/gi, '')
-        .replace(/```\n?/g, '')
+        .replace(/```json\s*/gi, '')  // Remove ```json with optional whitespace
+        .replace(/```\s*/g, '')        // Remove ``` with optional whitespace
         .trim();
 
-    // Find JSON boundaries - try array first, then object
-    let startIdx = cleaned.indexOf('[');
-    let endIdx = cleaned.lastIndexOf(']');
-    let isArray = true;
+    // Find JSON boundaries - prioritize based on preference
+    let startIdx = -1;
+    let endIdx = -1;
+    let isArray = false;
 
-    // If no array, try object
-    if (startIdx === -1 || endIdx === -1) {
+    if (preferObject) {
+        // Try object first (for assessments), then array
         startIdx = cleaned.indexOf('{');
         endIdx = cleaned.lastIndexOf('}');
         isArray = false;
+
+        // If no object found, try array
+        if (startIdx === -1 || endIdx === -1) {
+            startIdx = cleaned.indexOf('[');
+            endIdx = cleaned.lastIndexOf(']');
+            isArray = true;
+        }
+    } else {
+        // Try array first (for questions), then object
+        startIdx = cleaned.indexOf('[');
+        endIdx = cleaned.lastIndexOf(']');
+        isArray = true;
+
+        // If no array, try object
+        if (startIdx === -1 || endIdx === -1) {
+            startIdx = cleaned.indexOf('{');
+            endIdx = cleaned.lastIndexOf('}');
+            isArray = false;
+        }
     }
 
     if (startIdx === -1 || endIdx === -1) {
