@@ -105,8 +105,9 @@ const Opportunities = () => {
     const filters = {};
     
     // Employment type filter - for school students, force internship only
+    // NOTE: Database stores employment_type with capital first letter (e.g., "Internship", "Full-time")
     if (studentType.isSchoolStudent) {
-      filters.employmentType = ['internship'];
+      filters.employmentType = ['Internship'];
     } else if (advancedFilters.employmentType.length > 0) {
       filters.employmentType = advancedFilters.employmentType;
     }
