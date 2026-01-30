@@ -90,6 +90,32 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
       collegeName = collegeData?.name || '';
     }
 
+    // Calculate actual current students count for college students only
+    let actualCurrentStudents = 0;
+    if (data.program_section_id) {
+      const { count } = await supabase
+        .from('students')
+        .select('id', { count: 'exact' })
+        .eq('program_section_id', data.program_section_id)
+        .not('is_deleted', 'is', true)
+        .not('is_deleted', 'eq', true);
+      
+      // Filter by college students only
+      const { data: studentsData } = await supabase
+        .from('students')
+        .select(`
+          id,
+          users!inner (
+            role
+          )
+        `)
+        .eq('program_section_id', data.program_section_id)
+        .eq('users.role', 'college_student')
+        .not('is_deleted', 'is', true);
+      
+      actualCurrentStudents = studentsData?.length || 0;
+    }
+
     return {
       id: data.id,
       program_id: data.program_id,
@@ -100,7 +126,7 @@ export const getCollegeStudentClassInfo = async (studentId: string): Promise<Col
       section: programSection?.section || undefined,
       academic_year: programSection?.academic_year || undefined,
       college_name: collegeName,
-      current_students: programSection?.current_students || 0,
+      current_students: actualCurrentStudents,
       max_students: programSection?.max_students || 0,
       college_id: data.college_id || undefined,
       program_section_id: data.program_section_id || undefined,
