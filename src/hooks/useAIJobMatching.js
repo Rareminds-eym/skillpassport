@@ -2,13 +2,11 @@ import { useState, useEffect } from 'react';
 import { matchJobsWithAI, refreshJobMatches } from '../services/aiJobMatchingService';
 
 /**
- * Custom hook for Smart AI-powered job matching
- * 
- * Uses the career-api Cloudflare Worker with the new smart matching system:
- * - Multi-factor scoring (similarity, skills, certificates, projects, experience)
- * - Student type filtering (school vs university)
- * - Grade/semester-based filtering
- * - Age-appropriate recommendations
+ * Custom hook for AI-powered job matching
+ * Uses the career-api Cloudflare Worker which handles:
+ * - Vector similarity search against opportunities
+ * - Database-level caching (24-hour TTL)
+ * - Automatic cache invalidation
  * 
  * @param {Object} studentProfile - Student profile data
  * @param {boolean} enabled - Whether to run matching (default: true)
@@ -30,17 +28,23 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         return;
       }
 
+      // Check if studentProfile has an ID
+      const studentId = studentProfile?.id || studentProfile?.student_id;
+      if (!studentId) {
+        console.warn('[useAIJobMatching] No student ID found in profile, skipping match');
+        setMatchedJobs([]);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
 
-        console.log('[useAIJobMatching] Fetching smart matches for student:', {
+        console.log('[useAIJobMatching] Fetching matches for student:', {
           id: studentProfile?.id,
           email: studentProfile?.email,
-          name: studentProfile?.name,
-          type: studentProfile?.student_type,
-          grade: studentProfile?.grade,
-          semester: studentProfile?.semester
+          name: studentProfile?.name
         });
 
         // Call the API - it handles opportunities fetching internally
@@ -55,14 +59,7 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         }
 
         setMatchedJobs(matches);
-        console.log('[useAIJobMatching] Got smart matches:', {
-          count: matches.length,
-          topMatch: matches[0] ? {
-            title: matches[0].job_title,
-            score: matches[0].match_score,
-            reason: matches[0].match_reason
-          } : null
-        });
+        console.log('[useAIJobMatching] Got matches:', matches.length);
 
       } catch (err) {
         console.error('❌ Error in AI job matching:', err);

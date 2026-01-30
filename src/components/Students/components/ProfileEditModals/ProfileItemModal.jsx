@@ -50,7 +50,7 @@ const ProfileItemModal = ({
             const uniqueSkills = [...new Set(skillsArray)]; // Remove duplicates
             editData.skillsList = uniqueSkills.map(skillName => ({
               name: skillName,
-              type: 'soft', // Default type
+              type: config.getDefaultValues().type || 'technical', // Use config default type
               level: 3, // Default level
               description: '',
               verified: true,
@@ -65,12 +65,24 @@ const ProfileItemModal = ({
         }
       });
       
+      // Special handling for skills: ensure correct field mapping
+      if (type === 'skills' || type === 'technicalSkills' || type === 'softSkills') {
+        // If item has rating, use it for the rating field
+        if (item.rating !== undefined) {
+          editData.rating = String(item.rating);
+        }
+        // If item has level as text, use it for the level field
+        if (item.level && typeof item.level === 'string') {
+          editData.level = item.level;
+        }
+      }
+      
       setFormData(editData);
     } else {
       // Add mode - reset to defaults
       setFormData(config.getDefaultValues());
     }
-  }, [item, isOpen, config]);
+  }, [item, isOpen, config, type]);
 
   if (!config) {
     console.error(`Unknown profile type: ${type}`);
@@ -140,7 +152,7 @@ const ProfileItemModal = ({
 
     const newSkill = {
       name: skillName,
-      type: formData.newSkillType || 'soft',
+      type: formData.newSkillType || config.getDefaultValues().type || 'technical',
       level: parseInt(formData.newSkillLevel || '3'),
       description: formData.newSkillDescription?.trim() || '',
       verified: true,
@@ -155,7 +167,7 @@ const ProfileItemModal = ({
         ...prev,
         skillsList: newSkillsList,
         newSkillName: '',
-        newSkillType: 'soft',
+        newSkillType: config.getDefaultValues().type || 'technical',
         newSkillLevel: '3',
         newSkillDescription: ''
       };
@@ -215,6 +227,21 @@ const ProfileItemModal = ({
         processedData[field.name] = parsePositiveNumber(processedData[field.name]);
       }
     });
+
+    // Special processing for skills: map fields correctly to database
+    if (type === 'skills' || type === 'technicalSkills' || type === 'softSkills') {
+      // Map rating (1-5) to level field in database
+      if (processedData.rating) {
+        processedData.level = parseInt(processedData.rating) || 3;
+      }
+      
+      // Map level text ("Intermediate", "Advanced") to proficiency_level field in database
+      if (processedData.level && typeof processedData.level === 'string') {
+        processedData.proficiency_level = processedData.level;
+        // Set level to the rating value instead
+        processedData.level = parseInt(processedData.rating) || 3;
+      }
+    }
 
     // Calculate duration for experience type or training type
     if (config.calculateDuration) {
