@@ -10,6 +10,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [subject, setSubject] = useState('General Discussion');
+  const [customSubject, setCustomSubject] = useState('');
 
   // Predefined subjects for college admin conversations
   const subjects = [
@@ -149,19 +150,25 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
   }, [searchQuery, students]);
 
   const handleCreateConversation = () => {
-    if (selectedStudent && subject) {
+    // Determine the final subject to use
+    const finalSubject = subject === 'Other' ? customSubject.trim() : subject.trim();
+    
+    if (selectedStudent && finalSubject) {
       onConversationCreated({
         studentId: selectedStudent.user_id,
-        subject: subject,
+        subject: finalSubject,
         initialMessage: '' // College admin will send first message after creation
       });
       handleClose();
+    } else if (subject === 'Other' && !customSubject.trim()) {
+      toast.error('Please enter a custom subject');
     }
   };
 
   const handleClose = () => {
     setSelectedStudent(null);
     setSubject('General Discussion');
+    setCustomSubject('');
     setSearchQuery('');
     onClose();
   };
@@ -200,7 +207,13 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
               </label>
               <select
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
+                onChange={(e) => {
+                  setSubject(e.target.value);
+                  // Clear custom subject when switching away from "Other"
+                  if (e.target.value !== 'Other') {
+                    setCustomSubject('');
+                  }
+                }}
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
               >
                 {subjects.map((subj) => (
@@ -209,6 +222,29 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
                   </option>
                 ))}
               </select>
+              
+              {/* Custom Subject Input - Show when "Other" is selected */}
+              {subject === 'Other' && (
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    value={customSubject}
+                    onChange={(e) => setCustomSubject(e.target.value)}
+                    placeholder="Enter your custom subject..."
+                    className="w-full px-4 py-3 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    maxLength={100}
+                    required
+                  />
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-xs text-blue-600">
+                      Enter a custom subject for your conversation
+                    </p>
+                    <span className="text-xs text-gray-400">
+                      {customSubject.length}/100
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Search */}
@@ -284,7 +320,7 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
           </button>
           <button
             onClick={handleCreateConversation}
-            disabled={!selectedStudent}
+            disabled={!selectedStudent || !subject.trim() || (subject === 'Other' && !customSubject.trim())}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
           >
             Start Conversation

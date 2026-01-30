@@ -189,7 +189,7 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
       console.log('🔍 Starting fetchStudentEducators for studentId:', studentId);
       
       // Get student data to check both school_id and university_college_id
-      const { data: studentData, error: studentError } = await supabase
+      let { data: studentData, error: studentError } = await supabase
         .from('students')
         .select('school_id, university_college_id, program_section_id, program_id, id, user_id')
         .eq('id', studentId)
@@ -256,153 +256,44 @@ const NewEducatorConversationModal = ({ isOpen, onClose, studentId, onConversati
 
       // Fetch college lecturers if student has university_college_id
       if (studentData?.university_college_id) {
-        console.log('🎓 Fetching college lecturers for college_id:', studentData.university_college_id);
-        console.log('📚 Student program_section_id:', studentData.program_section_id);
+        console.log('🎓 Fetching all college lecturers for college_id:', studentData.university_college_id);
         
-        if (studentData.program_section_id) {
-          // Step 2: Get program section details and assigned faculty
-          const { data: programSectionData, error: sectionError } = await supabase
-            .from('program_sections')
-            .select(`
-              id,
-              faculty_id,
-              program_id,
-              semester,
-              section,
-              academic_year,
-              programs:program_id (
-                id,
-                name,
-                code
-              )
-            `)
-            .eq('id', studentData.program_section_id)
-            .single();
+        // Get all lecturers from the student's college
+        const { data: allCollegeLecturers, error: collegeError } = await supabase
+          .from('college_lecturers')
+          .select(`
+            id,
+            first_name,
+            last_name,
+            email,
+            department,
+            specialization,
+            collegeId,
+            user_id
+          `)
+          .eq('collegeId', studentData.university_college_id);
 
-          console.log('📚 Program section data:', programSectionData);
-          console.log('❌ Program section error:', sectionError);
+        console.log('🎓 All college lecturers:', allCollegeLecturers);
+        console.log('❌ College error:', collegeError);
 
-          if (!sectionError && programSectionData?.faculty_id) {
-            console.log('👨‍🏫 Program section faculty ID:', programSectionData.faculty_id);
-            
-            // Step 3: Get the college lecturer assigned to this program section
-            const { data: collegeLecturers, error: collegeError } = await supabase
-              .from('college_lecturers')
-              .select(`
-                id,
-                first_name,
-                last_name,
-                email,
-                department,
-                specialization,
-                collegeId,
-                user_id
-              `)
-              .eq('user_id', programSectionData.faculty_id)
-              .eq('collegeId', studentData.university_college_id);
+        if (!collegeError && allCollegeLecturers && allCollegeLecturers.length > 0) {
+          console.log('✅ Found college lecturers:', allCollegeLecturers.length);
+          
+          const collegeEducators = allCollegeLecturers.map(lecturer => ({
+            id: lecturer.id,
+            name: `${lecturer.first_name} ${lecturer.last_name}`,
+            email: lecturer.email,
+            photo_url: null,
+            type: 'college_lecturer',
+            department: lecturer.department,
+            specialization: lecturer.specialization,
+            classes: []
+          }));
 
-            console.log('🎓 College lecturers:', collegeLecturers);
-            console.log('❌ College error:', collegeError);
-
-            if (!collegeError && collegeLecturers && collegeLecturers.length > 0) {
-              console.log('✅ Found assigned college lecturers:', collegeLecturers.length);
-              
-              const collegeEducators = collegeLecturers.map(lecturer => ({
-                id: lecturer.id,
-                name: `${lecturer.first_name} ${lecturer.last_name}`,
-                email: lecturer.email,
-                photo_url: null,
-                type: 'college_lecturer',
-                department: lecturer.department,
-                specialization: lecturer.specialization,
-                programSection: {
-                  id: programSectionData.id,
-                  semester: programSectionData.semester,
-                  section: programSectionData.section,
-                  academicYear: programSectionData.academic_year,
-                  programName: programSectionData.programs?.name,
-                  programCode: programSectionData.programs?.code
-                },
-                classes: []
-              }));
-
-              allEducators.push(...collegeEducators);
-              console.log('✅ Added college lecturers to educator list');
-            } else {
-              console.log('ℹ️ No college lecturers found for this program section');
-              
-              // Fallback: Get all lecturers from the college if no specific assignment
-              console.log('🔄 Trying fallback: all lecturers in college');
-              const { data: allCollegeLecturers, error: fallbackError } = await supabase
-                .from('college_lecturers')
-                .select(`
-                  id,
-                  first_name,
-                  last_name,
-                  email,
-                  department,
-                  specialization,
-                  collegeId,
-                  user_id
-                `)
-                .eq('collegeId', studentData.university_college_id);
-
-              console.log('🔄 Fallback college lecturers:', allCollegeLecturers);
-              
-              if (!fallbackError && allCollegeLecturers && allCollegeLecturers.length > 0) {
-                const fallbackEducators = allCollegeLecturers.map(lecturer => ({
-                  id: lecturer.id,
-                  name: `${lecturer.first_name} ${lecturer.last_name}`,
-                  email: lecturer.email,
-                  photo_url: null,
-                  type: 'college_lecturer',
-                  department: lecturer.department,
-                  specialization: lecturer.specialization,
-                  classes: []
-                }));
-
-                allEducators.push(...fallbackEducators);
-                console.log('✅ Added fallback college lecturers:', fallbackEducators.length);
-              }
-            }
-          } else {
-            console.log('ℹ️ No faculty assigned to student\'s program section or section not found');
-          }
+          allEducators.push(...collegeEducators);
+          console.log('✅ Added all college lecturers to educator list');
         } else {
-          console.log('ℹ️ Student has no program section assigned, trying fallback');
-          
-          // Fallback: Get all lecturers from the college
-          const { data: allCollegeLecturers, error: fallbackError } = await supabase
-            .from('college_lecturers')
-            .select(`
-              id,
-              first_name,
-              last_name,
-              email,
-              department,
-              specialization,
-              collegeId,
-              user_id
-            `)
-            .eq('collegeId', studentData.university_college_id);
-
-          console.log('🔄 Fallback college lecturers (no program section):', allCollegeLecturers);
-          
-          if (!fallbackError && allCollegeLecturers && allCollegeLecturers.length > 0) {
-            const fallbackEducators = allCollegeLecturers.map(lecturer => ({
-              id: lecturer.id,
-              name: `${lecturer.first_name} ${lecturer.last_name}`,
-              email: lecturer.email,
-              photo_url: null,
-              type: 'college_lecturer',
-              department: lecturer.department,
-              specialization: lecturer.specialization,
-              classes: []
-            }));
-
-            allEducators.push(...fallbackEducators);
-            console.log('✅ Added fallback college lecturers (no program section):', fallbackEducators.length);
-          }
+          console.log('ℹ️ No college lecturers found in this college');
         }
       }
 

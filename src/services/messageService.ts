@@ -13,9 +13,9 @@ export interface Message {
   id: number;
   conversation_id: string;
   sender_id: string;
-  sender_type: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
+  sender_type: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
   receiver_id: string;
-  receiver_type: 'student' | 'recruiter' | 'educator' | 'school_admin' | 'college_admin' | 'university_admin';
+  receiver_type: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
   message_text: string;
   attachments?: any[];
   application_id?: number;
@@ -39,7 +39,7 @@ export interface Conversation {
   class_id?: number;
   subject?: string;
   status: 'active' | 'archived' | 'closed';
-  conversation_type: 'student_recruiter' | 'student_educator' | 'educator_recruiter' | 'student_admin' | 'student_college_admin' | 'student_college_educator';
+  conversation_type: 'student_recruiter' | 'student_educator' | 'educator_recruiter' | 'student_admin' | 'student_college_admin' | 'student_college_educator' | 'educator_admin' | 'college_educator_admin';
   last_message_at?: string;
   last_message_preview?: string;
   last_message_sender?: string;
@@ -555,9 +555,9 @@ export class MessageService {
   static async sendMessage(
     conversationId: string,
     senderId: string,
-    senderType: 'student' | 'recruiter' | 'educator' | 'college_educator',
+    senderType: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin',
     receiverId: string,
-    receiverType: 'student' | 'recruiter' | 'educator' | 'college_educator',
+    receiverType: 'student' | 'recruiter' | 'educator' | 'college_educator' | 'school_admin' | 'college_admin',
     messageText: string,
     applicationId?: number | string,
     opportunityId?: number | string,
@@ -1339,6 +1339,39 @@ export class MessageService {
                 .eq('id', conversationId);
             }
           }
+        } else if (conversation.conversation_type === 'college_educator_admin') {
+          // For college educator-admin conversations
+          // Check if user is the college educator
+          const { data: collegeLecturer, error: lecturerError } = await supabase
+            .from('college_lecturers')
+            .select('id')
+            .eq('user_id', userId)
+            .single();
+          
+          if (!lecturerError && collegeLecturer && conversation.educator_id === collegeLecturer.id) {
+            // User is the college educator, update educator_unread_count
+            await supabase
+              .from('conversations')
+              .update({ educator_unread_count: 0 })
+              .eq('id', conversationId);
+          } else {
+            // Check if user is college admin (owner in organizations table)
+            const { data: collegeOwner, error: ownerError } = await supabase
+              .from('organizations')
+              .select('admin_id')
+              .eq('id', conversation.college_id)
+              .eq('organization_type', 'college')
+              .eq('admin_id', userId)
+              .single();
+            
+            if (!ownerError && collegeOwner) {
+              // User is college admin, update college_admin_unread_count
+              await supabase
+                .from('conversations')
+                .update({ college_admin_unread_count: 0 })
+                .eq('id', conversationId);
+            }
+          }
         } else {
           // Handle regular conversations
           const updateField = isStudent ? 'student_unread_count' : 
@@ -1926,6 +1959,75 @@ export class MessageService {
       return conversation;
     } catch (error) {
       console.error('Error creating educator-admin conversation:', error);
+      throw error;
+    }
+  }
+  /**
+   * Get or create conversation between college educator and college admin
+   * For college-related discussions, issues, etc.
+   */
+  static async getOrCreateCollegeEducatorAdminConversation(
+    educatorId: string,
+    collegeId: string,
+    subject?: string
+  ): Promise<Conversation> {
+    const cacheKey = `college_educator_admin:${educatorId}:${collegeId}:${subject || 'general'}`;
+    
+    // Deduplicate concurrent requests
+    if (pendingRequests.has(cacheKey)) {
+      return pendingRequests.get(cacheKey)!;
+    }
+
+    const request = this._getOrCreateCollegeEducatorAdminConversationInternal(
+      educatorId,
+      collegeId,
+      subject
+    );
+    
+    pendingRequests.set(cacheKey, request);
+    
+    try {
+      const result = await request;
+      return result;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  }
+
+  private static async _getOrCreateCollegeEducatorAdminConversationInternal(
+    educatorId: string,
+    collegeId: string,
+    subject?: string
+  ): Promise<Conversation> {
+    try {
+      // Use the database function for consistency
+      const { data, error } = await supabase
+        .rpc('get_or_create_college_educator_admin_conversation', {
+          p_educator_id: educatorId,
+          p_college_id: collegeId,
+          p_subject: subject || 'General Discussion'
+        });
+
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        throw new Error('Failed to create college educator-admin conversation');
+      }
+
+      const conversationId = data[0].conversation_id;
+      
+      // Fetch the full conversation details
+      const { data: conversation, error: fetchError } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('id', conversationId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
+      return conversation;
+    } catch (error) {
+      console.error('Error creating college educator-admin conversation:', error);
       throw error;
     }
   }
