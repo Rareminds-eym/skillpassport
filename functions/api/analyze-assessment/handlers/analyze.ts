@@ -31,7 +31,7 @@ const ASSESSMENT_MODELS = [
 // Assessment-specific configuration
 const ASSESSMENT_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
-  maxTokens: 16000,  // Increased from 8000 to handle complete responses
+  maxTokens: 20000,  // Increased to handle complete responses (large nested object)
 };
 
 /**
@@ -166,6 +166,21 @@ async function analyzeAssessment(
       // Parse the JSON response using shared utility
       const result = repairAndParseJSON(content);
       
+      // Validate that we got a complete response (not truncated)
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response: expected object, got ' + typeof result);
+      }
+      
+      // Check for required top-level fields to ensure completeness
+      const requiredFields = ['profileSnapshot', 'riasec', 'aptitude', 'careerFit'];
+      const missingFields = requiredFields.filter(field => !result[field]);
+      
+      if (missingFields.length > 0) {
+        console.warn(`[AI] ⚠️ Response missing fields: ${missingFields.join(', ')}`);
+        console.warn(`[AI] ⚠️ Response may be truncated. Available fields: ${Object.keys(result).join(', ')}`);
+        // Don't throw - allow partial responses, but log the issue
+      }
+      
       // Add metadata including seed for debugging
       result._metadata = {
         seed: seed,
@@ -173,7 +188,9 @@ async function analyzeAssessment(
         timestamp: new Date().toISOString(),
         deterministic: true,
         failedModels: failedModels.length > 0 ? failedModels : undefined,
-        failureDetails: failureDetails.length > 0 ? failureDetails : undefined
+        failureDetails: failureDetails.length > 0 ? failureDetails : undefined,
+        responseComplete: missingFields.length === 0,
+        missingFields: missingFields.length > 0 ? missingFields : undefined
       };
       
       return result;

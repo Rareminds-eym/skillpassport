@@ -19,18 +19,17 @@ interface RouteMapping {
 
 // List of all API routes that should be automatically registered
 const API_ROUTES: RouteMapping[] = [
-  { filePath: 'functions/api/assessment/[[path]].ts', expectedRoute: '/api/assessment/*', apiName: 'assessment' },
+  { filePath: 'functions/api/adaptive-session/[[path]].ts', expectedRoute: '/api/adaptive-session/*', apiName: 'adaptive-session' },
+  { filePath: 'functions/api/analyze-assessment/[[path]].ts', expectedRoute: '/api/analyze-assessment/*', apiName: 'analyze-assessment' },
   { filePath: 'functions/api/career/[[path]].ts', expectedRoute: '/api/career/*', apiName: 'career' },
   { filePath: 'functions/api/course/[[path]].ts', expectedRoute: '/api/course/*', apiName: 'course' },
   { filePath: 'functions/api/fetch-certificate/[[path]].ts', expectedRoute: '/api/fetch-certificate/*', apiName: 'fetch-certificate' },
   { filePath: 'functions/api/otp/[[path]].ts', expectedRoute: '/api/otp/*', apiName: 'otp' },
+  { filePath: 'functions/api/question-generation/[[path]].ts', expectedRoute: '/api/question-generation/*', apiName: 'question-generation' },
+  { filePath: 'functions/api/role-overview/[[path]].ts', expectedRoute: '/api/role-overview/*', apiName: 'role-overview' },
   { filePath: 'functions/api/storage/[[path]].ts', expectedRoute: '/api/storage/*', apiName: 'storage' },
   { filePath: 'functions/api/streak/[[path]].ts', expectedRoute: '/api/streak/*', apiName: 'streak' },
   { filePath: 'functions/api/user/[[path]].ts', expectedRoute: '/api/user/*', apiName: 'user' },
-  { filePath: 'functions/api/adaptive-aptitude/[[path]].ts', expectedRoute: '/api/adaptive-aptitude/*', apiName: 'adaptive-aptitude' },
-  { filePath: 'functions/api/analyze-assessment/[[path]].ts', expectedRoute: '/api/analyze-assessment/*', apiName: 'analyze-assessment' },
-  { filePath: 'functions/api/question-generation/[[path]].ts', expectedRoute: '/api/question-generation/*', apiName: 'question-generation' },
-  { filePath: 'functions/api/role-overview/[[path]].ts', expectedRoute: '/api/role-overview/*', apiName: 'role-overview' },
 ];
 
 // Helper function to convert file path to expected route
@@ -86,11 +85,11 @@ describe('Property 13: File-Based Routing', () => {
    * For any API service in the list, there should be a corresponding
    * file and route mapping
    */
-  it('should have routes for all 12 API services', () => {
+  it('should have routes for all 11 API services', () => {
     const expectedServices = [
-      'assessment', 'career', 'course', 'fetch-certificate',
+      'adaptive-session', 'analyze-assessment', 'career', 'course', 'fetch-certificate',
       'otp', 'storage', 'streak', 'user',
-      'adaptive-aptitude', 'analyze-assessment', 'question-generation', 'role-overview'
+      'question-generation', 'role-overview'
     ];
 
     const registeredServices = API_ROUTES.map(r => r.apiName);

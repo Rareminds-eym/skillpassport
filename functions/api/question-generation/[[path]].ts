@@ -156,20 +156,22 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     if (path === '/generate/stability' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Stability confirmation generation not yet implemented. See README.md for details.',
-        },
-        501
-      );
+      try {
+        const body = await request.json() as any;
+        const { gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts } = body;
+        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts);
+        return jsonResponse(result);
+      } catch (error: any) {
+        console.error('❌ Stability generation error:', error);
+        return jsonResponse({ error: error.message }, 500);
+      }
     }
 
     if (path === '/generate/single' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds } = body;
-        const result = await generateSingleQuestion(env, gradeLevel, phase, difficulty, subtag, excludeQuestionIds);
+        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts } = body;
+        const result = await generateSingleQuestion(env, gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Single question generation error:', error);

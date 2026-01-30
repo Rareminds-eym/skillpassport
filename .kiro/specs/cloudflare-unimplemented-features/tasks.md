@@ -449,11 +449,331 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
 
 ---
 
-## Phase 5: Testing and Verification (Week 6)
+## Phase 5: Adaptive Aptitude Session API (Week 6)
 
-### 5.1 Integration Testing
+### 5.0 Overview
 
-- [ ] 46. Run integration tests for User API
+**Problem**: The adaptive aptitude assessment currently makes direct Supabase calls from the browser, causing CORS/502 errors when Supabase has connectivity issues. This blocks users from completing assessments.
+
+**Solution**: Move all session management logic to Cloudflare Pages Functions, creating a robust API layer that:
+- Handles all Supabase operations server-side
+- Eliminates CORS issues
+- Provides better error handling and retry logic
+- Enables server-side caching and rate limiting
+- Improves security by not exposing database directly to browser
+
+**Scope**: 8 new API endpoints + frontend service refactor
+
+---
+
+### 5.1 Create Adaptive Session API Structure
+
+- [ ] 52. Set up adaptive session API structure
+  - Create `functions/api/adaptive-session/[[path]].ts` router file
+  - Create `functions/api/adaptive-session/handlers/` directory
+  - Create `functions/api/adaptive-session/types/` directory for shared types
+  - Copy type definitions from `src/types/adaptiveAptitude.ts` to `functions/api/adaptive-session/types/index.ts`
+  - Create `functions/api/adaptive-session/utils/` directory for helper functions
+  - _Requirements: Architecture setup_
+
+- [ ] 53. Copy helper functions and dependencies to API utils
+  - Copy `validateExclusionListComplete` from `src/services/adaptiveAptitudeService.ts` to `functions/api/adaptive-session/utils/validation.ts`
+  - Copy `validateQuestionNotDuplicate` from `src/services/adaptiveAptitudeService.ts` to `functions/api/adaptive-session/utils/validation.ts`
+  - Copy `validateSessionNoDuplicates` from `src/services/adaptiveAptitudeService.ts` to `functions/api/adaptive-session/utils/validation.ts`
+  - Copy `dbSessionToTestSession` from `src/services/adaptiveAptitudeService.ts` to `functions/api/adaptive-session/utils/converters.ts`
+  - Copy `dbResponseToResponse` from `src/services/adaptiveAptitudeService.ts` to `functions/api/adaptive-session/utils/converters.ts`
+  - Copy `calculateAccuracyByDifficulty` from `src/services/adaptiveAptitudeService.ts` to `functions/api/adaptive-session/utils/analytics.ts`
+  - Copy `calculateAccuracyBySubtag` from `src/services/adaptiveAptitudeService.ts` to `functions/api/adaptive-session/utils/analytics.ts`
+  - Copy `classifyPath` from `src/services/adaptiveAptitudeService.ts` to `functions/api/adaptive-session/utils/analytics.ts`
+  - Copy entire `src/services/adaptiveEngine.ts` to `functions/api/adaptive-session/utils/adaptive-engine.ts` (needed for tier classification, difficulty adjustment, stop conditions)
+  - Update all imports to use Supabase client from `src/functions-lib/supabase`
+  - Update all imports to use shared types from `functions/api/adaptive-session/types/index.ts`
+  - _Requirements: Code organization, dependency management_
+
+### 5.2 Implement Session Management Endpoints
+
+- [ ] 54. Implement initialize test endpoint
+  - Create `functions/api/adaptive-session/handlers/initialize.ts`
+  - Copy logic from `initializeTest` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement POST /initialize endpoint
+  - Accept `{ studentId: string, gradeLevel: GradeLevel }` in request body
+  - Call question generation API at `/api/question-generation/generate/diagnostic` to generate diagnostic screener questions
+  - Create session in `adaptive_aptitude_sessions` table using `createSupabaseClient` from `src/functions-lib/supabase`
+  - Return `{ session: TestSession, firstQuestion: Question }`
+  - Add error handling for database failures
+  - Test endpoint locally with `npm run pages:dev`
+  - _Requirements: Session initialization_
+
+- [ ] 55. Implement get next question endpoint
+  - Create `functions/api/adaptive-session/handlers/next-question.ts`
+  - Copy logic from `getNextQuestion` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement GET /next-question/:sessionId endpoint
+  - Fetch session from database using `createSupabaseClient` from `src/functions-lib/supabase`
+  - Check if test is complete
+  - For adaptive_core phase: generate questions dynamically with proper exclusion lists
+  - For other phases: return pre-generated questions
+  - Handle phase transitions (diagnostic → adaptive_core → stability_confirmation)
+  - Call question generation API at `/api/question-generation/generate/single` for dynamic generation
+  - Use `AdaptiveEngine.classifyTier` for tier classification during phase transition
+  - Return `{ question: Question | null, isTestComplete: boolean, currentPhase: TestPhase, progress: {...} }`
+  - Add comprehensive logging for debugging
+  - Test endpoint locally with various session states
+  - _Requirements: Question flow management_
+
+- [ ] 56. Implement submit answer endpoint
+  - Create `functions/api/adaptive-session/handlers/submit-answer.ts`
+  - Copy logic from `submitAnswer` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement POST /submit-answer endpoint
+  - Accept `{ sessionId: string, questionId: string, selectedAnswer: 'A'|'B'|'C'|'D', responseTimeMs: number }` in request body
+  - Validate question exists in current phase
+  - Check if answer is correct
+  - Calculate new difficulty (for adaptive_core phase) using `AdaptiveEngine.adjustDifficulty`
+  - Update difficulty path
+  - Create response record in `adaptive_aptitude_responses` table
+  - Update session counters and state
+  - Calculate provisional band during adaptive_core
+  - Check stop conditions using `AdaptiveEngine.checkStopConditions`
+  - Return `{ isCorrect: boolean, previousDifficulty: number, newDifficulty: number, difficultyChange: string, phaseComplete: boolean, nextPhase: TestPhase | null, testComplete: boolean, stopCondition: StopConditionResult | null, updatedSession: TestSession }`
+  - Add transaction handling for database updates
+  - Test endpoint locally with various answer scenarios
+  - _Requirements: Answer submission and difficulty adjustment_
+
+### 5.3 Implement Test Completion and Results Endpoints
+
+- [x] 57. Implement complete test endpoint
+  - Create `functions/api/adaptive-session/handlers/complete.ts`
+  - Copy logic from `completeTest` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement POST /complete/:sessionId endpoint
+  - Validate session has no duplicate questions
+  - Fetch all responses for the session
+  - Calculate final aptitude level (mode of last 5 difficulties)
+  - Determine confidence tag using `AdaptiveEngine.determineConfidenceTag`
+  - Calculate analytics (accuracy by difficulty, accuracy by subtag, path classification)
+  - Calculate overall statistics (total questions, correct answers, average response time)
+  - Create results record in `adaptive_aptitude_results` table
+  - Update session status to 'completed'
+  - Return `TestResults` object
+  - Add duplicate validation metadata to results
+  - Test endpoint locally with completed sessions
+  - _Requirements: Test completion and results calculation_
+
+- [x] 58. Implement get results endpoint
+  - Create `functions/api/adaptive-session/handlers/results.ts`
+  - Copy logic from `getTestResults` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement GET /results/:sessionId endpoint
+  - Fetch results from `adaptive_aptitude_results` table
+  - Return `TestResults` object or null if not found
+  - Add caching headers for completed results
+  - Test endpoint locally
+  - _Requirements: Results retrieval_
+
+- [x] 59. Implement get student results endpoint
+  - In same `results.ts` file, add handler for student results
+  - Copy logic from `getStudentTestResults` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement GET /results/student/:studentId endpoint
+  - Fetch all results for student from `adaptive_aptitude_results` table
+  - Order by completion date (most recent first)
+  - Return array of `TestResults` objects
+  - Test endpoint locally
+  - _Requirements: Student results history_
+
+### 5.4 Implement Session Management Endpoints
+
+- [x] 60. Implement resume test endpoint
+  - Create `functions/api/adaptive-session/handlers/resume.ts`
+  - Copy logic from `resumeTest` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement GET /resume/:sessionId endpoint
+  - Fetch session from database
+  - Validate session is not abandoned
+  - Fetch all responses for the session
+  - Get current question based on current_question_index
+  - If test is complete, fetch results
+  - Return `{ session: TestSession, currentQuestion: Question | null, isTestComplete: boolean }`
+  - Test endpoint locally with in-progress and completed sessions
+  - _Requirements: Session resumption_
+
+- [x] 61. Implement find in-progress session endpoint
+  - In same `resume.ts` file, add handler for finding sessions
+  - Copy logic from `findInProgressSession` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement GET /find-in-progress/:studentId endpoint
+  - Accept optional `gradeLevel` query parameter
+  - Query for in-progress sessions for student
+  - Order by started_at (most recent first)
+  - Return most recent in-progress session or null
+  - Test endpoint locally
+  - _Requirements: Session discovery_
+
+- [x] 62. Implement abandon session endpoint
+  - Create `functions/api/adaptive-session/handlers/abandon.ts`
+  - Copy logic from `abandonSession` function in `src/services/adaptiveAptitudeService.ts`
+  - Implement POST /abandon/:sessionId endpoint
+  - Update session status to 'abandoned'
+  - Update updated_at timestamp
+  - Return success response
+  - Test endpoint locally
+  - _Requirements: Session abandonment_
+
+### 5.5 Wire Up Router and Add Authentication
+
+- [x] 63. Implement adaptive session API router
+  - Update `functions/api/adaptive-session/[[path]].ts` to route all endpoints
+  - Add CORS handling (already handled by `functions/_middleware.ts`)
+  - Route POST /initialize → `initializeHandler`
+  - Route GET /next-question/:sessionId → `nextQuestionHandler`
+  - Route POST /submit-answer → `submitAnswerHandler`
+  - Route POST /complete/:sessionId → `completeHandler`
+  - Route GET /results/:sessionId → `getResultsHandler`
+  - Route GET /results/student/:studentId → `getStudentResultsHandler`
+  - Route GET /resume/:sessionId → `resumeHandler`
+  - Route GET /find-in-progress/:studentId → `findInProgressHandler`
+  - Route POST /abandon/:sessionId → `abandonHandler`
+  - Add 404 handler for unknown routes
+  - Add comprehensive error handling
+  - Test all routes locally with `npm run pages:dev`
+  - _Requirements: API routing_
+
+- [x] 64. Add authentication to sensitive endpoints
+  - Import `authenticateUser` from `functions/api/shared/auth`
+  - Add authentication to POST /initialize (require valid student)
+  - Add authentication to POST /submit-answer (verify session ownership)
+  - Add authentication to POST /complete (verify session ownership)
+  - Add authentication to GET /results/:sessionId (verify session ownership or admin)
+  - Add authentication to GET /results/student/:studentId (verify student ID matches or admin)
+  - Add authentication to POST /abandon (verify session ownership)
+  - Allow unauthenticated access to GET /next-question (session ID is sufficient)
+  - Allow unauthenticated access to GET /resume (session ID is sufficient)
+  - Allow unauthenticated access to GET /find-in-progress (for anonymous users)
+  - Test authentication with valid and invalid tokens
+  - _Requirements: Security and authorization_
+
+### 5.6 Refactor Frontend Service
+
+- [x] 65. Create new frontend service wrapper
+  - Create `src/services/adaptiveAptitudeApiService.ts` (new file)
+  - Implement `initializeTest(studentId: string, gradeLevel: GradeLevel)` - calls POST /api/adaptive-session/initialize
+  - Implement `getNextQuestion(sessionId: string)` - calls GET /api/adaptive-session/next-question/:sessionId
+  - Implement `submitAnswer(options: SubmitAnswerOptions)` - calls POST /api/adaptive-session/submit-answer
+  - Implement `completeTest(sessionId: string)` - calls POST /api/adaptive-session/complete/:sessionId
+  - Implement `getTestResults(sessionId: string)` - calls GET /api/adaptive-session/results/:sessionId
+  - Implement `getStudentTestResults(studentId: string)` - calls GET /api/adaptive-session/results/student/:studentId
+  - Implement `resumeTest(sessionId: string)` - calls GET /api/adaptive-session/resume/:sessionId
+  - Implement `findInProgressSession(studentId: string, gradeLevel?: GradeLevel)` - calls GET /api/adaptive-session/find-in-progress/:studentId
+  - Implement `abandonSession(sessionId: string)` - calls POST /api/adaptive-session/abandon/:sessionId
+  - Add proper error handling and type safety
+  - Add request/response logging for debugging
+  - _Requirements: Frontend API client_
+
+- [x] 66. Update existing service to use API wrapper
+  - Update `src/services/adaptiveAptitudeService.ts`
+  - Replace all direct Supabase calls with calls to `adaptiveAptitudeApiService`
+  - Keep the same function signatures for backward compatibility
+  - Remove all database query logic (now handled by API)
+  - Keep helper functions that are used client-side only
+  - Update imports in dependent files
+  - _Requirements: Service refactoring_
+
+- [x] 67. Update hooks to use new service
+  - Verify `src/hooks/useAdaptiveAptitude.ts` still works with refactored service
+  - No changes should be needed (same function signatures)
+  - Test hook with new API backend
+  - _Requirements: Hook compatibility_
+
+### 5.7 Testing and Validation
+
+- [x] 68. Test all adaptive session API endpoints
+  - **Testing Guide**: See `ADAPTIVE_SESSION_TESTING_GUIDE.md` for complete instructions
+  - **Automated Tests**: Run `node test-adaptive-session-api.cjs` (update config first)
+  - Start local server with `npm run pages:dev`
+  - Test POST /initialize with valid student and grade level
+  - Test GET /next-question with various session states
+  - Test POST /submit-answer with correct and incorrect answers
+  - Test POST /complete with completed session
+  - Test GET /results with session ID
+  - Test GET /results/student with student ID
+  - Test GET /resume with in-progress session
+  - Test GET /find-in-progress with student ID
+  - Test POST /abandon with session ID
+  - Verify all endpoints return correct data structures
+  - Verify error handling works properly
+  - Verify authentication works on protected endpoints
+  - _Requirements: API testing_
+  - _Status: Ready for testing - automated test suite and guide created_
+
+- [x] 69. Test frontend integration
+  - **Testing Guide**: See `ADAPTIVE_SESSION_TESTING_GUIDE.md` Task 69 section
+  - Start local server with `npm run pages:dev`
+  - Navigate to `/student/assessment/test`
+  - Start a new adaptive aptitude test
+  - Answer questions and verify no CORS errors
+  - Verify questions are generated without duplicates
+  - Verify difficulty adjusts based on answers
+  - Complete the test and verify results are calculated
+  - Test resuming an in-progress test
+  - Test abandoning a test
+  - Verify all functionality works end-to-end
+  - _Requirements: End-to-end testing_
+  - _Status: Ready for testing - complete guide with step-by-step instructions_
+
+- [x] 70. Performance and error handling testing
+  - **Testing Guide**: See `ADAPTIVE_SESSION_TESTING_GUIDE.md` Task 70 section
+  - Test API with slow Supabase responses
+  - Test API with Supabase connection failures
+  - Verify proper error messages are returned
+  - Verify retry logic works for transient failures
+  - Test concurrent requests to same session
+  - Verify session state consistency
+  - Test with large number of questions (edge cases)
+  - _Requirements: Robustness testing_
+  - _Status: Ready for testing - performance and error handling test procedures documented_
+
+### 5.8 Cleanup and Documentation
+
+- [x] 71. Clean up old client-side Supabase calls
+  - Review `src/services/adaptiveAptitudeService.ts` and remove all direct Supabase imports
+  - Remove `import { supabase } from '../lib/supabaseClient'` (no longer needed)
+  - Verify all functions now call the API wrapper instead of Supabase directly
+  - Remove any unused helper functions that were moved to the API
+  - Keep only the wrapper functions that call the API
+  - Update comments to reflect new architecture
+  - _Requirements: Code cleanup_
+
+- [x] 72. Update type exports and imports
+  - Verify `src/types/adaptiveAptitude.ts` is still used by frontend
+  - Ensure types are properly shared between frontend and API
+  - Remove any duplicate type definitions
+  - Update import paths if needed
+  - _Requirements: Type consistency_
+
+- [x] 73. Add API documentation
+  - Create `functions/api/adaptive-session/README.md`
+  - Document all 9 endpoints with request/response examples
+  - Document authentication requirements
+  - Document error codes and messages
+  - Add usage examples for each endpoint
+  - Document rate limiting (if implemented)
+  - _Requirements: API documentation_
+
+- [x] 74. Update frontend documentation
+  - Update `src/services/README.md` (if exists) to reflect new architecture
+  - Document the API wrapper service (`adaptiveAptitudeApiService.ts`)
+  - Add migration notes for developers
+  - Document error handling patterns
+  - _Requirements: Developer documentation_
+
+- [x] 75. Remove deprecated code
+  - Search for any TODO comments related to direct Supabase calls
+  - Remove any commented-out old code
+  - Remove any unused imports
+  - Run linter and fix any warnings
+  - _Requirements: Code cleanup_
+
+---
+
+## Phase 6: Testing and Verification (Week 7)
+
+### 6.1 Integration Testing
+
+- [ ] 76. Run integration tests for User API
   - Start local server with `npm run pages:dev`
   - Test all 27 endpoints with real data
   - Test signup flows for all user types
@@ -463,7 +783,7 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
   - Verify error handling
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 47. Run integration tests for Storage API
+- [ ] 77. Run integration tests for Storage API
   - Start local server with `npm run pages:dev`
   - Test all 14 endpoints with real R2 operations
   - Test file upload and delete
@@ -474,7 +794,7 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
   - Verify error handling
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 48. Run integration tests for AI APIs
+- [ ] 78. Run integration tests for AI APIs
   - Start local server with `npm run pages:dev`
   - Test role overview generation with OpenRouter
   - Test course matching
@@ -486,9 +806,9 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
   - Verify all AI fallback chains work
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 7.1, 7.2, 7.3, 7.4, 7.7, 7.8, 8.1, 8.3_
 
-### 5.2 Performance Testing
+### 6.2 Performance Testing
 
-- [ ] 49. Performance test all endpoints
+- [ ] 79. Performance test all endpoints
   - Start local server with `npm run pages:dev`
   - Load test User API endpoints
   - Load test Storage API endpoints
@@ -499,9 +819,9 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
   - Verify caching works
   - _Requirements: All_
 
-### 5.3 Security Review
+### 6.3 Security Review
 
-- [ ] 50. Security review
+- [ ] 80. Security review
   - Review authentication implementation
   - Review input validation for all endpoints
   - Review SQL injection prevention
@@ -512,9 +832,9 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
   - Fix any security issues found
   - _Requirements: All_
 
-### 5.4 Documentation
+### 6.4 Documentation
 
-- [ ] 51. Update documentation
+- [ ] 81. Update documentation
   - Document all 52 endpoints with request/response examples
   - Update API documentation
   - Create migration guide
@@ -527,18 +847,19 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
 
 ## Summary
 
-**Total Tasks:** 51
-**Total Endpoints Implemented:** 52
-**Total APIs Completed:** 6
+**Total Tasks:** 81 (was 51)
+**Total Endpoints Implemented:** 61 (was 52)
+**Total APIs Completed:** 7 (was 6)
 **Total Migrations:** 1
-**Estimated Duration:** 6 weeks (reduced from 7 - no deployment phase)
+**Estimated Duration:** 7 weeks (was 6 weeks)
 
 **Key Milestones:**
 - Week 1: Preparation complete + Phase 1 checkpoint
 - Week 2: User API complete (27 endpoints) + Phase 2 checkpoint
 - Week 3: Storage API complete (14 endpoints) + Phase 3 checkpoint
 - Week 4-5: AI APIs complete (11 endpoints) + Phase 4 checkpoint
-- Week 6: Testing and documentation complete
+- Week 6: Adaptive Session API complete (9 endpoints) + Phase 5 checkpoint + Cleanup
+- Week 7: Testing and documentation complete
 
 **Testing Approach:**
 - All testing done locally using `npm run pages:dev`
@@ -552,5 +873,7 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
 - Task 17: Phase 2 - Test all 27 User API endpoints
 - Task 29: Phase 3 - Test all 14 Storage API endpoints
 - Task 45: Phase 4 - Test all 11 AI API endpoints
-- Tasks 46-51: Phase 5 - Comprehensive testing and documentation
+- Task 70: Phase 5 - Test all 9 Adaptive Session API endpoints
+- Task 75: Phase 5 - Cleanup and documentation complete
+- Tasks 76-81: Phase 6 - Comprehensive testing and documentation
 

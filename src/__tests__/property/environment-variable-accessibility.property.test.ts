@@ -29,7 +29,8 @@ interface TestEnv {
 
 // API-specific environment variable requirements
 const API_ENV_REQUIREMENTS: Record<string, string[]> = {
-  'assessment': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY'],
+  'adaptive-session': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENROUTER_API_KEY'],
+  'analyze-assessment': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY'],
   'career': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'OPENROUTER_API_KEY', 'GEMINI_API_KEY'],
   'course': ['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'CLOUDFLARE_R2_ACCESS_KEY_ID', 'CLOUDFLARE_R2_SECRET_ACCESS_KEY'],
   'fetch-certificate': ['SUPABASE_URL', 'SUPABASE_ANON_KEY'],
@@ -110,7 +111,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
 
     it('should provide access to AI service keys for AI-powered APIs', () => {
       const env = createCompleteEnv();
-      const aiApis = ['assessment', 'career', 'adaptive-aptitude', 'analyze-assessment', 'question-generation', 'role-overview'];
+      const aiApis = ['adaptive-session', 'analyze-assessment', 'career', 'question-generation', 'role-overview'];
       
       aiApis.forEach(apiName => {
         const result = validateEnvironment(apiName, env);
@@ -145,7 +146,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
   describe('Missing Environment Variables', () => {
     it('should detect missing Supabase URL', () => {
       const env = createPartialEnv(['SUPABASE_URL']);
-      const result = validateEnvironment('assessment', env);
+      const result = validateEnvironment('analyze-assessment', env);
       
       expect(result.valid).toBe(false);
       expect(result.missing).toContain('SUPABASE_URL');
@@ -153,7 +154,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
 
     it('should detect missing AI API keys', () => {
       const env = createPartialEnv(['OPENROUTER_API_KEY']);
-      const result = validateEnvironment('assessment', env);
+      const result = validateEnvironment('analyze-assessment', env);
       
       expect(result.valid).toBe(false);
       expect(result.missing).toContain('OPENROUTER_API_KEY');
@@ -178,7 +179,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
 
     it('should detect multiple missing variables', () => {
       const env = createPartialEnv(['SUPABASE_URL', 'OPENROUTER_API_KEY', 'CLAUDE_API_KEY']);
-      const result = validateEnvironment('assessment', env);
+      const result = validateEnvironment('analyze-assessment', env);
       
       expect(result.valid).toBe(false);
       expect(result.missing).toHaveLength(3);
@@ -189,8 +190,8 @@ describe('Property 2: Environment Variable Accessibility', () => {
   });
 
   describe('API-Specific Requirements', () => {
-    it('should validate assessment API requires AI keys', () => {
-      const required = API_ENV_REQUIREMENTS['assessment'];
+    it('should validate analyze-assessment API requires AI keys', () => {
+      const required = API_ENV_REQUIREMENTS['analyze-assessment'];
       
       expect(required).toContain('OPENROUTER_API_KEY');
       expect(required).toContain('CLAUDE_API_KEY');
@@ -234,8 +235,8 @@ describe('Property 2: Environment Variable Accessibility', () => {
     it('should consistently validate the same environment', () => {
       const env = createCompleteEnv();
       
-      const result1 = validateEnvironment('assessment', env);
-      const result2 = validateEnvironment('assessment', env);
+      const result1 = validateEnvironment('analyze-assessment', env);
+      const result2 = validateEnvironment('analyze-assessment', env);
       
       expect(result1.valid).toBe(result2.valid);
       expect(result1.missing).toEqual(result2.missing);
@@ -251,9 +252,10 @@ describe('Property 2: Environment Variable Accessibility', () => {
       });
     });
 
-    it('should validate all 12 APIs have defined requirements', () => {
+    it('should validate all 11 APIs have defined requirements', () => {
       const expectedApis = [
-        'assessment',
+        'adaptive-session',
+        'analyze-assessment',
         'career',
         'course',
         'fetch-certificate',
@@ -277,7 +279,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
   describe('Graceful Error Handling', () => {
     it('should provide clear error messages for missing variables', () => {
       const env = createPartialEnv(['SUPABASE_URL', 'OPENROUTER_API_KEY']);
-      const result = validateEnvironment('assessment', env);
+      const result = validateEnvironment('analyze-assessment', env);
       
       expect(result.valid).toBe(false);
       expect(result.missing).toHaveLength(2);
@@ -299,7 +301,7 @@ describe('Property 2: Environment Variable Accessibility', () => {
 
     it('should validate environment before API initialization', () => {
       const env = createPartialEnv(['SUPABASE_URL']);
-      const result = validateEnvironment('assessment', env);
+      const result = validateEnvironment('analyze-assessment', env);
       
       // Should detect missing variables before attempting to use them
       expect(result.valid).toBe(false);

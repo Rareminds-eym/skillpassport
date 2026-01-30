@@ -418,7 +418,7 @@ describe('Property 15: Environment-Specific Configuration', () => {
 
     it('should have all required API endpoints', () => {
       const environments: EnvironmentType[] = ['development', 'preview', 'production'];
-      const requiredApis = ['assessment', 'career', 'course', 'otp', 'storage', 'payments'];
+      const requiredApis = ['adaptive-session', 'analyze-assessment', 'career', 'course', 'otp', 'storage', 'payments'];
       
       environments.forEach(envType => {
         const config = createEnvironmentConfig(envType);

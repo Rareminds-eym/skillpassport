@@ -8,6 +8,7 @@
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
 import { handleAnalyzeAssessment } from './handlers/analyze';
+import { handleGenerateProgramCareerPaths } from './handlers/program-career-paths';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -47,6 +48,11 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       return await handleAnalyzeAssessment(request, env);
     }
 
+    // Program career paths endpoint
+    if (path === '/generate-program-career-paths' && request.method === 'POST') {
+      return await handleGenerateProgramCareerPaths(request, env);
+    }
+
     // 404 for unknown routes
     return jsonResponse(
       {
@@ -55,6 +61,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         availableEndpoints: [
           'POST /analyze-assessment - Analyze student assessment',
           'POST /analyze-assessment/analyze - Analyze student assessment (alias)',
+          'POST /analyze-assessment/generate-program-career-paths - Generate career paths for program',
           'GET /analyze-assessment/health - Health check'
         ],
       },
