@@ -77,34 +77,54 @@ const AnimatedCounter = ({ end, duration = 2000, suffix = '', isVisible }: { end
 
 // Data
 const stats = [
-  { number: '711,000+', numericValue: 711000, suffix: '+', label: 'Learners verified', highlight: false },
-  { number: '510+', numericValue: 510, suffix: '+', label: 'Institutions connected', highlight: false },
-  { number: '513+', numericValue: 513, suffix: '+', label: 'Enterprises hiring', highlight: false },
-  { number: '85%', numericValue: 85, suffix: '%', label: 'Reduction in screening effort', highlight: true },
+  { number: '700,000+', numericValue: 700000, suffix: '+', label: 'Learners verified', highlight: false },
+  { number: '500+', numericValue: 500, suffix: '+', label: 'Schools & universities onboarded', highlight: false },
+  { number: '500+', numericValue: 500, suffix: '+', label: 'Employers hiring', highlight: false },
+  { number: '85%', numericValue: 85, suffix: '%', label: 'Reduction in screening time', highlight: true },
   { number: '7 days', numericValue: 7, suffix: ' days', label: 'Average time-to-hire', highlight: false },
-  { number: '95%', numericValue: 95, suffix: '%', label: 'Retention rate', highlight: false },
 ];
+
+// Helper function to render text with bold phrases
+const renderDescriptionWithBold = (text: string) => {
+  const boldPhrases = [
+    'job pathways aligned to market demand',
+    'targeted upskilling journeys',
+    'real performance evidence',
+    'portable digital credentials',
+    'pre-verified talent pools',
+    'interviews',
+    'offers'
+  ];
+  
+  let result = text;
+  boldPhrases.forEach(phrase => {
+    const regex = new RegExp(`(${phrase})`, 'gi');
+    result = result.replace(regex, '<strong>$1</strong>');
+  });
+  
+  return result;
+};
 
 const howItWorks = [
   {
     step: 1,
-    title: 'Skill Development',
-    description: 'Learners undergo structured learning, assessments, and applied projects through verified partner institutions and training ecosystems.',
+    title: 'Skills Development & Capability Discovery',
+    description: 'Learners identify capabilities through structured assessments within partner institutions. AI maps strengths to job pathways aligned to market demand and recommends targeted upskilling journeys.',
   },
   {
     step: 2,
-    title: 'Skill Verification',
-    description: 'Competencies are validated using multi-point evidence—performance data, assessments, project outcomes, and institutional authentication.',
+    title: 'Verification Process',
+    description: 'Capabilities are validated through real performance evidence — assessments, projects, applied work, and institutional validation. No assumptions. No self-claims. Only verified capability.',
   },
   {
     step: 3,
     title: 'Digital Credential Issuance',
-    description: 'Verified skills are issued as a secure, tamper-proof Skill Passport—portable, permanent, and employer-trusted.',
+    description: 'Verified skills are issued as portable digital credentials within the Skill Passport. Trusted. Tamper-proof. Permanent. Employer-verifiable.',
   },
   {
     step: 4,
-    title: 'Talent Deployment',
-    description: 'Employers access ready-to-deploy talent pools through dashboards and hiring workflows. Screening is minimized. Deployment accelerates.',
+    title: 'Hiring & Deployment',
+    description: 'Employers access pre-verified talent pools, shortlist faster, conduct focused interviews, and issue offers with confidence. Screening reduces. Hiring accelerates.',
   },
 ];
 
@@ -405,18 +425,20 @@ function AboutRareMinds() {
             <div className="space-y-8 fade-in-up">
               <div className="inline-block">
                 <span className="text-sm text-slate-600 uppercase tracking-widest font-semibold">
-                  India's Verified Talent Infrastructure
+                  India's Verified Skill Ecosystem
                 </span>
               </div>
               <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] text-slate-900" data-testid="hero-title">
                 Skill Passport
               </h1>
-              <p className="text-lg md:text-xl leading-relaxed text-slate-600 md:whitespace-nowrap">
-                Skills verified at source. Trusted by employers. Deployed at speed.
+              <p className="text-lg md:text-xl leading-relaxed text-slate-600">
+                Built by Rareminds to connect <span className="font-bold">schools, universities, and employers</span> through one shared language: <span className="font-bold">proven capability</span>.
               </p>
-              <p className="text-base leading-relaxed text-slate-600 max-w-xl">
-                Built to move hiring from assumption to assurance. We ensure that skills are not just claimed, but proven, portable, and immediately deployable.
-              </p>
+              <div className="text-base leading-relaxed text-slate-600 max-w-xl space-y-1">
+                <p>We make skills visible for learners.</p>
+                <p>Outcomes credible for institutions.</p>
+                <p>And hiring decisions confident for employers.</p>
+              </div>
               <div className="flex flex-wrap gap-4 pt-4">
                 <a 
                   href="/register" 
@@ -469,12 +491,12 @@ function AboutRareMinds() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900 mb-4">
-              Skill Passport by the Numbers
+              Proven at Scale
             </h2>
-            <p className="text-lg text-slate-600">These aren't projections. They're live outcomes.</p>
+            <p className="text-lg text-slate-600">These aren't promises. They're live outcomes.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {stats.map((stat, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {stats.slice(0, 3).map((stat, index) => (
               <div 
                 key={index}
                 className={`stats-card-bg p-8 rounded-2xl relative overflow-hidden transition-all duration-700 hover:scale-105 hover:shadow-2xl cursor-pointer ${
@@ -486,6 +508,34 @@ function AboutRareMinds() {
                 }`}
                 style={{ transitionDelay: `${index * 100}ms` }}
                 data-testid={`stat-card-${index}`}
+              >
+                <div className="relative z-10">
+                  <div className="text-4xl md:text-5xl font-extrabold mb-2">
+                    <AnimatedCounter 
+                      end={stat.numericValue} 
+                      suffix={stat.suffix}
+                      isVisible={statsRef.isVisible}
+                      duration={2000}
+                    />
+                  </div>
+                  <div className={`text-base ${stat.highlight ? 'opacity-80' : 'opacity-90'}`}>{stat.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {stats.slice(3).map((stat, index) => (
+              <div 
+                key={index + 3}
+                className={`stats-card-bg p-8 rounded-2xl relative overflow-hidden transition-all duration-700 hover:scale-105 hover:shadow-2xl cursor-pointer ${
+                  stat.highlight ? 'bg-[#d4af37] text-black hover:bg-[#e0ba4a]' : 'bg-[#2D2D2D] text-white hover:bg-[#3D3D3D]'
+                } ${
+                  statsRef.isVisible 
+                    ? 'opacity-100 translate-y-0' 
+                    : 'opacity-0 translate-y-10'
+                }`}
+                style={{ transitionDelay: `${(index + 3) * 100}ms` }}
+                data-testid={`stat-card-${index + 3}`}
               >
                 <div className="relative z-10">
                   <div className="text-4xl md:text-5xl font-extrabold mb-2">
@@ -514,10 +564,10 @@ function AboutRareMinds() {
           {/* Section Header */}
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900 mb-4">
-              Why We Exist
+              Why Skill Passport Exists
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              The disconnect between talent and opportunity in India's hiring ecosystem
+              India doesn't have a talent shortage. It has a <span className="font-bold">trust gap</span>.
             </p>
           </div>
 
@@ -544,10 +594,10 @@ function AboutRareMinds() {
                         <div>
                           <p className="text-sm font-bold text-red-600 uppercase tracking-wide mb-2">The Challenge</p>
                           <p className="text-lg font-semibold text-gray-800">
-                            Graduates Every Year
+                            Graduates with Degrees
                           </p>
                           <p className="text-sm text-gray-600 mt-2">
-                            India produces over 10 million graduates annually, creating a massive talent pool
+                            Every year, millions of students graduate with degrees, certificates, and resumes
                           </p>
                         </div>
                       </div>
@@ -569,10 +619,10 @@ function AboutRareMinds() {
                         <div>
                           <p className="text-sm font-bold text-[#d4af37] uppercase tracking-wide mb-2">Skill Passport Solution</p>
                           <p className="text-lg font-semibold text-white">
-                            Verified Skills at Source
+                            Proof, Not Just Claims
                           </p>
                           <p className="text-sm text-gray-300 mt-2">
-                            We validate competencies through real performance data and institutional authentication
+                            Skill Passport verifies skills <span className="font-bold">at source</span>, inside schools and universities, and carries that proof forward to employers
                           </p>
                         </div>
                       </div>
@@ -599,10 +649,10 @@ function AboutRareMinds() {
                         <div>
                           <p className="text-sm font-bold text-red-600 uppercase tracking-wide mb-2">The Problem</p>
                           <p className="text-lg font-semibold text-gray-800">
-                            Days to Hire
+                            Hiring Remains Slow
                           </p>
                           <p className="text-sm text-gray-600 mt-2">
-                            Employers spend an average of 45 days to hire a single candidate
+                            Yet hiring remains slow, uncertain, and expensive. Not because skills are missing. Because <span className="font-bold">proof is</span>.
                           </p>
                         </div>
                       </div>
@@ -624,10 +674,10 @@ function AboutRareMinds() {
                         <div>
                           <p className="text-sm font-bold text-[#d4af37] uppercase tracking-wide mb-2">Skill Passport Solution</p>
                           <p className="text-lg font-semibold text-white">
-                            85% Faster Screening
+                            Closing the Trust Gap
                           </p>
                           <p className="text-sm text-gray-300 mt-2">
-                            Pre-verified talent pools reduce screening time from weeks to days
+                            By verifying skills at source and carrying that proof forward, we close the gap between talent and opportunity
                           </p>
                         </div>
                       </div>
@@ -654,10 +704,10 @@ function AboutRareMinds() {
                         <div>
                           <p className="text-sm font-bold text-red-600 uppercase tracking-wide mb-2">The Result</p>
                           <p className="text-lg font-semibold text-gray-800">
-                            The Problem is Proof
+                            Trust Gap in Action
                           </p>
                           <p className="text-sm text-gray-600 mt-2">
-                            Companies over-screen, candidates get overlooked, and deployment slows down
+                            Companies over-screen, candidates get overlooked, and deployment slows down—all due to lack of verified proof
                           </p>
                         </div>
                       </div>
@@ -679,10 +729,10 @@ function AboutRareMinds() {
                         <div>
                           <p className="text-sm font-bold text-[#d4af37] uppercase tracking-wide mb-2">Skill Passport Solution</p>
                           <p className="text-lg font-semibold text-white">
-                            Trusted Digital Credentials
+                            Confident Hiring Decisions
                           </p>
                           <p className="text-sm text-gray-300 mt-2">
-                            Secure, portable, and employer-trusted skill verification that closes the trust gap
+                            Access to pre-verified talent pools enables faster screening and confident hiring decisions
                           </p>
                         </div>
                       </div>
@@ -704,10 +754,10 @@ function AboutRareMinds() {
       >
         <div className="mx-auto max-w-6xl">
           <h2 className="font-bold text-black mb-4 text-center text-2xl sm:text-3xl md:text-4xl">
-            What We Do
+            One Ecosystem. Three Stakeholders.
           </h2>
           <p className="text-gray-600 leading-relaxed max-w-4xl mx-auto mb-12 text-center text-sm sm:text-base md:text-lg">
-            Skill Passport validates and digitises competencies into a secure, portable credential—creating a pre-verified talent layer that reduces hiring friction across the ecosystem.
+            Skill Passport connects schools, universities, and employers through verified skill data—creating trust and reducing friction across the entire talent ecosystem.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
@@ -715,19 +765,20 @@ function AboutRareMinds() {
               <div className="w-14 h-14 rounded-xl bg-neutral-950 flex items-center justify-center mb-4">
                 <Users className="text-yellow-500 text-2xl" />
               </div>
-              <h3 className="text-lg font-bold text-black mb-4">For Learners</h3>
+              <h3 className="text-lg font-bold text-black mb-4">For Schools</h3>
+              <p className="text-base font-semibold text-gray-800 mb-3">Turn learning into outcomes employers trust.</p>
               <ul className="space-y-3 text-gray-700 text-sm">
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Skills verified through real performance, not self-claims</span>
+                  <span>Skill visibility beyond marks and attendance</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>A single, lifelong Skill Passport trusted by employers</span>
+                  <span>Early insight into student readiness</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Faster access to internships, jobs, and career mobility</span>
+                  <span>Stronger credibility with parents, universities, and employers</span>
                 </li>
               </ul>
             </div>
@@ -736,19 +787,20 @@ function AboutRareMinds() {
               <div className="w-14 h-14 rounded-xl bg-neutral-950 flex items-center justify-center mb-4">
                 <CheckCircle className="text-yellow-500 text-2xl" />
               </div>
-              <h3 className="text-lg font-bold text-black mb-4">For Institutions</h3>
+              <h3 className="text-lg font-bold text-black mb-4">For Universities</h3>
+              <p className="text-base font-semibold text-gray-800 mb-3">Graduate students with proof, not just qualifications.</p>
               <ul className="space-y-3 text-gray-700 text-sm">
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Real-time visibility into student skill readiness</span>
+                  <span>Skills validated through real academic and applied performance</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Outcome-linked validation beyond marks and attendance</span>
+                  <span>Clear employability signals across batches</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Stronger employer trust and placement outcomes</span>
+                  <span>Stronger placement outcomes and employer trust</span>
                 </li>
               </ul>
             </div>
@@ -758,6 +810,7 @@ function AboutRareMinds() {
                 <TrendingUp className="text-yellow-500 text-2xl" />
               </div>
               <h3 className="text-lg font-bold text-black mb-4">For Employers</h3>
+              <p className="text-base font-semibold text-gray-800 mb-3">Hire based on evidence, not assumptions.</p>
               <ul className="space-y-3 text-gray-700 text-sm">
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -765,7 +818,7 @@ function AboutRareMinds() {
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Up to 85% reduction in screening time</span>
+                  <span>Drastically reduced screening effort</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -902,8 +955,9 @@ function AboutRareMinds() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-slate-900 mb-4">
-              How Skill Passport Works
+              How the Skill Passport Ecosystem Works
             </h2>
+            <p className="text-lg text-slate-600">From capability discovery to confident hiring</p>
           </div>
           <div className="max-w-5xl mx-auto">
             {howItWorks.map((step, index) => {
@@ -936,9 +990,10 @@ function AboutRareMinds() {
                     <h3 className={`text-2xl md:text-3xl font-bold tracking-tight mb-3 ${isEven ? 'text-slate-900' : 'text-[#c9a961]'}`}>
                       {step.title}
                     </h3>
-                    <p className={`text-base md:text-lg leading-relaxed ${isEven ? 'text-slate-700' : 'text-gray-200'}`}>
-                      {step.description}
-                    </p>
+                    <p 
+                      className={`text-base md:text-lg leading-relaxed ${isEven ? 'text-slate-700' : 'text-gray-200'}`}
+                      dangerouslySetInnerHTML={{ __html: renderDescriptionWithBold(step.description) }}
+                    />
                   </div>
                 </div>
               );
@@ -980,28 +1035,15 @@ function AboutRareMinds() {
             {/* Right Side - Content */}
             <div className="space-y-6 order-1 lg:order-2">
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-black leading-[1.1]">
-                Built for Scale.<br />Designed for Trust.
+                No grandstanding.<br />Just truth.
               </h2>
               
               <p className="text-lg md:text-xl text-gray-700 font-normal leading-relaxed">
-                Skill Passport is not a platform. It is infrastructure.
+                Skill Passport is not another hiring tool.
               </p>
               
-              {/* Bullet Points */}
-              <ul className="space-y-4 pt-2">
-                <li className="flex items-start gap-3 text-base md:text-lg text-gray-600 leading-relaxed">
-                  <span className="text-gray-400 mt-1.5 flex-shrink-0">•</span>
-                  <span>An ecosystem-layer that connects learners, institutions, and employers through one shared truth: verified skill data.</span>
-                </li>
-                
-                <li className="flex items-start gap-3 text-base md:text-lg text-gray-600 leading-relaxed">
-                  <span className="text-gray-400 mt-1.5 flex-shrink-0">•</span>
-                  <span>As India moves from degrees to capability-led hiring, Skill Passport powers the transition—at national scale.</span>
-                </li>
-              </ul>
-              
-              <p className="text-2xl md:text-3xl font-bold text-[#c9a961] pt-6">
-                From verified to deployed.
+              <p className="text-2xl md:text-3xl font-bold text-black pt-2">
+                It's the missing link between learning and earning.
               </p>
             </div>
           </div>
