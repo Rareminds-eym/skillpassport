@@ -9,7 +9,6 @@ import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { useNavigate } from "react-router-dom";
 import KPIDashboard from "../../../components/admin/KPIDashboard";
-import NotificationBell from "../../../components/admin/schoolAdmin/NotificationBell";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -238,18 +237,6 @@ const SchoolDashboard: React.FC = () => {
     fetchDashboardData();
   }, [schoolId]);
 
-  // Handle notification click
-  const handleNotificationClick = (notification: any) => {
-    if (notification.viewAll) {
-      // Navigate to verifications page
-      navigate("/school-admin/students/verifications");
-      return;
-    }
-
-    // Navigate to verifications page for individual notifications
-    navigate("/school-admin/students/verifications");
-  };
-
   // ===== Chart Data - Dynamic from Database =====
   const programDistribution = {
     series: [
@@ -358,7 +345,7 @@ const SchoolDashboard: React.FC = () => {
   // ===== Render =====
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8">
-      {/* Header with gradient background and notifications */}
+      {/* Header with gradient background */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
         <div className="flex items-center justify-between">
           <div>
@@ -369,14 +356,6 @@ const SchoolDashboard: React.FC = () => {
               Overview of school activities and academic performance
             </p>
           </div>
-          
-          {/* Notification Bell */}
-          {schoolId && (
-            <NotificationBell 
-              schoolId={schoolId} 
-              onNotificationClick={handleNotificationClick}
-            />
-          )}
         </div>
       </div>
 

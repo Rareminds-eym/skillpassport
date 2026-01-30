@@ -1,7 +1,105 @@
-import React from "react";
-import { User, MapPin } from "lucide-react";
+import React, { useState } from "react";
+import { User, MapPin, AlertCircle } from "lucide-react";
 
 const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
+  const [errors, setErrors] = useState({});
+
+  // Validation functions
+  const validatePhone = (phone) => {
+    if (!phone) return null; // Optional field
+    
+    // Remove all non-digit characters
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // Check if it's a valid Indian mobile number (10 digits starting with 6-9)
+    if (cleanPhone.length !== 10) {
+      return "Phone number must be exactly 10 digits";
+    }
+    
+    if (!/^[6-9]/.test(cleanPhone)) {
+      return "Phone number must start with 6, 7, 8, or 9";
+    }
+    
+    return null;
+  };
+
+  const validateDateOfBirth = (dateOfBirth) => {
+    if (!dateOfBirth) return null; // Optional field
+    
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+    const age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    if (birthDate > today) {
+      return "Date of birth cannot be in the future";
+    }
+    
+    if (age < 11) {
+      return "Age must be at least 11 years";
+    }
+    
+    if (age > 100) {
+      return "Please enter a valid date of birth";
+    }
+    
+    return null;
+  };
+
+  const validatePincode = (pincode) => {
+    if (!pincode) return null; // Optional field
+    
+    // Remove all non-digit characters
+    const cleanPincode = pincode.replace(/\D/g, '');
+    
+    // Check if it's exactly 6 digits
+    if (cleanPincode.length !== 6) {
+      return "Pincode must be exactly 6 digits";
+    }
+    
+    return null;
+  };
+
+  // Enhanced change handler with validation
+  const handleValidatedChange = (field, value) => {
+    let error = null;
+    
+    // Format phone numbers to remove non-digits
+    if (field === 'phone' || field === 'alternatePhone') {
+      // Allow only digits and common phone formatting characters during input
+      const formattedValue = value.replace(/[^\d]/g, '');
+      
+      if (field === 'phone') {
+        error = validatePhone(formattedValue);
+      } else if (field === 'alternatePhone') {
+        error = validatePhone(formattedValue);
+      }
+      
+      // Update with formatted value
+      handleProfileChange(field, formattedValue);
+    } else if (field === 'dateOfBirth') {
+      error = validateDateOfBirth(value);
+      handleProfileChange(field, value);
+    } else if (field === 'pincode') {
+      // Format pincode to remove non-digits
+      const formattedValue = value.replace(/[^\d]/g, '');
+      error = validatePincode(formattedValue);
+      handleProfileChange(field, formattedValue);
+    } else {
+      handleProfileChange(field, value);
+    }
+    
+    // Update errors state
+    setErrors(prev => ({
+      ...prev,
+      [field]: error
+    }));
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -47,11 +145,20 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
             type="tel"
             value={profileData.phone}
             onChange={(e) =>
-              handleProfileChange("phone", e.target.value)
+              handleValidatedChange("phone", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            placeholder="Enter phone number"
+            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+              errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+            }`}
+            placeholder="Enter 10-digit phone number"
+            maxLength="10"
           />
+          {errors.phone && (
+            <div className="flex items-center gap-1 text-red-600 text-xs">
+              <AlertCircle className="w-3 h-3" />
+              <span>{errors.phone}</span>
+            </div>
+          )}
         </div>
 
         {/* Alternate Phone */}
@@ -63,11 +170,20 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
             type="tel"
             value={profileData.alternatePhone}
             onChange={(e) =>
-              handleProfileChange("alternatePhone", e.target.value)
+              handleValidatedChange("alternatePhone", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            placeholder="Enter alternate phone number"
+            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+              errors.alternatePhone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+            }`}
+            placeholder="Enter 10-digit alternate phone number"
+            maxLength="10"
           />
+          {errors.alternatePhone && (
+            <div className="flex items-center gap-1 text-red-600 text-xs">
+              <AlertCircle className="w-3 h-3" />
+              <span>{errors.alternatePhone}</span>
+            </div>
+          )}
         </div>
 
         {/* Date of Birth */}
@@ -79,10 +195,19 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
             type="date"
             value={profileData.dateOfBirth}
             onChange={(e) =>
-              handleProfileChange("dateOfBirth", e.target.value)
+              handleValidatedChange("dateOfBirth", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+              errors.dateOfBirth ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+            }`}
+            max={new Date().toISOString().split('T')[0]} // Prevent future dates
           />
+          {errors.dateOfBirth && (
+            <div className="flex items-center gap-1 text-red-600 text-xs">
+              <AlertCircle className="w-3 h-3" />
+              <span>{errors.dateOfBirth}</span>
+            </div>
+          )}
         </div>
 
         {/* Gender */}
@@ -209,11 +334,20 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
               type="text"
               value={profileData.pincode}
               onChange={(e) =>
-                handleProfileChange("pincode", e.target.value)
+                handleValidatedChange("pincode", e.target.value)
               }
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-              placeholder="Enter pincode"
+              className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+                errors.pincode ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+              }`}
+              placeholder="Enter 6-digit pincode"
+              maxLength="6"
             />
+            {errors.pincode && (
+              <div className="flex items-center gap-1 text-red-600 text-xs">
+                <AlertCircle className="w-3 h-3" />
+                <span>{errors.pincode}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
