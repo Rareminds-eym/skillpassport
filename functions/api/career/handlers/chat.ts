@@ -5,7 +5,7 @@
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser, sanitizeInput } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
-import { getModelForUseCase, API_CONFIG, MODEL_PROFILES } from '../../shared/ai-config';
+import { API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
 import type { ChatRequest } from '../types';
 
 export async function handleCareerChat(request: Request, env: Record<string, string>): Promise<Response> {
@@ -46,8 +46,8 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     return jsonResponse({ error: 'Invalid message' }, 400);
   }
 
-  // Get OpenRouter API key
-  const openRouterKey = env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;
+  // Get OpenRouter API key using shared utility
+  const { openRouter: openRouterKey } = getAPIKeys(env);
   if (!openRouterKey) {
     return jsonResponse({ error: 'AI service not configured' }, 500);
   }

@@ -1,7 +1,10 @@
 /**
- * Analyze Assessment Handler - Comprehensive career assessment analysis
+ * Analyze Assessment Handler - Proxy to analyze-assessment Pages Function
  * 
- * Features:
+ * This handler proxies requests to the dedicated analyze-assessment API
+ * which provides comprehensive career assessment analysis.
+ * 
+ * Features (via analyze-assessment API):
  * - RIASEC career interest scoring
  * - Multi-aptitude battery analysis
  * - Big Five personality assessment
@@ -11,13 +14,12 @@
  * - Career cluster matching with salary ranges
  * - Skill gap analysis and learning tracks
  * 
- * Source: cloudflare-workers/career-api/src/index.ts (handleAnalyzeAssessment, buildAnalysisPrompt)
+ * Migrated: Now calls /api/analyze-assessment Pages Function
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
-import { getOpenRouterKey } from '../[[path]]';
 
 export async function handleAnalyzeAssessment(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
@@ -49,21 +51,39 @@ export async function handleAnalyzeAssessment(request: Request, env: Record<stri
     return jsonResponse({ error: 'Assessment data is required' }, 400);
   }
 
-  // TODO: Implement full assessment analysis:
-  // 1. Build comprehensive analysis prompt (buildAnalysisPrompt)
-  // 2. Call AI with model fallback (Claude → GPT-4)
-  // 3. Parse and validate JSON response
-  // 4. Handle truncated responses with JSON repair
-  // 5. Return structured assessment results
+  // Proxy to analyze-assessment Pages Function
+  try {
+    const url = new URL(request.url);
+    const analyzeUrl = `${url.protocol}//${url.host}/api/analyze-assessment/analyze`;
+    
+    console.log(`[CAREER API] Proxying assessment analysis to: ${analyzeUrl}`);
 
-  return jsonResponse({
-    error: 'Analyze assessment endpoint migration in progress',
-    message: 'This endpoint requires complex prompt building and AI analysis',
-    todo: [
-      'Migrate buildAnalysisPrompt function (800+ lines)',
-      'Implement AI model fallback logic',
-      'Implement JSON extraction and repair',
-      'Add response validation'
-    ]
-  }, 501);
+    // Forward the request to the analyze-assessment API
+    const analyzeRequest = new Request(analyzeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': request.headers.get('Authorization') || '',
+      },
+      body: JSON.stringify({ assessmentData })
+    });
+
+    const response = await fetch(analyzeRequest);
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('[CAREER API] Analyze-assessment API error:', data);
+      return jsonResponse(data, response.status);
+    }
+
+    console.log(`[CAREER API] Successfully analyzed assessment for student ${studentId}`);
+    return jsonResponse(data);
+
+  } catch (error) {
+    console.error('[CAREER API] Failed to proxy to analyze-assessment API:', error);
+    return jsonResponse({
+      error: 'Assessment analysis failed',
+      details: (error as Error).message
+    }, 500);
+  }
 }

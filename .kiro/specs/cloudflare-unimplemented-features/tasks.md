@@ -317,7 +317,7 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
 
 ### 4.2 Question Generation API (Week 4, Days 3-4)
 
-- [ ] 34. Implement streaming aptitude handler
+- [x] 34. Implement streaming aptitude handler
   - Create `functions/api/question-generation/handlers/streaming.ts` (NEW IMPLEMENTATION)
   - Implement Server-Sent Events (SSE) for real-time question streaming
   - Use `callOpenRouterWithRetry` from shared/ai-config
@@ -327,7 +327,7 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
   - Test streaming locally with real client
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 35. Implement course assessment handler
+- [x] 35. Implement course assessment handler
   - **NOTE**: Handler already exists at `functions/api/question-generation/handlers/course-assessment.ts` ✅
   - Verify the existing `generateAssessment` function works correctly
   - Copy any missing logic from `cloudflare-workers/question-generation-api/src/handlers/course/` if needed
@@ -338,7 +338,7 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
   - Test course question generation locally
   - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
 
-- [ ] 36. Update question generation API router
+- [x] 36. Update question generation API router
   - Update `functions/api/question-generation/[[path]].ts` to import and route to new handlers
   - Remove 501 responses for streaming and course assessment endpoints
   - **IMPORTANT**: Add route for POST /generate (course assessment) - handler already exists at `handlers/course-assessment.ts` but is not routed
@@ -412,7 +412,7 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
 
 ### 4.4 Analyze Assessment API Migration (Week 5, Day 4)
 
-- [ ] 43. Create analyze-assessment Pages Function
+- [x] 43. Create analyze-assessment Pages Function
   - Create `functions/api/analyze-assessment/[[path]].ts` router
   - Copy `cloudflare-workers/analyze-assessment-api/src/index.ts` to `functions/api/analyze-assessment/handlers/analyze.ts`
   - Extract 800+ line prompt builder to `functions/api/analyze-assessment/utils/prompt-builder.ts`
@@ -424,13 +424,13 @@ This implementation plan covers completing 52 unimplemented endpoints across 6 A
   - Test assessment analysis locally
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 16.1, 16.2, 16.5_
 
-- [ ] 44. Update career API analyze-assessment handler
+- [x] 44. Update career API analyze-assessment handler
   - Update `functions/api/career/handlers/analyze-assessment.ts` to call analyze-assessment Pages Function
   - OR remove this handler and update frontend to call analyze-assessment API directly
   - Test both APIs work with `npm run pages:dev`
   - _Requirements: 8.1, 16.3_
 
-- [ ] 45. Phase 4 Checkpoint - Test all AI API endpoints locally
+- [x] 45. Phase 4 Checkpoint - Test all AI API endpoints locally
   - Start local server with `npm run pages:dev`
   - Test role overview generation (POST /generate-role-overview)
   - Test course matching (POST /match-courses)
