@@ -69,27 +69,11 @@ const Communication = () => {
   // Get educator ID from auth
   const { user } = useAuth();
   console.log('🔍 Raw user object from auth:', user);
-  // TEMPORARY FIX: Force the correct user ID
-  const userId = '323c133d-6144-43ca-bfd0-aaa0f11c2c26'; // user?.id || '323c133d-6144-43ca-bfd0-aaa0f11c2c26';
+  const userId = user?.id;
+
   console.log('🔍 Final userId value:', userId);
   const educatorName = user?.name || 'Educator';
   const queryClient = useQueryClient();
-  
-  // Define userAuthId early for use in useEffect  
-  const userAuthId = userId; // For auth/user operations (needs auth user ID)
-  
-  // Debug logging
-  useEffect(() => {
-    if (user) {
-      console.log('🔍 Current user from auth:', {
-        id: user.id,
-        email: user.email,
-        name: user.name
-      });
-      console.log('🔍 userId variable:', userId);
-      console.log('🔍 userAuthId variable:', userAuthId);
-    }
-  }, [user, userId, userAuthId]);
   
   // Handle navigation from student management page
   const targetStudent = location.state as { 
@@ -100,15 +84,37 @@ const Communication = () => {
   
   // Get educator details and school ID
   const { data: educatorData } = useQuery({
-    queryKey: ['educator-details', userId],
+    queryKey: ['educator-details', user?.email],
     queryFn: async () => {
-      if (!userId) return null;
-      console.log('🔍 Querying educator details with user_id:', userId);
-      const { data, error } = await supabase
+      if (!user?.email) return null;
+      console.log('🔍 Querying educator details with email:', user.email);
+      console.log('🔍 Auth user ID from session:', userId);
+      
+      // First try with the auth user ID
+      let { data, error } = await supabase
         .from('school_educators')
-        .select('id, school_id, first_name, last_name, email')
+        .select('id, school_id, first_name, last_name, email, user_id')
         .eq('user_id', userId)
         .single();
+      
+      // If not found with auth user ID, try with email
+      if (error && error.code === 'PGRST116') {
+        console.log('🔄 Auth user ID not found, trying with email:', user.email);
+        const result = await supabase
+          .from('school_educators')
+          .select('id, school_id, first_name, last_name, email, user_id')
+          .eq('email', user.email)
+          .single();
+        
+        data = result.data;
+        error = result.error;
+        
+        if (data) {
+          console.log('⚠️ Found educator by email but user_id mismatch:');
+          console.log('  - Auth user ID:', userId);
+          console.log('  - Database user_id:', data.user_id);
+        }
+      }
       
       if (error) {
         console.error('❌ Error fetching educator details:', error);
@@ -117,8 +123,25 @@ const Communication = () => {
       console.log('✅ Educator details found:', data);
       return data;
     },
-    enabled: !!userId,
+    enabled: !!user?.email,
   });
+  
+  // Define userAuthId after educatorData is available
+  const userAuthId = educatorData?.user_id || userId; // Use database user_id if available, fallback to auth
+  
+  // Debug logging
+  useEffect(() => {
+    if (user) {
+      console.log('🔍 Current user from auth:', {
+        id: user.id,
+        email: user.email,
+        name: user.name
+      });
+      console.log('🔍 userId variable (from auth):', userId);
+      console.log('🔍 userAuthId variable (corrected):', userAuthId);
+      console.log('🔍 educatorData:', educatorData);
+    }
+  }, [user, userId, userAuthId, educatorData]);
   
   const schoolId = educatorData?.school_id;
   const educatorRecordId = educatorData?.id;
@@ -824,7 +847,7 @@ const Communication = () => {
           id: conv.id,
           name: schoolName,
           role: `School Administration • ${subject}`,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(schoolName)}&background=059669&color=fff`,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(schoolName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
           online: false, // School admins don't have online status in this context
           time: conv.last_message_at 
@@ -960,15 +983,15 @@ const Communication = () => {
 
       {/* Messages Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 mb-6">
-        <div className="flex h-[600px]">
+        <div className="flex" style={{ height: 'calc(110vh - 205px)' }}>
           {/* Left Panel - Contacts List */}
           <div className="w-full md:w-[400px] border-r border-gray-200 flex flex-col">
             {/* Header with Tabs */}
-            <div className="px-6 py-5 border-b border-gray-200">
+            <div className="px-6 py-5 border-b border-gray-200 flex-shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Messages</h2>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 ml-4">
                   {/* New Button - Show for Students tab */}
                   {activeTab === 'students' && !showArchived && (
                     <button
@@ -977,6 +1000,18 @@ const Communication = () => {
                       title="Start new conversation with student"
                     >
                       <AcademicCapIcon className="w-4 h-4" />
+                      New
+                    </button>
+                  )}
+                  
+                  {/* New Button - Show for Admin tab */}
+                  {activeTab === 'admin' && !showArchived && (
+                    <button
+                      onClick={() => setShowNewAdminConversationModal(true)}
+                      className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                      title="Start new conversation with school admin"
+                    >
+                      <ShieldCheckIcon className="w-4 h-4" />
                       New
                     </button>
                   )}
@@ -1001,10 +1036,10 @@ const Communication = () => {
                         )}
                         {activeTab === 'admin' && (
                           <>
-                            <ShieldCheckIcon className="w-4 h-4 text-green-600" />
+                            <ShieldCheckIcon className="w-4 h-4 text-blue-600" />
                             <span className="text-sm font-medium text-gray-900">School Admin</span>
                             {activeAdminConversations.length > 0 && (
-                              <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
+                              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                                 {activeAdminConversations.length}
                               </span>
                             )}
@@ -1079,16 +1114,16 @@ const Communication = () => {
                               }
                             }}
                             className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                              activeTab === 'admin' ? 'bg-green-50 text-green-700' : 'text-gray-700'
+                              activeTab === 'admin' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                             }`}
                           >
-                            <ShieldCheckIcon className={`w-4 h-4 ${activeTab === 'admin' ? 'text-green-600' : 'text-gray-500'}`} />
+                            <ShieldCheckIcon className={`w-4 h-4 ${activeTab === 'admin' ? 'text-blue-600' : 'text-gray-500'}`} />
                             <div className="flex-1">
                               <div className="font-medium">School Admin</div>
                               <div className="text-xs text-gray-500">School administration messages</div>
                             </div>
                             {activeAdminConversations.length > 0 && (
-                              <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
+                              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                                 {activeAdminConversations.length}
                               </span>
                             )}
@@ -1433,7 +1468,7 @@ const Communication = () => {
                 </div>
 
                 {/* Message Input */}
-                <div className="px-6 py-4 border-t border-gray-200 bg-white">
+                <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-3">
                     <button
                       type="button"
