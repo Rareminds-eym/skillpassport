@@ -197,6 +197,7 @@ const EducatorManagement = lazy(() => import("../pages/educator/EducatorManageme
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
+const EducatorMessages = lazy(() => import("../pages/educator/Messages"));
 const SkillCurriculars = lazy(() => import("../pages/educator/SkillCurricular"))
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
@@ -1053,6 +1054,7 @@ const AppRoutes = () => {
           <Route path="profile-debug" element={<EducatorProfileDebug />} />
           <Route path="management" element={<EducatorManagement />} />
           <Route path="communication" element={<EducatorCommunication />} />
+          <Route path="messages" element={<EducatorMessages />} />
           <Route path="analytics" element={<EducatorAnalytics />} />
           <Route path="activities" element={<EducatorActivities />} />
           <Route path="reports" element={<EducatorReports />} />
