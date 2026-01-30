@@ -1,0 +1,19 @@
+{
+  "name": "question-generation-api",
+  "version": "1.0.0",
+  "description": "Unified Question Generation API - Merges assessment-api and adaptive-aptitude-api",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^3.22.1"
+  }
+}

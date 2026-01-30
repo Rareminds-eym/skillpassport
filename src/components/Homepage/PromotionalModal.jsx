@@ -4,7 +4,6 @@ import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import discountAnimation from '../../assets/HomePage/DiscountIcon.json';
-import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 
 /**
  * PromotionalModal - Modern promotional modal with starburst badge
@@ -42,7 +41,7 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
     return () => clearInterval(timer);
   }, [isOpen, getTimeRemaining]);
 
-  // Handle escape key and scroll lock
+  // Handle escape key
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose();
@@ -50,12 +49,12 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      lockScroll();
+      document.body.style.overflow = 'hidden';
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      unlockScroll();
+      document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
 

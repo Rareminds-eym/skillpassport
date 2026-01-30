@@ -1496,8 +1496,8 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
   console.log('📚 Stream topics:', effectiveStreamInfo.topics);
 
   // Use unified question generation API
-  const { getPagesApiUrl } = await import('../utils/pagesUrl');
-  const apiUrl = getPagesApiUrl('question-generation');
+  const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    'https://question-generation-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -1622,8 +1622,8 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
   console.log('🎯 Generating aptitude questions for stream:', streamId, 'gradeLevel:', gradeLevel);
 
   // Use unified question generation API
-  const { getPagesApiUrl } = await import('../utils/pagesUrl');
-  const apiUrl = getPagesApiUrl('question-generation');
+  const apiUrl = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+    'https://question-generation-api.dark-mode-d021.workers.dev';
   const maxRetries = 3;
   const questionsPerCategory = Math.ceil(questionCount / APTITUDE_CATEGORIES.length); // 10 per category for 50 total
   

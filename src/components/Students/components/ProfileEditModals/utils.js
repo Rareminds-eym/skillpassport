@@ -21,14 +21,39 @@ export const calculateDuration = (startDate, endDate) => {
   if (isNaN(start.getTime())) return "";
   if (endDate && isNaN(end.getTime())) return "";
   
+  // Calculate the difference using proper date arithmetic
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+  let days = end.getDate() - start.getDate();
+  
+  // Adjust for negative days
+  if (days < 0) {
+    months--;
+    const lastDayOfPrevMonth = new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+    days += lastDayOfPrevMonth;
+  }
+  
+  // Adjust for negative months
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+  
+  // Build duration parts
+  const parts = [];
+  if (years > 0) parts.push(`${years} year${years > 1 ? 's' : ''}`);
+  if (months > 0) parts.push(`${months} month${months > 1 ? 's' : ''}`);
+  if (days > 0 && years === 0) parts.push(`${days} day${days > 1 ? 's' : ''}`);
+  
   const formatDate = (date) => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
   
   const startLabel = formatDate(start);
   const endLabel = endDate ? formatDate(end) : 'Present';
+  const durationText = parts.length > 0 ? parts.join(' ') : 'Less than a month';
   
-  return `${startLabel} - ${endLabel}`;
+  return `${startLabel} - ${endLabel} (${durationText})`;
 };
 
 export const calculateProgress = (completedModules, totalModules) => {

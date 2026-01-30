@@ -6,9 +6,7 @@
  * Now uses career-api worker instead of calling OpenRouter directly
  */
 
-import { getPagesApiUrl } from '../../utils/pagesUrl';
-
-const CAREER_API_URL = getPagesApiUrl('career');
+import { CAREER_API_URL } from './config';
 
 /**
  * Generate domain-specific keywords for a field of study using AI
@@ -25,6 +23,11 @@ export async function generateDomainKeywords(fieldOfStudy) {
   const field = fieldOfStudy.trim();
   if (!field) {
     return '';
+  }
+
+  if (!CAREER_API_URL) {
+    console.warn('[Course Recommendations] VITE_CAREER_API_URL not configured, using fallback');
+    return getFallbackKeywords(field);
   }
 
   try {

@@ -4,9 +4,8 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
-import { getPagesApiUrl } from '../utils/pagesUrl';
 
-const STORAGE_API_URL = getPagesApiUrl('storage');
+const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
 
 const generateCredentialId = () => {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -200,8 +199,7 @@ export const generateCourseCertificate = async (studentId, studentName, courseId
 };
 
 export const downloadCertificate = async (certificateUrl, courseName) => {
-  const { getPagesApiUrl } = await import('../utils/pagesUrl');
-  const STORAGE_API_URL = getPagesApiUrl('storage');
+  const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
   
   try {
     // If it's a data URL, download directly
@@ -261,8 +259,7 @@ export const downloadCertificate = async (certificateUrl, courseName) => {
  * @param {string} mode - 'inline' for viewing in browser, 'download' for downloading
  */
 export const getCertificateProxyUrl = (certificateUrl, mode = 'inline') => {
-  const { getPagesApiUrl } = require('../utils/pagesUrl');
-  const STORAGE_API_URL = getPagesApiUrl('storage');
+  const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || import.meta.env.VITE_COURSE_API_URL;
   
   if (!certificateUrl) return null;
   

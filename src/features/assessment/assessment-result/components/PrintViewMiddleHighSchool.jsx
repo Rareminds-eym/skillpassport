@@ -11,15 +11,6 @@ import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer, RepeatingHeader, RepeatingFooter } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
-import {
-  CompleteCareerFitSection,
-  CompleteSkillGapSection,
-  CompleteRoadmapSection,
-  CompleteCourseRecommendationsSection,
-  ProfileSnapshotSection,
-  TimingAnalysisSection,
-  FinalNoteSection as CompleteFinalNoteSection
-} from './shared/CompletePDFSections';
 
 /**
  * PrintViewMiddleHighSchool Component
@@ -120,27 +111,6 @@ const PrintViewMiddleHighSchool = ({
               {skillGap && (
                 <SkillsToDevelopSection skillGap={skillGap} />
               )}
-
-              {/* ========== NEW COMPLETE DATA SECTIONS - RIGHT AFTER SKILLS ========== */}
-              {/* Profile Snapshot */}
-              <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} />
-              
-              {/* Complete Course Recommendations */}
-              <CompleteCourseRecommendationsSection 
-                skillGapCourses={results.skillGapCourses}
-                platformCourses={results.platformCourses}
-                coursesByType={results.coursesByType}
-              />
-              
-              {/* Complete Roadmap */}
-              <CompleteRoadmapSection roadmap={results.roadmap} />
-              
-              {/* Timing Analysis */}
-              <TimingAnalysisSection timingAnalysis={results.timingAnalysis} />
-              
-              {/* Complete Final Note */}
-              <CompleteFinalNoteSection finalNote={results.finalNote} />
-              {/* ========== END OF NEW SECTIONS ========== */}
 
               {/* Section 4: 12-Month Journey */}
               {roadmap?.twelveMonthJourney && (

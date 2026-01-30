@@ -1447,13 +1447,10 @@ const Assessments = () => {
                                                     </div>
                                                     {file.file_url && (
                                                         <a
-                                                            href={(() => {
-                                                              const { getPagesApiUrl } = require('../../utils/pagesUrl');
-                                                              const storageApiUrl = getPagesApiUrl('storage');
-                                                              return file.file_url.includes('/document-access') 
+                                                            href={file.file_url.includes('/document-access') 
                                                                 ? file.file_url 
-                                                                : `${storageApiUrl}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`;
-                                                            })()}
+                                                                : `${import.meta.env.VITE_STORAGE_API_URL}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`
+                                                            }
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="p-1 hover:bg-blue-200 rounded transition-colors"

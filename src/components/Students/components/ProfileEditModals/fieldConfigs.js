@@ -143,7 +143,6 @@ export const FIELD_CONFIGS = {
     }),
     getDisplayTitle: (item) => item.title || "Untitled",
     getDisplaySubtitle: (item) => item.role || "",
-    calculateDuration: true,  // Enable duration calculation
   },
 
   certificates: {
@@ -153,32 +152,30 @@ export const FIELD_CONFIGS = {
     emptyMessage: "No certificates yet",
     addButtonText: "Add Certificate",
     fields: [
-      { name: "title", label: "Certificate Name *", type: "text", required: true, placeholder: "e.g., AWS Solutions Architect" },
+      { name: "name", label: "Certificate Name *", type: "text", required: true, placeholder: "e.g., AWS Solutions Architect" },
       { name: "issuer", label: "Issuing Organization *", type: "text", required: true, placeholder: "e.g., Amazon Web Services" },
       { name: "credentialId", label: "Credential ID", type: "text", placeholder: "e.g., ABC123XYZ" },
-      { name: "issuedOn", label: "Issue Date", type: "date" },
+      { name: "issueDate", label: "Issue Date", type: "date" },
       { name: "expiryDate", label: "Expiry Date", type: "date" },
-      { name: "link", label: "Credential URL", type: "url", placeholder: "https://..." },
+      { name: "credentialUrl", label: "Credential URL", type: "url", placeholder: "https://..." },
       { name: "description", label: "Description", type: "textarea", placeholder: "Describe what you learned or achieved..." },
       { name: "category", label: "Category", type: "text", placeholder: "e.g., Cloud Computing, Programming" },
       { name: "level", label: "Level", type: "text", placeholder: "e.g., Beginner, Intermediate, Advanced" },
-      { name: "platform", label: "Platform", type: "text", placeholder: "e.g., Coursera, Udemy, AWS" },
-      { name: "instructor", label: "Instructor", type: "text", placeholder: "e.g., John Doe" },
+      { name: "type", label: "Type", type: "text", placeholder: "e.g., Professional, Academic" },
     ],
     getDefaultValues: () => ({
-      title: "",
+      name: "",
       issuer: "",
-      issuedOn: "",
+      issueDate: "",
       expiryDate: "",
       credentialId: "",
-      link: "",
+      credentialUrl: "",
       description: "",
       category: "",
       level: "",
-      platform: "",
-      instructor: "",
+      type: "",
     }),
-    getDisplayTitle: (item) => item.title || item.name || "Untitled",
+    getDisplayTitle: (item) => item.name || "Untitled",
     getDisplaySubtitle: (item) => item.issuer || "",
   },
 
@@ -198,115 +195,20 @@ export const FIELD_CONFIGS = {
         defaultValue: "Intermediate"
       },
       { 
-        name: "rating", 
-        label: "Rate your Skill level (1–5)", 
+        name: "category", 
+        label: "Category", 
         type: "select", 
-        options: ["1", "2", "3", "4", "5"],
-        defaultValue: "3"
+        options: ["Technical", "Soft Skills", "Tools", "Languages", "Other"],
+        defaultValue: "Technical"
       },
-      // { 
-      //   name: "category", 
-      //   label: "Category", 
-      //   type: "select", 
-      //   options: ["Technical", "Soft Skills", "Tools", "Languages", "Other"],
-      //   defaultValue: "Technical"
-      // },
-      { name: "description", label: "Description", type: "textarea", placeholder: "Describe your experience with this skill..." },
     ],
     getDefaultValues: () => ({
       name: "",
-      type: "technical",
       level: "Intermediate",
-      rating: "3",
-      // category: "Technical",
-      description: "",
+      category: "Technical",
     }),
     getDisplayTitle: (item) => item.name || "Untitled",
-    getDisplaySubtitle: (item) => "", // Remove level display to hide numbers
-  },
-
-  softSkills: {
-    title: "Soft Skills",
-    icon: CheckCircle,
-    listKey: "softSkillsList",
-    emptyMessage: "No soft skills added yet",
-    addButtonText: "Add Soft Skill",
-    fields: [
-      { name: "name", label: "Skill Name *", type: "text", required: true, placeholder: "e.g., Leadership, Communication" },
-      { 
-        name: "level", 
-        label: "Proficiency Level", 
-        type: "select", 
-        options: ["Beginner", "Intermediate", "Advanced", "Expert"],
-        defaultValue: "Intermediate"
-      },
-      { 
-        name: "rating", 
-        label: "Rate your Skill level (1–5)", 
-        type: "select", 
-        options: ["1", "2", "3", "4", "5"],
-        defaultValue: "3"
-      },
-      { name: "description", label: "Description", type: "textarea", placeholder: "Describe how you've developed and applied this skill..." },
-      { name: "examples", label: "Examples/Evidence", type: "textarea", placeholder: "Provide specific examples or situations where you demonstrated this skill..." },
-    ],
-    getDefaultValues: () => ({
-      name: "",
-      type: "soft",
-      level: "Intermediate",
-      rating: "3",
-      description: "",
-      examples: "",
-    }),
-    getDisplayTitle: (item) => item.name || "Untitled",
-    getDisplaySubtitle: (item) => "", // Remove level display to hide numbers
-  },
-
-  technicalSkills: {
-    title: "Technical Skills",
-    icon: CheckCircle,
-    listKey: "technicalSkillsList",
-    emptyMessage: "No technical skills added yet",
-    addButtonText: "Add Technical Skill",
-    fields: [
-      { name: "name", label: "Skill Name *", type: "text", required: true, placeholder: "e.g., React, Python, AWS" },
-      { 
-        name: "level", 
-        label: "Proficiency Level", 
-        type: "select", 
-        options: ["Beginner", "Intermediate", "Advanced", "Expert"],
-        defaultValue: "Intermediate"
-      },
-      { 
-        name: "rating", 
-        label: "Rate your Skill level (1–5)", 
-        type: "select", 
-        options: ["1", "2", "3", "4", "5"],
-        defaultValue: "3"
-      },
-      // { 
-      //   name: "category", 
-      //   label: "Category", 
-      //   type: "select", 
-      //   options: ["Programming", "Framework", "Database", "Tools", "Cloud", "Other"],
-      //   defaultValue: "Programming"
-      // },
-      { name: "yearsOfExperience", label: "Years of Experience", type: "number", placeholder: "2" },
-      { name: "description", label: "Description", type: "textarea", placeholder: "Describe your experience and projects with this technology..." },
-      { name: "certifications", label: "Related Certifications", type: "text", placeholder: "Any certifications related to this skill..." },
-    ],
-    getDefaultValues: () => ({
-      name: "",
-      type: "technical",
-      level: "Intermediate",
-      rating: "3",
-      // category: "Programming",
-      yearsOfExperience: "",
-      description: "",
-      certifications: "",
-    }),
-    getDisplayTitle: (item) => item.name || "Untitled",
-    getDisplaySubtitle: (item) => "", // Remove level display to hide numbers
+    getDisplaySubtitle: (item) => `${item.level || ""} - ${item.category || ""}`,
   },
 
   personalInfo: {

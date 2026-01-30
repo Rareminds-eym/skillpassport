@@ -164,20 +164,12 @@ const PrintStyles = () => (
         h1, h2, h3, h4, h5, h6 {
           page-break-after: avoid;
           break-after: avoid;
-          orphans: 3;
-          widows: 3;
         }
         
         /* Keep cards and sections together */
         .card, .info-box, .summary-box {
           page-break-inside: avoid;
           break-inside: avoid;
-        }
-        
-        /* Prevent large gaps before page breaks */
-        p, div {
-          orphans: 2;
-          widows: 2;
         }
       }
       

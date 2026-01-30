@@ -1,8 +1,30 @@
 import { supabase } from '../lib/supabaseClient';
-import { getPagesApiUrl, getAuthHeaders } from '../utils/pagesUrl';
 
 // ==================== API URL CONFIGURATION ====================
-const API_URL = getPagesApiUrl('course');
+const WORKER_URL = import.meta.env.VITE_COURSE_API_URL;
+
+if (!WORKER_URL) {
+  console.warn('⚠️ VITE_COURSE_API_URL not configured. AI Tutor will fail.');
+}
+
+const getApiUrl = (endpoint: string) => {
+  if (!WORKER_URL) {
+    throw new Error('VITE_COURSE_API_URL environment variable is required');
+  }
+  return `${WORKER_URL}/${endpoint}`;
+};
+
+const getApiHeaders = (token?: string) => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
+};
 
 // ==================== TYPES ====================
 
@@ -78,10 +100,10 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   console.log('Sending AI tutor request with token:', session.access_token.substring(0, 20) + '...');
 
   const response = await fetch(
-    `${API_URL}/ai-tutor-chat`,
+    getApiUrl('ai-tutor-chat'),
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
+      headers: getApiHeaders(session.access_token),
       body: JSON.stringify(request),
     }
   );
@@ -247,10 +269,10 @@ export async function getSuggestedQuestions(lessonId: string): Promise<string[]>
     }
 
     const response = await fetch(
-      `${API_URL}/ai-tutor-suggestions`,
+      getApiUrl('ai-tutor-suggestions'),
       {
         method: 'POST',
-        headers: getAuthHeaders(session?.access_token),
+        headers: getApiHeaders(session?.access_token),
         body: JSON.stringify({ lessonId }),
       }
     );
@@ -298,10 +320,10 @@ export async function getCourseProgress(courseId: string): Promise<CourseProgres
   }
 
   const response = await fetch(
-    `${API_URL}/ai-tutor-progress?courseId=${courseId}`,
+    getApiUrl(`ai-tutor-progress?courseId=${courseId}`),
     {
       method: 'GET',
-      headers: getAuthHeaders(session.access_token),
+      headers: getApiHeaders(session.access_token),
     }
   );
 
@@ -327,10 +349,10 @@ export async function updateLessonProgress(
   }
 
   const response = await fetch(
-    `${API_URL}/ai-tutor-progress`,
+    getApiUrl('ai-tutor-progress'),
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
+      headers: getApiHeaders(session.access_token),
       body: JSON.stringify({ courseId, lessonId, status }),
     }
   );
@@ -390,10 +412,10 @@ export async function submitFeedback(
   }
 
   const response = await fetch(
-    `${API_URL}/ai-tutor-feedback`,
+    getApiUrl('ai-tutor-feedback'),
     {
       method: 'POST',
-      headers: getAuthHeaders(session.access_token),
+      headers: getApiHeaders(session.access_token),
       body: JSON.stringify({ conversationId, messageIndex, rating, feedbackText }),
     }
   );

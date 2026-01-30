@@ -10,10 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
-    "test:property": "vitest --run src/__tests__/property/",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "pages:dev": "wrangler pages dev dist --compatibility-date=2024-01-01 --port=8788",
-    "pages:build": "npm run build && npm run pages:dev",
     "generate-embeddings": "node scripts/generateEmbeddings.js",
     "generate-student-embeddings": "node scripts/generateStudentEmbeddingsViaEdge.js",
     "embed-courses": "node scripts/embedCourses.js"
@@ -58,7 +55,6 @@
     "@types/react-vertical-timeline-component": "^3.3.6",
     "@xenova/transformers": "^2.17.2",
     "apexcharts": "^5.3.5",
-    "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

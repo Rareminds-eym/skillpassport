@@ -72,10 +72,9 @@ const CoursePlayer = () => {
   const lastSavedVideoPositionRef = useRef(0);
 
   // Check if user is a student (for progress tracking)
-  // Students can have roles: 'student', 'school_student', 'college_student'
   console.log('user?.role', user?.role);
-  const isStudent = user?.role === 'student' || 
-                    user?.role === 'school_student' || 
+  const isStudent = user?.role === 'student' ||
+                    user?.role === 'school_student' ||
                     user?.role === 'college_student';
 
   // Session restore hook - only for students
@@ -98,7 +97,6 @@ const CoursePlayer = () => {
   useEffect(() => {
     if (isStudent && user?.email && courseId && !enrollmentInitializedRef.current) {
       enrollmentInitializedRef.current = true;
-      console.log('user role', user?.role);
       enrollAndLoadProgress();
     } else if (!isStudent && !positionInitialized) {
       // For non-students, immediately mark position as initialized
@@ -458,9 +456,7 @@ const CoursePlayer = () => {
 
       // Update student streak after completing lesson
       try {
-        const { getPagesApiUrl } = await import('../../utils/pagesUrl');
-        const STREAK_API_URL = getPagesApiUrl('streak');
-        const response = await fetch(`${STREAK_API_URL}/${user.id}/complete`, {
+        const response = await fetch(`https://streak-api.dark-mode-d021.workers.dev/${user.id}/complete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

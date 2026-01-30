@@ -179,9 +179,8 @@ export const SupabaseAuthProvider = ({ children }) => {
   // Sign up student - uses worker API for proper rollback
   const signUp = async (email, password, studentData = {}) => {
     try {
-      // Use the Pages Function API for signup with proper rollback support
-      const { getPagesApiUrl } = await import('../utils/pagesUrl');
-      const USER_API_URL = getPagesApiUrl('user');
+      // Use the worker API for signup with proper rollback support
+      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
       
       const response = await fetch(`${USER_API_URL}/signup`, {
         method: 'POST',

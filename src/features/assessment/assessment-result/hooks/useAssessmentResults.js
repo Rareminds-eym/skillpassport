@@ -7,7 +7,6 @@ import { analyzeAssessmentWithGemini, addCourseRecommendations } from '../../../
 import { validateAssessmentResults } from '../utils/assessmentValidation';
 import { validateAptitudeScores } from '../../../../services/aptitudeScoreValidator';
 import { validateRiasecScores } from '../../../../services/riasecScoreValidator';
-import { transformAssessmentResults } from '../../../../services/assessmentResultTransformer'; // ✅ NEW: Import transformer
 import {
     riasecQuestions,
     bigFiveQuestions,
@@ -218,11 +217,11 @@ const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
  */
 export const useAssessmentResults = () => {
     // 🔥 DEBUG: Verify new code is loaded
-    console.log('🔥🔥🔥 useAssessmentResults hook loaded - NEW CODE WITH TRANSFORMER 🔥🔥🔥');
+    console.log('🔥🔥🔥 useAssessmentResults hook loaded - NEW CODE WITH FIXES 🔥🔥🔥');
 
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [results, setResultsInternal] = useState(null); // ✅ Renamed to internal
+    const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [retrying, setRetrying] = useState(false);
@@ -253,79 +252,6 @@ export const useAssessmentResults = () => {
     });
     const [monthsInGrade, setMonthsInGrade] = useState(null);
     const [validationWarnings, setValidationWarnings] = useState([]);
-
-    // ✅ NEW: Wrapper for setResults that applies transformation
-    const setResults = useCallback((resultsData) => {
-        if (!resultsData) {
-            setResultsInternal(null);
-            return;
-        }
-
-        console.log('🔍 setResults called with data:', {
-            hasData: !!resultsData,
-            keys: Object.keys(resultsData || {}),
-            _transformed: resultsData._transformed,
-            hasGeminiResults: !!resultsData.gemini_results,
-            hasGeminiAnalysis: !!resultsData.gemini_analysis,
-            hasRiasec: !!resultsData.riasec,
-            hasRiasecScores: !!resultsData.riasec_scores,
-            // ✅ ADD MORE DEBUG INFO
-            geminiResultsType: resultsData.gemini_results ? typeof resultsData.gemini_results : 'undefined',
-            geminiResultsKeys: resultsData.gemini_results && typeof resultsData.gemini_results === 'object' ? Object.keys(resultsData.gemini_results) : null,
-            riasecScoresValue: resultsData.riasec_scores,
-            sampleData: resultsData.gemini_results?.riasec || resultsData.riasec || 'none'
-        });
-
-        // Check if data is already transformed
-        if (resultsData._transformed) {
-            console.log('✅ Results already transformed, using as-is');
-            setResultsInternal(resultsData);
-            return;
-        }
-
-        // Check if this looks like database format
-        // Data can be in gemini_analysis/gemini_results field OR in individual columns
-        const isDatabaseFormat = resultsData.gemini_analysis || 
-                                resultsData.gemini_results ||
-                                resultsData.aptitude_scores || 
-                                resultsData.riasec_scores ||
-                                resultsData.top_interests ||
-                                resultsData.career_recommendations;
-
-        if (isDatabaseFormat) {
-            console.log('🔄 Transforming database results to PDF format...');
-            console.log('   Input data structure:', {
-                hasGeminiAnalysis: !!resultsData.gemini_analysis,
-                hasAptitudeScores: !!resultsData.aptitude_scores,
-                hasRiasecScores: !!resultsData.riasec_scores,
-                hasCareerRecommendations: !!resultsData.career_recommendations
-            });
-            try {
-                const transformed = transformAssessmentResults(resultsData);
-                console.log('✅ Transformation complete:', {
-                    hasAptitude: !!transformed.aptitude,
-                    hasCareerFit: !!transformed.careerFit,
-                    hasSkillGap: !!transformed.skillGap,
-                    hasLearningStyles: !!transformed.learningStyles,
-                    riasecScores: transformed.riasec?.scores
-                });
-                setResultsInternal(transformed);
-            } catch (error) {
-                console.error('❌ Transformation failed, using original:', error);
-                console.error('   Error details:', error.message, error.stack);
-                setResultsInternal(resultsData);
-            }
-        } else {
-            // Already in correct format (from Gemini API)
-            console.log('✅ Results already in correct format (no transformation needed)');
-            console.log('   Data structure:', {
-                hasRiasec: !!resultsData.riasec,
-                hasAptitude: !!resultsData.aptitude,
-                hasCareerFit: !!resultsData.careerFit
-            });
-            setResultsInternal(resultsData);
-        }
-    }, []);
 
     // Helper function to apply validation to results
     const applyValidation = async (geminiResults, rawAnswers = {}, sectionTimings = {}) => {
@@ -954,63 +880,16 @@ export const useAssessmentResults = () => {
                 console.log('   Direct result lookup:', {
                     found: !!directResult,
                     error: directError?.message || 'none',
-                    hasGeminiResults: !!directResult?.gemini_results,
-                    hasRiasecScores: !!directResult?.riasec_scores,
-                    hasAptitudeScores: !!directResult?.aptitude_scores,
-                    allKeys: directResult ? Object.keys(directResult) : []
+                    hasGeminiResults: !!directResult?.gemini_results
                 });
 
                 // If we found a result directly, use it
                 if (directResult) {
                     console.log('✅ Found result directly by attempt_id');
                     
-                    // ✅ NEW: Check if data is in individual columns instead of gemini_results
-                    let geminiResults = directResult.gemini_results;
-                    
-                    // If gemini_results is missing but we have individual score columns, reconstruct it
-                    if ((!geminiResults || Object.keys(geminiResults).length === 0) && 
-                        (directResult.riasec_scores || directResult.aptitude_scores)) {
-                        console.log('🔧 Reconstructing results from individual database columns...');
-                        geminiResults = {
-                            riasec: {
-                                scores: directResult.riasec_scores || {},
-                                code: directResult.riasec_code || '',
-                                topThree: directResult.riasec_code ? directResult.riasec_code.split('').map(code => {
-                                    const names = { R: 'Realistic', I: 'Investigative', A: 'Artistic', S: 'Social', E: 'Enterprising', C: 'Conventional' };
-                                    return { code, name: names[code] || code };
-                                }) : []
-                            },
-                            aptitude: directResult.aptitude_scores ? {
-                                scores: directResult.aptitude_scores,
-                                overallScore: directResult.aptitude_overall || 0
-                            } : undefined,
-                            bigFive: directResult.bigfive_scores || undefined,
-                            workValues: directResult.work_values_scores ? {
-                                scores: directResult.work_values_scores
-                            } : undefined,
-                            employability: directResult.employability_scores ? {
-                                skillScores: directResult.employability_scores,
-                                overallReadiness: directResult.employability_readiness || 0
-                            } : undefined,
-                            knowledge: directResult.knowledge_details || (directResult.knowledge_score ? {
-                                percentage: directResult.knowledge_score
-                            } : undefined),
-                            careerFit: directResult.career_fit || [],
-                            skillGap: directResult.skill_gap || [],
-                            roadmap: directResult.roadmap || {},
-                            profileSnapshot: directResult.profile_snapshot || '',
-                            finalNote: directResult.final_note || '',
-                            overallSummary: directResult.overall_summary || ''
-                        };
-                        console.log('✅ Reconstructed results:', {
-                            hasRiasec: !!geminiResults.riasec,
-                            hasAptitude: !!geminiResults.aptitude,
-                            hasCareerFit: !!geminiResults.careerFit
-                        });
-                    }
-                    
                     // Check if AI analysis exists and is valid
-                    if (geminiResults && typeof geminiResults === 'object' && Object.keys(geminiResults).length > 0) {
+                    if (directResult.gemini_results && typeof directResult.gemini_results === 'object' && Object.keys(directResult.gemini_results).length > 0) {
+                        const geminiResults = directResult.gemini_results;
 
                         // Validate that AI analysis is complete (has RIASEC data)
                         // More lenient validation - just check if RIASEC data exists

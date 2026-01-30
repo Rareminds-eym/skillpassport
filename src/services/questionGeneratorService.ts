@@ -1,14 +1,22 @@
 /**
  * Question Generator Service
  * 
- * Generates adaptive aptitude test questions using Cloudflare Pages Function.
+ * Generates adaptive aptitude test questions using Cloudflare Worker API.
  * Handles question generation for all test phases with caching support.
  * 
  * Requirements: 4.1, 4.2, 1.4, 6.1, 2.5, 6.2, 3.1, 3.2, 7.1
+ * 
+ * NOTE: This service uses the unified question-generation-api Cloudflare Worker.
+ * The worker is deployed at: question-generation-api.dark-mode-d021.workers.dev
+ * 
+ * Endpoints used:
+ * - POST /generate/diagnostic - Diagnostic screener questions
+ * - POST /generate/adaptive - Adaptive core questions
+ * - POST /generate/stability - Stability confirmation questions
+ * - POST /generate/single - Single question generation
  */
 
 import { supabase } from '../lib/supabaseClient';
-import { getPagesApiUrl } from '../utils/pagesUrl';
 import {
   Question,
   GradeLevel,
@@ -19,17 +27,19 @@ import {
 } from '../types/adaptiveAptitude';
 
 // =============================================================================
-// CLOUDFLARE PAGES FUNCTION API CONFIGURATION
+// CLOUDFLARE WORKER API CONFIGURATION
 // =============================================================================
 
-const API_URL = getPagesApiUrl('question-generation');
+// Use environment variable or fallback to production URL
+const ADAPTIVE_APTITUDE_API_URL = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
+  'https://question-generation-api.dark-mode-d021.workers.dev';
 
 /**
- * Makes a request to the Cloudflare Pages Function API
+ * Makes a request to the Cloudflare Worker API
  */
 async function callWorkerAPI<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-  const url = `${API_URL}${endpoint}`;
-  console.log(`📡 [QuestionGeneratorService] Calling Pages Function API: ${url}`);
+  const url = `${ADAPTIVE_APTITUDE_API_URL}${endpoint}`;
+  console.log(`📡 [QuestionGeneratorService] Calling Worker API: ${url}`);
   
   const response = await fetch(url, {
     method: 'POST',

@@ -139,6 +139,7 @@ const ReadinessBadge = ({ readiness }: { readiness: string | null }) => {
   );
 };
 
+
 // Assessment Card Component
 const AssessmentCard = ({
   result,
@@ -239,6 +240,7 @@ const AssessmentCard = ({
 };
 
 
+
 // Main Component
 const EducatorAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
@@ -283,6 +285,7 @@ const EducatorAssessmentResults: React.FC = () => {
 
       // First check if they are a school educator - try both user_id and email lookup
       let schoolEducatorData = null;
+      let schoolEducatorError = null;
 
       // Try lookup by user_id first
       const { data: educatorByUserId, error: errorByUserId } = await supabase
@@ -303,6 +306,8 @@ const EducatorAssessmentResults: React.FC = () => {
 
         if (!errorByEmail && educatorByEmail) {
           schoolEducatorData = educatorByEmail;
+        } else {
+          schoolEducatorError = errorByEmail;
         }
       }
 
@@ -471,6 +476,7 @@ const EducatorAssessmentResults: React.FC = () => {
           created_at,
           career_fit,
           skill_gap,
+<<<<<<< HEAD
           gemini_results,
           overall_summary,
           platform_courses,
@@ -1017,7 +1023,7 @@ const EducatorAssessmentResults: React.FC = () => {
       {/* Assessment Report Drawer - Uses the same design as student assessment result page */}
       <AssessmentReportDrawer
         student={selectedResult ? {
-          id: selectedResult.student_id,
+          id: selectedResult.student_id, // This is actually the user_id
           user_id: selectedResult.student_id,
           name: selectedResult.student_name || undefined,
           email: selectedResult.student_email || undefined,
@@ -1055,6 +1061,7 @@ const EducatorAssessmentResults: React.FC = () => {
           profile_snapshot: selectedResult.profile_snapshot,
           stream_name: selectedResult.stream_name || undefined
         } : undefined}
+>>>>>>> origin/dev-new_pushing_testing-_to_dev
         isOpen={showDetailModal}
         onClose={() => {
           setShowDetailModal(false);

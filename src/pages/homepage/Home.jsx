@@ -24,9 +24,9 @@ const Home = () => {
   return (
     <div className="min-h-screen">
       <SEOHead
-        title="Skill Passport | India's Verified Talent Infrastructure by Rareminds"
-        description="description" content="Skill Passport is India’s verified talent infrastructure—validating skills at source to enable faster, trust-based hiring for employers, institutions, and learners."
-        keywords="Skill Passport, verified skills India, talent verification platform, pre-verified talent, faster hiring India, employability infrastructure, Rareminds Skill Passport"
+        title="Skill Ecosystem - Educational Management & Career Development Platform"
+        description="Transform education with AI-powered career guidance, student management, and recruitment solutions. Trusted by schools, colleges, and universities worldwide."
+        keywords="educational management, AI career guidance, student management, school management system, college management, university management, recruitment platform"
         url="https://skillpassport.rareminds.in/"
       />
       <Hero />

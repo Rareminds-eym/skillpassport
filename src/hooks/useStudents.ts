@@ -23,7 +23,6 @@ interface Project {
   student_id: string
   title: string
   description?: string
-  role?: string
   status?: string
   start_date?: string
   end_date?: string

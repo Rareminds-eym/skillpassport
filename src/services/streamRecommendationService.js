@@ -7,10 +7,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
-import { getPagesApiUrl } from '../utils/pagesUrl';
 
 // API URL for stream recommendation endpoint
-const CAREER_API_URL = getPagesApiUrl('career');
+const CAREER_API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.dark-mode-d021.workers.dev';
 
 // Subject to stream mapping for scoring
 const SUBJECT_STREAM_WEIGHTS = {

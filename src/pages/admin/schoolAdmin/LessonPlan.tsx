@@ -32,7 +32,6 @@ import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlans
 import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
 import { supabase } from "../../../lib/supabaseClient";
 import { uploadFile, validateFile, deleteFile } from "../../../services/fileUploadService";
-import { getPagesApiUrl } from "../../../utils/pagesUrl";
 
 /* ==============================
    TYPES & INTERFACES
@@ -454,7 +453,7 @@ const ViewLessonPlanModal = ({
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <button
                               onClick={() => {
-                                const storageApiUrl = getPagesApiUrl('storage');
+                                const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
                                 let viewUrl;
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
@@ -478,7 +477,7 @@ const ViewLessonPlanModal = ({
                             
                             <button
                               onClick={() => {
-                                const storageApiUrl = getPagesApiUrl('storage');
+                                const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
                                 let downloadUrl;
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
@@ -1921,7 +1920,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                         console.log('🏷️ File Type (Modal):', file.type);
                                         
                                         // Use the storage API endpoint directly for inline viewing
-                                        const storageApiUrl = getPagesApiUrl('storage');
+                                        const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
                                         
                                         // Try different URL construction methods
                                         let viewUrl;
@@ -1985,7 +1984,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                         console.log('📝 File Name (Modal):', file.name);
                                         
                                         // Use the storage API endpoint directly for download
-                                        const storageApiUrl = getPagesApiUrl('storage');
+                                        const storageApiUrl = 'https://storage-api.dark-mode-d021.workers.dev';
                                         
                                         // Try different URL construction methods
                                         let downloadUrl;

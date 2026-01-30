@@ -1,12 +1,6 @@
 /**
  * Storage Service for handling file uploads to Cloudflare R2
- * 
- * @deprecated This service is a legacy duplicate of storageApiService.ts
- * Please use storageApiService.ts instead for all new code.
- * This file is kept for backward compatibility only.
  */
-
-import { getPagesApiUrl } from '../utils/pagesUrl';
 
 interface UploadResponse {
   success: boolean;
@@ -41,7 +35,7 @@ class StorageService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = getPagesApiUrl('storage');
+    this.baseUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
   }
 
   /**

@@ -37,9 +37,6 @@ dist-ssr
 /build
 /dist
 
-# Cloudflare Wrangler
-.wrangler
-
 # Coverage directory
 /coverage
 

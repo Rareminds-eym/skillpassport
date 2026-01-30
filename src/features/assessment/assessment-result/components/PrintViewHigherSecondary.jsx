@@ -23,15 +23,6 @@ import Watermarks, {
   RepeatingHeader,
   RepeatingFooter,
 } from './shared/Watermarks';
-import {
-  CompleteCareerFitSection,
-  CompleteSkillGapSection,
-  CompleteRoadmapSection,
-  CompleteCourseRecommendationsSection,
-  ProfileSnapshotSection,
-  TimingAnalysisSection,
-  FinalNoteSection
-} from './shared/CompletePDFSections';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
@@ -173,9 +164,8 @@ const PrintViewHigherSecondary = ({
       {/* Screen-only continuous content (hidden in print) */}
       <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
         <DataPrivacyNotice />
-        {/* COMMENTED OUT: Already showing on page 1 in print view */}
-        {/* <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
-        <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} /> */}
+        <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+        <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
         {aptitude && (
           <CognitiveAbilitiesSection aptitude={aptitude} />
         )}
@@ -191,22 +181,6 @@ const PrintViewHigherSecondary = ({
         {skillGap && (
           <SkillGapDevelopmentSection skillGap={skillGap} />
         )}
-        
-        {/* ========== NEW COMPLETE DATA SECTIONS - RIGHT AFTER SKILLS ========== */}
-        {results.profileSnapshot && <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} />}
-        {results.skillGap && <CompleteSkillGapSection skillGap={results.skillGap} />}
-        {(results.skillGapCourses || results.platformCourses || results.coursesByType) && (
-          <CompleteCourseRecommendationsSection 
-            skillGapCourses={results.skillGapCourses}
-            platformCourses={results.platformCourses}
-            coursesByType={results.coursesByType}
-          />
-        )}
-        {results.roadmap && <CompleteRoadmapSection roadmap={results.roadmap} />}
-        {results.timingAnalysis && <TimingAnalysisSection timingAnalysis={results.timingAnalysis} />}
-        {results.finalNote && <FinalNoteSection finalNote={results.finalNote} />}
-        {/* ========== END OF NEW SECTIONS ========== */}
-        
         {roadmap && (
           <DevelopmentRoadmapSection roadmap={roadmap} />
         )}
@@ -216,7 +190,6 @@ const PrintViewHigherSecondary = ({
         {courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
         )}
-        
         <ReportDisclaimer />
       </div>
     </div>
@@ -254,7 +227,7 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
         padding: '0',
         marginTop: '0',
         marginBottom: '0',
-        minHeight: '200px'
+        minHeight: '220px'
       }}>
         {/* SVG for connecting lines */}
         <svg style={{
@@ -393,8 +366,8 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
         color: '#6b7280', 
         fontStyle: 'italic', 
         lineHeight: '1.5',
-        marginTop: '5px',
-        marginBottom: '8px',
+        marginTop: '0',
+        marginBottom: '0',
         textAlign: 'left'
       }}>
         <strong>Your Top Interests:</strong> {topInterestsText}. {hasStrongInterests 

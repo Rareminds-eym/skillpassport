@@ -41,8 +41,7 @@ export const parseResumeWithAI = async (resumeText) => {
  */
 const parseWithClaude = async (resumeText) => {
   try {
-    const { getPagesApiUrl } = await import('../utils/pagesUrl');
-    const API_URL = getPagesApiUrl('career');
+    const API_URL = import.meta.env.VITE_CAREER_API_URL || 'https://career-api.rareminds.workers.dev';
 
     // Get current session for auth token
     const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());

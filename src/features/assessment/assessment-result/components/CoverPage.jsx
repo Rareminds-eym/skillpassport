@@ -377,33 +377,15 @@ const NotebookLabel = ({ studentInfo, description }) => {
 /**
  * CoverPage component for Assessment Report PrintView
  * @param {CoverPageProps} props - Component props
- * @param {Object} props.studentInfo - Student information
- * @param {string} props.generatedAt - Report generation date (optional)
  * @returns {JSX.Element} Cover page component
  */
-const CoverPage = ({ studentInfo, generatedAt }) => {
+const CoverPage = ({ studentInfo }) => {
   // Debug: Log what studentInfo is received
   console.log('CoverPage - studentInfo received:', studentInfo);
   console.log('CoverPage - studentInfo keys:', studentInfo ? Object.keys(studentInfo) : 'null');
   console.log('CoverPage - grade value:', studentInfo?.grade);
   console.log('CoverPage - school value:', studentInfo?.school);
   console.log('CoverPage - college value:', studentInfo?.college);
-  console.log('CoverPage - generatedAt:', generatedAt);
-  
-  // Format generation date
-  const formatDate = (dateString) => {
-    if (!dateString) return new Date().toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
   
   // Safe student info with fallback values and better handling
   const safeStudentInfo = {
@@ -445,22 +427,6 @@ const CoverPage = ({ studentInfo, generatedAt }) => {
         
         {/* NotebookLabel - Task 4 - Now displays all student profile details */}
         <NotebookLabel studentInfo={safeStudentInfo} />
-        
-        {/* ✅ NEW: Generation Date at bottom */}
-        <div style={{
-          position: 'absolute',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          textAlign: 'center',
-          fontSize: '11px',
-          color: '#64748b'
-        }}>
-          <div>Report Generated: {formatDate(generatedAt)}</div>
-          <div style={{ marginTop: '4px', fontSize: '9px' }}>
-            Valid for 90 days from generation date
-          </div>
-        </div>
       </div>
     </div>
   );

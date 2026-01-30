@@ -3,9 +3,7 @@
  * Handles embedding generation via the career-api Cloudflare worker.
  */
 
-import { getPagesApiUrl } from '../../utils/pagesUrl';
-
-const EMBEDDING_API_URL = getPagesApiUrl('career');
+import { EMBEDDING_API_URL } from './config';
 
 /**
  * Generate embedding for text via the career-api Cloudflare worker.
@@ -17,6 +15,10 @@ const EMBEDDING_API_URL = getPagesApiUrl('career');
 export const generateEmbedding = async (text) => {
   if (!text || text.trim().length < 10) {
     throw new Error('Text too short for embedding generation');
+  }
+
+  if (!EMBEDDING_API_URL) {
+    throw new Error('VITE_CAREER_API_URL environment variable not configured');
   }
 
   // For course recommendations, we don't need to store the embedding

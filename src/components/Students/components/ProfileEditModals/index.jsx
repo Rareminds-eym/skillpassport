@@ -73,26 +73,6 @@ export const SkillsEditModal = ({ isOpen, onClose, data, onSave }) => (
   />
 );
 
-export const SoftSkillsEditModal = ({ isOpen, onClose, data, onSave }) => (
-  <UnifiedProfileEditModal
-    isOpen={isOpen}
-    onClose={onClose}
-    type="softSkills"
-    data={data}
-    onSave={onSave}
-  />
-);
-
-export const TechnicalSkillsEditModal = ({ isOpen, onClose, data, onSave }) => (
-  <UnifiedProfileEditModal
-    isOpen={isOpen}
-    onClose={onClose}
-    type="technicalSkills"
-    data={data}
-    onSave={onSave}
-  />
-);
-
 export const PersonalInfoEditModal = ({ isOpen, onClose, data, onSave }) => (
   <PersonalInfoEditModalComponent
     isOpen={isOpen}

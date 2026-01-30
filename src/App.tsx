@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider } from './components/Recruiter/components/Toast';
@@ -13,7 +13,6 @@ import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
 import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
 import AppRoutes from './routes/AppRoutes';
 import './utils/suppressRechartsWarnings'; // Suppress Recharts warnings globally
-import './utils/scrollDebug'; // Load scroll debug utilities
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -29,13 +28,6 @@ const queryClient = new QueryClient({
 });
 
 function App() {
-  // Emergency scroll unlock on mount
-  useEffect(() => {
-    // Import dynamically to avoid SSR issues
-    import('./utils/scrollLock').then(({ forceUnlockScroll }) => {
-      forceUnlockScroll();
-    });
-  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

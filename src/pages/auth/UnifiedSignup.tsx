@@ -406,10 +406,9 @@ const UnifiedSignup = () => {
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      // Use the Pages Function API for signup with proper rollback support
+      // Use the user-api worker for signup with proper rollback support
       // This ensures no orphaned auth users are created
-      const { getPagesApiUrl } = await import('../../utils/pagesUrl');
-      const USER_API_URL = getPagesApiUrl('user');
+      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
 
       const response = await fetch(`${USER_API_URL}/signup`, {
         method: 'POST',

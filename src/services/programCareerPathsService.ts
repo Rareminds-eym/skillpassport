@@ -3,10 +3,6 @@
  * Frontend service to generate AI-powered career paths for degree programs
  */
 
-import { getPagesApiUrl } from '../utils/pagesUrl';
-
-const API_URL = getPagesApiUrl('analyze-assessment');
-
 export interface CareerPath {
   role: string;
   salary: {
@@ -59,6 +55,8 @@ export async function generateProgramCareerPaths(
   request: GenerateCareerPathsRequest
 ): Promise<CareerPath[]> {
   try {
+    const API_URL = import.meta.env.VITE_ANALYZE_ASSESSMENT_API_URL || 'https://analyze-assessment-api.rareminds.workers.dev';
+
     const response = await fetch(`${API_URL}/generate-program-career-paths`, {
       method: 'POST',
       headers: {

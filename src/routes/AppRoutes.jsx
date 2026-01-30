@@ -35,7 +35,7 @@ const SCHOOL_ADMIN_ROLES = ["school_admin"];
 const UNIVERSITY_ADMIN_ROLES = ["university_admin"];
 
 const Home = lazy(() => import("../pages/homepage/Home"));
-const About = lazy(() => import("../pages/AboutPage"));
+const About = lazy(() => import("../pages/homepage/About"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
 const TermsAndConditions = lazy(() => import("../pages/TermsAndConditions"));
 const PrivacyPolicy = lazy(() => import("../pages/PrivacyPolicy"));

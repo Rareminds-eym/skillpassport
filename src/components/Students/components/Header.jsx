@@ -294,7 +294,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                 <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 shadow-xl rounded-lg z-50">
                   <div className="py-1">
                     {/* Only show Edit Profile if student is NOT part of school or college */}
-                    {/* {!isPartOfSchoolOrCollege && (
+                    {!isPartOfSchoolOrCollege && (
                       <button
                         onClick={() => {
                           setActiveTab("profile");
@@ -306,7 +306,7 @@ const Header = ({ activeTab, setActiveTab }) => {
                         <PencilIcon className="w-4 h-4 mr-2" />
                         Edit Profile
                       </button>
-                    )} */}
+                    )}
                     <button
                       onClick={() => {
                         setActiveTab("saved-jobs");
