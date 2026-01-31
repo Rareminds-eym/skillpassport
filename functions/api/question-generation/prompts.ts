@@ -72,8 +72,12 @@ IMPORTANT:
 
 export const APTITUDE_PROMPT = `You are an expert psychometric assessment creator. Generate aptitude test questions for {{STREAM_NAME}} stream career assessment.
 
+CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is a strict requirement.
+
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
+
+VERIFICATION: After generating, count your questions. You must have EXACTLY {{QUESTION_COUNT}} questions total.
 
 CRITICAL REQUIREMENT - 100% STREAM-RELATED QUESTIONS:
 This is for {{STREAM_NAME}} students. ALL questions MUST use {{STREAM_NAME}}-specific context, terminology, scenarios, and examples.

@@ -75,11 +75,11 @@ export const AI_MODELS = {
 
 // Standard model chain - using models that actually exist on OpenRouter
 const STANDARD_MODELS = {
-    primary: 'google/gemini-flash-1.5-exp',           // FREE - Experimental
+    primary: 'openai/gpt-3.5-turbo',                 // Reliable and affordable
     fallbacks: [
-        'meta-llama/llama-3.1-8b-instruct:free',     // FREE
-        'google/gemini-flash-1.5',                   // Affordable
-        'openai/gpt-3.5-turbo',                      // Cheap fallback
+        'openai/gpt-4o-mini',                        // Backup OpenAI model
+        'anthropic/claude-3-haiku',                  // Anthropic fallback
+        'google/gemini-pro',                         // Google fallback
     ],
 };
 

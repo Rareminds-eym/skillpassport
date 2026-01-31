@@ -61,13 +61,18 @@ function levenshteinDistance(str1: string, str2: string): number {
 async function callOpenRouterAndParse(
     openRouterKey: string,
     messages: Array<{ role: string, content: string }>,
-    maxRetries: number = 3
+    maxRetries: number = 3,
+    maxTokens: number = 1500  // Increased default for better completion
 ): Promise<any[]> {
     const content = await callOpenRouterWithRetry(openRouterKey, messages, {
         maxRetries,
-        maxTokens: 500,  // Reduced from 1500 to 500 to fit within credit limits
+        maxTokens,  // Use provided maxTokens
         temperature: 0.7,
     });
+    
+    console.log(`📄 [JSON-Parser] Received content length: ${content.length} characters`);
+    console.log(`📄 [JSON-Parser] First 200 chars: ${content.substring(0, 200)}`);
+    console.log(`📄 [JSON-Parser] Last 200 chars: ${content.substring(Math.max(0, content.length - 200))}`);
     
     const parsed = repairAndParseJSON(content);
     
@@ -83,6 +88,7 @@ async function callOpenRouterAndParse(
             console.log('⚠️ Single object returned, wrapping in array');
             return validateQuestionStructure([parsed]);
         }
+        console.error('❌ [JSON-Parser] Response is not an array or valid object:', typeof parsed);
         throw new Error('Response is not an array or valid object');
     }
     
@@ -235,12 +241,22 @@ Return ONLY the JSON array, nothing else.`;
 
     console.log(`📤 [Adaptive-Handler] User prompt length: ${userPrompt.length} characters`);
 
+    // Calculate appropriate token limit based on question count
+    // Each question needs ~150-200 tokens, add buffer for formatting
+    const estimatedTokens = Math.max(1500, count * 200 + 500);
+    console.log(`🎯 [Adaptive-Handler] Using ${estimatedTokens} max tokens for ${count} questions`);
+
     // Use centralized OpenRouter call with retry
     console.log(`🚀 [Adaptive-Handler] Calling OpenRouter API...`);
-    const aiQuestionsRaw = await callOpenRouterAndParse(openRouterKey, [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-    ]);
+    const aiQuestionsRaw = await callOpenRouterAndParse(
+        openRouterKey, 
+        [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+        ],
+        3,  // maxRetries
+        estimatedTokens  // maxTokens
+    );
 
     console.log(`📥 [Adaptive-Handler] Received AI response, validating...`);
 
