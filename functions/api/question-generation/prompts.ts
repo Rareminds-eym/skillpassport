@@ -87,6 +87,10 @@ Question Requirements:
 4. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
 5. NO generic questions - every question must have {{STREAM_NAME}} context
 6. For Clerical Speed & Accuracy: Generate string comparison questions using {{STREAM_NAME}}-specific codes/IDs like "{{CLERICAL_EXAMPLE}}"
+   - CRITICAL: The question text MUST include BOTH strings to compare, formatted like this:
+     "Compare these two strings:\n\nString 1: ENG-789-SYS\nString 2: ENG-789-SYS\n\nAre they the same or different?"
+   - DO NOT just say "Compare the two strings below:" without showing the actual strings
+   - Each clerical question must show two complete strings that are either identical or have subtle differences
 
 Output Format - Respond with ONLY valid JSON:
 {
@@ -101,6 +105,17 @@ Output Format - Respond with ONLY valid JSON:
       "correct_answer": "Option B",
       "skill_tag": "vocabulary",
       "estimated_time": 45
+    },
+    {
+      "id": 2,
+      "category": "clerical",
+      "type": "mcq",
+      "difficulty": "easy",
+      "question": "Compare these two strings:\n\nString 1: {{CLERICAL_EXAMPLE}}\nString 2: {{CLERICAL_EXAMPLE}}\n\nAre they the same or different?",
+      "options": ["Same", "Different"],
+      "correct_answer": "Same",
+      "skill_tag": "clerical_speed",
+      "estimated_time": 30
     }
   ]
 }
