@@ -89,7 +89,7 @@ export class MessageService {
       if (schoolEducatorIds.length > 0) {
         const { data: schoolEducators } = await supabase
           .from('school_educators')
-          .select('id, first_name, last_name, email, phone_number, photo_url')
+          .select('id, user_id, first_name, last_name, email, phone_number, photo_url')
           .in('id', schoolEducatorIds);
 
         // Add educator details to conversations

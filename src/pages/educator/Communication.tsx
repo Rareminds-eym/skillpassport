@@ -348,8 +348,14 @@ const Communication = () => {
     { messages: [], isLoading: false, sendMessage: async () => {}, isSending: false };
 
   // Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
-
+  const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
+// ADD THIS DEBUG LOG HERE:
+console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
+  isUserOnlineGlobal: typeof isUserOnlineGlobal,
+  globalOnlineUsers: globalOnlineUsers,
+  currentUserId: educatorId,
+  currentUserName: educatorName
+});
   // Presence tracking for current conversation
   const { } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
@@ -800,7 +806,12 @@ const Communication = () => {
         const studentName = conv.student?.name || conv.student?.email || 'Student';
         const studentUniversity = conv.student?.university || '';
         const studentBranch = conv.student?.branch_field || '';
-        
+        // ADD THIS DEBUG LOG HERE:
+console.log('🔍 Checking online for student:', {
+  student_id: conv.student_id,
+  student_user_id: conv.student?.id,
+  online_users: globalOnlineUsers
+});
         // Get class and subject info from school tables
         const className = conv.school_class?.name || 'Class';
         const grade = conv.school_class?.grade || '';
@@ -828,7 +839,8 @@ const Communication = () => {
           role: role,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
-          online: isUserOnlineGlobal(conv.student_id),
+          // online: isUserOnlineGlobal(conv.student_id),
+          online: isUserOnlineGlobal(conv.student?.id || conv.student_id),
           time: conv.last_message_at 
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
@@ -869,7 +881,7 @@ const Communication = () => {
       c.role.toLowerCase().includes(query) ||
       c.lastMessage.toLowerCase().includes(query)
     );
-  }, [conversations, searchQuery, isUserOnlineGlobal, activeTab]);
+  }, [conversations, searchQuery, isUserOnlineGlobal, globalOnlineUsers, activeTab]);
 
   const currentChat = useMemo(() => 
     filteredContacts.find(c => c.id === selectedConversationId),
@@ -1388,7 +1400,7 @@ const Communication = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
                       <PhoneIcon className="w-5 h-5 text-gray-700" />
                     </button>
@@ -1398,7 +1410,7 @@ const Communication = () => {
                     <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
                       <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
                     </button>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Messages Area */}
@@ -1470,13 +1482,13 @@ const Communication = () => {
                 {/* Message Input */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-white flex-shrink-0">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-3">
-                    <button
+                    {/* <button
                       type="button"
                       className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
                       title="Attach file"
                     >
                       <PaperClipIcon className="w-5 h-5 text-gray-500" />
-                    </button>
+                    </button> */}
                     <div className="flex-1 relative">
                       <textarea
                         value={messageInput}
@@ -1494,13 +1506,13 @@ const Communication = () => {
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
-                      <button
+                      {/* <button
                         type="button"
                         className="absolute right-3 bottom-2.5 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
                         title="Emoji"
                       >
                         <FaceSmileIcon className="w-5 h-5 text-gray-400" />
-                      </button>
+                      </button> */}
                     </div>
                     <button
                       type="submit"
@@ -1539,22 +1551,22 @@ const Communication = () => {
       {/* Other Communication Features (Future) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Announcements */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        {/* <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Class Announcements</h2>
           <p className="text-sm text-gray-600 mb-4">Send announcements to entire classes</p>
           <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
             Coming Soon
           </button>
-        </div>
+        </div> */}
 
         {/* Feedback System */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        {/* <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Direct Feedback</h2>
           <p className="text-sm text-gray-600 mb-4">Provide feedback on student activities</p>
           <button className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
             Coming Soon
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Delete Confirmation Modal */}

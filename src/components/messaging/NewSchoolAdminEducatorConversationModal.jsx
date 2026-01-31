@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, GraduationCap, MessageCircle, ChevronDown } from 'lucide-react';
+import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 
-const NewSchoolAdminEducatorConversationModal = ({ isOpen, onClose, schoolId, onConversationCreated }) => {
-  const [educators, setEducators] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEducator, setSelectedEducator] = useState(null);
-  const [selectedSubject, setSelectedSubject] = useState('');
+// Small Message Modal Component
+const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
+  const [message, setMessage] = useState('');
+  const [subject, setSubject] = useState('General Communication');
   const [customSubject, setCustomSubject] = useState('');
-  const [initialMessage, setInitialMessage] = useState('');
-  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
 
   // Predefined subjects for admin-educator conversations
-  const educatorSubjects = [
+  const subjects = [
     'General Communication',
     'Resource Allocation',
     'Student Performance',
@@ -25,6 +21,194 @@ const NewSchoolAdminEducatorConversationModal = ({ isOpen, onClose, schoolId, on
     'Performance Review',
     'Other'
   ];
+
+  useEffect(() => {
+    if (isOpen) {
+      setMessage('');
+      setSubject('General Communication');
+      setCustomSubject('');
+    }
+  }, [isOpen, educator]);
+
+  const handleSend = () => {
+    const finalSubject = subject === 'Other' ? customSubject.trim() : subject.trim();
+    if (message.trim() && finalSubject) {
+      onSend({
+        educatorId: educator.id,
+        educatorUserId: educator.userId,
+        subject: finalSubject,
+        initialMessage: message.trim()
+      });
+    }
+  };
+
+  if (!isOpen || !educator) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">New Conversation</h3>
+              <p className="text-xs text-gray-500">Message your educator</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Selected Educator */}
+          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <img
+              src={educator.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(educator.name)}&background=2563EB&color=fff`}
+              alt={educator.name}
+              className="w-10 h-10 rounded-full object-cover"
+            />
+            <div className="flex-1">
+              <p className="font-medium text-gray-900 text-sm">{educator.name}</p>
+              <p className="text-xs text-blue-600">
+                {educator.role && educator.role !== 'teacher' ? educator.role.replace('_', ' ') : 'Educator'}
+                {educator.specialization && ` • ${educator.specialization}`}
+              </p>
+            </div>
+            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Subject Selection */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              What's this about?
+            </label>
+            <select
+              value={subject}
+              onChange={(e) => {
+                setSubject(e.target.value);
+                if (e.target.value !== 'Other') {
+                  setCustomSubject('');
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+            >
+              {subjects.map((subj) => (
+                <option key={subj} value={subj}>
+                  {subj}
+                </option>
+              ))}
+            </select>
+            
+            {/* Custom Subject Input */}
+            {subject === 'Other' && (
+              <div className="mt-2">
+                <input
+                  type="text"
+                  value={customSubject}
+                  onChange={(e) => setCustomSubject(e.target.value)}
+                  placeholder="Enter your custom subject..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  maxLength={100}
+                />
+                <p className="text-xs text-gray-500 mt-1">{customSubject.length}/100 characters</p>
+              </div>
+            )}
+          </div>
+
+          {/* Message Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Type your message
+            </label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type your message..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+              maxLength={1000}
+            />
+            <p className="text-xs text-gray-500 mt-1">{message.length}/1000 characters</p>
+          </div>
+
+          {/* Quick Suggestions */}
+          {!message.trim() && (
+            <div>
+              <p className="text-xs text-gray-500 font-medium mb-2">Quick starters:</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Hi! I need to discuss something",
+                  "Regarding school operations",
+                  "Can we schedule a meeting?"
+                ].map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setMessage(suggestion)}
+                    className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={
+              !message.trim() || 
+              message.length > 1000 ||
+              (subject === 'Other' && !customSubject.trim()) ||
+              isLoading
+            }
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <MessageCircle className="w-4 h-4" />
+                Send Message
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const NewSchoolAdminEducatorConversationModal = ({ isOpen, onClose, schoolId, onConversationCreated }) => {
+  const [educators, setEducators] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedEducator, setSelectedEducator] = useState(null);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   // Fetch school's educators
   useEffect(() => {
@@ -93,27 +277,34 @@ const NewSchoolAdminEducatorConversationModal = ({ isOpen, onClose, schoolId, on
     }
   };
 
-  const handleCreateConversation = () => {
-    const finalSubject = selectedSubject === 'Other' ? customSubject : selectedSubject;
-    if (selectedEducator && finalSubject && initialMessage.trim()) {
-      onConversationCreated({
-        educatorId: selectedEducator.id,
-        educatorUserId: selectedEducator.userId,
-        subject: finalSubject,
-        initialMessage: initialMessage.trim()
-      });
+  const handleCreateConversation = async (conversationData) => {
+    setSendingMessage(true);
+    try {
+      await onConversationCreated(conversationData);
+      setShowMessageModal(false);
       handleClose();
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+    } finally {
+      setSendingMessage(false);
     }
+  };
+
+  const handleEducatorSelect = (educator) => {
+    setSelectedEducator(educator);
+    setShowMessageModal(true);
   };
 
   const handleClose = () => {
     setSelectedEducator(null);
-    setSelectedSubject('');
-    setCustomSubject('');
-    setInitialMessage('');
+    setShowMessageModal(false);
     setSearchQuery('');
-    setShowSubjectDropdown(false);
     onClose();
+  };
+
+  const handleMessageModalClose = () => {
+    setShowMessageModal(false);
+    setSelectedEducator(null);
   };
 
   const filteredEducators = educators.filter(educator =>
@@ -125,223 +316,122 @@ const NewSchoolAdminEducatorConversationModal = ({ isOpen, onClose, schoolId, on
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <MessageCircle className="w-6 h-6 text-blue-600" />
+    <>
+      {/* Main Educator Selection Modal */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <GraduationCap className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Select Educator</h2>
+                <p className="text-sm text-gray-500">Choose who you want to message</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">New Message</h2>
-              <p className="text-sm text-gray-500">Send a message to an educator</p>
-            </div>
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
 
-        {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(95vh-160px)]">
-          <div className="p-6">
-            {/* Search */}
-            <div className="relative mb-6">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search educators by name, email, or subject..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              />
-            </div>
+          {/* Content */}
+          <div className="overflow-y-auto" style={{ maxHeight: 'calc(80vh - 140px)' }}>
+            <div className="p-6">
+              {/* Search */}
+              <div className="relative mb-6">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search educators..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : filteredEducators.length === 0 ? (
-              <div className="text-center py-12">
-                <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm">
-                  {searchQuery ? `No educators found for "${searchQuery}"` : 'No educators found'}
-                </p>
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
-                  >
-                    Clear Search
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-800 mb-3">
-                  Select an educator to message:
-                </h3>
-                {filteredEducators.map((educator) => (
-                  <button
-                    key={educator.id}
-                    onClick={() => setSelectedEducator(educator)}
-                    className={`w-full text-left border border-gray-200 rounded-lg p-4 transition-all ${
-                      selectedEducator?.id === educator.id
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'hover:border-blue-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={educator.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(educator.name)}&background=10B981&color=fff`}
-                        alt={educator.name}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-gray-900">{educator.name}</h3>
-                          {selectedEducator?.id === educator.id && (
-                            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-500">{educator.email}</p>
-                        {educator.specialization && (
-                          <p className="text-xs text-blue-600 font-medium mt-1">
-                            {educator.specialization}
-                          </p>
-                        )}
-                        {educator.role && educator.role !== 'teacher' && (
-                          <p className="text-xs text-gray-500 capitalize">
-                            {educator.role.replace('_', ' ')}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Subject Selection */}
-            {selectedEducator && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  What is your message about?
-                </label>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowSubjectDropdown(!showSubjectDropdown)}
-                    className="w-full px-4 py-3 text-left bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex items-center justify-between"
-                  >
-                    <span className={selectedSubject ? 'text-gray-900' : 'text-gray-500'}>
-                      {selectedSubject || 'Select a subject...'}
-                    </span>
-                    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showSubjectDropdown ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {showSubjectDropdown && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      {educatorSubjects.map((subject) => (
-                        <button
-                          key={subject}
-                          type="button"
-                          onClick={() => {
-                            setSelectedSubject(subject);
-                            setShowSubjectDropdown(false);
-                            if (subject !== 'Other') {
-                              setCustomSubject('');
-                            }
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none first:rounded-t-lg last:rounded-b-lg"
-                        >
-                          {subject}
-                        </button>
-                      ))}
-                    </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : filteredEducators.length === 0 ? (
+                <div className="text-center py-12">
+                  <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-sm">
+                    {searchQuery ? `No educators found for "${searchQuery}"` : 'No educators found'}
+                  </p>
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="mt-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                    >
+                      Clear Search
+                    </button>
                   )}
                 </div>
-
-                {/* Custom Subject Input */}
-                {selectedSubject === 'Other' && (
-                  <div className="mt-3">
-                    <input
-                      type="text"
-                      placeholder="Please specify your subject..."
-                      value={customSubject}
-                      onChange={(e) => setCustomSubject(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      maxLength={100}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+              ) : (
+                <div className="space-y-3">
+                  {filteredEducators.map((educator) => (
+                    <button
+                      key={educator.id}
+                      onClick={() => handleEducatorSelect(educator)}
+                      className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={educator.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(educator.name)}&background=2563EB&color=fff`}
+                          alt={educator.name}
+                          className="w-12 h-12 rounded-full object-cover"
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 group-hover:text-blue-700">
+                            {educator.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">{educator.email}</p>
+                          {educator.role && educator.role !== 'teacher' && (
+                            <p className="text-xs text-blue-600 mt-1 capitalize">
+                              {educator.role.replace('_', ' ')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-blue-600 group-hover:text-blue-700">
+                          <MessageCircle className="w-5 h-5" />
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Message Input Section */}
-          {selectedEducator && (selectedSubject && selectedSubject !== 'Other' || customSubject) && (
-            <div className="border-t border-gray-200 bg-gray-50 p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Message to {selectedEducator.name}
-                </label>
-                <div className="text-sm text-gray-600 mb-3 p-3 bg-white rounded-lg border border-gray-200">
-                  <span className="font-medium">Subject:</span> {selectedSubject === 'Other' ? customSubject : selectedSubject}
-                </div>
-              </div>
-              
-              <textarea
-                value={initialMessage}
-                onChange={(e) => setInitialMessage(e.target.value)}
-                placeholder="Type your message here..."
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none bg-white"
-                maxLength={1000}
-              />
-              
-              <div className="flex justify-between items-center mt-2">
-                <div className="text-sm text-gray-500">
-                  {initialMessage.length}/1000 characters
-                </div>
-                {initialMessage.length > 1000 && (
-                  <div className="text-sm text-red-600">
-                    Message too long
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-white">
-          <button
-            onClick={handleClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreateConversation}
-            disabled={!selectedEducator || (!selectedSubject || (selectedSubject === 'Other' && !customSubject)) || !initialMessage.trim() || initialMessage.length > 1000}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
-          >
-            <MessageCircle className="w-4 h-4" />
-            Send Message
-          </button>
+          {/* Footer */}
+          <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <button
+              onClick={handleClose}
+              className="w-full px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Message Modal */}
+      <MessageModal
+        educator={selectedEducator}
+        isOpen={showMessageModal}
+        onClose={handleMessageModalClose}
+        onSend={handleCreateConversation}
+        isLoading={sendingMessage}
+      />
+    </>
   );
 };
+
 
 export default NewSchoolAdminEducatorConversationModal;
