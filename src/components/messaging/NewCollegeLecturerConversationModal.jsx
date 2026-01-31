@@ -1,7 +1,168 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, MagnifyingGlassIcon, UserIcon, AcademicCapIcon } from '@heroicons/react/24/outline';
+import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import toast from 'react-hot-toast';
+
+// Small Message Modal Component
+const MessageModal = ({ student, isOpen, onClose, onSend, isLoading }) => {
+  const [message, setMessage] = useState('');
+  const [subject, setSubject] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setMessage('');
+      setSubject('');
+    }
+  }, [isOpen, student]);
+
+  const handleSend = () => {
+    if (message.trim() && subject.trim()) {
+      onSend({
+        studentId: student.id,
+        collegeLecturerId: student.collegeLecturerId,
+        programSectionId: student.programSectionId,
+        subject: subject.trim(),
+        initialMessage: message.trim()
+      });
+    }
+  };
+
+  if (!isOpen || !student) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              <MessageCircle className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">New Conversation</h3>
+              <p className="text-xs text-gray-500">Message your student</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-4 space-y-4">
+          {/* Selected Student */}
+          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+              {student.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-gray-900 text-sm">{student.name}</p>
+              <p className="text-xs text-blue-600">
+                {student.programCode || student.program}
+                {student.section && ` • Section ${student.section}`}
+              </p>
+            </div>
+            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Subject Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              What's this about?
+            </label>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="e.g., Assignment Discussion, Course Query"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              maxLength={100}
+            />
+            <p className="text-xs text-gray-500 mt-1">{subject.length}/100 characters</p>
+          </div>
+
+          {/* Message Input */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Type your message
+            </label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type your message..."
+              rows={4}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+              maxLength={500}
+            />
+            <p className="text-xs text-gray-500 mt-1">{message.length}/500 characters</p>
+          </div>
+
+          {/* Quick Suggestions */}
+          {!message.trim() && (
+            <div>
+              <p className="text-xs text-gray-500 font-medium mb-2">Quick starters:</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Hi! I have a question about",
+                  "Regarding your assignment",
+                  "Can you help me understand"
+                ].map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setMessage(suggestion)}
+                    className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium text-sm"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={
+              !message.trim() || 
+              !subject.trim() ||
+              message.length > 500 ||
+              subject.length > 100 ||
+              isLoading
+            }
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium text-sm flex items-center gap-2"
+          >
+            {isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <MessageCircle className="w-4 h-4" />
+                Start Chat
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const NewCollegeLecturerConversationModal = ({ 
   isOpen, 
@@ -11,13 +172,11 @@ const NewCollegeLecturerConversationModal = ({
   collegeId 
 }) => {
   const [students, setStudents] = useState([]);
-  const [filteredStudents, setFilteredStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [subject, setSubject] = useState('');
-  const [initialMessage, setInitialMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   // Fetch students from the same college and programs
   useEffect(() => {
@@ -107,13 +266,11 @@ const NewCollegeLecturerConversationModal = ({
             console.log('✅ Fallback: Transformed students:', transformedStudents);
             
             setStudents(transformedStudents);
-            setFilteredStudents(transformedStudents);
             return;
           }
           
           console.log('❌ No students found in college at all');
           setStudents([]);
-          setFilteredStudents([]);
           return;
         }
         
@@ -145,7 +302,6 @@ const NewCollegeLecturerConversationModal = ({
         if (!programs || programs.length === 0) {
           console.log('⚠️ No programs found in college departments');
           setStudents([]);
-          setFilteredStudents([]);
           return;
         }
         
@@ -227,7 +383,6 @@ const NewCollegeLecturerConversationModal = ({
         console.log('✅ Step 5: Transformed students:', transformedStudents);
         
         setStudents(transformedStudents);
-        setFilteredStudents(transformedStudents);
         
       } catch (error) {
         console.error('❌ FETCH ERROR:', error);
@@ -247,242 +402,172 @@ const NewCollegeLecturerConversationModal = ({
     fetchStudents();
   }, [isOpen, collegeLecturerId, collegeId]);
 
-  // Filter students based on search query
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredStudents(students);
-      return;
-    }
-
-    const query = searchQuery.toLowerCase();
-    const filtered = students.filter(student =>
-      student.name.toLowerCase().includes(query) ||
-      student.email.toLowerCase().includes(query) ||
-      student.program.toLowerCase().includes(query) ||
-      student.programCode.toLowerCase().includes(query) ||
-      student.section.toLowerCase().includes(query)
-    );
-    
-    setFilteredStudents(filtered);
-  }, [searchQuery, students]);
-
-  const handleCreateConversation = async () => {
-    if (!selectedStudent || !subject.trim()) {
-      toast.error('Please select a student and enter a subject');
-      return;
-    }
-
-    setCreating(true);
+  const handleCreateConversation = async (conversationData) => {
+    setSendingMessage(true);
     try {
-      console.log('🆕 Creating college lecturer conversation:', {
-        studentId: selectedStudent.id,
-        collegeLecturerId,
-        programSectionId: selectedStudent.programSectionId,
-        subject
-      });
-
-      await onCreateConversation({
-        studentId: selectedStudent.id,
-        collegeLecturerId,
-        programSectionId: selectedStudent.programSectionId,
-        subject,
-        initialMessage: initialMessage.trim()
-      });
-
-      // Reset form
-      setSelectedStudent(null);
-      setSubject('');
-      setInitialMessage('');
-      setSearchQuery('');
-      onClose();
-      
+      await onCreateConversation(conversationData);
+      setShowMessageModal(false);
+      handleClose();
     } catch (error) {
-      console.error('❌ Error creating conversation:', error);
-      toast.error('Failed to create conversation');
+      console.error('Error creating conversation:', error);
     } finally {
-      setCreating(false);
+      setSendingMessage(false);
     }
+  };
+
+  const handleStudentSelect = (student) => {
+    setSelectedStudent({
+      ...student,
+      collegeLecturerId
+    });
+    setShowMessageModal(true);
   };
 
   const handleClose = () => {
     setSelectedStudent(null);
-    setSubject('');
-    setInitialMessage('');
+    setShowMessageModal(false);
     setSearchQuery('');
     onClose();
   };
 
+  const handleMessageModalClose = () => {
+    setShowMessageModal(false);
+    setSelectedStudent(null);
+  };
+
+  const filteredStudents = students.filter(student => {
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase();
+    return student.name.toLowerCase().includes(query) ||
+           student.email.toLowerCase().includes(query) ||
+           student.program.toLowerCase().includes(query) ||
+           student.programCode.toLowerCase().includes(query) ||
+           student.section.toLowerCase().includes(query);
+  });
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <AcademicCapIcon className="w-6 h-6 text-blue-600" />
+    <>
+      {/* Main Student Selection Modal */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <GraduationCap className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Select Student</h2>
+                <p className="text-sm text-gray-500">Choose who you want to message</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">New Student Conversation</h2>
-              <p className="text-sm text-gray-500">Start a conversation with a college student</p>
-            </div>
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <XMarkIcon className="w-6 h-6 text-gray-500" />
-          </button>
-        </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6 flex-1 overflow-y-auto">
-          {/* Student Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Select Student
-            </label>
-            
-            {/* Search */}
-            <div className="relative mb-4">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search students by name, email, program, or section..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          {/* Content */}
+          <div className="overflow-y-auto" style={{ maxHeight: 'calc(80vh - 140px)' }}>
+            <div className="p-6">
+              {/* Search */}
+              <div className="relative mb-6">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search students..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
 
-            {/* Students List */}
-            <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
               {loading ? (
-                <div className="p-8 text-center">
-                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                  <p className="text-gray-500 text-sm">Loading students...</p>
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               ) : filteredStudents.length === 0 ? (
-                <div className="p-8 text-center">
-                  <UserIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <div className="text-center py-12">
+                  <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">
-                    {searchQuery ? 'No students found matching your search' : 'No students found in your programs'}
+                    {searchQuery ? `No students found for "${searchQuery}"` : 'No students found in your programs'}
                   </p>
                   {!searchQuery && (
                     <p className="text-gray-400 text-xs mt-2">
-                      Check console for debugging info. Make sure you are assigned to programs with enrolled students.
+                      Make sure you are assigned to programs with enrolled students.
                     </p>
                   )}
                 </div>
               ) : (
-                filteredStudents.map((student) => (
-                  <button
-                    key={student.id}
-                    onClick={() => setSelectedStudent(student)}
-                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                      selectedStudent?.id === student.id ? 'bg-blue-50 border-blue-200' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
-                        selectedStudent?.id === student.id ? 'bg-blue-600' : 'bg-gray-400'
-                      }`}>
-                        {student.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-gray-900 truncate">{student.name}</h3>
-                        <p className="text-sm text-gray-500 truncate">{student.email}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                            {student.programCode || student.program}
-                          </span>
-                          {student.section && (
-                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                              Section {student.section}
+                <div className="space-y-3">
+                  {filteredStudents.map((student) => (
+                    <button
+                      key={student.id}
+                      onClick={() => handleStudentSelect(student)}
+                      className="w-full text-left p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+                          {student.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 group-hover:text-blue-700">
+                            {student.name}
+                          </h3>
+                          <p className="text-sm text-gray-500">{student.email}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                              {student.programCode || student.program}
                             </span>
-                          )}
-                          {student.semester && (
-                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                              Sem {student.semester}
-                            </span>
-                          )}
+                            {student.section && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                                Section {student.section}
+                              </span>
+                            )}
+                            {student.semester && (
+                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                Sem {student.semester}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-blue-600 group-hover:text-blue-700">
+                          <MessageCircle className="w-5 h-5" />
                         </div>
                       </div>
-                      {selectedStudent?.id === student.id && (
-                        <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
 
-          {/* Subject */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subject
-            </label>
-            <input
-              type="text"
-              placeholder="e.g., Assignment Discussion, Course Query, General Help"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              maxLength={100}
-            />
-            <p className="text-xs text-gray-500 mt-1">{subject.length}/100 characters</p>
+          {/* Footer */}
+          <div className="p-6 border-t border-gray-200 bg-gray-50">
+            <button
+              onClick={handleClose}
+              className="w-full px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+            >
+              Cancel
+            </button>
           </div>
-
-          {/* Initial Message (Optional) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Initial Message (Optional)
-            </label>
-            <textarea
-              placeholder="Type your first message to the student..."
-              value={initialMessage}
-              onChange={(e) => setInitialMessage(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              rows={3}
-              maxLength={500}
-            />
-            <p className="text-xs text-gray-500 mt-1">{initialMessage.length}/500 characters</p>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-          <button
-            onClick={handleClose}
-            className="px-6 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors font-medium"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCreateConversation}
-            disabled={!selectedStudent || !subject.trim() || creating}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
-          >
-            {creating ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                {initialMessage.trim() ? 'Send Message & Start Conversation' : 'Start Conversation'}
-              </>
-            )}
-          </button>
         </div>
       </div>
-    </div>
+
+      {/* Message Modal */}
+      <MessageModal
+        student={selectedStudent}
+        isOpen={showMessageModal}
+        onClose={handleMessageModalClose}
+        onSend={handleCreateConversation}
+        isLoading={sendingMessage}
+      />
+    </>
   );
 };
 

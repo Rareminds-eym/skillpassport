@@ -345,7 +345,13 @@ const Messages = () => {
 
   // Use shared global presence context (no duplicate subscription)
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
-
+// ADD THIS DEBUG LOG HERE:
+console.log('🔍 [STUDENT] GlobalPresence Debug:', {
+  isUserOnlineGlobal: typeof isUserOnlineGlobal,
+  globalOnlineUsers: globalOnlineUsers,
+  currentUserId: studentId,
+  currentUserName: studentName
+});
   // Presence tracking for current conversation (for chat header)
   const { isUserOnline, getUserStatus, onlineUsers } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
@@ -595,6 +601,12 @@ const Messages = () => {
           const educatorName = educator?.first_name && educator?.last_name
             ? `${educator.first_name} ${educator.last_name}`
             : educator?.email || 'College Lecturer';
+          // ADD THIS DEBUG LOG HERE:
+console.log('🔍 Checking online for educator:', {
+  educator_id: conv.educator_id,
+  educator_user_id: conv.educator?.user_id,
+  online_users: globalOnlineUsers
+});
 
           const subject = conv.subject || 'General Discussion';
           
@@ -625,7 +637,8 @@ const Messages = () => {
             lastMessage: conv.last_message_preview || 'No messages yet',
             time: timeDisplay,
             unread: conv.student_unread_count || 0,
-            online: isUserOnlineGlobal(conv.educator_id),
+            // online: isUserOnlineGlobal(conv.educator_id),
+            online: isUserOnlineGlobal(conv.educator?.user_id),
             educatorId: conv.educator_id,
             programSectionId: conv.program_section_id,
             subject: conv.subject,
@@ -637,7 +650,11 @@ const Messages = () => {
           const educatorName = educator?.first_name && educator?.last_name
             ? `${educator.first_name} ${educator.last_name}`
             : educator?.email || 'Educator';
-
+console.log('🔍 Checking online for educator:', {
+  educator_id: conv.educator_id,
+  educator_user_id: conv.educator?.user_id,
+  online_users: globalOnlineUsers
+});
           // Get class and subject info
           const className = conv.school_class?.name || 'Class';
           const grade = conv.school_class?.grade || '';
@@ -676,6 +693,7 @@ const Messages = () => {
             time: timeDisplay,
             unread: conv.student_unread_count || 0,
             online: isUserOnlineGlobal(conv.educator_id),
+            // online: isUserOnlineGlobal(conv.educator?.user_id),
             educatorId: conv.educator_id,
             classId: conv.class_id,
             subject: conv.subject,
@@ -1630,7 +1648,7 @@ const Messages = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <Phone className="w-5 h-5 text-gray-600" />
                 </button>
@@ -1640,7 +1658,7 @@ const Messages = () => {
                 <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <MoreVertical className="w-5 h-5 text-gray-600" />
                 </button>
-              </div>
+              </div> */}
             </div>
 
             {/* Messages Area */}
@@ -1708,12 +1726,12 @@ const Messages = () => {
             {/* Message Input */}
             <div className="p-4 bg-white border-t border-gray-200">
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <button
+                {/* <button
                   type="button"
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
                   <Paperclip className="w-5 h-5 text-gray-600" />
-                </button>
+                </button> */}
 
                 <div className="flex-1 relative">
                   <input
@@ -1725,12 +1743,12 @@ const Messages = () => {
                     placeholder="Type a message..."
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
-                  <button
+                  {/* <button
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 hover:scale-110 transition-transform"
                   >
                     <Smile className="w-5 h-5 text-gray-500" />
-                  </button>
+                  </button> */}
                 </div>
 
                 <button

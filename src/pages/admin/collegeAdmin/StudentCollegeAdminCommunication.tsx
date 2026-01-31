@@ -687,7 +687,7 @@ const StudentCollegeAdminCommunication = () => {
           id: conv.id,
           name: educatorName,
           role: role,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=7C3AED&color=fff`,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
           online: isOnline,
           time: conv.last_message_at 
@@ -1163,7 +1163,7 @@ const StudentCollegeAdminCommunication = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
                       <PhoneIcon className="w-5 h-5 text-gray-700" />
                     </button>
@@ -1173,7 +1173,7 @@ const StudentCollegeAdminCommunication = () => {
                     <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
                       <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
                     </button>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Messages Area */}
@@ -1245,13 +1245,13 @@ const StudentCollegeAdminCommunication = () => {
                 {/* Message Input */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-white">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-3">
-                    <button
+                    {/* <button
                       type="button"
                       className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
                       title="Attach file"
                     >
                       <PaperClipIcon className="w-5 h-5 text-gray-500" />
-                    </button>
+                    </button> */}
                     <div className="flex-1 relative">
                       <textarea
                         value={messageInput}
@@ -1269,13 +1269,13 @@ const StudentCollegeAdminCommunication = () => {
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
-                      <button
+                      {/* <button
                         type="button"
                         className="absolute right-3 bottom-2.5 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
                         title="Emoji"
                       >
                         <FaceSmileIcon className="w-5 h-5 text-gray-400" />
-                      </button>
+                      </button> */}
                     </div>
                     <button
                       type="submit"
