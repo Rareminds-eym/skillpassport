@@ -295,10 +295,14 @@ export async function generateDiagnosticScreenerQuestions(
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
-    const count = 8;
-    const difficulty = 3;
-    // Cyclical subtags for balanced variety
-    const subtags = Array.from({ length: count }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
+    // FIXED: Generate only 1 question at difficulty 1 for initial diagnostic
+    // The diagnostic screener should be adaptive - generating questions one-by-one
+    // based on student performance, not all upfront
+    const count = 1;
+    const difficulty = 1;
+    
+    // Select a random subtag for variety
+    const subtags = [ALL_SUBTAGS[Math.floor(Math.random() * ALL_SUBTAGS.length)]];
 
     const result = await generateQuestionsWithAI(
         env,
@@ -310,12 +314,10 @@ export async function generateDiagnosticScreenerQuestions(
         new Set(excludeQuestionTexts)
     );
 
-    const reordered = reorderToPreventConsecutiveSubtags(result.questions, 2);
-
     return {
-        questions: reordered,
+        questions: result.questions,
         fromCache: false,
-        generatedCount: reordered.length,
+        generatedCount: result.questions.length,
         cachedCount: 0,
         generatedBy: result.usedAI ? 'ai' : 'fallback',
         modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
