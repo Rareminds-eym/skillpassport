@@ -11,7 +11,6 @@ import {
   Medal,
   GraduationCap,
   Trophy,
-  Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { useNavigate } from "react-router-dom";
@@ -176,13 +175,6 @@ const AchievementsTimeline = ({ userData }) => {
                 </p>
               </div>
             </CardTitle>
-            <button
-              onClick={() => navigate("/student/timeline")}
-              className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
-              title="View all achievements"
-            >
-              <Eye className="w-5 h-5 text-blue-600" />
-            </button>
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8">

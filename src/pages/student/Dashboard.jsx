@@ -979,13 +979,6 @@ const StudentDashboard = () => {
                 Opportunities
               </span>
             </CardTitle>
-            <button
-              className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-              title="View All Opportunities"
-              onClick={() => navigate('/student/opportunities')}
-            >
-              <Eye className="w-5 h-5 text-blue-600" />
-            </button>
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
