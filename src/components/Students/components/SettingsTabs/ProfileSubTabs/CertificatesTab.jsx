@@ -73,6 +73,7 @@ const CertificatesTab = ({
       ) : (
         <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
           {(certificatesData || [])
+            .filter(cert => cert.enabled !== false) // Only show enabled certificates
             .sort((a, b) => {
               // Sort by issue date, most recent first
               const dateA = new Date(a.issueDate || 0);
@@ -127,12 +128,24 @@ const CertificatesTab = ({
                       </div>
 
                       <div className="flex items-center gap-3 mb-3">
-                        {status.status === 'valid' ? (
+                        {/* Approval Status Badge - Only show if explicitly verified/approved */}
+                        {certificate.approval_status && (certificate.approval_status === 'verified' || certificate.approval_status === 'approved') && (
                           <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium border border-green-200">
                             <CheckCircle className="w-3 h-3" />
                             <span>Verified</span>
                           </div>
-                        ) : (
+                        )}
+                        
+                        {/* Pending Verification Badge */}
+                        {(!certificate.approval_status || certificate.approval_status === 'pending') && (
+                          <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 hover:bg-amber-100 rounded-full text-xs font-medium border border-amber-200">
+                            <Clock className="w-3 h-3" />
+                            <span>Pending Verification</span>
+                          </div>
+                        )}
+                        
+                        {/* Expiry Status Badge */}
+                        {status.status !== 'valid' && (
                           <Badge className={`px-3 py-1 text-xs font-medium border ${status.color}`}>
                             {status.status === 'expired' ? 'Expired' : 'Expiring Soon'}
                           </Badge>

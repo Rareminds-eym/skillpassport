@@ -98,7 +98,7 @@ export const useStudentProjects = (studentId, enabled = true) => {
         .from('projects')
         .select('*')
         .eq('student_id', studentId)
-        .eq('enabled', true) // Only fetch enabled projects
+        // Removed: .eq('enabled', true) - Fetch ALL projects including hidden ones
         .in('approval_status', ['approved', 'verified']) // Only approved or verified
         .order('created_at', { ascending: false });
 

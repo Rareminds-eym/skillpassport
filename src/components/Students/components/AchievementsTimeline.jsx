@@ -74,7 +74,7 @@ const AchievementsTimeline = ({ userData }) => {
     // Add certificates
     if (Array.isArray(userData.certificates)) {
       userData.certificates
-        .filter((cert) => cert && cert.enabled !== false)
+        .filter((cert) => cert && cert.enabled !== false && (cert.approval_status === 'verified' || cert.approval_status === 'approved'))
         .forEach((cert) => {
           achievements.push({
             id: `cert-${cert.id}`,

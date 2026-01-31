@@ -34,16 +34,19 @@ const ProfileItemModal = ({
       // Edit mode - populate form with existing data
       const editData = { ...config.getDefaultValues() };
       
+      // VERSIONING FIX: If item has pending edit data, use that for editing
+      const sourceData = item._hasPendingEdit && item.pending_edit_data ? item : item;
+      
       // Copy all fields from the item, including id
-      Object.keys(item).forEach(key => {
-        if (item[key] !== undefined) {
+      Object.keys(sourceData).forEach(key => {
+        if (sourceData[key] !== undefined) {
           if (key === 'skills') {
             // Handle skills - support both array and string formats
             let skillsArray = [];
-            if (Array.isArray(item[key])) {
-              skillsArray = item[key];
-            } else if (typeof item[key] === 'string' && item[key].trim()) {
-              skillsArray = item[key].split(',').map(s => s.trim()).filter(s => s);
+            if (Array.isArray(sourceData[key])) {
+              skillsArray = sourceData[key];
+            } else if (typeof sourceData[key] === 'string' && sourceData[key].trim()) {
+              skillsArray = sourceData[key].split(',').map(s => s.trim()).filter(s => s);
             }
             
             // Remove duplicates and convert to skillsList for the form
@@ -58,9 +61,9 @@ const ProfileItemModal = ({
               approval_status: 'approved'
             }));
           } else {
-            editData[key] = Array.isArray(item[key]) 
-              ? item[key].join(", ") 
-              : item[key];
+            editData[key] = Array.isArray(sourceData[key]) 
+              ? sourceData[key].join(", ") 
+              : sourceData[key];
           }
         }
       });
@@ -68,12 +71,12 @@ const ProfileItemModal = ({
       // Special handling for skills: ensure correct field mapping
       if (type === 'skills' || type === 'technicalSkills' || type === 'softSkills') {
         // If item has rating, use it for the rating field
-        if (item.rating !== undefined) {
-          editData.rating = String(item.rating);
+        if (sourceData.rating !== undefined) {
+          editData.rating = String(sourceData.rating);
         }
         // If item has level as text, use it for the level field
-        if (item.level && typeof item.level === 'string') {
-          editData.level = item.level;
+        if (sourceData.level && typeof sourceData.level === 'string') {
+          editData.level = sourceData.level;
         }
       }
       
@@ -93,6 +96,56 @@ const ProfileItemModal = ({
 
   const handleInputChange = (field) => (e) => {
     const value = e.target.value;
+    
+    // Additional validation for date fields
+    if (e.target.type === 'date' && value) {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Validate start dates and issue dates cannot be in future
+      if ((field === 'startDate' || field === 'start_date' || field === 'issuedOn') && value > today) {
+        toast({
+          title: "Invalid Date",
+          description: "Date cannot be in the future.",
+          variant: "destructive",
+        });
+        return; // Don't update the state
+      }
+      
+      // Validate end date is not before start date
+      if (field === 'endDate' || field === 'end_date') {
+        const startDateValue = formData.startDate || formData.start_date;
+        if (startDateValue && value < startDateValue) {
+          toast({
+            title: "Invalid Date",
+            description: "End date cannot be before start date.",
+            variant: "destructive",
+          });
+          return; // Don't update the state
+        }
+        if (value > today) {
+          toast({
+            title: "Invalid Date",
+            description: "End date cannot be in the future.",
+            variant: "destructive",
+          });
+          return; // Don't update the state
+        }
+      }
+      
+      // Validate expiry date is not before issue date
+      if (field === 'expiryDate') {
+        const issuedOnValue = formData.issuedOn;
+        if (issuedOnValue && value < issuedOnValue) {
+          toast({
+            title: "Invalid Date",
+            description: "Expiry date cannot be before issue date.",
+            variant: "destructive",
+          });
+          return; // Don't update the state
+        }
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -291,6 +344,7 @@ const ProfileItemModal = ({
           id: generateUuid(),
           enabled: true,
           verified: false,
+          approval_status: 'pending', // New items need approval
           created_at: new Date().toISOString(),
         };
       }
@@ -343,7 +397,38 @@ const ProfileItemModal = ({
           </select>
         );
       case "date":
-        return <Input {...commonProps} type="date" />;
+        // Add date validation for start and end dates
+        const dateProps = { ...commonProps };
+        
+        // For start date: max is today (cannot select future dates)
+        if (field.name === 'startDate' || field.name === 'start_date') {
+          dateProps.max = new Date().toISOString().split('T')[0];
+        }
+        
+        // For end date: min is start date, max is today
+        if (field.name === 'endDate' || field.name === 'end_date') {
+          const startDateValue = formData.startDate || formData.start_date;
+          if (startDateValue) {
+            dateProps.min = startDateValue;
+          }
+          dateProps.max = new Date().toISOString().split('T')[0];
+        }
+        
+        // For certificates: issuedOn cannot be in the future
+        if (field.name === 'issuedOn') {
+          dateProps.max = new Date().toISOString().split('T')[0];
+        }
+        
+        // For certificates: expiryDate must be after issuedOn
+        if (field.name === 'expiryDate') {
+          const issuedOnValue = formData.issuedOn;
+          if (issuedOnValue) {
+            dateProps.min = issuedOnValue;
+          }
+          // Expiry date can be in the future (no max constraint)
+        }
+        
+        return <Input {...dateProps} type="date" />;
       case "number":
         return <Input {...commonProps} type="number" min="0" />;
       case "url":
