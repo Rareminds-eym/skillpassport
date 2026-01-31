@@ -304,8 +304,36 @@ const StudentDashboard = () => {
       ? tableCertificates
       : userData.certificates;
     if (!Array.isArray(certificatesData)) return [];
+    
     return certificatesData
-      .filter((cert) => cert && cert.enabled !== false)
+      .map((cert) => {
+        // VERSIONING: If there's a pending edit, use verified_data for dashboard display
+        if (cert.has_pending_edit && cert.verified_data) {
+          return {
+            ...cert,
+            // Override with verified data for display
+            title: cert.verified_data.title || cert.title,
+            issuer: cert.verified_data.issuer || cert.issuer,
+            issuedOn: cert.verified_data.issued_on || cert.issuedOn,
+            level: cert.verified_data.level || cert.level,
+            description: cert.verified_data.description || cert.description,
+            credentialId: cert.verified_data.credential_id || cert.credentialId,
+            link: cert.verified_data.link || cert.link,
+            documentUrl: cert.verified_data.document_url || cert.documentUrl,
+            platform: cert.verified_data.platform || cert.platform,
+            instructor: cert.verified_data.instructor || cert.instructor,
+            category: cert.verified_data.category || cert.category,
+            status: cert.verified_data.status || cert.status,
+            approval_status: cert.verified_data.approval_status || cert.approval_status,
+            verified: cert.verified_data.approval_status === 'approved' || cert.verified_data.approval_status === 'verified',
+            // IMPORTANT: Use main enabled field, NOT verified_data.enabled
+            // Hide/show is NOT part of versioning - it updates the main enabled field directly
+            enabled: cert.enabled !== false,
+          };
+        }
+        return cert;
+      })
+      .filter((cert) => cert && cert.enabled !== false && (cert.approval_status === 'approved' || cert.approval_status === 'verified'))
       .sort((a, b) => {
         // Sort by issue date or year in descending order (most recent first)
         const getDate = (cert) => {
@@ -586,13 +614,13 @@ const StudentDashboard = () => {
     return "Beginner";
   };
 
-  // Helper function to get skill level badge color
+  // Helper function to get skill level badge color (with consistent hover states)
   const getSkillLevelColor = (level) => {
-    if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300";
-    if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300";
-    if (level >= 3) return "bg-green-100 text-green-700 border-green-300";
-    if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300";
-    return "bg-gray-100 text-gray-700 border-gray-300";
+    if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-100";
+    if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-100";
+    if (level >= 3) return "bg-green-100 text-green-700 border-green-300 hover:bg-green-100";
+    if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-100";
+    return "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-100";
   };
 
   const TruncatedText = ({ text, maxLength = 120 }) => {
@@ -1261,7 +1289,7 @@ const StudentDashboard = () => {
                         <Button
                           size="sm"
                           onClick={() => window.open(project.demo_link, '_blank')}
-                          className="w-auto bg-gradient-to-r from-blue-50 to-indigo-100 hover:from-blue-200 hover:to-indigo-300 text-blue-700 font-semibold px-1 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
+                          className="w-auto !bg-blue-500 hover:!bg-blue-600 !text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
                         >
                           Demo
                         </Button>
@@ -1662,13 +1690,21 @@ const StudentDashboard = () => {
             className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${cert.enabled ? "" : "opacity-75"
               }`}
           >
-            {/* Certificate Name */}
-            <h4 className="text-base font-bold text-gray-900 mb-3">
-              {cert.title ||
-                cert.name ||
-                cert.certificate ||
-                "Certificate"}
-            </h4>
+            {/* Certificate Name + Verified Badge */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h4 className="text-base font-bold text-gray-900">
+                {cert.title ||
+                  cert.name ||
+                  cert.certificate ||
+                  "Certificate"}
+              </h4>
+              {(cert.approval_status === "verified" || cert.approval_status === "approved") && (
+                <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  Verified
+                </Badge>
+              )}
+            </div>
 
             {/* Credential ID + Date */}
             <div className="flex items-center justify-between gap-3 mb-3">

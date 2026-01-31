@@ -17,13 +17,13 @@ const TechnicalSkillsTab = ({
     return "Beginner";
   };
 
-  // Helper function to get skill level badge color (matching Dashboard exactly)
+  // Helper function to get skill level badge color (with consistent hover states)
   const getSkillLevelColor = (level) => {
-    if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300";
-    if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300";
-    if (level >= 3) return "bg-green-100 text-green-700 border-green-300";
-    if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300";
-    return "bg-gray-100 text-gray-700 border-gray-300";
+    if (level >= 5) return "bg-purple-100 text-purple-700 border-purple-300 hover:bg-purple-100";
+    if (level >= 4) return "bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-100";
+    if (level >= 3) return "bg-green-100 text-green-700 border-green-300 hover:bg-green-100";
+    if (level >= 1) return "bg-yellow-100 text-yellow-700 border-yellow-300 hover:bg-yellow-100";
+    return "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-100";
   };
 
   const getCategoryIcon = (category) => {
@@ -57,9 +57,9 @@ const TechnicalSkillsTab = ({
     ));
   };
 
-  // Filter skills to match Dashboard logic (only show approved/verified and enabled skills)
+  // Show all skills in Settings (including pending), but indicate their status
   const filteredSkills = (technicalSkillsData || []).filter(
-    (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
+    (skill) => skill.enabled !== false
   );
 
   const groupedSkills = filteredSkills.reduce((acc, skill) => {
@@ -113,9 +113,16 @@ const TechnicalSkillsTab = ({
             >
               {/* Skill Name + Level Badge (matching Dashboard exactly) */}
               <div className="flex items-center justify-between gap-3 mb-3">
-                <h4 className="text-base font-bold text-gray-900">
-                  {skill.name}
-                </h4>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-base font-bold text-gray-900">
+                    {skill.name}
+                  </h4>
+                  {skill.approval_status === 'pending' && (
+                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-xs">
+                      Pending Verification
+                    </Badge>
+                  )}
+                </div>
                 <Badge
                   className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
                     skill.level

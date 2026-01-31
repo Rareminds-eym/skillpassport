@@ -88,7 +88,7 @@ export const useStudentCertificates = (studentId, enabled = true) => {
         .select('*')
         .eq('student_id', studentId)
         .is('training_id', null)
-        .eq('enabled', true) // Only fetch enabled certificates
+        // Removed: .eq('enabled', true) - Fetch ALL certificates including hidden ones
         .order('issued_on', { ascending: false });
 
       if (fetchError) {
@@ -96,6 +96,8 @@ export const useStudentCertificates = (studentId, enabled = true) => {
       }
 
       // Transform data to match UI expectations
+      // NOTE: We return the ACTUAL data here (including pending edits)
+      // The Dashboard component will handle showing verified_data when needed
       const transformedData = data.map(item => ({
         id: item.id,
         title: item.title || item.name,
@@ -115,6 +117,9 @@ export const useStudentCertificates = (studentId, enabled = true) => {
         verified: item.approval_status === 'approved' || item.approval_status === 'verified',
         processing: item.approval_status === 'pending',
         enabled: item.enabled !== false,
+        has_pending_edit: item.has_pending_edit || false,
+        verified_data: item.verified_data,
+        pending_edit_data: item.pending_edit_data,
         createdAt: item.created_at,
         updatedAt: item.updated_at
       }));

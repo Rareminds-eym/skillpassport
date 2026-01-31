@@ -418,8 +418,18 @@ function AboutRareMinds() {
       <div className="grain-overlay"></div>
 
       {/* Hero Section */}
-      <section className="relative py-24 md:py-32 px-6 md:px-12 overflow-hidden" data-testid="hero-section">
-        <div className="max-w-7xl mx-auto">
+      <section className="relative py-24 md:py-32 overflow-hidden" data-testid="hero-section">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="/assets/About/about.jpg"
+            alt="Skill Passport About"
+            className="w-full h-full object-cover"
+          />
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             {/* Left Content */}
             <div className="space-y-8 fade-in-up">
@@ -431,13 +441,22 @@ function AboutRareMinds() {
               <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] text-slate-900" data-testid="hero-title">
                 Skill Passport
               </h1>
-              <p className="text-lg md:text-xl leading-relaxed text-slate-600">
+              <p className="text-xl md:text-2xl leading-relaxed text-slate-600">
                 Built by Rareminds to connect <span className="font-bold">schools, universities, and employers</span> through one shared language: <span className="font-bold">proven capability</span>.
               </p>
-              <div className="text-base leading-relaxed text-slate-600 max-w-xl space-y-1">
-                <p>We make skills visible for learners.</p>
-                <p>Outcomes credible for institutions.</p>
-                <p>And hiring decisions confident for employers.</p>
+              <div className="text-lg md:text-xl leading-relaxed text-slate-900 max-w-xl space-y-3">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-1" />
+                  <p>We make skills visible for learners.</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-1" />
+                  <p>Outcomes credible for institutions.</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-1" />
+                  <p>And hiring decisions confident for employers.</p>
+                </div>
               </div>
               <div className="flex flex-wrap gap-4 pt-4">
                 <a 
@@ -460,7 +479,8 @@ function AboutRareMinds() {
             {/* Right Image */}
             <div className="relative fade-in-up delay-200">
               <div 
-                className="relative rounded-3xl overflow-hidden shadow-2xl transition-transform duration-300 ease-out"
+                ref={heroImageRef}
+                className="relative transition-transform duration-300 ease-out"
                 style={{
                   transform: `perspective(1000px) rotateX(${imageRotation.rotateX}deg) rotateY(${imageRotation.rotateY}deg)`,
                   transformStyle: 'preserve-3d'
@@ -469,11 +489,10 @@ function AboutRareMinds() {
                 onMouseLeave={handleImageMouseLeave}
               >
                 <img 
-                  src="https://images.unsplash.com/photo-1761624159464-686d31623aa7?crop=entropy&cs=srgb&fm=jpg&q=85"
-                  alt="Abstract digital network sphere"
-                  className="w-full h-[500px] object-cover"
+                  src="/assets/About/Skillecosystem.png"
+                  alt="Skill Ecosystem - Learning to Earning"
+                  className="w-full h-[550px] object-contain"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 to-transparent"></div>
               </div>
             </div>
           </div>

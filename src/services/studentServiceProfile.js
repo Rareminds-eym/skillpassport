@@ -235,10 +235,12 @@ const technicalSkills = tableSkills
     level: skill.level || 3, // Use numeric level (1-5) for stars
     proficiency_level: skill.proficiency_level || 'Intermediate', // Keep text level separate
     rating: skill.level || 3, // Map level (1-5) to rating for UI
+    type: 'technical', // Explicitly set type for proper identification
     description: skill.description || '',
+    examples: skill.examples || '',
     verified: skill.verified || false,
-    enabled: skill.enabled ?? true,
-    approval_status: skill.approval_status || 'pending',
+    enabled: skill.enabled !== undefined ? skill.enabled : true, // Handle missing enabled column gracefully
+    approval_status: skill.approval_status || 'approved', // Default to approved for backward compatibility
     createdAt: skill.created_at,
     updatedAt: skill.updated_at,
   }));
@@ -251,11 +253,12 @@ const softSkills = tableSkills
     level: skill.level || 3, // Use numeric level (1-5) for stars
     proficiency_level: skill.proficiency_level || 'Intermediate', // Keep text level separate
     rating: skill.level || 3, // Map level (1-5) to rating for UI
-    type: skill.name.toLowerCase(), // For UI compatibility
+    type: 'soft', // Keep type as 'soft' for proper identification
     description: skill.description || '',
+    examples: skill.examples || '',
     verified: skill.verified || false,
-    enabled: skill.enabled ?? true,
-    approval_status: skill.approval_status || 'pending',
+    enabled: skill.enabled !== undefined ? skill.enabled : true, // Handle missing enabled column gracefully
+    approval_status: skill.approval_status || 'approved', // Default to approved for backward compatibility
     createdAt: skill.created_at,
     updatedAt: skill.updated_at,
   }));
@@ -364,29 +367,43 @@ const formattedTrainings = approvedTrainings.map((train) => {
 
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
-      const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
+      // VERSIONING: If there's a pending edit, use verified_data for display
+      console.log('🔍 Certificate versioning check:', {
+        title: certificate.title,
+        has_pending_edit: certificate.has_pending_edit,
+        has_verified_data: !!certificate.verified_data,
+        verified_title: certificate.verified_data?.title,
+        current_approval: certificate.approval_status
+      });
+      
+      const displayData = (certificate.has_pending_edit && certificate.verified_data) 
+        ? certificate.verified_data 
+        : certificate;
+      
+      const issuedOnValue = displayData?.issued_on || displayData?.issuedOn || null;
       const issuedOnFormatted = issuedOnValue ? new Date(issuedOnValue).toISOString().split("T")[0] : "";
-      const approvalSource = certificate?.approval_status || certificate?.status || "pending";
+      const approvalSource = displayData?.approval_status || displayData?.status || "pending";
       const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
-      const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
+      const statusSource = displayData?.status || (displayData?.enabled === false ? "disabled" : "active");
       const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
-      const documentUrlValue = certificate?.link || null;
+      const documentUrlValue = displayData?.link || null;
       return {
-        id: certificate?.id,
-        title: certificate?.title || "",
-        issuer: certificate?.issuer || "",
+        id: certificate?.id, // Keep original ID for editing
+        title: displayData?.title || "",
+        issuer: displayData?.issuer || "",
         issuedOn: issuedOnFormatted,
-        level: certificate?.level || "",
-        description: certificate?.description || "",
-        credentialId: certificate?.credential_id || "",
-        link: certificate?.link || "",
+        level: displayData?.level || "",
+        description: displayData?.description || "",
+        credentialId: displayData?.credential_id || "",
+        link: displayData?.link || "",
         status: statusValue,
         approval_status: approvalStatus,
-        verified: approvalStatus === "approved",
-        processing: approvalStatus !== "approved",
+        verified: approvalStatus === "approved" || approvalStatus === "verified",
+        processing: certificate.has_pending_edit || (approvalStatus !== "approved" && approvalStatus !== "verified"), // Show processing if there's a pending edit OR if not verified
         enabled: statusValue !== "disabled",
         document_url: documentUrlValue,
         documentLink: documentUrlValue || "",
+        has_pending_edit: certificate.has_pending_edit || false, // Include pending edit flag
         createdAt: certificate?.created_at,
         updatedAt: certificate?.updated_at,
       };
@@ -712,7 +729,9 @@ export const getStudentById = async (studentId) => {
         level: skill.level || 3, // Use numeric level (1-5) for stars
         proficiency_level: skill.proficiency_level || 'Intermediate', // Keep text level separate
         rating: skill.level || 3, // Map level (1-5) to rating for UI
+        type: 'technical', // Explicitly set type for proper identification
         description: skill.description || '',
+        examples: skill.examples || '',
         verified: skill.verified || false,
         enabled: skill.enabled ?? true,
         approval_status: skill.approval_status || 'pending',
@@ -728,8 +747,9 @@ export const getStudentById = async (studentId) => {
         level: skill.level || 3, // Use numeric level (1-5) for stars
         proficiency_level: skill.proficiency_level || 'Intermediate', // Keep text level separate
         rating: skill.level || 3, // Map level (1-5) to rating for UI
-        type: skill.name.toLowerCase(), // For UI compatibility
+        type: 'soft', // Keep type as 'soft' for proper identification
         description: skill.description || '',
+        examples: skill.examples || '',
         verified: skill.verified || false,
         enabled: skill.enabled ?? true,
         approval_status: skill.approval_status || 'pending',
@@ -840,29 +860,35 @@ export const getStudentById = async (studentId) => {
 
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
-      const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
+      // VERSIONING: If there's a pending edit, use verified_data for display
+      const displayData = (certificate.has_pending_edit && certificate.verified_data) 
+        ? certificate.verified_data 
+        : certificate;
+      
+      const issuedOnValue = displayData?.issued_on || displayData?.issuedOn || null;
       const issuedOnFormatted = issuedOnValue ? new Date(issuedOnValue).toISOString().split("T")[0] : "";
-      const approvalSource = certificate?.approval_status || certificate?.status || "pending";
+      const approvalSource = displayData?.approval_status || displayData?.status || "pending";
       const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
-      const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
+      const statusSource = displayData?.status || (displayData?.enabled === false ? "disabled" : "active");
       const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
-      const documentUrlValue = certificate?.link || null;
+      const documentUrlValue = displayData?.link || null;
       return {
-        id: certificate?.id,
-        title: certificate?.title || "",
-        issuer: certificate?.issuer || "",
+        id: certificate?.id, // Keep original ID for editing
+        title: displayData?.title || "",
+        issuer: displayData?.issuer || "",
         issuedOn: issuedOnFormatted,
-        level: certificate?.level || "",
-        description: certificate?.description || "",
-        credentialId: certificate?.credential_id || "",
-        link: certificate?.link || "",
+        level: displayData?.level || "",
+        description: displayData?.description || "",
+        credentialId: displayData?.credential_id || "",
+        link: displayData?.link || "",
         status: statusValue,
         approval_status: approvalStatus,
-        verified: approvalStatus === "approved",
-        processing: approvalStatus !== "approved",
+        verified: approvalStatus === "approved" || approvalStatus === "verified",
+        processing: certificate.has_pending_edit || (approvalStatus !== "approved" && approvalStatus !== "verified"), // Show processing if there's a pending edit OR if not verified
         enabled: statusValue !== "disabled",
         document_url: documentUrlValue,
         documentLink: documentUrlValue || "",
+        has_pending_edit: certificate.has_pending_edit || false, // Include pending edit flag
         createdAt: certificate?.created_at,
         updatedAt: certificate?.updated_at,
       };
@@ -2282,6 +2308,7 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
           description: exp.description?.trim() || null,
           verified: exp.verified || false,
           approval_status: exp.approval_status || 'pending',
+          enabled: exp.enabled !== false, // Add enabled field (default to true)
           updated_at: nowIso,
         };
 
@@ -3035,9 +3062,10 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
 
     const studentId = studentRecord.id;
 
+    // Fetch full existing certificates to check verification status
     const { data: existingCertificates, error: existingError } = await supabase
       .from('certificates')
-      .select('id')
+      .select('*')
       .eq('student_id', studentId);
 
     if (existingError) {
@@ -3072,7 +3100,10 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
         const linkTrimmed = typeof linkValue === 'string' ? linkValue.trim() : linkValue;
         
         const descriptionValue = typeof cert.description === 'string' ? cert.description.trim() : cert.description || null;
-        const approvalSource = cert.approval_status || cert.status || 'pending';
+        // IMPORTANT: approval_status and status are different fields!
+        // approval_status: 'pending' | 'approved' | 'verified' (for verification workflow)
+        // status: 'active' | 'disabled' | 'completed' (for visibility/completion state)
+        const approvalSource = cert.approval_status || 'pending';
         const approvalStatus = typeof approvalSource === 'string' ? approvalSource.toLowerCase() : 'pending';
         const statusSource = cert.status || (cert.enabled === false ? 'disabled' : 'active');
         const statusValue = typeof statusSource === 'string' ? statusSource.trim().toLowerCase() : 'active';
@@ -3099,6 +3130,7 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
           platform: cert.platform || null,
           instructor: cert.instructor || null,
           category: cert.category || null,
+          enabled: cert.enabled !== false, // Add enabled field (default to true)
           updated_at: nowIso,
         };
 
@@ -3107,6 +3139,87 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
           record.id = rawId;
         } else {
           record.id = generateUuid();
+        }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingCertificates || []).find(e => e.id === record.id);
+        
+        // Case 1: Certificate already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          // Keep the original verified_data, update only pending_edit_data
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = { ...record };
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved certificate - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          // Check if data actually changed (normalize null/undefined/empty for comparison)
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          
+          const hasChanges = 
+            normalize(record.title) !== normalize(existingRecord.title) ||
+            normalize(record.issuer) !== normalize(existingRecord.issuer) ||
+            normalize(record.level) !== normalize(existingRecord.level) ||
+            normalize(record.credential_id) !== normalize(existingRecord.credential_id) ||
+            normalize(record.link) !== normalize(existingRecord.link) ||
+            normalize(record.issued_on) !== normalize(existingRecord.issued_on) ||
+            normalize(record.expiry_date) !== normalize(existingRecord.expiry_date) ||
+            normalize(record.description) !== normalize(existingRecord.description) ||
+            normalize(record.document_url) !== normalize(existingRecord.document_url) ||
+            normalize(record.platform) !== normalize(existingRecord.platform) ||
+            normalize(record.instructor) !== normalize(existingRecord.instructor) ||
+            normalize(record.category) !== normalize(existingRecord.category) ||
+            record.enabled !== existingRecord.enabled;
+          
+          console.log(`🔍 Versioning check for "${record.title}":`, {
+            hasChanges,
+            existingApprovalStatus: existingRecord.approval_status,
+            recordTitle: normalize(record.title),
+            existingTitle: normalize(existingRecord.title),
+            titlesMatch: normalize(record.title) === normalize(existingRecord.title)
+          });
+          
+          if (hasChanges) {
+            // Data changed - create versioning
+            const verifiedData = {
+              title: existingRecord.title,
+              issuer: existingRecord.issuer,
+              level: existingRecord.level,
+              credential_id: existingRecord.credential_id,
+              link: existingRecord.link,
+              issued_on: existingRecord.issued_on,
+              expiry_date: existingRecord.expiry_date,
+              description: existingRecord.description,
+              status: existingRecord.status,
+              approval_status: existingRecord.approval_status,
+              document_url: existingRecord.document_url,
+              platform: existingRecord.platform,
+              instructor: existingRecord.instructor,
+              category: existingRecord.category,
+              enabled: existingRecord.enabled
+            };
+            
+            // Store verified data and mark as having pending edit
+            record.verified_data = verifiedData;
+            record.pending_edit_data = { ...record };
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for "${record.title}" - changes detected`);
+          } else {
+            // No changes - keep as verified
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status; // Keep existing status
+            console.log(`✅ No changes for "${record.title}" - keeping approval_status: ${existingRecord.approval_status}`);
+          }
+        }
+        // Case 3: New certificate or unverified certificate - no versioning needed
+        else {
+          record.verified_data = null;
+          record.pending_edit_data = null;
+          record.has_pending_edit = false;
         }
 
         return record;
