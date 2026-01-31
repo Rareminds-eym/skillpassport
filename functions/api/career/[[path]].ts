@@ -14,6 +14,7 @@
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders } from '../../../src/functions-lib/cors';
 import { jsonResponse } from '../../../src/functions-lib/response';
+import { getAPIKeys } from '../shared/ai-config';
 import { handleCareerChat } from './handlers/chat';
 import { handleRecommendOpportunities } from './handlers/recommend';
 import { handleAnalyzeAssessment } from './handlers/analyze-assessment';
@@ -21,9 +22,9 @@ import { handleGenerateEmbedding } from './handlers/generate-embedding';
 import { handleGenerateFieldKeywords } from './handlers/field-keywords';
 import { handleParseResume } from './handlers/parse-resume';
 
-// Helper to get OpenRouter API key (supports both variable names)
+// Helper to get OpenRouter API key (uses shared utility)
 export const getOpenRouterKey = (env: any): string | undefined => {
-  return env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;
+  return getAPIKeys(env).openRouter;
 };
 
 export const onRequest: PagesFunction = async (context) => {

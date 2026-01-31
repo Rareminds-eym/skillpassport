@@ -166,22 +166,45 @@ export function generateUUID(): string {
 /**
  * Repair and parse JSON from AI responses
  * Handles common issues like markdown code blocks, trailing commas, etc.
+ * @param text - The text to parse
+ * @param preferObject - If true, look for objects first; if false, look for arrays first
  */
-export function repairAndParseJSON(text: string): any {
-    // Clean markdown
+export function repairAndParseJSON(text: string, preferObject: boolean = false): any {
+    // Clean markdown - be more aggressive
     let cleaned = text
-        .replace(/```json\n?/gi, '')
-        .replace(/```\n?/g, '')
+        .replace(/```json\s*/gi, '')  // Remove ```json with optional whitespace
+        .replace(/```\s*/g, '')        // Remove ``` with optional whitespace
         .trim();
 
-    // Find JSON boundaries (object)
-    let startIdx = cleaned.indexOf('{');
-    let endIdx = cleaned.lastIndexOf('}');
+    // Find JSON boundaries - prioritize based on preference
+    let startIdx = -1;
+    let endIdx = -1;
+    let isArray = false;
 
-    // If no object, try array
-    if (startIdx === -1 || endIdx === -1) {
+    if (preferObject) {
+        // Try object first (for assessments), then array
+        startIdx = cleaned.indexOf('{');
+        endIdx = cleaned.lastIndexOf('}');
+        isArray = false;
+
+        // If no object found, try array
+        if (startIdx === -1 || endIdx === -1) {
+            startIdx = cleaned.indexOf('[');
+            endIdx = cleaned.lastIndexOf(']');
+            isArray = true;
+        }
+    } else {
+        // Try array first (for questions), then object
         startIdx = cleaned.indexOf('[');
         endIdx = cleaned.lastIndexOf(']');
+        isArray = true;
+
+        // If no array, try object
+        if (startIdx === -1 || endIdx === -1) {
+            startIdx = cleaned.indexOf('{');
+            endIdx = cleaned.lastIndexOf('}');
+            isArray = false;
+        }
     }
 
     if (startIdx === -1 || endIdx === -1) {
@@ -192,60 +215,169 @@ export function repairAndParseJSON(text: string): any {
 
     // Try parsing as-is first
     try {
-        return JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned);
+        console.log('✅ JSON parsed successfully on first attempt');
+        return parsed;
     } catch (e) {
         console.log('⚠️ Initial JSON parse failed, attempting repair...');
+        console.log('📄 First 200 chars:', cleaned.substring(0, 200));
+        console.log('📄 Last 100 chars:', cleaned.substring(Math.max(0, cleaned.length - 100)));
     }
 
-    // Repair common issues
-    cleaned = cleaned
+    // Repair common issues - but preserve spaces in strings
+    let repaired = cleaned
         .replace(/,\s*]/g, ']')           // Remove trailing commas in arrays
         .replace(/,\s*}/g, '}')           // Remove trailing commas in objects
-        .replace(/[\x00-\x1F\x7F]/g, ' ') // Remove control characters
-        .replace(/\n/g, ' ')              // Remove newlines
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control chars but keep \n and \t
         .replace(/\r/g, '')               // Remove carriage returns
         .replace(/\t/g, ' ')              // Replace tabs with spaces
-        .replace(/"\s*\n\s*"/g, '", "')   // Fix broken string arrays
         .replace(/}\s*{/g, '},{')         // Fix missing commas between objects
-        .replace(/]\s*\[/g, '],[')        // Fix missing commas between arrays
-        .replace(/"\s+"/g, '","');        // Fix missing commas between strings
+        .replace(/]\s*\[/g, '],[');       // Fix missing commas between arrays
 
     try {
-        return JSON.parse(cleaned);
+        const parsed = JSON.parse(repaired);
+        console.log('✅ JSON parsed successfully after basic repair');
+        return parsed;
     } catch (e) {
-        console.log('⚠️ Repair attempt 1 failed, trying more aggressive repair...');
+        console.log('⚠️ Basic repair failed, trying aggressive repair...');
     }
 
-    // More aggressive: try to extract just the questions array if present
+    // More aggressive: handle newlines in strings more carefully
+    // Replace newlines with spaces, but preserve the structure
+    repaired = repaired
+        .replace(/\n\s*/g, ' ')           // Replace newline + optional spaces with single space
+        .replace(/\s{2,}/g, ' ')          // Collapse multiple spaces to one
+        .replace(/"\s+"/g, '" "')         // Normalize spaces between quotes
+        .replace(/,\s*,/g, ',');          // Remove duplicate commas
+
+    try {
+        const parsed = JSON.parse(repaired);
+        console.log('✅ JSON parsed successfully after aggressive repair');
+        return parsed;
+    } catch (e) {
+        console.log('⚠️ Aggressive repair failed, trying extraction...');
+        console.log('📄 Repaired sample (first 300 chars):', repaired.substring(0, 300));
+    }
+
+    // Try to extract questions array if it's wrapped in an object
     const questionsMatch = cleaned.match(/"questions"\s*:\s*\[([\s\S]*)\]/);
     if (questionsMatch) {
         try {
             const questionsStr = questionsMatch[1];
             const questions: any[] = [];
 
+            // Split by question boundaries
             const parts = questionsStr.split(/}\s*,\s*{/);
             for (let i = 0; i < parts.length; i++) {
                 let part = parts[i].trim();
                 if (!part.startsWith('{')) part = '{' + part;
                 if (!part.endsWith('}')) part = part + '}';
 
+                // Clean up the part
+                part = part
+                    .replace(/,\s*}/g, '}')
+                    .replace(/[\x00-\x1F\x7F]/g, ' ')
+                    .replace(/\r/g, '')
+                    .replace(/\t/g, ' ');
+
                 try {
                     const q = JSON.parse(part);
                     questions.push(q);
                 } catch (qe) {
-                    console.log(`⚠️ Skipping malformed question ${i + 1}`);
+                    console.log(`⚠️ Skipping malformed question ${i + 1}:`, part.substring(0, 100));
                 }
             }
 
             if (questions.length > 0) {
                 console.log(`✅ Recovered ${questions.length} questions from malformed JSON`);
-                return { questions };
+                return questions; // Return array directly, not wrapped
             }
         } catch (e) {
-            console.log('⚠️ Questions extraction failed');
+            console.log('⚠️ Questions extraction failed:', e);
         }
     }
 
+    // For objects: Try to find the last complete closing brace
+    if (!isArray && startIdx !== -1) {
+        try {
+            // Count braces to find where the object actually ends
+            let braceCount = 0;
+            let actualEndIdx = -1;
+            
+            for (let i = startIdx; i < cleaned.length; i++) {
+                if (cleaned[i] === '{') braceCount++;
+                else if (cleaned[i] === '}') {
+                    braceCount--;
+                    if (braceCount === 0) {
+                        actualEndIdx = i;
+                        break;
+                    }
+                }
+            }
+            
+            if (actualEndIdx !== -1 && actualEndIdx !== endIdx) {
+                console.log(`⚠️ Found actual object end at ${actualEndIdx} (was ${endIdx}), attempting parse...`);
+                const correctedJson = cleaned.substring(startIdx, actualEndIdx + 1);
+                
+                // Try parsing the corrected JSON
+                const correctedRepaired = correctedJson
+                    .replace(/,\s*}/g, '}')
+                    .replace(/,\s*]/g, ']')
+                    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+                    .replace(/\r/g, '')
+                    .replace(/\t/g, ' ')
+                    .replace(/\n\s*/g, ' ')
+                    .replace(/\s{2,}/g, ' ')
+                    .replace(/}\s*{/g, '},{')
+                    .replace(/]\s*\[/g, '],[');
+                
+                const parsed = JSON.parse(correctedRepaired);
+                console.log(`✅ Successfully parsed object after brace counting`);
+                return parsed;
+            }
+        } catch (e) {
+            console.log('⚠️ Brace counting repair failed:', e);
+        }
+    }
+
+    // If we got here and it's an array, try to extract individual objects
+    if (isArray) {
+        try {
+            const objects: any[] = [];
+            const parts = cleaned.substring(1, cleaned.length - 1).split(/}\s*,\s*{/);
+            
+            for (let i = 0; i < parts.length; i++) {
+                let part = parts[i].trim();
+                if (!part.startsWith('{')) part = '{' + part;
+                if (!part.endsWith('}')) part = part + '}';
+
+                // Clean up
+                part = part
+                    .replace(/,\s*}/g, '}')
+                    .replace(/[\x00-\x1F\x7F]/g, ' ')
+                    .replace(/\r/g, '')
+                    .replace(/\t/g, ' ')
+                    .replace(/\n/g, ' ');
+
+                try {
+                    const obj = JSON.parse(part);
+                    objects.push(obj);
+                } catch (objError) {
+                    console.log(`⚠️ Skipping malformed object ${i + 1}`);
+                }
+            }
+
+            if (objects.length > 0) {
+                console.log(`✅ Recovered ${objects.length} objects from malformed array`);
+                return objects;
+            }
+        } catch (e) {
+            console.log('⚠️ Array extraction failed:', e);
+        }
+    }
+
+    console.error('❌ All repair attempts failed');
+    console.error('📄 Cleaned text (first 500 chars):', cleaned.substring(0, 500));
     throw new Error('Failed to parse JSON after all repair attempts');
 }
 
@@ -254,7 +386,7 @@ export function repairAndParseJSON(text: string): any {
  */
 export function getAPIKeys(env: PagesEnv | Record<string, string>) {
     return {
-        openRouter: env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY,
+        openRouter: env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY,
         claude: env.CLAUDE_API_KEY || env.VITE_CLAUDE_API_KEY,
     };
 }

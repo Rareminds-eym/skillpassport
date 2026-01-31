@@ -35,6 +35,48 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import {
+  handleGetSchools,
+  handleGetColleges,
+  handleGetUniversities,
+  handleGetCompanies,
+  handleCheckSchoolCode,
+  handleCheckCollegeCode,
+  handleCheckUniversityCode,
+  handleCheckCompanyCode,
+  handleCheckEmail,
+} from './handlers/utility';
+import {
+  handleSchoolAdminSignup,
+  handleEducatorSignup,
+  handleStudentSignup,
+} from './handlers/school';
+import {
+  handleCollegeAdminSignup,
+  handleCollegeEducatorSignup,
+  handleCollegeStudentSignup,
+} from './handlers/college';
+import {
+  handleUniversityAdminSignup,
+  handleUniversityEducatorSignup,
+  handleUniversityStudentSignup,
+} from './handlers/university';
+import {
+  handleRecruiterAdminSignup,
+  handleRecruiterSignup,
+} from './handlers/recruiter';
+import { handleUnifiedSignup } from './handlers/unified';
+import {
+  handleCreateStudent,
+  handleCreateTeacher,
+  handleCreateCollegeStaff,
+  handleUpdateStudentDocuments,
+} from './handlers/authenticated';
+import {
+  handleCreateEventUser,
+  handleSendInterviewReminder,
+} from './handlers/events';
+import { handleResetPassword } from './handlers/password';
 
 const API_VERSION = '1.0.0';
 
@@ -80,48 +122,105 @@ export const onRequest: PagesFunction = async (context) => {
     }
 
     // Route to handlers
-    // TODO: Implement all handlers from cloudflare-workers/user-api/src/handlers/
+
+    // Unified signup endpoint
+    if (path === '/signup' && request.method === 'POST') {
+      return await handleUnifiedSignup(request, env);
+    }
     
-    // Signup endpoints
-    if (path.startsWith('/signup')) {
-      return jsonResponse({
-        error: 'Not implemented',
-        message: 'Signup endpoints require full handler migration',
-        endpoint: path
-      }, 501);
+    // School signup endpoints
+    if (path === '/signup/school-admin' && request.method === 'POST') {
+      return await handleSchoolAdminSignup(request, env);
+    }
+    if (path === '/signup/educator' && request.method === 'POST') {
+      return await handleEducatorSignup(request, env);
+    }
+    if (path === '/signup/student' && request.method === 'POST') {
+      return await handleStudentSignup(request, env);
+    }
+    
+    // College signup endpoints
+    if (path === '/signup/college-admin' && request.method === 'POST') {
+      return await handleCollegeAdminSignup(request, env);
+    }
+    if (path === '/signup/college-educator' && request.method === 'POST') {
+      return await handleCollegeEducatorSignup(request, env);
+    }
+    if (path === '/signup/college-student' && request.method === 'POST') {
+      return await handleCollegeStudentSignup(request, env);
     }
 
-    // Utility endpoints
-    const utilityEndpoints = ['/schools', '/colleges', '/universities', '/companies'];
-    if (utilityEndpoints.includes(path)) {
-      return jsonResponse({
-        error: 'Not implemented',
-        message: 'Utility endpoints require database queries',
-        endpoint: path
-      }, 501);
+    // University signup endpoints
+    if (path === '/signup/university-admin' && request.method === 'POST') {
+      return await handleUniversityAdminSignup(request, env);
+    }
+    if (path === '/signup/university-educator' && request.method === 'POST') {
+      return await handleUniversityEducatorSignup(request, env);
+    }
+    if (path === '/signup/university-student' && request.method === 'POST') {
+      return await handleUniversityStudentSignup(request, env);
     }
 
-    // Check endpoints
-    if (path.startsWith('/check-')) {
-      return jsonResponse({
-        error: 'Not implemented',
-        message: 'Validation endpoints require database queries',
-        endpoint: path
-      }, 501);
+    // Recruiter signup endpoints
+    if (path === '/signup/recruiter-admin' && request.method === 'POST') {
+      return await handleRecruiterAdminSignup(request, env);
+    }
+    if (path === '/signup/recruiter' && request.method === 'POST') {
+      return await handleRecruiterSignup(request, env);
+    }
+
+    // Utility GET endpoints - Institution lists
+    if (path === '/schools' && request.method === 'GET') {
+      return await handleGetSchools(env);
+    }
+    if (path === '/colleges' && request.method === 'GET') {
+      return await handleGetColleges(env);
+    }
+    if (path === '/universities' && request.method === 'GET') {
+      return await handleGetUniversities(env);
+    }
+    if (path === '/companies' && request.method === 'GET') {
+      return await handleGetCompanies(env);
+    }
+
+    // Utility POST endpoints - Code validation
+    if (path === '/check-school-code' && request.method === 'POST') {
+      return await handleCheckSchoolCode(request, env);
+    }
+    if (path === '/check-college-code' && request.method === 'POST') {
+      return await handleCheckCollegeCode(request, env);
+    }
+    if (path === '/check-university-code' && request.method === 'POST') {
+      return await handleCheckUniversityCode(request, env);
+    }
+    if (path === '/check-company-code' && request.method === 'POST') {
+      return await handleCheckCompanyCode(request, env);
+    }
+    if (path === '/check-email' && request.method === 'POST') {
+      return await handleCheckEmail(request, env);
     }
 
     // Authenticated endpoints
-    const authEndpoints = [
-      '/create-student', '/create-teacher', '/create-college-staff',
-      '/update-student-documents', '/create-event-user',
-      '/send-interview-reminder', '/reset-password'
-    ];
-    if (authEndpoints.includes(path)) {
-      return jsonResponse({
-        error: 'Not implemented',
-        message: 'Authenticated endpoints require full handler migration',
-        endpoint: path
-      }, 501);
+    if (path === '/create-student' && request.method === 'POST') {
+      return await handleCreateStudent(request, env);
+    }
+    if (path === '/create-teacher' && request.method === 'POST') {
+      return await handleCreateTeacher(request, env);
+    }
+    if (path === '/create-college-staff' && request.method === 'POST') {
+      return await handleCreateCollegeStaff(request, env);
+    }
+    if (path === '/update-student-documents' && request.method === 'POST') {
+      return await handleUpdateStudentDocuments(request, env);
+    }
+    if (path === '/create-event-user' && request.method === 'POST') {
+      return await handleCreateEventUser(request, env);
+    }
+    if (path === '/send-interview-reminder' && request.method === 'POST') {
+      return await handleSendInterviewReminder(request, env);
+    }
+    if (path === '/reset-password' && request.method === 'POST') {
+      return await handleResetPassword(request, env);
     }
 
     return jsonResponse({ 

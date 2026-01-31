@@ -17,7 +17,7 @@ export interface PagesEnv {
   CLAUDE_API_KEY?: string;
   VITE_CLAUDE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
-  VITE_OPENROUTER_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
 
   // Other service keys
   RAZORPAY_KEY_ID?: string;

@@ -25,7 +25,7 @@ Go to your GitHub repository → Settings → Secrets and variables → Actions 
 | Secret Name | Used By | Description |
 |-------------|---------|-------------|
 | `OPENROUTER_API_KEY` | embedding-api | OpenRouter API key for embeddings |
-| `VITE_OPENROUTER_API_KEY` | career-api, assessment-api | OpenRouter API key for AI features |
+| `OPENROUTER_API_KEY` | career-api, assessment-api | OpenRouter API key for AI features |
 
 ### Payment Services
 

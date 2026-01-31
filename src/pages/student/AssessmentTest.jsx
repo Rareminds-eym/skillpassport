@@ -3152,7 +3152,7 @@ const AssessmentTest = () => {
                                                                         : currentSection.questions.length
                                                         }
                                                     </span>
-                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
+                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug whitespace-pre-line">
                                                         {currentQuestion?.text}
                                                     </h3>
                                                 </div>
