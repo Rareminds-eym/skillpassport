@@ -1574,14 +1574,33 @@ const AssessmentTestPage: React.FC = () => {
     // Jump to the target section
     flow.jumpToSection(sectionIndex);
 
-    // Auto-start the section (skip the intro screen) so timer starts immediately
-    // This ensures the elapsed time timer starts counting when using test mode
-    setTimeout(() => {
-      flow.startSection();
-    }, 100);
-
-    console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${sections[sectionIndex]?.title})`);
-  }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse]);
+    const targetSection = sections[sectionIndex];
+    
+    // For adaptive sections, we need to initialize the test first
+    if (targetSection?.isAdaptive) {
+      console.log(`✅ Test Mode: Skipped to adaptive section ${sectionIndex} (${targetSection.title})`);
+      console.log('⏳ Initializing adaptive test...');
+      
+      // Initialize adaptive timer
+      setAdaptiveQuestionTimer(targetSection.individualTimeLimit || 60);
+      
+      // Set pending flag so useEffect knows to start section when questions load
+      adaptiveStartPendingRef.current = true;
+      
+      // Start the adaptive test (async - questions will load in background)
+      adaptiveAptitude.startTest();
+      
+      // The useEffect will call flow.startSection() once questions are ready
+      // Don't call it here or it will cause issues
+    } else {
+      // For non-adaptive sections, auto-start immediately
+      setTimeout(() => {
+        flow.startSection();
+      }, 100);
+      
+      console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${targetSection?.title})`);
+    }
+  }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse, adaptiveAptitude, setAdaptiveQuestionTimer]);
 
   // Get current question (handle adaptive sections)
   const currentSection = sections[flow.currentSectionIndex];

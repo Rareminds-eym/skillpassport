@@ -13,7 +13,8 @@ import {
   repairAndParseJSON, 
   AI_MODELS, 
   getAPIKeys,
-  API_CONFIG
+  API_CONFIG,
+  callOpenRouterWithRetry
 } from '../../shared/ai-config';
 
 interface RequestBody {
@@ -22,16 +23,16 @@ interface RequestBody {
 
 // AI Models to try (in order of preference) - using shared AI_MODELS
 const ASSESSMENT_MODELS = [
-  AI_MODELS.CLAUDE_SONNET,       // Claude 3.5 Sonnet - best quality, truly deterministic (paid)
-  AI_MODELS.GEMINI_2_FLASH,      // Google's Gemini 2.0 - free, fast, 1M context
-  AI_MODELS.GEMINI_PRO,          // Google Gemini Pro - free, reliable
-  AI_MODELS.XIAOMI_MIMO          // Fallback: Xiaomi's free model
+  'google/gemini-flash-1.5-exp',           // FREE - Experimental
+  'meta-llama/llama-3.1-8b-instruct:free', // FREE
+  'google/gemini-flash-1.5',               // Affordable with $0.99
+  'openai/gpt-3.5-turbo',                  // Cheap fallback
 ];
 
 // Assessment-specific configuration
 const ASSESSMENT_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
-  maxTokens: 20000,  // Increased to handle complete responses (large nested object)
+  maxTokens: 2000,   // Increased from 500 to 2000 for complete assessment responses
 };
 
 /**
@@ -59,48 +60,6 @@ function generateSeed(data: AssessmentData): number {
   
   // Ensure positive integer
   return Math.abs(hash);
-}
-
-/**
- * Call OpenRouter API with the given model
- */
-async function callOpenRouter(
-  env: PagesEnv,
-  model: string,
-  systemMessage: string,
-  userPrompt: string,
-  seed?: number
-): Promise<Response> {
-  const { openRouter } = getAPIKeys(env);
-  if (!openRouter) {
-    throw new Error('OpenRouter API key not configured');
-  }
-
-  const requestBody: any = {
-    model,
-    messages: [
-      { role: 'system', content: systemMessage },
-      { role: 'user', content: userPrompt }
-    ],
-    temperature: ASSESSMENT_CONFIG.temperature,
-    max_tokens: ASSESSMENT_CONFIG.maxTokens
-  };
-
-  // Add seed for deterministic results (same input = same output)
-  if (seed !== undefined) {
-    requestBody.seed = seed;
-  }
-
-  return fetch(API_CONFIG.OPENROUTER.endpoint, {
-    method: 'POST',
-    headers: {
-      ...API_CONFIG.OPENROUTER.headers,
-      'Authorization': `Bearer ${openRouter}`,
-      'HTTP-Referer': env.VITE_SUPABASE_URL || 'https://skillpassport.rareminds.in',
-      'X-Title': 'SkillPassport Assessment Analyzer'
-    },
-    body: JSON.stringify(requestBody)
-  });
 }
 
 /**
@@ -237,116 +196,69 @@ async function analyzeAssessment(
   const systemMessage = getSystemMessage(gradeLevel);
   const seed = generateSeed(assessmentData);
 
-  console.log(`[AI] Using deterministic seed: ${seed} for consistent results`);
+  console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
+  console.log(`[ASSESSMENT] Calling OpenRouter with ${ASSESSMENT_MODELS.length} fallback models`);
 
-  let lastError = '';
-  const failedModels: string[] = [];
-  const failureDetails: Array<{model: string, status?: number, error: string}> = [];
-
-  // Try each model until one succeeds
-  for (const model of ASSESSMENT_MODELS) {
-    console.log(`[AI] 🔄 Trying model: ${model}`);
-    
-    try {
-      const response = await callOpenRouter(env, model, systemMessage, prompt, seed);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        lastError = errorText;
-        failedModels.push(model);
-        failureDetails.push({
-          model: model,
-          status: response.status,
-          error: errorText.substring(0, 200)
-        });
-        console.error(`[AI] ❌ Model ${model} FAILED with status ${response.status}`);
-        console.error(`[AI] ❌ Error: ${errorText.substring(0, 200)}`);
-        console.log(`[AI] 🔄 Trying next fallback model...`);
-        continue;
-      }
-
-      const data = await response.json() as any;
-      const content = data.choices?.[0]?.message?.content;
-
-      if (!content) {
-        lastError = 'Empty response from AI';
-        failedModels.push(model);
-        failureDetails.push({
-          model: model,
-          error: 'Empty response from AI'
-        });
-        console.error(`[AI] ❌ Model ${model} FAILED: returned empty content`);
-        console.log(`[AI] 🔄 Trying next fallback model...`);
-        continue;
-      }
-
-      console.log(`[AI] ✅ SUCCESS with model: ${model}`);
-      if (failedModels.length > 0) {
-        console.log(`[AI] ℹ️ Note: ${failedModels.length} model(s) failed before success: ${failedModels.join(', ')}`);
-      }
-      
-      // Log raw response for debugging
-      console.log(`[AI] 📄 RAW RESPONSE (first 500 chars):`);
-      console.log(content.substring(0, 500));
-      console.log(`[AI] 📄 RAW RESPONSE (last 500 chars):`);
-      console.log(content.substring(Math.max(0, content.length - 500)));
-      console.log(`[AI] 📄 Total response length: ${content.length} characters`);
-      
-      // Parse the JSON response using shared utility (prefer object for assessments)
-      const result = repairAndParseJSON(content, true);
-      
-      // Strict validation of response structure
-      const validation = validateAssessmentStructure(result);
-      
-      // Log validation results
-      if (validation.errors.length > 0) {
-        console.error(`[AI] ❌ Validation errors (${validation.errors.length}):`);
-        validation.errors.forEach(err => console.error(`  - ${err}`));
-        throw new Error(`Invalid response structure: ${validation.errors.join('; ')}`);
-      }
-      
-      if (validation.warnings.length > 0) {
-        console.warn(`[AI] ⚠️ Validation warnings (${validation.warnings.length}):`);
-        validation.warnings.forEach(warn => console.warn(`  - ${warn}`));
-      } else {
-        console.log(`[AI] ✅ Response structure validated successfully`);
-      }
-      
-      // Add metadata including seed for debugging
-      result._metadata = {
-        seed: seed,
-        model: model,
-        timestamp: new Date().toISOString(),
-        deterministic: true,
-        failedModels: failedModels.length > 0 ? failedModels : undefined,
-        failureDetails: failureDetails.length > 0 ? failureDetails : undefined,
-        validation: {
-          valid: validation.valid,
-          errorCount: validation.errors.length,
-          warningCount: validation.warnings.length,
-          warnings: validation.warnings.length > 0 ? validation.warnings : undefined
-        }
-      };
-      
-      return result;
-      
-    } catch (error) {
-      lastError = (error as Error).message;
-      failedModels.push(model);
-      failureDetails.push({
-        model: model,
-        error: (error as Error).message
-      });
-      console.error(`[AI] ❌ Model ${model} FAILED with exception:`, error);
-      console.log(`[AI] 🔄 Trying next fallback model...`);
-    }
+  const { openRouter } = getAPIKeys(env);
+  if (!openRouter) {
+    throw new Error('OpenRouter API key not configured');
   }
 
-  // All models failed
-  console.error(`[AI] ❌ ALL MODELS FAILED!`);
-  console.error(`[AI] ❌ Failed models (${failedModels.length}): ${failedModels.join(', ')}`);
-  console.error(`[AI] ❌ Last error: ${lastError}`);
-  throw new Error(`AI analysis failed: ${lastError}`);
+  try {
+    // Use shared callOpenRouterWithRetry for better retry logic and model fallback
+    const content = await callOpenRouterWithRetry(openRouter, [
+      { role: 'system', content: systemMessage },
+      { role: 'user', content: prompt }
+    ], {
+      models: ASSESSMENT_MODELS,
+      maxRetries: 3,
+      maxTokens: ASSESSMENT_CONFIG.maxTokens,
+      temperature: ASSESSMENT_CONFIG.temperature,
+    });
+
+    console.log(`[ASSESSMENT] ✅ SUCCESS - received response`);
+    console.log(`[ASSESSMENT] 📄 Response length: ${content.length} characters`);
+    console.log(`[ASSESSMENT] 📄 First 300 chars: ${content.substring(0, 300)}`);
+    
+    // Parse the JSON response using shared utility (prefer object for assessments)
+    const result = repairAndParseJSON(content, true);
+    
+    // Strict validation of response structure
+    const validation = validateAssessmentStructure(result);
+    
+    // Log validation results
+    if (validation.errors.length > 0) {
+      console.error(`[ASSESSMENT] ❌ Validation errors (${validation.errors.length}):`);
+      validation.errors.forEach(err => console.error(`  - ${err}`));
+      throw new Error(`Invalid response structure: ${validation.errors.join('; ')}`);
+    }
+    
+    if (validation.warnings.length > 0) {
+      console.warn(`[ASSESSMENT] ⚠️ Validation warnings (${validation.warnings.length}):`);
+      validation.warnings.forEach(warn => console.warn(`  - ${warn}`));
+    } else {
+      console.log(`[ASSESSMENT] ✅ Response structure validated successfully`);
+    }
+    
+    // Add metadata including seed for debugging
+    result._metadata = {
+      seed: seed,
+      timestamp: new Date().toISOString(),
+      deterministic: true,
+      validation: {
+        valid: validation.valid,
+        errorCount: validation.errors.length,
+        warningCount: validation.warnings.length,
+        warnings: validation.warnings.length > 0 ? validation.warnings : undefined
+      }
+    };
+    
+    return result;
+    
+  } catch (error) {
+    console.error(`[ASSESSMENT] ❌ Analysis failed:`, error);
+    throw new Error(`AI analysis failed: ${(error as Error).message}`);
+  }
 }
 
 /**

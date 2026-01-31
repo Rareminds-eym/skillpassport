@@ -1,7 +1,7 @@
 
 import { PagesEnv } from '../../../../src/functions-lib/types';
 import { GradeLevel, DifficultyLevel, Subtag, QuestionGenerationResult, Question } from '../adaptive-types';
-import { getFallbackQuestion, reorderToPreventConsecutiveSubtags, generateQuestionId } from '../adaptive-utils';
+import { reorderToPreventConsecutiveSubtags, generateQuestionId } from '../adaptive-utils';
 import { ALL_SUBTAGS, buildSystemPrompt } from '../adaptive-constants';
 import {
     callOpenRouterWithRetry,
@@ -65,7 +65,7 @@ async function callOpenRouterAndParse(
 ): Promise<any[]> {
     const content = await callOpenRouterWithRetry(openRouterKey, messages, {
         maxRetries,
-        maxTokens: 3000,
+        maxTokens: 500,  // Reduced from 1500 to 500 to fit within credit limits
         temperature: 0.7,
     });
     
@@ -152,7 +152,7 @@ function validateQuestionStructure(questions: any[]): any[] {
 }
 
 /**
- * Common function to generate questions via AI with fallback
+ * Generate questions via AI only - no fallback questions
  */
 async function generateQuestionsWithAI(
     env: PagesEnv,
@@ -162,16 +162,33 @@ async function generateQuestionsWithAI(
     difficulty: DifficultyLevel,
     count: number,
     excludeTexts: Set<string>
-): Promise<{ questions: Question[], usedAI: boolean }> {
+): Promise<Question[]> {
+    console.log(`🎯 [Adaptive-Handler] Starting AI question generation`);
+    console.log(`📋 [Adaptive-Handler] Parameters:`, {
+        gradeLevel,
+        phase,
+        subtags: subtags.join(', '),
+        difficulty,
+        count,
+        excludeTextsCount: excludeTexts.size
+    });
+
     const { openRouter: openRouterKey } = getAPIKeys(env);
 
-    if (openRouterKey) {
-        try {
-            console.log(`🤖 Generating ${count} questions for ${gradeLevel} (${phase}) - Difficulty ${difficulty}`);
+    if (!openRouterKey) {
+        console.error(`❌ [Adaptive-Handler] No OpenRouter API key configured`);
+        throw new Error('OpenRouter API key not configured. AI question generation requires API access.');
+    }
 
-            const systemPrompt = buildSystemPrompt(gradeLevel);
-            const excludeTextsArray = Array.from(excludeTexts);
-            const userPrompt = `Generate EXACTLY ${count} unique aptitude questions.
+    console.log(`🔑 [Adaptive-Handler] OpenRouter API key found (length: ${openRouterKey.length})`);
+
+    const systemPrompt = buildSystemPrompt(gradeLevel);
+    const excludeTextsArray = Array.from(excludeTexts);
+    
+    console.log(`📝 [Adaptive-Handler] System prompt length: ${systemPrompt.length} characters`);
+    console.log(`🚫 [Adaptive-Handler] Excluding ${excludeTextsArray.length} previous questions`);
+
+    const userPrompt = `Generate EXACTLY ${count} unique aptitude questions.
       
 Requirements:
 - Difficulty Level: ${difficulty} (Scale 1-5)
@@ -216,74 +233,90 @@ CRITICAL RULES:
 
 Return ONLY the JSON array, nothing else.`;
 
-            // Use centralized OpenRouter call with retry
-            const aiQuestionsRaw = await callOpenRouterAndParse(openRouterKey, [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ]);
+    console.log(`📤 [Adaptive-Handler] User prompt length: ${userPrompt.length} characters`);
 
-            if (Array.isArray(aiQuestionsRaw) && aiQuestionsRaw.length > 0) {
-                // Filter out any questions that match excluded texts
-                const filteredQuestions = aiQuestionsRaw.filter((q: any) => {
-                    const questionText = q.text?.toLowerCase().trim();
-                    if (!questionText) return false;
-                    
-                    // Check if this question text is too similar to any excluded text
-                    for (const excludedText of excludeTexts) {
-                        const excluded = excludedText.toLowerCase().trim();
-                        // Exact match
-                        if (questionText === excluded) {
-                            console.warn(`⚠️ AI generated duplicate question (exact match): "${questionText.substring(0, 50)}..."`);
-                            return false;
-                        }
-                        // Very similar (>90% match)
-                        const similarity = calculateSimilarity(questionText, excluded);
-                        if (similarity > 0.9) {
-                            console.warn(`⚠️ AI generated very similar question (${(similarity * 100).toFixed(0)}% match): "${questionText.substring(0, 50)}..."`);
-                            return false;
-                        }
-                    }
-                    return true;
-                });
-                
-                if (filteredQuestions.length === 0) {
-                    console.error('❌ All AI-generated questions were duplicates, falling back');
-                    throw new Error('All generated questions were duplicates');
-                }
-                
-                const questions: Question[] = filteredQuestions.map((q: any, idx: number) => ({
-                    id: generateQuestionId(gradeLevel, phase as any, difficulty, subtags[idx % subtags.length]),
-                    text: q.text,
-                    options: q.options,
-                    correctAnswer: q.correctAnswer,
-                    explanation: q.explanation,
-                    difficulty: difficulty,
-                    subtag: subtags[idx % subtags.length] || 'logical_reasoning', // robust fallback assignment
-                    gradeLevel: gradeLevel,
-                    phase: phase as any,
-                    createdAt: new Date().toISOString()
-                }));
+    // Use centralized OpenRouter call with retry
+    console.log(`🚀 [Adaptive-Handler] Calling OpenRouter API...`);
+    const aiQuestionsRaw = await callOpenRouterAndParse(openRouterKey, [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+    ]);
 
-                console.log(`✅ AI generated ${questions.length} unique questions (filtered from ${aiQuestionsRaw.length})`);
-                return { questions, usedAI: true };
-            }
-        } catch (e: any) {
-            console.error('⚠️ AI generation failed, falling back:', e.message);
+    console.log(`📥 [Adaptive-Handler] Received AI response, validating...`);
+
+    if (!Array.isArray(aiQuestionsRaw) || aiQuestionsRaw.length === 0) {
+        console.error(`❌ [Adaptive-Handler] AI response validation failed:`, {
+            isArray: Array.isArray(aiQuestionsRaw),
+            length: aiQuestionsRaw?.length || 0,
+            type: typeof aiQuestionsRaw
+        });
+        throw new Error('AI failed to generate valid questions');
+    }
+
+    console.log(`✅ [Adaptive-Handler] AI generated ${aiQuestionsRaw.length} raw questions`);
+
+    // Filter out any questions that match excluded texts
+    console.log(`🔍 [Adaptive-Handler] Filtering for duplicates...`);
+    const filteredQuestions = aiQuestionsRaw.filter((q: any, index: number) => {
+        const questionText = q.text?.toLowerCase().trim();
+        if (!questionText) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has no text, filtering out`);
+            return false;
         }
-    } else {
-        console.warn('⚠️ OpenRouter API key not configured, using fallback questions');
-    }
+        
+        // Check if this question text is too similar to any excluded text
+        for (const excludedText of excludeTexts) {
+            const excluded = excludedText.toLowerCase().trim();
+            // Exact match
+            if (questionText === excluded) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is exact duplicate: "${questionText.substring(0, 50)}..."`);
+                return false;
+            }
+            // Very similar (>90% match)
+            const similarity = calculateSimilarity(questionText, excluded);
+            if (similarity > 0.9) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is ${(similarity * 100).toFixed(0)}% similar: "${questionText.substring(0, 50)}..."`);
+                return false;
+            }
+        }
+        return true;
+    });
+    
+    console.log(`🔍 [Adaptive-Handler] After filtering: ${filteredQuestions.length}/${aiQuestionsRaw.length} questions remain`);
 
-    // Fallback Logic
-    console.log('🔄 Using fallback logic');
-    const questions: Question[] = [];
-    for (let i = 0; i < count; i++) {
-        const subtag = subtags[i % subtags.length];
-        const question = getFallbackQuestion(gradeLevel, phase as any, difficulty, subtag, excludeTexts);
-        questions.push(question);
-        excludeTexts.add(question.text);
+    if (filteredQuestions.length === 0) {
+        console.error(`❌ [Adaptive-Handler] All questions were filtered out as duplicates`);
+        throw new Error('All AI-generated questions were duplicates of existing questions');
     }
-    return { questions, usedAI: false };
+    
+    console.log(`🏗️ [Adaptive-Handler] Building final question objects...`);
+    const questions: Question[] = filteredQuestions.map((q: any, idx: number) => {
+        const assignedSubtag = subtags[idx % subtags.length] || 'logical_reasoning';
+        console.log(`📝 [Adaptive-Handler] Question ${idx + 1}: "${q.text?.substring(0, 50)}..." -> ${assignedSubtag}`);
+        
+        return {
+            id: generateQuestionId(gradeLevel, phase as any, difficulty, assignedSubtag),
+            text: q.text,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+            difficulty: difficulty,
+            subtag: assignedSubtag,
+            gradeLevel: gradeLevel,
+            phase: phase as any,
+            createdAt: new Date().toISOString()
+        };
+    });
+
+    console.log(`✅ [Adaptive-Handler] Successfully generated ${questions.length} unique questions`);
+    console.log(`📊 [Adaptive-Handler] Question distribution:`, 
+        questions.reduce((acc, q) => {
+            acc[q.subtag] = (acc[q.subtag] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>)
+    );
+
+    return questions;
 }
 
 
@@ -295,31 +328,58 @@ export async function generateDiagnosticScreenerQuestions(
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
+    console.log(`🎯 [Diagnostic-Handler] Starting diagnostic screener generation`);
+    console.log(`📋 [Diagnostic-Handler] Parameters:`, {
+        gradeLevel,
+        excludeQuestionIds: excludeQuestionIds.length,
+        excludeQuestionTexts: excludeQuestionTexts.length
+    });
+
     const count = 8;
     const difficulty = 3;
     // Cyclical subtags for balanced variety
     const subtags = Array.from({ length: count }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
 
-    const result = await generateQuestionsWithAI(
-        env,
-        gradeLevel,
-        'diagnostic',
-        subtags,
-        difficulty,
+    console.log(`⚙️ [Diagnostic-Handler] Configuration:`, {
         count,
-        new Set(excludeQuestionTexts)
-    );
+        difficulty,
+        subtags: subtags.join(', ')
+    });
 
-    const reordered = reorderToPreventConsecutiveSubtags(result.questions, 2);
+    try {
+        const startTime = Date.now();
+        const questions = await generateQuestionsWithAI(
+            env,
+            gradeLevel,
+            'diagnostic',
+            subtags,
+            difficulty,
+            count,
+            new Set(excludeQuestionTexts)
+        );
 
-    return {
-        questions: reordered,
-        fromCache: false,
-        generatedCount: reordered.length,
-        cachedCount: 0,
-        generatedBy: result.usedAI ? 'ai' : 'fallback',
-        modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
-    };
+        const reordered = reorderToPreventConsecutiveSubtags(questions, 2);
+        const duration = Date.now() - startTime;
+
+        console.log(`✅ [Diagnostic-Handler] Successfully generated ${reordered.length} questions in ${duration}ms`);
+        console.log(`🔄 [Diagnostic-Handler] Reordered to prevent consecutive subtags`);
+
+        return {
+            questions: reordered,
+            fromCache: false,
+            generatedCount: reordered.length,
+            cachedCount: 0,
+            generatedBy: 'ai',
+            modelUsed: 'openai/chatgpt-4o-latest'
+        };
+    } catch (error: any) {
+        console.error(`❌ [Diagnostic-Handler] Failed to generate diagnostic questions:`, error.message);
+        console.error(`🔍 [Diagnostic-Handler] Error details:`, {
+            name: error.name,
+            stack: error.stack?.substring(0, 500)
+        });
+        throw new Error(`Failed to generate diagnostic questions: ${error.message}`);
+    }
 }
 
 export async function generateAdaptiveCoreQuestions(
@@ -330,28 +390,55 @@ export async function generateAdaptiveCoreQuestions(
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
-    const subtags = Array.from({ length: count }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
-
-    const result = await generateQuestionsWithAI(
-        env,
+    console.log(`🎯 [Adaptive-Core-Handler] Starting adaptive core generation`);
+    console.log(`📋 [Adaptive-Core-Handler] Parameters:`, {
         gradeLevel,
-        'core',
-        subtags,
         startingDifficulty,
         count,
-        new Set(excludeQuestionTexts)
-    );
+        excludeQuestionIds: excludeQuestionIds.length,
+        excludeQuestionTexts: excludeQuestionTexts.length
+    });
 
-    const reordered = reorderToPreventConsecutiveSubtags(result.questions, 2);
+    const subtags = Array.from({ length: count }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
 
-    return {
-        questions: reordered,
-        fromCache: false,
-        generatedCount: reordered.length,
-        cachedCount: 0,
-        generatedBy: result.usedAI ? 'ai' : 'fallback',
-        modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
-    };
+    console.log(`⚙️ [Adaptive-Core-Handler] Configuration:`, {
+        subtags: subtags.join(', ')
+    });
+
+    try {
+        const startTime = Date.now();
+        const questions = await generateQuestionsWithAI(
+            env,
+            gradeLevel,
+            'core',
+            subtags,
+            startingDifficulty,
+            count,
+            new Set(excludeQuestionTexts)
+        );
+
+        const reordered = reorderToPreventConsecutiveSubtags(questions, 2);
+        const duration = Date.now() - startTime;
+
+        console.log(`✅ [Adaptive-Core-Handler] Successfully generated ${reordered.length} questions in ${duration}ms`);
+        console.log(`🔄 [Adaptive-Core-Handler] Reordered to prevent consecutive subtags`);
+
+        return {
+            questions: reordered,
+            fromCache: false,
+            generatedCount: reordered.length,
+            cachedCount: 0,
+            generatedBy: 'ai',
+            modelUsed: 'openai/chatgpt-4o-latest'
+        };
+    } catch (error: any) {
+        console.error(`❌ [Adaptive-Core-Handler] Failed to generate adaptive core questions:`, error.message);
+        console.error(`🔍 [Adaptive-Core-Handler] Error details:`, {
+            name: error.name,
+            stack: error.stack?.substring(0, 500)
+        });
+        throw new Error(`Failed to generate adaptive core questions: ${error.message}`);
+    }
 }
 
 export async function generateStabilityConfirmationQuestions(
@@ -362,26 +449,53 @@ export async function generateStabilityConfirmationQuestions(
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
-    const subtags = Array.from({ length: count }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
-
-    const result = await generateQuestionsWithAI(
-        env,
+    console.log(`🎯 [Stability-Handler] Starting stability confirmation generation`);
+    console.log(`📋 [Stability-Handler] Parameters:`, {
         gradeLevel,
-        'stability',
-        subtags,
         provisionalBand,
         count,
-        new Set(excludeQuestionTexts)
-    );
+        excludeQuestionIds: excludeQuestionIds.length,
+        excludeQuestionTexts: excludeQuestionTexts.length
+    });
 
-    return {
-        questions: result.questions,
-        fromCache: false,
-        generatedCount: result.questions.length,
-        cachedCount: 0,
-        generatedBy: result.usedAI ? 'ai' : 'fallback',
-        modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
-    };
+    const subtags = Array.from({ length: count }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
+
+    console.log(`⚙️ [Stability-Handler] Configuration:`, {
+        subtags: subtags.join(', ')
+    });
+
+    try {
+        const startTime = Date.now();
+        const questions = await generateQuestionsWithAI(
+            env,
+            gradeLevel,
+            'stability',
+            subtags,
+            provisionalBand,
+            count,
+            new Set(excludeQuestionTexts)
+        );
+
+        const duration = Date.now() - startTime;
+
+        console.log(`✅ [Stability-Handler] Successfully generated ${questions.length} questions in ${duration}ms`);
+
+        return {
+            questions: questions,
+            fromCache: false,
+            generatedCount: questions.length,
+            cachedCount: 0,
+            generatedBy: 'ai',
+            modelUsed: 'openai/chatgpt-4o-latest'
+        };
+    } catch (error: any) {
+        console.error(`❌ [Stability-Handler] Failed to generate stability confirmation questions:`, error.message);
+        console.error(`🔍 [Stability-Handler] Error details:`, {
+            name: error.name,
+            stack: error.stack?.substring(0, 500)
+        });
+        throw new Error(`Failed to generate stability confirmation questions: ${error.message}`);
+    }
 }
 
 export async function generateSingleQuestion(
@@ -393,23 +507,46 @@ export async function generateSingleQuestion(
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {
-    // Try to generate 1 question of specific subtag
-    const result = await generateQuestionsWithAI(
-        env,
+    console.log(`🎯 [Single-Question-Handler] Starting single question generation`);
+    console.log(`📋 [Single-Question-Handler] Parameters:`, {
         gradeLevel,
         phase,
-        [subtag],
         difficulty,
-        1,
-        new Set(excludeQuestionTexts) // Pass exclusion texts for duplicate detection
-    );
+        subtag,
+        excludeQuestionIds: excludeQuestionIds.length,
+        excludeQuestionTexts: excludeQuestionTexts.length
+    });
 
-    return {
-        questions: result.questions,
-        fromCache: false,
-        generatedCount: result.questions.length,
-        cachedCount: 0,
-        generatedBy: result.usedAI ? 'ai' : 'fallback',
-        modelUsed: result.usedAI ? 'gemini/openrouter' : 'offline-fallback'
-    };
+    try {
+        const startTime = Date.now();
+        const questions = await generateQuestionsWithAI(
+            env,
+            gradeLevel,
+            phase,
+            [subtag],
+            difficulty,
+            1,
+            new Set(excludeQuestionTexts)
+        );
+
+        const duration = Date.now() - startTime;
+
+        console.log(`✅ [Single-Question-Handler] Successfully generated ${questions.length} question in ${duration}ms`);
+
+        return {
+            questions: questions,
+            fromCache: false,
+            generatedCount: questions.length,
+            cachedCount: 0,
+            generatedBy: 'ai',
+            modelUsed: 'openai/chatgpt-4o-latest'
+        };
+    } catch (error: any) {
+        console.error(`❌ [Single-Question-Handler] Failed to generate single question:`, error.message);
+        console.error(`🔍 [Single-Question-Handler] Error details:`, {
+            name: error.name,
+            stack: error.stack?.substring(0, 500)
+        });
+        throw new Error(`Failed to generate single question: ${error.message}`);
+    }
 }
