@@ -430,7 +430,7 @@ function AboutRareMinds() {
 
         {/* Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-16 items-center">
             {/* Left Content */}
             <div className="space-y-8 fade-in-up">
               <div className="inline-block">
@@ -491,7 +491,7 @@ function AboutRareMinds() {
                 <img 
                   src="/assets/About/Skillecosystem.png"
                   alt="Skill Ecosystem - Learning to Earning"
-                  className="w-full h-[550px] object-contain"
+                  className="w-full h-[600px] object-contain"
                 />
               </div>
             </div>
