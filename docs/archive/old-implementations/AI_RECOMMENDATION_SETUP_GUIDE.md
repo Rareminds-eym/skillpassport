@@ -62,7 +62,7 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # OpenRouter API Key
-VITE_OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
 ```
 
 ### 2.2 Set Supabase Secrets (for Edge Functions)

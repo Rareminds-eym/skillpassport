@@ -12,7 +12,7 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser, isValidUUID } from '../utils/auth';
+import { authenticateUser, isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 
 interface GenerateEmbeddingRequest {

@@ -7,10 +7,10 @@ async function testRoleOverviewAPI() {
   console.log('=== Testing Role Overview API ===\n');
   
   // Check if API key is configured
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.OPENROUTER_API_KEY;
   
   if (!apiKey) {
-    console.error('❌ No API key found! Please add VITE_OPENAI_API_KEY or VITE_OPENROUTER_API_KEY to your .env file');
+    console.error('❌ No API key found! Please add VITE_OPENAI_API_KEY or OPENROUTER_API_KEY to your .env file');
     return;
   }
   

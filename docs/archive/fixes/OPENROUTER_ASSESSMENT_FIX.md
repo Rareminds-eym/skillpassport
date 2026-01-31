@@ -26,7 +26,7 @@ The `geminiAssessmentService.js` was trying to call `isClaudeConfigured()` funct
 - Uses the existing `/analyze-assessment` endpoint
 
 ### 3. Environment Configuration
-- **OpenRouter API Key**: `VITE_OPENROUTER_API_KEY` (already configured)
+- **OpenRouter API Key**: `OPENROUTER_API_KEY` (already configured)
 - **Career API URL**: `VITE_CAREER_API_URL` (already configured)
 - **Authentication**: Uses Supabase JWT tokens
 
@@ -99,7 +99,7 @@ const callOpenRouterAssessment = async (assessmentData) => {
 ## Environment Variables Required
 
 ```env
-VITE_OPENROUTER_API_KEY=sk-or-v1-... (✅ Already configured)
+OPENROUTER_API_KEY=sk-or-v1-... (✅ Already configured)
 VITE_CAREER_API_URL=https://career-api.dark-mode-d021.workers.dev (✅ Already configured)
 VITE_SUPABASE_URL=... (✅ Already configured)
 VITE_SUPABASE_ANON_KEY=... (✅ Already configured)

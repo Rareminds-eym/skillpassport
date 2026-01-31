@@ -251,7 +251,7 @@ functions/api/role-overview/
 
 - `VITE_SUPABASE_URL` - Supabase project URL (optional, for caching)
 - `VITE_SUPABASE_ANON_KEY` - Supabase anon key (optional)
-- `OPENROUTER_API_KEY` or `VITE_OPENROUTER_API_KEY` - OpenRouter API key
+- `OPENROUTER_API_KEY` or `OPENROUTER_API_KEY` - OpenRouter API key
 - `GEMINI_API_KEY` or `VITE_GEMINI_API_KEY` - Gemini API key (fallback)
 
 ## Original Files to Migrate

@@ -84,7 +84,7 @@ Body: {
 **Required Variables** (all configured ✅):
 ```env
 VITE_CAREER_API_URL=https://career-api.dark-mode-d021.workers.dev ✅
-VITE_OPENROUTER_API_KEY=sk-or-v1-... ✅
+OPENROUTER_API_KEY=sk-or-v1-... ✅
 VITE_SUPABASE_URL=https://dpooleduinyyzxgrcwko.supabase.co ✅
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9... ✅
 ```

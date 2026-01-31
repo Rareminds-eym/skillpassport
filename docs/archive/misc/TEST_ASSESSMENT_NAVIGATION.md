@@ -181,7 +181,7 @@ Object.keys(localStorage).filter(k => k.startsWith('assessment_'));
 console.log('Current route:', window.location.pathname);
 
 // Check if API key is configured
-console.log('API Key configured:', !!import.meta.env.VITE_OPENROUTER_API_KEY);
+console.log('API Key configured:', !!import.meta.env.OPENROUTER_API_KEY);
 
 // Force navigate to dynamic assessment
 window.location.href = '/student/assessment/dynamic';

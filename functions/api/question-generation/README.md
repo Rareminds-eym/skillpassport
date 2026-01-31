@@ -219,7 +219,7 @@ Uses OpenRouter with fallback models:
 - `VITE_SUPABASE_URL` - Supabase project URL
 - `VITE_SUPABASE_ANON_KEY` - Supabase anon key
 - `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
-- `OPENROUTER_API_KEY` or `VITE_OPENROUTER_API_KEY` - OpenRouter API key
+- `OPENROUTER_API_KEY` or `OPENROUTER_API_KEY` - OpenRouter API key
 
 ## Database Tables
 

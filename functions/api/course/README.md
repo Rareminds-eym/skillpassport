@@ -38,7 +38,7 @@ Migrated from `cloudflare-workers/course-api` (1561 lines, 6 endpoints)
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `VITE_OPENROUTER_API_KEY`
+- `OPENROUTER_API_KEY`
 - `DEEPGRAM_API_KEY` (optional)
 - `GROQ_API_KEY` (optional)
 - `CLOUDFLARE_ACCOUNT_ID`

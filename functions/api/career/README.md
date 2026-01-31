@@ -43,4 +43,4 @@ Due to the complexity of the original worker (multiple AI modules, context build
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `OPENROUTER_API_KEY` or `VITE_OPENROUTER_API_KEY`
+- `OPENROUTER_API_KEY` or `OPENROUTER_API_KEY`

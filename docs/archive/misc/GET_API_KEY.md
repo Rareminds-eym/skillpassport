@@ -30,7 +30,7 @@ Visit: **https://openrouter.ai/keys**
 1. Open your `.env` file in the project root
 2. Find or add this line:
    ```env
-   VITE_OPENROUTER_API_KEY=sk-or-v1-your-new-key-here
+   OPENROUTER_API_KEY=sk-or-v1-your-new-key-here
    ```
 3. Replace `sk-or-v1-your-new-key-here` with your actual key
 4. Save the file
@@ -72,7 +72,7 @@ OpenRouter provides **free credits** when you sign up:
 ### Check 1: API Key Exists
 In browser console:
 ```javascript
-console.log('API Key configured:', !!import.meta.env.VITE_OPENROUTER_API_KEY);
+console.log('API Key configured:', !!import.meta.env.OPENROUTER_API_KEY);
 ```
 
 Should show: `true`
@@ -80,7 +80,7 @@ Should show: `true`
 ### Check 2: API Key Format
 In browser console:
 ```javascript
-const key = import.meta.env.VITE_OPENROUTER_API_KEY;
+const key = import.meta.env.OPENROUTER_API_KEY;
 console.log('Key starts correctly:', key?.startsWith('sk-or-v1-'));
 console.log('Key preview:', key?.substring(0, 20) + '...');
 ```
@@ -132,7 +132,7 @@ After adding the key and restarting:
 
 **Solution:** Make sure it's exactly:
 ```env
-VITE_OPENROUTER_API_KEY=your-key-here
+OPENROUTER_API_KEY=your-key-here
 ```
 
 NOT:
@@ -159,7 +159,7 @@ Edit `src/services/assessmentGenerationService.js`:
 
 Change:
 ```javascript
-const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+const apiKey = import.meta.env.OPENROUTER_API_KEY;
 const apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 ```
 
@@ -182,7 +182,7 @@ model: 'gpt-4-turbo-preview', // or 'gpt-3.5-turbo' for cheaper
 - [ ] Create a new API key
 - [ ] Copy the key
 - [ ] Open `.env` file
-- [ ] Add/update `VITE_OPENROUTER_API_KEY=your-key`
+- [ ] Add/update `OPENROUTER_API_KEY=your-key`
 - [ ] Save `.env` file
 - [ ] Stop dev server (Ctrl+C)
 - [ ] Start dev server (`npm run dev`)
