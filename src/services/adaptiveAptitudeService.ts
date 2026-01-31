@@ -2,19 +2,30 @@
  * Adaptive Aptitude Service
  * 
  * Main service for managing adaptive aptitude tests.
- * Now acts as a wrapper around the Adaptive Session API (Cloudflare Pages Functions).
- * Replaces direct Supabase calls with API calls for better reliability and CORS handling.
+ * Handles test initialization, question flow, answer submission, and result calculation.
  * 
  * Requirements: 1.1, 2.2, 2.3, 2.4, 3.3, 5.2, 7.3, 8.1, 8.2, 8.3, 8.4
- * Task 66: Service refactoring to use API wrapper
  */
 
 import * as AdaptiveAptitudeApiService from './adaptiveAptitudeApiService';
+import * as QuestionGeneratorService from './questionGeneratorService';
+import { supabase } from '../lib/supabaseClient';
+import { AdaptiveEngine } from './adaptiveEngine';
 import {
   TestSession,
   TestResults,
   GradeLevel,
   AnswerResult,
+  Question,
+  Response,
+  TestPhase,
+  DifficultyLevel,
+  Subtag,
+  Tier,
+  StopConditionResult,
+  ALL_SUBTAGS,
+  ALL_DIFFICULTY_LEVELS,
+  DEFAULT_ADAPTIVE_TEST_CONFIG,
 } from '../types/adaptiveAptitude';
 
 // =============================================================================
@@ -30,8 +41,138 @@ export type {
 } from './adaptiveAptitudeApiService';
 
 // =============================================================================
-// API WRAPPER FUNCTIONS
-// All functions now call the Adaptive Session API instead of Supabase directly
+// HELPER FUNCTIONS
+// =============================================================================
+
+/**
+ * Validation result interface
+ */
+interface ValidationResult {
+  isValid: boolean;
+  reason?: string;
+}
+
+/**
+ * Validates that the exclusion list is complete
+ */
+function validateExclusionListComplete(
+  excludeIds: string[],
+  answeredIds: string[],
+  phaseIds: string[]
+): ValidationResult {
+  const excludeSet = new Set(excludeIds);
+  const missingAnsweredIds: string[] = [];
+  const missingPhaseIds: string[] = [];
+  
+  for (const id of answeredIds) {
+    if (!excludeSet.has(id)) {
+      missingAnsweredIds.push(id);
+    }
+  }
+  
+  for (const id of phaseIds) {
+    if (!excludeSet.has(id)) {
+      missingPhaseIds.push(id);
+    }
+  }
+  
+  if (missingAnsweredIds.length > 0) {
+    console.error('❌ [AdaptiveAptitudeService] Exclusion list validation failed: Missing answered question IDs:', missingAnsweredIds);
+  }
+  
+  if (missingPhaseIds.length > 0) {
+    console.error('❌ [AdaptiveAptitudeService] Exclusion list validation failed: Missing phase question IDs:', missingPhaseIds);
+  }
+  
+  const isValid = missingAnsweredIds.length === 0 && missingPhaseIds.length === 0;
+  
+  if (isValid) {
+    console.log('✅ [AdaptiveAptitudeService] Exclusion list validation passed: All IDs accounted for');
+  }
+  
+  return {
+    isValid,
+    reason: isValid 
+      ? undefined 
+      : `Missing ${missingAnsweredIds.length} answered IDs and ${missingPhaseIds.length} phase IDs from exclusion list`
+  };
+}
+
+/**
+ * Validates that a question is not a duplicate
+ */
+function validateQuestionNotDuplicate(
+  question: Question,
+  excludeIds: string[],
+  excludeTexts: string[]
+): ValidationResult {
+  if (excludeIds.includes(question.id)) {
+    return { 
+      isValid: false, 
+      reason: `Question ID ${question.id} is in exclusion list` 
+    };
+  }
+  
+  if (excludeTexts.includes(question.text)) {
+    return { 
+      isValid: false, 
+      reason: `Question text already used` 
+    };
+  }
+  
+  return { isValid: true };
+}
+
+/**
+ * Converts a database session record to a TestSession object
+ */
+function dbSessionToTestSession(
+  dbSession: Record<string, unknown>,
+  responses: Response[] = [],
+  currentPhaseQuestions: Question[] = []
+): TestSession {
+  return {
+    id: dbSession.id as string,
+    studentId: dbSession.student_id as string,
+    gradeLevel: dbSession.grade_level as GradeLevel,
+    currentPhase: dbSession.current_phase as TestPhase,
+    tier: dbSession.tier as Tier | null,
+    currentDifficulty: dbSession.current_difficulty as DifficultyLevel,
+    difficultyPath: (dbSession.difficulty_path as number[]).map(d => d as DifficultyLevel),
+    questionsAnswered: dbSession.questions_answered as number,
+    correctAnswers: dbSession.correct_answers as number,
+    currentQuestionIndex: dbSession.current_question_index as number,
+    currentPhaseQuestions,
+    provisionalBand: dbSession.provisional_band as DifficultyLevel | null,
+    status: dbSession.status as 'in_progress' | 'completed' | 'abandoned',
+    createdAt: dbSession.created_at as string,
+    updatedAt: dbSession.updated_at as string,
+    completedAt: dbSession.completed_at as string | null,
+    responses,
+  };
+}
+
+/**
+ * Converts a database response record to a Response object
+ */
+function dbResponseToResponse(dbResponse: Record<string, unknown>): Response {
+  return {
+    id: dbResponse.id as string,
+    sessionId: dbResponse.session_id as string,
+    questionId: dbResponse.question_id as string,
+    selectedAnswer: dbResponse.selected_answer as 'A' | 'B' | 'C' | 'D',
+    isCorrect: dbResponse.is_correct as boolean,
+    responseTimeMs: dbResponse.response_time_ms as number,
+    difficultyAtTime: dbResponse.difficulty_at_time as DifficultyLevel,
+    subtag: dbResponse.subtag as Subtag,
+    phase: dbResponse.phase as TestPhase,
+    sequenceNumber: dbResponse.sequence_number as number,
+    createdAt: dbResponse.created_at as string,
+  };
+}
+
+// =============================================================================
+// INITIALIZE TEST
 // =============================================================================
 
 /**
@@ -581,7 +722,6 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
  * Submits an answer for the current question
  * 
  * Requirements: 5.2
- * Task 66: Now calls API instead of direct Supabase
  * 
  * @param options - Options containing sessionId, questionId, selectedAnswer, responseTimeMs
  * @returns AnswerResult with correctness, difficulty changes, and updated session
@@ -589,9 +729,13 @@ export async function getNextQuestion(sessionId: string): Promise<NextQuestionRe
 export async function submitAnswer(
   options: AdaptiveAptitudeApiService.SubmitAnswerOptions
 ): Promise<AnswerResult> {
-  console.log('📝 [AdaptiveAptitudeService] submitAnswer (API wrapper):', {
-    sessionId: options.sessionId,
-    questionId: options.questionId,
+  const { sessionId, questionId, selectedAnswer, responseTimeMs } = options;
+  
+  console.log('📝 [AdaptiveAptitudeService] submitAnswer called:', {
+    sessionId,
+    questionId,
+    selectedAnswer,
+    responseTimeMs,
   });
 
   // Fetch session from database
