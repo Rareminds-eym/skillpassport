@@ -39331,3 +39331,4 @@ using (((bucket_id = 'course-images'::text) AND (auth.role() = 'authenticated'::
   to public
 using (((bucket_id = 'course-images'::text) AND (auth.role() = 'authenticated'::text)));
 
+ 
