@@ -153,11 +153,9 @@ max_indexes = 5
 [auth]
 enabled = true
 
-site_url = "http://127.0.0.1:3000"
+site_url = []
 
-additional_redirect_urls = [
-  "https://127.0.0.1:3000",
-]
+additional_redirect_urls = []
 
 jwt_expiry = 3600
 
