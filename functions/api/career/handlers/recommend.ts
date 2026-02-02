@@ -11,8 +11,8 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { isValidUUID } from '../utils/auth';
+import { createClient } from '@supabase/supabase-js';
+import { isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';
 

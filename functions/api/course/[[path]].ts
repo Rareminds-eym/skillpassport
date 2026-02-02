@@ -1,79 +1,116 @@
 /**
  * Course API - Cloudflare Pages Function
- * Migrated from cloudflare-workers/course-api
+ * 
+ * Handles all course-related AI functionality:
+ * - AI tutor suggestions
+ * - AI tutor chat (with streaming)
+ * - AI tutor feedback
+ * - AI tutor progress tracking
+ * - AI video summarizer
  * 
  * Endpoints:
- * - /api/course/get-file-url - Generate presigned URLs for R2 files
- * - /api/course/ai-tutor-suggestions - Generate suggested questions for lessons
- * - /api/course/ai-tutor-chat - AI tutor chat with streaming
- * - /api/course/ai-tutor-feedback - Submit feedback on AI responses
- * - /api/course/ai-tutor-progress - Track student progress
- * - /api/course/ai-video-summarizer - Transcribe and summarize videos
+ * - GET /health - Health check
+ * - POST /ai-tutor-suggestions - Generate suggested questions for a lesson
+ * - POST /ai-tutor-chat - AI tutor chat with streaming responses
+ * - POST /ai-tutor-feedback - Submit feedback on AI responses
+ * - GET /ai-tutor-progress - Get student progress
+ * - POST /ai-tutor-progress - Update lesson progress
+ * - POST /ai-video-summarizer - Transcribe and summarize videos
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders } from '../../../src/functions-lib/cors';
 import { jsonResponse } from '../../../src/functions-lib/response';
-import { handleGetFileUrl } from './handlers/get-file-url';
+import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
 import { handleAiTutorSuggestions } from './handlers/ai-tutor-suggestions';
 import { handleAiTutorChat } from './handlers/ai-tutor-chat';
-import { handleAiTutorFeedback } from './handlers/ai-tutor-feedback';
-import { handleAiTutorProgress } from './handlers/ai-tutor-progress';
-import { handleAiVideoSummarizer } from './handlers/ai-video-summarizer';
+import { onRequestPost as handleAiTutorFeedback } from './handlers/ai-tutor-feedback';
+import { onRequestGet as handleAiTutorProgressGet, onRequestPost as handleAiTutorProgressPost } from './handlers/ai-tutor-progress';
+import { onRequestPost as handleAiVideoSummarizer } from './handlers/ai-video-summarizer';
 
-export const onRequest: PagesFunction = async (context) => {
+export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
 
   // Handle CORS preflight
   if (request.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      },
+    });
   }
 
   const url = new URL(request.url);
-  const pathSegments = context.params.path as string[] | undefined;
-  const path = '/' + (Array.isArray(pathSegments) ? pathSegments.join('/') : '');
+  const path = url.pathname.replace('/api/course', '');
 
   try {
-    // Route requests
-    if (path === '/get-file-url') {
-      return await handleGetFileUrl(request, env as any);
-    }
-
-    if (path === '/ai-tutor-suggestions') {
-      return await handleAiTutorSuggestions(request, env as any);
-    }
-
-    if (path === '/ai-tutor-chat') {
-      return await handleAiTutorChat(request, env as any);
-    }
-
-    if (path === '/ai-tutor-feedback') {
-      return await handleAiTutorFeedback(request, env as any);
-    }
-
-    if (path === '/ai-tutor-progress') {
-      return await handleAiTutorProgress(request, env as any);
-    }
-
-    if (path === '/ai-video-summarizer') {
-      return await handleAiVideoSummarizer(request, env as any, context.waitUntil);
-    }
-
     // Health check
-    if (path === '/health' || path === '/') {
-      return jsonResponse({ 
-        status: 'ok', 
+    if ((path === '' || path === '/' || path === '/health') && request.method === 'GET') {
+      return jsonResponse({
+        status: 'ok',
         service: 'course-api',
-        version: '2.0-pages-function',
-        endpoints: ['/get-file-url', '/ai-tutor-suggestions', '/ai-tutor-chat', '/ai-tutor-feedback', '/ai-tutor-progress', '/ai-video-summarizer'],
-        timestamp: new Date().toISOString() 
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        endpoints: [
+          'GET /health - Health check',
+          'POST /ai-tutor-suggestions - Generate suggested questions',
+          'POST /ai-tutor-chat - AI tutor chat (streaming)',
+          'POST /ai-tutor-feedback - Submit feedback',
+          'GET /ai-tutor-progress - Get progress',
+          'POST /ai-tutor-progress - Update progress',
+          'POST /ai-video-summarizer - Video transcription and summary',
+        ],
       });
     }
 
-    return jsonResponse({ error: 'Not found' }, 404);
+    // AI Tutor Suggestions
+    if (path === '/ai-tutor-suggestions' && request.method === 'POST') {
+      return handleAiTutorSuggestions(context);
+    }
 
-  } catch (error) {
-    console.error('[ERROR] course-api:', error);
-    return jsonResponse({ error: (error as Error)?.message || 'Internal server error' }, 500);
+    // AI Tutor Chat
+    if (path === '/ai-tutor-chat' && request.method === 'POST') {
+      return handleAiTutorChat(context);
+    }
+
+    // AI Tutor Feedback
+    if (path === '/ai-tutor-feedback' && request.method === 'POST') {
+      return handleAiTutorFeedback(context);
+    }
+
+    // AI Tutor Progress
+    if (path === '/ai-tutor-progress' && request.method === 'GET') {
+      return handleAiTutorProgressGet(context);
+    }
+
+    if (path === '/ai-tutor-progress' && request.method === 'POST') {
+      return handleAiTutorProgressPost(context);
+    }
+
+    // AI Video Summarizer
+    if (path === '/ai-video-summarizer' && request.method === 'POST') {
+      return handleAiVideoSummarizer(context);
+    }
+
+    // 404 for unknown routes
+    return jsonResponse(
+      {
+        error: 'Not found',
+        message: 'Unknown endpoint',
+        availableEndpoints: [
+          'GET /health - Health check',
+          'POST /ai-tutor-suggestions - Generate suggested questions',
+          'POST /ai-tutor-chat - AI tutor chat (streaming)',
+          'POST /ai-tutor-feedback - Submit feedback',
+          'GET /ai-tutor-progress - Get progress',
+          'POST /ai-tutor-progress - Update progress',
+          'POST /ai-video-summarizer - Video transcription and summary',
+        ],
+      },
+      404
+    );
+  } catch (error: any) {
+    console.error('❌ Error in course-api:', error);
+    return jsonResponse({ error: error.message || 'Internal server error' }, 500);
   }
 };

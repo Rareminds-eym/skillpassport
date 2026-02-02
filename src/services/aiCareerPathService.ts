@@ -5,9 +5,9 @@ let openaiInstance: OpenAI | null = null;
 
 function getOpenAIClient(): OpenAI {
   if (!openaiInstance) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.VITE_OPENROUTER_API_KEY;
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY || import.meta.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      throw new Error('OpenAI/OpenRouter API key is not configured. Please add VITE_OPENAI_API_KEY or VITE_OPENROUTER_API_KEY to your .env file.');
+      throw new Error('OpenAI/OpenRouter API key is not configured. Please add VITE_OPENAI_API_KEY or OPENROUTER_API_KEY to your .env file.');
     }
     openaiInstance = new OpenAI({
       apiKey,

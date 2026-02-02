@@ -89,7 +89,7 @@ VITE_SUPABASE_URL=https://dpooleduinyyzxgrcwko.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 # AI APIs (for parsing resumes)
-VITE_OPENROUTER_API_KEY=sk-or-v1-... (currently rate-limited)
+OPENROUTER_API_KEY=sk-or-v1-... (currently rate-limited)
 # VITE_GEMINI_API_KEY=your_key_here (add for free AI parsing)
 # VITE_OPENAI_API_KEY=your_key_here (add for paid AI parsing)
 ```

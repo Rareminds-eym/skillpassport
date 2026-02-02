@@ -60,3 +60,16 @@ opencode.json
 # tests/archive/
 # database/archive/
 # scripts/archive/
+
+cloudflare-workers/user-api
+cloudflare-workers/adaptive-aptitude-api
+cloudflare-workers/analyze-assessment-api
+cloudflare-workers/assessment-api
+cloudflare-workers/career-api
+cloudflare-workers/course-api
+cloudflare-workers/fetch-certificate
+cloudflare-workers/otp-api
+cloudflare-workers/question-generation-api
+cloudflare-workers/role-overview-api
+cloudflare-workers/storage-api
+cloudflare-workers/streak-api

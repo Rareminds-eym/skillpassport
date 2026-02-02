@@ -11,9 +11,10 @@
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser, sanitizeInput, generateConversationTitle } from '../utils/auth';
+
+import { authenticateUser, sanitizeInput, generateConversationTitle } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
-import { getModelForUseCase, API_CONFIG, MODEL_PROFILES } from '../../shared/ai-config';
+import { getModelForUseCase, API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
 import type { ChatRequest, StoredMessage, CareerIntent, Opportunity } from '../types';
 
 // AI modules
@@ -29,6 +30,7 @@ import { buildAssessmentContext } from '../context/assessment';
 import { buildCareerProgressContext } from '../context/progress';
 import { buildCourseContext } from '../context/courses';
 import { fetchOpportunities } from '../context/opportunities';
+
 
 export async function handleCareerChat(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
@@ -70,22 +72,8 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     return jsonResponse({ error: 'Invalid message' }, 400);
   }
 
-  // ==================== SAFETY GUARDRAILS ====================
-  const guardrailResult = runGuardrails(sanitizedMessage);
-  if (!guardrailResult.passed) {
-    console.log(`[GUARDRAIL] Blocked: ${guardrailResult.flags.join(', ')}`);
-    return jsonResponse({ 
-      blocked: true, 
-      message: getBlockedResponse(guardrailResult.flags[0] || 'default')
-    });
-  }
-
-  const processedMessage = guardrailResult.sanitizedInput || sanitizedMessage;
-
-  console.log(`[REQUEST] studentId: ${studentId}, convId: ${conversationId || 'new'}, msg: "${processedMessage.slice(0, 50)}..."`);
-
-  // Get OpenRouter API key
-  const openRouterKey = env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY;
+  // Get OpenRouter API key using shared utility
+  const { openRouter: openRouterKey } = getAPIKeys(env);
   if (!openRouterKey) {
     return jsonResponse({ error: 'AI service not configured' }, 500);
   }

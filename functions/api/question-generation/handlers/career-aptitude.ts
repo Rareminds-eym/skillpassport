@@ -91,12 +91,32 @@ export async function generateAptitudeQuestions(
                 .replace(/{{QUESTION_COUNT}}/g, batchTotal.toString())
                 .replace(/{{CATEGORIES}}/g, JSON.stringify(batchCategories, null, 2));
         } else {
-            const streamContext = STREAM_CONTEXTS[streamId] || STREAM_CONTEXTS.general;
+            // FIX: Robust fallback logic for stream context
+            // 1. Try exact match
+            // 2. Try partial match (e.g. 'btech' -> 'engineering')
+            // 3. Fallback to 'general' or 'college'
+            let contextKey = streamId;
+
+            if (!STREAM_CONTEXTS[contextKey]) {
+                if (streamId.includes('btech') || streamId.includes('engineering')) contextKey = 'engineering';
+                else if (streamId.includes('mbbs') || streamId.includes('medical')) contextKey = 'medical';
+                else if (streamId.includes('bba') || streamId.includes('mba') || streamId.includes('management')) contextKey = 'management';
+                else if (streamId.includes('bca') || streamId.includes('mca') || streamId.includes('cs') || streamId.includes('it')) contextKey = 'it_software';
+                else if (streamId.includes('com')) contextKey = 'commerce';
+                else if (streamId.includes('sc')) contextKey = 'science';
+                else if (streamId.includes('art') || streamId.includes('ba')) contextKey = 'arts';
+                else contextKey = 'college'; // Ultimate fallback
+            }
+
+            const streamContext = STREAM_CONTEXTS[contextKey] || STREAM_CONTEXTS.college || STREAM_CONTEXTS.general;
+
+            console.log(`🧠 Using stream context: '${contextKey}' for streamId: '${streamId}'`);
+
             prompt = APTITUDE_PROMPT
                 .replace(/{{QUESTION_COUNT}}/g, batchTotal.toString())
                 .replace(/{{CATEGORIES}}/g, JSON.stringify(batchCategories, null, 2))
-                .replace(/{{STREAM_CONTEXT}}/g, streamContext.context)
-                .replace(/{{CLERICAL_EXAMPLE}}/g, streamContext.clericalExample);
+                .replace(/{{STREAM_CONTEXT}}/g, streamContext?.context || 'General aptitude context')
+                .replace(/{{CLERICAL_EXAMPLE}}/g, streamContext?.clericalExample || 'GEN-123-TST');
         }
 
         const systemPrompt = isAfter10
@@ -133,11 +153,25 @@ export async function generateAptitudeQuestions(
     }));
 
     if (studentId && attemptId) {
+        // Use upsert to handle potential race conditions or re-generation
         const { error } = await supabase
-            .from('aptitude_questions')
-            .insert(processedQuestions);
+            .from('career_assessment_ai_questions')
+            .upsert({
+                student_id: studentId,
+                question_type: 'aptitude',
+                questions: processedQuestions,
+                stream_id: streamId,
+                created_at: new Date().toISOString()
+            }, {
+                onConflict: 'student_id, stream_id, question_type',
+                ignoreDuplicates: false // Update if exists
+            });
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Database error saving aptitude questions:', error);
+            // Don't throw error here to allow the generated questions to be returned to frontend
+            // identifying this as a non-fatal error for the user experience
+        }
     }
 
     console.log(`📦 Returning ${processedQuestions.length} questions`);

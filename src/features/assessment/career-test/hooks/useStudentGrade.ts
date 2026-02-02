@@ -47,7 +47,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
   const [profileData, setProfileData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Track if fetch is complete to avoid duplicate calls
   const fetchComplete = useRef(false);
 
@@ -61,8 +61,8 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
     try {
       setLoading(true);
       setError(null);
-      
-      console.log('🚀 useStudentGrade: Fetching student data...');
+
+
       const startTime = performance.now();
 
       // OPTIMIZED: Single query with OR condition to check both user_id and id
@@ -84,9 +84,9 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         `)
         .or(`user_id.eq.${userId}${userEmail ? `,email.eq.${userEmail}` : ''}`)
         .maybeSingle();
-      
+
       const endTime = performance.now();
-      console.log(`✅ useStudentGrade: Query completed in ${Math.round(endTime - startTime)}ms`);
+
 
       if (fetchError) {
         console.error('Error fetching student grade:', fetchError);
@@ -97,7 +97,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
       if (student) {
         // Store complete profile data for missing field analysis
         setProfileData(student);
-        
+
         // Save student ID
         setStudentId(student.id);
 
@@ -108,9 +108,9 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         // Set program name if available
         // Priority: branch_field (from settings) > program.name > program.code > course_name (legacy)
         const programName = student.branch_field ||
-                           (student.program as any)?.name || 
-                           (student.program as any)?.code || 
-                           student.course_name;
+          (student.program as any)?.name ||
+          (student.program as any)?.code ||
+          student.course_name;
         if (programName) {
           setStudentProgram(programName);
         }
@@ -137,7 +137,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         setStudentGrade(effectiveGrade);
         setStudentSchoolClassId(student.school_class_id);
       }
-      
+
       fetchComplete.current = true;
     } catch (err) {
       console.error('Error fetching student grade:', err);
@@ -152,7 +152,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
   }, [fetchStudentGrade]);
 
   // Calculate detected grade level
-  const detectedGradeLevel = studentGrade 
+  const detectedGradeLevel = studentGrade
     ? getGradeLevelFromGrade(studentGrade) as GradeLevel | null
     : null;
 

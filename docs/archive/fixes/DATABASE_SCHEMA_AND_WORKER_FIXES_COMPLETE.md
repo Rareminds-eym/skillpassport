@@ -44,7 +44,7 @@ const { data: educatorData } = await supabase
 
 - `env.SUPABASE_URL` → `env.VITE_SUPABASE_URL`
 - `env.SUPABASE_ANON_KEY` → `env.VITE_SUPABASE_ANON_KEY`
-- `env.OPENROUTER_API_KEY` → `env.VITE_OPENROUTER_API_KEY`
+- `env.OPENROUTER_API_KEY` → `env.OPENROUTER_API_KEY`
 
 **Files Updated**:
 - `cloudflare-workers/course-api/src/index.ts`
@@ -110,7 +110,7 @@ Make sure your Cloudflare Workers have these secrets set:
 wrangler secret put VITE_SUPABASE_URL
 wrangler secret put VITE_SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-wrangler secret put VITE_OPENROUTER_API_KEY
+wrangler secret put OPENROUTER_API_KEY
 
 # For storage-api worker
 wrangler secret put VITE_SUPABASE_URL

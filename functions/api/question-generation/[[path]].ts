@@ -28,6 +28,7 @@ import {
   generateSingleQuestion
 } from './handlers/adaptive';
 import { generateAssessment } from './handlers/course-assessment';
+import { handleStreamingAptitude } from './handlers/streaming';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -62,7 +63,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         env: {
           hasSupabaseUrl: !!(env.SUPABASE_URL || env.VITE_SUPABASE_URL),
           hasSupabaseKey: !!(env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY),
-          hasOpenRouter: !!(env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY)
+          hasOpenRouter: !!(env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY)
         }
       });
     }
@@ -86,13 +87,12 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     if (path === '/career-assessment/generate-aptitude/stream' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Streaming aptitude generation not yet implemented. See README.md for details.',
-        },
-        501
-      );
+      try {
+        return await handleStreamingAptitude(request, env);
+      } catch (error: any) {
+        console.error('❌ Streaming aptitude error:', error);
+        return jsonResponse({ error: error.message || 'Failed to stream aptitude questions' }, 500);
+      }
     }
 
     if (path === '/career-assessment/generate-knowledge' && request.method === 'POST') {
@@ -113,6 +113,23 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     // --- Adaptive Assessment Endpoints ---
+
+    if (path === '/generate' && request.method === 'POST') {
+      try {
+        const body = await request.json() as any;
+        const { courseName, level, questionCount = 10 } = body;
+
+        if (!courseName || !level) {
+          return jsonResponse({ error: 'Course name and level are required' }, 400);
+        }
+
+        const result = await generateAssessment(env, courseName, level, questionCount);
+        return jsonResponse(result);
+      } catch (error: any) {
+        console.error('❌ Course assessment generation error:', error);
+        return jsonResponse({ error: error.message || 'Failed to generate course assessment' }, 500);
+      }
+    }
 
     if (path === '/generate/diagnostic' && request.method === 'POST') {
       try {
@@ -139,20 +156,22 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     if (path === '/generate/stability' && request.method === 'POST') {
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Stability confirmation generation not yet implemented. See README.md for details.',
-        },
-        501
-      );
+      try {
+        const body = await request.json() as any;
+        const { gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts } = body;
+        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts);
+        return jsonResponse(result);
+      } catch (error: any) {
+        console.error('❌ Stability generation error:', error);
+        return jsonResponse({ error: error.message }, 500);
+      }
     }
 
     if (path === '/generate/single' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds } = body;
-        const result = await generateSingleQuestion(env, gradeLevel, phase, difficulty, subtag, excludeQuestionIds);
+        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts } = body;
+        const result = await generateSingleQuestion(env, gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Single question generation error:', error);
@@ -168,6 +187,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         availableEndpoints: [
           'GET /health - Health check',
           'POST /career-assessment/generate-aptitude - Generate 50 aptitude questions',
+          'POST /career-assessment/generate-aptitude/stream - Stream aptitude questions with SSE',
           'POST /career-assessment/generate-knowledge - Generate 20 knowledge questions',
           'POST /generate - Generate course-specific assessment',
           'POST /generate/diagnostic - Generate diagnostic screener',

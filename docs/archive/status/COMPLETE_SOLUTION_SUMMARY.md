@@ -149,7 +149,7 @@ const keywords = await generateDomainKeywords(field);
 
 Required in production:
 ```env
-VITE_OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
 VITE_APP_URL=https://your-production-url.com
 ```
 

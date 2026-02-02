@@ -45,7 +45,7 @@ Features:
 Add your OpenRouter API key to `.env`:
 
 ```env
-VITE_OPENROUTER_API_KEY=your_api_key_here
+OPENROUTER_API_KEY=your_api_key_here
 ```
 
 **Get your API key:**
@@ -189,7 +189,7 @@ Potential improvements:
 ## Troubleshooting
 
 ### Issue: "OpenRouter API key not configured"
-**Solution:** Add `VITE_OPENROUTER_API_KEY` to your `.env` file
+**Solution:** Add `OPENROUTER_API_KEY` to your `.env` file
 
 ### Issue: Questions not generating
 **Solution:** 
