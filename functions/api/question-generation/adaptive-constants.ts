@@ -180,10 +180,12 @@ VARIETY REQUIREMENTS FOR MIDDLE SCHOOL:
 
 ⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
 - DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
+- DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
 - ALL information must be provided in TEXT FORM ONLY
-- For data interpretation: Provide data as text descriptions
-- For spatial reasoning: Use verbal descriptions of transformations
-- For pattern recognition: Describe sequences in text format
+- For data interpretation: Provide ALL data as text (e.g., "A company's sales were: Q1: $50,000, Q2: $65,000, Q3: $80,000, Q4: $72,000")
+- For spatial reasoning: Describe transformations in words (e.g., "If you rotate a square 45 degrees clockwise, what shape does it appear to form?")
+- For pattern recognition: Describe sequences in text (e.g., "In the sequence 3, 6, 12, 24, what is the next number?")
+- NEVER assume visual elements exist - the system does not support images
 - Focus on verbal, numerical, and logical reasoning that can be expressed purely in text
 
 🎯 COGNITIVE EXPECTATIONS FOR HIGH SCHOOL (Grades 9-12):
@@ -212,12 +214,325 @@ CRITICAL GUIDELINES FOR HIGH SCHOOL:
 - Use more sophisticated vocabulary and concepts appropriate for 14-18 year olds
 - Questions can involve more complex multi-step reasoning (3-5 steps)
 - Use scenarios relevant to teenagers: academics, career planning, technology, social situations, current affairs
-- Mathematical concepts: algebra, basic statistics, percentages, ratios, probability basics, coordinate geometry
-- Logical reasoning: syllogisms, conditional statements, pattern analysis, deductive reasoning
-- Verbal reasoning: advanced analogies, vocabulary in context, reading comprehension, inference
 - Include more abstract thinking challenges
 - Can reference real-world applications and career contexts
 - Questions should prepare students for competitive entrance exams
+- Keep questions text-based - describe all information verbally
+
+📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (High School Level - Use Diverse Topics):
+
+**Advanced Algebra:**
+- Quadratic equations (factorization, formula, discriminant)
+- Simultaneous equations (two variables, substitution, elimination)
+- Polynomials and algebraic expressions
+- Inequalities and absolute values
+- Functions and their properties (domain, range)
+- Indices and surds
+- Logarithms (basic properties)
+
+**Statistics & Probability:**
+- Mean, median, mode, range (including grouped data described in text)
+- Probability of events (independent, dependent)
+- Permutations and combinations (basic)
+- Expected value and outcomes
+- Data analysis from text descriptions
+- Statistical reasoning and inference
+- Probability distributions (basic)
+
+**Geometry & Mensuration (Text-Based):**
+- Coordinate geometry (distance, midpoint, slope - described verbally)
+- Area and perimeter (complex shapes described in words)
+- Volume and surface area (3D shapes described in text)
+- Geometric properties and theorems
+- Circles (properties described verbally)
+- Triangles (similarity, congruence, Pythagoras)
+- Spatial visualization through text descriptions
+
+**Advanced Arithmetic:**
+- Percentage (complex applications, successive changes)
+- Ratio and proportion (advanced problems, mixtures)
+- Profit, loss, discount (business scenarios, markup)
+- Compound interest (multiple periods, continuous compounding)
+- Time, speed, distance (relative motion, average speed)
+- Averages (weighted, combined)
+- Allegations and mixtures
+
+**Number Theory:**
+- Prime numbers and factorization
+- HCF and LCM (advanced applications)
+- Divisibility and remainders
+- Modular arithmetic
+- Number properties and patterns
+- Digital roots and digit sums
+
+**Data Sufficiency:**
+- Analyzing given information (provided as text)
+- Determining adequacy of data
+- Logical deduction from statements
+- Combining multiple data points
+
+**VARIETY REQUIREMENT:** Rotate through these topics to ensure diverse question types. Don't use the same topic more than twice in a row.
+
+🧠 LOGICAL REASONING CONCEPTS (High School Level - Text-Based):
+
+**Syllogisms & Deductive Logic:**
+- Categorical syllogisms (All A are B, Some B are C, No A are C)
+- Conditional reasoning (If-then statements, modus ponens, modus tollens)
+- Contrapositive and inverse relationships
+- Logical equivalence and negation
+- Multi-premise arguments and conclusions
+- Venn diagram reasoning (described in text)
+
+**Pattern Recognition:**
+- Number series (arithmetic, geometric, Fibonacci, mixed)
+- Letter series and coding-decoding
+- Analogies (A:B::C:? with complex relationships)
+- Classification (odd one out with reasoning)
+- Sequences described in text
+- Rule identification and application
+
+**Critical Reasoning:**
+- Assumption identification (hidden premises)
+- Strengthening and weakening arguments
+- Inference drawing (must be true, could be true)
+- Cause and effect relationships
+- Logical fallacies (ad hominem, false dichotomy, etc.)
+- Paradox resolution
+
+**Analytical Reasoning:**
+- Seating arrangements (linear, circular - described in text)
+- Blood relations and family trees
+- Direction sense and distance
+- Ranking and ordering
+- Puzzle solving (logic grids described verbally)
+- Scheduling and sequencing
+
+**Statement Analysis:**
+- Conclusions from statements
+- Logical consistency checking
+- Necessary vs sufficient conditions
+- Implications and inferences
+- Argument evaluation
+- Logical validity vs soundness
+
+**VARIETY REQUIREMENT:** Mix different types of logical reasoning. Alternate between deductive, inductive, and analytical reasoning.
+
+📚 VERBAL REASONING CONCEPTS (High School Level):
+
+**Vocabulary & Word Relationships:**
+- Synonyms and antonyms (advanced vocabulary)
+- Analogies (complex relationships: part-whole, cause-effect, degree, etc.)
+- Word associations and semantic relationships
+- Contextual vocabulary (words in sentences)
+- Idioms, phrases, and expressions
+- Etymology and word roots
+
+**Reading Comprehension:**
+- Main idea and central theme identification
+- Inference and implication (reading between lines)
+- Author's tone, purpose, and perspective
+- Fact vs opinion distinction
+- Supporting details and evidence
+- Critical reading and analysis
+- Passage-based reasoning
+
+**Sentence Completion:**
+- Context clues and logical flow
+- Vocabulary in context
+- Coherence and cohesion
+- Transition words and connectors
+- Parallel structure
+- Semantic consistency
+
+**Verbal Logic:**
+- Statement and assumptions
+- Conclusions from passages
+- Strengthening/weakening arguments
+- Paradox resolution
+- Critical analysis of arguments
+- Logical consistency in text
+
+**Language Skills:**
+- Grammar and usage (advanced)
+- Sentence correction and improvement
+- Paragraph organization and sequencing
+- Logical flow and coherence
+- Error identification
+- Style and clarity
+
+**VARIETY REQUIREMENT:** Rotate through vocabulary, comprehension, and logic-based verbal questions. Use diverse topics and contexts.
+
+🎨 SPATIAL REASONING CONCEPTS (High School Level - TEXT-ONLY):
+
+**Mental Rotation (Described in Text):**
+- 2D shape rotation described verbally (e.g., "If you rotate letter 'N' 180 degrees...")
+- 3D object rotation described in words
+- Mirror images and reflections described (e.g., "What does 'MATH' look like in a mirror?")
+- Folding and unfolding described (e.g., "If you fold a square paper in half twice and cut a corner...")
+- Perspective changes described verbally
+
+**Spatial Visualization (Text-Based):**
+- Paper folding and cutting patterns described in words
+- Cube and dice problems described (e.g., "A cube has 1 opposite 6, 2 opposite 5, 3 opposite 4...")
+- Hidden figures described verbally
+- Figure completion described in text
+- Block counting described (e.g., "A structure has 3 blocks in bottom row, 2 in middle, 1 on top...")
+- Cross-sections described
+
+**Geometric Reasoning (Verbal Description):**
+- Shape properties and relationships
+- Symmetry described (e.g., "Which letter has both horizontal and vertical symmetry?")
+- Tessellations and patterns described
+- Perspective and multiple views described
+- Spatial transformations described in words
+- Congruence and similarity
+
+**Pattern Recognition (Visual Concepts in Text):**
+- Visual sequences described verbally
+- Shape series described in text
+- Relationships described (e.g., "If triangle relates to 3 sides, what relates to 8 sides?")
+- Odd one out described
+- Analogies described verbally
+- Rule-based transformations in text
+
+**Coordinate Geometry (Spatial - Text-Based):**
+- Distance and midpoint (e.g., "Point A is at (2,3) and B is at (5,7). What is the distance?")
+- Slope and parallel/perpendicular lines
+- Geometric shapes on coordinate plane described
+- Transformations described verbally
+- Symmetry on coordinate plane
+
+**VARIETY REQUIREMENT:** Mix 2D and 3D problems. Alternate between rotation, visualization, and geometric reasoning. Always describe spatially.
+
+📊 DATA INTERPRETATION CONCEPTS (High School Level - TEXT-ONLY):
+
+**Statistical Analysis (Data in Text):**
+- Mean, median, mode, range (data provided as text)
+- Percentages and proportions (complex calculations)
+- Ratios and comparisons (multiple data sets in text)
+- Percentage change and growth rates
+- Weighted averages and combined means
+- Standard deviation (basic concept)
+
+**Data Representation (Described in Text):**
+- Tables described verbally (e.g., "Sales data: Product A: Q1=$10k, Q2=$15k, Q3=$12k...")
+- Bar charts described (e.g., "In a survey, 30 chose A, 45 chose B, 25 chose C...")
+- Line graphs described (e.g., "Temperature rose from 20°C at 6am to 35°C at 2pm...")
+- Pie charts described (e.g., "Budget allocation: 40% salaries, 30% operations, 20% marketing, 10% other")
+- Comparative data sets in text
+- Mixed data formats described verbally
+
+**Data Reasoning:**
+- Trend identification from text descriptions
+- Comparison and ranking (multiple criteria)
+- Maximum/minimum values and extremes
+- Data sufficiency (is given data adequate?)
+- Logical deductions from data
+- Interpolation and extrapolation
+
+**Quantitative Comparison:**
+- Comparing quantities (which is greater?)
+- Estimating values (approximation)
+- Order of magnitude
+- Relative changes (absolute vs percentage)
+- Proportional reasoning
+- Rate of change
+
+**Real-World Applications (Text-Based):**
+- Business data described (sales, revenue, profit, market share)
+- Scientific data described (experiments, observations, measurements)
+- Survey results and demographics in text
+- Economic indicators described (GDP, inflation, unemployment)
+- Performance metrics (scores, ratings, rankings)
+- Financial data described (investments, returns, interest)
+
+**VARIETY REQUIREMENT:** Use diverse data contexts. Mix business, scientific, social, and economic data. Vary the complexity of calculations. Always provide data as text.
+
+🔢 PATTERN RECOGNITION CONCEPTS (High School Level):
+
+**Number Patterns:**
+- Arithmetic sequences (linear, constant difference)
+- Geometric sequences (exponential, constant ratio)
+- Fibonacci-type sequences (sum of previous terms)
+- Square/cube sequences (perfect squares, cubes)
+- Prime number patterns
+- Mixed operation patterns (add, multiply, alternate)
+- Recursive patterns
+
+**Algebraic Patterns:**
+- Function patterns (linear, quadratic, exponential)
+- Recursive relationships (f(n) = f(n-1) + ...)
+- Polynomial patterns
+- Exponential growth and decay
+- Pattern generalization (finding nth term)
+- Formula derivation
+
+**Logical Patterns:**
+- Alternating patterns (odd/even positions)
+- Nested patterns (patterns within patterns)
+- Multi-rule patterns (different rules for different positions)
+- Position-based patterns (depends on index)
+- Conditional patterns (if-then rules)
+- Cyclic patterns (repeating cycles)
+
+**Abstract Patterns:**
+- Letter sequences (alphabetical, positional)
+- Symbol patterns described in text
+- Code patterns (substitution, transformation)
+- Relationship patterns (between elements)
+- Word patterns
+
+**Problem-Solving Patterns:**
+- Identifying underlying rules
+- Extending sequences (finding next terms)
+- Finding missing terms (in middle of sequence)
+- Pattern prediction (future values)
+- Rule formulation (expressing pattern as formula)
+- Multiple pattern recognition (overlapping patterns)
+
+**VARIETY REQUIREMENT:** Mix numerical, algebraic, and abstract patterns. Vary the complexity and number of terms given.
+
+🎯 COMPETITIVE EXAM ALIGNMENT (High School):
+
+**JEE Main/Advanced Style:**
+- Multi-concept integration (combining algebra, geometry, arithmetic)
+- Application-based problems (real-world contexts)
+- Time-efficient solving techniques (shortcuts, elimination)
+- Conceptual understanding over memorization
+- Multi-step problem solving
+- All concepts described in text
+
+**NEET Style:**
+- Logical reasoning for scientific concepts
+- Data interpretation for experiments (described in text)
+- Analytical thinking in scientific contexts
+- Pattern recognition in data
+- Quantitative aptitude for calculations
+- Scientific reasoning
+
+**CAT/Management Style:**
+- Data interpretation and analysis (data provided as text)
+- Logical reasoning puzzles (arrangements, selections described verbally)
+- Quantitative aptitude (arithmetic, algebra, geometry)
+- Verbal ability and reading comprehension
+- Time management (quick solving)
+- Approximation and estimation
+
+**CLAT/Law Style:**
+- Legal reasoning patterns (principles and facts)
+- Logical deduction (syllogisms, arguments)
+- Critical reasoning (assumptions, inferences)
+- Analytical reasoning (puzzles described in text)
+- Reading comprehension (passages)
+- Argument evaluation
+
+**SAT Style:**
+- Evidence-based reading (passage analysis)
+- Problem-solving and data analysis
+- Heart of algebra (linear equations, systems)
+- Passport to advanced math (quadratics, functions)
+- Additional topics (geometry described verbally)
+- Text-based problem solving
 
 🔄 SUBTAG ROTATION ENFORCEMENT:
 - NEVER use the same subtag consecutively
