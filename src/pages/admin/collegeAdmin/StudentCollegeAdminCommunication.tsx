@@ -673,13 +673,14 @@ const StudentCollegeAdminCommunication = () => {
           role += ` (${specialization})`;
         }
         
-        const isOnline = isUserOnlineGlobal(conv.educator_id);
+        const isOnline = isUserOnlineGlobal(conv.college_educator?.user_id);
         console.log('🔍 [CollegeAdmin] Educator online check:', {
           educatorId: conv.educator_id,
+          educatorUserId: conv.college_educator?.user_id,
           educatorName,
           isOnline,
-          checkedWith: 'isUserOnlineGlobal',
-          educatorUserId: conv.college_educator?.user_id,
+          checkedWith: 'isUserOnlineGlobal(college_educator.user_id)',
+          note: 'Fixed: Using user_id instead of educator_id for presence check',
           conversationData: conv.college_educator
         });
         
@@ -825,7 +826,7 @@ const StudentCollegeAdminCommunication = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-2xl font-bold mb-6">Messages</h1>
+      <h1 className="text-2xl font-bold mb-0">Messages</h1>
 
       {/* Student Messages Section */}
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 mb-6">
