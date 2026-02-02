@@ -987,8 +987,12 @@ export class MessageService {
             created_at,
             updated_at,
             deleted_by_student,
+            school_id,
+            college_id,
             recruiter:recruiters(id, name, email, phone),
-            school_class:school_classes(id, name, grade, section)
+            school_class:school_classes(id, name, grade, section),
+            school_organization:organizations!school_id(admin_id),
+            college_organization:organizations!college_id(admin_id)
           `)
           .eq(column, userId);
       } else {

@@ -45,6 +45,7 @@ const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState(conversationIdFromUrl);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [adminUserIds, setAdminUserIds] = useState({});
   const [showMenu, setShowMenu] = useState(null);
   // Read tab from URL parameter, default based on available tabs
   const tabFromUrl = searchParams.get('tab');
@@ -306,6 +307,99 @@ const Messages = () => {
     }
   }, [studentId, loadingStudentData, userEmail]);
 
+  // Helper functions for admin online status - MOVED UP to fix initialization order
+  const getSchoolAdminUserId = useCallback(async (conversation) => {
+    console.log('🔍 [DEBUG] Checking admin fields:', {
+      school_organization: conversation.school_organization,
+      college_organization: conversation.college_organization,
+      conversation_type: conversation.conversation_type,
+      school_id: conversation.school_id,
+      college_id: conversation.college_id
+    });
+    
+    // Try JOIN data first (if it works)
+    if (conversation.conversation_type === 'student_admin' && conversation.school_organization?.admin_id) {
+      return conversation.school_organization.admin_id;
+    }
+    if (conversation.conversation_type === 'student_college_admin' && conversation.college_organization?.admin_id) {
+      return conversation.college_organization.admin_id;
+    }
+    
+    // Dynamic lookup for school admin
+    if (conversation.conversation_type === 'student_admin' && conversation.school_id) {
+      try {
+        const { data: schoolOrg } = await supabase
+          .from('organizations')
+          .select('admin_id')
+          .eq('id', conversation.school_id)
+          .eq('organization_type', 'school')
+          .single();
+        
+        if (schoolOrg?.admin_id) {
+          console.log('✅ [DEBUG] Found school admin dynamically:', schoolOrg.admin_id);
+          return schoolOrg.admin_id;
+        }
+      } catch (error) {
+        console.error('❌ [DEBUG] Error fetching school admin:', error);
+      }
+    }
+    
+    // Dynamic lookup for college admin
+    if (conversation.conversation_type === 'student_college_admin' && conversation.college_id) {
+      try {
+        const { data: collegeOrg } = await supabase
+          .from('organizations')
+          .select('admin_id')
+          .eq('id', conversation.college_id)
+          .eq('organization_type', 'college')
+          .single();
+        
+        if (collegeOrg?.admin_id) {
+          console.log('✅ [DEBUG] Found college admin dynamically:', collegeOrg.admin_id);
+          return collegeOrg.admin_id;
+        }
+      } catch (error) {
+        console.error('❌ [DEBUG] Error fetching college admin:', error);
+      }
+    }
+    
+    return null;
+  }, []);
+
+  // Fetch admin user IDs dynamically
+  useEffect(() => {
+    const fetchAdminUserIds = async () => {
+      if (!conversations || conversations.length === 0) return;
+      
+      const adminConversations = conversations.filter(conv => 
+        (conv.conversation_type === 'student_admin' || conv.conversation_type === 'student_college_admin') &&
+        !adminUserIds[conv.id] // Only fetch if we don't have it yet
+      );
+      
+      if (adminConversations.length === 0) return;
+      
+      console.log('🔍 [Student Messages] Fetching admin user IDs for conversations:', adminConversations.length);
+      
+      const newAdminUserIds = { ...adminUserIds };
+      
+      for (const conv of adminConversations) {
+        try {
+          const adminUserId = await getSchoolAdminUserId(conv);
+          if (adminUserId) {
+            newAdminUserIds[conv.id] = adminUserId;
+            console.log('✅ [Student Messages] Found admin ID for conversation:', conv.id, adminUserId);
+          }
+        } catch (error) {
+          console.error('❌ [Student Messages] Error fetching admin ID for conversation:', conv.id, error);
+        }
+      }
+      
+      setAdminUserIds(newAdminUserIds);
+    };
+    
+    fetchAdminUserIds();
+  }, [conversations, adminUserIds, getSchoolAdminUserId]);
+
   // Fetch messages for selected conversation - call all hooks unconditionally
   const recruiterMessages = useStudentMessages({
     studentId,
@@ -345,6 +439,33 @@ const Messages = () => {
 
   // Use shared global presence context (no duplicate subscription)
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
+
+  const getAdminOnlineStatus = useCallback((conversation) => {
+    console.log('🔍 [DEBUG] Full conversation object:', conversation);
+    
+    if (conversation.conversation_type === 'student_admin' || conversation.conversation_type === 'student_college_admin') {
+      const adminUserId = adminUserIds[conversation.id];
+      // Fix: Check user.userId since globalOnlineUsers contains objects
+      const isOnline = adminUserId ? globalOnlineUsers.some(user => user.userId === adminUserId) : false;
+      
+      console.log('✅ [Student Messages] Admin online status:', {
+        conversationId: conversation.id,
+        conversationType: conversation.conversation_type,
+        adminUserId,
+        isOnline,
+        globalOnlineUsers
+      });
+      
+      console.log('🔍 Online user IDs:', globalOnlineUsers.map(user => user.userId || user));
+      console.log('🔍 Raw globalOnlineUsers:', globalOnlineUsers);
+      console.log('🔍 User types online:', globalOnlineUsers.map(user => ({ userId: user.userId, userType: user.userType })));
+      console.log('🔍 Looking for admin ID:', adminUserId);
+      console.log('🔍 Admin is in list?', globalOnlineUsers.some(user => user.userId === adminUserId));
+      
+      return isOnline;
+    }
+    return false;
+  }, [globalOnlineUsers, adminUserIds]);
 // ADD THIS DEBUG LOG HERE:
 console.log('🔍 [STUDENT] GlobalPresence Debug:', {
   isUserOnlineGlobal: typeof isUserOnlineGlobal,
@@ -730,7 +851,7 @@ console.log('🔍 Checking online for educator:', {
           lastMessage: conv.last_message_preview || 'No messages yet',
           time: timeDisplay,
           unread: conv.student_unread_count || 0,
-          online: false, // School admin online status not tracked the same way
+          online: getAdminOnlineStatus(conv), // Use dynamic admin online status
           schoolId: conv.school_id,
           subject: conv.subject,
           type: 'admin'
@@ -764,7 +885,7 @@ console.log('🔍 Checking online for educator:', {
           lastMessage: conv.last_message_preview || 'No messages yet',
           time: timeDisplay,
           unread: conv.student_unread_count || 0,
-          online: false, // College admin online status not tracked the same way
+          online: getAdminOnlineStatus(conv), // Use dynamic admin online status
           collegeId: conv.college_id,
           subject: conv.subject,
           type: 'college_admin'
