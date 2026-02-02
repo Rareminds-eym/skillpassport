@@ -91,6 +91,7 @@ const PrintView = ({
         riasecNames={riasecNames}
         streamRecommendation={streamRecommendation}
         studentAcademicData={studentAcademicData}
+        gradeLevel={gradeLevel}
       />
     );
   }

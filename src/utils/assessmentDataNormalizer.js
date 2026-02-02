@@ -94,6 +94,31 @@ export const normalizeAssessmentResults = (results) => {
         });
     }
 
+    // 🔧 CRITICAL FIX: Lift adaptiveAptitudeResults to top level for PDF components
+    if (normalized.gemini_results?.adaptiveAptitudeResults && !normalized.adaptiveAptitudeResults) {
+        console.log('🔧 Lifting adaptiveAptitudeResults from gemini_results to top level');
+        normalized.adaptiveAptitudeResults = normalized.gemini_results.adaptiveAptitudeResults;
+        console.log('✅ adaptiveAptitudeResults now available at top level');
+    }
+
+    // 🔧 CRITICAL FIX: Lift characterStrengths to top level for PDF components
+    if (normalized.gemini_results?.characterStrengths && !normalized.characterStrengths) {
+        console.log('🔧 Lifting characterStrengths from gemini_results to top level');
+        normalized.characterStrengths = normalized.gemini_results.characterStrengths;
+    }
+
+    // 🔧 CRITICAL FIX: Lift learningStyle to top level for PDF components
+    if (normalized.gemini_results?.learningStyle && !normalized.learningStyle) {
+        console.log('🔧 Lifting learningStyle from gemini_results to top level');
+        normalized.learningStyle = normalized.gemini_results.learningStyle;
+    }
+
+    // 🔧 CRITICAL FIX: Lift careerFit to top level for PDF components
+    if (normalized.gemini_results?.careerFit && !normalized.careerFit) {
+        console.log('🔧 Lifting careerFit from gemini_results to top level');
+        normalized.careerFit = normalized.gemini_results.careerFit;
+    }
+
     // Fix aptitude scores if needed
     if (normalized.aptitude && normalized.gemini_results?.aptitude) {
         const topLevelScores = normalized.aptitude.scores || {};

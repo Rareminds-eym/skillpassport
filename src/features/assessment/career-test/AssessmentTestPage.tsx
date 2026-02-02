@@ -344,7 +344,14 @@ const AssessmentTestPage: React.FC = () => {
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
     onTestComplete: (testResults) => {
+      console.log('✅ Adaptive aptitude test completed:', testResults);
+      
+      // 🔧 CRITICAL FIX: Store both results AND session ID for database linking
       flow.setAnswer('adaptive_aptitude_results', testResults);
+      flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
+      
+      console.log('📊 Stored adaptive aptitude session ID:', testResults.sessionId);
+      
       // Always call completeSection to show the section complete screen
       // The auto-submit useEffect will handle submission if it's the last section
       flow.completeSection();
