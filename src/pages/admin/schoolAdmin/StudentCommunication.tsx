@@ -83,9 +83,16 @@ const StudentCommunication = () => {
   const { data: schoolData } = useQuery({
     queryKey: ['school-admin-school', schoolAdminId],
     queryFn: async () => {
-      if (!schoolAdminId) return null;
+      console.log('🔍 [SCHOOL-LOOKUP] === SCHOOL ID DEBUG START ===');
+      console.log('📋 School Admin ID:', schoolAdminId);
+      
+      if (!schoolAdminId) {
+        console.log('❌ No school admin ID, returning null');
+        return null;
+      }
       
       // First try school_educators table
+      console.log('📤 Querying school_educators table...');
       const { data, error } = await supabase
         .from('school_educators')
         .select('school_id')
@@ -93,31 +100,46 @@ const StudentCommunication = () => {
         .eq('role', 'school_admin')
         .maybeSingle();
       
+      console.log('📥 School educators query result:', { data, error });
+      
       if (data?.school_id) {
+        console.log('✅ Found school ID in school_educators:', data.school_id);
+        console.log('🔍 [SCHOOL-LOOKUP] === SCHOOL ID DEBUG END ===');
         return { school_id: data.school_id };
       }
       
       // Fallback: Check organizations table for school admins
+      console.log('📤 Trying fallback: organizations table...');
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('📋 Current user:', user?.id, user?.email);
+      
       if (user) {
-        const { data: org } = await supabase
+        const { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('id, name')
           .eq('organization_type', 'school')
           .or(`admin_id.eq.${user.id},email.eq.${user.email}`)
           .maybeSingle();
         
+        console.log('📥 Organizations query result:', { org, orgError });
+        
         if (org?.id) {
+          console.log('✅ Found school ID in organizations:', org.id);
+          console.log('🔍 [SCHOOL-LOOKUP] === SCHOOL ID DEBUG END ===');
           return { school_id: org.id };
         }
       }
       
+      console.log('❌ No school ID found in any table');
+      console.log('🔍 [SCHOOL-LOOKUP] === SCHOOL ID DEBUG END ===');
       return null;
     },
     enabled: !!schoolAdminId,
   });
   
   const schoolId = schoolData?.school_id;
+  
+  console.log('🏫 [FINAL-SCHOOL-ID] School ID for queries:', schoolId);
   
   // Fetch active conversations with students using the same pattern as educator
   const { data: activeStudentConversations = [], isLoading: loadingActiveStudents, refetch: refetchActiveStudents } = useQuery({
@@ -177,20 +199,70 @@ const StudentCommunication = () => {
   const { data: activeEducatorConversations = [], isLoading: loadingActiveEducators, refetch: refetchActiveEducators } = useQuery({
     queryKey: ['school-admin-educator-conversations', schoolId, 'active'],
     queryFn: async () => {
-      if (!schoolId) return [];
-      const { data, error } = await supabase
+      console.log('🔍 [EDUCATOR-CONVERSATIONS] === FETCH DEBUG START ===');
+      console.log('📋 School ID:', schoolId);
+      
+      if (!schoolId) {
+        console.log('❌ No school ID, returning empty array');
+        return [];
+      }
+      
+      console.log('📤 Executing query for active educator conversations...');
+      
+      // 1. Get conversations
+      const { data: conversations, error } = await supabase
         .from('conversations')
-        .select(`
-          *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
-        `)
+        .select('*')
         .eq('school_id', schoolId)
         .eq('conversation_type', 'educator_admin')
         .eq('deleted_by_admin', false)
         .order('last_message_at', { ascending: false, nullsFirst: false });
       
-      if (error) throw error;
-      return data || [];
+      console.log('📥 Conversations query result:', { conversations, error, dataLength: conversations?.length });
+      
+      if (error) {
+        console.error('❌ Conversations query error:', error);
+        throw error;
+      }
+      
+      if (!conversations || conversations.length === 0) {
+        console.log('✅ No conversations found, returning empty array');
+        console.log('🔍 [EDUCATOR-CONVERSATIONS] === FETCH DEBUG END ===');
+        return [];
+      }
+      
+      // 2. Get educator IDs and fetch their details
+      const educatorIds = conversations.map(c => c.educator_id).filter(Boolean);
+      console.log('📋 Educator IDs to fetch:', educatorIds);
+      
+      if (educatorIds.length === 0) {
+        console.log('✅ No educator IDs found, returning conversations without educator data');
+        console.log('🔍 [EDUCATOR-CONVERSATIONS] === FETCH DEBUG END ===');
+        return conversations;
+      }
+      
+      const { data: educators, error: educatorError } = await supabase
+        .from('school_educators')
+        .select('id, first_name, last_name, email, phone_number, photo_url')
+        .in('id', educatorIds);
+      
+      console.log('📥 Educators query result:', { educators, educatorError, educatorsLength: educators?.length });
+      
+      if (educatorError) {
+        console.error('❌ Educators query error:', educatorError);
+        // Return conversations without educator data rather than failing completely
+        return conversations;
+      }
+      
+      // 3. Merge the data
+      const conversationsWithEducators = conversations.map(conv => ({
+        ...conv,
+        school_educators: educators?.find(edu => edu.id === conv.educator_id) || null
+      }));
+      
+      console.log('✅ Final conversations with educators:', conversationsWithEducators);
+      console.log('🔍 [EDUCATOR-CONVERSATIONS] === FETCH DEBUG END ===');
+      return conversationsWithEducators;
     },
     enabled: !!schoolId,
     staleTime: 60000,
@@ -204,20 +276,70 @@ const StudentCommunication = () => {
   const { data: archivedEducatorConversations = [], isLoading: loadingArchivedEducators, refetch: refetchArchivedEducators } = useQuery({
     queryKey: ['school-admin-educator-conversations', schoolId, 'archived'],
     queryFn: async () => {
-      if (!schoolId) return [];
-      const { data, error } = await supabase
+      console.log('🔍 [ARCHIVED-EDUCATOR-CONVERSATIONS] === FETCH DEBUG START ===');
+      console.log('📋 School ID:', schoolId);
+      
+      if (!schoolId) {
+        console.log('❌ No school ID, returning empty array');
+        return [];
+      }
+      
+      console.log('📤 Executing query for archived educator conversations...');
+      
+      // 1. Get conversations
+      const { data: conversations, error } = await supabase
         .from('conversations')
-        .select(`
-          *,
-          educator:school_educators(id, first_name, last_name, email, phone_number, photo_url)
-        `)
+        .select('*')
         .eq('school_id', schoolId)
         .eq('conversation_type', 'educator_admin')
         .eq('status', 'archived')
         .order('last_message_at', { ascending: false, nullsFirst: false });
       
-      if (error) throw error;
-      return data || [];
+      console.log('📥 Archived conversations query result:', { conversations, error, dataLength: conversations?.length });
+      
+      if (error) {
+        console.error('❌ Archived conversations query error:', error);
+        throw error;
+      }
+      
+      if (!conversations || conversations.length === 0) {
+        console.log('✅ No archived conversations found, returning empty array');
+        console.log('🔍 [ARCHIVED-EDUCATOR-CONVERSATIONS] === FETCH DEBUG END ===');
+        return [];
+      }
+      
+      // 2. Get educator IDs and fetch their details
+      const educatorIds = conversations.map(c => c.educator_id).filter(Boolean);
+      console.log('📋 Archived educator IDs to fetch:', educatorIds);
+      
+      if (educatorIds.length === 0) {
+        console.log('✅ No archived educator IDs found, returning conversations without educator data');
+        console.log('🔍 [ARCHIVED-EDUCATOR-CONVERSATIONS] === FETCH DEBUG END ===');
+        return conversations;
+      }
+      
+      const { data: educators, error: educatorError } = await supabase
+        .from('school_educators')
+        .select('id, first_name, last_name, email, phone_number, photo_url')
+        .in('id', educatorIds);
+      
+      console.log('📥 Archived educators query result:', { educators, educatorError, educatorsLength: educators?.length });
+      
+      if (educatorError) {
+        console.error('❌ Archived educators query error:', educatorError);
+        // Return conversations without educator data rather than failing completely
+        return conversations;
+      }
+      
+      // 3. Merge the data
+      const conversationsWithEducators = conversations.map(conv => ({
+        ...conv,
+        school_educators: educators?.find(edu => edu.id === conv.educator_id) || null
+      }));
+      
+      console.log('✅ Final archived conversations with educators:', conversationsWithEducators);
+      console.log('🔍 [ARCHIVED-EDUCATOR-CONVERSATIONS] === FETCH DEBUG END ===');
+      return conversationsWithEducators;
     },
     enabled: !!schoolId,
     staleTime: 60000,
@@ -258,6 +380,16 @@ const StudentCommunication = () => {
   // Use shared global presence context
   const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
 
+  // Debug: Log school admin presence info
+  useEffect(() => {
+    console.log('🔍 [SCHOOL-ADMIN] === PRESENCE DEBUG START ===');
+    console.log('📋 School Admin ID (user?.id):', schoolAdminId);
+    console.log('📋 School Admin Name:', schoolAdminName);
+    console.log('📋 School ID:', schoolId);
+    console.log('📋 isUserOnlineGlobal function:', typeof isUserOnlineGlobal);
+    console.log('🔍 [SCHOOL-ADMIN] === PRESENCE DEBUG END ===');
+  }, [schoolAdminId, schoolAdminName, schoolId, isUserOnlineGlobal]);
+
   // Presence tracking for current conversation
   const { } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
@@ -271,6 +403,17 @@ const StudentCommunication = () => {
     },
     enabled: !!selectedConversationId && !!schoolAdminId
   });
+
+  // Debug: Log what ID school admin is using for presence
+  useEffect(() => {
+    if (schoolAdminId) {
+      console.log('🔍 [SCHOOL-ADMIN] === PRESENCE CONNECTION DEBUG ===');
+      console.log('📋 School Admin connecting to presence with userId:', schoolAdminId);
+      console.log('📋 School Admin userType:', 'school_admin');
+      console.log('📋 School Admin userName:', schoolAdminName);
+      console.log('🔍 [SCHOOL-ADMIN] === PRESENCE CONNECTION DEBUG END ===');
+    }
+  }, [schoolAdminId, schoolAdminName]);
 
   // Typing indicators
   const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({
@@ -605,14 +748,29 @@ const StudentCommunication = () => {
       
       // Send the initial message
       if (initialMessage.trim()) {
-        await MessageService.sendMessage({
+        console.log('🔍 [School-Admin] === SEND MESSAGE DEBUG ===');
+        console.log('📋 SendMessage Parameters:', {
           conversationId: conversation.id,
           senderId: schoolAdminId,
           senderType: 'school_admin',
           receiverId: educatorId,
           receiverType: 'educator',
-          messageText: initialMessage
+          messageText: initialMessage,
+          hasConversationId: !!conversation.id,
+          hasSenderId: !!schoolAdminId,
+          hasReceiverId: !!educatorId,
+          hasMessageText: !!initialMessage?.trim()
         });
+        console.log('🏁 [School-Admin] === SEND MESSAGE DEBUG END ===');
+        
+        await MessageService.sendMessage(
+          conversation.id,
+          schoolAdminId,
+          'school_admin',
+          educatorId,
+          'educator',
+          initialMessage
+        );
       }
       
       // Refresh conversations to include the new one
@@ -667,9 +825,18 @@ const StudentCommunication = () => {
   
   // Transform and filter conversations
   const filteredContacts = useMemo(() => {
+    console.log('🔍 [FILTERED-CONTACTS] === TRANSFORM DEBUG START ===');
+    console.log('📋 Active Tab:', activeTab);
+    console.log('📋 Raw conversations:', conversations);
+    console.log('📋 Conversations length:', conversations?.length);
+    
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
+    console.log('📋 Active conversations (after filter):', activeConversations);
+    console.log('📋 Active conversations length:', activeConversations?.length);
 
     const contacts = activeConversations.map((conv: any) => {
+      console.log('🔄 Processing conversation:', conv);
+      
       if (activeTab === 'students') {
         // Student conversations
         const studentName = conv.student?.name || conv.student?.email || 'Student';
@@ -690,7 +857,7 @@ const StudentCommunication = () => {
           role += ` (${studentBranch})`;
         }
         
-        return {
+        const studentContact = {
           id: conv.id,
           name: studentName,
           role: role,
@@ -705,12 +872,30 @@ const StudentCommunication = () => {
           subject: conv.subject,
           type: 'student'
         };
+        
+        console.log('✅ Student contact created:', studentContact);
+        return studentContact;
       } else {
         // Educator conversations
-        const educatorName = `${conv.educator?.first_name || ''} ${conv.educator?.last_name || ''}`.trim() || 
-                             conv.educator?.email || 'Educator';
-        const educatorEmail = conv.educator?.email || '';
+        console.log('🔄 Processing educator conversation:', {
+          conv_id: conv.id,
+          school_educators: conv.school_educators,
+          educator_id: conv.educator_id,
+          subject: conv.subject
+        });
+        
+        const educatorName = `${conv.school_educators?.first_name || ''} ${conv.school_educators?.last_name || ''}`.trim() || 
+                             conv.school_educators?.email || 'Educator';
+        const educatorEmail = conv.school_educators?.email || '';
         const subject = conv.subject || 'General Discussion';
+        
+        console.log('📋 Educator data extracted:', {
+          educatorName,
+          educatorEmail,
+          subject,
+          first_name: conv.school_educators?.first_name,
+          last_name: conv.school_educators?.last_name
+        });
         
         // Build role string
         let role = `Educator • ${subject}`;
@@ -718,13 +903,13 @@ const StudentCommunication = () => {
           role += ` • ${educatorEmail}`;
         }
         
-        return {
+        const educatorContact = {
           id: conv.id,
           name: educatorName,
           role: role,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
-          online: isUserOnlineGlobal(conv.educator?.user_id),
+          online: isUserOnlineGlobal(conv.school_educators?.user_id),
           time: conv.last_message_at 
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
@@ -733,17 +918,33 @@ const StudentCommunication = () => {
           subject: conv.subject,
           type: 'educator'
         };
+        
+        console.log('✅ Educator contact created:', educatorContact);
+        return educatorContact;
       }
     });
 
-    if (!searchQuery) return contacts;
+    console.log('📋 All contacts created:', contacts);
+    console.log('📋 Contacts length:', contacts?.length);
+
+    if (!searchQuery) {
+      console.log('✅ No search query, returning all contacts');
+      console.log('🔍 [FILTERED-CONTACTS] === TRANSFORM DEBUG END ===');
+      return contacts;
+    }
     
     const query = searchQuery.toLowerCase();
-    return contacts.filter(c => 
+    const filteredResults = contacts.filter(c => 
       c.name.toLowerCase().includes(query) || 
       c.role.toLowerCase().includes(query) ||
       c.lastMessage.toLowerCase().includes(query)
     );
+    
+    console.log('📋 Search query:', query);
+    console.log('📋 Filtered results:', filteredResults);
+    console.log('📋 Filtered results length:', filteredResults?.length);
+    console.log('🔍 [FILTERED-CONTACTS] === TRANSFORM DEBUG END ===');
+    return filteredResults;
   }, [conversations, searchQuery, isUserOnlineGlobal, activeTab]);
 
   const currentChat = useMemo(() => 
@@ -791,6 +992,22 @@ const StudentCommunication = () => {
           toast.error('Could not find educator');
           return;
         }
+
+        console.log('🔍 [School-Admin] === EDUCATOR MESSAGE DEBUG ===');
+        console.log('📋 Educator lookup result:', { educator, educatorError });
+        console.log('📋 SendMessage Parameters:', {
+          senderId: schoolAdminId,
+          senderType: 'school_admin',
+          receiverId: educator.user_id,
+          receiverType: 'educator',
+          messageText: messageInput,
+          subject: currentChat.subject,
+          hasSenderId: !!schoolAdminId,
+          hasReceiverId: !!educator.user_id,
+          hasMessageText: !!messageInput?.trim(),
+          hasSubject: !!currentChat.subject
+        });
+        console.log('🏁 [School-Admin] === EDUCATOR MESSAGE DEBUG END ===');
 
         await sendMessage({
           senderId: schoolAdminId,
@@ -878,7 +1095,7 @@ const StudentCommunication = () => {
                       className={`px-3 py-2 ${
                         activeTab === 'students' 
                           ? 'bg-blue-600 hover:bg-blue-700' 
-                          : 'bg-green-600 hover:bg-green-700'
+                          : 'bg-blue-600 hover:bg-blue-700'
                       } text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2`}
                       title={`Start new conversation with ${activeTab === 'students' ? 'student' : 'educator'}`}
                     >
@@ -911,10 +1128,10 @@ const StudentCommunication = () => {
                         )}
                         {activeTab === 'educators' && (
                           <>
-                            <AcademicCapIcon className="w-4 h-4 text-green-600" />
+                            <AcademicCapIcon className="w-4 h-4 text-blue-600" />
                             <span className="text-sm font-medium text-gray-900">Educators</span>
                             {activeEducatorConversations.length > 0 && (
-                              <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
+                              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                                 {activeEducatorConversations.length}
                               </span>
                             )}
@@ -989,16 +1206,16 @@ const StudentCommunication = () => {
                               }
                             }}
                             className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${
-                              activeTab === 'educators' ? 'bg-green-50 text-green-700' : 'text-gray-700'
+                              activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
                             }`}
                           >
-                            <AcademicCapIcon className={`w-4 h-4 ${activeTab === 'educators' ? 'text-green-600' : 'text-gray-500'}`} />
+                            <AcademicCapIcon className={`w-4 h-4 ${activeTab === 'educators' ? 'text-blue-600' : 'text-gray-500'}`} />
                             <div className="flex-1">
                               <div className="font-medium">Educators</div>
                               <div className="text-xs text-gray-500">Teacher and faculty messages</div>
                             </div>
                             {activeEducatorConversations.length > 0 && (
-                              <span className="bg-green-100 text-green-600 text-xs px-2 py-0.5 rounded-full">
+                              <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
                                 {activeEducatorConversations.length}
                               </span>
                             )}
@@ -1274,7 +1491,7 @@ const StudentCommunication = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  {/* <div className="flex items-center gap-2">
                     <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="Voice Call">
                       <PhoneIcon className="w-5 h-5 text-gray-700" />
                     </button>
@@ -1284,7 +1501,7 @@ const StudentCommunication = () => {
                     <button className="p-2 hover:bg-gray-100 rounded-full transition-colors" title="More">
                       <EllipsisVerticalIcon className="w-5 h-5 text-gray-700" />
                     </button>
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Messages Area */}
@@ -1356,13 +1573,13 @@ const StudentCommunication = () => {
                 {/* Message Input */}
                 <div className="px-6 py-4 border-t border-gray-200 bg-white">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-3">
-                    <button
+                    {/* <button
                       type="button"
                       className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
                       title="Attach file"
                     >
                       <PaperClipIcon className="w-5 h-5 text-gray-500" />
-                    </button>
+                    </button> */}
                     <div className="flex-1 relative">
                       <textarea
                         value={messageInput}
@@ -1380,13 +1597,13 @@ const StudentCommunication = () => {
                         rows={1}
                         style={{ minHeight: '44px', maxHeight: '100px' }}
                       />
-                      <button
+                      {/* <button
                         type="button"
                         className="absolute right-3 bottom-2.5 p-1.5 hover:bg-gray-100 rounded-full transition-colors"
                         title="Emoji"
                       >
                         <FaceSmileIcon className="w-5 h-5 text-gray-400" />
-                      </button>
+                      </button> */}
                     </div>
                     <button
                       type="submit"

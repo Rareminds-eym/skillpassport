@@ -6,6 +6,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [customSubject, setCustomSubject] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
 
   // Predefined subjects for educator-admin conversations
@@ -38,23 +39,23 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
     try {
       console.log('🔍 Fetching school for educator ID:', educatorId);
       
-      // First try: Get educator's school information by user_id
+      // Get educator's school information from organizations table
       let { data: educatorData, error } = await supabase
         .from('school_educators')
         .select(`
           school_id,
-          schools (
+          school:organizations!school_educators_school_id_fkey (
             id,
             name,
-            address,
-            phone,
-            email
+            city,
+            state,
+            organization_type
           )
         `)
         .eq('user_id', educatorId)
         .single();
 
-      console.log('📋 First attempt - Educator query result:', { educatorData, error });
+      console.log('📋 Educator query result:', { educatorData, error });
 
       // If first attempt fails, try by email (in case user_id doesn't match)
       if (error && error.code === 'PGRST116') {
@@ -71,12 +72,12 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
             .select(`
               school_id,
               user_id,
-              schools (
+              school:organizations!school_educators_school_id_fkey (
                 id,
                 name,
-                address,
-                phone,
-                email
+                city,
+                state,
+                organization_type
               )
             `)
             .eq('email', user.email)
@@ -113,9 +114,19 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
         throw error;
       }
 
-      if (educatorData?.schools) {
-        console.log('✅ School found:', educatorData.schools);
-        setSchool(educatorData.schools);
+      if (educatorData?.school) {
+        // Map the organization data to match expected school structure
+        const schoolData = {
+          id: educatorData.school.id,
+          name: educatorData.school.name,
+          address: educatorData.school.city && educatorData.school.state 
+            ? `${educatorData.school.city}, ${educatorData.school.state}` 
+            : null,
+          phone: null, // Organizations table doesn't have phone
+          email: null  // Organizations table doesn't have email
+        };
+        console.log('✅ School found:', schoolData);
+        setSchool(schoolData);
       } else {
         console.warn('⚠️ Educator has no associated school');
         setSchool(null);
@@ -129,10 +140,11 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
   };
 
   const handleCreateConversation = () => {
-    if (school && selectedSubject && initialMessage.trim()) {
+    const finalSubject = selectedSubject === 'Other' ? customSubject : selectedSubject;
+    if (school && finalSubject && initialMessage.trim()) {
       onConversationCreated({
         schoolId: school.id,
-        subject: selectedSubject,
+        subject: finalSubject,
         initialMessage: initialMessage.trim()
       });
       handleClose();
@@ -141,6 +153,7 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
 
   const handleClose = () => {
     setSelectedSubject('');
+    setCustomSubject('');
     setInitialMessage('');
     onClose();
   };
@@ -149,16 +162,16 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[95vh] overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
               <ShieldCheck className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Contact School Administration</h2>
-              <p className="text-sm text-gray-500">Send a message to your school admin</p>
+              <h2 className="text-lg font-semibold text-gray-900">Message School Admin</h2>
+              <p className="text-sm text-gray-500">Start a conversation</p>
             </div>
           </div>
           <button
@@ -170,158 +183,128 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(95vh-160px)]">
-          <div className="p-6">
-            {!educatorId ? (
-              <div className="text-center py-12">
-                <ShieldCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm">Authentication required</p>
-                <p className="text-gray-400 text-xs mt-2">
-                  Please make sure you're logged in as an educator to use this feature.
-                </p>
-                <button
-                  onClick={handleClose}
-                  className="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            ) : loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : !school ? (
-              <div className="text-center py-12">
-                <ShieldCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-sm">Unable to load school information</p>
-                <p className="text-gray-400 text-xs mt-2">
-                  This might happen if you're not registered as an educator or there's a connection issue.
-                </p>
-                <button
-                  onClick={fetchEducatorSchool}
-                  className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  Try Again
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* School Information */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-                      <ShieldCheck className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{school.name}</h3>
-                      <p className="text-sm text-gray-600">School Administration</p>
-                    </div>
+        <div className="flex-1 overflow-y-auto">
+          {!educatorId ? (
+            <div className="text-center py-12 px-6">
+              <ShieldCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-sm">Authentication required</p>
+              <p className="text-gray-400 text-xs mt-2">
+                Please make sure you're logged in as an educator to use this feature.
+              </p>
+              <button
+                onClick={handleClose}
+                className="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          ) : loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : !school ? (
+            <div className="text-center py-12 px-6">
+              <ShieldCheck className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-sm">Unable to load school information</p>
+              <p className="text-gray-400 text-xs mt-2">
+                This might happen if you're not registered as an educator or there's a connection issue.
+              </p>
+              <button
+                onClick={fetchEducatorSchool}
+                className="mt-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : (
+            <div className="p-6 space-y-6">
+              {/* School Card */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                    <ShieldCheck className="w-6 h-6 text-white" />
                   </div>
-                  
-                  {school.address && (
-                    <p className="text-sm text-gray-600 mb-2">📍 {school.address}</p>
-                  )}
-                  
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                    {school.phone && (
-                      <span>📞 {school.phone}</span>
-                    )}
-                    {school.email && (
-                      <span>✉️ {school.email}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Subject Selection */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-800 mb-3">
-                    📋 What is your message about?
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {adminSubjects.map((subject) => (
-                      <button
-                        key={subject}
-                        onClick={() => setSelectedSubject(subject)}
-                        className={`text-left px-4 py-3 rounded-lg border-2 transition-all ${
-                          selectedSubject === subject
-                            ? 'border-green-500 bg-green-50 text-green-700'
-                            : 'border-gray-200 hover:border-green-300 hover:bg-gray-50 text-gray-700'
-                        }`}
-                      >
-                        <div className="font-medium text-sm">{subject}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom Subject Input */}
-                {selectedSubject === 'Other' && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      Please specify your subject:
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Enter your subject..."
-                      value={selectedSubject === 'Other' ? '' : selectedSubject}
-                      onChange={(e) => setSelectedSubject(e.target.value)}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
-                      maxLength={100}
-                    />
+                    <h3 className="font-semibold text-gray-900">{school.name}</h3>
+                    <p className="text-sm text-gray-600">School Administration</p>
+                    {school.address && (
+                      <p className="text-xs text-gray-500 mt-1">{school.address}</p>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Message Input Section */}
-          {school && selectedSubject && (
-            <div className="border-t-2 border-green-200 bg-green-50 p-6">
-              <div className="mb-4">
-                <label className="block text-lg font-semibold text-gray-800 mb-2">
-                  💬 Your message to {school.name} Administration
+              {/* Subject Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  What do you need help with?
                 </label>
-                <div className="text-sm text-gray-600 mb-4 p-3 bg-white rounded-md border border-green-200 shadow-sm">
-                  Subject: <span className="font-medium text-green-700">{selectedSubject}</span>
-                </div>
-              </div>
-              
-              <textarea
-                value={initialMessage}
-                onChange={(e) => setInitialMessage(e.target.value)}
-                placeholder="Type your message here... (e.g., 'Hello, I need assistance with classroom resources for my upcoming lesson. Could you please help me?')"
-                rows={6}
-                className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none text-base bg-white shadow-sm"
-                maxLength={1000}
-              />
-              
-              <div className="flex justify-between items-center mt-3">
-                <div className="text-sm text-gray-600 font-medium">
-                  {initialMessage.length}/1000 characters
-                </div>
-                {initialMessage.length > 1000 && (
-                  <div className="text-sm text-red-600 font-medium">
-                    ⚠️ Message too long
-                  </div>
-                )}
+                <select
+                  value={selectedSubject}
+                  onChange={(e) => setSelectedSubject(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
+                >
+                  <option value="">Select a subject...</option>
+                  {adminSubjects.map((subject) => (
+                    <option key={subject} value={subject}>
+                      {subject}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Message Guidelines */}
-              <div className="mt-4 p-3 bg-white rounded-lg border border-green-200">
-                <h4 className="text-sm font-semibold text-gray-800 mb-2">💡 Tips for effective communication:</h4>
-                <ul className="text-xs text-gray-600 space-y-1">
-                  <li>• Be clear and specific about your request</li>
-                  <li>• Include relevant details (class, subject, student names if applicable)</li>
-                  <li>• Use professional and respectful language</li>
-                  <li>• Provide context for your request</li>
-                </ul>
-              </div>
+              {/* Custom Subject Input */}
+              {selectedSubject === 'Other' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Please specify your subject
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter your subject..."
+                    value={customSubject}
+                    onChange={(e) => setCustomSubject(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm"
+                    maxLength={100}
+                  />
+                  <div className="text-xs text-gray-500 mt-1">
+                    {customSubject.length}/100 characters
+                  </div>
+                </div>
+              )}
+
+              {/* Message Input */}
+              {selectedSubject && (selectedSubject !== 'Other' || customSubject.trim()) && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Your message
+                  </label>
+                  <textarea
+                    value={initialMessage}
+                    onChange={(e) => setInitialMessage(e.target.value)}
+                    placeholder="Type your message here..."
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none text-sm"
+                    maxLength={1000}
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-xs text-gray-500">
+                      {initialMessage.length}/1000 characters
+                    </div>
+                    {initialMessage.length > 1000 && (
+                      <div className="text-xs text-red-600">
+                        Message too long
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 flex-shrink-0">
           <button
             onClick={handleClose}
             className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors font-medium"
@@ -330,11 +313,11 @@ const NewEducatorAdminConversationModal = ({ isOpen, onClose, educatorId, onConv
           </button>
           <button
             onClick={handleCreateConversation}
-            disabled={!school || !selectedSubject || !initialMessage.trim() || initialMessage.length > 1000}
+            disabled={!school || !selectedSubject || (selectedSubject === 'Other' && !customSubject.trim()) || !initialMessage.trim() || initialMessage.length > 1000}
             className="px-6 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium flex items-center gap-2"
           >
             <MessageCircle className="w-4 h-4" />
-            {initialMessage.trim() ? 'Send Message to Administration' : 'Start Conversation'}
+            Send Message
           </button>
         </div>
       </div>

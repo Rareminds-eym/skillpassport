@@ -1,6 +1,7 @@
 import { useToast } from "@/hooks/use-toast";
 import {
     Award, Calendar,
+    CheckCircle,
     Clock,
     Eye, EyeOff,
     Loader2,
@@ -17,10 +18,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Progress } from "../ui/progress";
+import { supabase } from "@/lib/supabaseClient";
 import { Textarea } from "../ui/textarea";
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
 import ProfileItemModal from "./ProfileItemModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 
 const UnifiedProfileEditModal = ({ 
   isOpen, 
@@ -42,16 +54,45 @@ const UnifiedProfileEditModal = ({
   // State for separate item modal
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  
+  // State for confirmation dialogs
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    type: null, // 'delete', 'hide', 'show'
+    itemIndex: null,
+    itemTitle: ''
+  });
 
   useEffect(() => {
     if (data) {
       const normalizedData = Array.isArray(data) ? data : [data];
       
-      setItems(normalizedData);
+      // VERSIONING FIX: Process items to show pending edits in the list
+      const processedItems = normalizedData.map(item => {
+        // If there's a pending edit, merge it with the item for display in edit modal
+        if (item.has_pending_edit && item.pending_edit_data) {
+          return {
+            ...item,
+            // Show pending edit data in the edit list (not on dashboard)
+            _hasPendingEdit: true,
+            _verifiedData: item.verified_data,
+            // Merge pending edit data for editing
+            ...item.pending_edit_data,
+            // Keep original id and metadata
+            id: item.id,
+            student_id: item.student_id,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+          };
+        }
+        return item;
+      });
       
-      if (singleEditMode && normalizedData.length > 0) {
+      setItems(processedItems);
+      
+      if (singleEditMode && processedItems.length > 0) {
         // In singleEditMode, populate form with existing data
-        const item = normalizedData[0];
+        const item = processedItems[0];
         const editData = { ...config.getDefaultValues() };
         
         // Copy all fields from the item, including id
@@ -103,6 +144,56 @@ const UnifiedProfileEditModal = ({
 
   const handleInputChange = (field) => (e) => {
     const value = e.target.value;
+    
+    // Additional validation for date fields
+    if (e.target.type === 'date' && value) {
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Validate start dates and issue dates cannot be in future
+      if ((field === 'startDate' || field === 'start_date' || field === 'issuedOn') && value > today) {
+        toast({
+          title: "Invalid Date",
+          description: "Date cannot be in the future.",
+          variant: "destructive",
+        });
+        return; // Don't update the state
+      }
+      
+      // Validate end date is not before start date
+      if (field === 'endDate' || field === 'end_date') {
+        const startDateValue = formData.startDate || formData.start_date;
+        if (startDateValue && value < startDateValue) {
+          toast({
+            title: "Invalid Date",
+            description: "End date cannot be before start date.",
+            variant: "destructive",
+          });
+          return; // Don't update the state
+        }
+        if (value > today) {
+          toast({
+            title: "Invalid Date",
+            description: "End date cannot be in the future.",
+            variant: "destructive",
+          });
+          return; // Don't update the state
+        }
+      }
+      
+      // Validate expiry date is not before issue date
+      if (field === 'expiryDate') {
+        const issuedOnValue = formData.issuedOn;
+        if (issuedOnValue && value < issuedOnValue) {
+          toast({
+            title: "Invalid Date",
+            description: "Expiry date cannot be before issue date.",
+            variant: "destructive",
+          });
+          return; // Don't update the state
+        }
+      }
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -279,6 +370,12 @@ const UnifiedProfileEditModal = ({
       }
     }
 
+    // DEBUG: Log processed data for projects
+    if (config.title === "Projects") {
+      console.log('🔍 Processing project data:', processedData);
+      console.log('🔍 Role field value:', processedData.role);
+    }
+
     // Calculate progress for training type
     if (config.hasProgress) {
       const completed = parsePositiveNumber(processedData.completedModules);
@@ -292,10 +389,32 @@ const UnifiedProfileEditModal = ({
       }
     }
 
+    // Special processing for skills: map fields correctly to database
+    if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' || 
+        config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
+      console.log('🔧 UnifiedProfileEditModal: Processing skills data');
+      console.log('🔧 Config title:', config.title);
+      console.log('🔧 Before processing:', processedData);
+      
+      // Map rating (1-5) to level field in database
+      if (processedData.rating) {
+        processedData.level = parseInt(processedData.rating) || 3;
+      }
+      
+      // Map level text ("Intermediate", "Advanced") to proficiency_level field in database
+      if (processedData.level && typeof processedData.level === 'string') {
+        processedData.proficiency_level = processedData.level;
+        // Set level to the rating value instead
+        processedData.level = parseInt(processedData.rating) || 3;
+      }
+      
+      console.log('🔧 After processing:', processedData);
+    }
+
     return processedData;
   }, [formData, config]);
 
-  const saveItem = () => {
+  const saveItem = async () => {
     if (!validateForm()) return;
 
     const processedData = processFormData();
@@ -303,12 +422,41 @@ const UnifiedProfileEditModal = ({
     if (editingIndex !== null) {
       // Update existing item
       const existingItem = items[editingIndex];
-      setItems(prev => prev.map((item, idx) => 
-        idx === editingIndex 
-          ? { ...existingItem, ...processedData, processing: true, updated_at: new Date().toISOString() }
-          : item
-      ));
-      toast({ title: "Updated", description: "Changes applied. Click 'Save All Changes' to save to database." });
+      
+      // Preserve important metadata from existing item
+      const updatedItem = { 
+        ...existingItem, 
+        ...processedData,
+        // Keep these fields from existing item
+        id: existingItem.id,
+        student_id: existingItem.student_id,
+        created_at: existingItem.created_at,
+        updated_at: new Date().toISOString() 
+      };
+      
+      const updatedItems = items.map((item, idx) => 
+        idx === editingIndex ? updatedItem : item
+      );
+      
+      setItems(updatedItems);
+      
+      // AUTO-SAVE: Save to database immediately to prevent data loss on Cancel
+      try {
+        await onSave(updatedItems);
+        toast({ 
+          title: "Saved!", 
+          description: `${config.title} updated successfully.`,
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('Error auto-saving:', error);
+        toast({ 
+          title: "Updated Locally", 
+          description: `${config.title} updated. Click 'Save All Changes' to save to database.`,
+          duration: 4000,
+          variant: "destructive"
+        });
+      }
     } else {
       // Add new item
       const newItem = {
@@ -316,11 +464,30 @@ const UnifiedProfileEditModal = ({
         id: generateUuid(),
         enabled: true,
         verified: false,
-        processing: true,
+        approval_status: 'pending', // New items need approval
         created_at: new Date().toISOString(),
       };
-      setItems(prev => [...prev, newItem]);
-      toast({ title: "Added", description: "Item added. Click 'Save All Changes' to save to database." });
+      
+      const updatedItems = [...items, newItem];
+      setItems(updatedItems);
+      
+      // AUTO-SAVE: Save new items immediately too
+      try {
+        await onSave(updatedItems);
+        toast({ 
+          title: "Saved!", 
+          description: `${config.title} added successfully.`,
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('Error auto-saving:', error);
+        toast({ 
+          title: "Added Locally", 
+          description: `${config.title} added. Click 'Save All Changes' to save to database.`,
+          duration: 4000,
+          variant: "destructive"
+        });
+      }
     }
 
     resetForm();
@@ -367,16 +534,115 @@ const UnifiedProfileEditModal = ({
     }
   };
 
-  const deleteItem = (index) => {
-    setItems(prev => prev.filter((_, idx) => idx !== index));
+  const deleteItem = async (index) => {
+    const item = items[index];
+    const itemTitle = config.getDisplayTitle(item);
+    
+    // Show confirmation dialog
+    setConfirmDialog({
+      isOpen: true,
+      type: 'delete',
+      itemIndex: index,
+      itemTitle: itemTitle
+    });
+  };
+  
+  const handleConfirmDelete = async () => {
+    const index = confirmDialog.itemIndex;
+    
+    // Close dialog
+    setConfirmDialog({ isOpen: false, type: null, itemIndex: null, itemTitle: '' });
+    
+    // Remove item from list
+    const updatedItems = items.filter((_, idx) => idx !== index);
+    setItems(updatedItems);
+    
     if (editingIndex === index) resetForm();
-    toast({ title: "Removed", description: "Item has been removed." });
+    
+    // Auto-save to database
+    try {
+      await onSave(updatedItems);
+      toast({ 
+        title: "Deleted!", 
+        description: `${config.title} has been deleted successfully.`,
+        duration: 3000
+      });
+    } catch (error) {
+      console.error('Error deleting:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete. Please try again.", 
+        variant: "destructive" 
+      });
+    }
   };
 
-  const toggleEnabled = (index) => {
-    setItems(prev => prev.map((item, idx) => 
-      idx === index ? { ...item, enabled: !item.enabled } : item
-    ));
+  const toggleEnabled = async (index) => {
+    const item = items[index];
+    const newState = !item.enabled;
+    const itemTitle = config.getDisplayTitle(item);
+    
+    // Don't allow hiding/showing certificates that are pending verification or approval
+    if (item.approval_status === 'pending' || item._hasPendingEdit) {
+      toast({ 
+        title: "Cannot Hide/Show", 
+        description: "You cannot hide or show certificates that are pending verification or approval.",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
+    // Show confirmation dialog
+    const action = newState ? "show" : "hide";
+    setConfirmDialog({
+      isOpen: true,
+      type: action,
+      itemIndex: index,
+      itemTitle: itemTitle
+    });
+  };
+  
+  const handleConfirmToggle = async () => {
+    const index = confirmDialog.itemIndex;
+    const item = items[index];
+    const newState = confirmDialog.type === 'show';
+    
+    // Close dialog
+    setConfirmDialog({ isOpen: false, type: null, itemIndex: null, itemTitle: '' });
+    
+    // Update item state locally
+    const updatedItems = items.map((item, idx) => 
+      idx === index ? { ...item, enabled: newState } : item
+    );
+    setItems(updatedItems);
+    
+    // For hide/show, we need to update the database directly without triggering versioning
+    // We'll update just the enabled field for this specific certificate
+    try {
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('certificates')
+        .update({ enabled: newState })
+        .eq('id', item.id);
+      
+      if (error) throw error;
+      
+      toast({ 
+        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+        description: `${config.title} ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error toggling visibility:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to update visibility. Please try again.", 
+        variant: "destructive" 
+      });
+      // Restore original state on error
+      setItems(items);
+    }
   };
 
   // Handlers for separate item modal
@@ -391,22 +657,59 @@ const UnifiedProfileEditModal = ({
   };
 
   const handleSaveItem = async (savedItem) => {
+    console.log('🔧 UnifiedProfileEditModal: handleSaveItem called with:', savedItem);
+    
     if (editingItem && editingItem.index !== undefined) {
       // Update existing item
-      setItems(prev => prev.map((item, idx) => 
+      const updatedItems = items.map((item, idx) => 
         idx === editingItem.index 
-          ? { ...savedItem, processing: true }
+          ? { ...savedItem }
           : item
-      ));
-      toast({ title: "Updated", description: `${config.title} updated. Click 'Save All Changes' to save to database.` });
+      );
+      setItems(updatedItems);
+      
+      // IMPORTANT: Auto-save to database immediately to prevent data loss
+      // This ensures changes persist even if user clicks Cancel
+      try {
+        await onSave(updatedItems);
+        toast({ 
+          title: "Saved!", 
+          description: `${config.title} updated successfully.`,
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('Error auto-saving:', error);
+        toast({ 
+          title: "Updated Locally", 
+          description: `${config.title} updated. Click 'Save All Changes' to save to database.`,
+          duration: 4000
+        });
+      }
     } else {
       // Add new item
       const newItem = {
         ...savedItem,
-        processing: true,
       };
-      setItems(prev => [...prev, newItem]);
-      toast({ title: "Added", description: `${config.title} added. Click 'Save All Changes' to save to database.` });
+      console.log('🔧 UnifiedProfileEditModal: Adding new item:', newItem);
+      const updatedItems = [...items, newItem];
+      setItems(updatedItems);
+      
+      // Auto-save new items too
+      try {
+        await onSave(updatedItems);
+        toast({ 
+          title: "Saved!", 
+          description: `${config.title} added successfully.`,
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('Error auto-saving:', error);
+        toast({ 
+          title: "Added Locally", 
+          description: `${config.title} added. Click 'Save All Changes' to save to database.`,
+          duration: 4000
+        });
+      }
     }
     setIsItemModalOpen(false);
     setEditingItem(null);
@@ -414,8 +717,59 @@ const UnifiedProfileEditModal = ({
 
   const handleSubmit = async () => {
     setIsSaving(true);
+    
+    console.log('🔧 UnifiedProfileEditModal: handleSubmit called');
+    console.log('🔧 Current formData:', formData);
+    console.log('🔧 Current items before processing:', items);
+    
     try {
-      await onSave(items);
+      // Process all items with field mapping for skills
+      let processedItems = items.map(item => {
+        // Remove temporary flags before saving
+        const { _hasLocalChanges, _hasPendingEdit, _verifiedData, processing, ...cleanItem } = item;
+        return cleanItem;
+      });
+      
+      if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' || 
+          config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
+        console.log('🔧 UnifiedProfileEditModal: Processing skills array for save');
+        console.log('🔧 Original items:', items);
+        console.log('🔧 Config:', config);
+        
+        processedItems = processedItems.map((item, index) => {
+          console.log(`🔧 Processing item ${index}:`, item);
+          const processedItem = { ...item };
+          
+          // Check what fields exist on the original item
+          console.log('🔧 Item keys:', Object.keys(item));
+          console.log('🔧 Item.level:', item.level, 'type:', typeof item.level);
+          console.log('🔧 Item.rating:', item.rating, 'type:', typeof item.rating);
+          console.log('🔧 Item.proficiency_level:', item.proficiency_level);
+          
+          // Store original level text as proficiency_level
+          if (processedItem.level && typeof processedItem.level === 'string') {
+            processedItem.proficiency_level = processedItem.level;
+            console.log('🔧 Set proficiency_level to:', processedItem.proficiency_level);
+          }
+          
+          // Map rating (1-5) to level field in database
+          if (processedItem.rating) {
+            processedItem.level = parseInt(processedItem.rating) || 3;
+            console.log('🔧 Set level to rating:', processedItem.level);
+          } else if (processedItem.level && typeof processedItem.level === 'string') {
+            // If no rating but has text level, default to 3
+            processedItem.level = 3;
+            console.log('🔧 Set level to default 3');
+          }
+          
+          console.log('🔧 Final processed item:', processedItem);
+          return processedItem;
+        });
+        
+        console.log('🔧 All processed items:', processedItems);
+      }
+      
+      await onSave(processedItems);
       toast({ title: "Saved!", description: `${config.title} saved successfully.` });
       onClose();
     } catch (error) {
@@ -456,7 +810,40 @@ const UnifiedProfileEditModal = ({
           </select>
         );
       case "date":
-        return <Input {...commonProps} type="date" />;
+        // Add date validation for start and end dates
+        const dateProps = { ...commonProps, type: "date" };
+        
+        const today = new Date().toISOString().split('T')[0];
+        
+        // For start date: max is today (cannot select future dates)
+        if (field.name === "startDate" || field.name === "start_date") {
+          dateProps.max = today;
+        }
+        
+        // For end date: min is start date, max is today
+        if (field.name === "endDate" || field.name === "end_date") {
+          const startDateValue = formData.startDate || formData.start_date;
+          if (startDateValue) {
+            dateProps.min = startDateValue;
+          }
+          dateProps.max = today;
+        }
+        
+        // For certificates: issuedOn cannot be in the future
+        if (field.name === "issuedOn") {
+          dateProps.max = today;
+        }
+        
+        // For certificates: expiryDate must be after issuedOn
+        if (field.name === "expiryDate") {
+          const issuedOnValue = formData.issuedOn;
+          if (issuedOnValue) {
+            dateProps.min = issuedOnValue;
+          }
+          // Expiry date can be in the future (no max constraint)
+        }
+        
+        return <Input {...dateProps} />;
       case "number":
         return <Input {...commonProps} type="number" min="0" />;
       case "url":
@@ -622,7 +1009,7 @@ const UnifiedProfileEditModal = ({
   // Render form for multi-item mode (add/edit within list)
   const renderForm = () => {
     // For types that should use separate modals, don't show inline form
-    const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+    const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
     if (usesSeparateModal.includes(type)) {
       return null; // The Add button is now in the header
     }
@@ -687,18 +1074,40 @@ const UnifiedProfileEditModal = ({
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <h4 className="font-semibold text-gray-900">{config.getDisplayTitle(item)}</h4>
-            {item.status && (
+            {/* Show only ONE badge in priority order */}
+            {item._hasLocalChanges ? (
+              <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
+                <Clock className="w-3 h-3 mr-1" /> Unsaved Changes
+              </Badge>
+            ) : item._hasPendingEdit ? (
+              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                <Clock className="w-3 h-3 mr-1" /> Pending Approval
+              </Badge>
+            ) : item.approval_status === 'pending' ? (
+              <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                <Clock className="w-3 h-3 mr-1" /> Pending Verification
+              </Badge>
+            ) : (item.approval_status === 'approved' || item.approval_status === 'verified') ? (
+              <Badge className="bg-green-100 text-green-700">
+                <CheckCircle className="w-3 h-3 mr-1" /> Verified
+              </Badge>
+            ) : item.status && item.status !== 'active' ? (
               <Badge className={item.status === "completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}>
                 {item.status}
               </Badge>
-            )}
-            {item.processing && (
-              <Badge className="bg-orange-100 text-orange-700">
-                <Clock className="w-3 h-3 mr-1" /> Processing
-              </Badge>
-            )}
+            ) : null}
           </div>
           <p className="text-sm text-gray-600">{config.getDisplaySubtitle(item)}</p>
+          {item._hasLocalChanges && (
+            <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
+              <strong>Unsaved:</strong> Changes are pending. Click the edit button to save.
+            </div>
+          )}
+          {item._hasPendingEdit && !item._hasLocalChanges && (
+            <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+              <strong>Note:</strong> Your changes are saved but pending approval. The dashboard shows the verified version until approved.
+            </div>
+          )}
           {item.duration && <p className="text-xs text-gray-500 mt-1"><Calendar className="w-3 h-3 inline mr-1" />{item.duration}</p>}
 
           {/* Description */}
@@ -729,7 +1138,7 @@ const UnifiedProfileEditModal = ({
                                 : [];
 
                 return techArray.map((tech, i) => (
-                  <Badge key={i} className="bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border border-blue-200 text-xs font-medium shadow-sm">
+                  <Badge key={i} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
                     {tech}
                   </Badge>
                 ));
@@ -743,7 +1152,7 @@ const UnifiedProfileEditModal = ({
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+              const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
               if (usesSeparateModal.includes(type)) {
                 handleEditItem(index);
               } else {
@@ -757,9 +1166,12 @@ const UnifiedProfileEditModal = ({
           <Button variant="ghost" size="sm" onClick={() => deleteItem(index)} className="text-red-500 hover:bg-red-50">
             <Trash2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => toggleEnabled(index)} className={item.enabled === false ? "text-gray-500" : "text-green-600"}>
-            {item.enabled === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </Button>
+          {/* Only show hide/show button for verified certificates (not pending approval) */}
+          {!(item.approval_status === 'pending' || item._hasPendingEdit) && (
+            <Button variant="ghost" size="sm" onClick={() => toggleEnabled(index)} className={item.enabled === false ? "text-gray-500" : "text-green-600"}>
+              {item.enabled === false ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -882,7 +1294,7 @@ const UnifiedProfileEditModal = ({
                 Edit {config.title}
               </DialogTitle>
               {(() => {
-                const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+                const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
                 if (usesSeparateModal.includes(type)) {
                   return (
                     <Button 
@@ -957,10 +1369,15 @@ const UnifiedProfileEditModal = ({
             <Button variant="outline" onClick={onClose} disabled={isSaving}>
               Cancel
             </Button>
+            {/* COMMENTED OUT: Save All Changes button - redundant with auto-save in "Update Certificates" button
             <Button 
               onClick={handleSubmit} 
               disabled={isSaving}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className={`${
+                items.some(item => item.processing) 
+                  ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              } text-white`}
             >
               {isSaving ? (
                 <>
@@ -971,16 +1388,54 @@ const UnifiedProfileEditModal = ({
                 <>
                   <Save className="w-4 h-4 mr-2" />
                   Save All Changes
+                  {items.some(item => item.processing) && (
+                    <span className="ml-2 bg-white text-orange-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                      {items.filter(item => item.processing).length}
+                    </span>
+                  )}
+                </>
+              )}
+            </Button>
+            */}
+          </div>
+
+          {/* COMMENTED OUT: Save All Changes button - redundant since we have auto-save in "Update Certificates" button */}
+          {/* 
+          <div className="flex-shrink-0 flex justify-end gap-3 pt-4 border-t bg-white">
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isSaving}
+              className={`${
+                items.some(item => item.processing) 
+                  ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              } text-white`}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save All Changes
+                  {items.some(item => item.processing) && (
+                    <span className="ml-2 bg-white text-orange-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                      {items.filter(item => item.processing).length}
+                    </span>
+                  )}
                 </>
               )}
             </Button>
           </div>
+          */}
         </DialogContent>
       </Dialog>
 
       {/* Separate Item Modal */}
       {(() => {
-        const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates'];
+        const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
         if (usesSeparateModal.includes(type)) {
           return (
             <ProfileItemModal
@@ -997,6 +1452,47 @@ const UnifiedProfileEditModal = ({
         }
         return null;
       })()}
+      
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmDialog.isOpen} onOpenChange={(open) => !open && setConfirmDialog({ isOpen: false, type: null, itemIndex: null, itemTitle: '' })}>
+        <AlertDialogContent className="bg-white rounded-xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold text-gray-900">
+              {confirmDialog.type === 'delete' && 'Delete Confirmation'}
+              {confirmDialog.type === 'hide' && 'Hide Confirmation'}
+              {confirmDialog.type === 'show' && 'Show Confirmation'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-600">
+              {confirmDialog.type === 'delete' && (
+                <>Are you sure you want to delete <strong>"{confirmDialog.itemTitle}"</strong>? This action cannot be undone.</>
+              )}
+              {confirmDialog.type === 'hide' && (
+                <>Are you sure you want to hide <strong>"{confirmDialog.itemTitle}"</strong> on your profile?</>
+              )}
+              {confirmDialog.type === 'show' && (
+                <>Are you sure you want to show <strong>"{confirmDialog.itemTitle}"</strong> on your profile?</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDialog.type === 'delete' ? handleConfirmDelete : handleConfirmToggle}
+              className={`px-4 py-2 text-white rounded-lg ${
+                confirmDialog.type === 'delete' 
+                  ? 'bg-red-600 hover:bg-red-700' 
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {confirmDialog.type === 'delete' && 'Delete'}
+              {confirmDialog.type === 'hide' && 'Hide'}
+              {confirmDialog.type === 'show' && 'Show'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

@@ -1,7 +1,7 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, AlertCircle, CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
-import { resetPassword } from '../../services/unifiedAuthService';
+import { Mail, AlertCircle, CheckCircle, Loader2, ArrowLeft, Info } from 'lucide-react';
+import { sendPasswordResetOTP } from '../../services/unifiedAuthService';
 
 interface ForgotPasswordState {
   email: string;
@@ -31,25 +31,21 @@ const UnifiedForgotPassword = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validate email
     if (!state.email) {
-      setState(prev => ({
-        ...prev,
-        error: 'Please enter your email address'
-      }));
+      setState(prev => ({ ...prev, error: 'Please enter your email address' }));
       return;
     }
 
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      const result = await resetPassword(state.email);
+      const result = await sendPasswordResetOTP(state.email);
 
       if (!result.success) {
         setState(prev => ({
           ...prev,
           loading: false,
-          error: result.error || 'Failed to send reset email'
+          error: result.error || 'Failed to send reset link'
         }));
         return;
       }
@@ -61,7 +57,7 @@ const UnifiedForgotPassword = () => {
       }));
 
     } catch (error) {
-      console.error('Forgot password error:', error);
+      console.error('Password reset error:', error);
       setState(prev => ({
         ...prev,
         loading: false,
@@ -79,12 +75,9 @@ const UnifiedForgotPassword = () => {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Forgot Password?</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Forgot Password</h1>
           <p className="text-gray-600">
-            {state.success 
-              ? 'Check your email for reset instructions'
-              : 'Enter your email to receive a password reset link'
-            }
+            Enter your email to receive a password reset link
           </p>
         </div>
 
@@ -99,30 +92,19 @@ const UnifiedForgotPassword = () => {
           )}
 
           {/* Success Message */}
-          {state.success ? (
-            <div className="space-y-6">
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-green-800 font-medium">Email sent successfully!</p>
-                  <p className="text-sm text-green-700 mt-1">
-                    We've sent a password reset link to <strong>{state.email}</strong>
-                  </p>
-                  <p className="text-sm text-green-700 mt-2">
-                    Please check your inbox and follow the instructions to reset your password.
-                  </p>
-                </div>
+          {state.success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-green-800 font-medium">Reset link sent!</p>
+                <p className="text-sm text-green-700 mt-1">
+                  Please check your email (including spam folder) for a password reset link.
+                </p>
               </div>
-
-              <button
-                onClick={handleBackToLogin}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span>Back to Login</span>
-              </button>
             </div>
-          ) : (
+          )}
+
+          {!state.success ? (
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email Input */}
               <div>
@@ -148,6 +130,17 @@ const UnifiedForgotPassword = () => {
                 </div>
               </div>
 
+              {/* Info Message */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3">
+                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-blue-800 font-medium">How it works</p>
+                  <p className="text-sm text-blue-700 mt-1">
+                    We'll send you a secure link to reset your password. Click the link in your email to create a new password.
+                  </p>
+                </div>
+              </div>
+
               {/* Submit Button */}
               <button
                 type="submit"
@@ -157,7 +150,7 @@ const UnifiedForgotPassword = () => {
                 {state.loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Sending...</span>
+                    <span>Sending Reset Link...</span>
                   </>
                 ) : (
                   <span>Send Reset Link</span>
@@ -175,12 +168,29 @@ const UnifiedForgotPassword = () => {
                 <span>Back to Login</span>
               </button>
             </form>
+          ) : (
+            <div className="space-y-6">
+              <button
+                onClick={handleBackToLogin}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
+              >
+                <span>Back to Login</span>
+              </button>
+            </div>
           )}
         </div>
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-gray-500">
-          <p>If you don't receive an email, check your spam folder or contact support.</p>
+          <p>
+            Remember your password? {' '}
+            <button
+              onClick={handleBackToLogin}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Sign in
+            </button>
+          </p>
         </div>
       </div>
     </div>
