@@ -5,6 +5,10 @@
  * - Check email availability
  * 
  * Uses unified 'organizations' table for schools, colleges, universities
+ * 
+ * Performance optimizations:
+ * - In-memory caching for institution lists (1 hour TTL)
+ * - Cache-Control headers for browser/CDN caching
  */
 
 import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
@@ -22,6 +26,46 @@ interface CheckEmailRequest {
   email: string;
 }
 
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+}
+
+// ==================== CACHING ====================
+
+// In-memory cache for institution lists
+const cache = new Map<string, CacheEntry>();
+const CACHE_TTL = 3600000; // 1 hour in milliseconds
+
+/**
+ * Get data from cache if not expired
+ */
+function getCached(key: string): any | null {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  // Remove expired entry
+  if (cached) {
+    cache.delete(key);
+  }
+  return null;
+}
+
+/**
+ * Store data in cache with current timestamp
+ */
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+/**
+ * Clear all cache entries (for testing/debugging)
+ */
+export function clearCache(): void {
+  cache.clear();
+}
+
 // ==================== HELPERS ====================
 
 // Helper functions imported from ../utils/helpers.ts
@@ -32,8 +76,20 @@ interface CheckEmailRequest {
 
 /**
  * Get all schools for dropdown from organizations table
+ * Cached for 1 hour to improve performance
  */
 export async function handleGetSchools(env: PagesEnv): Promise<Response> {
+  const cacheKey = 'schools';
+  const cached = getCached(cacheKey);
+
+  // Return cached data if available
+  if (cached) {
+    return jsonResponse(cached, 200, {
+      'Cache-Control': 'public, max-age=3600',
+      'X-Cache': 'HIT',
+    });
+  }
+
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   try {
@@ -48,7 +104,15 @@ export async function handleGetSchools(env: PagesEnv): Promise<Response> {
       return jsonResponse({ error: 'Failed to fetch schools' }, 500);
     }
 
-    return jsonResponse({ success: true, data: schools || [] });
+    const response = { success: true, data: schools || [] };
+    
+    // Cache the response
+    setCache(cacheKey, response);
+
+    return jsonResponse(response, 200, {
+      'Cache-Control': 'public, max-age=3600',
+      'X-Cache': 'MISS',
+    });
   } catch (error) {
     console.error('Get schools error:', error);
     return jsonResponse({ error: 'Failed to fetch schools' }, 500);
@@ -57,8 +121,20 @@ export async function handleGetSchools(env: PagesEnv): Promise<Response> {
 
 /**
  * Get all colleges for dropdown from organizations table
+ * Cached for 1 hour to improve performance
  */
 export async function handleGetColleges(env: PagesEnv): Promise<Response> {
+  const cacheKey = 'colleges';
+  const cached = getCached(cacheKey);
+
+  // Return cached data if available
+  if (cached) {
+    return jsonResponse(cached, 200, {
+      'Cache-Control': 'public, max-age=3600',
+      'X-Cache': 'HIT',
+    });
+  }
+
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   try {
@@ -73,7 +149,15 @@ export async function handleGetColleges(env: PagesEnv): Promise<Response> {
       return jsonResponse({ error: 'Failed to fetch colleges' }, 500);
     }
 
-    return jsonResponse({ success: true, data: colleges || [] });
+    const response = { success: true, data: colleges || [] };
+    
+    // Cache the response
+    setCache(cacheKey, response);
+
+    return jsonResponse(response, 200, {
+      'Cache-Control': 'public, max-age=3600',
+      'X-Cache': 'MISS',
+    });
   } catch (error) {
     console.error('Get colleges error:', error);
     return jsonResponse({ error: 'Failed to fetch colleges' }, 500);
@@ -82,8 +166,20 @@ export async function handleGetColleges(env: PagesEnv): Promise<Response> {
 
 /**
  * Get all universities for dropdown from organizations table
+ * Cached for 1 hour to improve performance
  */
 export async function handleGetUniversities(env: PagesEnv): Promise<Response> {
+  const cacheKey = 'universities';
+  const cached = getCached(cacheKey);
+
+  // Return cached data if available
+  if (cached) {
+    return jsonResponse(cached, 200, {
+      'Cache-Control': 'public, max-age=3600',
+      'X-Cache': 'HIT',
+    });
+  }
+
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   try {
@@ -98,7 +194,15 @@ export async function handleGetUniversities(env: PagesEnv): Promise<Response> {
       return jsonResponse({ error: 'Failed to fetch universities' }, 500);
     }
 
-    return jsonResponse({ success: true, data: universities || [] });
+    const response = { success: true, data: universities || [] };
+    
+    // Cache the response
+    setCache(cacheKey, response);
+
+    return jsonResponse(response, 200, {
+      'Cache-Control': 'public, max-age=3600',
+      'X-Cache': 'MISS',
+    });
   } catch (error) {
     console.error('Get universities error:', error);
     return jsonResponse({ error: 'Failed to fetch universities' }, 500);
@@ -107,8 +211,20 @@ export async function handleGetUniversities(env: PagesEnv): Promise<Response> {
 
 /**
  * Get all companies for dropdown
+ * Cached for 1 hour to improve performance
  */
 export async function handleGetCompanies(env: PagesEnv): Promise<Response> {
+  const cacheKey = 'companies';
+  const cached = getCached(cacheKey);
+
+  // Return cached data if available
+  if (cached) {
+    return jsonResponse(cached, 200, {
+      'Cache-Control': 'public, max-age=3600',
+      'X-Cache': 'HIT',
+    });
+  }
+
   const supabaseAdmin = createSupabaseAdminClient(env);
 
   try {
@@ -122,7 +238,15 @@ export async function handleGetCompanies(env: PagesEnv): Promise<Response> {
       return jsonResponse({ error: 'Failed to fetch companies' }, 500);
     }
 
-    return jsonResponse({ success: true, data: companies || [] });
+    const response = { success: true, data: companies || [] };
+    
+    // Cache the response
+    setCache(cacheKey, response);
+
+    return jsonResponse(response, 200, {
+      'Cache-Control': 'public, max-age=3600',
+      'X-Cache': 'MISS',
+    });
   } catch (error) {
     console.error('Get companies error:', error);
     return jsonResponse({ error: 'Failed to fetch companies' }, 500);
