@@ -42,8 +42,65 @@ const PrintViewMiddleHighSchool = ({
     );
   }
 
-  // Extract data from results
-  const { riasec, careerFit, skillGap, roadmap, finalNote, profileSnapshot } = results;
+  // 🔧 CRITICAL FIX: Normalize RIASEC scores before using them
+  // The normalizer moves _originalScores to riasec level, not gemini_results level
+  let normalizedResults = { ...results };
+  
+  console.log('🔍 PDF PrintViewMiddleHighSchool - Input data:', {
+    hasRiasec: !!results.riasec,
+    riasecScores: results.riasec?.scores,
+    hasRiasecOriginal: !!results.riasec?._originalScores,
+    riasecOriginal: results.riasec?._originalScores,
+    hasGeminiResults: !!results.gemini_results,
+    hasGeminiRiasec: !!results.gemini_results?.riasec,
+    geminiOriginal: results.gemini_results?.riasec?._originalScores
+  });
+  
+  if (results.riasec) {
+    const scores = results.riasec.scores || {};
+    const allZeros = Object.values(scores).every(score => score === 0);
+    
+    // Check for _originalScores at riasec level (after normalization)
+    // OR at gemini_results level (before normalization)
+    const originalScores = results.riasec._originalScores || 
+                          results.gemini_results?.riasec?._originalScores || 
+                          {};
+    const hasOriginalScores = Object.keys(originalScores).length > 0 &&
+      Object.values(originalScores).some(score => score > 0);
+    
+    console.log('🔍 PDF PrintViewMiddleHighSchool - Normalization check:', {
+      allZeros,
+      hasOriginalScores,
+      originalScores,
+      foundAt: results.riasec._originalScores ? 'riasec._originalScores' : 
+               results.gemini_results?.riasec?._originalScores ? 'gemini_results.riasec._originalScores' : 
+               'NOT FOUND'
+    });
+    
+    if (allZeros && hasOriginalScores) {
+      console.log('🔧 PDF PrintView: Normalizing RIASEC scores from _originalScores');
+      console.log('   Original scores found at:', results.riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
+      normalizedResults = {
+        ...results,
+        riasec: {
+          ...results.riasec,
+          scores: originalScores,
+          _originalScores: originalScores,
+          maxScore: results.riasec.maxScore || 
+                   results.gemini_results?.riasec?.maxScore || 
+                   24
+        }
+      };
+      console.log('✅ PDF PrintView - Normalized scores:', normalizedResults.riasec.scores);
+    } else {
+      console.log('⚠️ PDF PrintView - No normalization applied:', {
+        reason: !allZeros ? 'Scores are not all zeros' : 'No original scores found'
+      });
+    }
+  }
+
+  // Extract data from normalized results
+  const { riasec, careerFit, skillGap, roadmap, finalNote, profileSnapshot } = normalizedResults;
 
   // Safe student info with defaults
   const safeStudentInfo = getSafeStudentInfo(studentInfo);
@@ -96,7 +153,7 @@ const PrintViewMiddleHighSchool = ({
               {/* Detailed Assessment Breakdown (Developer Reference) */}
               <div style={{ pageBreakBefore: 'always' }}>
                 <DetailedAssessmentBreakdown 
-                  results={results} 
+                  results={normalizedResults} 
                   riasecNames={safeRiasecNames}
                   gradeLevel="highschool"
                 />
@@ -150,9 +207,17 @@ const PrintViewMiddleHighSchool = ({
 const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
   if (!riasec || !riasec.topThree) return null;
 
+  // 🔧 CRITICAL FIX: Use _originalScores if riasec.scores are all zeros
+  let scores = riasec.scores || {};
+  const allZeros = Object.values(scores).every(score => score === 0);
+  if (allZeros && riasec._originalScores && Object.keys(riasec._originalScores).length > 0) {
+    console.log('🔧 PDF InterestExplorer: Using _originalScores instead of zeros');
+    scores = riasec._originalScores;
+  }
+
   const maxScore = riasec.maxScore || 20;
   const topInterestsText = riasec.topThree.map(code => safeRiasecNames[code]).join(', ');
-  const hasStrongInterests = riasec.topThree.some(code => (riasec.scores?.[code] || 0) >= maxScore * 0.5);
+  const hasStrongInterests = riasec.topThree.some(code => (scores[code] || 0) >= maxScore * 0.5);
   
   return (
     <div>
@@ -212,7 +277,7 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
           zIndex: 1
         }}>
           {riasec.topThree.map((code, idx) => {
-            const score = riasec.scores?.[code] || 0;
+            const score = scores[code] || 0;
             
             return (
               <div key={code} style={{ width: '28%', textAlign: 'center' }}>

@@ -7,6 +7,7 @@ import { analyzeAssessmentWithGemini, addCourseRecommendations } from '../../../
 import { validateAssessmentResults } from '../utils/assessmentValidation';
 import { validateAptitudeScores } from '../../../../services/aptitudeScoreValidator';
 import { validateRiasecScores } from '../../../../services/riasecScoreValidator';
+import { normalizeAssessmentResults } from '../../../../utils/assessmentDataNormalizer';
 import {
     riasecQuestions,
     bigFiveQuestions,
@@ -915,7 +916,21 @@ export const useAssessmentResults = () => {
                         } else {
                             // Valid AI analysis exists - use it
                             const validatedResults = await applyValidation(geminiResults, {});
-                            setResults(validatedResults);
+                            
+                            console.log('🔍 DEBUG - Before normalization (direct lookup):', {
+                                hasRiasec: !!validatedResults.riasec,
+                                riasecScores: validatedResults.riasec?.scores,
+                                hasGeminiResults: !!validatedResults.gemini_results,
+                                originalScores: validatedResults.gemini_results?.riasec?._originalScores
+                            });
+                            
+                            // Normalize results to fix data inconsistencies
+                            const normalizedResults = normalizeAssessmentResults(validatedResults);
+                            console.log('🔧 Assessment results normalized (direct lookup):', {
+                                before: validatedResults.riasec?.scores,
+                                after: normalizedResults.riasec?.scores
+                            });
+                            setResults(normalizedResults);
 
                             // Set grade level
                             if (directResult.grade_level) {
@@ -1075,7 +1090,14 @@ export const useAssessmentResults = () => {
                             
                             // Set results without course generation
                             console.log('📋 Loading assessment results (courses will be generated on-demand)');
-                            setResults(validatedResults);
+                            
+                            // Normalize results to fix data inconsistencies
+                            const normalizedResults = normalizeAssessmentResults(validatedResults);
+                            console.log('🔧 Assessment results normalized (attempt lookup):', {
+                                before: validatedResults.riasec?.scores,
+                                after: normalizedResults.riasec?.scores
+                            });
+                            setResults(normalizedResults);
 
                             // Set grade level from attempt
                             if (attempt.grade_level) {
@@ -1241,7 +1263,14 @@ export const useAssessmentResults = () => {
                         console.log('Loaded results from database');
                         // Apply validation to correct RIASEC topThree and detect aptitude patterns
                         const validatedResults = await applyValidation(geminiResults);
-                        setResults(validatedResults);
+                        
+                        // Normalize results to fix data inconsistencies
+                        const normalizedResults = normalizeAssessmentResults(validatedResults);
+                        console.log('🔧 Assessment results normalized (latest result):', {
+                            before: validatedResults.riasec?.scores,
+                            after: normalizedResults.riasec?.scores
+                        });
+                        setResults(normalizedResults);
 
                         // Set grade level from result
                         if (latestResult.grade_level) {
@@ -1611,7 +1640,13 @@ export const useAssessmentResults = () => {
             }
 
             // Update state with new results
-            setResults(validatedResults);
+            // Normalize results to fix data inconsistencies
+            const normalizedResults = normalizeAssessmentResults(validatedResults);
+            console.log('🔧 Assessment results normalized (retry):', {
+                before: validatedResults.riasec?.scores,
+                after: normalizedResults.riasec?.scores
+            });
+            setResults(normalizedResults);
             setError(null); // Clear error only on success
             setRetryCompleted(true); // Mark retry as completed to prevent re-triggering
             console.log('✅ AI analysis regenerated successfully');

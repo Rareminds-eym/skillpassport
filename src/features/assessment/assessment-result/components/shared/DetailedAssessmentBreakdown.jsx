@@ -37,6 +37,55 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
 
     const { riasec, aptitude, bigFive, workValues, knowledge, employability } = results;
 
+    console.log('🔍 DetailedAssessmentBreakdown received:', {
+        hasRiasec: !!riasec,
+        riasecScores: riasec?.scores,
+        riasecOriginal: riasec?._originalScores,
+        hasGeminiResults: !!results.gemini_results,
+        geminiOriginal: results.gemini_results?.riasec?._originalScores
+    });
+
+    // 🔧 CRITICAL FIX: Check BOTH locations for _originalScores
+    let safeRiasec = riasec;
+    if (riasec) {
+        const scores = riasec.scores || {};
+        const allZeros = Object.values(scores).every(score => score === 0);
+        
+        // Check riasec._originalScores first (after normalization)
+        // Then check gemini_results.riasec._originalScores (before normalization)
+        const originalScores = riasec._originalScores || 
+                              results.gemini_results?.riasec?._originalScores || 
+                              {};
+        const hasOriginalScores = Object.keys(originalScores).length > 0 &&
+            Object.values(originalScores).some(score => score > 0);
+        
+        console.log('🔍 DetailedAssessmentBreakdown normalization check:', {
+            allZeros,
+            hasOriginalScores,
+            originalScores,
+            foundAt: riasec._originalScores ? 'riasec._originalScores' : 
+                    results.gemini_results?.riasec?._originalScores ? 'gemini_results.riasec._originalScores' : 
+                    'NOT FOUND'
+        });
+        
+        if (allZeros && hasOriginalScores) {
+            console.log('🔧 DetailedAssessmentBreakdown: Fixing RIASEC scores from _originalScores');
+            console.log('   Using scores:', originalScores);
+            safeRiasec = {
+                ...riasec,
+                scores: originalScores,
+                maxScore: riasec.maxScore || 
+                         results.gemini_results?.riasec?.maxScore || 
+                         24
+            };
+            console.log('✅ DetailedAssessmentBreakdown: Fixed scores:', safeRiasec.scores);
+        } else {
+            console.log('⚠️ DetailedAssessmentBreakdown: No fix applied', {
+                reason: !allZeros ? 'Scores not all zeros' : 'No original scores found'
+            });
+        }
+    }
+
     // Calculate stage averages
     const calculateStageAverage = (scores) => {
         if (!scores || Object.keys(scores).length === 0) return 0;
@@ -50,17 +99,17 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
         {
             id: 1,
             name: 'Interest Explorer (RIASEC)',
-            data: riasec,
-            scores: riasec?.scores ? Object.entries(riasec.scores).map(([code, score]) => ({
+            data: safeRiasec,
+            scores: safeRiasec?.scores ? Object.entries(safeRiasec.scores).map(([code, score]) => ({
                 label: `${code} - ${riasecNames?.[code] || code}`,
                 value: score,
-                max: riasec.maxScore || 20,
-                percentage: Math.round((score / (riasec.maxScore || 20)) * 100)
+                max: safeRiasec.maxScore || 20,
+                percentage: Math.round((score / (safeRiasec.maxScore || 20)) * 100)
             })) : [],
-            avgPercentage: riasec?.scores ? Math.round(
-                Object.values(riasec.scores).reduce((sum, s) => sum + s, 0) / 
-                Object.values(riasec.scores).length / 
-                (riasec.maxScore || 20) * 100
+            avgPercentage: safeRiasec?.scores ? Math.round(
+                Object.values(safeRiasec.scores).reduce((sum, s) => sum + s, 0) / 
+                Object.values(safeRiasec.scores).length / 
+                (safeRiasec.maxScore || 20) * 100
             ) : 0
         },
         {

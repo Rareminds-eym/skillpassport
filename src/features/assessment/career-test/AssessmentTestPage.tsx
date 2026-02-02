@@ -672,11 +672,29 @@ const AssessmentTestPage: React.FC = () => {
       !adaptiveAptitude.loading &&
       adaptiveAptitude.currentQuestion
     ) {
-
+      console.log('✅ [ADAPTIVE] Questions loaded, starting section');
       adaptiveStartPendingRef.current = false;
       flow.startSection();
     }
-  }, [adaptiveAptitude.loading, adaptiveAptitude.currentQuestion, flow.showSectionIntro, flow.currentSectionIndex, sections]);
+    
+    // Safety timeout: If adaptive test is stuck loading for more than 30 seconds, show error
+    if (
+      currentSection?.isAdaptive &&
+      flow.showSectionIntro &&
+      adaptiveStartPendingRef.current &&
+      adaptiveAptitude.loading
+    ) {
+      const timeoutId = setTimeout(() => {
+        if (adaptiveStartPendingRef.current && adaptiveAptitude.loading) {
+          console.error('❌ [ADAPTIVE] Timeout: Questions failed to load after 30 seconds');
+          adaptiveStartPendingRef.current = false;
+          flow.setError('Adaptive test initialization timed out. Please refresh the page and try again.');
+        }
+      }, 30000); // 30 second timeout
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [adaptiveAptitude.loading, adaptiveAptitude.currentQuestion, flow.showSectionIntro, flow.currentSectionIndex, sections, flow]);
 
   // Link adaptive aptitude session to assessment attempt when session is created
   useEffect(() => {
@@ -1122,13 +1140,33 @@ const AssessmentTestPage: React.FC = () => {
 
     // Initialize adaptive test
     if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
+      console.log('🚀 [ADAPTIVE] Starting adaptive test...');
       // Initialize adaptive timer based on section config
       setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);
-      // Set pending flag so useEffect knows to start section when questions load
-      adaptiveStartPendingRef.current = true;
-      // Start the adaptive test (async - questions will load in background)
-      adaptiveAptitude.startTest();
-      // Don't call flow.startSection() here - the useEffect will do it once questions are ready
+      
+      // Check if questions are already loaded
+      if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
+        console.log('✅ [ADAPTIVE] Questions already loaded, starting immediately');
+        // Questions already loaded, start immediately
+        flow.startSection();
+      } else {
+        console.log('⏳ [ADAPTIVE] Questions not loaded yet, setting pending flag');
+        // Set pending flag so useEffect knows to start section when questions load
+        adaptiveStartPendingRef.current = true;
+        
+        // Start the adaptive test (async - questions will load in background)
+        try {
+          await adaptiveAptitude.startTest();
+          console.log('✅ [ADAPTIVE] startTest completed successfully');
+        } catch (err) {
+          console.error('❌ [ADAPTIVE] Failed to start test:', err);
+          adaptiveStartPendingRef.current = false;
+          flow.setError('Failed to initialize adaptive test. Please try again.');
+          return;
+        }
+        
+        // Don't call flow.startSection() here - the useEffect will do it once questions are ready
+      }
       return;
     }
 
@@ -1907,8 +1945,39 @@ const AssessmentTestPage: React.FC = () => {
 
 
           {/* Loading Question Fallback - Handle race condition where intro is hidden but question loading */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && !currentQuestion && (
+          {!flow.showSectionIntro && !flow.showSectionComplete && !currentQuestion && !currentSection?.isAdaptive && (
             <LoadingScreen message="Loading question..." />
+          )}
+          
+          {/* Adaptive Section Loading - Show loading when adaptive test is initializing */}
+          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && (adaptiveAptitude.loading || !adaptiveAptitude.currentQuestion) && !adaptiveAptitude.error && (
+            <LoadingScreen message="Initializing adaptive test..." />
+          )}
+          
+          {/* Adaptive Section Error - Show error if adaptive test fails to initialize */}
+          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.error && (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+                <div className="flex items-start gap-3">
+                  <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 className="text-lg font-semibold text-red-900 mb-2">Adaptive Test Error</h3>
+                    <p className="text-red-700">{adaptiveAptitude.error}</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  adaptiveAptitude.clearError();
+                  flow.setShowSectionIntro(true);
+                }}
+                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
           )}
 
           {/* Question with Sidebar Layout */}
