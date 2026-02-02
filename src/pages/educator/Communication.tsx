@@ -127,19 +127,29 @@ const Communication = () => {
   });
   
   // Define userAuthId after educatorData is available
-  const userAuthId = educatorData?.user_id || userId; // Use database user_id if available, fallback to auth
+  // CRITICAL: Always use the database user_id for presence tracking, not the auth ID
+  const userAuthId = educatorData?.user_id; // Use database user_id for presence consistency
   
   // Debug logging
   useEffect(() => {
     if (user) {
-      console.log('🔍 Current user from auth:', {
+      console.log('🔍 [AUTH-DEBUG] Current user from auth:', {
         id: user.id,
         email: user.email,
         name: user.name
       });
-      console.log('🔍 userId variable (from auth):', userId);
-      console.log('🔍 userAuthId variable (corrected):', userAuthId);
-      console.log('🔍 educatorData:', educatorData);
+      console.log('🔍 [AUTH-DEBUG] userId variable (from auth):', userId);
+      console.log('🔍 [AUTH-DEBUG] userAuthId variable (corrected):', userAuthId);
+      console.log('🔍 [AUTH-DEBUG] educatorData:', educatorData);
+      
+      if (educatorData) {
+        console.log('🔍 [AUTH-DEBUG] Database vs Auth ID comparison:', {
+          auth_user_id: userId,
+          database_user_id: educatorData.user_id,
+          school_educators_record_id: educatorData.id,
+          using_for_presence: userAuthId
+        });
+      }
     }
   }, [user, userId, userAuthId, educatorData]);
   
@@ -222,13 +232,39 @@ const Communication = () => {
         return [];
       }
       
-      // For educator_admin conversations, we don't need to fetch school_educators data
-      // because the admin info comes from the school_id, not educator_id
-      // The educator_id in these conversations refers to the current educator
+      // 2. Get school admin user IDs for online status
+      const schoolIds = conversations.map(c => c.school_id).filter(Boolean);
+      console.log('📋 School IDs to fetch admin user IDs for:', schoolIds);
       
-      console.log('✅ Final admin conversations:', conversations);
+      if (schoolIds.length === 0) {
+        console.log('✅ No school IDs found, returning conversations without admin user IDs');
+        console.log('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
+        return conversations;
+      }
+      
+      const { data: schoolAdmins, error: adminError } = await supabase
+        .from('school_educators')
+        .select('school_id, user_id')
+        .in('school_id', schoolIds)
+        .eq('role', 'school_admin');
+      
+      console.log('📥 School admins query result:', { schoolAdmins, adminError, adminsLength: schoolAdmins?.length });
+      
+      if (adminError) {
+        console.error('❌ School admins query error:', adminError);
+        // Return conversations without admin user IDs rather than failing completely
+        return conversations;
+      }
+      
+      // 3. Merge the data
+      const conversationsWithAdminIds = conversations.map(conv => ({
+        ...conv,
+        school_admin_user_id: schoolAdmins?.find(admin => admin.school_id === conv.school_id)?.user_id || null
+      }));
+      
+      console.log('✅ Final admin conversations with admin user IDs:', conversationsWithAdminIds);
       console.log('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
-      return conversations;
+      return conversationsWithAdminIds;
     },
     enabled: !!educatorRecordId,
     staleTime: 60000,
@@ -274,13 +310,39 @@ const Communication = () => {
         return [];
       }
       
-      // For educator_admin conversations, we don't need to fetch school_educators data
-      // because the admin info comes from the school_id, not educator_id
-      // The educator_id in these conversations refers to the current educator
+      // 2. Get school admin user IDs for online status
+      const schoolIds = conversations.map(c => c.school_id).filter(Boolean);
+      console.log('�  Archived school IDs to fetch admin user IDs for:', schoolIds);
       
-      console.log('✅ Final archived admin conversations:', conversations);
+      if (schoolIds.length === 0) {
+        console.log('✅ No archived school IDs found, returning conversations without admin user IDs');
+        console.log('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
+        return conversations;
+      }
+      
+      const { data: schoolAdmins, error: adminError } = await supabase
+        .from('school_educators')
+        .select('school_id, user_id')
+        .in('school_id', schoolIds)
+        .eq('role', 'school_admin');
+      
+      console.log('📥 Archived school admins query result:', { schoolAdmins, adminError, adminsLength: schoolAdmins?.length });
+      
+      if (adminError) {
+        console.error('❌ Archived school admins query error:', adminError);
+        // Return conversations without admin user IDs rather than failing completely
+        return conversations;
+      }
+      
+      // 3. Merge the data
+      const conversationsWithAdminIds = conversations.map(conv => ({
+        ...conv,
+        school_admin_user_id: schoolAdmins?.find(admin => admin.school_id === conv.school_id)?.user_id || null
+      }));
+      
+      console.log('✅ Final archived admin conversations with admin user IDs:', conversationsWithAdminIds);
       console.log('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
-      return conversations;
+      return conversationsWithAdminIds;
     },
     enabled: !!educatorRecordId,
     staleTime: 60000,
@@ -360,29 +422,29 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
   const { } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
     userPresence: {
-      userId: educatorId || '',
+      userId: userAuthId || '',
       userName: educatorName,
       userType: 'educator',
       status: 'online',
       lastSeen: new Date().toISOString(),
       conversationId: selectedConversationId || undefined
     },
-    enabled: !!selectedConversationId && !!educatorId
+    enabled: !!selectedConversationId && !!userAuthId && !!educatorData
   });
 
   // Typing indicators
   const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({
     conversationId: selectedConversationId || '',
-    currentUserId: educatorId || '',
+    currentUserId: userAuthId || '',
     currentUserName: educatorName,
-    enabled: !!selectedConversationId && !!educatorId
+    enabled: !!selectedConversationId && !!userAuthId && !!educatorData
   });
 
   // Notification broadcasts
   const { sendNotification } = useNotificationBroadcast({
-    userId: educatorId || '',
+    userId: userAuthId || '',
     showToast: true,
-    enabled: !!educatorId
+    enabled: !!userAuthId && !!educatorData
   });
 
   // Close dropdown when clicking outside
@@ -852,8 +914,23 @@ console.log('🔍 Checking online for student:', {
         };
       } else {
         // Admin conversations
-        const schoolName = conv.school?.name || 'School Administration';
+        console.log('🔄 Processing admin conversation:', {
+          conv_id: conv.id,
+          school_id: conv.school_id,
+          school_admin_user_id: conv.school_admin_user_id,
+          subject: conv.subject
+        });
+        
+        // Get school name from organizations table
+        const schoolName = 'School Administration'; // Default fallback
         const subject = conv.subject || 'General Discussion';
+        
+        console.log('📋 Admin data extracted:', {
+          schoolName,
+          subject,
+          school_admin_user_id: conv.school_admin_user_id,
+          online_status: isUserOnlineGlobal(conv.school_admin_user_id)
+        });
         
         return {
           id: conv.id,
@@ -861,7 +938,7 @@ console.log('🔍 Checking online for student:', {
           role: `School Administration • ${subject}`,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(schoolName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
-          online: false, // School admins don't have online status in this context
+          online: isUserOnlineGlobal(conv.school_admin_user_id),
           time: conv.last_message_at 
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',

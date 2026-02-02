@@ -243,10 +243,21 @@ const StudentCommunication = () => {
       
       const { data: educators, error: educatorError } = await supabase
         .from('school_educators')
-        .select('id, first_name, last_name, email, phone_number, photo_url')
+        .select('id, first_name, last_name, email, phone_number, photo_url, user_id')
         .in('id', educatorIds);
       
-      console.log('📥 Educators query result:', { educators, educatorError, educatorsLength: educators?.length });
+      console.log('📥 Educators query result:', { 
+        educators, 
+        educatorError, 
+        educatorsLength: educators?.length,
+        educatorDetails: educators?.map(edu => ({
+          id: edu.id,
+          name: `${edu.first_name} ${edu.last_name}`,
+          email: edu.email,
+          user_id: edu.user_id,
+          has_user_id: !!edu.user_id
+        }))
+      });
       
       if (educatorError) {
         console.error('❌ Educators query error:', educatorError);
@@ -320,7 +331,7 @@ const StudentCommunication = () => {
       
       const { data: educators, error: educatorError } = await supabase
         .from('school_educators')
-        .select('id, first_name, last_name, email, phone_number, photo_url')
+        .select('id, first_name, last_name, email, phone_number, photo_url, user_id')
         .in('id', educatorIds);
       
       console.log('📥 Archived educators query result:', { educators, educatorError, educatorsLength: educators?.length });
@@ -378,7 +389,7 @@ const StudentCommunication = () => {
     activeTab === 'students' ? studentMessages : educatorMessages;
 
   // Use shared global presence context
-  const { isUserOnline: isUserOnlineGlobal } = useGlobalPresence();
+  const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
 
   // Debug: Log school admin presence info
   useEffect(() => {
@@ -387,8 +398,29 @@ const StudentCommunication = () => {
     console.log('📋 School Admin Name:', schoolAdminName);
     console.log('📋 School ID:', schoolId);
     console.log('📋 isUserOnlineGlobal function:', typeof isUserOnlineGlobal);
+    console.log('📋 globalOnlineUsers:', globalOnlineUsers);
+    console.log('� gSlobalOnlineUsers length:', globalOnlineUsers?.length);
+    console.log('📋 globalOnlineUsers details:', globalOnlineUsers?.map(user => ({
+      userId: user.userId,
+      userName: user.userName,
+      userType: user.userType,
+      status: user.status,
+      lastSeen: user.lastSeen
+    })));
+    
+    // Check if school admin can see themselves as online
+    const isSchoolAdminOnline = isUserOnlineGlobal(schoolAdminId);
+    console.log('📋 School Admin self-online check:', isSchoolAdminOnline);
+    
+    // Look for the educator we're trying to check
+    const educatorPresenceId = '5d78d3c6-e53e-48df-887f-fd21e1e58db6'; // The educator's actual presence ID
+    const isEducatorOnlineManual = globalOnlineUsers?.some(user => user.userId === educatorPresenceId);
+    const isEducatorOnlineFunction = isUserOnlineGlobal(educatorPresenceId);
+    console.log('📋 Manual educator online check for', educatorPresenceId, ':', isEducatorOnlineManual);
+    console.log('📋 Function educator online check for', educatorPresenceId, ':', isEducatorOnlineFunction);
+    
     console.log('🔍 [SCHOOL-ADMIN] === PRESENCE DEBUG END ===');
-  }, [schoolAdminId, schoolAdminName, schoolId, isUserOnlineGlobal]);
+  }, [schoolAdminId, schoolAdminName, schoolId, isUserOnlineGlobal, globalOnlineUsers]);
 
   // Presence tracking for current conversation
   const { } = useRealtimePresence({
@@ -411,9 +443,11 @@ const StudentCommunication = () => {
       console.log('📋 School Admin connecting to presence with userId:', schoolAdminId);
       console.log('📋 School Admin userType:', 'school_admin');
       console.log('📋 School Admin userName:', schoolAdminName);
+      console.log('� ExpectedA educator user_id to check:', '323c133d-6144-43ca-bfd0-aaa0f11c2c26');
+      console.log('📋 School Admin auth user object:', user);
       console.log('🔍 [SCHOOL-ADMIN] === PRESENCE CONNECTION DEBUG END ===');
     }
-  }, [schoolAdminId, schoolAdminName]);
+  }, [schoolAdminId, schoolAdminName, user]);
 
   // Typing indicators
   const { setTyping, getTypingText, isAnyoneTyping } = useTypingIndicator({
@@ -881,7 +915,9 @@ const StudentCommunication = () => {
           conv_id: conv.id,
           school_educators: conv.school_educators,
           educator_id: conv.educator_id,
-          subject: conv.subject
+          subject: conv.subject,
+          has_school_educators: !!conv.school_educators,
+          school_educators_keys: conv.school_educators ? Object.keys(conv.school_educators) : 'null'
         });
         
         const educatorName = `${conv.school_educators?.first_name || ''} ${conv.school_educators?.last_name || ''}`.trim() || 
@@ -889,13 +925,60 @@ const StudentCommunication = () => {
         const educatorEmail = conv.school_educators?.email || '';
         const subject = conv.subject || 'General Discussion';
         
-        console.log('📋 Educator data extracted:', {
+        // FIXED: Use educator_id instead of user_id for online status check
+        // The educator connects with their educator_id (5d78d3c6-e53e-48df-887f-fd21e1e58db6)
+        // So we should check for that ID instead of the database user_id
+        const educatorPresenceId = conv.educator_id; // This is what educator uses for presence
+        
+        console.log('📋 [SCHOOL-ADMIN] Educator data extracted:', {
           educatorName,
           educatorEmail,
           subject,
           first_name: conv.school_educators?.first_name,
-          last_name: conv.school_educators?.last_name
+          last_name: conv.school_educators?.last_name,
+          database_user_id: conv.school_educators?.user_id,
+          educator_presence_id: educatorPresenceId,
+          online_status: isUserOnlineGlobal(educatorPresenceId),
+          global_online_users: globalOnlineUsers,
+          checking_presence_id: educatorPresenceId
         });
+        
+        // DETAILED ONLINE STATUS DEBUG
+        console.log('� G[SCHOOL-ADMIN] === ONLINE STATUS DEBUG START ===');
+        console.log('📋 Checking online status for educator presence ID:', educatorPresenceId);
+        console.log('📋 (Note: Using educator_id instead of user_id for presence check)');
+        console.log('📋 isUserOnlineGlobal function type:', typeof isUserOnlineGlobal);
+        console.log('📋 Global online users array:', globalOnlineUsers);
+        console.log('📋 Global online users length:', globalOnlineUsers?.length);
+        console.log('📋 Online users details:', globalOnlineUsers?.map(user => ({
+          userId: user.userId,
+          userName: user.userName,
+          userType: user.userType,
+          status: user.status
+        })));
+        
+        // DETAILED USER ID COMPARISON
+        console.log('🔍 [DETAILED-COMPARISON] === USER ID COMPARISON START ===');
+        globalOnlineUsers?.forEach((user, index) => {
+          console.log(`📋 Online User ${index + 1}:`, {
+            userId: user.userId,
+            userId_type: typeof user.userId,
+            userId_length: user.userId?.length,
+            userName: user.userName,
+            userType: user.userType,
+            matches_educator_presence_id: user.userId === educatorPresenceId,
+            educator_presence_id: educatorPresenceId,
+            educator_presence_id_type: typeof educatorPresenceId,
+            educator_presence_id_length: educatorPresenceId?.length
+          });
+        });
+        console.log('� [DETaAILED-COMPARISON] === USER ID COMPARISON END ===');
+        
+        // Check if the educator's presence ID is in the online users
+        const isEducatorOnline = globalOnlineUsers?.some(user => user.userId === educatorPresenceId);
+        console.log('📋 Manual online check result:', isEducatorOnline);
+        console.log('📋 isUserOnlineGlobal result:', isUserOnlineGlobal(educatorPresenceId));
+        console.log('🔍 [SCHOOL-ADMIN] === ONLINE STATUS DEBUG END ===');
         
         // Build role string
         let role = `Educator • ${subject}`;
@@ -909,7 +992,7 @@ const StudentCommunication = () => {
           role: role,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`,
           lastMessage: conv.last_message_preview || 'No messages yet',
-          online: isUserOnlineGlobal(conv.school_educators?.user_id),
+          online: isUserOnlineGlobal(conv.educator_id), // FIXED: Use educator_id for presence check
           time: conv.last_message_at 
             ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
             : 'No messages',
@@ -1049,16 +1132,32 @@ const StudentCommunication = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const displayMessages = useMemo(() => 
-    messages.map((msg: any) => ({
-      id: msg.id,
-      text: msg.message_text,
-      sender: msg.sender_type === 'school_admin' ? 'me' : 'them',
-      time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
-      status: msg.is_read ? 'read' : 'delivered'
-    })),
-    [messages]
+  // const displayMessages = useMemo(() => 
+  //   messages.map((msg: any) => ({
+  //     id: msg.id,
+  //     text: msg.message_text,
+  //     sender: msg.sender_type === 'school_admin' ? 'me' : 'them',
+  //     time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
+  //     status: msg.is_read ? 'read' : 'delivered'
+  //   })),
+  //   [messages]
+  // );
+  const displayMessages = useMemo(() => {
+  // First, deduplicate messages by ID
+  const uniqueMessages = messages.filter((msg, index, arr) => 
+    arr.findIndex(m => m.id === msg.id) === index
   );
+  
+  // Then map to display format
+  return uniqueMessages.map((msg: any) => ({
+    id: msg.id,
+    text: msg.message_text,
+    sender: msg.sender_type === 'school_admin' ? 'me' : 'them',
+    time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
+    status: msg.is_read ? 'read' : 'delivered'
+  }));
+}, [messages]);
+
 
   const renderStatusIcon = useCallback((status: string) => (
     <div className="flex">
@@ -1068,12 +1167,12 @@ const StudentCommunication = () => {
   ), []);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-2xl font-bold mb-6">Communication Center</h1>
+    <div className="min-h-screen bg-gray-50 p-3">
+      <h1 className="text-2xl font-bold mb-0">Communication Center</h1>
 
       {/* Messages Section */}
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 mb-6">
-        <div className="flex h-[600px]">
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200 mb-1">
+        <div className="flex h-[calc(105vh-210px)] min-h-[600px]">
           {/* Left Panel - Contacts List */}
           <div className="w-full md:w-[400px] border-r border-gray-200 flex flex-col">
             {/* Header with Tabs */}
