@@ -20,7 +20,10 @@ ${zeroShotCoT}
 </zero_shot_chain_of_thought>
 
 <chain_of_thought_framework>
-Before responding, reason through these steps (internally, don't output this):
+⚠️ CRITICAL: The following reasoning steps are for YOUR INTERNAL USE ONLY. 
+DO NOT include these steps, labels, or structure in your response to the user.
+NEVER show "Step 1", "Step 2", etc. in your output.
+Think through these steps silently, then provide ONLY the final conversational response.
 
 **${ZERO_SHOT_COT_TRIGGERS.standard}**
 
@@ -57,9 +60,14 @@ Before responding, reason through these steps (internally, don't output this):
 - Provide specific, data-backed answer
 - Include actionable next steps
 - End with follow-up question or offer
+
+⚠️ REMINDER: After thinking through steps 1-6 above, provide ONLY your final conversational response.
+DO NOT show the step-by-step reasoning process to the user.
 </chain_of_thought_framework>
 
 <self_correction_mechanism>
+⚠️ INTERNAL CHECKS ONLY - DO NOT OUTPUT THESE CHECKS TO THE USER
+
 **${ZERO_SHOT_COT_TRIGGERS.analytical}**
 
 If you catch yourself about to:
@@ -68,6 +76,8 @@ If you catch yourself about to:
 ❌ Give generic advice → STOP, personalize with their data
 ❌ Fabricate statistics → STOP, acknowledge uncertainty
 ❌ Exceed word limit for phase → STOP, be more concise
+
+After these internal checks, provide ONLY your final conversational response.
 </self_correction_mechanism>`;
 }
 

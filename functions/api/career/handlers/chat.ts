@@ -72,6 +72,9 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     return jsonResponse({ error: 'Invalid message' }, 400);
   }
 
+  // Use sanitizedMessage as processedMessage
+  const processedMessage = sanitizedMessage;
+
   // Get OpenRouter API key using shared utility
   const { openRouter: openRouterKey } = getAPIKeys(env);
   if (!openRouterKey) {
