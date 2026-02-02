@@ -31,6 +31,7 @@ import {
   type ScopeRule
 } from "../../../services/settingsService";
 import { useAuth } from "../../../context/AuthContext";
+import toast from 'react-hot-toast';
 
 /* ==============================
    TYPES & INTERFACES
@@ -192,7 +193,7 @@ const RolePermissionModal = ({
       console.error('User:', user?.email);
       console.error('Role:', userRole);
       console.error('Required: college_admin');
-      alert('❌ Unauthorized: Only College Administrators can modify permissions.');
+      toast.error('❌ Unauthorized: Only College Administrators can modify permissions.');
       onClose();
       return;
     }
@@ -759,7 +760,7 @@ const Settings = () => {
       console.error('User:', user?.email);
       console.error('Role:', user?.role);
       console.error('Required: college_admin');
-      alert('❌ Unauthorized: Only College Administrators can modify permissions.');
+      toast.error('❌ Unauthorized: Only College Administrators can modify permissions.');
       return;
     }
     
@@ -805,8 +806,8 @@ const Settings = () => {
         console.log('  - college_role_module_permissions: Module access permissions');
         console.log('  - college_role_scope_rules: Department/Program scope restrictions');
         
-        // Show success alert
-        alert(`✅ Successfully updated permissions for ${role.roleName}!\n\nUpdated by: ${user?.email}\nUpdated:\n• ${role.moduleAccess.length} module permissions\n• ${role.scopeRules.length} scope rules\n\nTables modified:\n• college_role_module_permissions\n• college_role_scope_rules`);
+        // Show success toast
+        toast.success(`✅ Successfully updated permissions for ${role.roleName}!\n\nUpdated by: ${user?.email}\nUpdated:\n• ${role.moduleAccess.length} module permissions\n• ${role.scopeRules.length} scope rules\n\nTables modified:\n• college_role_module_permissions\n• college_role_scope_rules`);
         
         // Reload data to reflect changes
         await loadSettingsData();
@@ -815,7 +816,7 @@ const Settings = () => {
       } else {
         console.error('❌ PERMISSION UPDATE FAILED');
         console.error('Database operation returned false');
-        alert('❌ Failed to save role permissions. Please try again.');
+        toast.error('❌ Failed to save role permissions. Please try again.');
       }
     } catch (error) {
       console.error('❌ PERMISSION UPDATE ERROR');
@@ -823,7 +824,7 @@ const Settings = () => {
       console.error('Failed to update tables:');
       console.error('  - college_role_module_permissions');
       console.error('  - college_role_scope_rules');
-      alert(`❌ Error saving role permissions: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
+      toast.error(`❌ Error saving role permissions: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     } finally {
       setLoading(false);
     }
@@ -1041,7 +1042,7 @@ const Settings = () => {
                     console.error('User:', user?.email);
                     console.error('Role:', role);
                     console.error('Required: college_admin');
-                    alert('❌ Unauthorized: Only College Administrators can create roles.');
+                    toast.error('❌ Unauthorized: Only College Administrators can create roles.');
                     return;
                   }
                   
@@ -1173,7 +1174,7 @@ const Settings = () => {
                           console.error('User:', user?.email);
                           console.error('Role:', role);
                           console.error('Required: college_admin');
-                          alert('❌ Unauthorized: Only College Administrators can edit permissions.');
+                          toast.error('❌ Unauthorized: Only College Administrators can edit permissions.');
                           return;
                         }
                         
@@ -1200,7 +1201,7 @@ const Settings = () => {
                           console.error('User:', user?.email);
                           console.error('Role:', role);
                           console.error('Required: college_admin');
-                          alert('❌ Unauthorized: Only College Administrators can delete roles.');
+                          toast.error('❌ Unauthorized: Only College Administrators can delete roles.');
                           return;
                         }
                         
