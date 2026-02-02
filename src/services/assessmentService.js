@@ -596,7 +596,22 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   }
 
   // Prepare data for insertion - explicitly extract each field
-  const riasecScores = geminiResults?.riasec?.scores || null;
+  const riasecScoresRaw = geminiResults?.riasec?.scores || null;
+  
+  // FIX: If RIASEC scores are all zeros but _originalScores exists, use those instead
+  // This handles cases where AI returns zeros in scores but has calculated values in _originalScores
+  const riasecScores = riasecScoresRaw && 
+    Object.values(riasecScoresRaw).every(v => v === 0) && 
+    geminiResults?.riasec?._originalScores
+    ? geminiResults.riasec._originalScores  // Use original scores if current scores are all zeros
+    : riasecScoresRaw;
+  
+  if (riasecScoresRaw && Object.values(riasecScoresRaw).every(v => v === 0) && geminiResults?.riasec?._originalScores) {
+    console.log('⚠️ [AssessmentService] RIASEC scores were all zeros, using _originalScores instead');
+    console.log('   Original (zeros):', riasecScoresRaw);
+    console.log('   Corrected:', riasecScores);
+  }
+  
   const riasecCode = geminiResults?.riasec?.code || null;
   const bigfiveScores = geminiResults?.bigFive || null;
   const careerFit = geminiResults?.careerFit || null;

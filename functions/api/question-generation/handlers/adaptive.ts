@@ -131,7 +131,10 @@ function validateQuestionStructure(questions: any[]): any[] {
             throw new Error(`Question ${index + 1} missing or invalid 'correctAnswer' field`);
         }
         
-        if (!['A', 'B', 'C', 'D'].includes(q.correctAnswer.toUpperCase())) {
+        // Normalize correctAnswer to uppercase
+        const normalizedAnswer = q.correctAnswer.trim().toUpperCase();
+        
+        if (!['A', 'B', 'C', 'D'].includes(normalizedAnswer)) {
             throw new Error(`Question ${index + 1} correctAnswer must be A, B, C, or D, got: ${q.correctAnswer}`);
         }
         
@@ -148,7 +151,7 @@ function validateQuestionStructure(questions: any[]): any[] {
                 C: q.options.C.trim(),
                 D: q.options.D.trim(),
             },
-            correctAnswer: q.correctAnswer.toUpperCase(),
+            correctAnswer: normalizedAnswer,
             explanation: q.explanation.trim(),
         };
     });
@@ -461,7 +464,7 @@ export async function generateStabilityConfirmationQuestions(
     env: PagesEnv,
     gradeLevel: GradeLevel,
     provisionalBand: DifficultyLevel,
-    count: number = 4,
+    count: number = 6,  // Default to 6 questions for stability confirmation
     excludeQuestionIds: string[] = [],
     excludeQuestionTexts: string[] = []
 ): Promise<QuestionGenerationResult> {

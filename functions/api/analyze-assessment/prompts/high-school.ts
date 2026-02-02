@@ -297,19 +297,19 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "Career title 1", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 2", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 3", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 4", "salary": {"min": 4, "max": 10}}
+        {"name": "Career title 1 (e.g., Software Developer)", "salary": {"min": 5, "max": 12}},
+        {"name": "Career title 2 (e.g., Graphic Designer)", "salary": {"min": 4, "max": 10}},
+        {"name": "Career title 3 (e.g., Marketing Manager)", "salary": {"min": 6, "max": 15}},
+        {"name": "Career title 4 (e.g., Teacher)", "salary": {"min": 3, "max": 8}}
       ],
       "mediumFit": [
-        {"name": "Career title 1", "salary": {"min": 3, "max": 8}},
-        {"name": "Career title 2", "salary": {"min": 3, "max": 8}},
-        {"name": "Career title 3", "salary": {"min": 3, "max": 8}}
+        {"name": "Career title 1 (e.g., Content Writer)", "salary": {"min": 3, "max": 7}},
+        {"name": "Career title 2 (e.g., Sales Executive)", "salary": {"min": 4, "max": 10}},
+        {"name": "Career title 3 (e.g., HR Manager)", "salary": {"min": 5, "max": 12}}
       ],
       "exploreLater": [
-        {"name": "Career title 1", "salary": {"min": 3, "max": 7}},
-        {"name": "Career title 2", "salary": {"min": 3, "max": 7}}
+        {"name": "Career title 1 (e.g., Social Worker)", "salary": {"min": 3, "max": 6}},
+        {"name": "Career title 2 (e.g., Photographer)", "salary": {"min": 3, "max": 8}}
       ]
     }
   },

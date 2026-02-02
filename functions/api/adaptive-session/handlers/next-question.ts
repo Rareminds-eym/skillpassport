@@ -254,7 +254,29 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
             },
           };
           return jsonResponse(result);
+        } else {
+          // No questions returned - this is an error, don't fall through to phase transition
+          console.error('❌ [NextQuestionHandler] Question generation returned empty array');
+          return jsonResponse(
+            {
+              error: 'Failed to generate question',
+              message: 'Question generation returned no questions'
+            },
+            500
+          );
         }
+      } else {
+        // Question generation failed - return error instead of falling through
+        const errorData = await questionGenResponse.json().catch(() => ({}));
+        console.error('❌ [NextQuestionHandler] Question generation failed:', errorData);
+        return jsonResponse(
+          {
+            error: 'Failed to generate question',
+            message: errorData.message || 'Question generation API returned error',
+            details: errorData
+          },
+          500
+        );
       }
     }
 
@@ -368,7 +390,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         body: JSON.stringify({
           gradeLevel,
           difficulty: band,
-          count: 5,
+          count: 6,  // 6 questions for stability confirmation phase
           excludeQuestionIds: existingQuestionIds,
           excludeQuestionTexts: existingQuestionTexts,
         }),

@@ -285,17 +285,17 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "MUST BE REAL JOB TITLE - Specific career from cluster 1", "salary": {"min": 3, "max": 6}},
-        {"name": "MUST BE REAL JOB TITLE - Another specific career from cluster 1", "salary": {"min": 3, "max": 6}},
-        {"name": "MUST BE REAL JOB TITLE - Third specific career from cluster 1", "salary": {"min": 3, "max": 6}}
+        {"name": "MUST BE REAL JOB TITLE - e.g., Game Developer", "salary": {"min": 5, "max": 12}},
+        {"name": "MUST BE REAL JOB TITLE - e.g., Animator", "salary": {"min": 4, "max": 10}},
+        {"name": "MUST BE REAL JOB TITLE - e.g., YouTuber/Content Creator", "salary": {"min": 3, "max": 15}}
       ],
       "mediumFit": [
-        {"name": "MUST BE REAL JOB TITLE - Specific career from cluster 2", "salary": {"min": 3, "max": 5}},
-        {"name": "MUST BE REAL JOB TITLE - Another specific career from cluster 2", "salary": {"min": 3, "max": 5}}
+        {"name": "MUST BE REAL JOB TITLE - e.g., Graphic Designer", "salary": {"min": 3, "max": 8}},
+        {"name": "MUST BE REAL JOB TITLE - e.g., Teacher", "salary": {"min": 3, "max": 7}}
       ],
       "exploreLater": [
-        {"name": "MUST BE REAL JOB TITLE - Specific career from cluster 3", "salary": {"min": 2, "max": 5}},
-        {"name": "MUST BE REAL JOB TITLE - Another specific career from cluster 3", "salary": {"min": 2, "max": 5}}
+        {"name": "MUST BE REAL JOB TITLE - e.g., Photographer", "salary": {"min": 2, "max": 8}},
+        {"name": "MUST BE REAL JOB TITLE - e.g., Chef", "salary": {"min": 2, "max": 6}}
       ]
     }
   },

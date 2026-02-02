@@ -454,17 +454,17 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "<Career 1>", "salary": {"min": 4, "max": 12}},
-        {"name": "<Career 2>", "salary": {"min": 4, "max": 10}},
-        {"name": "<Career 3>", "salary": {"min": 3, "max": 8}}
+        {"name": "<Career 1 - e.g., Software Engineer>", "salary": {"min": 6, "max": 15}},
+        {"name": "<Career 2 - e.g., Data Scientist>", "salary": {"min": 7, "max": 18}},
+        {"name": "<Career 3 - e.g., Product Manager>", "salary": {"min": 8, "max": 20}}
       ],
       "mediumFit": [
-        {"name": "<Career 1>", "salary": {"min": 3, "max": 8}},
-        {"name": "<Career 2>", "salary": {"min": 3, "max": 7}}
+        {"name": "<Career 1 - e.g., Business Analyst>", "salary": {"min": 5, "max": 12}},
+        {"name": "<Career 2 - e.g., UX Designer>", "salary": {"min": 4, "max": 10}}
       ],
       "exploreLater": [
-        {"name": "<Career 1>", "salary": {"min": 3, "max": 7}},
-        {"name": "<Career 2>", "salary": {"min": 2, "max": 6}}
+        {"name": "<Career 1 - e.g., Content Writer>", "salary": {"min": 3, "max": 8}},
+        {"name": "<Career 2 - e.g., Teacher>", "salary": {"min": 3, "max": 10}}
       ]
     }
   },
@@ -544,7 +544,16 @@ Before returning your response, verify:
 5. ✅ Work values are mentioned in the evidence
 6. ✅ Employability skills are referenced in the evidence
 7. ✅ All 3 career clusters are provided with complete information
-8. ✅ Salary ranges are realistic for India (2025-2030)
+8. ✅ Salary ranges are realistic for India (2025-2030) AND VARY BY CAREER:
+   - Engineering/Tech: 4-15 LPA (entry to senior)
+   - Medical/Healthcare: 5-20 LPA (entry to senior)
+   - Finance/Banking: 4-18 LPA (entry to senior)
+   - Creative/Design: 3-12 LPA (entry to senior)
+   - Teaching/Education: 3-10 LPA (entry to senior)
+   - Law/Legal: 4-25 LPA (entry to senior)
+   - Business/Management: 4-20 LPA (entry to senior)
+   - Research/Academia: 4-15 LPA (entry to senior)
+   **CRITICAL**: Each career should have DIFFERENT salary ranges based on industry standards!
 9. ✅ Preparation guidance is specific to 11th/12th grade students
 10. ✅ The response is personalized based on THEIR specific scores, not generic
 

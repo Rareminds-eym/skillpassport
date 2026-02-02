@@ -32,7 +32,7 @@ const ASSESSMENT_MODELS = [
 // Assessment-specific configuration
 const ASSESSMENT_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
-  maxTokens: 2000,   // Increased from 500 to 2000 for complete assessment responses
+  maxTokens: 4000,   // Increased to 4000 to ensure complete responses including overallSummary
 };
 
 /**
@@ -88,13 +88,18 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
     careerFit: 'object',
     skillGap: 'object',
     roadmap: 'object',
-    finalNote: 'object'
+    finalNote: 'object',
+    overallSummary: 'string'  // CRITICAL: This must be a string
   };
   
   // Check required fields
   for (const [field, expectedType] of Object.entries(requiredFields)) {
     if (!result[field]) {
-      warnings.push(`Missing field: ${field}`);
+      if (field === 'overallSummary') {
+        errors.push(`CRITICAL: Missing required field: ${field} - This field is MANDATORY for the Career Direction summary`);
+      } else {
+        warnings.push(`Missing field: ${field}`);
+      }
     } else if (typeof result[field] !== expectedType) {
       errors.push(`Field '${field}' must be ${expectedType}, got ${typeof result[field]}`);
     }
@@ -175,6 +180,15 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
         warnings.push(`aptitude.scores.${type} missing`);
       }
     });
+  }
+  
+  // CRITICAL: Validate overallSummary
+  if (result.overallSummary) {
+    if (typeof result.overallSummary !== 'string') {
+      errors.push('overallSummary must be a string');
+    } else if (result.overallSummary.length < 50) {
+      warnings.push('overallSummary is too short (should be 3-4 sentences)');
+    }
   }
   
   return {

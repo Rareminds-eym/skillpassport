@@ -411,19 +411,19 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "Specific Job Title 1", "salary": {"min": 5, "max": 12}, "description": "Brief role description"},
-        {"name": "Specific Job Title 2", "salary": {"min": 5, "max": 12}, "description": "Brief role description"},
-        {"name": "Specific Job Title 3", "salary": {"min": 5, "max": 12}, "description": "Brief role description"},
-        {"name": "Specific Job Title 4", "salary": {"min": 5, "max": 12}, "description": "Brief role description"}
+        {"name": "Specific Job Title 1 (e.g., Software Engineer)", "salary": {"min": 6, "max": 15}, "description": "Brief role description"},
+        {"name": "Specific Job Title 2 (e.g., Data Analyst)", "salary": {"min": 5, "max": 12}, "description": "Brief role description"},
+        {"name": "Specific Job Title 3 (e.g., Product Manager)", "salary": {"min": 8, "max": 20}, "description": "Brief role description"},
+        {"name": "Specific Job Title 4 (e.g., UX Designer)", "salary": {"min": 5, "max": 13}, "description": "Brief role description"}
       ],
       "mediumFit": [
-        {"name": "Job Title 1", "salary": {"min": 4, "max": 10}, "description": "Role description"},
-        {"name": "Job Title 2", "salary": {"min": 4, "max": 10}, "description": "Role description"},
-        {"name": "Job Title 3", "salary": {"min": 4, "max": 10}, "description": "Role description"}
+        {"name": "Job Title 1 (e.g., Business Analyst)", "salary": {"min": 5, "max": 11}, "description": "Role description"},
+        {"name": "Job Title 2 (e.g., Marketing Manager)", "salary": {"min": 6, "max": 14}, "description": "Role description"},
+        {"name": "Job Title 3 (e.g., HR Manager)", "salary": {"min": 5, "max": 12}, "description": "Role description"}
       ],
       "exploreLater": [
-        {"name": "Job Title 1", "salary": {"min": 3, "max": 8}, "description": "Role description"},
-        {"name": "Job Title 2", "salary": {"min": 3, "max": 8}, "description": "Role description"}
+        {"name": "Job Title 1 (e.g., Content Writer)", "salary": {"min": 3, "max": 7}, "description": "Role description"},
+        {"name": "Job Title 2 (e.g., Teacher)", "salary": {"min": 3, "max": 9}, "description": "Role description"}
       ]
     }
   },

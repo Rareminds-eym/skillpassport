@@ -10,9 +10,9 @@
  * - POST /career-assessment/generate-aptitude - Generate 50 aptitude questions
  * - POST /career-assessment/generate-knowledge - Generate 20 knowledge questions
  * - POST /generate - Generate course-specific assessment questions
- * - POST /generate/diagnostic - Generate 6 diagnostic screener questions
- * - POST /generate/adaptive - Generate 8-11 adaptive core questions
- * - POST /generate/stability - Generate 4-6 stability confirmation questions
+ * - POST /generate/diagnostic - Generate 8 diagnostic screener questions
+ * - POST /generate/adaptive - Generate adaptive core questions (dynamic count)
+ * - POST /generate/stability - Generate 6 stability confirmation questions
  * - POST /generate/single - Generate a single adaptive question
  */
 
