@@ -207,7 +207,7 @@ export const MessageModal: React.FC<MessageModalProps> = ({
                     <div
                       className={`max-w-[70%] rounded-lg px-4 py-2 ${
                         isCurrentUser
-                          ? 'bg-primary-600 text-white'
+                          ? 'bg-blue-100 text-blue-900 border border-blue-200'
                           : 'bg-white border border-gray-200 text-gray-900'
                       }`}
                     >
@@ -216,7 +216,7 @@ export const MessageModal: React.FC<MessageModalProps> = ({
                       </p>
                       <p
                         className={`text-xs mt-1 ${
-                          isCurrentUser ? 'text-primary-100' : 'text-gray-500'
+                          isCurrentUser ? 'text-blue-600' : 'text-gray-500'
                         }`}
                       >
                         {formatTime(msg.created_at)}

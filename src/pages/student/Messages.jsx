@@ -45,6 +45,7 @@ const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState(conversationIdFromUrl);
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [adminUserIds, setAdminUserIds] = useState({});
   const [showMenu, setShowMenu] = useState(null);
   // Read tab from URL parameter, default based on available tabs
   const tabFromUrl = searchParams.get('tab');
@@ -58,14 +59,17 @@ const Messages = () => {
   });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, conversationId: null, contactName: '' });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
+  const [showNewEducatorConversationModal, setShowNewEducatorConversationModal] = useState(false);
   const [showNewAdminConversationModal, setShowNewAdminConversationModal] = useState(false);
   const [showNewCollegeAdminConversationModal, setShowNewCollegeAdminConversationModal] = useState(false);
   const [showTabDropdown, setShowTabDropdown] = useState(false);
+  const [showNewEducatorDropdown, setShowNewEducatorDropdown] = useState(false);
   const [isTabSwitching, setIsTabSwitching] = useState(false);
   const messagesEndRef = useRef(null);
   const markedAsReadRef = useRef(new Set());
   const menuRef = useRef(null);
   const tabDropdownRef = useRef(null);
+  const newEducatorDropdownRef = useRef(null);
 
   // Get student data - same approach as Applications page
   const { user } = useAuth();
@@ -303,6 +307,99 @@ const Messages = () => {
     }
   }, [studentId, loadingStudentData, userEmail]);
 
+  // Helper functions for admin online status - MOVED UP to fix initialization order
+  const getSchoolAdminUserId = useCallback(async (conversation) => {
+    console.log('🔍 [DEBUG] Checking admin fields:', {
+      school_organization: conversation.school_organization,
+      college_organization: conversation.college_organization,
+      conversation_type: conversation.conversation_type,
+      school_id: conversation.school_id,
+      college_id: conversation.college_id
+    });
+    
+    // Try JOIN data first (if it works)
+    if (conversation.conversation_type === 'student_admin' && conversation.school_organization?.admin_id) {
+      return conversation.school_organization.admin_id;
+    }
+    if (conversation.conversation_type === 'student_college_admin' && conversation.college_organization?.admin_id) {
+      return conversation.college_organization.admin_id;
+    }
+    
+    // Dynamic lookup for school admin
+    if (conversation.conversation_type === 'student_admin' && conversation.school_id) {
+      try {
+        const { data: schoolOrg } = await supabase
+          .from('organizations')
+          .select('admin_id')
+          .eq('id', conversation.school_id)
+          .eq('organization_type', 'school')
+          .single();
+        
+        if (schoolOrg?.admin_id) {
+          console.log('✅ [DEBUG] Found school admin dynamically:', schoolOrg.admin_id);
+          return schoolOrg.admin_id;
+        }
+      } catch (error) {
+        console.error('❌ [DEBUG] Error fetching school admin:', error);
+      }
+    }
+    
+    // Dynamic lookup for college admin
+    if (conversation.conversation_type === 'student_college_admin' && conversation.college_id) {
+      try {
+        const { data: collegeOrg } = await supabase
+          .from('organizations')
+          .select('admin_id')
+          .eq('id', conversation.college_id)
+          .eq('organization_type', 'college')
+          .single();
+        
+        if (collegeOrg?.admin_id) {
+          console.log('✅ [DEBUG] Found college admin dynamically:', collegeOrg.admin_id);
+          return collegeOrg.admin_id;
+        }
+      } catch (error) {
+        console.error('❌ [DEBUG] Error fetching college admin:', error);
+      }
+    }
+    
+    return null;
+  }, []);
+
+  // Fetch admin user IDs dynamically
+  useEffect(() => {
+    const fetchAdminUserIds = async () => {
+      if (!conversations || conversations.length === 0) return;
+      
+      const adminConversations = conversations.filter(conv => 
+        (conv.conversation_type === 'student_admin' || conv.conversation_type === 'student_college_admin') &&
+        !adminUserIds[conv.id] // Only fetch if we don't have it yet
+      );
+      
+      if (adminConversations.length === 0) return;
+      
+      console.log('🔍 [Student Messages] Fetching admin user IDs for conversations:', adminConversations.length);
+      
+      const newAdminUserIds = { ...adminUserIds };
+      
+      for (const conv of adminConversations) {
+        try {
+          const adminUserId = await getSchoolAdminUserId(conv);
+          if (adminUserId) {
+            newAdminUserIds[conv.id] = adminUserId;
+            console.log('✅ [Student Messages] Found admin ID for conversation:', conv.id, adminUserId);
+          }
+        } catch (error) {
+          console.error('❌ [Student Messages] Error fetching admin ID for conversation:', conv.id, error);
+        }
+      }
+      
+      setAdminUserIds(newAdminUserIds);
+    };
+    
+    fetchAdminUserIds();
+  }, [conversations, adminUserIds, getSchoolAdminUserId]);
+
   // Fetch messages for selected conversation - call all hooks unconditionally
   const recruiterMessages = useStudentMessages({
     studentId,
@@ -343,6 +440,39 @@ const Messages = () => {
   // Use shared global presence context (no duplicate subscription)
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
 
+  const getAdminOnlineStatus = useCallback((conversation) => {
+    console.log('🔍 [DEBUG] Full conversation object:', conversation);
+    
+    if (conversation.conversation_type === 'student_admin' || conversation.conversation_type === 'student_college_admin') {
+      const adminUserId = adminUserIds[conversation.id];
+      // Fix: Check user.userId since globalOnlineUsers contains objects
+      const isOnline = adminUserId ? globalOnlineUsers.some(user => user.userId === adminUserId) : false;
+      
+      console.log('✅ [Student Messages] Admin online status:', {
+        conversationId: conversation.id,
+        conversationType: conversation.conversation_type,
+        adminUserId,
+        isOnline,
+        globalOnlineUsers
+      });
+      
+      console.log('🔍 Online user IDs:', globalOnlineUsers.map(user => user.userId || user));
+      console.log('🔍 Raw globalOnlineUsers:', globalOnlineUsers);
+      console.log('🔍 User types online:', globalOnlineUsers.map(user => ({ userId: user.userId, userType: user.userType })));
+      console.log('🔍 Looking for admin ID:', adminUserId);
+      console.log('🔍 Admin is in list?', globalOnlineUsers.some(user => user.userId === adminUserId));
+      
+      return isOnline;
+    }
+    return false;
+  }, [globalOnlineUsers, adminUserIds]);
+// ADD THIS DEBUG LOG HERE:
+console.log('🔍 [STUDENT] GlobalPresence Debug:', {
+  isUserOnlineGlobal: typeof isUserOnlineGlobal,
+  globalOnlineUsers: globalOnlineUsers,
+  currentUserId: studentId,
+  currentUserName: studentName
+});
   // Presence tracking for current conversation (for chat header)
   const { isUserOnline, getUserStatus, onlineUsers } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
@@ -582,56 +712,116 @@ const Messages = () => {
         };
       });
     } else if (activeTab === 'educators') {
-      // Educator conversations
+      // Educator conversations (both school educators and college lecturers)
       return activeConversations.map(conv => {
         const educator = conv.educator;
-        const educatorName = educator?.first_name && educator?.last_name
-          ? `${educator.first_name} ${educator.last_name}`
-          : educator?.email || 'Educator';
+        
+        // Handle college lecturer conversations differently
+        if (conv.conversation_type === 'student_college_educator') {
+          // College lecturer conversation
+          const educatorName = educator?.first_name && educator?.last_name
+            ? `${educator.first_name} ${educator.last_name}`
+            : educator?.email || 'College Lecturer';
+          // ADD THIS DEBUG LOG HERE:
+console.log('🔍 Checking online for educator:', {
+  educator_id: conv.educator_id,
+  educator_user_id: conv.educator?.user_id,
+  online_users: globalOnlineUsers
+});
 
-        // Get class and subject info
-        const className = conv.school_class?.name || 'Class';
-        const grade = conv.school_class?.grade || '';
-        const section = conv.school_class?.section || '';
-        const subject = conv.subject || 'General';
-
-        // Build role string
-        let role = subject;
-        if (className && grade) {
-          role += ` • ${grade}`;
-          if (section) {
-            role += `-${section}`;
+          const subject = conv.subject || 'General Discussion';
+          
+          // For college lecturers, show subject and department/specialization if available
+          let role = subject;
+          if (educator?.department) {
+            role += ` • ${educator.department}`;
           }
-        }
 
-        // Generate avatar URL
-        const avatar = educator?.photo_url ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`;
+          // Generate avatar URL (no photo_url field in college_lecturers)
+          const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=9333EA&color=fff`;
 
-        // Format time
-        let timeDisplay = 'No messages';
-        if (conv.last_message_at) {
-          try {
-            timeDisplay = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
-          } catch (e) {
-            timeDisplay = conv.last_message_at;
+          // Format time
+          let timeDisplay = 'No messages';
+          if (conv.last_message_at) {
+            try {
+              timeDisplay = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
+            } catch (e) {
+              timeDisplay = conv.last_message_at;
+            }
           }
-        }
 
-        return {
-          id: conv.id,
-          name: educatorName,
-          role: role,
-          avatar: avatar,
-          lastMessage: conv.last_message_preview || 'No messages yet',
-          time: timeDisplay,
-          unread: conv.student_unread_count || 0,
-          online: isUserOnlineGlobal(conv.educator_id),
-          educatorId: conv.educator_id,
-          classId: conv.class_id,
-          subject: conv.subject,
-          type: 'educator'
-        };
+          return {
+            id: conv.id,
+            name: educatorName,
+            role: role,
+            avatar: avatar,
+            lastMessage: conv.last_message_preview || 'No messages yet',
+            time: timeDisplay,
+            unread: conv.student_unread_count || 0,
+            // online: isUserOnlineGlobal(conv.educator_id),
+            online: isUserOnlineGlobal(conv.educator?.user_id),
+            educatorId: conv.educator_id,
+            programSectionId: conv.program_section_id,
+            subject: conv.subject,
+            type: 'college_lecturer',
+            conversationType: 'student_college_educator'
+          };
+        } else {
+          // School educator conversation (existing logic unchanged)
+          const educatorName = educator?.first_name && educator?.last_name
+            ? `${educator.first_name} ${educator.last_name}`
+            : educator?.email || 'Educator';
+console.log('🔍 Checking online for educator:', {
+  educator_id: conv.educator_id,
+  educator_user_id: conv.educator?.user_id,
+  online_users: globalOnlineUsers
+});
+          // Get class and subject info
+          const className = conv.school_class?.name || 'Class';
+          const grade = conv.school_class?.grade || '';
+          const section = conv.school_class?.section || '';
+          const subject = conv.subject || 'General';
+
+          // Build role string
+          let role = subject;
+          if (className && grade) {
+            role += ` • ${grade}`;
+            if (section) {
+              role += `-${section}`;
+            }
+          }
+
+          // Generate avatar URL
+          const avatar = educator?.photo_url ||
+            `https://ui-avatars.com/api/?name=${encodeURIComponent(educatorName)}&background=3B82F6&color=fff`;
+
+          // Format time
+          let timeDisplay = 'No messages';
+          if (conv.last_message_at) {
+            try {
+              timeDisplay = formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true });
+            } catch (e) {
+              timeDisplay = conv.last_message_at;
+            }
+          }
+
+          return {
+            id: conv.id,
+            name: educatorName,
+            role: role,
+            avatar: avatar,
+            lastMessage: conv.last_message_preview || 'No messages yet',
+            time: timeDisplay,
+            unread: conv.student_unread_count || 0,
+            online: isUserOnlineGlobal(conv.educator_id),
+            // online: isUserOnlineGlobal(conv.educator?.user_id),
+            educatorId: conv.educator_id,
+            classId: conv.class_id,
+            subject: conv.subject,
+            type: 'educator',
+            conversationType: 'student_educator'
+          };
+        }
       });
     } else if (activeTab === 'admin') {
       // School admin conversations
@@ -661,7 +851,7 @@ const Messages = () => {
           lastMessage: conv.last_message_preview || 'No messages yet',
           time: timeDisplay,
           unread: conv.student_unread_count || 0,
-          online: false, // School admin online status not tracked the same way
+          online: getAdminOnlineStatus(conv), // Use dynamic admin online status
           schoolId: conv.school_id,
           subject: conv.subject,
           type: 'admin'
@@ -695,7 +885,7 @@ const Messages = () => {
           lastMessage: conv.last_message_preview || 'No messages yet',
           time: timeDisplay,
           unread: conv.student_unread_count || 0,
-          online: false, // College admin online status not tracked the same way
+          online: getAdminOnlineStatus(conv), // Use dynamic admin online status
           collegeId: conv.college_id,
           subject: conv.subject,
           type: 'college_admin'
@@ -748,15 +938,31 @@ const Messages = () => {
           }
         } else if (activeTab === 'educators') {
           // Send message to educator
-          await sendMessage({
-            senderId: studentId,
-            senderType: 'student',
-            receiverId: currentChat.educatorId,
-            receiverType: 'educator',
-            messageText: messageInput,
-            classId: currentChat.classId,
-            subject: currentChat.subject
-          });
+          // await sendMessage({
+          //   senderId: studentId,
+          //   senderType: 'student',
+          //   receiverId: currentChat.educatorId,
+          //   receiverType: 'educator',
+          //   messageText: messageInput,
+          //   classId: currentChat.classId,
+          //   subject: currentChat.subject
+          // });
+          
+  // Check if it's a college lecturer conversation
+  const receiverType = currentChat.conversationType === 'student_college_educator' 
+    ? 'college_educator'  // ✅ For college lecturers
+    : 'educator';         // ✅ For school educators (unchanged)
+    
+  await sendMessage({
+    senderId: studentId,
+    senderType: 'student',
+    receiverId: currentChat.educatorId,
+    receiverType: receiverType,  // ✅ Use dynamic type
+    messageText: messageInput,
+    classId: currentChat.classId,
+    subject: currentChat.subject
+  });
+
 
           // Send notification broadcast to educator
           try {
@@ -896,15 +1102,18 @@ const Messages = () => {
     if (tabDropdownRef.current && !tabDropdownRef.current.contains(event.target)) {
       setShowTabDropdown(false);
     }
+    if (newEducatorDropdownRef.current && !newEducatorDropdownRef.current.contains(event.target)) {
+      setShowNewEducatorDropdown(false);
+    }
   }, []);
 
   useEffect(() => {
     // Only add listener when menu is open for better performance
-    if (showMenu !== null || showTabDropdown) {
+    if (showMenu !== null || showTabDropdown || showNewEducatorDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showMenu, showTabDropdown, handleClickOutside]);
+  }, [showMenu, showTabDropdown, showNewEducatorDropdown, handleClickOutside]);
 
   // Handle delete conversation using mutation
   const handleDeleteConversation = useCallback(async () => {
@@ -1072,17 +1281,64 @@ const Messages = () => {
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold text-gray-900">Messages</h1>
 
-            <div className="flex items-center gap-2">
-              {/* New Button - Show only for Educators tab */}
+            <div className="flex items-center gap-3 ml-4">
+              {/* New Button - Show dropdown for Educators tab */}
               {activeTab === 'educators' && (
-                <button
-                  onClick={() => setShowNewConversationModal(true)}
-                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
-                  title="Start new conversation with educator"
-                >
-                  <GraduationCap className="w-4 h-4" />
-                  New
-                </button>
+                <div className="relative" ref={newEducatorDropdownRef}>
+                  <button
+                    onClick={() => setShowNewEducatorDropdown(!showNewEducatorDropdown)}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                    title="Start new conversation with educator"
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    New
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  
+                  {showNewEducatorDropdown && (
+                    <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      {hasSchoolId && (
+                        <button
+                          onClick={() => {
+                            setShowNewEducatorConversationModal(true);
+                            setShowNewEducatorDropdown(false);
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <GraduationCap className="w-4 h-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">School Teacher</div>
+                              <div className="text-xs text-gray-500">Message about classes and assignments</div>
+                            </div>
+                          </div>
+                        </button>
+                      )}
+                      
+                      {hasCollegeId && (
+                        <button
+                          onClick={() => {
+                            setShowNewEducatorConversationModal(true);
+                            setShowNewEducatorDropdown(false);
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                              <Building2 className="w-4 h-4 text-purple-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">College Lecturer</div>
+                              <div className="text-xs text-gray-500">Message about courses and programs</div>
+                            </div>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Tab Dropdown */}
@@ -1335,12 +1591,40 @@ const Messages = () => {
                   <GraduationCap className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 text-sm">No educator conversations yet</p>
                   <p className="text-gray-400 text-xs mt-2 mb-4">Message your teachers about classes!</p>
-                  <button
-                    onClick={() => setShowNewConversationModal(true)}
-                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
-                  >
-                    Start New Conversation
-                  </button>
+                  
+                  {/* Show different buttons based on what's available */}
+                  {hasSchoolId && hasCollegeId ? (
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => setShowNewEducatorConversationModal(true)}
+                        className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Message School Teacher
+                      </button>
+                      <button
+                        onClick={() => setShowNewEducatorConversationModal(true)}
+                        className="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors"
+                      >
+                        Message College Lecturer
+                      </button>
+                    </div>
+                  ) : hasSchoolId ? (
+                    <button
+                      onClick={() => setShowNewEducatorConversationModal(true)}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      Message School Teacher
+                    </button>
+                  ) : hasCollegeId ? (
+                    <button
+                      onClick={() => setShowNewEducatorConversationModal(true)}
+                      className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      Message College Lecturer
+                    </button>
+                  ) : (
+                    <p className="text-gray-400 text-xs">No educators available</p>
+                  )}
                 </>
               ) : activeTab === 'admin' ? (
                 <>
@@ -1485,7 +1769,7 @@ const Messages = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              {/* <div className="flex items-center gap-2">
                 <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <Phone className="w-5 h-5 text-gray-600" />
                 </button>
@@ -1495,7 +1779,7 @@ const Messages = () => {
                 <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <MoreVertical className="w-5 h-5 text-gray-600" />
                 </button>
-              </div>
+              </div> */}
             </div>
 
             {/* Messages Area */}
@@ -1563,12 +1847,12 @@ const Messages = () => {
             {/* Message Input */}
             <div className="p-4 bg-white border-t border-gray-200">
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-                <button
+                {/* <button
                   type="button"
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
                   <Paperclip className="w-5 h-5 text-gray-600" />
-                </button>
+                </button> */}
 
                 <div className="flex-1 relative">
                   <input
@@ -1580,12 +1864,12 @@ const Messages = () => {
                     placeholder="Type a message..."
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                   />
-                  <button
+                  {/* <button
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 hover:scale-110 transition-transform"
                   >
                     <Smile className="w-5 h-5 text-gray-500" />
-                  </button>
+                  </button> */}
                 </div>
 
                 <button
@@ -1640,30 +1924,61 @@ const Messages = () => {
         isDeleting={deleteMutation.isPending}
       />
 
-      {/* New Educator Conversation Modal */}
+      {/* New School Educator Conversation Modal */}
       <NewEducatorConversationModal
-        isOpen={showNewConversationModal}
-        onClose={() => setShowNewConversationModal(false)}
+        isOpen={showNewEducatorConversationModal}
+        onClose={() => setShowNewEducatorConversationModal(false)}
         studentId={studentId}
-        onConversationCreated={async ({ educatorId, classId, subject, initialMessage }) => {
+        onConversationCreated={async ({ educatorId, educatorType, classId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating conversation with:', { educatorId, classId, subject, initialMessage });
-            const conversation = await MessageService.getOrCreateStudentEducatorConversation(
-              studentId,
-              educatorId,
-              classId,
-              subject
-            );
-            console.log('✅ Conversation created:', conversation);
+            console.log('🚀 Creating conversation with educator:', { educatorId, educatorType, classId, subject, initialMessage });
+            
+            let conversation;
+            if (educatorType === 'college_lecturer') {
+              // Create college lecturer conversation
+              conversation = await MessageService.getOrCreateStudentCollegeLecturerConversation(
+                studentId,
+                educatorId,
+                studentData?.university_college_id, // collegeId
+                null, // programSectionId - will be set by backend if available
+                subject
+              );
+              console.log('✅ College lecturer conversation created:', conversation);
+            } else {
+              // Create school educator conversation
+              conversation = await MessageService.getOrCreateStudentEducatorConversation(
+                studentId,
+                educatorId,
+                classId,
+                subject
+              );
+              console.log('✅ School educator conversation created:', conversation);
+            }
 
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
-              await MessageService.sendStudentEducatorMessage(
-                conversation.id,
-                studentId,
-                initialMessage.trim()
-              );
-              console.log('✅ Initial message sent');
+              if (educatorType === 'college_lecturer') {
+                await MessageService.sendMessage(
+                  conversation.id,
+                  studentId,
+                  'student',
+                  educatorId,
+                  'college_educator',
+                  initialMessage.trim(),
+                  null, // applicationId
+                  null, // opportunityId
+                  null, // classId
+                  subject
+                );
+                console.log('✅ Initial message sent to college lecturer');
+              } else {
+                await MessageService.sendStudentEducatorMessage(
+                  conversation.id,
+                  studentId,
+                  initialMessage.trim()
+                );
+                console.log('✅ Initial message sent to school educator');
+              }
             }
 
             // First refetch conversations to get the new conversation in the list
@@ -1677,9 +1992,10 @@ const Messages = () => {
               console.log('📝 Conversation should now be selected:', conversation.id);
             }, 100);
 
-            toast.success('Conversation started and message sent!');
+            const educatorTypeText = educatorType === 'college_lecturer' ? 'college lecturer' : 'school teacher';
+            toast.success(`Conversation started with ${educatorTypeText}!`);
           } catch (error) {
-            console.error('❌ Error creating conversation:', error);
+            console.error('❌ Error creating educator conversation:', error);
 
             // More specific error messages
             let errorMessage = 'Failed to start conversation';

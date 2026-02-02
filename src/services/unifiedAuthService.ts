@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { sendPasswordResetOTP as sendOTP, verifyOTPAndResetPassword as verifyOTP } from './passwordResetService';
 
 /**
  * Unified Authentication Service
@@ -124,11 +125,11 @@ export const signOut = async (): Promise<{ success: boolean; error?: string }> =
 };
 
 /**
- * Send password reset email
+ * Send password reset OTP via email
  * @param email - User email
  * @returns Promise with success status
  */
-export const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+export const sendPasswordResetOTP = async (email: string): Promise<{ success: boolean; error?: string }> => {
   try {
     if (!email) {
       return {
@@ -137,28 +138,68 @@ export const resetPassword = async (email: string): Promise<{ success: boolean; 
       };
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: `${window.location.origin}/reset-password`
-    });
-
-    if (error) {
-      console.error('Password reset error:', error);
-      return {
-        success: false,
-        error: 'Failed to send reset email. Please try again'
-      };
-    }
-
-    return {
-      success: true
-    };
+    return await sendOTP(email);
   } catch (error) {
-    console.error('Unexpected password reset error:', error);
+    console.error('Password reset OTP error:', error);
     return {
       success: false,
       error: 'Network error. Please try again'
     };
   }
+};
+
+/**
+ * Verify OTP and reset password
+ * @param email - User email
+ * @param otp - 6-digit OTP code
+ * @param newPassword - New password
+ * @returns Promise with success status
+ */
+export const verifyOTPAndResetPassword = async (
+  email: string, 
+  otp: string, 
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    if (!email || !otp || !newPassword) {
+      return {
+        success: false,
+        error: 'Email, OTP, and new password are required'
+      };
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      return {
+        success: false,
+        error: 'OTP must be 6 digits'
+      };
+    }
+
+    if (newPassword.length < 6) {
+      return {
+        success: false,
+        error: 'Password must be at least 6 characters long'
+      };
+    }
+
+    return await verifyOTP(email, otp, newPassword);
+  } catch (error) {
+    console.error('OTP verification error:', error);
+    return {
+      success: false,
+      error: 'Network error. Please try again'
+    };
+  }
+};
+
+/**
+ * Send password reset email (legacy method - kept for backward compatibility)
+ * @param email - User email
+ * @returns Promise with success status
+ */
+export const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+  // For now, redirect to the new OTP-based method
+  return sendPasswordResetOTP(email);
 };
 
 /**

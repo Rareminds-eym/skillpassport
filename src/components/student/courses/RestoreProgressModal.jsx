@@ -1,7 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { BookOpen, Clock, Play, RotateCcw, X } from 'lucide-react';
 import { useEffect } from 'react';
-import { lockScroll, unlockScroll } from '../../../utils/scrollLock';
 
 /**
  * Modal displayed when student returns to a course with existing progress
@@ -29,15 +28,9 @@ const RestoreProgressModal = ({
   }, [isOpen, onClose]);
 
   // Prevent body scroll when modal is open
+  // No scroll lock needed - let modals scroll naturally
   useEffect(() => {
-    if (isOpen) {
-      lockScroll();
-    } else {
-      unlockScroll();
-    }
-    return () => {
-      unlockScroll();
-    };
+    // Modal is controlled by parent component
   }, [isOpen]);
 
   if (!restorePoint) return null;

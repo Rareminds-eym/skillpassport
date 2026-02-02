@@ -333,74 +333,152 @@ class OpportunitiesService {
       // Calculate offset
       const offset = (page - 1) * pageSize;
 
-      // Build query
-      let query = supabase
-        .from('opportunities')
-        .select('*', { count: 'exact' });
+      // Build base query for BOTH count and data
+      const buildQuery = (selectFields: string = '*', includeRange: boolean = false) => {
+        let query = supabase.from('opportunities').select(selectFields, { count: 'exact', head: false });
 
-      // Apply active filter
+        // Apply active filter FIRST
+        if (activeOnly) {
+          query = query.eq('is_active', true);
+        }
+
+        // Apply employment type filter EARLY (before other filters)
+        if (filters.employmentType && filters.employmentType.length > 0) {
+          query = query.in('employment_type', filters.employmentType);
+        }
+
+        // Apply search term
+        if (searchTerm && searchTerm.trim()) {
+          query = query.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
+        }
+
+        // Apply other filters
+        if (filters.experienceLevel && filters.experienceLevel.length > 0) {
+          query = query.in('experience_level', filters.experienceLevel);
+        }
+
+        if (filters.mode && filters.mode.length > 0) {
+          query = query.in('mode', filters.mode);
+        }
+
+        if (filters.department && filters.department.length > 0) {
+          query = query.in('department', filters.department);
+        }
+
+        if (filters.salaryMin) {
+          query = query.gte('salary_range_min', parseInt(filters.salaryMin));
+        }
+
+        if (filters.salaryMax) {
+          query = query.lte('salary_range_max', parseInt(filters.salaryMax));
+        }
+
+        if (filters.postedWithin) {
+          const daysAgo = parseInt(filters.postedWithin);
+          const dateThreshold = new Date();
+          dateThreshold.setDate(dateThreshold.getDate() - daysAgo);
+          query = query.gte('created_at', dateThreshold.toISOString());
+        }
+
+        // Apply sorting BEFORE range
+        const ascending = sortBy === 'oldest';
+        query = query.order('created_at', { ascending });
+
+        // Apply pagination LAST (only if requested)
+        if (includeRange) {
+          query = query.range(offset, offset + pageSize - 1);
+        }
+
+        return query;
+      };
+
+      // WORKAROUND: Supabase count is unreliable with RLS, so we fetch ALL filtered IDs to get accurate count
+      // This is a lightweight query since we only fetch the 'id' field
+      let countQuery = supabase.from('opportunities').select('id', { count: 'exact', head: false });
+      
+      // Apply ALL the same filters as the data query
       if (activeOnly) {
-        query = query.eq('is_active', true);
+        countQuery = countQuery.eq('is_active', true);
       }
-
-      // Apply search term
-      if (searchTerm && searchTerm.trim()) {
-        query = query.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
-      }
-
-      // Apply filters
       if (filters.employmentType && filters.employmentType.length > 0) {
-        query = query.in('employment_type', filters.employmentType);
+        countQuery = countQuery.in('employment_type', filters.employmentType);
       }
-
+      if (searchTerm && searchTerm.trim()) {
+        countQuery = countQuery.or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`);
+      }
       if (filters.experienceLevel && filters.experienceLevel.length > 0) {
-        query = query.in('experience_level', filters.experienceLevel);
+        countQuery = countQuery.in('experience_level', filters.experienceLevel);
       }
-
       if (filters.mode && filters.mode.length > 0) {
-        query = query.in('mode', filters.mode);
+        countQuery = countQuery.in('mode', filters.mode);
       }
-
       if (filters.department && filters.department.length > 0) {
-        query = query.in('department', filters.department);
+        countQuery = countQuery.in('department', filters.department);
       }
-
       if (filters.salaryMin) {
-        query = query.gte('salary_range_min', parseInt(filters.salaryMin));
+        countQuery = countQuery.gte('salary_range_min', parseInt(filters.salaryMin));
       }
-
       if (filters.salaryMax) {
-        query = query.lte('salary_range_max', parseInt(filters.salaryMax));
+        countQuery = countQuery.lte('salary_range_max', parseInt(filters.salaryMax));
       }
-
       if (filters.postedWithin) {
         const daysAgo = parseInt(filters.postedWithin);
         const dateThreshold = new Date();
         dateThreshold.setDate(dateThreshold.getDate() - daysAgo);
-        query = query.gte('created_at', dateThreshold.toISOString());
+        countQuery = countQuery.gte('created_at', dateThreshold.toISOString());
+      }
+      
+      const { data: allIds, error: countError } = await countQuery;
+      
+      if (countError) {
+        console.error('❌ Error fetching count:', countError);
+      }
+      
+      const realCount = allIds?.length || 0;
+
+      // Check if the requested page is valid
+      const maxOffset = Math.max(0, realCount - 1);
+      if (offset > maxOffset && realCount > 0) {
+        return {
+          data: [],
+          count: realCount
+        };
       }
 
-      // Apply sorting
-      const ascending = sortBy === 'oldest';
-      query = query.order('created_at', { ascending });
+      // Fetch the actual paginated data
+      const { data, error } = await buildQuery('*', true);
 
-      // Apply pagination
-      query = query.range(offset, offset + pageSize - 1);
-
-      const { data, error, count } = await query;
-
+      // Handle 416 Range Not Satisfiable error gracefully
       if (error) {
+        if (error.code === 'PGRST103' || error.message?.includes('Range Not Satisfiable') || error.message?.includes('416')) {
+          return {
+            data: [],
+            count: realCount
+          };
+        }
         console.error('Error fetching paginated opportunities:', error);
-        throw error;
+        return {
+          data: [],
+          count: 0
+        };
       }
 
       return {
         data: data || [],
-        count: count || 0
+        count: realCount
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in getPaginatedOpportunities:', error);
-      throw error;
+      if (error?.message?.includes('416') || error?.message?.includes('Range Not Satisfiable')) {
+        return {
+          data: [],
+          count: 0
+        };
+      }
+      return {
+        data: [],
+        count: 0
+      };
     }
   }
 

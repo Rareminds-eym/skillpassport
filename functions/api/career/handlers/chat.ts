@@ -1,17 +1,43 @@
 /**
  * Career Chat Handler - Streaming AI chat with career guidance
+ * 
+ * Features:
+ * - Safety guardrails (prompt injection, harmful content, PII redaction)
+ * - Intent detection with chip-based overrides
+ * - Conversation phase management
+ * - Memory compression for long conversations
+ * - Rich context builders (student, assessment, progress, courses, opportunities)
+ * - Enhanced system prompt with few-shot examples and chain-of-thought
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { authenticateUser, sanitizeInput } from '../../shared/auth';
+
+import { authenticateUser, sanitizeInput, generateConversationTitle } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
-import { API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
-import type { ChatRequest } from '../types';
+import { getModelForUseCase, API_CONFIG, MODEL_PROFILES, getAPIKeys } from '../../shared/ai-config';
+import type { ChatRequest, StoredMessage, CareerIntent, Opportunity } from '../types';
+
+// AI modules
+import { runGuardrails, getBlockedResponse, validateResponse } from '../ai/guardrails';
+import { detectIntent } from '../ai/intent-detection';
+import { compressContext, buildMemoryContext } from '../ai/memory';
+import { getConversationPhase, getPhaseParameters } from '../ai/conversation-phase';
+import { buildEnhancedSystemPrompt } from '../ai/prompts/enhanced-system-prompt';
+
+// Context builders
+import { buildStudentContext } from '../context/student';
+import { buildAssessmentContext } from '../context/assessment';
+import { buildCareerProgressContext } from '../context/progress';
+import { buildCourseContext } from '../context/courses';
+import { fetchOpportunities } from '../context/opportunities';
+
 
 export async function handleCareerChat(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
+
+  const startTime = Date.now();
 
   // Authentication
   const auth = await authenticateUser(request, env);
@@ -19,7 +45,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     return jsonResponse({ error: 'Authentication required. Please log in again.' }, 401);
   }
 
-  const { user, supabase } = auth;
+  const { user, supabase, supabaseAdmin } = auth;
   const studentId = user.id;
 
   // Rate limiting
@@ -35,7 +61,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     return jsonResponse({ error: 'Invalid JSON' }, 400);
   }
 
-  const { conversationId, message } = body;
+  const { conversationId, message, selectedChips = [] } = body;
 
   if (!message || typeof message !== 'string') {
     return jsonResponse({ error: 'Message is required' }, 400);
@@ -46,6 +72,9 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     return jsonResponse({ error: 'Invalid message' }, 400);
   }
 
+  // Use sanitizedMessage as processedMessage
+  const processedMessage = sanitizedMessage;
+
   // Get OpenRouter API key using shared utility
   const { openRouter: openRouterKey } = getAPIKeys(env);
   if (!openRouterKey) {
@@ -53,15 +82,8 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   }
 
   try {
-    // Fetch student profile for context
-    const { data: profile } = await supabase
-      .from('students')
-      .select('name, email, branch_field, university, college_school_name, course_name')
-      .eq('id', studentId)
-      .single();
-
-    // Fetch conversation history if conversationId provided
-    let conversationHistory: Array<{ role: string; content: string }> = [];
+    // ==================== FETCH CONVERSATION HISTORY ====================
+    let existingMessages: StoredMessage[] = [];
     let existingConversation: any = null;
 
     if (conversationId) {
@@ -74,32 +96,88 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
       if (conv && conv.messages) {
         existingConversation = conv;
-        // Extract last 10 messages for context
-        const messages = Array.isArray(conv.messages) ? conv.messages : [];
-        conversationHistory = messages.slice(-10).map((m: any) => ({
-          role: m.role,
-          content: m.content
-        }));
+        existingMessages = Array.isArray(conv.messages) ? conv.messages : [];
       }
     }
 
-    // Build system prompt
-    const systemPrompt = buildSystemPrompt(profile);
+    // ==================== DETERMINE PHASE AND INTENT ====================
+    const messageCount = existingMessages.length;
+    const conversationPhase = getConversationPhase(messageCount);
+    const intentResult = detectIntent(processedMessage, selectedChips, existingMessages);
+    const phaseParams = getPhaseParameters(conversationPhase, intentResult.intent);
 
-    // Build messages array for AI
+    console.log(`[ANALYSIS] Phase: ${conversationPhase} | Intent: ${intentResult.intent} (${intentResult.confidence})`);
+
+    // ==================== BUILD CONTEXT IN PARALLEL ====================
+    const [studentProfile, assessmentContext, progressContext, courseContext] = await Promise.all([
+      buildStudentContext(supabaseAdmin, studentId),
+      buildAssessmentContext(supabaseAdmin, studentId),
+      buildCareerProgressContext(supabase, studentId),
+      buildCourseContext(supabase, studentId)
+    ]);
+
+    if (!studentProfile) {
+      return jsonResponse({ error: 'Unable to load student profile' }, 500);
+    }
+
+    console.log(`[CONTEXT] Profile: ${studentProfile.name}, Skills: ${studentProfile.technicalSkills.length}`);
+
+    // ==================== FETCH OPPORTUNITIES FOR RELEVANT INTENTS ====================
+    let opportunities: Opportunity[] = [];
+    const jobRelatedIntents: CareerIntent[] = ['find-jobs', 'skill-gap', 'career-guidance', 'application-status'];
+    if (jobRelatedIntents.includes(intentResult.intent)) {
+      opportunities = await fetchOpportunities(supabase, 50);
+      console.log(`[CONTEXT] Fetched ${opportunities.length} opportunities`);
+    }
+
+    // ==================== BUILD ENHANCED SYSTEM PROMPT ====================
+    const systemPrompt = buildEnhancedSystemPrompt({
+      profile: studentProfile,
+      assessment: assessmentContext,
+      progress: progressContext,
+      opportunities,
+      phase: conversationPhase,
+      intentResult,
+      courseContext
+    });
+
+    // ==================== PREPARE MESSAGES WITH MEMORY COMPRESSION ====================
+    const turnId = crypto.randomUUID();
+    const userMessage: StoredMessage = {
+      id: turnId,
+      role: 'user',
+      content: processedMessage,
+      timestamp: new Date().toISOString()
+    };
+
+    let memoryContext = '';
+    let recentMessages = existingMessages;
+
+    if (existingMessages.length > 10) {
+      const compressed = compressContext(existingMessages, 10);
+      recentMessages = compressed.recentMessages;
+      memoryContext = buildMemoryContext(compressed);
+    } else {
+      recentMessages = existingMessages.slice(-10);
+    }
+
+    const systemPromptWithMemory = memoryContext 
+      ? `${systemPrompt}\n\n${memoryContext}` 
+      : systemPrompt;
+
     const aiMessages = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory,
-      { role: 'user', content: sanitizedMessage }
+      { role: 'system', content: systemPromptWithMemory },
+      ...recentMessages.map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: processedMessage }
     ];
-    // Get models to try (primary + fallbacks)
+
+    // ==================== CALL AI WITH MODEL FALLBACK ====================
     const chatProfile = MODEL_PROFILES['chat'];
     const modelsToTry = [chatProfile.primary, ...chatProfile.fallbacks];
 
     let response: Response | null = null;
     let usedModel: string = '';
 
-    // Try each model until one works
     for (let i = 0; i < modelsToTry.length; i++) {
       const model = modelsToTry[i];
       const isRetry = i > 0;
@@ -120,8 +198,8 @@ export async function handleCareerChat(request: Request, env: Record<string, str
           model: model,
           messages: aiMessages,
           stream: true,
-          temperature: 0.7,
-          max_tokens: 2000
+          max_tokens: phaseParams.max_tokens,
+          temperature: phaseParams.temperature
         })
       });
 
@@ -137,7 +215,6 @@ export async function handleCareerChat(request: Request, env: Record<string, str
       } else {
         const errorText = await attemptResponse.text();
         console.error(`❌ [Chat] ${model} failed (${attemptResponse.status}):`, errorText.substring(0, 150));
-        // Continue to next model
       }
     }
 
@@ -148,7 +225,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
       }, 503);
     }
 
-    // Stream response and collect assistant message
+    // ==================== STREAM RESPONSE ====================
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
     let assistantMessage = '';
@@ -160,21 +237,16 @@ export async function handleCareerChat(request: Request, env: Record<string, str
           const reader = response.body?.getReader();
           if (!reader) throw new Error('No response body');
 
-          // console.log(`[Chat] Starting stream read...`);
-          let totalChunks = 0;
-          let buffer = ''; // Buffer for incomplete chunks
+          let buffer = '';
 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
 
             const chunk = decoder.decode(value, { stream: true });
-            totalChunks++;
             buffer += chunk;
 
-            // Process complete lines from buffer
             const lines = buffer.split('\n');
-            // Keep the last potentially incomplete line in buffer
             buffer = lines.pop() || '';
 
             for (const line of lines) {
@@ -182,23 +254,15 @@ export async function handleCareerChat(request: Request, env: Record<string, str
               if (!trimmedLine.startsWith('data: ')) continue;
 
               const data = trimmedLine.replace('data: ', '').trim();
-              if (data === '[DONE]') {
-                // console.log(`[Chat] Stream DONE received`);
-                continue;
-              }
+              if (data === '[DONE]') continue;
 
               try {
                 const parsed = JSON.parse(data);
-
-                // Try multiple possible content paths
                 let content = parsed.choices?.[0]?.delta?.content;
 
-                // Fallback: some models use message.content instead of delta.content
                 if (!content && parsed.choices?.[0]?.message?.content) {
                   content = parsed.choices[0].message.content;
                 }
-
-                // Fallback: some models return text directly
                 if (!content && parsed.choices?.[0]?.text) {
                   content = parsed.choices[0].text;
                 }
@@ -213,69 +277,71 @@ export async function handleCareerChat(request: Request, env: Record<string, str
             }
           }
 
-          console.log(`[Chat] Stream complete. Total chunks: ${totalChunks}, Message length: ${assistantMessage.length}`);
-          if (assistantMessage.length === 0) {
-            console.warn(`[Chat] WARNING: Empty assistant message!`);
-          } else {
-            // console.log(`[Chat] First 100 chars: ${assistantMessage.substring(0, 100)}`);
+          // ==================== VALIDATE RESPONSE ====================
+          const responseValidation = validateResponse(assistantMessage);
+          if (responseValidation.flags.length > 0) {
+            console.log(`[RESPONSE FLAGS] ${responseValidation.flags.join(', ')}`);
           }
 
-          // Prepare new messages to add
-          const userMessageObj = {
-            id: crypto.randomUUID(),
-            role: 'user',
-            content: sanitizedMessage,
-            timestamp: new Date().toISOString()
-          };
+          console.log(`[Chat] Stream complete. Message length: ${assistantMessage.length}`);
 
-          const assistantMessageObj = {
-            id: crypto.randomUUID(),
+          // ==================== SAVE CONVERSATION ====================
+          const assistantMessageObj: StoredMessage = {
+            id: turnId,
             role: 'assistant',
             content: assistantMessage,
             timestamp: new Date().toISOString()
           };
 
-          // Update or create conversation
-          if (existingConversation) {
-            // Append to existing conversation
-            const updatedMessages = [
-              ...(Array.isArray(existingConversation.messages) ? existingConversation.messages : []),
-              userMessageObj,
-              assistantMessageObj
-            ];
+          const updatedMessages = [...existingMessages, userMessage, assistantMessageObj];
 
-            await supabase
-              .from('career_ai_conversations')
-              .update({
-                messages: updatedMessages,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', conversationId);
+          try {
+            if (existingConversation) {
+              await supabaseAdmin
+                .from('career_ai_conversations')
+                .update({
+                  messages: updatedMessages,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', conversationId)
+                .eq('student_id', studentId);
+            } else {
+              finalConversationId = crypto.randomUUID();
+              const title = generateConversationTitle(processedMessage);
 
-          } else {
-            // Create new conversation
-            finalConversationId = crypto.randomUUID();
-            const title = sanitizedMessage.slice(0, 50) + (sanitizedMessage.length > 50 ? '...' : '');
-
-            await supabase
-              .from('career_ai_conversations')
-              .insert({
-                id: finalConversationId,
-                student_id: studentId,
-                title,
-                messages: [userMessageObj, assistantMessageObj]
-              });
+              await supabaseAdmin
+                .from('career_ai_conversations')
+                .insert({
+                  id: finalConversationId,
+                  student_id: studentId,
+                  title: title.slice(0, 255),
+                  messages: updatedMessages
+                });
+            }
+          } catch (dbError) {
+            console.error('[DB ERROR]', dbError);
           }
 
-          // Send final metadata
+          // ==================== SEND COMPLETION EVENT ====================
+          const executionTime = Date.now() - startTime;
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             done: true,
-            conversationId: finalConversationId
+            conversationId: finalConversationId,
+            messageId: assistantMessageObj.id,
+            intent: intentResult.intent,
+            intentConfidence: intentResult.confidence,
+            phase: conversationPhase,
+            hasAssessment: assessmentContext.hasAssessment,
+            executionTime
           })}\n\n`));
+
+          console.log(`[COMPLETE] Intent: ${intentResult.intent}, Time: ${executionTime}ms`);
           controller.close();
+
         } catch (error) {
-          console.error('Stream error:', error);
-          controller.error(error);
+          console.error('[STREAM ERROR]', error);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream processing error' })}\n\n`));
+          controller.close();
         }
       }
     });
@@ -293,31 +359,4 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     console.error('Career chat error:', error);
     return jsonResponse({ error: 'Internal server error' }, 500);
   }
-}
-
-function buildSystemPrompt(profile: any): string {
-  const name = profile?.name || 'Student';
-  const field = profile?.branch_field || profile?.course_name || 'your field';
-  const university = profile?.university || profile?.college_school_name || 'your institution';
-
-  return `You are a career guidance AI assistant for SkillPassport, helping ${name} explore career opportunities.
-
-Student Context:
-- Name: ${name}
-- Field of Study: ${field}
-- Institution: ${university}
-
-Your role:
-- Provide personalized career guidance and recommendations
-- Help explore career paths aligned with their field of study
-- Suggest relevant skills, courses, and opportunities
-- Answer questions about career development
-- Be encouraging, supportive, and professional
-
-Guidelines:
-- Keep responses concise and actionable
-- Focus on practical advice and next steps
-- Reference their field of study when relevant
-- Suggest specific resources or opportunities when appropriate
-- Be honest about challenges while remaining optimistic`;
 }

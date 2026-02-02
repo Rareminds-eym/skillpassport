@@ -72,7 +72,11 @@ const CoursePlayer = () => {
   const lastSavedVideoPositionRef = useRef(0);
 
   // Check if user is a student (for progress tracking)
-  const isStudent = user?.role === 'student';
+  // Students can have roles: 'student', 'school_student', 'college_student'
+  console.log('user?.role', user?.role);
+  const isStudent = user?.role === 'student' || 
+                    user?.role === 'school_student' || 
+                    user?.role === 'college_student';
 
   // Session restore hook - only for students
   const {
@@ -94,6 +98,7 @@ const CoursePlayer = () => {
   useEffect(() => {
     if (isStudent && user?.email && courseId && !enrollmentInitializedRef.current) {
       enrollmentInitializedRef.current = true;
+      console.log('user role', user?.role);
       enrollAndLoadProgress();
     } else if (!isStudent && !positionInitialized) {
       // For non-students, immediately mark position as initialized
