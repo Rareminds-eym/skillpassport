@@ -18,6 +18,8 @@
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { handleRoleOverview } from './handlers/role-overview';
+import { handleCourseMatching } from './handlers/course-matching';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -54,36 +56,12 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
     // Generate role overview
     if (path === '/role-overview' && request.method === 'POST') {
-      // TODO: Implement role overview generation
-      // - Validate request body (roleTitle, gradeLevel, etc.)
-      // - Build comprehensive prompt
-      // - Call OpenRouter API with fallback to Gemini
-      // - Parse and validate response
-      // - Return structured role overview data
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Role overview generation not yet implemented. See README.md for implementation details.',
-        },
-        501
-      );
+      return handleRoleOverview(context);
     }
 
     // Match courses for role
     if (path === '/match-courses' && request.method === 'POST') {
-      // TODO: Implement AI-powered course matching
-      // - Validate request body (roleTitle, availableCourses, etc.)
-      // - Build course matching prompt
-      // - Call OpenRouter API
-      // - Parse and rank courses
-      // - Return matched courses with relevance scores
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Course matching not yet implemented. See README.md for implementation details.',
-        },
-        501
-      );
+      return handleCourseMatching(context);
     }
 
     // 404 for unknown routes
