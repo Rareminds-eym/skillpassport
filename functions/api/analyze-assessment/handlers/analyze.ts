@@ -13,7 +13,8 @@ import {
   repairAndParseJSON, 
   AI_MODELS, 
   getAPIKeys,
-  API_CONFIG
+  API_CONFIG,
+  callOpenRouterWithRetry
 } from '../../shared/ai-config';
 
 interface RequestBody {
@@ -22,16 +23,16 @@ interface RequestBody {
 
 // AI Models to try (in order of preference) - using shared AI_MODELS
 const ASSESSMENT_MODELS = [
-  AI_MODELS.CLAUDE_SONNET,       // Claude 3.5 Sonnet - best quality, truly deterministic (paid)
-  AI_MODELS.GEMINI_2_FLASH,      // Google's Gemini 2.0 - free, fast, 1M context
-  AI_MODELS.GEMINI_PRO,          // Google Gemini Pro - free, reliable
-  AI_MODELS.XIAOMI_MIMO          // Fallback: Xiaomi's free model
+  'google/gemini-flash-1.5-exp',           // FREE - Experimental
+  'meta-llama/llama-3.1-8b-instruct:free', // FREE
+  'google/gemini-flash-1.5',               // Affordable with $0.99
+  'openai/gpt-3.5-turbo',                  // Cheap fallback
 ];
 
 // Assessment-specific configuration
 const ASSESSMENT_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
-  maxTokens: 20000,  // Increased to handle complete responses (large nested object)
+  maxTokens: 4000,   // Increased to 4000 to ensure complete responses including overallSummary
 };
 
 /**
@@ -62,58 +63,27 @@ function generateSeed(data: AssessmentData): number {
 }
 
 /**
- * Call OpenRouter API with the given model
- */
-async function callOpenRouter(
-  env: PagesEnv,
-  model: string,
-  systemMessage: string,
-  userPrompt: string,
-  seed?: number
-): Promise<Response> {
-  const { openRouter } = getAPIKeys(env);
-  if (!openRouter) {
-    throw new Error('OpenRouter API key not configured');
-  }
-
-  const requestBody: any = {
-    model,
-    messages: [
-      { role: 'system', content: systemMessage },
-      { role: 'user', content: userPrompt }
-    ],
-    temperature: ASSESSMENT_CONFIG.temperature,
-    max_tokens: ASSESSMENT_CONFIG.maxTokens
-  };
-
-  // Add seed for deterministic results (same input = same output)
-  if (seed !== undefined) {
-    requestBody.seed = seed;
-  }
-
-  return fetch(API_CONFIG.OPENROUTER.endpoint, {
-    method: 'POST',
-    headers: {
-      ...API_CONFIG.OPENROUTER.headers,
-      'Authorization': `Bearer ${openRouter}`,
-      'HTTP-Referer': env.VITE_SUPABASE_URL || 'https://skillpassport.rareminds.in',
-      'X-Title': 'SkillPassport Assessment Analyzer'
-    },
-    body: JSON.stringify(requestBody)
-  });
-}
-
-/**
  * Validate assessment response structure
  * Ensures the response has all required fields with correct types
  */
 function validateAssessmentStructure(result: any): { valid: boolean; errors: string[]; warnings: string[] } {
+  // ============================================================================
+  // ENHANCED LOGGING: Log validation start (Requirement 4.3, 4.5)
+  // ============================================================================
+  console.log('[VALIDATION] === STARTING ASSESSMENT STRUCTURE VALIDATION ===');
+  console.log('[VALIDATION] Response type:', typeof result);
+  console.log('[VALIDATION] Is array:', Array.isArray(result));
+  console.log('[VALIDATION] Response keys:', result ? Object.keys(result).join(', ') : 'null');
+  
   const errors: string[] = [];
   const warnings: string[] = [];
   
   // Must be an object
   if (!result || typeof result !== 'object' || Array.isArray(result)) {
-    errors.push('Response must be a JSON object, not an array or primitive');
+    const error = 'Response must be a JSON object, not an array or primitive';
+    errors.push(error);
+    console.error('[VALIDATION] ❌ CRITICAL:', error);
+    console.error('[VALIDATION] === END VALIDATION (FAILED) ===');
     return { valid: false, errors, warnings };
   }
   
@@ -129,48 +99,104 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
     careerFit: 'object',
     skillGap: 'object',
     roadmap: 'object',
-    finalNote: 'object'
+    finalNote: 'object',
+    overallSummary: 'string'  // CRITICAL: This must be a string
   };
+  
+  // ============================================================================
+  // ENHANCED LOGGING: Log missing fields (Requirement 4.5)
+  // ============================================================================
+  console.log('[VALIDATION] Checking required fields...');
+  const missingFieldsList: string[] = [];
+  const typeErrorsList: string[] = [];
   
   // Check required fields
   for (const [field, expectedType] of Object.entries(requiredFields)) {
     if (!result[field]) {
-      warnings.push(`Missing field: ${field}`);
+      missingFieldsList.push(field);
+      if (field === 'overallSummary') {
+        const error = `CRITICAL: Missing required field: ${field} - This field is MANDATORY for the Career Direction summary`;
+        errors.push(error);
+        console.error('[VALIDATION] ❌', error);
+      } else {
+        const warning = `Missing field: ${field}`;
+        warnings.push(warning);
+        console.warn('[VALIDATION] ⚠️', warning);
+      }
     } else if (typeof result[field] !== expectedType) {
-      errors.push(`Field '${field}' must be ${expectedType}, got ${typeof result[field]}`);
+      const error = `Field '${field}' must be ${expectedType}, got ${typeof result[field]}`;
+      errors.push(error);
+      typeErrorsList.push(`${field}: expected ${expectedType}, got ${typeof result[field]}`);
+      console.error('[VALIDATION] ❌', error);
+    } else {
+      console.log('[VALIDATION] ✅', field, '- present and correct type');
     }
+  }
+  
+  // Log summary of missing fields
+  if (missingFieldsList.length > 0) {
+    console.error('[VALIDATION] ❌ === MISSING FIELDS SUMMARY ===');
+    console.error('[VALIDATION] Total missing:', missingFieldsList.length);
+    console.error('[VALIDATION] Missing fields:', missingFieldsList.join(', '));
+    console.error('[VALIDATION] === END MISSING FIELDS ===');
+  }
+  
+  if (typeErrorsList.length > 0) {
+    console.error('[VALIDATION] ❌ === TYPE ERRORS SUMMARY ===');
+    console.error('[VALIDATION] Total type errors:', typeErrorsList.length);
+    typeErrorsList.forEach(err => console.error('[VALIDATION]   -', err));
+    console.error('[VALIDATION] === END TYPE ERRORS ===');
   }
   
   // Validate careerFit structure (most critical)
   if (result.careerFit) {
+    console.log('[VALIDATION] Validating careerFit structure...');
     if (!result.careerFit.clusters || !Array.isArray(result.careerFit.clusters)) {
-      errors.push('careerFit.clusters must be an array');
+      const error = 'careerFit.clusters must be an array';
+      errors.push(error);
+      console.error('[VALIDATION] ❌', error);
     } else {
       if (result.careerFit.clusters.length !== 3) {
-        errors.push(`careerFit.clusters must have exactly 3 items, got ${result.careerFit.clusters.length}`);
+        const error = `careerFit.clusters must have exactly 3 items, got ${result.careerFit.clusters.length}`;
+        errors.push(error);
+        console.error('[VALIDATION] ❌', error);
+      } else {
+        console.log('[VALIDATION] ✅ careerFit.clusters has 3 items');
       }
       
       // Validate each cluster
       result.careerFit.clusters.forEach((cluster: any, index: number) => {
         const clusterNum = index + 1;
         if (!cluster || typeof cluster !== 'object') {
-          errors.push(`Cluster ${clusterNum} must be an object`);
+          const error = `Cluster ${clusterNum} must be an object`;
+          errors.push(error);
+          console.error('[VALIDATION] ❌', error);
           return;
         }
         
         const requiredClusterFields = ['title', 'fit', 'matchScore', 'description', 'evidence', 'roles', 'domains', 'whyItFits'];
+        const missingClusterFields: string[] = [];
         requiredClusterFields.forEach(field => {
           if (!cluster[field]) {
-            warnings.push(`Cluster ${clusterNum} missing field: ${field}`);
+            const warning = `Cluster ${clusterNum} missing field: ${field}`;
+            warnings.push(warning);
+            missingClusterFields.push(field);
+            console.warn('[VALIDATION] ⚠️', warning);
           }
         });
+        
+        if (missingClusterFields.length === 0) {
+          console.log(`[VALIDATION] ✅ Cluster ${clusterNum} has all required fields`);
+        }
         
         // Validate evidence structure
         if (cluster.evidence && typeof cluster.evidence === 'object') {
           const requiredEvidence = ['interest', 'aptitude', 'personality'];
           requiredEvidence.forEach(field => {
             if (!cluster.evidence[field]) {
-              warnings.push(`Cluster ${clusterNum} evidence missing: ${field}`);
+              const warning = `Cluster ${clusterNum} evidence missing: ${field}`;
+              warnings.push(warning);
+              console.warn('[VALIDATION] ⚠️', warning);
             }
           });
         }
@@ -179,12 +205,16 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
     
     // Validate specificOptions
     if (!result.careerFit.specificOptions) {
-      warnings.push('careerFit.specificOptions missing');
+      const warning = 'careerFit.specificOptions missing';
+      warnings.push(warning);
+      console.warn('[VALIDATION] ⚠️', warning);
     } else {
       const requiredOptions = ['highFit', 'mediumFit', 'exploreLater'];
       requiredOptions.forEach(field => {
         if (!result.careerFit.specificOptions[field] || !Array.isArray(result.careerFit.specificOptions[field])) {
-          warnings.push(`careerFit.specificOptions.${field} must be an array`);
+          const warning = `careerFit.specificOptions.${field} must be an array`;
+          warnings.push(warning);
+          console.warn('[VALIDATION] ⚠️', warning);
         }
       });
     }
@@ -192,31 +222,129 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
   
   // Validate RIASEC structure
   if (result.riasec) {
+    console.log('[VALIDATION] Validating RIASEC structure...');
     if (!result.riasec.scores || typeof result.riasec.scores !== 'object') {
-      errors.push('riasec.scores must be an object');
+      const error = 'riasec.scores must be an object';
+      errors.push(error);
+      console.error('[VALIDATION] ❌', error);
     } else {
       const requiredScores = ['R', 'I', 'A', 'S', 'E', 'C'];
+      let allScoresValid = true;
       requiredScores.forEach(letter => {
         if (typeof result.riasec.scores[letter] !== 'number') {
-          warnings.push(`riasec.scores.${letter} must be a number`);
+          const warning = `riasec.scores.${letter} must be a number`;
+          warnings.push(warning);
+          console.warn('[VALIDATION] ⚠️', warning);
+          allScoresValid = false;
         }
       });
+      
+      if (allScoresValid) {
+        console.log('[VALIDATION] ✅ All RIASEC scores are numbers');
+        
+        // ============================================================================
+        // ENHANCED LOGGING: Detect suspicious patterns (Requirement 4.5)
+        // ============================================================================
+        const scores = requiredScores.map(letter => result.riasec.scores[letter]);
+        const allZero = scores.every(score => score === 0);
+        const allSame = scores.every(score => score === scores[0]);
+        
+        if (allZero) {
+          const warning = '⚠️ SUSPICIOUS PATTERN: All RIASEC scores are zero - indicates extraction failure';
+          warnings.push(warning);
+          console.warn('[VALIDATION]', warning);
+        } else if (allSame) {
+          const warning = `⚠️ SUSPICIOUS PATTERN: All RIASEC scores are identical (${scores[0]}) - indicates flat profile or calculation error`;
+          warnings.push(warning);
+          console.warn('[VALIDATION]', warning);
+        } else {
+          console.log('[VALIDATION] ✅ RIASEC scores show variation (not all zero or identical)');
+        }
+      }
     }
     
     if (!result.riasec.code || typeof result.riasec.code !== 'string') {
-      warnings.push('riasec.code must be a string');
+      const warning = 'riasec.code must be a string';
+      warnings.push(warning);
+      console.warn('[VALIDATION] ⚠️', warning);
+    } else {
+      console.log('[VALIDATION] ✅ riasec.code is present:', result.riasec.code);
     }
   }
   
   // Validate aptitude structure
   if (result.aptitude && result.aptitude.scores) {
+    console.log('[VALIDATION] Validating aptitude structure...');
     const aptitudeTypes = ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'];
+    const missingAptitudeTypes: string[] = [];
+    const emptyAptitudeTypes: string[] = [];
+    
     aptitudeTypes.forEach(type => {
       if (!result.aptitude.scores[type]) {
-        warnings.push(`aptitude.scores.${type} missing`);
+        const warning = `aptitude.scores.${type} missing`;
+        warnings.push(warning);
+        missingAptitudeTypes.push(type);
+        console.warn('[VALIDATION] ⚠️', warning);
+      } else {
+        // Check if aptitude score is empty or all zeros
+        const score = result.aptitude.scores[type];
+        if (score.correct === 0 && score.total === 0) {
+          const warning = `⚠️ SUSPICIOUS PATTERN: aptitude.scores.${type} is empty (0/0) - indicates no questions answered`;
+          warnings.push(warning);
+          emptyAptitudeTypes.push(type);
+          console.warn('[VALIDATION]', warning);
+        }
       }
     });
+    
+    if (missingAptitudeTypes.length === 0 && emptyAptitudeTypes.length === 0) {
+      console.log('[VALIDATION] ✅ All aptitude types present with data');
+    } else if (missingAptitudeTypes.length > 0) {
+      console.warn('[VALIDATION] ⚠️ Missing aptitude types:', missingAptitudeTypes.join(', '));
+    }
+    if (emptyAptitudeTypes.length > 0) {
+      console.warn('[VALIDATION] ⚠️ Empty aptitude types:', emptyAptitudeTypes.join(', '));
+    }
   }
+  
+  // CRITICAL: Validate overallSummary
+  if (result.overallSummary) {
+    if (typeof result.overallSummary !== 'string') {
+      const error = 'overallSummary must be a string';
+      errors.push(error);
+      console.error('[VALIDATION] ❌', error);
+    } else if (result.overallSummary.length < 50) {
+      const warning = 'overallSummary is too short (should be 3-4 sentences)';
+      warnings.push(warning);
+      console.warn('[VALIDATION] ⚠️', warning);
+    } else {
+      console.log('[VALIDATION] ✅ overallSummary is present and adequate length');
+    }
+  }
+  
+  // ============================================================================
+  // ENHANCED LOGGING: Log validation summary (Requirement 4.5)
+  // ============================================================================
+  console.log('[VALIDATION] === VALIDATION SUMMARY ===');
+  console.log('[VALIDATION] Valid:', errors.length === 0);
+  console.log('[VALIDATION] Total Errors:', errors.length);
+  console.log('[VALIDATION] Total Warnings:', warnings.length);
+  
+  if (errors.length > 0) {
+    console.error('[VALIDATION] ❌ ERRORS:');
+    errors.forEach((err, idx) => console.error(`[VALIDATION]   ${idx + 1}. ${err}`));
+  }
+  
+  if (warnings.length > 0) {
+    console.warn('[VALIDATION] ⚠️ WARNINGS:');
+    warnings.forEach((warn, idx) => console.warn(`[VALIDATION]   ${idx + 1}. ${warn}`));
+  }
+  
+  if (errors.length === 0 && warnings.length === 0) {
+    console.log('[VALIDATION] ✅ All validations passed - response structure is complete');
+  }
+  
+  console.log('[VALIDATION] === END VALIDATION ===');
   
   return {
     valid: errors.length === 0,
@@ -226,7 +354,13 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
 }
 
 /**
- * Analyze assessment data using OpenRouter AI
+ * Analyze assessment data using OpenRouter AI with validation-based fallback
+ * 
+ * This function implements a two-tier fallback strategy:
+ * 1. API-level fallback: callOpenRouterWithRetry handles network/API failures
+ * 2. Validation-level fallback: If a model returns incomplete data, try the next model
+ * 
+ * Requirements: 7.4, 7.5
  */
 async function analyzeAssessment(
   env: PagesEnv,
@@ -237,89 +371,98 @@ async function analyzeAssessment(
   const systemMessage = getSystemMessage(gradeLevel);
   const seed = generateSeed(assessmentData);
 
-  console.log(`[AI] Using deterministic seed: ${seed} for consistent results`);
+  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS WITH VALIDATION FALLBACK ===`);
+  console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
+  console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
+  console.log(`[ASSESSMENT] Available models: ${ASSESSMENT_MODELS.length}`);
+  console.log(`[ASSESSMENT] Models: ${ASSESSMENT_MODELS.join(', ')}`);
 
-  let lastError = '';
-  const failedModels: string[] = [];
-  const failureDetails: Array<{model: string, status?: number, error: string}> = [];
+  const { openRouter } = getAPIKeys(env);
+  if (!openRouter) {
+    throw new Error('OpenRouter API key not configured');
+  }
 
-  // Try each model until one succeeds
-  for (const model of ASSESSMENT_MODELS) {
-    console.log(`[AI] 🔄 Trying model: ${model}`);
+  // ============================================================================
+  // VALIDATION-BASED MODEL FALLBACK (Requirement 7.4)
+  // Track which models have been tried and their failure reasons
+  // ============================================================================
+  const modelAttempts: Array<{ model: string; error: string; validationErrors?: string[] }> = [];
+  let lastError: Error | null = null;
+
+  // Try each model in sequence until one produces valid results
+  for (let modelIndex = 0; modelIndex < ASSESSMENT_MODELS.length; modelIndex++) {
+    const currentModel = ASSESSMENT_MODELS[modelIndex];
+    
+    console.log(`\n[ASSESSMENT] 🎯 Trying model ${modelIndex + 1}/${ASSESSMENT_MODELS.length}: ${currentModel}`);
     
     try {
-      const response = await callOpenRouter(env, model, systemMessage, prompt, seed);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        lastError = errorText;
-        failedModels.push(model);
-        failureDetails.push({
-          model: model,
-          status: response.status,
-          error: errorText.substring(0, 200)
-        });
-        console.error(`[AI] ❌ Model ${model} FAILED with status ${response.status}`);
-        console.error(`[AI] ❌ Error: ${errorText.substring(0, 200)}`);
-        console.log(`[AI] 🔄 Trying next fallback model...`);
-        continue;
-      }
+      // Call OpenRouter with ONLY the current model (no fallback at API level)
+      // This ensures we can control validation-based fallback
+      const content = await callOpenRouterWithRetry(openRouter, [
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: prompt }
+      ], {
+        models: [currentModel], // Single model - we handle fallback here
+        maxRetries: 2, // Reduced retries since we have model-level fallback
+        maxTokens: ASSESSMENT_CONFIG.maxTokens,
+        temperature: ASSESSMENT_CONFIG.temperature,
+      });
 
-      const data = await response.json() as any;
-      const content = data.choices?.[0]?.message?.content;
-
-      if (!content) {
-        lastError = 'Empty response from AI';
-        failedModels.push(model);
-        failureDetails.push({
-          model: model,
-          error: 'Empty response from AI'
-        });
-        console.error(`[AI] ❌ Model ${model} FAILED: returned empty content`);
-        console.log(`[AI] 🔄 Trying next fallback model...`);
-        continue;
-      }
-
-      console.log(`[AI] ✅ SUCCESS with model: ${model}`);
-      if (failedModels.length > 0) {
-        console.log(`[AI] ℹ️ Note: ${failedModels.length} model(s) failed before success: ${failedModels.join(', ')}`);
-      }
-      
-      // Log raw response for debugging
-      console.log(`[AI] 📄 RAW RESPONSE (first 500 chars):`);
-      console.log(content.substring(0, 500));
-      console.log(`[AI] 📄 RAW RESPONSE (last 500 chars):`);
-      console.log(content.substring(Math.max(0, content.length - 500)));
-      console.log(`[AI] 📄 Total response length: ${content.length} characters`);
+      console.log(`[ASSESSMENT] ✅ ${currentModel} - Received response`);
+      console.log(`[ASSESSMENT] 📄 Response length: ${content.length} characters`);
+      console.log(`[ASSESSMENT] 📄 First 300 chars: ${content.substring(0, 300)}`);
       
       // Parse the JSON response using shared utility (prefer object for assessments)
       const result = repairAndParseJSON(content, true);
       
-      // Strict validation of response structure
+      // ============================================================================
+      // STRICT VALIDATION (Requirement 7.2, 7.3)
+      // ============================================================================
       const validation = validateAssessmentStructure(result);
       
-      // Log validation results
+      // ============================================================================
+      // VALIDATION FAILURE HANDLING (Requirement 7.4)
+      // If validation fails, log details and try next model
+      // ============================================================================
       if (validation.errors.length > 0) {
-        console.error(`[AI] ❌ Validation errors (${validation.errors.length}):`);
-        validation.errors.forEach(err => console.error(`  - ${err}`));
-        throw new Error(`Invalid response structure: ${validation.errors.join('; ')}`);
+        console.error(`[ASSESSMENT] ❌ ${currentModel} - Validation failed with ${validation.errors.length} errors:`);
+        validation.errors.forEach(err => console.error(`[ASSESSMENT]   - ${err}`));
+        
+        // Record this attempt
+        modelAttempts.push({
+          model: currentModel,
+          error: 'Validation failed',
+          validationErrors: validation.errors
+        });
+        
+        // If this is not the last model, try the next one
+        if (modelIndex < ASSESSMENT_MODELS.length - 1) {
+          console.log(`[ASSESSMENT] 🔄 Validation failed for ${currentModel}, trying next model...`);
+          continue; // Try next model
+        } else {
+          // This was the last model - throw error with all attempt details
+          lastError = new Error(`All models failed validation. Last errors: ${validation.errors.join('; ')}`);
+          break;
+        }
       }
       
+      // ============================================================================
+      // VALIDATION SUCCESS (Requirement 7.1)
+      // ============================================================================
       if (validation.warnings.length > 0) {
-        console.warn(`[AI] ⚠️ Validation warnings (${validation.warnings.length}):`);
-        validation.warnings.forEach(warn => console.warn(`  - ${warn}`));
+        console.warn(`[ASSESSMENT] ⚠️ ${currentModel} - Validation passed with ${validation.warnings.length} warnings:`);
+        validation.warnings.forEach(warn => console.warn(`[ASSESSMENT]   - ${warn}`));
       } else {
-        console.log(`[AI] ✅ Response structure validated successfully`);
+        console.log(`[ASSESSMENT] ✅ ${currentModel} - Response structure validated successfully (no warnings)`);
       }
       
-      // Add metadata including seed for debugging
+      // Add metadata including seed and model used for debugging
       result._metadata = {
         seed: seed,
-        model: model,
         timestamp: new Date().toISOString(),
         deterministic: true,
-        failedModels: failedModels.length > 0 ? failedModels : undefined,
-        failureDetails: failureDetails.length > 0 ? failureDetails : undefined,
+        modelUsed: currentModel,
+        modelAttempts: modelAttempts.length > 0 ? modelAttempts : undefined,
         validation: {
           valid: validation.valid,
           errorCount: validation.errors.length,
@@ -328,25 +471,59 @@ async function analyzeAssessment(
         }
       };
       
+      console.log(`[ASSESSMENT] 🎉 SUCCESS - ${currentModel} produced valid results`);
+      console.log(`[ASSESSMENT] === END AI ANALYSIS (SUCCESS) ===`);
+      
       return result;
       
     } catch (error) {
-      lastError = (error as Error).message;
-      failedModels.push(model);
-      failureDetails.push({
-        model: model,
-        error: (error as Error).message
+      // ============================================================================
+      // API/PARSING ERROR HANDLING (Requirement 7.4)
+      // Log error and try next model
+      // ============================================================================
+      const errorMessage = (error as Error).message;
+      console.error(`[ASSESSMENT] ❌ ${currentModel} - API/Parsing error:`, errorMessage);
+      
+      // Record this attempt
+      modelAttempts.push({
+        model: currentModel,
+        error: errorMessage
       });
-      console.error(`[AI] ❌ Model ${model} FAILED with exception:`, error);
-      console.log(`[AI] 🔄 Trying next fallback model...`);
+      
+      lastError = error as Error;
+      
+      // If this is not the last model, try the next one
+      if (modelIndex < ASSESSMENT_MODELS.length - 1) {
+        console.log(`[ASSESSMENT] 🔄 ${currentModel} failed, trying next model...`);
+        continue; // Try next model
+      }
     }
   }
-
-  // All models failed
-  console.error(`[AI] ❌ ALL MODELS FAILED!`);
-  console.error(`[AI] ❌ Failed models (${failedModels.length}): ${failedModels.join(', ')}`);
-  console.error(`[AI] ❌ Last error: ${lastError}`);
-  throw new Error(`AI analysis failed: ${lastError}`);
+  
+  // ============================================================================
+  // ALL MODELS FAILED (Requirement 7.5)
+  // Return detailed error with all attempt information
+  // ============================================================================
+  console.error(`[ASSESSMENT] 💥 === ALL MODELS FAILED ===`);
+  console.error(`[ASSESSMENT] Total models tried: ${modelAttempts.length}`);
+  console.error(`[ASSESSMENT] Failure details:`);
+  modelAttempts.forEach((attempt, idx) => {
+    console.error(`[ASSESSMENT]   ${idx + 1}. ${attempt.model}:`);
+    console.error(`[ASSESSMENT]      Error: ${attempt.error}`);
+    if (attempt.validationErrors) {
+      console.error(`[ASSESSMENT]      Validation errors: ${attempt.validationErrors.join('; ')}`);
+    }
+  });
+  console.error(`[ASSESSMENT] === END AI ANALYSIS (FAILED) ===`);
+  
+  // Create detailed error message for frontend
+  const errorDetails = modelAttempts.map((attempt, idx) => 
+    `${idx + 1}. ${attempt.model}: ${attempt.error}${attempt.validationErrors ? ` (${attempt.validationErrors.length} validation errors)` : ''}`
+  ).join('\n');
+  
+  throw new Error(
+    `AI analysis failed after trying all ${ASSESSMENT_MODELS.length} models.\n\nAttempt details:\n${errorDetails}\n\nLast error: ${lastError?.message || 'Unknown error'}`
+  );
 }
 
 /**

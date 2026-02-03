@@ -56,6 +56,8 @@ export interface UseAdaptiveAptitudeOptions {
   studentId: string;
   /** Grade level for the test */
   gradeLevel: GradeLevel;
+  /** Assessment attempt ID to link the adaptive session to */
+  attemptId?: string;
   /** Callback when test completes */
   onTestComplete?: (results: TestResults) => void;
   /** Callback when an error occurs */
@@ -112,11 +114,11 @@ export interface UseAdaptiveAptitudeReturn {
 /** Estimated questions per phase for progress calculation */
 const ESTIMATED_QUESTIONS_PER_PHASE: Record<TestPhase, number> = {
   diagnostic_screener: 8,  // Phase 1: 8 questions at Level 3
-  adaptive_core: 36,       // Phase 2: 36 adaptive questions
+  adaptive_core: 36,       // Phase 2: Exactly 36 adaptive questions (FIXED)
   stability_confirmation: 6, // Phase 3: 6 stability questions
 };
 
-/** Total estimated questions (50 = 8 + 36 + 6) */
+/** Total estimated questions (EXACTLY 50 = 8 + 36 + 6) */
 const ESTIMATED_TOTAL_QUESTIONS = 
   ESTIMATED_QUESTIONS_PER_PHASE.diagnostic_screener +
   ESTIMATED_QUESTIONS_PER_PHASE.adaptive_core +
@@ -175,7 +177,7 @@ function calculateProgress(
 export function useAdaptiveAptitude(
   options: UseAdaptiveAptitudeOptions
 ): UseAdaptiveAptitudeReturn {
-  const { studentId, gradeLevel, onTestComplete, onError } = options;
+  const { studentId, gradeLevel, attemptId, onTestComplete, onError } = options;
 
   // ==========================================================================
   // STATE
@@ -256,25 +258,71 @@ export function useAdaptiveAptitude(
    * - Loads first question
    */
   const startTest = useCallback(async () => {
-    console.log('🚀 [useAdaptiveAptitude] startTest called:', { studentId, gradeLevel });
+    console.log('🚀🚀🚀 [useAdaptiveAptitude] ========== START TEST CALLED ==========');
+    console.log('🚀 [useAdaptiveAptitude] Parameters:', { 
+      studentId, 
+      gradeLevel, 
+      attemptId,
+      hasAttemptId: !!attemptId,
+      attemptIdType: typeof attemptId
+    });
     setLoading(true);
     setError(null);
     
     try {
       // Initialize the test
-      console.log('📡 [useAdaptiveAptitude] Calling AdaptiveAptitudeService.initializeTest...');
+      console.log('📡 [useAdaptiveAptitude] Step 1: Calling AdaptiveAptitudeService.initializeTest...');
       const initResult: InitializeTestResult = await AdaptiveAptitudeService.initializeTest({
         studentId,
         gradeLevel,
       });
-      console.log('✅ [useAdaptiveAptitude] initializeTest result:', {
+      console.log('✅ [useAdaptiveAptitude] Step 1 Complete: initializeTest result:', {
         sessionId: initResult.session.id,
         phase: initResult.session.currentPhase,
         firstQuestionId: initResult.firstQuestion?.id,
         questionsCount: initResult.session.currentPhaseQuestions?.length,
       });
 
+      // CRITICAL: Link the adaptive session to the assessment attempt immediately
+      // This ensures the session ID is in the attempt BEFORE results are saved
+      console.log('🔗 [useAdaptiveAptitude] Step 2: Checking if we should link session to attempt...');
+      console.log('🔗 [useAdaptiveAptitude] attemptId:', attemptId);
+      console.log('🔗 [useAdaptiveAptitude] session.id:', initResult.session.id);
+      console.log('🔗 [useAdaptiveAptitude] Will link?', !!(attemptId && initResult.session.id));
+      
+      if (attemptId && initResult.session.id) {
+        console.log('🔗🔗🔗 [useAdaptiveAptitude] LINKING SESSION TO ATTEMPT NOW!');
+        console.log('🔗 [useAdaptiveAptitude] Session ID:', initResult.session.id);
+        console.log('🔗 [useAdaptiveAptitude] Attempt ID:', attemptId);
+        
+        try {
+          // Import assessmentService dynamically to avoid circular dependencies
+          console.log('📦 [useAdaptiveAptitude] Importing assessmentService...');
+          const assessmentService = await import('../services/assessmentService');
+          console.log('📦 [useAdaptiveAptitude] assessmentService imported successfully');
+          
+          console.log('🔗 [useAdaptiveAptitude] Calling updateAttemptAdaptiveSession...');
+          const linkResult = await assessmentService.updateAttemptAdaptiveSession(attemptId, initResult.session.id);
+          console.log('🔗 [useAdaptiveAptitude] updateAttemptAdaptiveSession returned:', linkResult);
+          
+          console.log('✅✅✅ [useAdaptiveAptitude] SESSION LINKED TO ATTEMPT SUCCESSFULLY!');
+          console.log('✅ [useAdaptiveAptitude] The session ID should now be in personal_assessment_attempts table');
+        } catch (linkError) {
+          console.error('❌❌❌ [useAdaptiveAptitude] FAILED TO LINK SESSION TO ATTEMPT!');
+          console.error('❌ [useAdaptiveAptitude] Error:', linkError);
+          console.error('❌ [useAdaptiveAptitude] Error message:', linkError instanceof Error ? linkError.message : 'Unknown');
+          console.error('❌ [useAdaptiveAptitude] Error stack:', linkError instanceof Error ? linkError.stack : 'No stack');
+          // Don't throw - continue with test even if linking fails
+        }
+      } else {
+        console.warn('⚠️⚠️⚠️ [useAdaptiveAptitude] SESSION WILL NOT BE LINKED TO ATTEMPT!');
+        console.warn('⚠️ [useAdaptiveAptitude] Reason: Missing attemptId or session.id');
+        console.warn('⚠️ [useAdaptiveAptitude] attemptId:', attemptId);
+        console.warn('⚠️ [useAdaptiveAptitude] session.id:', initResult.session.id);
+      }
+
       // Update state
+      console.log('🔄 [useAdaptiveAptitude] Step 3: Updating component state...');
       setSession(initResult.session);
       sessionIdRef.current = initResult.session.id;
       setCurrentQuestion(initResult.firstQuestion);
@@ -289,14 +337,18 @@ export function useAdaptiveAptitude(
         0,
         initResult.session.currentPhaseQuestions.length
       ));
-      console.log('✅ [useAdaptiveAptitude] State updated successfully');
+      console.log('✅ [useAdaptiveAptitude] Step 3 Complete: State updated successfully');
+      console.log('🚀🚀🚀 [useAdaptiveAptitude] ========== START TEST COMPLETE ==========');
     } catch (err) {
-      console.error('❌ [useAdaptiveAptitude] startTest error:', err);
+      console.error('❌❌❌ [useAdaptiveAptitude] ========== START TEST FAILED ==========');
+      console.error('❌ [useAdaptiveAptitude] Error:', err);
+      console.error('❌ [useAdaptiveAptitude] Error message:', err instanceof Error ? err.message : 'Unknown');
+      console.error('❌ [useAdaptiveAptitude] Error stack:', err instanceof Error ? err.stack : 'No stack');
       handleError(err, 'Failed to start test');
     } finally {
       setLoading(false);
     }
-  }, [studentId, gradeLevel, handleError]);
+  }, [studentId, gradeLevel, attemptId, handleError]);
 
   /**
    * Submits an answer for the current question

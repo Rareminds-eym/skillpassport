@@ -227,12 +227,15 @@ export const useAssessmentResults = () => {
     const [retrying, setRetrying] = useState(false);
     const [autoRetry, setAutoRetry] = useState(false); // Flag to trigger auto-retry
     const [retryCompleted, setRetryCompleted] = useState(false); // Flag to prevent re-triggering after successful retry
+    const [autoRetryStartTime, setAutoRetryStartTime] = useState(null); // Track when auto-retry was triggered
+    const [retryAttemptCount, setRetryAttemptCount] = useState(0); // Track number of retry attempts (max 3) - prevents infinite loops
     const [gradeLevel, setGradeLevel] = useState('after12'); // Default to after12
     const [gradeLevelFromAttempt, setGradeLevelFromAttempt] = useState(false); // Track if grade level was set from attempt
     // Use ref to track grade level from attempt synchronously (avoids race condition with async state updates)
     const gradeLevelFromAttemptRef = useRef(false);
     const loadedAttemptIdRef = useRef(null); // Track loaded attempt to prevent loop
     const streamFromAssessmentRef = useRef(null); // Track stream_id from assessment to prevent fetchStudentInfo from overwriting
+    const autoRetryInProgressRef = useRef(false); // Prevent multiple concurrent auto-retry attempts
     const [studentInfo, setStudentInfo] = useState({
         name: '—',
         regNo: '—',
@@ -930,10 +933,17 @@ export const useAssessmentResults = () => {
                         }
                     } else {
                         // Result exists but no AI analysis - AUTO-GENERATE IT!
-                        console.log('🔥 Result exists but missing AI analysis - will auto-generate');
+                        console.log('🔥 ========== AUTO-RETRY TRIGGER DETECTED ==========');
+                        console.log('   Result exists but missing AI analysis');
+                        console.log('   Result ID:', directResult.id);
+                        console.log('   Attempt ID:', attemptId);
+                        console.log('   gemini_results:', directResult.gemini_results);
+                        console.log('   status:', directResult.status);
+                        console.log('   grade_level:', directResult.grade_level);
                         
                         // Set grade level
                         if (directResult.grade_level) {
+                            console.log('✅ Setting grade level from result:', directResult.grade_level);
                             setGradeLevel(directResult.grade_level);
                             setGradeLevelFromAttempt(true);
                             gradeLevelFromAttemptRef.current = true;
@@ -945,14 +955,19 @@ export const useAssessmentResults = () => {
 
                         if (retryCompleted || alreadyRetried) {
                             console.log('⏭️ Skipping auto-retry - already completed/attempted');
+                            console.log('   retryCompleted:', retryCompleted);
+                            console.log('   alreadyRetried:', !!alreadyRetried);
                             setError(new Error("Unable to retrieve assessment report. Please click 'Retry' to regenerate."));
                             setLoading(false);
                             return;
                         }
 
                         // Trigger auto-retry
-                        console.log('🚀 Setting autoRetry flag to TRUE...');
+                        console.log('🚀 Triggering auto-retry mechanism');
+                        console.log('   Setting autoRetry flag to TRUE');
+                        console.log('   Grade level will be passed to AI:', directResult.grade_level || gradeLevel);
                         setAutoRetry(true);
+                        console.log('✅ Auto-retry flag set - waiting for useEffect to trigger');
                         return;
                     }
                 }
@@ -1163,11 +1178,14 @@ export const useAssessmentResults = () => {
                         console.log('   Result age:', Math.round(ageInSeconds), 'seconds');
                         console.log('   Is newly created:', isNewlyCreated);
                         console.log('   gemini_results:', result.gemini_results);
+                        console.log('   status:', result.status || attempt.status);
+                        console.log('   grade_level:', attempt.grade_level);
                         console.log('   retryCompleted:', retryCompleted);
-                        console.log('   🚀 Setting autoRetry flag to TRUE...');
+                        console.log('   🚀 Triggering auto-retry mechanism');
 
                         // Set grade level from attempt
                         if (attempt.grade_level) {
+                            console.log('✅ Setting grade level from attempt:', attempt.grade_level);
                             setGradeLevel(attempt.grade_level);
                             setGradeLevelFromAttempt(true);
                             gradeLevelFromAttemptRef.current = true;
@@ -1180,8 +1198,10 @@ export const useAssessmentResults = () => {
 
                         // Set flag to trigger auto-retry (will be handled by useEffect)
                         // Keep loading=true so user sees "Generating Your Report" screen
+                        console.log('🚀 Setting autoRetry flag to TRUE');
+                        console.log('   Grade level will be passed to AI:', attempt.grade_level || gradeLevel);
                         setAutoRetry(true);
-                        console.log('   ✅ autoRetry flag set to TRUE');
+                        console.log('   ✅ autoRetry flag set to TRUE - waiting for useEffect to trigger');
                         // Don't set loading to false - keep showing loading screen
                         return;
                     }
@@ -1339,6 +1359,18 @@ export const useAssessmentResults = () => {
             setRetrying(true);
             setError(null);
 
+            // Check if max retry attempts reached (max 3 attempts)
+            if (retryAttemptCount >= 3) {
+                console.error('❌ Max retry attempts (3) reached');
+                setError('Maximum retry attempts reached. Please try again later or contact support if the issue persists.');
+                setRetrying(false);
+                return;
+            }
+
+            // Increment retry attempt counter
+            setRetryAttemptCount(prev => prev + 1);
+            console.log(`🔄 Retry attempt ${retryAttemptCount + 1} of 3`);
+
             // ✅ Get answers from database instead of localStorage
             const attemptId = searchParams.get('attemptId');
 
@@ -1348,8 +1380,10 @@ export const useAssessmentResults = () => {
                 return;
             }
 
-            console.log('🔄 Regenerating AI analysis from database data');
+            console.log('🔄 ========== RETRY AI ANALYSIS START ==========');
             console.log('   Attempt ID:', attemptId);
+            console.log('   Current gradeLevel state:', gradeLevel);
+            console.log('   gradeLevelFromAttempt:', gradeLevelFromAttempt);
 
             // Fetch the attempt with all responses
             const attempt = await assessmentService.getAttemptWithResults(attemptId);
@@ -1362,18 +1396,30 @@ export const useAssessmentResults = () => {
 
             const answers = attempt.all_responses;
             const stream = attempt.stream_id;
+            // CRITICAL: Use grade level from attempt (source of truth), fallback to state, then default
             const storedGradeLevel = attempt.grade_level || gradeLevel || 'after12';
             const sectionTimings = attempt.section_timings || {};
+            
+            console.log('📊 Retry Analysis Context:');
+            console.log('   Grade Level (from attempt):', attempt.grade_level);
+            console.log('   Grade Level (from state):', gradeLevel);
+            console.log('   Grade Level (final):', storedGradeLevel);
+            console.log('   Stream ID:', stream);
+            console.log('   Total answers:', Object.keys(answers).length);
 
             if (!answers || !stream) {
+                console.error('❌ Assessment data is incomplete:');
+                console.error('   Has answers:', !!answers);
+                console.error('   Has stream:', !!stream);
                 setError('Assessment data is incomplete. Please retake the assessment.');
                 setRetrying(false);
                 return;
             }
 
+            console.log('✅ Assessment data validated');
+            console.log('   Answers count:', Object.keys(answers).length);
             console.log('   Stream:', stream);
-            console.log('   Grade Level:', storedGradeLevel);
-            console.log('   Total answers:', Object.keys(answers).length);
+            console.log('   Grade Level for AI analysis:', storedGradeLevel);
 
             // Check if this is an AI assessment that needs questions from database
             const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(storedGradeLevel);
@@ -1502,7 +1548,40 @@ export const useAssessmentResults = () => {
             console.log('📚 Retry Student Context:', studentContext);
             console.log('🎓 Degree level:', studentContext.degreeLevel);
 
+            // Fetch adaptive aptitude results if available
+            let adaptiveResults = null;
+            if (attempt?.adaptive_aptitude_session_id) {
+                console.log('🔍 Fetching adaptive aptitude results for session:', attempt.adaptive_aptitude_session_id);
+                const { data: adaptiveData, error: adaptiveError } = await supabase
+                    .from('adaptive_aptitude_results')
+                    .select('*')
+                    .eq('session_id', attempt.adaptive_aptitude_session_id)
+                    .single();
+                
+                if (!adaptiveError && adaptiveData) {
+                    adaptiveResults = {
+                        aptitudeLevel: adaptiveData.aptitude_level,
+                        confidenceTag: adaptiveData.confidence_tag,
+                        tier: adaptiveData.tier,
+                        overallAccuracy: adaptiveData.overall_accuracy,
+                        accuracyBySubtag: adaptiveData.accuracy_by_subtag,
+                        pathClassification: adaptiveData.path_classification
+                    };
+                    console.log('✅ Adaptive results fetched:', adaptiveResults);
+                } else {
+                    console.log('⚠️ No adaptive results found or error:', adaptiveError?.message);
+                }
+            } else {
+                console.log('ℹ️ No adaptive session ID in attempt');
+            }
+
             // Force regenerate with AI - pass gradeLevel and student context
+            console.log('🤖 ========== CALLING AI ANALYSIS ==========');
+            console.log('   Grade Level being passed:', storedGradeLevel);
+            console.log('   Stream ID being passed:', stream);
+            console.log('   Student Context:', JSON.stringify(studentContext, null, 2));
+            console.log('   Adaptive Results:', adaptiveResults ? 'Available' : 'Not available');
+            
             const geminiResults = await analyzeAssessmentWithGemini(
                 answers,
                 stream,
@@ -1510,12 +1589,31 @@ export const useAssessmentResults = () => {
                 {}, // Empty timings in retry
                 storedGradeLevel, // Pass grade level for proper scoring
                 null, // preCalculatedScores (not available in retry)
-                studentContext // Pass student context for enhanced recommendations
+                studentContext, // Pass student context for enhanced recommendations
+                adaptiveResults // Pass adaptive aptitude results if available
             );
 
             if (!geminiResults) {
                 throw new Error('AI analysis returned no results');
             }
+            
+            console.log('✅ AI analysis completed successfully');
+            console.log('   Has RIASEC:', !!geminiResults.riasec);
+            console.log('   Has aptitude:', !!geminiResults.aptitude);
+            console.log('   Has careerFit:', !!geminiResults.careerFit);
+            
+            // ============================================================================
+            // CRITICAL DEBUG: Log AI response structure
+            // ============================================================================
+            console.log('🔍 === AI RESPONSE STRUCTURE (useAssessmentResults) ===');
+            console.log('🔍 Response keys:', Object.keys(geminiResults));
+            console.log('🔍 riasec.code:', geminiResults.riasec?.code);
+            console.log('🔍 riasec.scores:', JSON.stringify(geminiResults.riasec?.scores));
+            console.log('🔍 aptitude.scores:', JSON.stringify(geminiResults.aptitude?.scores));
+            console.log('🔍 aptitude.overallScore:', geminiResults.aptitude?.overallScore);
+            console.log('🔍 bigFive:', JSON.stringify(geminiResults.bigFive));
+            console.log('🔍 careerFit.clusters count:', geminiResults.careerFit?.clusters?.length);
+            console.log('🔍 === END AI RESPONSE STRUCTURE ===');
 
             // Apply validation to correct RIASEC topThree and detect aptitude patterns
             const validatedResults = await applyValidation(geminiResults, answers, sectionTimings);
@@ -1532,6 +1630,12 @@ export const useAssessmentResults = () => {
                             gemini_results: validatedResults,
                             updated_at: new Date().toISOString()
                         };
+
+                        // Include adaptive_aptitude_session_id if available from attempt
+                        if (attempt?.adaptive_aptitude_session_id) {
+                            updateData.adaptive_aptitude_session_id = attempt.adaptive_aptitude_session_id;
+                            console.log('✅ Including adaptive_aptitude_session_id in update:', attempt.adaptive_aptitude_session_id);
+                        }
 
                         // Extract and store individual score components
                         if (validatedResults.riasec) {
@@ -1628,7 +1732,19 @@ export const useAssessmentResults = () => {
 
         } catch (e) {
             console.error('Regeneration failed:', e);
-            setError(e.message || 'Failed to regenerate report. Please try again.');
+            
+            // Provide user-friendly error message based on retry attempt count
+            let errorMessage = e.message || 'Failed to regenerate report. Please try again.';
+            
+            if (retryAttemptCount >= 2) {
+                // On 3rd attempt failure, suggest contacting support
+                errorMessage = 'Unable to generate your report after multiple attempts. Please contact support or try again later.';
+            } else if (retryAttemptCount >= 1) {
+                // On 2nd attempt failure, provide more context
+                errorMessage = `Analysis failed (Attempt ${retryAttemptCount + 1}/3). ${e.message || 'Please try again.'}`;
+            }
+            
+            setError(errorMessage);
         } finally {
             // Mark retry as attempted in sessionStorage AFTER the retry completes (success or failure)
             // This fixes the React Strict Mode race condition - we only mark as attempted when done
@@ -1650,27 +1766,62 @@ export const useAssessmentResults = () => {
 
     // Auto-retry effect: Trigger handleRetry when autoRetry flag is set
     useEffect(() => {
-        if (autoRetry && !retrying && !retryCompleted) {
+        if (autoRetry && !retrying && !retryCompleted && !autoRetryInProgressRef.current) {
+            // Check if max retry attempts reached
+            if (retryAttemptCount >= 3) {
+                console.error('❌ Auto-retry NOT triggered - max attempts (3) reached');
+                setError('Maximum retry attempts reached. Please refresh the page or contact support if the issue persists.');
+                setAutoRetry(false);
+                return;
+            }
+
             console.log('🤖 Auto-retry triggered - calling handleRetry...');
             console.log('   autoRetry:', autoRetry);
             console.log('   retrying:', retrying);
             console.log('   retryCompleted:', retryCompleted);
+            console.log('   retryAttemptCount:', retryAttemptCount);
+            console.log('   autoRetryInProgressRef.current:', autoRetryInProgressRef.current);
+            
+            // Record start time for timing measurement
+            const startTime = Date.now();
+            setAutoRetryStartTime(startTime);
+            console.log('⏱️ Auto-retry start time:', new Date(startTime).toISOString());
+            
+            // Set flag to prevent concurrent attempts
+            autoRetryInProgressRef.current = true;
             setAutoRetry(false); // Reset flag immediately to prevent loops
 
             // REMOVED TIMEOUT: Executing immediately to prevent cancellation on component unmount/update
             // (common in React Strict Mode or when dependencies change rapidly)
             console.log('🤖 Executing handleRetry immediately...');
             if (typeof handleRetry === 'function') {
-                handleRetry();
+                handleRetry().finally(() => {
+                    // Reset the in-progress flag after retry completes (success or failure)
+                    autoRetryInProgressRef.current = false;
+                    
+                    // Calculate and log timing
+                    const endTime = Date.now();
+                    const duration = (endTime - startTime) / 1000; // Convert to seconds
+                    console.log('⏱️ Auto-retry completed in', duration.toFixed(2), 'seconds');
+                    
+                    // Verify timing requirement (should trigger within 2 seconds)
+                    if (duration > 2) {
+                        console.warn('⚠️ Auto-retry took longer than 2 seconds:', duration.toFixed(2), 'seconds');
+                    } else {
+                        console.log('✅ Auto-retry timing verified: completed within 2 seconds');
+                    }
+                });
             } else {
                 console.error('❌ handleRetry is not a function');
                 setError('Internal error: Retry mechanism failed.');
+                autoRetryInProgressRef.current = false;
             }
         } else if (autoRetry) {
             console.log('⚠️ Auto-retry NOT triggered - conditions not met:');
             console.log('   autoRetry:', autoRetry);
             console.log('   retrying:', retrying);
             console.log('   retryCompleted:', retryCompleted);
+            console.log('   autoRetryInProgressRef.current:', autoRetryInProgressRef.current);
         }
     }, [autoRetry, retrying, retryCompleted]); // Remove handleRetry from dependencies to prevent cleanup
 
@@ -1728,6 +1879,7 @@ export const useAssessmentResults = () => {
         loading,
         error,
         retrying,
+        retryAttemptCount, // Export retry attempt count for UI display
         gradeLevel, // Export grade level
         monthsInGrade, // Export months in grade for conditional display
         studentInfo,
@@ -1736,5 +1888,5 @@ export const useAssessmentResults = () => {
         handleRetry,
         validateResults,
         navigate
-    }), [results, loading, error, retrying, gradeLevel, monthsInGrade, studentInfo, studentAcademicData, validationWarnings, handleRetry, validateResults, navigate]);
+    }), [results, loading, error, retrying, retryAttemptCount, gradeLevel, monthsInGrade, studentInfo, studentAcademicData, validationWarnings, handleRetry, validateResults, navigate]);
 };

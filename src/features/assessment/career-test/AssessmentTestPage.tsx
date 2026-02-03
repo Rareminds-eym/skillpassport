@@ -340,18 +340,48 @@ const AssessmentTestPage: React.FC = () => {
   // is created before sections are built
   const isAdaptiveLastSectionRef = React.useRef(false);
 
+  console.log('🎯 [AssessmentTestPage] Initializing useAdaptiveAptitude hook with:', {
+    studentId: studentId || '',
+    gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
+    attemptId: flow.attemptId,
+    hasAttemptId: !!flow.attemptId,
+    attemptIdType: typeof flow.attemptId
+  });
+
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    onTestComplete: (testResults) => {
+    attemptId: flow.attemptId, // Pass attemptId to link session immediately
+    onTestComplete: async (testResults) => {
+      console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
       flow.setAnswer('adaptive_aptitude_results', testResults);
+      
+      // Link the adaptive session to the assessment attempt
+      // NOTE: This is now also done in startTest, but keeping it here as a backup
+      if (adaptiveAptitude.session?.id && flow.attemptId) {
+        console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
+          sessionId: adaptiveAptitude.session.id,
+          attemptId: flow.attemptId
+        });
+        await assessmentService.updateAttemptAdaptiveSession(
+          flow.attemptId,
+          adaptiveAptitude.session.id
+        );
+        console.log('✅ [AssessmentTestPage] Backup linking complete');
+      } else {
+        console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
+          hasSession: !!adaptiveAptitude.session?.id,
+          hasAttemptId: !!flow.attemptId
+        });
+      }
+      
       // Always call completeSection to show the section complete screen
       // The auto-submit useEffect will handle submission if it's the last section
       flow.completeSection();
 
     },
     onError: (err) => {
-      console.error('❌ Adaptive aptitude test error:', err);
+      console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
       flow.setError(`Adaptive test error: ${err}`);
     },
   });
@@ -1477,11 +1507,20 @@ const AssessmentTestPage: React.FC = () => {
 
   const handleAnswerChange = useCallback((value: any) => {
     const currentSection = sections[flow.currentSectionIndex];
+    const qId = flow.questionId; // Capture questionId at the time of answer
+
+    console.log(`📝 [Answer Change] Section: ${currentSection?.id}, QuestionID: ${qId}, Value:`, value);
 
     if (currentSection?.isAdaptive) {
       setAdaptiveAptitudeAnswer(value);
     } else {
-      flow.setAnswer(flow.questionId, value);
+      flow.setAnswer(qId, value);
+      console.log(`📝 [Answer Stored] QuestionID: ${qId}, Answers now:`, Object.keys(flow.answers).length, 'total');
+      
+      // Log the actual stored value to verify
+      setTimeout(() => {
+        console.log(`📝 [Answer Verify] Checking if stored - flow.answers[${qId}]:`, flow.answers[qId]);
+      }, 100);
     }
   }, [sections, flow]);
 
@@ -1574,14 +1613,33 @@ const AssessmentTestPage: React.FC = () => {
     // Jump to the target section
     flow.jumpToSection(sectionIndex);
 
-    // Auto-start the section (skip the intro screen) so timer starts immediately
-    // This ensures the elapsed time timer starts counting when using test mode
-    setTimeout(() => {
-      flow.startSection();
-    }, 100);
-
-    console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${sections[sectionIndex]?.title})`);
-  }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse]);
+    const targetSection = sections[sectionIndex];
+    
+    // For adaptive sections, we need to initialize the test first
+    if (targetSection?.isAdaptive) {
+      console.log(`✅ Test Mode: Skipped to adaptive section ${sectionIndex} (${targetSection.title})`);
+      console.log('⏳ Initializing adaptive test...');
+      
+      // Initialize adaptive timer
+      setAdaptiveQuestionTimer(targetSection.individualTimeLimit || 60);
+      
+      // Set pending flag so useEffect knows to start section when questions load
+      adaptiveStartPendingRef.current = true;
+      
+      // Start the adaptive test (async - questions will load in background)
+      adaptiveAptitude.startTest();
+      
+      // The useEffect will call flow.startSection() once questions are ready
+      // Don't call it here or it will cause issues
+    } else {
+      // For non-adaptive sections, auto-start immediately
+      setTimeout(() => {
+        flow.startSection();
+      }, 100);
+      
+      console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${targetSection?.title})`);
+    }
+  }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse, adaptiveAptitude, setAdaptiveQuestionTimer]);
 
   // Get current question (handle adaptive sections)
   const currentSection = sections[flow.currentSectionIndex];
@@ -1589,30 +1647,62 @@ const AssessmentTestPage: React.FC = () => {
     ? adaptiveAptitude.currentQuestion
     : currentSection?.questions?.[flow.currentQuestionIndex];
 
-  const questionId = currentSection?.isAdaptive
-    ? `adaptive_aptitude_${adaptiveAptitude.currentQuestion?.id}`
-    : flow.questionId;
+  // CRITICAL: Use flow.questionId consistently everywhere
+  // Don't create a local questionId variable that might differ
+  const questionId = flow.questionId;
 
   // Check if current question is answered
   const isCurrentAnswered = useMemo(() => {
+    console.log(`🔍 [MCQ Check START] Checking if answered...`);
+    console.log(`🔍 [MCQ Check] Current section:`, currentSection?.id, 'isAptitude:', currentSection?.isAptitude, 'isKnowledge:', currentSection?.isKnowledge);
+    console.log(`🔍 [MCQ Check] QuestionID from flow:`, flow.questionId);
+    console.log(`🔍 [MCQ Check] QuestionID local:`, questionId);
+    console.log(`🔍 [MCQ Check] Are they equal?:`, flow.questionId === questionId);
+    
     if (currentSection?.isAdaptive) {
-      return adaptiveAptitudeAnswer !== null;
+      const isAnswered = adaptiveAptitudeAnswer !== null;
+      console.log(`🔍 [Adaptive Check] Is answered:`, isAnswered);
+      return isAnswered;
     }
 
     const answer = flow.answers[questionId];
-    if (!answer) return false;
+    
+    // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
+    if (currentSection?.isAptitude || currentSection?.isKnowledge) {
+      const isAnswered = typeof answer === 'string' && answer.length > 0;
+      console.log(`🔍 [MCQ Check] Answer value:`, answer);
+      console.log(`🔍 [MCQ Check] Answer type:`, typeof answer);
+      console.log(`🔍 [MCQ Check] Is answered:`, isAnswered);
+      console.log(`🔍 [MCQ Check] Total answers in flow:`, Object.keys(flow.answers).length);
+      console.log(`🔍 [MCQ Check] All answer keys:`, Object.keys(flow.answers));
+      return isAnswered;
+    }
+    
+    // For other question types, check if answer exists
+    if (answer === undefined || answer === null) {
+      console.log(`🔍 [Other Check] No answer found`);
+      return false;
+    }
 
     if (currentQuestion?.partType === 'sjt') {
-      return answer.best && answer.worst;
+      const isAnswered = answer.best && answer.worst;
+      console.log(`🔍 [SJT Check] Is answered:`, isAnswered);
+      return isAnswered;
     }
     if (currentQuestion?.type === 'multiselect') {
-      return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
+      const isAnswered = Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
+      console.log(`🔍 [Multiselect Check] Is answered:`, isAnswered);
+      return isAnswered;
     }
     if (currentQuestion?.type === 'text') {
-      return typeof answer === 'string' && answer.trim().length >= 10;
+      const isAnswered = typeof answer === 'string' && answer.trim().length >= 10;
+      console.log(`🔍 [Text Check] Is answered:`, isAnswered);
+      return isAnswered;
     }
+    
+    console.log(`🔍 [Default Check] Returning true`);
     return true;
-  }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion]);
+  }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion, flow.questionId]);
 
   // Loading state - only show loading screen for initial checks, not for AI questions
   // AI questions can load in the background while showing section intro

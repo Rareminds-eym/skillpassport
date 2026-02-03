@@ -577,6 +577,7 @@ const AssessmentResult = () => {
         loading,
         error,
         retrying,
+        retryAttemptCount,
         gradeLevel,
         monthsInGrade,
         studentInfo,
@@ -965,7 +966,7 @@ const AssessmentResult = () => {
 
     // Loading state
     if (loading) {
-        return <LoadingState />;
+        return <LoadingState isAutoRetry={retrying} retryAttemptCount={retryAttemptCount} />;
     }
 
     // Error state
@@ -975,6 +976,7 @@ const AssessmentResult = () => {
                 error={error}
                 onRetry={handleRetry}
                 retrying={retrying}
+                retryAttemptCount={retryAttemptCount}
                 onRetake={() => navigate('/student/assessment/test')}
             />
         );

@@ -2,13 +2,75 @@
  * College (After 12th) Assessment Prompt Builder
  */
 
-import type { AssessmentData } from '../types';
+import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
+
+/**
+ * Pre-process adaptive aptitude results into actionable insights
+ */
+function processAdaptiveResults(results: AdaptiveAptitudeResults): {
+  section: string;
+  isHighAptitude: boolean;
+} {
+  const level = results.aptitudeLevel;
+  const accuracy = results.overallAccuracy;
+  const isHighAptitude = level >= 4 || accuracy >= 75;
+  
+  const levelLabels: Record<number, string> = {
+    1: 'Emerging',
+    2: 'Developing', 
+    3: 'Capable',
+    4: 'Strong',
+    5: 'Exceptional'
+  };
+  
+  const subtags = results.accuracyBySubtag || {};
+  const sortedSubtags = Object.entries(subtags)
+    .map(([name, data]: [string, any]) => ({
+      name: name.replace(/_/g, ' '),
+      accuracy: typeof data === 'number' ? data : data?.accuracy || 0
+    }))
+    .sort((a, b) => b.accuracy - a.accuracy);
+  
+  const topStrengths = sortedSubtags
+    .filter(s => s.accuracy >= 70)
+    .slice(0, 3)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+  
+  const weakAreas = sortedSubtags
+    .filter(s => s.accuracy < 50)
+    .slice(0, 2)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+
+  const section = `
+## ADAPTIVE APTITUDE TEST RESULTS:
+- **Aptitude Level**: ${level}/5 (${levelLabels[level] || 'Unknown'})
+- **Overall Accuracy**: ${Math.round(accuracy)}%
+- **Confidence**: ${results.confidenceTag}
+- **Performance Trend**: ${results.pathClassification}
+
+**COGNITIVE STRENGTHS**:
+${topStrengths.length > 0 ? topStrengths.map(s => `- ${s}`).join('\n') : '- No standout strengths identified'}
+
+**AREAS FOR GROWTH**:
+${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No significant weak areas'}
+
+**IMPORTANT**: Use these adaptive test results as ADDITIONAL evidence when generating career clusters.`;
+
+  return { section, isHighAptitude };
+}
 
 export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: number): string {
   const isAfter10 = assessmentData.gradeLevel === 'after10';
   const ruleBasedHint = (assessmentData as any).ruleBasedStreamHint;
   const profileAnalysis = ruleBasedHint?.profileAnalysis;
   const isFlatProfile = profileAnalysis?.isFlatProfile;
+  
+  // Pre-process adaptive results for efficiency
+  const adaptiveData = assessmentData.adaptiveAptitudeResults 
+    ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
+    : null;
+  
+  const adaptiveSection = adaptiveData?.section || '';
   
   // Student context for program-specific recommendations
   const studentContext = assessmentData.studentContext;
@@ -557,6 +619,8 @@ SJT: ${JSON.stringify(assessmentData.employabilityAnswers?.sjt || [], null, 2)}
 
 ## Knowledge Test Results:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
+
+${adaptiveSection}
 
 ## Section Timings:
 ${JSON.stringify(assessmentData.sectionTimings, null, 2)}
