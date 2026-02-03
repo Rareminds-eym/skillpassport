@@ -28,7 +28,8 @@ export async function findPreRegistrationByEmail(supabase, email) {
 export async function getAllPreRegistrations(supabase) {
   const { data, error } = await supabase
     .from('pre_registrations')
-    .select('id, full_name, email, payment_status, created_at');
+    .select('id, full_name, email, payment_status, created_at')
+    .neq('payment_status', 'pending'); // Exclude users with pending payment status
 
   return { data, error };
 }
@@ -64,6 +65,22 @@ export async function checkEmailAlreadySent(supabase, preRegId, countdownDay, si
   }
 
   const { data, error } = await query.maybeSingle();
+
+  return { data, error };
+}
+
+export async function checkEmailSentToday(supabase, preRegId) {
+  // Get start of today in UTC
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('pre_registration_email_tracking')
+    .select('id, sent_at, metadata')
+    .eq('pre_registration_id', preRegId)
+    .eq('email_status', 'sent')
+    .gte('sent_at', todayStart.toISOString())
+    .maybeSingle();
 
   return { data, error };
 }

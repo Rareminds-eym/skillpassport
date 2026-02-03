@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, FileText, Download, Eye, ExternalLink } from 'lucide-react';
+import { getPagesApiUrl } from '../../../utils/pagesUrl';
 
 interface Document {
   name: string;
@@ -90,20 +91,20 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
 
   const handleDirectOpen = (url: string) => {
     // ALWAYS use proxy endpoint - NO direct URL access to prevent 401 errors
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
+    const storageApiUrl = getPagesApiUrl('storage');
     const proxyUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=inline`;
     window.open(proxyUrl, '_blank');
   };
 
   const handleDownload = (url: string, filename: string) => {
     // ALWAYS use proxy endpoint - NO direct URL access to prevent 401 errors
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
+    const storageApiUrl = getPagesApiUrl('storage');
     const downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=download`;
     window.open(downloadUrl, '_blank');
   };
 
   const getProxyUrl = (url: string, mode: string = 'inline') => {
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
+    const storageApiUrl = getPagesApiUrl('storage');
     return `${storageApiUrl}/document-access?url=${encodeURIComponent(url)}&mode=${mode}`;
   };
 
@@ -195,7 +196,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                         {/* Blurred Document Preview */}
                         <div className="relative mx-auto mb-4 w-80 h-80 bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
                           <iframe
-                            src={`${import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev'}/document-access?url=${encodeURIComponent(selectedDocument)}&mode=inline`}
+                            src={`${getPagesApiUrl('storage')}/document-access?url=${encodeURIComponent(selectedDocument)}&mode=inline`}
                             className="w-full h-full filter blur-sm"
                             title="Document Preview"
                           />

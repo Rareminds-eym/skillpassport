@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import { notificationHelpers } from './notificationService';
+import { createStudentNotification } from './notificationService';
 
 /**
  * Service for managing job applications
@@ -267,10 +267,11 @@ export class AppliedJobsService {
           const jobTitle = data?.opportunities?.title || 'Position';
           const statusText = status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
           
-          await notificationHelpers.applicationStatusUpdate(
+          await createStudentNotification(
             data.students.email,
-            jobTitle,
-            statusText
+            'application_update',
+            `Application Status Updated: ${jobTitle}`,
+            `Your application status has been updated to: ${statusText}`
           );
           
           console.log(`✅ Notification sent for application ${applicationId} status: ${status}`);

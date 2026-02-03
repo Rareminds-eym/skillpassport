@@ -1,6 +1,7 @@
 name = "payments-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
+account_id = "8c79b0992cfe6e720d17d0a2394ef0fd"
 
 [vars]
 ENVIRONMENT = "production"
@@ -20,9 +21,9 @@ binding = "EMAIL_SERVICE"
 service = "email-api"
 
 # Service binding to storage-api worker (for worker-to-worker communication)
-[[services]]
-binding = "STORAGE_SERVICE"
-service = "storage-api"
+# [[services]]
+# binding = "STORAGE_SERVICE"
+# service = "storage-api"
 
 # =============================================================================
 # REQUIRED SECRETS - Set via Cloudflare Dashboard or wrangler CLI

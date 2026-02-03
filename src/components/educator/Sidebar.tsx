@@ -153,7 +153,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         { name: "Analytics", path: "/educator/analytics", icon: ChartBarIcon },
         { name: "Reports", path: "/educator/reports", icon: DocumentChartBarIcon },
         { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
-        { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
+        // { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
+        { 
+        name: educatorType === 'college' ? "Messages" : "Communication", 
+        path: educatorType === 'college' ? "/educator/messages" : "/educator/communication",  // Change this line
+        icon: ChatBubbleLeftRightIcon 
+      },
         { name: "Settings", path: "/educator/settings", icon: Cog6ToothIcon },
       ];
 

@@ -254,7 +254,7 @@ Cache Hit: <1ms
 ```
 [Course Recommendations] ⚠️ LAYER 1 (AI Service) FAILED: 401
 ```
-**Solution:** Check `VITE_OPENROUTER_API_KEY` environment variable
+**Solution:** Check `OPENROUTER_API_KEY` environment variable
 
 ### Problem: Wrong keywords for a field
 **Logs show:**

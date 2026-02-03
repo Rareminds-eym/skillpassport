@@ -26,7 +26,7 @@ wrangler secret put VITE_SUPABASE_ANON_KEY
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 # Get this from Supabase Dashboard > Settings > API > service_role key
 
-wrangler secret put VITE_OPENROUTER_API_KEY
+wrangler secret put OPENROUTER_API_KEY
 # Your OpenRouter API key
 ```
 

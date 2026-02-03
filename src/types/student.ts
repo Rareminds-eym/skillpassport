@@ -111,6 +111,7 @@ export interface Project {
   id: string;
   title: string;
   description: string;
+  role?: string;
   technologies: string[];
   github_url?: string;
   live_url?: string;

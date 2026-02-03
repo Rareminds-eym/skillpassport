@@ -12,6 +12,25 @@ const generateUuid = () => {
   });
 };
 
+const calculateDuration = (startDate, endDate) => {
+  if (!startDate) return "";
+  
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : new Date();
+  
+  if (isNaN(start.getTime())) return "";
+  if (endDate && isNaN(end.getTime())) return "";
+  
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+  
+  const startLabel = formatDate(start);
+  const endLabel = endDate ? formatDate(end) : 'Present';
+  
+  return `${startLabel} - ${endLabel}`;
+};
+
 /**
  * Safely parse JSON string that may contain NaN values
  * @param {string} jsonString - JSON string with potential NaN values
@@ -90,6 +109,7 @@ export const getStudentByEmail = async (email) => {
           id,
           title,
           description,
+          role,
           status,
           start_date,
           end_date,
@@ -183,6 +203,15 @@ export const getStudentByEmail = async (email) => {
       languages: data.languages || [],
       interests: data.interests || [],
       
+      // New fields for gap years, work experience, and academic info
+      gapInStudies: data.gap_in_studies || false,
+      gapYears: data.gap_years || 0,
+      gapReason: data.gap_reason || '',
+      workExperience: data.work_experience || '',
+      aadharNumber: data.aadhar_number || '',
+      backlogsHistory: data.backlogs_history || '',
+      currentBacklogs: data.current_backlogs || 0,
+      
       // Generate passport ID from registration number
       passportId: data.registration_number ? `SP-${data.registration_number}` : 'SP-0000',
       verified: true,
@@ -203,11 +232,15 @@ const technicalSkills = tableSkills
   .map(skill => ({
     id: skill.id,
     name: skill.name,
-    level: skill.level || 3,
+    level: skill.level || 3, // Use numeric level (1-5) for stars
+    proficiency_level: skill.proficiency_level || 'Intermediate', // Keep text level separate
+    rating: skill.level || 3, // Map level (1-5) to rating for UI
+    type: 'technical', // Explicitly set type for proper identification
     description: skill.description || '',
+    examples: skill.examples || '',
     verified: skill.verified || false,
-    enabled: skill.enabled ?? true,
-    approval_status: skill.approval_status || 'pending',
+    enabled: skill.enabled !== undefined ? skill.enabled : true, // Handle missing enabled column gracefully
+    approval_status: skill.approval_status || 'approved', // Default to approved for backward compatibility
     createdAt: skill.created_at,
     updatedAt: skill.updated_at,
   }));
@@ -217,12 +250,15 @@ const softSkills = tableSkills
   .map(skill => ({
     id: skill.id,
     name: skill.name,
-    level: skill.level || 3,
-    type: skill.name.toLowerCase(), // For UI compatibility
+    level: skill.level || 3, // Use numeric level (1-5) for stars
+    proficiency_level: skill.proficiency_level || 'Intermediate', // Keep text level separate
+    rating: skill.level || 3, // Map level (1-5) to rating for UI
+    type: 'soft', // Keep type as 'soft' for proper identification
     description: skill.description || '',
+    examples: skill.examples || '',
     verified: skill.verified || false,
-    enabled: skill.enabled ?? true,
-    approval_status: skill.approval_status || 'pending',
+    enabled: skill.enabled !== undefined ? skill.enabled : true, // Handle missing enabled column gracefully
+    approval_status: skill.approval_status || 'approved', // Default to approved for backward compatibility
     createdAt: skill.created_at,
     updatedAt: skill.updated_at,
   }));
@@ -331,29 +367,43 @@ const formattedTrainings = approvedTrainings.map((train) => {
 
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
-      const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
+      // VERSIONING: If there's a pending edit, use verified_data for display
+      console.log('🔍 Certificate versioning check:', {
+        title: certificate.title,
+        has_pending_edit: certificate.has_pending_edit,
+        has_verified_data: !!certificate.verified_data,
+        verified_title: certificate.verified_data?.title,
+        current_approval: certificate.approval_status
+      });
+      
+      const displayData = (certificate.has_pending_edit && certificate.verified_data) 
+        ? certificate.verified_data 
+        : certificate;
+      
+      const issuedOnValue = displayData?.issued_on || displayData?.issuedOn || null;
       const issuedOnFormatted = issuedOnValue ? new Date(issuedOnValue).toISOString().split("T")[0] : "";
-      const approvalSource = certificate?.approval_status || certificate?.status || "pending";
+      const approvalSource = displayData?.approval_status || displayData?.status || "pending";
       const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
-      const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
+      const statusSource = displayData?.status || (displayData?.enabled === false ? "disabled" : "active");
       const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
-      const documentUrlValue = certificate?.link || null;
+      const documentUrlValue = displayData?.link || null;
       return {
-        id: certificate?.id,
-        title: certificate?.title || "",
-        issuer: certificate?.issuer || "",
+        id: certificate?.id, // Keep original ID for editing
+        title: displayData?.title || "",
+        issuer: displayData?.issuer || "",
         issuedOn: issuedOnFormatted,
-        level: certificate?.level || "",
-        description: certificate?.description || "",
-        credentialId: certificate?.credential_id || "",
-        link: certificate?.link || "",
+        level: displayData?.level || "",
+        description: displayData?.description || "",
+        credentialId: displayData?.credential_id || "",
+        link: displayData?.link || "",
         status: statusValue,
         approval_status: approvalStatus,
-        verified: approvalStatus === "approved",
-        processing: approvalStatus !== "approved",
+        verified: approvalStatus === "approved" || approvalStatus === "verified",
+        processing: certificate.has_pending_edit || (approvalStatus !== "approved" && approvalStatus !== "verified"), // Show processing if there's a pending edit OR if not verified
         enabled: statusValue !== "disabled",
         document_url: documentUrlValue,
         documentLink: documentUrlValue || "",
+        has_pending_edit: certificate.has_pending_edit || false, // Include pending edit flag
         createdAt: certificate?.created_at,
         updatedAt: certificate?.updated_at,
       };
@@ -381,6 +431,7 @@ const formattedExperience = tableExperience
     start_date: exp.start_date,
     end_date: exp.end_date,
     duration: exp.duration || "",
+    description: exp.description || "",
     verified: exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
     approval_status: exp.approval_status || "pending",
     processing: exp.approval_status === 'pending',
@@ -446,6 +497,7 @@ const formattedExperience = tableExperience
           id: project.id,
           title: project.title,
           description: project.description,
+          role: project.role,
           status: project.status,
           start_date: project.start_date,
           end_date: project.end_date,
@@ -547,6 +599,7 @@ export const getStudentById = async (studentId) => {
           id,
           title,
           description,
+          role,
           status,
           start_date,
           end_date,
@@ -643,6 +696,15 @@ export const getStudentById = async (studentId) => {
       languages: data.languages || [],
       interests: data.interests || [],
       
+      // New fields for gap years, work experience, and academic info
+      gapInStudies: data.gap_in_studies || false,
+      gapYears: data.gap_years || 0,
+      gapReason: data.gap_reason || '',
+      workExperience: data.work_experience || '',
+      aadharNumber: data.aadhar_number || '',
+      backlogsHistory: data.backlogs_history || '',
+      currentBacklogs: data.current_backlogs || 0,
+      
       // Generate passport ID from registration number
       passportId: data.registration_number ? `SP-${data.registration_number}` : 'SP-0000',
       verified: true,
@@ -664,8 +726,12 @@ export const getStudentById = async (studentId) => {
       .map(skill => ({
         id: skill.id,
         name: skill.name,
-        level: skill.level || 3,
+        level: skill.level || 3, // Use numeric level (1-5) for stars
+        proficiency_level: skill.proficiency_level || 'Intermediate', // Keep text level separate
+        rating: skill.level || 3, // Map level (1-5) to rating for UI
+        type: 'technical', // Explicitly set type for proper identification
         description: skill.description || '',
+        examples: skill.examples || '',
         verified: skill.verified || false,
         enabled: skill.enabled ?? true,
         approval_status: skill.approval_status || 'pending',
@@ -678,9 +744,12 @@ export const getStudentById = async (studentId) => {
       .map(skill => ({
         id: skill.id,
         name: skill.name,
-        level: skill.level || 3,
-        type: skill.name.toLowerCase(), // For UI compatibility
+        level: skill.level || 3, // Use numeric level (1-5) for stars
+        proficiency_level: skill.proficiency_level || 'Intermediate', // Keep text level separate
+        rating: skill.level || 3, // Map level (1-5) to rating for UI
+        type: 'soft', // Keep type as 'soft' for proper identification
         description: skill.description || '',
+        examples: skill.examples || '',
         verified: skill.verified || false,
         enabled: skill.enabled ?? true,
         approval_status: skill.approval_status || 'pending',
@@ -791,29 +860,35 @@ export const getStudentById = async (studentId) => {
 
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
-      const issuedOnValue = certificate?.issued_on || certificate?.issuedOn || null;
+      // VERSIONING: If there's a pending edit, use verified_data for display
+      const displayData = (certificate.has_pending_edit && certificate.verified_data) 
+        ? certificate.verified_data 
+        : certificate;
+      
+      const issuedOnValue = displayData?.issued_on || displayData?.issuedOn || null;
       const issuedOnFormatted = issuedOnValue ? new Date(issuedOnValue).toISOString().split("T")[0] : "";
-      const approvalSource = certificate?.approval_status || certificate?.status || "pending";
+      const approvalSource = displayData?.approval_status || displayData?.status || "pending";
       const approvalStatus = typeof approvalSource === "string" ? approvalSource.toLowerCase() : "pending";
-      const statusSource = certificate?.status || (certificate?.enabled === false ? "disabled" : "active");
+      const statusSource = displayData?.status || (displayData?.enabled === false ? "disabled" : "active");
       const statusValue = typeof statusSource === "string" ? statusSource.toLowerCase() : "active";
-      const documentUrlValue = certificate?.link || null;
+      const documentUrlValue = displayData?.link || null;
       return {
-        id: certificate?.id,
-        title: certificate?.title || "",
-        issuer: certificate?.issuer || "",
+        id: certificate?.id, // Keep original ID for editing
+        title: displayData?.title || "",
+        issuer: displayData?.issuer || "",
         issuedOn: issuedOnFormatted,
-        level: certificate?.level || "",
-        description: certificate?.description || "",
-        credentialId: certificate?.credential_id || "",
-        link: certificate?.link || "",
+        level: displayData?.level || "",
+        description: displayData?.description || "",
+        credentialId: displayData?.credential_id || "",
+        link: displayData?.link || "",
         status: statusValue,
         approval_status: approvalStatus,
-        verified: approvalStatus === "approved",
-        processing: approvalStatus !== "approved",
+        verified: approvalStatus === "approved" || approvalStatus === "verified",
+        processing: certificate.has_pending_edit || (approvalStatus !== "approved" && approvalStatus !== "verified"), // Show processing if there's a pending edit OR if not verified
         enabled: statusValue !== "disabled",
         document_url: documentUrlValue,
         documentLink: documentUrlValue || "",
+        has_pending_edit: certificate.has_pending_edit || false, // Include pending edit flag
         createdAt: certificate?.created_at,
         updatedAt: certificate?.updated_at,
       };
@@ -840,6 +915,7 @@ export const getStudentById = async (studentId) => {
         start_date: exp.start_date,
         end_date: exp.end_date,
         duration: exp.duration || "",
+        description: exp.description || "",
         verified: exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
         approval_status: exp.approval_status || "pending",
         processing: exp.approval_status === 'pending',
@@ -905,6 +981,7 @@ export const getStudentById = async (studentId) => {
           id: project.id,
           title: project.title,
           description: project.description,
+          role: project.role,
           status: project.status,
           start_date: project.start_date,
           end_date: project.end_date,
@@ -1343,7 +1420,23 @@ export async function updateStudentByEmail(email, updates) {
       'grade': 'grade',
       'section': 'section',
       'roll_number': 'roll_number',
-      'admission_number': 'admission_number'
+      'admission_number': 'admission_number',
+      
+      // New fields for gap years, work experience, and academic info
+      'gapInStudies': 'gap_in_studies',
+      'gap_in_studies': 'gap_in_studies',
+      'gapYears': 'gap_years',
+      'gap_years': 'gap_years',
+      'gapReason': 'gap_reason',
+      'gap_reason': 'gap_reason',
+      'workExperience': 'work_experience',
+      'work_experience': 'work_experience',
+      'aadharNumber': 'aadhar_number',
+      'aadhar_number': 'aadhar_number',
+      'backlogsHistory': 'backlogs_history',
+      'backlogs_history': 'backlogs_history',
+      'currentBacklogs': 'current_backlogs',
+      'current_backlogs': 'current_backlogs'
     };
 
     // Apply field mapping
@@ -1403,7 +1496,8 @@ export async function updateStudentByEmail(email, updates) {
       'resume_imported_at', 'skill_summary', 'course_name', 'contact_dial_code', 'trainer_name', 
       'is_deleted', 'deleted_at', 'deleted_by', 'grade', 'section', 'roll_number', 
       'admission_number', 'college_id', 'hobbies', 'languages', 'interests', 'category', 
-      'quota', 'youtube_link', 'notification_settings'
+      'quota', 'youtube_link', 'notification_settings', 'gap_in_studies', 'gap_years', 
+      'gap_reason', 'work_experience', 'aadhar_number', 'backlogs_history', 'current_backlogs'
     ];
 
     const filteredUpdates = {};
@@ -2211,8 +2305,10 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
           start_date: exp.start_date || null,
           end_date: exp.end_date || null,
           duration: exp.duration?.trim() || null,
+          description: exp.description?.trim() || null,
           verified: exp.verified || false,
           approval_status: exp.approval_status || 'pending',
+          enabled: exp.enabled !== false, // Add enabled field (default to true)
           updated_at: nowIso,
         };
 
@@ -2576,6 +2672,163 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
 }
 
 /**
+ * Update skills in skills table (general function for mixed skill types)
+ */
+export async function updateSkillsByEmail(email, skillsData = []) {
+  console.log('🔧 updateSkillsByEmail: Received skills data:', skillsData);
+  
+  try {
+    // Find student record
+    let studentRecord = null;
+
+    const { data: directByEmail, error: directEmailError } = await supabase
+      .from('students')
+      .select('id, user_id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (directEmailError) {
+      return { success: false, error: directEmailError.message };
+    }
+
+    if (directByEmail) {
+      studentRecord = directByEmail;
+    }
+
+    if (!studentRecord) {
+      const { data: profileMatch, error: profileError } = await supabase
+        .from('students')
+        .select('id, user_id, profile')
+        .eq('profile->>email', email)
+        .maybeSingle();
+
+      if (profileError) {
+        return { success: false, error: profileError.message };
+      }
+
+      if (profileMatch) {
+        studentRecord = profileMatch;
+      }
+    }
+
+    if (!studentRecord) {
+      const { data: allStudents, error: allError } = await supabase
+        .from('students')
+        .select('id, user_id, profile');
+
+      if (allError) {
+        return { success: false, error: allError.message };
+      }
+
+      for (const student of allStudents || []) {
+        const profile = safeJSONParse(student.profile);
+        if (profile?.email === email) {
+          studentRecord = student;
+          break;
+        }
+      }
+    }
+
+    if (!studentRecord) {
+      return { success: false, error: 'Student not found' };
+    }
+
+    // Use user_id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.user_id;
+
+    // Get existing skills (both technical and soft)
+    const { data: existingSkills, error: existingError } = await supabase
+      .from('skills')
+      .select('id')
+      .eq('student_id', studentId)
+      .is('training_id', null);
+
+    if (existingError) {
+      return { success: false, error: existingError.message };
+    }
+
+    const nowIso = new Date().toISOString();
+
+    // Format skills data for database
+    const formatted = (skillsData || [])
+      .filter((skill) => skill && typeof skill.name === 'string' && skill.name.trim().length > 0)
+      .map((skill) => {
+        const record = {
+          student_id: studentId,
+          name: skill.name.trim(),
+          type: skill.type || 'technical', // Default to technical if not specified
+          level: skill.level || skill.rating || 3, // Use level (numeric 1-5) or rating field, default to 3
+          proficiency_level: skill.proficiency_level || null, // Text level like "Intermediate"
+          description: skill.description?.trim() || null,
+          verified: skill.verified || false,
+          enabled: typeof skill.enabled === 'boolean' ? skill.enabled : true,
+          approval_status: skill.approval_status || 'pending',
+          updated_at: nowIso,
+        };
+
+        console.log('🔧 Service: Processing skill:', skill);
+        console.log('🔧 Service: Created record:', record);
+
+        // Preserve existing ID if valid UUID
+        const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
+        if (rawId && rawId.length === 36) {
+          record.id = rawId;
+        } else {
+          record.id = generateUuid();
+        }
+
+        return record;
+      });
+
+    // Determine which records to delete
+    const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+    const toDelete = (existingSkills || [])
+      .filter((existing) => !incomingIds.has(existing.id))
+      .map((existing) => existing.id);
+
+    // Delete removed records
+    if (toDelete.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('skills')
+        .delete()
+        .in('id', toDelete);
+
+      if (deleteError) {
+        return { success: false, error: deleteError.message };
+      }
+    }
+
+    // Upsert skills records
+    if (formatted.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('skills')
+        .upsert(formatted, { onConflict: 'id' });
+
+      if (upsertError) {
+        return { success: false, error: upsertError.message };
+      }
+    } else if ((existingSkills || []).length > 0) {
+      // Delete all if no skills data provided
+      const { error: deleteAllError } = await supabase
+        .from('skills')
+        .delete()
+        .eq('student_id', studentId)
+        .is('training_id', null);
+
+      if (deleteAllError) {
+        return { success: false, error: deleteAllError.message };
+      }
+    }
+
+    // Return updated student data
+    return await getStudentByEmail(email);
+  } catch (err) {
+    console.error('❌ updateSkillsByEmail exception:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
  * Update projects table records
  */
 export const updateProjectsByEmail = async (email, projectsData = []) => {
@@ -2653,25 +2906,42 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
     const formatted = (projectsData || [])
       .filter((project) => project && typeof project.title === 'string' && project.title.trim().length > 0)
       .map((project) => {
+        const startDate = project.start_date || project.startDate || null;
+        const endDate = project.end_date || project.endDate || null;
+        
+        // Ensure tech_stack is always an array
+        let techStack = project.tech || project.tech_stack || project.technologies || [];
+        if (typeof techStack === 'string') {
+          // If it's a string, parse it
+          techStack = techStack.split(',').map(t => t.trim()).filter(Boolean);
+        } else if (!Array.isArray(techStack)) {
+          techStack = [];
+        }
+        
         const record = {
           student_id: studentId,
           title: project.title.trim(),
           description: project.description?.trim() || null,
+          role: project.role?.trim() || null,
           status: project.status || 'completed',
-          start_date: project.start_date || project.startDate || null,
-          end_date: project.end_date || project.endDate || null,
-          duration: project.duration || null,
+          start_date: startDate,
+          end_date: endDate,
+          duration: startDate ? calculateDuration(startDate, endDate) : (project.duration || null),
           organization: project.organization || project.company || project.client || null,
-          tech_stack: project.tech || project.tech_stack || project.technologies || [],
-          demo_link: project.demo_link || project.link || null,
-          github_link: project.github_link || project.github || project.github_url || null,
+          tech_stack: techStack,
+          demo_link: project.demo_link || project.demoUrl || project.link || null,
+          github_link: project.github_link || project.githubUrl || project.github || project.github_url || null,
           certificate_url: project.certificate_url || null,
           video_url: project.video_url || null,
           ppt_url: project.ppt_url || null,
           enabled: typeof project.enabled === 'boolean' ? project.enabled : true,
           approval_status: project.approval_status || 'pending',
+          approval_authority: project.approval_authority || 'rareminds_admin',
           updated_at: nowIso,
         };
+        
+        console.log('✅ Formatted record:', record);
+        console.log('✅ Record role value:', record.role);
 
         // Preserve existing ID if valid UUID
         const rawId = typeof project.id === 'string' ? project.id.trim() : null;
@@ -2792,9 +3062,10 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
 
     const studentId = studentRecord.id;
 
+    // Fetch full existing certificates to check verification status
     const { data: existingCertificates, error: existingError } = await supabase
       .from('certificates')
-      .select('id')
+      .select('*')
       .eq('student_id', studentId);
 
     if (existingError) {
@@ -2815,34 +3086,51 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
     const nowIso = new Date().toISOString();
 
     const formatted = (certificatesData || [])
-      .filter((cert) => cert && typeof cert.title === 'string' && cert.title.trim().length > 0)
+      .filter((cert) => cert && (cert.title || cert.name) && (cert.title || cert.name).trim().length > 0)
       .map((cert) => {
-        const titleValue = cert.title.trim();
+        // Handle both title and name fields for backward compatibility
+        const titleValue = (cert.title || cert.name || '').trim();
         const issuerValue = typeof cert.issuer === 'string' ? cert.issuer.trim() : cert.issuer || null;
         const levelValue = typeof cert.level === 'string' ? cert.level.trim() : cert.level || null;
         const credentialValue = cert.credentialId || cert.credential_id || null;
         const credentialTrimmed = typeof credentialValue === 'string' ? credentialValue.trim() : credentialValue;
-        const linkValue = typeof cert.link === 'string' ? cert.link.trim() : cert.link || null;
+        
+        // Handle multiple URL field names
+        const linkValue = cert.link || cert.credentialUrl || cert.credential_url || null;
+        const linkTrimmed = typeof linkValue === 'string' ? linkValue.trim() : linkValue;
+        
         const descriptionValue = typeof cert.description === 'string' ? cert.description.trim() : cert.description || null;
-        const approvalSource = cert.approval_status || cert.status || 'pending';
+        // IMPORTANT: approval_status and status are different fields!
+        // approval_status: 'pending' | 'approved' | 'verified' (for verification workflow)
+        // status: 'active' | 'disabled' | 'completed' (for visibility/completion state)
+        const approvalSource = cert.approval_status || 'pending';
         const approvalStatus = typeof approvalSource === 'string' ? approvalSource.toLowerCase() : 'pending';
         const statusSource = cert.status || (cert.enabled === false ? 'disabled' : 'active');
         const statusValue = typeof statusSource === 'string' ? statusSource.trim().toLowerCase() : 'active';
         const documentValue = cert.document_url || cert.documentLink || null;
         const documentTrimmed = typeof documentValue === 'string' ? documentValue.trim() : documentValue;
-        const issuedOn = normalizeIssuedOn(cert.issuedOn || cert.issued_on);
+        
+        // Handle multiple date field names
+        const issuedOn = normalizeIssuedOn(cert.issuedOn || cert.issued_on || cert.issueDate);
+        const expiryDate = normalizeIssuedOn(cert.expiryDate || cert.expiry_date);
+        
         const record = {
           student_id: studentId,
           title: titleValue,
           issuer: issuerValue && issuerValue.length > 0 ? issuerValue : null,
           level: levelValue && levelValue.length > 0 ? levelValue : null,
           credential_id: credentialTrimmed && credentialTrimmed.length > 0 ? credentialTrimmed : null,
-          link: linkValue && linkValue.length > 0 ? linkValue : null,
+          link: linkTrimmed && linkTrimmed.length > 0 ? linkTrimmed : null,
           issued_on: issuedOn,
+          expiry_date: expiryDate,
           description: descriptionValue && descriptionValue.length > 0 ? descriptionValue : null,
           status: statusValue,
           approval_status: approvalStatus,
           document_url: documentTrimmed && documentTrimmed.length > 0 ? documentTrimmed : null,
+          platform: cert.platform || null,
+          instructor: cert.instructor || null,
+          category: cert.category || null,
+          enabled: cert.enabled !== false, // Add enabled field (default to true)
           updated_at: nowIso,
         };
 
@@ -2851,6 +3139,87 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
           record.id = rawId;
         } else {
           record.id = generateUuid();
+        }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingCertificates || []).find(e => e.id === record.id);
+        
+        // Case 1: Certificate already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          // Keep the original verified_data, update only pending_edit_data
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = { ...record };
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved certificate - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          // Check if data actually changed (normalize null/undefined/empty for comparison)
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          
+          const hasChanges = 
+            normalize(record.title) !== normalize(existingRecord.title) ||
+            normalize(record.issuer) !== normalize(existingRecord.issuer) ||
+            normalize(record.level) !== normalize(existingRecord.level) ||
+            normalize(record.credential_id) !== normalize(existingRecord.credential_id) ||
+            normalize(record.link) !== normalize(existingRecord.link) ||
+            normalize(record.issued_on) !== normalize(existingRecord.issued_on) ||
+            normalize(record.expiry_date) !== normalize(existingRecord.expiry_date) ||
+            normalize(record.description) !== normalize(existingRecord.description) ||
+            normalize(record.document_url) !== normalize(existingRecord.document_url) ||
+            normalize(record.platform) !== normalize(existingRecord.platform) ||
+            normalize(record.instructor) !== normalize(existingRecord.instructor) ||
+            normalize(record.category) !== normalize(existingRecord.category) ||
+            record.enabled !== existingRecord.enabled;
+          
+          console.log(`🔍 Versioning check for "${record.title}":`, {
+            hasChanges,
+            existingApprovalStatus: existingRecord.approval_status,
+            recordTitle: normalize(record.title),
+            existingTitle: normalize(existingRecord.title),
+            titlesMatch: normalize(record.title) === normalize(existingRecord.title)
+          });
+          
+          if (hasChanges) {
+            // Data changed - create versioning
+            const verifiedData = {
+              title: existingRecord.title,
+              issuer: existingRecord.issuer,
+              level: existingRecord.level,
+              credential_id: existingRecord.credential_id,
+              link: existingRecord.link,
+              issued_on: existingRecord.issued_on,
+              expiry_date: existingRecord.expiry_date,
+              description: existingRecord.description,
+              status: existingRecord.status,
+              approval_status: existingRecord.approval_status,
+              document_url: existingRecord.document_url,
+              platform: existingRecord.platform,
+              instructor: existingRecord.instructor,
+              category: existingRecord.category,
+              enabled: existingRecord.enabled
+            };
+            
+            // Store verified data and mark as having pending edit
+            record.verified_data = verifiedData;
+            record.pending_edit_data = { ...record };
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for "${record.title}" - changes detected`);
+          } else {
+            // No changes - keep as verified
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status; // Keep existing status
+            console.log(`✅ No changes for "${record.title}" - keeping approval_status: ${existingRecord.approval_status}`);
+          }
+        }
+        // Case 3: New certificate or unverified certificate - no versioning needed
+        else {
+          record.verified_data = null;
+          record.pending_edit_data = null;
+          record.has_pending_edit = false;
         }
 
         return record;

@@ -18,9 +18,9 @@ export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary';
 
 /**
  * Test phases in the adaptive aptitude test flow
- * - diagnostic_screener: Initial 6 questions to classify student tier (L/M/H)
- * - adaptive_core: 8-10 questions with adaptive difficulty adjustment
- * - stability_confirmation: 4-6 questions to confirm final aptitude level
+ * - diagnostic_screener: Initial 8 questions to classify student tier (L/M/H)
+ * - adaptive_core: 30-36 questions with adaptive difficulty adjustment
+ * - stability_confirmation: 6 questions to confirm final aptitude level
  */
 export type TestPhase = 'diagnostic_screener' | 'adaptive_core' | 'stability_confirmation';
 
@@ -379,36 +379,36 @@ export interface AdaptiveTestConfig {
  * Default configuration for the adaptive aptitude test
  * 
  * Question Pattern:
- * - Phase 1 (Diagnostic Screener): Q1-Q6 all at Level 3 (baseline) - 6 questions
- * - Phase 2 (Adaptive Core): Q7-Q17 truly adaptive based on performance - 11 questions
- * - Phase 3 (Stability Confirmation): Q18-Q21 at final level - 4 questions
- * Total: 21 questions
+ * - Phase 1 (Diagnostic Screener): Q1-Q8 all at Level 3 (baseline) - 8 questions
+ * - Phase 2 (Adaptive Core): Q9-Q44 truly adaptive based on performance - 36 questions
+ * - Phase 3 (Stability Confirmation): Q45-Q50 at final level - 6 questions
+ * Total: 50 questions
  */
 export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
   phases: {
     diagnostic_screener: {
       phase: 'diagnostic_screener',
-      minQuestions: 6,
-      maxQuestions: 6,  // 6 questions for baseline (all at Level 3)
+      minQuestions: 8,
+      maxQuestions: 8,  // 8 questions for baseline (all at Level 3)
       difficultyDistribution: {
         easy: 0,    // All at level 3 for baseline
-        medium: 6,  // 6 medium questions (Level 3)
+        medium: 8,  // 8 medium questions (Level 3)
         hard: 0,    // No hard questions in baseline
       },
-      minSubtags: 3,
-      maxConsecutiveSameSubtag: 1,
+      minSubtags: 4,
+      maxConsecutiveSameSubtag: 2,
     },
     adaptive_core: {
       phase: 'adaptive_core',
-      minQuestions: 8,
-      maxQuestions: 11,  // 11 questions for adaptive core
-      maxConsecutiveSameSubtag: 2,
-      maxConsecutiveSameDirectionJumps: 2,
+      minQuestions: 30,
+      maxQuestions: 36,  // 36 questions for adaptive core
+      maxConsecutiveSameSubtag: 3,
+      maxConsecutiveSameDirectionJumps: 3,
     },
     stability_confirmation: {
       phase: 'stability_confirmation',
-      minQuestions: 4,
-      maxQuestions: 4,  // 4 questions for stability
+      minQuestions: 6,
+      maxQuestions: 6,  // 6 questions for stability
       maxConsecutiveSameSubtag: 2,
     },
   },
@@ -417,10 +417,10 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     M: 3,
     H: 4,
   },
-  minimumQuestionsForStop: 15,
-  consistencyWindowSize: 5,
-  maxDirectionChangesForHighConfidence: 1,
-  maxDirectionChangesForMediumConfidence: 2,
+  minimumQuestionsForStop: 40,
+  consistencyWindowSize: 8,
+  maxDirectionChangesForHighConfidence: 2,
+  maxDirectionChangesForMediumConfidence: 4,
 };
 
 /**

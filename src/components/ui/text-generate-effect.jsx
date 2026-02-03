@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, stagger, useAnimate } from 'framer-motion';
-import { cn } from '../../lib/utils.js';
+import { cn } from '../../lib/utils';
 
 /**
  * TextGenerateEffect - Animates text word by word with a fade-in effect

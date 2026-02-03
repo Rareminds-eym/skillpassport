@@ -78,10 +78,9 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
                   Test Mode
                 </button>
               )}
-              
+
               {/* Progress Badge */}
-              <div className="flex items-center gap-3 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">
-                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
+              <div className="flex items-center gap-3 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100" data-tour="progress-percentage">                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
                 <span className="text-xs font-semibold text-indigo-700">
                   {Math.round(progress)}% Complete
                 </span>
@@ -92,7 +91,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
       </div>
 
       {/* Section Steps - Below Navbar */}
-      <div className="max-w-4xl mx-auto px-4 mt-6 mb-6">
+      <div className="max-w-4xl mx-auto px-4 mt-6 mb-6" data-tour="section-progress">
         {/* Circles and Lines Row */}
         <div className="flex items-center">
           {sections.map((section, idx) => {
@@ -106,7 +105,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
               lineProgress = 100;
             } else if (idx === currentSectionIndex) {
               if (section.isAdaptive) {
-                const adaptiveTotal = adaptiveProgress?.estimatedTotalQuestions || 20;
+                const adaptiveTotal = adaptiveProgress?.estimatedTotalQuestions || 50;
                 const adaptiveAnswered = adaptiveProgress?.questionsAnswered || 0;
                 lineProgress = adaptiveTotal > 0 ? (adaptiveAnswered / adaptiveTotal) * 100 : 0;
               } else {
@@ -124,22 +123,22 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
                   ${isCurrent ? 'backdrop-blur-xl bg-indigo-600/90 border border-indigo-500/50 text-white shadow-xl ring-2 ring-indigo-400/30 relative z-10' : ''}
                   ${isUpcoming ? 'backdrop-blur-xl bg-white/40 border border-gray-300/50 text-gray-400' : ''}
                 `}
-                style={{
-                  background: isCompleted 
-                    ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.9) 100%)'
-                    : isCurrent
-                    ? 'linear-gradient(135deg, rgba(79, 70, 229, 0.9) 0%, rgba(67, 56, 202, 0.95) 100%)'
-                    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(249, 250, 251, 0.3) 100%)',
-                  boxShadow: isCompleted
-                    ? '0 4px 16px 0 rgba(34, 197, 94, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.2)'
-                    : isCurrent
-                    ? '0 4px 16px 0 rgba(79, 70, 229, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.2)'
-                    : '0 2px 8px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.3)',
-                }}
+                  style={{
+                    background: isCompleted
+                      ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.9) 100%)'
+                      : isCurrent
+                        ? 'linear-gradient(135deg, rgba(79, 70, 229, 0.9) 0%, rgba(67, 56, 202, 0.95) 100%)'
+                        : 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(249, 250, 251, 0.3) 100%)',
+                    boxShadow: isCompleted
+                      ? '0 4px 16px 0 rgba(34, 197, 94, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.2)'
+                      : isCurrent
+                        ? '0 4px 16px 0 rgba(79, 70, 229, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.2)'
+                        : '0 2px 8px 0 rgba(0, 0, 0, 0.05), inset 0 1px 0 0 rgba(255, 255, 255, 0.3)',
+                  }}
                 >
                   {/* Glass shine effect */}
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent rounded-full pointer-events-none" />
-                  
+
                   {isCompleted ? (
                     <CheckCircle2 className="w-4 h-4 relative z-10" />
                   ) : (
@@ -151,13 +150,12 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
                 {idx < sections.length - 1 && (
                   <div className="flex-1 h-px rounded-full bg-gray-200 overflow-hidden mx-4">
                     <motion.div
-                      className={`h-full rounded-full ${
-                        idx < currentSectionIndex
+                      className={`h-full rounded-full ${idx < currentSectionIndex
                           ? 'bg-green-500'
                           : idx === currentSectionIndex
                             ? 'bg-indigo-500'
                             : ''
-                      }`}
+                        }`}
                       initial={{ width: 0 }}
                       animate={{ width: `${lineProgress}%` }}
                       transition={{ duration: 0.3, ease: "easeOut" }}

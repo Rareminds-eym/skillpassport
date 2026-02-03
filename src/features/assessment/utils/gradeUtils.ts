@@ -65,11 +65,17 @@ export const getGradeLevelFromNumber = (gradeNum: number): GradeLevel | null => 
  */
 export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_school' | 'high_school' | 'higher_secondary' => {
   switch (gradeLevel) {
-    case 'highschool':
-    case 'higher_secondary':
-      return 'high_school';
     case 'middle':
       return 'middle_school';
+    case 'highschool':
+      return 'high_school';
+    case 'higher_secondary':
+      return 'higher_secondary';
+    case 'after10':
+      return 'high_school'; // After 10th uses high school level questions
+    case 'after12':
+    case 'college':
+      return 'higher_secondary'; // After 12th and college use higher secondary level questions
     default:
       return 'high_school';
   }

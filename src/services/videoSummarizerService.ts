@@ -1,18 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
+import { getPagesApiUrl, getAuthHeaders } from '../utils/pagesUrl';
 
 // ==================== API URL CONFIGURATION ====================
-const WORKER_URL = import.meta.env.VITE_COURSE_API_URL;
-
-if (!WORKER_URL) {
-  console.warn('⚠️ VITE_COURSE_API_URL not configured. Video Summarizer will fail.');
-}
-
-const getApiUrl = (endpoint: string) => {
-  if (!WORKER_URL) {
-    throw new Error('VITE_COURSE_API_URL environment variable is required');
-  }
-  return `${WORKER_URL}/${endpoint}`;
-};
+const API_URL = getPagesApiUrl('course');
 
 // ==================== INTERFACES ====================
 
@@ -166,7 +156,7 @@ export async function processVideo(
     onProgress?.('Starting video analysis...', 10);
 
     const response = await fetch(
-      getApiUrl('ai-video-summarizer'),
+      `${API_URL}/ai-video-summarizer`,
       {
         method: 'POST',
         headers: {

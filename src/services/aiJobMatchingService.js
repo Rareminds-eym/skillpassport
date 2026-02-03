@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getPagesApiUrl } from '../utils/pagesUrl';
 
 /**
  * Match student profile with opportunities using AI
@@ -30,10 +31,7 @@ export async function matchJobsWithAI(studentProfile, topN = 3, forceRefresh = f
     throw new Error('Student profile is required');
   }
 
-  const API_URL = import.meta.env.VITE_CAREER_API_URL;
-  if (!API_URL) {
-    throw new Error('VITE_CAREER_API_URL is not configured');
-  }
+  const API_URL = getPagesApiUrl('career');
 
   // Get auth token from existing supabase client
   const { data: { session } } = await supabase.auth.getSession();
