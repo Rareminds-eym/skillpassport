@@ -4,6 +4,7 @@ import AttendanceDetailsModal from "@/components/admin/modals/AttendanceDetailsM
 import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
 import { supabase } from "@/lib/supabaseClient";
 import { AttendanceRecord, AttendanceSession, Student, SubjectGroup } from "@/types/Attendance";
+import toast from 'react-hot-toast';
 import {
     ArrowDownTrayIcon,
     BellAlertIcon,
@@ -798,7 +799,7 @@ const AttendanceTracking: React.FC = () => {
 
       if (sessionsError) {
         console.error('Error fetching sessions:', sessionsError);
-        alert('Error loading session details');
+        toast.error('Error loading session details');
         return;
       }
 
@@ -837,7 +838,7 @@ const AttendanceTracking: React.FC = () => {
       setShowDetailsModal(true);
     } catch (err: any) {
       console.error('Error in handleViewDetails:', err);
-      alert('Error loading details');
+      toast.error('Error loading details');
     }
   };
 
@@ -860,11 +861,11 @@ const AttendanceTracking: React.FC = () => {
 
         if (error) throw error;
         
-        alert('Sessions deleted successfully!');
+        toast.success('Sessions deleted successfully!');
         // Refresh the data
         fetchSubjectGroups();
       } catch (err: any) {
-        alert(`Error deleting sessions: ${err.message}`);
+        toast.error(`Error deleting sessions: ${err.message}`);
       }
     }
   };
@@ -888,6 +889,86 @@ const AttendanceTracking: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Main export function for all attendance data
+  const handleExportAllAttendance = async () => {
+    try {
+      // Show loading state
+      const exportButton = document.querySelector('[data-export-btn]') as HTMLButtonElement;
+      if (exportButton) {
+        exportButton.disabled = true;
+        exportButton.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Exporting...';
+      }
+
+      // Fetch all attendance data
+      const { data: allAttendanceData, error } = await supabase
+        .from('college_attendance_records')
+        .select(`
+          *,
+          college_attendance_sessions!inner(
+            date,
+            start_time,
+            end_time,
+            subject_name,
+            faculty_name,
+            department_name,
+            program_name,
+            semester,
+            section
+          )
+        `)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      if (!allAttendanceData || allAttendanceData.length === 0) {
+        toast.error('No attendance data found to export.');
+        return;
+      }
+
+      // Transform data for CSV export
+      const exportData = allAttendanceData.map(record => ({
+        'Date': formatDate(record.date),
+        'Student Name': record.student_name || 'N/A',
+        'Roll Number': record.roll_number || 'N/A',
+        'Student ID': record.student_id || 'N/A',
+        'Subject': record.college_attendance_sessions?.subject_name || 'N/A',
+        'Faculty': record.college_attendance_sessions?.faculty_name || 'N/A',
+        'Department': record.college_attendance_sessions?.department_name || 'N/A',
+        'Course': record.college_attendance_sessions?.program_name || 'N/A',
+        'Semester': record.college_attendance_sessions?.semester || 'N/A',
+        'Section': record.college_attendance_sessions?.section || 'N/A',
+        'Status': record.status || 'N/A',
+        'Time In': record.time_in || 'N/A',
+        'Time Out': record.time_out || 'N/A',
+        'Session Start': record.college_attendance_sessions?.start_time || 'N/A',
+        'Session End': record.college_attendance_sessions?.end_time || 'N/A',
+        'Location': record.location || 'N/A',
+        'Remarks': record.remarks || 'N/A'
+      }));
+
+      // Generate filename with current date
+      const currentDate = new Date().toISOString().split('T')[0];
+      const filename = `attendance_report_${currentDate}.csv`;
+
+      // Export to CSV
+      exportToCSV(exportData, filename);
+
+      // Show success message
+      toast.success(`Successfully exported ${exportData.length} attendance records!`);
+
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export attendance data. Please try again.');
+    } finally {
+      // Reset button state
+      const exportButton = document.querySelector('[data-export-btn]') as HTMLButtonElement;
+      if (exportButton) {
+        exportButton.disabled = false;
+        exportButton.innerHTML = '<svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>Export';
+      }
+    }
   };
 
   const handleExportSession = (session: AttendanceSession, records: AttendanceRecord[]) => {
@@ -986,7 +1067,7 @@ const AttendanceTracking: React.FC = () => {
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
         !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      alert("Please fill in all required fields.");
+      toast.error("Please fill in all required fields.");
       return;
     }
 
@@ -994,7 +1075,7 @@ const AttendanceTracking: React.FC = () => {
       // Get current user and their college_id
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        alert("Please log in to create a session.");
+        toast.error("Please log in to create a session.");
         return;
       }
 
@@ -1027,7 +1108,7 @@ const AttendanceTracking: React.FC = () => {
       }
 
       if (!collegeId) {
-        alert("Unable to determine college. Please contact administrator.");
+        toast.error("Unable to determine college. Please contact administrator.");
         return;
       }
 
@@ -1066,7 +1147,7 @@ const AttendanceTracking: React.FC = () => {
 
       if (error) throw error;
       
-      alert('Session created successfully!');
+      toast.success('Session created successfully!');
       
       // Refresh the data
       fetchSubjectGroups();
@@ -1088,7 +1169,7 @@ const AttendanceTracking: React.FC = () => {
         totalStudents: 0,
       });
     } catch (err: any) {
-      alert(`Error creating session: ${err.message}`);
+      toast.error(`Error creating session: ${err.message}`);
     }
   };
 
@@ -1097,7 +1178,7 @@ const AttendanceTracking: React.FC = () => {
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
         !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      alert("Please fill in all required fields.");
+      toast.error("Please fill in all required fields.");
       return;
     }
 
@@ -1106,9 +1187,9 @@ const AttendanceTracking: React.FC = () => {
       await handleCreateSession();
       
       // In a real app, this would navigate to the attendance marking page
-      alert("Session created and attendance marking started!");
+      toast.success("Session created and attendance marking started!");
     } catch (err: any) {
-      alert(`Error: ${err.message}`);
+      toast.error(`Error: ${err.message}`);
     }
   };
 
@@ -1189,7 +1270,11 @@ const AttendanceTracking: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={handleExportAllAttendance}
+              data-export-btn
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
               <ArrowDownTrayIcon className="h-4 w-4" />
               Export
             </button>
