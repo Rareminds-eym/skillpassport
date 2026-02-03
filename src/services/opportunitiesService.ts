@@ -482,6 +482,162 @@ class OpportunitiesService {
     }
   }
 
+  // Get placement statistics from applied_jobs table (simplified direct approach)
+  async getPlacementStats(): Promise<{
+    studentsPlaced: number;
+    placementRate: number;
+    totalStudents: number;
+    avgCTC: number;
+    medianCTC: number;
+    highestCTC: number;
+  }> {
+    try {
+      // Get current user's college_id
+      const { data: { user } } = await supabase.auth.getUser();
+      let currentCollegeId = null;
+      
+      if (user) {
+        // Try to get college_id from college_lecturers table
+        const { data: collegeLecturer } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .eq('user_id', user.id)
+          .single();
+        
+        currentCollegeId = collegeLecturer?.collegeId;
+      }
+
+      // Get total students from students table (filter by college)
+      let studentsQuery = supabase
+        .from('students')
+        .select('*', { count: 'exact', head: true });
+
+      // Add college filter if we have college_id
+      if (currentCollegeId) {
+        studentsQuery = studentsQuery.eq('college_id', currentCollegeId);
+      }
+
+      const { count: totalStudents, error: totalError } = await studentsQuery;
+
+      if (totalError) {
+        console.error('Error fetching total students count:', totalError);
+        throw totalError;
+      }
+
+      // Get placement data directly from applied_jobs with accepted status
+      let placementQuery = supabase
+        .from('applied_jobs')
+        .select(`
+          id,
+          student_id,
+          students!fk_applied_jobs_student (
+            id,
+            college_id,
+            name
+          ),
+          opportunities!fk_applied_jobs_opportunity (
+            salary_range_min,
+            salary_range_max,
+            employment_type
+          )
+        `)
+        .eq('application_status', 'accepted');
+
+      // Filter by college if we have college_id
+      if (currentCollegeId) {
+        // First get student IDs from this college
+        const { data: collegeStudents } = await supabase
+          .from('students')
+          .select('id')
+          .eq('college_id', currentCollegeId);
+
+        const studentIds = collegeStudents?.map(s => s.id) || [];
+        
+        if (studentIds.length > 0) {
+          placementQuery = placementQuery.in('student_id', studentIds);
+        } else {
+          // No students in this college, so no placements
+          return {
+            studentsPlaced: 0,
+            placementRate: 0,
+            totalStudents: totalStudents || 0,
+            avgCTC: 0,
+            medianCTC: 0,
+            highestCTC: 0
+          };
+        }
+      }
+
+      const { data: placements, error: placementError } = await placementQuery;
+
+      if (placementError) {
+        console.error('Error fetching placements:', placementError);
+        throw placementError;
+      }
+
+      // Count unique students placed (not total offers)
+      const uniqueStudentIds = new Set();
+      if (placements) {
+        placements.forEach(placement => {
+          uniqueStudentIds.add(placement.student_id);
+        });
+      }
+      
+      const studentsPlaced = uniqueStudentIds.size;
+
+      // Calculate CTC statistics from salary data
+      const salaries: number[] = [];
+      
+      if (placements) {
+        for (const placement of placements) {
+          const opportunity = placement.opportunities as any;
+          if (opportunity) {
+            const salary = opportunity.salary_range_max || opportunity.salary_range_min || 0;
+            if (salary > 0) {
+              salaries.push(Number(salary));
+            }
+          }
+        }
+      }
+      
+      salaries.sort((a, b) => a - b);
+
+      const avgCTC = salaries.length > 0 
+        ? salaries.reduce((sum, salary) => sum + salary, 0) / salaries.length 
+        : 0;
+
+      const medianCTC = salaries.length > 0 
+        ? salaries.length % 2 === 0
+          ? (salaries[salaries.length / 2 - 1] + salaries[salaries.length / 2]) / 2
+          : salaries[Math.floor(salaries.length / 2)]
+        : 0;
+
+      const highestCTC = salaries.length > 0 ? Math.max(...salaries) : 0;
+
+      // Calculate placement rate
+      const placementRate = totalStudents && totalStudents > 0 ? (studentsPlaced / totalStudents) * 100 : 0;
+
+      return {
+        studentsPlaced,
+        placementRate: Math.round(placementRate * 10) / 10, // Round to 1 decimal place
+        totalStudents: totalStudents || 0,
+        avgCTC,
+        medianCTC,
+        highestCTC
+      };
+    } catch (error) {
+      console.error('Error in getPlacementStats:', error);
+      return {
+        studentsPlaced: 0,
+        placementRate: 0,
+        totalStudents: 0,
+        avgCTC: 0,
+        medianCTC: 0,
+        highestCTC: 0
+      };
+    }
+  }
+
   // Get opportunities statistics
   async getOpportunitiesStats(): Promise<{
     total: number;

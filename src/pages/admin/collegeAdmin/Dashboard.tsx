@@ -82,14 +82,30 @@ const Dashboard: React.FC = () => {
           .select('*', { count: 'exact', head: true })
           .eq('college_id', collegeId);
 
-        // Calculate placement rate from placements table
-        const { count: totalPlaced } = await supabase
-          .from('placements')
-          .select('*', { count: 'exact', head: true })
-          .eq('placementStatus', 'hired');
+        // Calculate placement rate using the same logic as placement management
+        // Filter by students from this college
+        const { data: collegeStudents } = await supabase
+          .from('students')
+          .select('id')
+          .eq('college_id', collegeId);
+
+        const studentIds = collegeStudents?.map(s => s.id) || [];
+        
+        let totalPlaced = 0;
+        if (studentIds.length > 0) {
+          // Count unique students placed (not total offers)
+          const { data: placedStudents } = await supabase
+            .from('applied_jobs')
+            .select('student_id')
+            .eq('application_status', 'accepted')
+            .in('student_id', studentIds);
+          
+          const uniqueStudentIds = new Set(placedStudents?.map(p => p.student_id) || []);
+          totalPlaced = uniqueStudentIds.size;
+        }
 
         const placementRate = studentsCount && studentsCount > 0 
-          ? Math.round(((totalPlaced || 0) / studentsCount) * 100) 
+          ? Math.round(((totalPlaced || 0) / studentsCount) * 100 * 10) / 10 // Round to 1 decimal place
           : 0;
 
         setStats({
