@@ -4,6 +4,7 @@
  */
 
 import { getPagesApiUrl } from '../../utils/pagesUrl';
+import { supabase } from '../../lib/supabaseClient';
 
 const EMBEDDING_API_URL = getPagesApiUrl('career');
 
@@ -26,6 +27,14 @@ export const generateEmbeddingsBatch = async (texts, maxConcurrent = 5) => {
     throw new Error('No valid texts for embedding generation');
   }
 
+  // Get auth token once for all requests
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
   // Process in batches to avoid overwhelming the API
   const results = [];
   for (let i = 0; i < validTexts.length; i += maxConcurrent) {
@@ -35,7 +44,10 @@ export const generateEmbeddingsBatch = async (texts, maxConcurrent = 5) => {
       try {
         const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({ text, returnEmbedding: true })
         });
 
