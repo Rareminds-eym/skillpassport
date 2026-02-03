@@ -23,9 +23,20 @@ async function generateEmbedding(text) {
     throw new Error('Text too short for embedding generation');
   }
 
+  // Get auth token
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
   const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ text, returnEmbedding: true })
   });
 
@@ -149,10 +160,25 @@ const fetchCourseWithSkills = async (courseId) => {
  */
 export const embedCourse = async (courseId) => {
   try {
+    // Get auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    
+    if (!token) {
+      return {
+        success: false,
+        courseId,
+        error: 'Authentication required'
+      };
+    }
+
     // Try using the backend API first (preferred - handles everything server-side)
     const response = await fetch(`${EMBEDDING_API_URL}/regenerate?table=courses&id=${courseId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
     });
 
     if (response.ok) {
