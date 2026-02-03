@@ -523,13 +523,16 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   let requiredFields;
 
   if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
-    // Middle school and high school have simplified assessments
-    // They use adaptive aptitude instead of traditional aptitude/knowledge sections
+    // Middle school and high school have 4 sections:
+    // 1. Interest Explorer (RIASEC)
+    // 2. Strengths & Character (characterStrengths)
+    // 3. Learning & Work Preferences (learningStyle)
+    // 4. Adaptive Aptitude Test (handled separately via adaptive_aptitude_session_id)
     requiredFields = [
-      'riasec',        // Interest explorer maps to RIASEC
-      'bigFive',       // Strengths & character maps to BigFive
-      'careerFit',     // Career recommendations
-      'roadmap'        // Development roadmap
+      'riasec',             // Section 1: Interest Explorer
+      'characterStrengths', // Section 2: Strengths & Character
+      'learningStyle',      // Section 3: Learning & Work Preferences
+      'careerFit'           // Career recommendations (derived from all sections)
     ];
     console.log('📊 Using simplified validation for grade:', gradeLevel);
   } else {
@@ -617,6 +620,10 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   const aptitudeScores = geminiResults?.aptitude?.scores || null;
   const aptitudeOverall = geminiResults?.aptitude?.overallScore ?? null;
 
+  // 🔧 CRITICAL FIX: Extract adaptive aptitude results if present
+  // This data comes from the adaptive aptitude test and should be preserved
+  const adaptiveAptitudeResults = geminiResults?.adaptiveAptitudeResults || null;
+
   // These fields are ONLY for comprehensive assessments (after10, after12, college, higher_secondary)
   const workValuesScores = isSimplifiedAssessment ? null : (geminiResults?.workValues?.scores || null);
   const employabilityScores = isSimplifiedAssessment ? null : (geminiResults?.employability?.skillScores || null);
@@ -629,6 +636,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('  riasecCode:', riasecCode);
   console.log('  bigfiveScores:', bigfiveScores);
   console.log('  aptitudeScores:', aptitudeScores);
+  console.log('  adaptiveAptitudeResults:', adaptiveAptitudeResults ? 'Present' : 'Not present');
   console.log('  workValuesScores:', workValuesScores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
   console.log('  employabilityScores:', employabilityScores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
   console.log('  knowledgeScore:', knowledgeScore, isSimplifiedAssessment ? '(excluded for simplified)' : '');
@@ -660,6 +668,28 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   }
   console.log('📝 === END EXTRACTED SCORES ===');
 
+  // 🔧 Get adaptive aptitude session ID from attempt's all_responses if it exists
+  let adaptiveSessionId = null;
+  try {
+    const { data: attemptData } = await supabase
+      .from('personal_assessment_attempts')
+      .select('all_responses')
+      .eq('id', attemptId)
+      .single();
+    
+    // Extract session ID from all_responses.adaptive_aptitude_results.sessionId
+    const adaptiveResults = attemptData?.all_responses?.adaptive_aptitude_results;
+    adaptiveSessionId = adaptiveResults?.sessionId || adaptiveResults?.session_id || null;
+    
+    if (adaptiveSessionId) {
+      console.log('📊 Found adaptive aptitude session ID:', adaptiveSessionId);
+    } else {
+      console.log('📊 No adaptive aptitude session found in attempt');
+    }
+  } catch (err) {
+    console.warn('Could not fetch adaptive session ID:', err);
+  }
+
   const dataToInsert = {
     attempt_id: attemptId,
     student_id: studentId,
@@ -670,6 +700,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     riasec_code: riasecCode,
     aptitude_scores: aptitudeScores,
     aptitude_overall: aptitudeOverall,
+    adaptive_aptitude_session_id: adaptiveSessionId, // 🔧 CRITICAL FIX: Link adaptive session
     bigfive_scores: bigfiveScores,
     work_values_scores: workValuesScores,
     employability_scores: employabilityScores,
@@ -730,12 +761,27 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 
   // STEP 2: Only mark attempt as completed AFTER results are saved successfully
   console.log('=== STEP 2: Marking attempt as completed ===');
+  
+  // 🔧 CRITICAL FIX: Get adaptive aptitude session ID from attempt (if it exists)
+  // Note: This should already be set during the assessment, but we ensure it's preserved
+  const { data: attemptData } = await supabase
+    .from('personal_assessment_attempts')
+    .select('adaptive_aptitude_session_id')
+    .eq('id', attemptId)
+    .single();
+  
+  const adaptiveAptitudeSessionId = attemptData?.adaptive_aptitude_session_id || null;
+  if (adaptiveAptitudeSessionId) {
+    console.log('📊 Adaptive aptitude session already linked:', adaptiveAptitudeSessionId);
+  }
+  
   const { error: attemptError } = await supabase
     .from('personal_assessment_attempts')
     .update({
       status: 'completed',
       completed_at: new Date().toISOString(),
       section_timings: sectionTimings
+      // adaptive_aptitude_session_id is already set, no need to update it
     })
     .eq('id', attemptId);
 
@@ -835,6 +881,32 @@ export const getLatestResult = async (studentIdOrUserId) => {
   // If found, return it
   if (data) {
     console.log('✅ Found assessment result (direct lookup)');
+    
+    // 🔧 CRITICAL FIX: Fetch adaptive aptitude data if linked
+    if (data.adaptive_aptitude_session_id) {
+      try {
+        console.log('📊 Fetching adaptive aptitude results for session:', data.adaptive_aptitude_session_id);
+        
+        const { data: adaptiveResults } = await supabase
+          .from('adaptive_aptitude_results')
+          .select('*')
+          .eq('session_id', data.adaptive_aptitude_session_id)
+          .single();
+        
+        if (adaptiveResults) {
+          console.log('✅ Merged adaptive aptitude results into assessment data');
+          
+          // Add to gemini_results if it exists
+          if (data.gemini_results) {
+            data.gemini_results.adaptiveAptitudeResults = adaptiveResults;
+          }
+        }
+      } catch (adaptiveError) {
+        console.warn('⚠️ Could not fetch adaptive aptitude results:', adaptiveError);
+        // Don't fail the whole request if adaptive data is missing
+      }
+    }
+    
     return data;
   }
 
@@ -876,6 +948,31 @@ export const getLatestResult = async (studentIdOrUserId) => {
 
     if (resultData) {
       console.log('✅ Found assessment result (via user_id lookup)');
+      
+      // 🔧 CRITICAL FIX: Fetch adaptive aptitude data if linked
+      if (resultData.adaptive_aptitude_session_id) {
+        try {
+          console.log('📊 Fetching adaptive aptitude results for session:', resultData.adaptive_aptitude_session_id);
+          
+          const { data: adaptiveResults } = await supabase
+            .from('adaptive_aptitude_results')
+            .select('*')
+            .eq('session_id', resultData.adaptive_aptitude_session_id)
+            .single();
+          
+          if (adaptiveResults) {
+            console.log('✅ Merged adaptive aptitude results into assessment data');
+            
+            // Add to gemini_results if it exists
+            if (resultData.gemini_results) {
+              resultData.gemini_results.adaptiveAptitudeResults = adaptiveResults;
+            }
+          }
+        } catch (adaptiveError) {
+          console.warn('⚠️ Could not fetch adaptive aptitude results:', adaptiveError);
+          // Don't fail the whole request if adaptive data is missing
+        }
+      }
     } else {
       console.log('❌ No completed assessment result found for this student');
     }

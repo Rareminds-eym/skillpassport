@@ -37,6 +37,61 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
 
     const { riasec, aptitude, bigFive, workValues, knowledge, employability } = results;
 
+    console.log('🔍 DetailedAssessmentBreakdown received:', {
+        hasRiasec: !!riasec,
+        riasecScores: riasec?.scores,
+        riasecOriginal: riasec?._originalScores,
+        hasGeminiResults: !!results.gemini_results,
+        geminiOriginal: results.gemini_results?.riasec?._originalScores,
+        hasAdaptiveAptitude: !!(results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults),
+        adaptiveAptitudeData: results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults,
+        adaptiveFoundAt: results.adaptiveAptitudeResults ? 'results.adaptiveAptitudeResults' : 
+                        results.adaptive_aptitude_results ? 'results.adaptive_aptitude_results' : 
+                        results.gemini_results?.adaptiveAptitudeResults ? 'results.gemini_results.adaptiveAptitudeResults' : 
+                        'NOT FOUND'
+    });
+
+    // 🔧 CRITICAL FIX: Check BOTH locations for _originalScores
+    let safeRiasec = riasec;
+    if (riasec) {
+        const scores = riasec.scores || {};
+        const allZeros = Object.values(scores).every(score => score === 0);
+        
+        // Check riasec._originalScores first (after normalization)
+        // Then check gemini_results.riasec._originalScores (before normalization)
+        const originalScores = riasec._originalScores || 
+                              results.gemini_results?.riasec?._originalScores || 
+                              {};
+        const hasOriginalScores = Object.keys(originalScores).length > 0 &&
+            Object.values(originalScores).some(score => score > 0);
+        
+        console.log('🔍 DetailedAssessmentBreakdown normalization check:', {
+            allZeros,
+            hasOriginalScores,
+            originalScores,
+            foundAt: riasec._originalScores ? 'riasec._originalScores' : 
+                    results.gemini_results?.riasec?._originalScores ? 'gemini_results.riasec._originalScores' : 
+                    'NOT FOUND'
+        });
+        
+        if (allZeros && hasOriginalScores) {
+            console.log('🔧 DetailedAssessmentBreakdown: Fixing RIASEC scores from _originalScores');
+            console.log('   Using scores:', originalScores);
+            safeRiasec = {
+                ...riasec,
+                scores: originalScores,
+                maxScore: riasec.maxScore || 
+                         results.gemini_results?.riasec?.maxScore || 
+                         24
+            };
+            console.log('✅ DetailedAssessmentBreakdown: Fixed scores:', safeRiasec.scores);
+        } else {
+            console.log('⚠️ DetailedAssessmentBreakdown: No fix applied', {
+                reason: !allZeros ? 'Scores not all zeros' : 'No original scores found'
+            });
+        }
+    }
+
     // Calculate stage averages
     const calculateStageAverage = (scores) => {
         if (!scores || Object.keys(scores).length === 0) return 0;
@@ -50,17 +105,17 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
         {
             id: 1,
             name: 'Interest Explorer (RIASEC)',
-            data: riasec,
-            scores: riasec?.scores ? Object.entries(riasec.scores).map(([code, score]) => ({
+            data: safeRiasec,
+            scores: safeRiasec?.scores ? Object.entries(safeRiasec.scores).map(([code, score]) => ({
                 label: `${code} - ${riasecNames?.[code] || code}`,
                 value: score,
-                max: riasec.maxScore || 20,
-                percentage: Math.round((score / (riasec.maxScore || 20)) * 100)
+                max: safeRiasec.maxScore || 20,
+                percentage: Math.round((score / (safeRiasec.maxScore || 20)) * 100)
             })) : [],
-            avgPercentage: riasec?.scores ? Math.round(
-                Object.values(riasec.scores).reduce((sum, s) => sum + s, 0) / 
-                Object.values(riasec.scores).length / 
-                (riasec.maxScore || 20) * 100
+            avgPercentage: safeRiasec?.scores ? Math.round(
+                Object.values(safeRiasec.scores).reduce((sum, s) => sum + s, 0) / 
+                Object.values(safeRiasec.scores).length / 
+                (safeRiasec.maxScore || 20) * 100
             ) : 0
         },
         {
@@ -94,6 +149,61 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                     return sum + pct;
                 }, 0) / Object.values(aptitude.scores).length
             ) : 0
+        },
+        {
+            id: 2.5,
+            name: 'Adaptive Aptitude Test',
+            data: results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults,
+            scores: (() => {
+                const adaptiveData = results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults;
+                if (!adaptiveData) return [];
+                
+                const scores = [];
+                
+                // Overall metrics
+                scores.push({
+                    label: 'Aptitude Level',
+                    value: adaptiveData.aptitude_level || adaptiveData.aptitudeLevel || 0,
+                    max: 10,
+                    percentage: Math.round(((adaptiveData.aptitude_level || adaptiveData.aptitudeLevel || 0) / 10) * 100)
+                });
+                
+                scores.push({
+                    label: 'Overall Accuracy',
+                    value: adaptiveData.total_correct || adaptiveData.totalCorrect || 0,
+                    max: adaptiveData.total_questions || adaptiveData.totalQuestions || 1,
+                    percentage: Math.round(parseFloat(adaptiveData.overall_accuracy || adaptiveData.overallAccuracy || 0))
+                });
+                
+                // Breakdown by subtag (question type)
+                const accuracyBySubtag = adaptiveData.accuracy_by_subtag || adaptiveData.accuracyBySubtag || {};
+                const subtagLabels = {
+                    'verbal_reasoning': 'Verbal Reasoning',
+                    'logical_reasoning': 'Logical Reasoning',
+                    'spatial_reasoning': 'Spatial Reasoning',
+                    'numerical_reasoning': 'Numerical Reasoning',
+                    'pattern_recognition': 'Pattern Recognition',
+                    'data_interpretation': 'Data Interpretation'
+                };
+                
+                Object.entries(accuracyBySubtag).forEach(([subtag, data]) => {
+                    if (data && data.total > 0) {
+                        scores.push({
+                            label: subtagLabels[subtag] || subtag,
+                            value: data.correct || 0,
+                            max: data.total || 1,
+                            percentage: Math.round(data.accuracy || 0)
+                        });
+                    }
+                });
+                
+                return scores;
+            })(),
+            avgPercentage: (() => {
+                const adaptiveData = results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults;
+                if (!adaptiveData) return 0;
+                return Math.round(parseFloat(adaptiveData.overall_accuracy || adaptiveData.overallAccuracy || 0));
+            })()
         },
         {
             id: 3,
@@ -163,25 +273,52 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
         switch (gradeLevel) {
             case 'middle':
             case 'highschool':
-                // Grades 6-10: RIASEC, Big Five, Work Values (no aptitude tests, no knowledge, no employability)
-                return allStages.filter(s => [1, 3, 4].includes(s.id));
+                // Grades 6-10: RIASEC and Adaptive Aptitude are REQUIRED
+                // Big Five and Work Values are OPTIONAL (not counted in completion)
+                // Only show stages that have data
+                return allStages.filter(s => {
+                    // Always include RIASEC (stage 1) if it has data
+                    if (s.id === 1 && s.data) return true;
+                    // Always include Adaptive Aptitude (stage 2.5) if it has data
+                    if (s.id === 2.5 && s.data) return true;
+                    // Don't include other stages for middle/high school
+                    return false;
+                });
             
             case 'after10':
-                // Grades 11-12: RIASEC, Aptitude, Big Five, Work Values, Knowledge
-                return allStages.filter(s => [1, 2, 3, 4, 5].includes(s.id));
+                // Grades 11-12: RIASEC, Aptitude, Adaptive Aptitude (if available), Big Five, Work Values, Knowledge
+                return allStages.filter(s => [1, 2, 2.5, 3, 4, 5].includes(s.id) && s.data);
             
             case 'after12':
             case 'college':
                 // After 12 & College: All stages including Employability
-                return allStages;
+                return allStages.filter(s => s.data);
             
             default:
-                // Show all available stages
-                return allStages;
+                // Show all available stages that have data
+                return allStages.filter(s => s.data);
         }
     };
 
     const stages = getStagesForGradeLevel();
+    
+    // For middle/high school, the total expected stages is 2 (RIASEC + Adaptive Aptitude)
+    const getTotalExpectedStages = () => {
+        switch (gradeLevel) {
+            case 'middle':
+            case 'highschool':
+                return 2; // RIASEC + Adaptive Aptitude
+            case 'after10':
+                return 6; // RIASEC, Aptitude, Adaptive, BigFive, WorkValues, Knowledge
+            case 'after12':
+            case 'college':
+                return 7; // All stages including Employability
+            default:
+                return stages.length;
+        }
+    };
+    
+    const totalExpectedStages = getTotalExpectedStages();
 
     return (
         <div style={{ 
@@ -236,13 +373,13 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                     <div>
                         <span style={{ fontSize: '8px', color: '#cbd5e1' }}>Stages Completed:</span>
                         <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#ffffff', marginLeft: '5px' }}>
-                            {stages.filter(s => s.data).length} / {stages.length}
+                            {stages.length} / {totalExpectedStages}
                         </span>
                     </div>
                     <div>
                         <span style={{ fontSize: '8px', color: '#cbd5e1' }}>Overall Average:</span>
                         <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#ffffff', marginLeft: '5px' }}>
-                            {Math.round(stages.filter(s => s.data).reduce((sum, s) => sum + s.avgPercentage, 0) / stages.filter(s => s.data).length)}%
+                            {stages.length > 0 ? Math.round(stages.reduce((sum, s) => sum + s.avgPercentage, 0) / stages.length) : 0}%
                         </span>
                     </div>
                 </div>

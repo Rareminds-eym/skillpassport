@@ -17,12 +17,30 @@
  * Solution: Re-sort based on actual scores
  * 
  * @param {Object} riasec - RIASEC results object with scores and topThree
+ * @param {Object} geminiResults - Optional gemini_results object for fallback _originalScores
  * @returns {Object} - Corrected RIASEC object
  */
-export const validateRiasecTopThree = (riasec) => {
+export const validateRiasecTopThree = (riasec, geminiResults = null) => {
   if (!riasec?.scores) return riasec;
 
-  const scores = riasec.scores;
+  // 🔧 CRITICAL FIX: Use _originalScores if main scores are all zeros
+  // Check BOTH riasec._originalScores AND gemini_results.riasec._originalScores
+  let scores = riasec.scores;
+  const allZeros = Object.values(scores).every(score => score === 0);
+  
+  if (allZeros) {
+    const originalScores = riasec._originalScores || 
+                          geminiResults?.riasec?._originalScores || 
+                          {};
+    const hasOriginalScores = Object.keys(originalScores).length > 0 &&
+      Object.values(originalScores).some(score => score > 0);
+    
+    if (hasOriginalScores) {
+      console.log('🔧 validateRiasecTopThree: Using _originalScores instead of zeros');
+      console.log('   Found at:', riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
+      scores = originalScores;
+    }
+  }
   
   // Sort all RIASEC types by score in descending order
   const sortedTypes = Object.entries(scores)
@@ -226,7 +244,7 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
 
   // 1. Validate and correct RIASEC topThree
   if (results.riasec) {
-    const validatedRiasec = validateRiasecTopThree(results.riasec);
+    const validatedRiasec = validateRiasecTopThree(results.riasec, results.gemini_results);
     correctedResults.riasec = validatedRiasec;
     
     if (!validatedRiasec._wasCorrect) {
