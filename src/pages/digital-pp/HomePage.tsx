@@ -4,10 +4,12 @@ import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BackgroundRippleEffect } from '../../components/digital-pp/ui/background-ripple-effect';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { useAuth } from '../../context/AuthContext';
 
 const HomePage: React.FC = () => {
   const location = useLocation();
   const { setStudent } = usePortfolio();
+  const { role } = useAuth();
 
   useEffect(() => {
     // Set the candidate data from navigation state into PortfolioContext
@@ -15,6 +17,13 @@ const HomePage: React.FC = () => {
       setStudent(location.state.candidate);
     }
   }, [location.state, setStudent]);
+
+  // Determine if user is an admin viewing a student portfolio
+  const isAdminViewing = role && (role.includes('admin') || role === 'admin');
+  
+  // For admins, use the direct portfolio routes that don't require student role
+  const portfolioPath = isAdminViewing ? '/portfolio' : '/student/digital-portfolio/portfolio';
+  const passportPath = isAdminViewing ? '/passport' : '/student/digital-portfolio/passport';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
@@ -83,7 +92,7 @@ const HomePage: React.FC = () => {
               whileTap={{ scale: 0.95 }}
             >
               <Link
-                to="/student/digital-portfolio/portfolio"
+                to={portfolioPath}
                 className="inline-flex items-center px-10 py-5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold text-lg shadow-2xl hover:shadow-purple-500/50 transition-all group relative overflow-hidden"
               >
                 <span className="relative z-10 flex items-center">
@@ -230,7 +239,7 @@ const HomePage: React.FC = () => {
                   className="flex justify-center"
                 >
                   <Link
-                    to="/student/digital-portfolio/portfolio"
+                    to={portfolioPath}
                     className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
                   >
                     <span className="relative z-10 flex items-center">
@@ -348,7 +357,7 @@ const HomePage: React.FC = () => {
                   className="flex justify-center"
                 >
                   <Link
-                    to="/student/digital-portfolio/passport"
+                    to={passportPath}
                     className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
                   >
                     <span className="relative z-10 flex items-center">

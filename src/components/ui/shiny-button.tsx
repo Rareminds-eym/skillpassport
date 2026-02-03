@@ -152,7 +152,7 @@ export function ShinyButton({
             var(--shiny-cta-highlight),
             transparent
           );
-          mask-image: radial-gradient(circle at bottom, transparent 40%, black);
+          mask-image: radial-gradient(circle at center bottom, transparent 40%, black);
           opacity: 0.6;
         }
 

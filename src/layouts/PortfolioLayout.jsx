@@ -6,6 +6,7 @@ import {
   usePromotionalEventContext,
 } from '../contexts/PromotionalEventContext';
 import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
+import { useAuth } from '../context/AuthContext';
 
 const PortfolioLayoutContent = () => {
   const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();
@@ -14,24 +15,30 @@ const PortfolioLayoutContent = () => {
     dismissBanner: dismissAssessmentBanner,
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotionalContext();
+  const { role } = useAuth();
+
+  // Don't show promotional banners for admin users
+  const isAdminUser = role && (role.includes('admin') || role === 'admin');
+  const shouldShowAssessmentBanner = showAssessmentBanner && !isAdminUser;
+  const shouldShowPromoBanner = showBanner && !isAdminUser;
 
   // Show assessment banner if assessment modal was dismissed, otherwise show promo banner
-  const hasAnyBanner = showAssessmentBanner || showBanner;
+  const hasAnyBanner = shouldShowAssessmentBanner || shouldShowPromoBanner;
 
   return (
     <div className="min-h-screen flex flex-col">
       {/* Assessment Promotional Banner - Shows after modal is dismissed */}
       <AssessmentPromotionalBanner
-        isOpen={showAssessmentBanner}
+        isOpen={shouldShowAssessmentBanner}
         onClose={dismissAssessmentBanner}
         getTimeRemaining={getAssessmentTimeRemaining}
       />
 
       {/* Promotional Banner - Shows after promo modal is dismissed (only if assessment banner not showing) */}
-      {!showAssessmentBanner && (
+      {!shouldShowAssessmentBanner && (
         <PromotionalBanner
           event={event}
-          isOpen={showBanner}
+          isOpen={shouldShowPromoBanner}
           onClose={dismissBanner}
           getTimeRemaining={getTimeRemaining}
         />
