@@ -45,16 +45,11 @@ export default defineConfig({
       port: 3000
     },
     proxy: {
-      '/api/user': {
+      '/api': {
         target: 'http://127.0.0.1:8788',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/user/, ''),
-        secure: true,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
-      }
-    }
+        secure: false,
+      },
+    },
   },
 });
