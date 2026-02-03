@@ -186,7 +186,6 @@ export async function handleCreateStudent(request: Request, env: any): Promise<R
     const { data: studentRecord, error: studentError } = await supabaseAdmin
       .from('students')
       .insert({
-        id: authUser.user.id,
         user_id: authUser.user.id,
         email: student.email.toLowerCase(),
         name: student.name,
