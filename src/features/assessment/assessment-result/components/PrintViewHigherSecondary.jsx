@@ -68,8 +68,40 @@ const PrintViewHigherSecondary = ({
     );
   }
 
-  // Extract data from results
-  const { riasec, aptitude, bigFive, workValues, careerFit, skillGap, roadmap } = results;
+  // 🔧 CRITICAL FIX: Normalize RIASEC scores before using them
+  // The normalizer moves _originalScores to riasec level, not gemini_results level
+  let normalizedResults = { ...results };
+  if (results.riasec) {
+    const scores = results.riasec.scores || {};
+    const allZeros = Object.values(scores).every(score => score === 0);
+    
+    // Check for _originalScores at riasec level (after normalization)
+    // OR at gemini_results level (before normalization)
+    const originalScores = results.riasec._originalScores || 
+                          results.gemini_results?.riasec?._originalScores || 
+                          {};
+    const hasOriginalScores = Object.keys(originalScores).length > 0 &&
+      Object.values(originalScores).some(score => score > 0);
+    
+    if (allZeros && hasOriginalScores) {
+      console.log('🔧 PDF PrintViewHigherSecondary: Normalizing RIASEC scores from _originalScores');
+      console.log('   Original scores found at:', results.riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
+      normalizedResults = {
+        ...results,
+        riasec: {
+          ...results.riasec,
+          scores: originalScores,
+          _originalScores: originalScores,
+          maxScore: results.riasec.maxScore || 
+                   results.gemini_results?.riasec?.maxScore || 
+                   20
+        }
+      };
+    }
+  }
+
+  // Extract data from normalized results
+  const { riasec, aptitude, bigFive, workValues, careerFit, skillGap, roadmap } = normalizedResults;
 
   // Safe student info with defaults
   const safeStudentInfo = getSafeStudentInfo(studentInfo);
@@ -120,7 +152,7 @@ const PrintViewHigherSecondary = ({
         {/* Page 4: Detailed Assessment Breakdown (Developer Reference) */}
         <PrintPage pageNumber={4}>
           <DetailedAssessmentBreakdown 
-            results={results} 
+            results={normalizedResults} 
             riasecNames={safeRiasecNames}
             gradeLevel="after10"
           />
@@ -231,18 +263,26 @@ const PrintViewHigherSecondary = ({
 const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
   if (!riasec || !riasec.scores) return null;
 
+  // 🔧 CRITICAL FIX: Use _originalScores if riasec.scores are all zeros
+  let scores = riasec.scores || {};
+  const allZeros = Object.values(scores).every(score => score === 0);
+  if (allZeros && riasec._originalScores && Object.keys(riasec._originalScores).length > 0) {
+    console.log('🔧 PDF InterestProfile (HigherSecondary): Using _originalScores instead of zeros');
+    scores = riasec._originalScores;
+  }
+
   const maxScore = riasec.maxScore || 20;
   const codes = ['R', 'I', 'A', 'S', 'E', 'C'];
   
   // Get top three interests
   const topThree = riasec.topThree || codes
-    .map(code => ({ code, score: riasec.scores[code] || 0 }))
+    .map(code => ({ code, score: scores[code] || 0 }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
     .map(item => item.code);
 
   const topInterestsText = topThree.map(code => safeRiasecNames[code]).join(', ');
-  const hasStrongInterests = topThree.some(code => (riasec.scores?.[code] || 0) >= maxScore * 0.5);
+  const hasStrongInterests = topThree.some(code => (scores[code] || 0) >= maxScore * 0.5);
 
   return (
     <div>
@@ -302,7 +342,7 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
           zIndex: 1
         }}>
           {topThree.map((code, idx) => {
-            const score = riasec.scores?.[code] || 0;
+            const score = scores[code] || 0;
             
             return (
               <div key={code} style={{ width: '28%', textAlign: 'center' }}>

@@ -1001,6 +1001,14 @@ const AssessmentResult = () => {
             <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
 
             {/* Print View - Simple document format for PDF */}
+            {/* Debug: Log what PrintView receives */}
+            {results && console.log('📄 AssessmentResult passing to PrintView:', {
+                hasRiasec: !!results.riasec,
+                riasecScores: results.riasec?.scores,
+                riasecOriginal: results.riasec?._originalScores,
+                geminiOriginal: results.gemini_results?.riasec?._originalScores,
+                gradeLevel
+            })}
             <PrintView
                 results={results}
                 studentInfo={studentInfo}
