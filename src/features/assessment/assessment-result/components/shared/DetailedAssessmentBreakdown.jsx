@@ -252,20 +252,69 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
             id: 6,
             name: 'Employability Skills',
             data: employability,
-            scores: employability?.strengthAreas ? employability.strengthAreas.map((area, idx) => ({
-                label: area.skill || area,
-                value: area.score || 4,
-                max: 5,
-                percentage: Math.round(((area.score || 4) / 5) * 100)
-            })) : [],
-            avgPercentage: employability?.strengthAreas ? Math.round(
-                employability.strengthAreas.reduce((sum, area) => sum + (area.score || 4), 0) / 
-                employability.strengthAreas.length / 5 * 100
-            ) : 0
+            scores: (() => {
+                if (!employability) return [];
+                
+                // Handle skillScores object (e.g., {Teamwork: 4.67, Leadership: 5, ...})
+                if (employability.skillScores && typeof employability.skillScores === 'object') {
+                    return Object.entries(employability.skillScores).map(([skill, score]) => ({
+                        label: skill,
+                        value: score,
+                        max: 5,
+                        percentage: Math.round((score / 5) * 100)
+                    }));
+                }
+                
+                // Handle strengthAreas array (e.g., ["Leadership", "Teamwork", ...])
+                if (employability.strengthAreas && Array.isArray(employability.strengthAreas)) {
+                    return employability.strengthAreas.map((area) => {
+                        // If area is an object with skill and score
+                        if (typeof area === 'object' && area.skill) {
+                            return {
+                                label: area.skill,
+                                value: area.score || 4,
+                                max: 5,
+                                percentage: Math.round(((area.score || 4) / 5) * 100)
+                            };
+                        }
+                        // If area is just a string, use default score
+                        return {
+                            label: area,
+                            value: 4,
+                            max: 5,
+                            percentage: 80
+                        };
+                    });
+                }
+                
+                return [];
+            })(),
+            avgPercentage: (() => {
+                if (!employability) return 0;
+                
+                // Use overallReadiness if available
+                if (employability.overallReadiness) {
+                    const readinessMap = { 'High': 85, 'Medium': 65, 'Low': 40 };
+                    return readinessMap[employability.overallReadiness] || 70;
+                }
+                
+                // Calculate from skillScores
+                if (employability.skillScores && typeof employability.skillScores === 'object') {
+                    const scores = Object.values(employability.skillScores);
+                    return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length / 5 * 100);
+                }
+                
+                // Default for strengthAreas
+                if (employability.strengthAreas && employability.strengthAreas.length > 0) {
+                    return 80;
+                }
+                
+                return 0;
+            })()
         }
     ];
 
-    // Filter stages based on grade level
+    // Filter stages based on grade level - ONLY show stages that have data
     // Middle School (6-8) & High School (9-10): Basic stages only
     // After 10 (11-12): Add knowledge assessment
     // After 12 & College: All stages including employability
@@ -286,12 +335,13 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                 });
             
             case 'after10':
-                // Grades 11-12: RIASEC, Aptitude, Adaptive Aptitude (if available), Big Five, Work Values, Knowledge
-                return allStages.filter(s => [1, 2, 2.5, 3, 4, 5].includes(s.id) && s.data);
+                // Grades 11-12: RIASEC, Stream Aptitude, Adaptive Aptitude (if available), Big Five, Work Values, Employability
+                // Note: Knowledge section (stage 5) is NOT included for after10 (stream-agnostic assessment)
+                return allStages.filter(s => [1, 2, 2.5, 3, 4, 6].includes(s.id) && s.data);
             
             case 'after12':
             case 'college':
-                // After 12 & College: All stages including Employability
+                // After 12 & College: All stages including Employability and Knowledge
                 return allStages.filter(s => s.data);
             
             default:
@@ -302,17 +352,28 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
 
     const stages = getStagesForGradeLevel();
     
-    // For middle/high school, the total expected stages is 2 (RIASEC + Adaptive Aptitude)
+    // 🔧 CRITICAL FIX: Total expected stages should show ALL possible stages for the grade level
+    // This shows students what they SHOULD complete, not just what they DID complete
+    // For after10: 6 stages (RIASEC, BigFive, WorkValues, Employability, Adaptive Aptitude, Stream Aptitude)
     const getTotalExpectedStages = () => {
         switch (gradeLevel) {
             case 'middle':
             case 'highschool':
                 return 2; // RIASEC + Adaptive Aptitude
             case 'after10':
-                return 6; // RIASEC, Aptitude, Adaptive, BigFive, WorkValues, Knowledge
+                // After 10th has 6 possible stages:
+                // 1. RIASEC (Career Interests)
+                // 2. Stream Aptitude
+                // 2.5. Adaptive Aptitude
+                // 3. Big Five Personality
+                // 4. Work Values
+                // 6. Employability Skills
+                // Note: Knowledge (stage 5) is NOT included for after10
+                return 6;
             case 'after12':
             case 'college':
-                return 7; // All stages including Employability
+                // All 7 stages including Employability and Knowledge
+                return 7;
             default:
                 return stages.length;
         }

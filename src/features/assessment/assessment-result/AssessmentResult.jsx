@@ -1427,10 +1427,13 @@ const AssessmentResult = () => {
                                                                     </h5>
                                                                     <div className="space-y-2">
                                                                         {streamRec.reasoning.interests && (
-                                                                            <p className="text-gray-300 text-sm">• {streamRec.reasoning.interests}</p>
+                                                                            <p className="text-gray-300 text-sm">• <strong>Interests:</strong> {streamRec.reasoning.interests}</p>
                                                                         )}
                                                                         {streamRec.reasoning.aptitude && (
-                                                                            <p className="text-gray-300 text-sm">• {streamRec.reasoning.aptitude}</p>
+                                                                            <p className="text-gray-300 text-sm">• <strong>Aptitude:</strong> {streamRec.reasoning.aptitude}</p>
+                                                                        )}
+                                                                        {streamRec.reasoning.personality && (
+                                                                            <p className="text-gray-300 text-sm">• <strong>Personality:</strong> {streamRec.reasoning.personality}</p>
                                                                         )}
                                                                     </div>
                                                                 </div>
