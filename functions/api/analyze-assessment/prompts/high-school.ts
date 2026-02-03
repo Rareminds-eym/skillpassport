@@ -172,15 +172,30 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
 **IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure for HIGH SCHOOL (9-10):
 
+**CRITICAL DATABASE COMPATIBILITY REQUIREMENTS:**
+1. riasec.code MUST be a 3-letter string (e.g., "RES"), NOT an array
+2. aptitude.scores MUST exist with standard categories (verbal, numerical, abstract, spatial, clerical)
+3. aptitude.overallScore MUST be a number (0-100)
+4. bigFive MUST be a flat object with O, C, E, A, N keys (NO nested "scores" wrapper)
+
 {
   "riasec": {
-    "topThree": ["Top 3 RIASEC codes"],
+    "code": "ABC",
     "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "maxScore": 20,
-    "interpretation": "2-3 sentences about what their interests mean for stream selection and career paths"
+    "interpretation": "2-3 sentences about what their interests mean for stream selection and career paths",
+    "topThree": ["Top 3 RIASEC codes (for reference only)"]
   },
   "aptitude": {
+    "scores": {
+      "verbal": { "correct": 0, "total": 0, "percentage": 0 },
+      "numerical": { "correct": 0, "total": 0, "percentage": 0 },
+      "abstract": { "correct": 0, "total": 0, "percentage": 0 },
+      "spatial": { "correct": 0, "total": 0, "percentage": 0 },
+      "clerical": { "correct": 0, "total": 0, "percentage": 0 }
+    },
+    "overallScore": 0,
     "selfAssessment": {
       "Analytical": {"ease": 0, "enjoyment": 0, "average": 0},
       "Creative": {"ease": 0, "enjoyment": 0, "average": 0},
@@ -195,7 +210,6 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       "pattern_recognition": {"accuracy": 0}
     },
     "topStrengths": ["2-3 strengths combining self-assessment AND adaptive test results"],
-    "overallScore": 0,
     "cognitiveProfile": "How they think and solve problems based on both assessments",
     "adaptiveLevel": 0,
     "adaptiveConfidence": "high/medium/low"

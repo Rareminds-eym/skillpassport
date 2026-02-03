@@ -171,8 +171,15 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
 **IMPORTANT**: Return ONLY a JSON object (no markdown). Use this EXACT structure for MIDDLE SCHOOL (6-8):
 
+**CRITICAL DATABASE COMPATIBILITY REQUIREMENTS:**
+1. riasec.code MUST be a 3-letter string (e.g., "RIA"), NOT an array
+2. aptitude.scores MUST exist with standard categories (verbal, numerical, abstract, spatial, clerical)
+3. aptitude.overallScore MUST be a number (0-100)
+4. bigFive MUST be a flat object with O, C, E, A, N keys (NO nested "scores" wrapper)
+
 {
   "riasec": {
+    "code": "RIA",
     "topThree": ["R", "I", "A"],
     "scores": { "R": 12, "I": 10, "A": 8, "S": 5, "E": 4, "C": 3 },
     "percentages": { "R": 60, "I": 50, "A": 40, "S": 25, "E": 20, "C": 15 },
@@ -181,6 +188,14 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
   },
   "aptitude": {
     "scores": {
+      "verbal": { "correct": 0, "total": 0, "percentage": 0 },
+      "numerical": { "correct": 0, "total": 0, "percentage": 0 },
+      "abstract": { "correct": 0, "total": 0, "percentage": 0 },
+      "spatial": { "correct": 0, "total": 0, "percentage": 0 },
+      "clerical": { "correct": 0, "total": 0, "percentage": 0 }
+    },
+    "overallScore": 0,
+    "adaptiveTest": {
       "numerical_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their math and number skills based on test results"},
       "logical_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their problem-solving ability based on test results"},
       "verbal_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their language and word skills based on test results"},
@@ -188,7 +203,6 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       "pattern_recognition": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their pattern-finding ability based on test results"}
     },
     "topStrengths": ["MUST BE REAL STRENGTHS - List 2-3 cognitive strengths from their adaptive test results (e.g., 'Strong numerical reasoning (85%)', 'Excellent pattern recognition (92%)')"],
-    "overallScore": 0,
     "cognitiveProfile": "MUST BE PERSONALIZED - Explain how they think and solve problems based on their adaptive test performance",
     "adaptiveLevel": 0,
     "adaptiveConfidence": "high/medium/low"

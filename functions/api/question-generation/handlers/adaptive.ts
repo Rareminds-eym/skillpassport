@@ -205,7 +205,17 @@ Requirements:
 - Ensure questions are evenly distributed among these subtags
 - CRITICAL: Each question MUST have completely different text from all others
 - CRITICAL: Do NOT generate questions similar to these already used questions:
-${excludeTextsArray.length > 0 ? excludeTextsArray.slice(0, 20).map((t, i) => `  ${i + 1}. "${t.substring(0, 100)}..."`).join('\n') : '  (No exclusions)'}
+${excludeTextsArray.length > 0 ? excludeTextsArray.slice(0, 30).map((t, i) => `  ${i + 1}. "${t.substring(0, 150)}..."`).join('\n') : '  (No exclusions)'}
+
+⚠️ UNIQUENESS REQUIREMENTS (CRITICAL):
+- Use COMPLETELY DIFFERENT scenarios and contexts from the excluded questions above
+- Change numerical values by at least 50% from any similar questions
+- Use different measurement units (if one uses dollars, use meters/hours/pieces/etc.)
+- Vary the problem structure (if one is about profit/loss, use time-speed-distance/ratio/percentage/etc.)
+- Use different subjects (if one mentions fruits, use vehicles/animals/students/books/etc.)
+- Create ORIGINAL contexts - do not repeat or slightly modify excluded scenarios
+- If you see a pattern in excluded questions, deliberately avoid that pattern
+- Think creatively - each question should feel fresh and unique
 
 IMPORTANT OUTPUT FORMAT:
 You MUST return a JSON array starting with [ and ending with ].
@@ -239,6 +249,7 @@ CRITICAL RULES:
 5. Keep question text concise and on single lines where possible
 6. Ensure all strings are properly quoted
 7. Ensure all commas are in the right places
+8. MOST IMPORTANT: Ensure questions are COMPLETELY UNIQUE and different from excluded questions
 
 Return ONLY the JSON array, nothing else.`;
 
@@ -275,7 +286,8 @@ Return ONLY the JSON array, nothing else.`;
     console.log(`✅ [Adaptive-Handler] AI generated ${aiQuestionsRaw.length} raw questions`);
 
     // Filter out any questions that match excluded texts
-    console.log(`🔍 [Adaptive-Handler] Filtering for duplicates...`);
+    // CHANGED: Use 85% threshold instead of 90% to allow more questions through
+    console.log(`🔍 [Adaptive-Handler] Filtering for duplicates (85% similarity threshold)...`);
     const filteredQuestions = aiQuestionsRaw.filter((q: any, index: number) => {
         const questionText = q.text?.toLowerCase().trim();
         if (!questionText) {
@@ -291,9 +303,9 @@ Return ONLY the JSON array, nothing else.`;
                 console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is exact duplicate: "${questionText.substring(0, 50)}..."`);
                 return false;
             }
-            // Very similar (>90% match)
+            // Very similar (>85% match) - CHANGED from 90% to 85%
             const similarity = calculateSimilarity(questionText, excluded);
-            if (similarity > 0.9) {
+            if (similarity > 0.85) {
                 console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is ${(similarity * 100).toFixed(0)}% similar: "${questionText.substring(0, 50)}..."`);
                 return false;
             }
@@ -303,9 +315,45 @@ Return ONLY the JSON array, nothing else.`;
     
     console.log(`🔍 [Adaptive-Handler] After filtering: ${filteredQuestions.length}/${aiQuestionsRaw.length} questions remain`);
 
+    // CHANGED: Don't throw error if all filtered out, just log warning and return what we have
     if (filteredQuestions.length === 0) {
-        console.error(`❌ [Adaptive-Handler] All questions were filtered out as duplicates`);
-        throw new Error('All AI-generated questions were duplicates of existing questions');
+        console.warn(`⚠️ [Adaptive-Handler] All questions were filtered as duplicates, using best available`);
+        // Use the least similar question from the raw set
+        let leastSimilar = aiQuestionsRaw[0];
+        let lowestSimilarity = 1.0;
+        
+        for (const q of aiQuestionsRaw) {
+            const questionText = q.text?.toLowerCase().trim();
+            if (!questionText) continue;
+            
+            let maxSimilarity = 0;
+            for (const excludedText of excludeTexts) {
+                const similarity = calculateSimilarity(questionText, excludedText.toLowerCase().trim());
+                maxSimilarity = Math.max(maxSimilarity, similarity);
+            }
+            
+            if (maxSimilarity < lowestSimilarity) {
+                lowestSimilarity = maxSimilarity;
+                leastSimilar = q;
+            }
+        }
+        
+        console.log(`📊 [Adaptive-Handler] Using least similar question (${(lowestSimilarity * 100).toFixed(0)}% similarity)`);
+        return [leastSimilar].map((q: any, idx: number) => {
+            const assignedSubtag = subtags[idx % subtags.length] || 'logical_reasoning';
+            return {
+                id: generateQuestionId(gradeLevel, phase as any, difficulty, assignedSubtag),
+                text: q.text,
+                options: q.options,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation,
+                difficulty: difficulty,
+                subtag: assignedSubtag,
+                gradeLevel: gradeLevel,
+                phase: phase as any,
+                createdAt: new Date().toISOString()
+            };
+        });
     }
     
     console.log(`🏗️ [Adaptive-Handler] Building final question objects...`);
@@ -367,7 +415,7 @@ export async function generateDiagnosticScreenerQuestions(
 
     try {
         const startTime = Date.now();
-        const questions = await generateQuestionsWithAI(
+        let questions = await generateQuestionsWithAI(
             env,
             gradeLevel,
             'diagnostic',
@@ -377,11 +425,48 @@ export async function generateDiagnosticScreenerQuestions(
             new Set(excludeQuestionTexts)
         );
 
+        // If we got fewer questions than requested due to filtering, try to generate more
+        if (questions.length < count) {
+            console.warn(`⚠️ [Diagnostic-Handler] Only got ${questions.length}/${count} questions after filtering`);
+            console.log(`🔄 [Diagnostic-Handler] Attempting to generate ${count - questions.length} more questions...`);
+            
+            const remainingCount = count - questions.length;
+            const remainingSubtags = Array.from({ length: remainingCount }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
+            
+            // Add already generated questions to exclusion list
+            const updatedExcludeTexts = new Set([
+                ...excludeQuestionTexts,
+                ...questions.map(q => q.text)
+            ]);
+            
+            try {
+                const additionalQuestions = await generateQuestionsWithAI(
+                    env,
+                    gradeLevel,
+                    'diagnostic',
+                    remainingSubtags,
+                    difficulty,
+                    remainingCount,
+                    updatedExcludeTexts
+                );
+                
+                questions = [...questions, ...additionalQuestions];
+                console.log(`✅ [Diagnostic-Handler] Generated ${additionalQuestions.length} additional questions`);
+            } catch (retryError: any) {
+                console.error(`❌ [Diagnostic-Handler] Failed to generate additional questions:`, retryError.message);
+                // Continue with what we have
+            }
+        }
+
         const reordered = reorderToPreventConsecutiveSubtags(questions, 2);
         const duration = Date.now() - startTime;
 
         console.log(`✅ [Diagnostic-Handler] Successfully generated ${reordered.length} questions in ${duration}ms`);
         console.log(`🔄 [Diagnostic-Handler] Reordered to prevent consecutive subtags`);
+        
+        if (reordered.length < count) {
+            console.warn(`⚠️ [Diagnostic-Handler] WARNING: Expected ${count} questions but only generated ${reordered.length}`);
+        }
 
         return {
             questions: reordered,
@@ -485,7 +570,7 @@ export async function generateStabilityConfirmationQuestions(
 
     try {
         const startTime = Date.now();
-        const questions = await generateQuestionsWithAI(
+        let questions = await generateQuestionsWithAI(
             env,
             gradeLevel,
             'stability',
@@ -495,9 +580,79 @@ export async function generateStabilityConfirmationQuestions(
             new Set(excludeQuestionTexts)
         );
 
+        console.log(`📊 [Stability-Handler] After generateQuestionsWithAI: ${questions.length} questions`);
+
+        // If we got fewer questions than requested due to filtering, try to generate more
+        // CRITICAL: Use multiple retry attempts to ensure we get exactly 6 questions
+        let retryAttempts = 0;
+        const maxRetryAttempts = 3;
+        
+        while (questions.length < count && retryAttempts < maxRetryAttempts) {
+            const missing = count - questions.length;
+            retryAttempts++;
+            
+            console.warn(`⚠️ [Stability-Handler] Only got ${questions.length}/${count} questions (attempt ${retryAttempts}/${maxRetryAttempts})`);
+            console.log(`🔄 [Stability-Handler] Attempting to generate ${missing} more questions...`);
+            
+            const remainingSubtags = Array.from({ length: missing }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
+            
+            // Add already generated questions to exclusion list
+            const updatedExcludeTexts = new Set([
+                ...excludeQuestionTexts,
+                ...questions.map(q => q.text)
+            ]);
+            
+            console.log(`📋 [Stability-Handler] Retry ${retryAttempts} parameters:`, {
+                missing,
+                remainingSubtags: remainingSubtags.join(', '),
+                totalExclusions: updatedExcludeTexts.size
+            });
+            
+            try {
+                // On later retries, use slightly different difficulty to get more variety
+                const retryDifficulty = retryAttempts > 1 
+                    ? Math.max(1, Math.min(5, provisionalBand + (retryAttempts % 2 === 0 ? 1 : -1))) as DifficultyLevel
+                    : provisionalBand;
+                
+                if (retryAttempts > 1) {
+                    console.log(`🎲 [Stability-Handler] Using adjusted difficulty ${retryDifficulty} for variety`);
+                }
+                
+                const additionalQuestions = await generateQuestionsWithAI(
+                    env,
+                    gradeLevel,
+                    'stability',
+                    remainingSubtags,
+                    retryDifficulty,
+                    missing,
+                    updatedExcludeTexts
+                );
+                
+                if (additionalQuestions.length > 0) {
+                    questions = [...questions, ...additionalQuestions];
+                    console.log(`✅ [Stability-Handler] Generated ${additionalQuestions.length} additional questions. Total: ${questions.length}`);
+                } else {
+                    console.warn(`⚠️ [Stability-Handler] Retry ${retryAttempts} returned no questions`);
+                }
+            } catch (retryError: any) {
+                console.error(`❌ [Stability-Handler] Retry ${retryAttempts} failed:`, retryError.message);
+                // Continue to next retry attempt
+            }
+        }
+        
+        // Final check - if still don't have 6, log critical warning but continue
+        if (questions.length < count) {
+            console.error(`❌ [Stability-Handler] CRITICAL: Only have ${questions.length}/${count} questions after ${maxRetryAttempts} retry attempts`);
+            console.error(`❌ [Stability-Handler] Test will complete with fewer stability questions than expected`);
+        }
+
         const duration = Date.now() - startTime;
 
         console.log(`✅ [Stability-Handler] Successfully generated ${questions.length} questions in ${duration}ms`);
+        
+        if (questions.length < count) {
+            console.warn(`⚠️ [Stability-Handler] WARNING: Expected ${count} questions but only generated ${questions.length}`);
+        }
 
         return {
             questions: questions,

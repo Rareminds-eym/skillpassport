@@ -3,13 +3,78 @@
  * 
  * This prompt is specifically for students who have completed 12th grade
  * and are choosing college programs/degrees. It requires evidence from
- * ALL 6 assessment sections for comprehensive career guidance.
+ * ALL 7 assessment sections for comprehensive career guidance.
  */
 
-import type { AssessmentData } from '../types';
+import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
+
+/**
+ * Pre-process adaptive aptitude results into actionable insights
+ */
+function processAdaptiveResults(results: AdaptiveAptitudeResults): {
+  section: string;
+  isHighAptitude: boolean;
+} {
+  const level = results.aptitudeLevel;
+  const accuracy = results.overallAccuracy;
+  const isHighAptitude = level >= 4 || accuracy >= 75;
+  
+  const levelLabels: Record<number, string> = {
+    1: 'Emerging',
+    2: 'Developing', 
+    3: 'Capable',
+    4: 'Strong',
+    5: 'Exceptional'
+  };
+  
+  const subtags = results.accuracyBySubtag || {};
+  const sortedSubtags = Object.entries(subtags)
+    .map(([name, data]: [string, any]) => ({
+      name: name.replace(/_/g, ' '),
+      accuracy: typeof data === 'number' ? data : data?.accuracy || 0
+    }))
+    .sort((a, b) => b.accuracy - a.accuracy);
+  
+  const topStrengths = sortedSubtags
+    .filter(s => s.accuracy >= 70)
+    .slice(0, 3)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+  
+  const weakAreas = sortedSubtags
+    .filter(s => s.accuracy < 50)
+    .slice(0, 2)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+
+  const section = `
+## ═══════════════════════════════════════════════════════════════════════════
+## SECTION 7: ADAPTIVE APTITUDE TEST RESULTS
+## ═══════════════════════════════════════════════════════════════════════════
+
+- **Aptitude Level**: ${level}/5 (${levelLabels[level] || 'Unknown'})
+- **Overall Accuracy**: ${Math.round(accuracy)}%
+- **Confidence**: ${results.confidenceTag}
+- **Performance Trend**: ${results.pathClassification}
+
+**COGNITIVE STRENGTHS**:
+${topStrengths.length > 0 ? topStrengths.map(s => `- ${s}`).join('\n') : '- No standout strengths identified'}
+
+**AREAS FOR GROWTH**:
+${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No significant weak areas'}
+
+**IMPORTANT**: Use these adaptive test results as ADDITIONAL evidence when generating career clusters. The adaptive test provides a more accurate measure of cognitive abilities than self-assessment.`;
+
+  return { section, isHighAptitude };
+}
 
 export function buildAfter12Prompt(assessmentData: AssessmentData, answersHash: number): string {
-  return `You are an expert career counselor for students who have completed 12th grade and are choosing college programs. Analyze this student's comprehensive 6-section career assessment and provide detailed guidance for their college and career decisions.
+  // Pre-process adaptive results for efficiency
+  const adaptiveData = assessmentData.adaptiveAptitudeResults 
+    ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
+    : null;
+  
+  const adaptiveSection = adaptiveData?.section || '';
+
+  return `You are an expert career counselor for students who have completed 12th grade and are choosing college programs. Analyze this student's comprehensive 7-section career assessment and provide detailed guidance for their college and career decisions.
 
 ## CRITICAL: This must be DETERMINISTIC - same input = same output always
 Session ID: ${answersHash}
@@ -174,13 +239,15 @@ Total questions: ${assessmentData.totalKnowledgeQuestions}
 
 Use knowledge score to assess academic readiness and recommend preparation strategies.
 
+${adaptiveSection}
+
 ## ═══════════════════════════════════════════════════════════════════════════
 ## COMPREHENSIVE ANALYSIS REQUIREMENTS
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**YOU MUST USE ALL 6 SECTIONS TO GENERATE CAREER CLUSTERS:**
+**YOU MUST USE ALL 7 SECTIONS TO GENERATE CAREER CLUSTERS:**
 
-For each career cluster, you MUST provide evidence from ALL 6 sections:
+For each career cluster, you MUST provide evidence from ALL 7 sections:
 
 1. **Interest Evidence** (from RIASEC): Which RIASEC types support this career path?
 2. **Aptitude Evidence** (from Aptitude Test): Which cognitive strengths make them suitable?
@@ -188,6 +255,7 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
 4. **Values Evidence** (from Work Values): Which work values are satisfied?
 5. **Employability Evidence** (from Skills): Which professional skills support this path?
 6. **Knowledge Evidence** (from Domain Test): How does their domain knowledge support this?
+7. **Adaptive Aptitude Evidence** (from Adaptive Test): How do their adaptive test results validate this choice?
 
 **EXAMPLE EVIDENCE STRUCTURE:**
 \`\`\`json
@@ -197,7 +265,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
   "personality": "High Conscientiousness (4.2) and Openness (4.0) suggest disciplined approach to learning and curiosity for new technologies",
   "values": "Achievement (4.5) and Independence (4.2) align with project-based work and autonomous problem-solving in tech roles",
   "employability": "Strong problem-solving (85%) and digital literacy (90%) provide solid foundation for technical careers",
-  "knowledge": "Domain knowledge score of 75% demonstrates solid understanding of core concepts and readiness for advanced study"
+  "knowledge": "Domain knowledge score of 75% demonstrates solid understanding of core concepts and readiness for advanced study",
+  "adaptiveAptitude": "Adaptive test level 4/5 with 82% accuracy and strong logical reasoning (88%) confirms exceptional analytical capabilities"
 }
 \`\`\`
 
@@ -266,7 +335,7 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
         "title": "Career Cluster #1 (e.g., Technology & Software Development)",
         "matchScore": 88,
         "fit": "High",
-        "description": "Comprehensive explanation of why this career path fits based on ALL 6 assessment sections",
+        "description": "Comprehensive explanation of why this career path fits based on ALL 7 assessment sections",
         "examples": ["6-8 specific career roles with brief descriptions"],
         "educationPath": "Specific college majors, degrees, and programs (e.g., B.Tech CSE, BCA, B.Sc Computer Science)",
         "whatYoullDo": "Day-to-day work and responsibilities in this field",
@@ -277,7 +346,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "Big Five traits that align with success (MUST INCLUDE)",
           "values": "Work values satisfied by this career (MUST INCLUDE)",
           "employability": "Professional skills that support this path (MUST INCLUDE)",
-          "knowledge": "Domain knowledge readiness for this field (MUST INCLUDE)"
+          "knowledge": "Domain knowledge readiness for this field (MUST INCLUDE)",
+          "adaptiveAptitude": "Adaptive test results that validate this choice (MUST INCLUDE)"
         },
         "roles": {
           "entry": ["5-6 entry-level positions"],
@@ -307,7 +377,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "Personality alignment (REQUIRED)",
           "values": "Values match (REQUIRED)",
           "employability": "Skills support (REQUIRED)",
-          "knowledge": "Knowledge readiness (REQUIRED)"
+          "knowledge": "Knowledge readiness (REQUIRED)",
+          "adaptiveAptitude": "Adaptive test validation (REQUIRED)"
         },
         "roles": {
           "entry": ["4-5 entry positions"],
@@ -337,7 +408,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "Personality considerations (REQUIRED)",
           "values": "Values alignment (REQUIRED)",
           "employability": "Skills relevance (REQUIRED)",
-          "knowledge": "Knowledge gaps/strengths (REQUIRED)"
+          "knowledge": "Knowledge gaps/strengths (REQUIRED)",
+          "adaptiveAptitude": "Adaptive test insights (REQUIRED)"
         },
         "roles": {
           "entry": ["3-4 entry roles"],
@@ -369,7 +441,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "High Conscientiousness (4.3) and Openness (4.1) suggest disciplined learning and curiosity",
           "values": "Achievement (4.5) and Independence (4.2) align with project-based autonomous work",
           "employability": "Strong problem-solving (90%) and digital literacy (95%) provide solid foundation",
-          "knowledge": "Domain knowledge score of 78% demonstrates readiness for advanced CS concepts"
+          "knowledge": "Domain knowledge score of 78% demonstrates readiness for advanced CS concepts",
+          "adaptiveAptitude": "Adaptive test level 4/5 with 85% accuracy confirms strong analytical and logical reasoning abilities"
         }
       },
       {
@@ -387,7 +460,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "Conscientiousness (4.3) ensures disciplined coding practice and project completion",
           "values": "Independence (4.2) matches the self-directed learning in BCA programs",
           "employability": "Digital literacy (95%) and problem-solving (90%) are core BCA requirements",
-          "knowledge": "Domain knowledge (78%) provides strong foundation for application development"
+          "knowledge": "Domain knowledge (78%) provides strong foundation for application development",
+          "adaptiveAptitude": "Adaptive test results show consistent performance in logical reasoning, ideal for programming"
         }
       },
       {
@@ -405,7 +479,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "High Conscientiousness (4.3) supports the rigorous study mathematics demands",
           "values": "Achievement (4.5) drives success in challenging mathematical concepts",
           "employability": "Problem-solving (90%) and analytical skills support mathematical applications",
-          "knowledge": "Strong foundation (78%) enables transition to pure mathematics"
+          "knowledge": "Strong foundation (78%) enables transition to pure mathematics",
+          "adaptiveAptitude": "High numerical reasoning accuracy in adaptive test validates mathematical aptitude"
         }
       }
     ],

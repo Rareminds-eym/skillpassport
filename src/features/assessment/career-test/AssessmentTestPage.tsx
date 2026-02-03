@@ -340,18 +340,48 @@ const AssessmentTestPage: React.FC = () => {
   // is created before sections are built
   const isAdaptiveLastSectionRef = React.useRef(false);
 
+  console.log('🎯 [AssessmentTestPage] Initializing useAdaptiveAptitude hook with:', {
+    studentId: studentId || '',
+    gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
+    attemptId: flow.attemptId,
+    hasAttemptId: !!flow.attemptId,
+    attemptIdType: typeof flow.attemptId
+  });
+
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    onTestComplete: (testResults) => {
+    attemptId: flow.attemptId, // Pass attemptId to link session immediately
+    onTestComplete: async (testResults) => {
+      console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
       flow.setAnswer('adaptive_aptitude_results', testResults);
+      
+      // Link the adaptive session to the assessment attempt
+      // NOTE: This is now also done in startTest, but keeping it here as a backup
+      if (adaptiveAptitude.session?.id && flow.attemptId) {
+        console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
+          sessionId: adaptiveAptitude.session.id,
+          attemptId: flow.attemptId
+        });
+        await assessmentService.updateAttemptAdaptiveSession(
+          flow.attemptId,
+          adaptiveAptitude.session.id
+        );
+        console.log('✅ [AssessmentTestPage] Backup linking complete');
+      } else {
+        console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
+          hasSession: !!adaptiveAptitude.session?.id,
+          hasAttemptId: !!flow.attemptId
+        });
+      }
+      
       // Always call completeSection to show the section complete screen
       // The auto-submit useEffect will handle submission if it's the last section
       flow.completeSection();
 
     },
     onError: (err) => {
-      console.error('❌ Adaptive aptitude test error:', err);
+      console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
       flow.setError(`Adaptive test error: ${err}`);
     },
   });
