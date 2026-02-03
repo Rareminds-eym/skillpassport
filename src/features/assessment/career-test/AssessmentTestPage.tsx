@@ -1904,13 +1904,15 @@ const AssessmentTestPage: React.FC = () => {
               onContinue={handleNextSection}
             />
           )}
-
-
-          {/* Loading Question Fallback - Handle race condition where intro is hidden but question loading */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && !currentQuestion && (
+          
+          {/* Loading state for adaptive section resume */}
+          {!flow.showSectionIntro && !flow.showSectionComplete && 
+           currentSection?.isAdaptive && 
+           adaptiveAptitude.loading && 
+           !currentQuestion && (
             <LoadingScreen message="Loading question..." />
           )}
-
+          
           {/* Question with Sidebar Layout */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentQuestion && (
             <QuestionLayout
