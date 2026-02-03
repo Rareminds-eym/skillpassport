@@ -98,7 +98,7 @@ const StudentLayout = () => {
 
   return (
     <GlobalPresenceProvider userType="student">
-      <div className={isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}>
+      <div className={`${isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
         {!isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
         {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
         <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>

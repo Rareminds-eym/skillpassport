@@ -430,18 +430,23 @@ const RecommendedJobsContent = ({
                     >
                       Details
                     </button>
-                    {!appliedJobs.has(jobId) ? (
+                    {appliedJobs.has(jobId) ? (
+                      <div className="flex-1 bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
+                        <CheckCircle className="w-4 h-4" />
+                        Applied
+                      </div>
+                    ) : (studentProfile?.currentBacklogs || 0) > 0 ? (
+                      <div className="flex-1 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
+                        <X className="w-4 h-4" />
+                        Not Eligible
+                      </div>
+                    ) : (
                       <button
                         onClick={() => onApply(opportunity)}
                         className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
                       >
                         Apply
                       </button>
-                    ) : (
-                      <div className="flex-1 bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
-                        <CheckCircle className="w-4 h-4" />
-                        Applied
-                      </div>
                     )}
                   </div>
                 </motion.div>

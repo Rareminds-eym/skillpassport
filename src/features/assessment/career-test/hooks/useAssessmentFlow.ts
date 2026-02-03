@@ -243,16 +243,8 @@ export const useAssessmentFlow = ({
   }, [currentQuestionIndex]);
 
   const startSection = useCallback(() => {
-    console.log('🎬 startSection called - Hiding intro screen');
-    console.log('📊 startSection state BEFORE:', {
-      showSectionIntro,
-      showSectionComplete,
-      currentSectionIndex,
-      elapsedTime
-    });
     setShowSectionIntro(false);
     setShowSectionComplete(false);
-    console.log('✅ startSection complete - Section should now be active');
   }, [showSectionIntro, showSectionComplete, currentSectionIndex, elapsedTime]);
 
   const completeSection = useCallback(() => {

@@ -50,8 +50,8 @@ const updateProgress = (stage, message) => {
  * @returns {Promise<Object>} - The analyzed results from AI
  */
 const callOpenRouterAssessment = async (assessmentData) => {
-  const API_URL = import.meta.env.VITE_ASSESSMENT_API_URL || 
-                  'https://analyze-assessment-api.dark-mode-d021.workers.dev';
+  const { getPagesApiUrl } = await import('../utils/pagesUrl');
+  const API_URL = getPagesApiUrl('analyze-assessment');
 
   // Get auth token
   updateProgress('sending', 'Authenticating...');
@@ -65,7 +65,7 @@ const callOpenRouterAssessment = async (assessmentData) => {
 
   console.log('🤖 Sending assessment data to backend for analysis...');
   console.log(`📊 Grade Level: ${assessmentData.gradeLevel}, Stream: ${assessmentData.stream}`);
-  console.log(`🔗 API URL: ${API_URL}/analyze-assessment`);
+  console.log(`🔗 API URL: ${API_URL}`);
   console.log(`📝 Assessment data keys:`, Object.keys(assessmentData));
   console.log(`🎯 STREAM CONTEXT: Student is in ${assessmentData.stream} stream, AI should recommend careers from this stream`);
   console.log(`📋 RIASEC Answers Count:`, Object.keys(assessmentData.riasecAnswers || {}).length);
@@ -77,7 +77,7 @@ const callOpenRouterAssessment = async (assessmentData) => {
     // Add cache-busting parameter to force new worker version
     // This bypasses Cloudflare edge cache to get the latest deployed version
     const cacheBuster = Date.now();
-    const apiUrl = `${API_URL}/analyze-assessment?v=${cacheBuster}`;
+    const apiUrl = `${API_URL}?v=${cacheBuster}`;
     
     const response = await fetch(apiUrl, {
       method: 'POST',

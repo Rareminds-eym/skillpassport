@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, SlidersHorizontal } from 'lucide-react';
 import { Button } from './ui/button';
 
@@ -14,6 +14,34 @@ const AdvancedFilters = ({ onApplyFilters, initialFilters = {} }) => {
     department: initialFilters.department || [],
     postedWithin: initialFilters.postedWithin || '',
   });
+
+  // Sync internal state with external initialFilters when they change
+  React.useEffect(() => {
+    setFilters({
+      employmentType: initialFilters.employmentType || [],
+      experienceLevel: initialFilters.experienceLevel || [],
+      mode: initialFilters.mode || [],
+      salaryMin: initialFilters.salaryMin || '',
+      salaryMax: initialFilters.salaryMax || '',
+      skills: initialFilters.skills || [],
+      department: initialFilters.department || [],
+      postedWithin: initialFilters.postedWithin || '',
+    });
+  }, [initialFilters]);
+
+  // Sync internal state with initialFilters when they change
+  useEffect(() => {
+    setFilters({
+      employmentType: initialFilters.employmentType || [],
+      experienceLevel: initialFilters.experienceLevel || [],
+      mode: initialFilters.mode || [],
+      salaryMin: initialFilters.salaryMin || '',
+      salaryMax: initialFilters.salaryMax || '',
+      skills: initialFilters.skills || [],
+      department: initialFilters.department || [],
+      postedWithin: initialFilters.postedWithin || '',
+    });
+  }, [initialFilters]);
 
   // Options based on actual database schema (matching case-sensitive values)
   const employmentTypes = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Temporary'];

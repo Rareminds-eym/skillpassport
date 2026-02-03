@@ -172,7 +172,7 @@ To get even better parsing, consider adding an AI API key:
 
 3. **OpenRouter**:
    ```
-   VITE_OPENROUTER_API_KEY=your-key-here
+   OPENROUTER_API_KEY=your-key-here
    ```
 
 AI-based parsing provides:

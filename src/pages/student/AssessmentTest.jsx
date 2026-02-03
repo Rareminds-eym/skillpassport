@@ -2416,7 +2416,7 @@ const AssessmentTest = () => {
     return (
         <div className="min-h-screen bg-gray-50/50 flex flex-col items-center py-8 px-4">
             {/* Modern Progress Header */}
-            <div className="w-full max-w-4xl mb-6">
+            <div className="w-full max-w-4xl mb-6" data-tour="section-progress">
                 {/* Progress Stats */}
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-2">
@@ -3138,7 +3138,7 @@ const AssessmentTest = () => {
                                                 transition={{ type: "spring", stiffness: 100, damping: 15 }}
                                                 className="flex-1 flex flex-col"
                                             >
-                                                <div className="mb-6">
+                                                <div className="mb-6" data-tour="question-content">
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
                                                         Question {
                                                             currentSection?.isAdaptive
@@ -3152,7 +3152,7 @@ const AssessmentTest = () => {
                                                                         : currentSection.questions.length
                                                         }
                                                     </span>
-                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
+                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug whitespace-pre-line">
                                                         {currentQuestion?.text}
                                                     </h3>
                                                 </div>

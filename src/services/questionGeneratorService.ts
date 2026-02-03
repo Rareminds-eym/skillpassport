@@ -1,22 +1,14 @@
 /**
  * Question Generator Service
  * 
- * Generates adaptive aptitude test questions using Cloudflare Worker API.
+ * Generates adaptive aptitude test questions using Cloudflare Pages Function.
  * Handles question generation for all test phases with caching support.
  * 
  * Requirements: 4.1, 4.2, 1.4, 6.1, 2.5, 6.2, 3.1, 3.2, 7.1
- * 
- * NOTE: This service uses the unified question-generation-api Cloudflare Worker.
- * The worker is deployed at: question-generation-api.dark-mode-d021.workers.dev
- * 
- * Endpoints used:
- * - POST /generate/diagnostic - Diagnostic screener questions
- * - POST /generate/adaptive - Adaptive core questions
- * - POST /generate/stability - Stability confirmation questions
- * - POST /generate/single - Single question generation
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getPagesApiUrl } from '../utils/pagesUrl';
 import {
   Question,
   GradeLevel,
@@ -27,19 +19,17 @@ import {
 } from '../types/adaptiveAptitude';
 
 // =============================================================================
-// CLOUDFLARE WORKER API CONFIGURATION
+// CLOUDFLARE PAGES FUNCTION API CONFIGURATION
 // =============================================================================
 
-// Use environment variable or fallback to production URL
-const ADAPTIVE_APTITUDE_API_URL = import.meta.env.VITE_QUESTION_GENERATION_API_URL || 
-  'https://question-generation-api.dark-mode-d021.workers.dev';
+const API_URL = getPagesApiUrl('question-generation');
 
 /**
- * Makes a request to the Cloudflare Worker API
+ * Makes a request to the Cloudflare Pages Function API
  */
 async function callWorkerAPI<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-  const url = `${ADAPTIVE_APTITUDE_API_URL}${endpoint}`;
-  console.log(`📡 [QuestionGeneratorService] Calling Worker API: ${url}`);
+  const url = `${API_URL}${endpoint}`;
+  console.log(`📡 [QuestionGeneratorService] Calling Pages Function API: ${url}`);
   
   const response = await fetch(url, {
     method: 'POST',
@@ -336,7 +326,7 @@ export async function generateDiagnosticScreenerQuestions(
 
 /**
  * Generates fallback diagnostic questions when worker is unavailable
- * Phase 1: All 6 questions at Level 3 (baseline) to establish starting ability
+ * Phase 1: All 8 questions at Level 3 (baseline) to establish starting ability
  */
 function generateFallbackDiagnosticQuestions(gradeLevel: GradeLevel): QuestionGenerationResult {
   const phase: TestPhase = 'diagnostic_screener';

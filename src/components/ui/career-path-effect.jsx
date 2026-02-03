@@ -6,7 +6,7 @@
 
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { cn } from '../../lib/utils.js';
+import { cn } from '../../lib/utils';
 
 /**
  * SVG Path definitions for the career journey

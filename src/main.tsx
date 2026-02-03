@@ -1,8 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import './index.css';
 import { QueryProvider } from './providers/QueryProvider';
+
+// No scroll lock management needed
 
 // Unregister any existing service workers to prevent Workbox warnings
 if ('serviceWorker' in navigator) {
@@ -15,8 +18,10 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryProvider>
-      <App />
-    </QueryProvider>
+    <HelmetProvider>
+      <QueryProvider>
+        <App />
+      </QueryProvider>
+    </HelmetProvider>
   </StrictMode>
 );

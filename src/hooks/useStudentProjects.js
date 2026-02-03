@@ -98,7 +98,7 @@ export const useStudentProjects = (studentId, enabled = true) => {
         .from('projects')
         .select('*')
         .eq('student_id', studentId)
-        .eq('enabled', true) // Only fetch enabled projects
+        // Removed: .eq('enabled', true) - Fetch ALL projects including hidden ones
         .in('approval_status', ['approved', 'verified']) // Only approved or verified
         .order('created_at', { ascending: false });
 
@@ -111,25 +111,32 @@ export const useStudentProjects = (studentId, enabled = true) => {
         id: item.id,
         title: item.title || item.name,
         description: item.description,
+        role: item.role,
         status: item.status || 'completed',
         startDate: item.start_date,
         endDate: item.end_date,
-        duration: item.duration,
+        duration: item.duration,  // Include duration from database
         organization: item.organization,
         tech: item.tech_stack || [],
         techStack: item.tech_stack || [],
         technologies: item.tech_stack || [],
         skills: item.skills_used || [],
+        // Demo Link mappings - cover all possible field names
         demoLink: item.demo_link,
+        demoUrl: item.demo_link,  // For form compatibility
         demo_link: item.demo_link,
         link: item.demo_link,
+        // GitHub Link mappings - cover all possible field names  
         githubLink: item.github_link,
+        githubUrl: item.github_link,  // For form compatibility
         github_link: item.github_link,
         github: item.github_link,
         github_url: item.github_link,
+        // Other URLs
         certificateUrl: item.certificate_url,
         videoUrl: item.video_url,
         pptUrl: item.ppt_url,
+        // Status and metadata
         approval_status: item.approval_status,
         verified: item.approval_status === 'approved' || item.approval_status === 'verified',
         processing: false, // Already filtered, so won't be pending

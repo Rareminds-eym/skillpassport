@@ -184,7 +184,7 @@ const UnifiedLogin = () => {
   };
 
   const handleForgotPassword = () => {
-    navigate('/forgot-password');
+    navigate('/password-reset');
   };
 
   return (

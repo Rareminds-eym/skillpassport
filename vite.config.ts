@@ -32,7 +32,7 @@ export default defineConfig({
       },
     },
   },
-   server: {
+  server: {
     host: '0.0.0.0',
     port: 3000,
     allowedHosts: [
@@ -43,6 +43,18 @@ export default defineConfig({
     ],
     hmr: {
       port: 3000
+    },
+    proxy: {
+      '/api/user': {
+        target: 'http://127.0.0.1:8788',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/user/, ''),
+        secure: true,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      }
     }
   },
 });

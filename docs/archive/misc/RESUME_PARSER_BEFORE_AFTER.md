@@ -221,7 +221,7 @@ VITE_GEMINI_API_KEY=your-key-here
 VITE_OPENAI_API_KEY=your-key-here
 
 # OR OpenRouter
-VITE_OPENROUTER_API_KEY=your-key-here
+OPENROUTER_API_KEY=your-key-here
 ```
 
 With AI:
