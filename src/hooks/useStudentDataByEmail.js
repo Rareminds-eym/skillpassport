@@ -12,6 +12,7 @@ import {
     updateExperienceByEmail,
     updateProjectsByEmail,
     updateSingleTrainingById,
+    updateSkillsByEmail,
     updateSoftSkillsByEmail,
     updateStudentByEmail,
     updateTechnicalSkillsByEmail,
@@ -209,6 +210,22 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     }
   };
 
+  const updateSkills = async (skillsData) => {
+    try {
+      const result = await updateSkillsByEmail(email, skillsData);
+      if (result.success) {
+        setStudentData(result.data);
+        // Embedding regeneration handled by database trigger
+        return { success: true };
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      console.error('Error updating skills:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
   const updateProjects = async (projectsData) => {
     const result = await updateProjectsByEmail(email, projectsData);
     if (result.success) {
@@ -238,6 +255,7 @@ export const useStudentDataByEmail = (email, fallbackToMock = true) => {
     updateTraining,
     updateSingleTraining,
     updateExperience,
+    updateSkills,
     updateTechnicalSkills,
     updateSoftSkills,
     updateProjects,      // ADD THIS

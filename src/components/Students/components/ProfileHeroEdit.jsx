@@ -66,13 +66,13 @@ const AchievementButton = ({ onClick }) => {
       <style>
         {`
           .achievement-btn {
-            width: 150px;
-            height: 40px;
+            width: 120px;
+            height: 32px;
             background: linear-gradient(to right, rgb(234, 179, 8), rgb(249, 115, 22));
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             border: none;
             border-radius: 9999px;
             cursor: pointer;
@@ -81,57 +81,102 @@ const AchievementButton = ({ onClick }) => {
             position: relative;
             overflow: visible;
           }
+          @media (min-width: 640px) {
+            .achievement-btn {
+              width: 150px;
+              height: 40px;
+              gap: 8px;
+            }
+          }
           .achievement-btn:hover {
             background: linear-gradient(to right, rgb(202, 138, 4), rgb(234, 88, 12));
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
             transform: scale(1.05);
           }
           .trophy-container {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
           }
+          @media (min-width: 640px) {
+            .trophy-container {
+              width: 20px;
+              height: 20px;
+            }
+          }
           .trophy-container svg {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             z-index: 3;
             color: white;
             transition: all 0.3s;
+          }
+          @media (min-width: 640px) {
+            .trophy-container svg {
+              width: 16px;
+              height: 16px;
+            }
           }
           .achievement-btn:hover .trophy-container svg {
             transform: translateY(-3px) scale(1.1);
           }
           .achievement-text {
-            font-size: 14px;
+            font-size: 12px;
             color: white;
             font-weight: 600;
           }
+          @media (min-width: 640px) {
+            .achievement-text {
+              font-size: 14px;
+            }
+          }
           .confetti {
-            width: 6px;
-            height: 6px;
+            width: 4px;
+            height: 4px;
             position: absolute;
             border-radius: 50%;
             transition: all 0.4s;
             z-index: 1;
             opacity: 0;
           }
+          @media (min-width: 640px) {
+            .confetti {
+              width: 6px;
+              height: 6px;
+            }
+          }
           .confetti-1 {
             background-color: #fbbf24;
             top: 50%;
-            left: 15px;
+            left: 12px;
+          }
+          @media (min-width: 640px) {
+            .confetti-1 {
+              left: 15px;
+            }
           }
           .confetti-2 {
             background-color: #fb923c;
             top: 50%;
-            left: 20px;
+            left: 16px;
+          }
+          @media (min-width: 640px) {
+            .confetti-2 {
+              left: 20px;
+            }
           }
           .confetti-3 {
             background-color: #fde047;
             top: 50%;
-            left: 25px;
+            left: 20px;
+          }
+          @media (min-width: 640px) {
+            .confetti-3 {
+              left: 25px;
+            }
           }
           .achievement-btn:hover .confetti-1 {
             transform: translateY(-25px) translateX(-5px);
@@ -583,13 +628,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   ];
 
   return (
-    <div className="bg-[#f6f7fd] py-8 px-4 sm:px-6 lg:px-8">
+    <div className="bg-[#f6f7fd] py-4 sm:py-8 px-2 sm:px-4 lg:px-8">
       {/* Debug Component - Temporarily hidden */}
       {/* {process.env.NODE_ENV === 'development' && <EmployabilityDebugger />} */}
 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div
-          className="rounded-3xl shadow-2xl border border-blue-300/70 overflow-hidden relative bg-blue-200/70 backdrop-blur-2xl"
+          className="rounded-2xl sm:rounded-3xl shadow-2xl border border-blue-300/70 overflow-hidden relative bg-blue-200/70 backdrop-blur-2xl"
           style={{
             boxShadow: '0 8px 32px 0 rgba(59, 130, 246, 0.25), inset 0 1px 0 0 rgba(255, 255, 255, 0.8)'
           }}
@@ -597,34 +642,35 @@ const ProfileHeroEdit = ({ onEditClick }) => {
           {/* Three-dot menu button - Top Right Corner */}
           <button
             onClick={() => navigate('/student/settings')}
-            className="absolute top-4 right-4 z-20 p-2 hover:bg-white/50 rounded-lg transition-colors group"
+            className="absolute top-2 sm:top-4 right-2 sm:right-4 z-20 p-1.5 sm:p-2 hover:bg-white/50 rounded-lg transition-colors group"
             title="Edit Profile Settings"
           >
-            <EllipsisVerticalIcon className="w-6 h-6 text-gray-700 group-hover:text-blue-700" />
+            <EllipsisVerticalIcon className="w-5 sm:w-6 h-5 sm:h-6 text-gray-700 group-hover:text-blue-700" />
           </button>
           
           {/* <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 z-10" /> */}
-          <CardContent className="py-4 relative z-10">
+          <CardContent className="px-2 py-2 sm:py-4 relative z-10">
             {/* Sidebar Layout: Flex on Desktop, Stack on Mobile */}
-            <div className="flex flex-col lg:flex-row gap-12 items-start mt-5 md:mt-10">
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-12 items-start mt-2 sm:mt-5 md:mt-10">
               {/* LEFT SIDEBAR - QR Code + Score (Fixed width on desktop) */}
-              <div className="w-full lg:w-64 flex-shrink-0 space-y-4 order-2 lg:order-1 pl-6">
+              <div className="w-full lg:w-64 flex-shrink-0 space-y-3 sm:space-y-4 order-2 lg:order-1 px-2 sm:pl-6">
                 {/* QR Code Card */}
-                <Card variant="blue" className="bg-blue-50/60 backdrop-blur-xl border border-blue-200/60 rounded-2xl shadow-2xl">
-                  <CardContent className="p-6 text-center">
-                    <div className="w-full bg-white rounded-xl flex items-center justify-center shadow-md p-2 mb-2">
+                <Card variant="blue" className="bg-blue-50/60 backdrop-blur-xl border border-blue-200/60 rounded-xl sm:rounded-2xl shadow-2xl">
+                  <CardContent className="p-3 sm:p-6 text-center">
+                    <div className="w-full bg-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-md p-1 sm:p-2 mb-2">
                       {/* Student QR Code */}
                       <QRCodeSVG
                         value={qrCodeValue}
-                        size={140}
+                        size={120}
                         level="H"
                         bgColor="#ffffff"
                         fgColor="#000000"
+                        className="w-24 h-24 sm:w-32 sm:h-32 lg:w-36 lg:h-36"
                       />
                     </div>
                     <button
                       onClick={() => setShowDetailsModal(true)}
-                      className="text-xs text-gray-900 font-bold mb-3 hover:text-blue-600 transition-colors cursor-pointer block w-full"
+                      className="text-xs text-gray-900 font-bold mb-2 sm:mb-3 hover:text-blue-600 transition-colors cursor-pointer block w-full leading-tight"
                     >
                       SKILL PASSPORT-ID : {
                         realStudentData?.student_id ||
@@ -638,21 +684,21 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                     <div className="flex gap-2 justify-center">
                       <button
                         onClick={handleCopyLink}
-                        className="flex items-center justify-center w-10 h-10 bg-white/90 hover:bg-white text-blue-600 rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105"
+                        className="flex items-center justify-center w-8 sm:w-10 h-8 sm:h-10 bg-white/90 hover:bg-white text-blue-600 rounded-lg sm:rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105"
                         title="Copy Link"
                       >
                         {copied ? (
-                          <CheckIcon className="w-5 h-5" />
+                          <CheckIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                         ) : (
-                          <DocumentDuplicateIcon className="w-5 h-5" />
+                          <DocumentDuplicateIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                         )}
                       </button>
                       <button
                         onClick={handleShare}
-                        className="flex items-center justify-center w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105"
+                        className="flex items-center justify-center w-8 sm:w-10 h-8 sm:h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-lg sm:rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105"
                         title="Share"
                       >
-                        <ShareIcon className="w-5 h-5" />
+                        <ShareIcon className="w-4 sm:w-5 h-4 sm:h-5" />
                       </button>
                     </div>
                   </CardContent>
@@ -666,15 +712,15 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   displayData?.instagram_link ||
                   displayData?.facebook_link ||
                   displayData?.youtube_link) && (
-                    <div className="space-y-4">
+                    <div className="space-y-2 sm:space-y-4">
                       <div className="flex items-center justify-center">
                         <span className="text-xs font-medium text-gray-900">
                           Connect:
                         </span>
                       </div>
                       
-                      {/* Custom expandable FloatingDock */}
-                      <div className="group relative">
+                      {/* Responsive Social Media Links */}
+                      <div className="flex justify-center">
                         {(() => {
                           const allItems = [
                             displayData.github_link && {
@@ -714,56 +760,72 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                             },
                           ].filter(Boolean);
                           
-                          if (allItems.length <= 3) {
-                            // If 3 or fewer items, show normal FloatingDock
-                            return (
-                              <FloatingDock
-                                items={allItems}
-                                desktopClassName="bg-white/80 backdrop-blur-sm border border-gray-200 transition-all duration-300 group-hover:bg-white group-hover:shadow-lg"
-                              />
-                            );
-                          }
-                          
-                          // If more than 3 items, show expandable version
-                          const visibleItems = allItems.slice(0, 3);
-                          const hiddenItems = allItems.slice(3);
-                          
+                          // Mobile: Simple grid layout
                           return (
-                            <div className="relative">
-                              {/* Default state - show first 3 + indicator */}
-                              <div className="group-hover:opacity-0 group-hover:pointer-events-none transition-all duration-300">
-                                <FloatingDock
-                                  items={[
-                                    ...visibleItems,
-                                    {
-                                      title: `+${hiddenItems.length} more`,
-                                      icon: <span className="text-xs font-semibold text-gray-600">+{hiddenItems.length}</span>,
-                                      href: "#",
-                                      onClick: (e) => e.preventDefault(),
-                                    }
-                                  ]}
-                                  desktopClassName="bg-white/80 backdrop-blur-sm border border-gray-200"
-                                />
+                            <>
+                              {/* Mobile Layout - Simple Grid */}
+                              <div className="flex md:hidden flex-wrap justify-center gap-2">
+                                {allItems.map((item, index) => (
+                                  <a
+                                    key={index}
+                                    href={item.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-md hover:shadow-lg transition-all hover:scale-105"
+                                    title={item.title}
+                                  >
+                                    <div className="w-4 h-4">
+                                      {item.icon}
+                                    </div>
+                                  </a>
+                                ))}
                               </div>
                               
-                              {/* Hover state - show all items vertically */}
-                              <div className="absolute top-0 left-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-300">
-                                <div className="flex flex-col gap-2">
-                                  {/* First row - original 3 items */}
+                              {/* Desktop Layout - FloatingDock */}
+                              <div className="hidden md:block">
+                                {allItems.length <= 4 ? (
                                   <FloatingDock
-                                    items={visibleItems}
-                                    desktopClassName="bg-white backdrop-blur-sm border border-gray-200 shadow-lg"
+                                    items={allItems}
+                                    desktopClassName="bg-white/80 backdrop-blur-sm border border-gray-200 transition-all duration-300 hover:bg-white hover:shadow-lg"
+                                    mobileClassName="bg-white/80 backdrop-blur-sm border border-gray-200"
                                   />
-                                  {/* Additional rows for remaining items */}
-                                  {hiddenItems.length > 0 && (
-                                    <FloatingDock
-                                      items={hiddenItems}
-                                      desktopClassName="bg-white backdrop-blur-sm border border-gray-200 shadow-lg"
-                                    />
-                                  )}
-                                </div>
+                                ) : (
+                                  <div className="group relative">
+                                    {/* Default state - show first 4 + indicator */}
+                                    <div className="group-hover:opacity-0 group-hover:pointer-events-none transition-all duration-300">
+                                      <FloatingDock
+                                        items={[
+                                          ...allItems.slice(0, 3),
+                                          {
+                                            title: `+${allItems.length - 3} more`,
+                                            icon: <span className="text-xs font-semibold text-gray-600">+{allItems.length - 3}</span>,
+                                            href: "#",
+                                            onClick: (e) => e.preventDefault(),
+                                          }
+                                        ]}
+                                        desktopClassName="bg-white/80 backdrop-blur-sm border border-gray-200"
+                                      />
+                                    </div>
+                                    
+                                    {/* Hover state - show all items */}
+                                    <div className="absolute top-0 left-0 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-300">
+                                      <div className="flex flex-col gap-2">
+                                        <FloatingDock
+                                          items={allItems.slice(0, 4)}
+                                          desktopClassName="bg-white backdrop-blur-sm border border-gray-200 shadow-lg"
+                                        />
+                                        {allItems.length > 4 && (
+                                          <FloatingDock
+                                            items={allItems.slice(4)}
+                                            desktopClassName="bg-white backdrop-blur-sm border border-gray-200 shadow-lg"
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            </div>
+                            </>
                           );
                         })()}
                       </div>
@@ -772,16 +834,16 @@ const ProfileHeroEdit = ({ onEditClick }) => {
               </div>
 
               {/* RIGHT CONTENT AREA - Profile Info */}
-              <div className="flex-1 space-y-6 order-1 lg:order-2 pr-6">
+              <div className="flex-1 space-y-3 sm:space-y-6 order-1 lg:order-2 px-2 sm:pr-6 w-full">
                 {/* Profile Icon with Badge */}
-                <div className="flex items-start gap-4">
-                  <div className="relative">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg border-2 border-white">
-                      <AcademicCapIcon className="w-8 h-8 text-white" />
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className="relative flex-shrink-0">
+                    <div className="w-12 sm:w-16 h-12 sm:h-16 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-lg border-2 border-white">
+                      <AcademicCapIcon className="w-6 sm:w-8 h-6 sm:h-8 text-white" />
                     </div>
                     {/* Verification Status Badge */}
                     <div 
-                      className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-md cursor-help ${
+                      className={`absolute -bottom-0.5 sm:-bottom-1 -right-0.5 sm:-right-1 w-5 sm:w-6 h-5 sm:h-6 rounded-full border-2 border-white flex items-center justify-center shadow-md cursor-help ${
                         realStudentData?.approval_status === 'approved' 
                           ? 'bg-green-500' 
                           : realStudentData?.approval_status === 'pending'
@@ -797,17 +859,17 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       }
                     >
                       {realStudentData?.approval_status === 'approved' ? (
-                        <CheckCircleIcon className="w-4 h-4 text-white" />
+                        <CheckCircleIcon className="w-3 sm:w-4 h-3 sm:h-4 text-white" />
                       ) : realStudentData?.approval_status === 'pending' ? (
-                        <ClockIcon className="w-4 h-4 text-white" />
+                        <ClockIcon className="w-3 sm:w-4 h-3 sm:h-4 text-white" />
                       ) : (
-                        <XMarkIcon className="w-4 h-4 text-white" />
+                        <XMarkIcon className="w-3 sm:w-4 h-3 sm:h-4 text-white" />
                       )}
                     </div>
                   </div>
-                  <div className="flex-1 pt-1">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <h1 className="text-3xl font-bold text-gray-900 drop-shadow-sm">
+                  <div className="flex-1 pt-1 min-w-0">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 drop-shadow-sm break-words">
                         {capitalizeName(displayData.name) || "Student Name"}
                       </h1>
                       {/* Approval Status Badge */}
@@ -824,17 +886,17 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                       )} */}
                     </div>
                     {/* Institution Name and Location - Below Name */}
-                    <div className="flex items-start gap-12 text-gray-800 mt-2">
-                      <div className="flex items-center gap-2">
-                        <BriefcaseIcon className="w-4 h-4 flex-shrink-0" />
-                        <span className="font-medium">
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-6 lg:gap-12 text-gray-800 mt-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <BriefcaseIcon className="w-3 sm:w-4 h-3 sm:h-4 flex-shrink-0" />
+                        <span className="font-medium text-sm sm:text-base break-words">
                           {institutionName}
                         </span>
                       </div>
                       {institutionLocation && (
-                        <div className="flex items-center gap-1.5 text-gray-800">
-                          <MapPinIcon className="w-4 h-4 flex-shrink-0" />
-                          <span className="font-medium">
+                        <div className="flex items-center gap-1.5 text-gray-800 min-w-0">
+                          <MapPinIcon className="w-3 sm:w-4 h-3 sm:h-4 flex-shrink-0" />
+                          <span className="font-medium text-sm sm:text-base break-words">
                             {institutionLocation}
                           </span>
                         </div>
@@ -856,29 +918,29 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
                 {/* School-specific fields - Display when school_id is not null AND has actual data - COMPACT HORIZONTAL */}
                 {realStudentData?.school_id && (realStudentData?.grade || realStudentData?.section || realStudentData?.roll_number || realStudentData?.admission_number) && (
-                  <div className="bg-blue-50/60 backdrop-blur-md rounded-xl p-3 border border-blue-200/60 shadow-md">
+                  <div className="bg-blue-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-blue-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
-                      <AcademicCapIcon className="w-4 h-4 text-blue-700" />
-                      <h3 className="text-gray-900 font-semibold text-xs">School Info</h3>
+                      <AcademicCapIcon className="w-3 sm:w-4 h-3 sm:h-4 text-blue-700" />
+                      <h3 className="text-gray-900 font-semibold text-xs sm:text-sm">School Info</h3>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {realStudentData.grade && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-slate-900 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs sm:text-sm font-medium text-slate-900 shadow-sm">
                           <span className="text-gray-900">Grade:</span> {realStudentData.grade}
                         </span>
                       )}
                       {realStudentData.section && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-slate-900 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs sm:text-sm font-medium text-slate-900 shadow-sm">
                           <span className="text-gray-900">Sec:</span> {realStudentData.section}
                         </span>
                       )}
                       {realStudentData.roll_number && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-slate-900 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs sm:text-sm font-medium text-slate-900 shadow-sm">
                           <span className="text-gray-900">Roll:</span> {realStudentData.roll_number}
                         </span>
                       )}
                       {realStudentData.admission_number && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-sm font-medium text-slate-900 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs sm:text-sm font-medium text-slate-900 shadow-sm">
                           <span className="text-gray-900">Adm:</span> {realStudentData.admission_number}
                         </span>
                       )}
@@ -888,39 +950,39 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
                 {/* College-specific fields - Display when university_college_id is not null AND has actual data - COMPACT HORIZONTAL */}
                 {realStudentData?.university_college_id && (realStudentData?.registration_number || realStudentData?.admission_number || realStudentData?.student_id) && (
-                  <div className="bg-indigo-50/60 backdrop-blur-md rounded-xl p-3 border border-indigo-200/60 shadow-md">
+                  <div className="bg-indigo-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-indigo-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
-                      <TrophyIcon className="w-4 h-4 text-indigo-700" />
-                      <h3 className="text-gray-900 font-semibold text-xs">College Info</h3>
+                      <TrophyIcon className="w-3 sm:w-4 h-3 sm:h-4 text-indigo-700" />
+                      <h3 className="text-gray-900 font-semibold text-xs sm:text-sm">College Info</h3>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2">
                       {realStudentData.registration_number && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
                           <span className="text-gray-500">Reg:</span> {realStudentData.registration_number}
                         </span>
                       )}
                       {realStudentData.admission_number && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
                           <span className="text-gray-500">Adm:</span> {realStudentData.admission_number}
                         </span>
                       )}
                       {realStudentData.student_id && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
                           <span className="text-gray-500">ID:</span> {realStudentData.student_id}
                         </span>
                       )}
                       {realStudentData.roll_number && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
                           <span className="text-gray-500">Roll:</span> {realStudentData.roll_number}
                         </span>
                       )}
                       {realStudentData.branch_field && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
                           <span className="text-gray-500">Program:</span> {realStudentData.branch_field}
                         </span>
                       )}
                       {realStudentData.section && (
-                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
+                        <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 bg-white rounded-full text-xs font-medium text-gray-700 shadow-sm">
                           <span className="text-gray-500">Sec:</span> {realStudentData.section}
                         </span>
                       )}
@@ -930,15 +992,15 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
                  {/* Tags */}
                 {(displayData.classYear || displayData.department || displayData.degree) && (
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2 sm:gap-3">
                   {/* Only show department/degree badge if NOT already shown in College Info section */}
                   {(displayData.department || displayData.degree) && !realStudentData?.branch_field && (
-                    <Badge className="bg-white text-indigo-700 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
+                    <Badge className="bg-white text-indigo-700 border-0 px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
                       {displayData.department || displayData.degree}
                     </Badge>
                   )}
                   {displayData.classYear && (
-                    <Badge className="bg-white text-blue-600 border-0 px-4 py-1.5 text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
+                    <Badge className="bg-white text-blue-600 border-0 px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-full shadow-md hover:scale-105 transition-transform">
                       {displayData.classYear}
                     </Badge>
                   )}
@@ -948,61 +1010,152 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                 {/* Employability Score - New Circular Gauge with Radar Chart */}
                 <EmployabilityScoreCard employabilityData={employabilityData} />
 
-                {/* Achievements - Inline Slider */}
+                {/* Achievements - Responsive Layout */}
                 {earnedBadges.length > 0 && (
-                  <div className="flex items-center gap-3 overflow-x-visible">
-                    <AchievementButton
-                      onClick={() => setShowAchievementsPanel(!showAchievementsPanel)}
-                    />
+                  <div className="w-full">
+                    {/* Mobile Layout - Stacked */}
+                    <div className="block sm:hidden space-y-3">
+                      {/* Achievement Button - Full Width on Mobile */}
+                      <div className="flex justify-center">
+                        <AchievementButton
+                          onClick={() => setShowAchievementsPanel(!showAchievementsPanel)}
+                        />
+                      </div>
+                      
+                      {/* Badges Grid - Mobile */}
+                      <AnimatePresence>
+                        {showAchievementsPanel && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ type: "spring", damping: 20, stiffness: 150 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="grid grid-cols-4 gap-2 p-3 bg-white/30 rounded-xl border border-blue-100">
+                              {earnedBadges.slice(0, 8).map((badge, index) => (
+                                <motion.div
+                                  key={index}
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={{ delay: index * 0.05 }}
+                                  className="flex justify-center"
+                                >
+                                  <button
+                                    onClick={() => {
+                                      setSelectedBadge(badge);
+                                      setShowBadgeModal(true);
+                                    }}
+                                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg hover:scale-110 transition-all shadow-md hover:shadow-lg active:scale-95"
+                                    style={{
+                                      backgroundColor: `${badge.color}20`,
+                                      color: badge.color
+                                    }}
+                                    title={badge.name}
+                                  >
+                                    {badge.icon}
+                                  </button>
+                                </motion.div>
+                              ))}
+                              {earnedBadges.length > 8 && (
+                                <motion.div
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={{ delay: 0.4 }}
+                                  className="flex justify-center"
+                                >
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 shadow-md">
+                                    +{earnedBadges.length - 8}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </div>
+                            {earnedBadges.length > 8 && (
+                              <div className="text-center mt-2">
+                                <span className="text-xs text-gray-500">
+                                  Showing 8 of {earnedBadges.length} achievements
+                                </span>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
 
-                    <AnimatePresence>
-                      {showAchievementsPanel && (
-                        <motion.div
-                          initial={{ width: 0, opacity: 0 }}
-                          animate={{ width: "auto", opacity: 1 }}
-                          exit={{ width: 0, opacity: 0 }}
-                          transition={{ type: "spring", damping: 20, stiffness: 150 }}
-                          className="flex gap-2 overflow-hidden"
-                        >
-                          {earnedBadges.slice(0, 8).map((badge, index) => (
-                            <motion.div
-                              key={index}
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              exit={{ scale: 0, opacity: 0 }}
-                              transition={{ delay: index * 0.05 }}
-                              className="flex-shrink-0"
-                            >
-                              <button
-                                onClick={() => {
-                                  setSelectedBadge(badge);
-                                  setShowBadgeModal(true);
-                                }}
-                                className="w-12 h-12 rounded-full flex items-center justify-center text-2xl hover:scale-110 transition-transform shadow-md hover:shadow-lg"
-                                style={{
-                                  backgroundColor: `${badge.color}20`,
-                                  color: badge.color
-                                }}
-                                title={badge.name}
-                              >
-                                {badge.icon}
-                              </button>
-                            </motion.div>
-                          ))}
-                          {earnedBadges.length > 8 && (
-                            <motion.div
-                              initial={{ scale: 0, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              exit={{ scale: 0, opacity: 0 }}
-                              transition={{ delay: 0.4 }}
-                              className="flex-shrink-0 w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-700"
-                            >
-                              +{earnedBadges.length - 8}
-                            </motion.div>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {/* Desktop Layout - Horizontal */}
+                    <div className="hidden sm:flex items-center gap-3 pb-4">
+                      {/* Achievement Button */}
+                      <div className="flex-shrink-0">
+                        <AchievementButton
+                          onClick={() => setShowAchievementsPanel(!showAchievementsPanel)}
+                        />
+                      </div>
+
+                      {/* Badges Horizontal Slider - Desktop */}
+                      <AnimatePresence>
+                        {showAchievementsPanel && (
+                          <motion.div
+                            initial={{ width: 0, opacity: 0 }}
+                            animate={{ width: "auto", opacity: 1 }}
+                            exit={{ width: 0, opacity: 0 }}
+                            transition={{ type: "spring", damping: 20, stiffness: 150 }}
+                            className="flex items-center gap-2"
+                          >
+                            <div className="flex gap-2">
+                              {earnedBadges.slice(0, 6).map((badge, index) => (
+                                <motion.div
+                                  key={index}
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={{ delay: index * 0.05 }}
+                                  className="flex-shrink-0"
+                                >
+                                  <button
+                                    onClick={() => {
+                                      setSelectedBadge(badge);
+                                      setShowBadgeModal(true);
+                                    }}
+                                    className="w-12 h-12 rounded-full flex items-center justify-center text-2xl hover:scale-110 transition-all shadow-md hover:shadow-lg group relative"
+                                    style={{
+                                      backgroundColor: `${badge.color}20`,
+                                      color: badge.color
+                                    }}
+                                  >
+                                    {badge.icon}
+                                    {/* Improved Tooltip */}
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                      {badge.name}
+                                      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                                    </div>
+                                  </button>
+                                </motion.div>
+                              ))}
+                              {earnedBadges.length > 6 && (
+                                <motion.div
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={{ delay: 0.3 }}
+                                  className="flex-shrink-0 group relative"
+                                >
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-xs font-bold text-gray-600 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105">
+                                    +{earnedBadges.length - 6}
+                                  </div>
+                                  {/* Tooltip for "more" indicator */}
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                    {earnedBadges.length - 6} more achievements
+                                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 )}
 

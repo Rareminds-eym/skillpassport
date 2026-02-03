@@ -11,6 +11,15 @@ import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer, RepeatingHeader, RepeatingFooter } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
+import {
+  CompleteCareerFitSection,
+  CompleteSkillGapSection,
+  CompleteRoadmapSection,
+  CompleteCourseRecommendationsSection,
+  ProfileSnapshotSection,
+  TimingAnalysisSection,
+  FinalNoteSection as CompleteFinalNoteSection
+} from './shared/CompletePDFSections';
 
 /**
  * PrintViewMiddleHighSchool Component

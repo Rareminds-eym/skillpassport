@@ -32,6 +32,17 @@ interface AssessmentResult {
   career_fit: any;
   skill_gap: any;
   gemini_results: any;
+  overall_summary: any;
+  platform_courses: any;
+  roadmap: any;
+  enrollmentNumber: string | null;
+  student_grade: string | null;
+  program_id: string | null;
+  program_name: string | null;
+  stream_name: string | null;
+  riasec_scores: any;
+  aptitude_scores: any;
+  profile_snapshot:any;
 }
 
 // Filter Section Component
@@ -127,7 +138,6 @@ const ReadinessBadge = ({ readiness }: { readiness: string | null }) => {
     </span>
   );
 };
-
 
 // Assessment Card Component
 const AssessmentCard = ({
@@ -229,7 +239,6 @@ const AssessmentCard = ({
 };
 
 
-
 // Main Component
 const EducatorAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
@@ -274,7 +283,6 @@ const EducatorAssessmentResults: React.FC = () => {
 
       // First check if they are a school educator - try both user_id and email lookup
       let schoolEducatorData = null;
-      let schoolEducatorError = null;
 
       // Try lookup by user_id first
       const { data: educatorByUserId, error: errorByUserId } = await supabase
@@ -295,14 +303,23 @@ const EducatorAssessmentResults: React.FC = () => {
 
         if (!errorByEmail && educatorByEmail) {
           schoolEducatorData = educatorByEmail;
-        } else {
-          schoolEducatorError = errorByEmail;
         }
       }
 
       let studentsQuery = supabase
         .from('students')
-        .select('user_id, name, email')
+        .select(`
+          user_id, 
+          name, 
+          email, 
+          enrollmentNumber, 
+          grade, 
+          program_id,
+          programs (
+            id,
+            name
+          )
+        `)
         .eq('is_deleted', false);
 
       let schoolId: string | null = null;
@@ -454,7 +471,13 @@ const EducatorAssessmentResults: React.FC = () => {
           created_at,
           career_fit,
           skill_gap,
-          gemini_results
+          gemini_results,
+          overall_summary,
+          platform_courses,
+          roadmap,
+          personal_assessment_streams (
+            name
+          )
         `)
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
@@ -469,10 +492,29 @@ const EducatorAssessmentResults: React.FC = () => {
           student_email: student?.email || null,
           college_id: schoolId,
           college_name: schoolName || null,
+          enrollmentNumber: student?.enrollmentNumber || null,
+          student_grade: student?.grade || null,
+          program_id: student?.program_id || null,
+          program_name: (() => {
+            if (!student?.programs) return null;
+            // Handle both single object and array cases
+            if (Array.isArray(student.programs)) {
+              return student.programs.length > 0 ? student.programs[0].name : null;
+            }
+            return (student.programs as any).name || null;
+          })(),
+          stream_name: (() => {
+            if (!r.personal_assessment_streams) return null;
+            // Handle both single object and array cases
+            if (Array.isArray(r.personal_assessment_streams)) {
+              return r.personal_assessment_streams.length > 0 ? r.personal_assessment_streams[0].name : null;
+            }
+            return (r.personal_assessment_streams as any).name || null;
+          })(),
         };
       });
 
-      setResults(enrichedResults);
+      setResults(enrichedResults as unknown as AssessmentResult[]);
     } catch (err: any) {
       console.error('Error fetching assessment results:', err);
       setError(err?.message || 'Failed to load assessment results');
@@ -975,14 +1017,44 @@ const EducatorAssessmentResults: React.FC = () => {
       {/* Assessment Report Drawer - Uses the same design as student assessment result page */}
       <AssessmentReportDrawer
         student={selectedResult ? {
-          id: selectedResult.student_id, // This is actually the user_id
+          id: selectedResult.student_id,
           user_id: selectedResult.student_id,
-          name: selectedResult.student_name,
-          email: selectedResult.student_email,
-          college: selectedResult.college_name,
-          college_name: selectedResult.college_name,
-        } : null}
-        assessmentResult={selectedResult}
+          name: selectedResult.student_name || undefined,
+          email: selectedResult.student_email || undefined,
+          college: selectedResult.college_name || undefined,
+          college_name: selectedResult.college_name || undefined,
+          grade: selectedResult.stream_id || undefined,
+          school_name: selectedResult.college_name || undefined,
+          roll_number: selectedResult.enrollmentNumber || 'N/A',
+          student_grade: selectedResult.student_grade || undefined,
+          program_id: selectedResult.program_id || undefined,
+          program_name: selectedResult.program_name || undefined,
+          stream_name: selectedResult.stream_name || undefined
+        } : undefined}
+        assessmentResult={selectedResult ? {
+          id: selectedResult.id,
+          student_id: selectedResult.student_id,
+          stream_id: selectedResult.stream_id,
+          riasec_code: selectedResult.riasec_code || undefined,
+          aptitude_overall: selectedResult.aptitude_overall ?? undefined,
+          employability_readiness: selectedResult.employability_readiness ?? undefined,
+          status: selectedResult.status,
+          created_at: selectedResult.created_at,
+          student_name: selectedResult.student_name || undefined,
+          student_email: selectedResult.student_email || undefined,
+          college_name: selectedResult.college_name || undefined,
+          grade_level: selectedResult.stream_id || undefined,
+          career_fit: selectedResult.career_fit,
+          skill_gap: selectedResult.skill_gap,
+          gemini_results: selectedResult.gemini_results,
+          overall_summary: selectedResult.overall_summary,
+          platform_courses: selectedResult.platform_courses,
+          riasec_scores: selectedResult.riasec_scores,
+          aptitude_scores: selectedResult.aptitude_scores,
+          roadmap: selectedResult.roadmap,
+          profile_snapshot: selectedResult.profile_snapshot,
+          stream_name: selectedResult.stream_name || undefined
+        } : undefined}
         isOpen={showDetailModal}
         onClose={() => {
           setShowDetailModal(false);

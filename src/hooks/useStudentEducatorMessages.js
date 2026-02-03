@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import MessageService from '../services/messageService';
 
 /**
- * Hook for managing student-educator conversations
+ * Hook for managing student-educator conversations (both school and college)
  */
 export const useStudentEducatorConversations = (studentId, enabled = true) => {
   const queryClient = useQueryClient();
@@ -19,13 +19,19 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
     queryKey: ['student-educator-conversations', studentId || 'none'],
     queryFn: async () => {
       if (!studentId) return [];
-      // Only fetch student-educator conversations
-      return await MessageService.getUserConversations(
+      
+      // Fetch both school educator and college lecturer conversations
+      const allConversations = await MessageService.getUserConversations(
         studentId, 
         'student', 
         false, // includeArchived
         true,  // useCache
-        'student_educator' // conversationType filter
+      );
+      
+      // Filter for both student_educator and student_college_educator conversations
+      return allConversations.filter(conv => 
+        conv.conversation_type === 'student_educator' || 
+        conv.conversation_type === 'student_college_educator'
       );
     },
     enabled: !!studentId && enabled,
@@ -44,8 +50,9 @@ export const useStudentEducatorConversations = (studentId, enabled = true) => {
       studentId,
       'student',
       (conversation) => {
-        // Only handle student-educator conversations
-        if (conversation.conversation_type !== 'student_educator') return;
+        // Handle both student-educator and student-college-educator conversations
+        if (conversation.conversation_type !== 'student_educator' && 
+            conversation.conversation_type !== 'student_college_educator') return;
         
         console.log('🔄 [Student-Educator] Realtime UPDATE detected:', conversation);
         
