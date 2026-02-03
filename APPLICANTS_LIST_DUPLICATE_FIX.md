@@ -7,7 +7,7 @@ Error adding candidate to pipeline: duplicate key value violates unique constrai
 "pipeline_candidates_opportunity_id_student_id_key"
 ```
 
-## Root Cause
+## Root Cause 
 The `ApplicantsList.tsx` was directly inserting into `pipeline_candidates` table instead of using the `addCandidateToPipeline` service which has proper duplicate checking.
 
 ## Solution Applied
