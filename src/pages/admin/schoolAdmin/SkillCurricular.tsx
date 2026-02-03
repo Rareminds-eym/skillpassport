@@ -20,6 +20,7 @@ import {
     X
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { supabase } from "../../../lib/supabaseClient";
 import * as clubsService from "../../../services/clubsService";
@@ -82,7 +83,7 @@ function downloadCSV(filename, rows) {
 
 function exportTableAsPrint(htmlString, title = "Report") {
     const w = window.open("", "_blank", "noopener,noreferrer");
-    if (!w) return alert("Unable to open export window. Please allow popups.");
+    if (!w) return toast.error("Unable to open export window. Please allow popups.");
     w.document.write(`
     <html>
       <head>
@@ -1251,7 +1252,7 @@ const handleStudentLeave = async (studentId, club) => {
             if (errors.length > 0 && errors.length <= 5) {
                 console.log("Upload errors:", errors);
                 setTimeout(() => {
-                    alert("Upload errors:\n" + errors.join('\n'));
+                    toast.error("Upload errors:\n" + errors.join('\n'));
                 }, 1000);
             }
 

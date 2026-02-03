@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BookOpen, CheckCircle, XCircle, Eye, MessageSquare, Clock } from "lucide-react";
+import toast from 'react-hot-toast';
 import { supabase } from "../../../lib/supabaseClient";
 
 interface LessonPlan {
@@ -80,8 +81,9 @@ const LessonPlanApprovals: React.FC = () => {
       setSelectedPlan(null);
       setReviewComments("");
       loadPendingLessonPlans();
+      toast.success("Lesson plan approved successfully");
     } catch (error: any) {
-      alert("Error approving lesson plan: " + error.message);
+      toast.error("Error approving lesson plan: " + error.message);
     } finally {
       setActionLoading(false);
     }
@@ -89,7 +91,7 @@ const LessonPlanApprovals: React.FC = () => {
 
   const handleReject = async (planId: string) => {
     if (!reviewComments.trim()) {
-      alert("Please provide feedback for rejection");
+      toast.error("Please provide feedback for rejection");
       return;
     }
 
@@ -112,8 +114,9 @@ const LessonPlanApprovals: React.FC = () => {
       setSelectedPlan(null);
       setReviewComments("");
       loadPendingLessonPlans();
+      toast.success("Lesson plan rejected");
     } catch (error: any) {
-      alert("Error rejecting lesson plan: " + error.message);
+      toast.error("Error rejecting lesson plan: " + error.message);
     } finally {
       setActionLoading(false);
     }
@@ -121,7 +124,7 @@ const LessonPlanApprovals: React.FC = () => {
 
   const handleRequestRevision = async (planId: string) => {
     if (!reviewComments.trim()) {
-      alert("Please provide feedback for revision");
+      toast.error("Please provide feedback for revision");
       return;
     }
 
@@ -144,8 +147,9 @@ const LessonPlanApprovals: React.FC = () => {
       setSelectedPlan(null);
       setReviewComments("");
       loadPendingLessonPlans();
+      toast.success("Revision requested successfully");
     } catch (error: any) {
-      alert("Error requesting revision: " + error.message);
+      toast.error("Error requesting revision: " + error.message);
     } finally {
       setActionLoading(false);
     }

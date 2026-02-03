@@ -257,11 +257,27 @@ export async function handleCreateTeacher(request: Request, env: any): Promise<R
       address?: string;
       qualification?: string;
       role?: string;
-      subject_expertise?: string[];
+      designation?: string;
+      department?: string;
+      specialization?: string;
+      experience_years?: number;
+      date_of_joining?: string;
+      subject_expertise?: any[]; // Can be array of strings or objects
+      subjects_handled?: string[];
+      // Additional personal information
+      employee_id?: string;
+      gender?: string;
+      city?: string;
+      state?: string;
+      dob?: string;
+      country?: string;
+      pincode?: string;
     };
   };
 
   const { teacher } = body;
+
+  console.log('📥 Received teacher data in API:', JSON.stringify(teacher, null, 2));
 
   if (!teacher || !teacher.first_name || !teacher.last_name || !teacher.email) {
     return jsonResponse({ error: 'Missing required fields: first_name, last_name, and email' }, 400);
@@ -362,33 +378,53 @@ export async function handleCreateTeacher(request: Request, env: any): Promise<R
     });
 
     // Create school_educators record
+    const educatorData = {
+      user_id: authUser.user.id,
+      school_id: schoolId,
+      email: teacher.email.toLowerCase(),
+      first_name: teacher.first_name,
+      last_name: teacher.last_name,
+      phone_number: teacher.phone_number || null,
+      dob: teacher.dob || teacher.date_of_birth || null, // Handle both field names
+      address: teacher.address || null,
+      qualification: teacher.qualification || null,
+      designation: teacher.designation || null,
+      department: teacher.department || null,
+      specialization: teacher.specialization || null,
+      experience_years: teacher.experience_years || null,
+      date_of_joining: teacher.date_of_joining || null,
+      role: teacher.role || 'subject_teacher',
+      subject_expertise: teacher.subject_expertise || [],
+      subjects_handled: teacher.subjects_handled || (Array.isArray(teacher.subject_expertise) ? teacher.subject_expertise.map((s: any) => typeof s === 'string' ? s : s.name) : []),
+      onboarding_status: 'active',
+      // Additional personal information
+      employee_id: teacher.employee_id || null,
+      gender: teacher.gender || null,
+      city: teacher.city || null,
+      state: teacher.state || null,
+      country: teacher.country || null,
+      pincode: teacher.pincode || null,
+      metadata: {
+        temporary_password: teacherPassword,
+        created_by: user.id,
+        source: 'school_admin_added',
+      },
+    };
+
+    console.log('📝 Inserting educator data:', JSON.stringify(educatorData, null, 2));
+
     const { data: teacherRecord, error: teacherError } = await supabaseAdmin
       .from('school_educators')
-      .insert({
-        user_id: authUser.user.id,
-        school_id: schoolId,
-        email: teacher.email.toLowerCase(),
-        first_name: teacher.first_name,
-        last_name: teacher.last_name,
-        phone_number: teacher.phone_number || null,
-        dob: teacher.date_of_birth || null,
-        address: teacher.address || null,
-        qualification: teacher.qualification || null,
-        role: teacher.role || 'subject_teacher',
-        subject_expertise: teacher.subject_expertise || [],
-        onboarding_status: 'active',
-        metadata: {
-          temporary_password: teacherPassword,
-          created_by: user.id,
-          source: 'school_admin_added',
-        },
-      })
+      .insert(educatorData)
       .select()
       .single();
 
     if (teacherError) {
+      console.error('❌ Failed to create teacher profile:', teacherError);
       throw new Error(`Failed to create teacher profile: ${teacherError.message}`);
     }
+
+    console.log('✅ Teacher record created successfully:', teacherRecord);
 
     return jsonResponse({
       success: true,
