@@ -917,10 +917,18 @@ const AssessmentTestPage: React.FC = () => {
 
     // FIX 1: Resume adaptive aptitude session if exists
     if (pendingAttempt.adaptive_aptitude_session_id) {
-
+      console.log('🎯 Resuming adaptive aptitude session:', pendingAttempt.adaptive_aptitude_session_id);
       try {
         await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
-
+        console.log('✅ Adaptive session resumed, currentQuestion:', adaptiveAptitude.currentQuestion?.id);
+        
+        // Check if resume succeeded but currentQuestion is null (empty session or corrupted data)
+        if (!adaptiveAptitude.currentQuestion && !adaptiveAptitude.isTestComplete) {
+          console.warn('⚠️ Adaptive session resumed but no current question - session may be corrupted');
+          console.log('🔄 Will start fresh adaptive session when section loads');
+          // Clear the corrupted session so a new one will be started
+          // The section will auto-start when it loads (handled by handleStartSection)
+        }
       } catch (err) {
         console.warn('⚠️ Could not resume adaptive session:', err);
         // Continue with regular resume - adaptive section will restart if needed
@@ -968,13 +976,38 @@ const AssessmentTestPage: React.FC = () => {
       // FIX: For adaptive sections, don't set questionIndex
       // The adaptive hook manages its own question state
       if (targetSection?.isAdaptive) {
+        console.log('🎯 Handling adaptive section resume:', {
+          hasSession: !!adaptiveAptitude.session,
+          hasCurrentQuestion: !!adaptiveAptitude.currentQuestion,
+          isLoading: adaptiveAptitude.loading,
+          isTestComplete: adaptiveAptitude.isTestComplete
+        });
 
-        // Adaptive session was already resumed above
-        // Just set to question 0 and let adaptive hook take over
-        flow.setCurrentQuestionIndex(0);
-        flow.setShowSectionIntro(false);
-        flow.setCurrentScreen('assessment');
-
+        // Check if we need to start a fresh session (corrupted or missing session)
+        if (!adaptiveAptitude.session && !adaptiveAptitude.loading) {
+          console.log('🔄 No adaptive session found, starting fresh session');
+          // Show section intro so user can start the section
+          flow.setCurrentQuestionIndex(0);
+          flow.setShowSectionIntro(true);
+          flow.setCurrentScreen('section_intro');
+        } else if (adaptiveAptitude.session && !adaptiveAptitude.currentQuestion && !adaptiveAptitude.isTestComplete && !adaptiveAptitude.loading) {
+          console.log('⚠️ Adaptive session exists but no question - session may be corrupted');
+          console.log('🔄 Abandoning corrupted session and showing section intro');
+          // Abandon the corrupted session so a fresh one can be started
+          adaptiveAptitude.abandonTest().catch((err: Error) => {
+            console.warn('Could not abandon corrupted session:', err);
+          });
+          // Show intro so user can start fresh
+          flow.setCurrentQuestionIndex(0);
+          flow.setShowSectionIntro(true);
+          flow.setCurrentScreen('section_intro');
+        } else {
+          // Adaptive session was already resumed above
+          // Just set to question 0 and let adaptive hook take over
+          flow.setCurrentQuestionIndex(0);
+          flow.setShowSectionIntro(false);
+          flow.setCurrentScreen('assessment');
+        }
       } else {
         // For regular sections, restore the exact question index
         const questionCount = targetSection?.questions?.length || 0;
