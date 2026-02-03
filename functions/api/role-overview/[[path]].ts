@@ -227,19 +227,7 @@ CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic plac
 
     // Match courses for role
     if (path === '/match-courses' && request.method === 'POST') {
-      // TODO: Implement AI-powered course matching
-      // - Validate request body (roleTitle, availableCourses, etc.)
-      // - Build course matching prompt
-      // - Call OpenRouter API
-      // - Parse and rank courses
-      // - Return matched courses with relevance scores
-      return jsonResponse(
-        {
-          error: 'Not implemented',
-          message: 'Course matching not yet implemented. See README.md for implementation details.',
-        },
-        501
-      );
+      return handleCourseMatching(context);
     }
 
     // 404 for unknown routes

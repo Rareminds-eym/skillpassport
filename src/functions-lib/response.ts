@@ -7,13 +7,17 @@ import { corsHeaders } from './cors';
 
 /**
  * Create a JSON response with CORS headers
+ * @param data - The data to return
+ * @param status - HTTP status code (default: 200)
+ * @param additionalHeaders - Optional additional headers to include
  */
-export function jsonResponse(data: any, status = 200): Response {
+export function jsonResponse(data: any, status = 200, additionalHeaders?: Record<string, string>): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       ...corsHeaders,
       'Content-Type': 'application/json',
+      ...additionalHeaders,
     },
   });
 }
