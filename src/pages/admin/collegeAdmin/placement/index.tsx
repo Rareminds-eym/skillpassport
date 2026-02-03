@@ -11,9 +11,9 @@ const PlacementManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState("companies");
   const [placementStats, setPlacementStats] = useState([
     { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },
-    { label: "Active Job Postings", value: "34", icon: Briefcase, color: "bg-purple-500" },
-    { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
-    { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+    { label: "Active Job Postings", value: "0", icon: Briefcase, color: "bg-purple-500" },
+    { label: "Students Placed", value: "0", icon: Users, color: "bg-green-500" },
+    { label: "Placement Rate", value: "0%", icon: TrendingUp, color: "bg-orange-500" },
   ]);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
@@ -33,17 +33,18 @@ const PlacementManagement: React.FC = () => {
     try {
       setIsLoadingStats(true);
       
-      // Load company stats and opportunities stats in parallel
-      const [companyStats, opportunitiesStats] = await Promise.all([
+      // Load company stats, opportunities stats, and placement stats in parallel
+      const [companyStats, opportunitiesStats, placementStats] = await Promise.all([
         companyService.getCompaniesStats(),
-        opportunitiesService.getOpportunitiesStats()
+        opportunitiesService.getOpportunitiesStats(),
+        opportunitiesService.getPlacementStats()
       ]);
       
       setPlacementStats([
         { label: "Total Companies", value: companyStats.total.toString(), icon: Building2, color: "bg-blue-500" },
         { label: "Active Job Postings", value: opportunitiesStats.active.toString(), icon: Briefcase, color: "bg-purple-500" },
-        { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
-        { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+        { label: "Students Placed", value: placementStats.studentsPlaced.toString(), icon: Users, color: "bg-green-500" },
+        { label: "Placement Rate", value: `${placementStats.placementRate}%`, icon: TrendingUp, color: "bg-orange-500" },
       ]);
     } catch (error) {
       console.error('Error loading placement stats:', error);
@@ -51,8 +52,8 @@ const PlacementManagement: React.FC = () => {
       setPlacementStats([
         { label: "Total Companies", value: "0", icon: Building2, color: "bg-blue-500" },
         { label: "Active Job Postings", value: "0", icon: Briefcase, color: "bg-purple-500" },
-        { label: "Students Placed", value: "1,245", icon: Users, color: "bg-green-500" },
-        { label: "Placement Rate", value: "87.3%", icon: TrendingUp, color: "bg-orange-500" },
+        { label: "Students Placed", value: "0", icon: Users, color: "bg-green-500" },
+        { label: "Placement Rate", value: "0%", icon: TrendingUp, color: "bg-orange-500" },
       ]);
     } finally {
       setIsLoadingStats(false);
