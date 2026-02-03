@@ -4,6 +4,7 @@
  */
 
 import { getPagesApiUrl } from '../../utils/pagesUrl';
+import { supabase } from '../../lib/supabaseClient';
 
 const EMBEDDING_API_URL = getPagesApiUrl('career');
 
@@ -29,9 +30,20 @@ export const generateEmbedding = async (text) => {
     return `${s4()}${s4()}-${s4()}-4${s4().substring(0, 3)}-${s4()}-${s4()}${s4()}${s4()}`;
   };
   
+  // Get auth token
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
   const response = await fetch(`${EMBEDDING_API_URL}/generate-embedding`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
     body: JSON.stringify({ 
       text, 
       table: 'students',  // Use existing table
