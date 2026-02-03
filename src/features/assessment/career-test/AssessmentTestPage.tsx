@@ -491,15 +491,30 @@ const AssessmentTestPage: React.FC = () => {
       flow.setTimeRemaining(pendingAttempt.timer_remaining);
     }
 
-    // FIX: For adaptive sections, don't set questionIndex
-    // The adaptive hook manages its own question state
+    // FIX: For adaptive sections, handle resume differently
+    // Only skip intro if we have an active adaptive session with a question
     if (targetSection?.isAdaptive) {
-
-      // Adaptive session was already resumed in handleResumeAssessment
-      // Just set to question 0 and let adaptive hook take over
       flow.setCurrentQuestionIndex(0);
-      flow.setShowSectionIntro(false);
-      flow.setCurrentScreen('assessment');
+
+      // FIX: Check if adaptive session exists and has a question
+      // If not, show the intro screen so user can start the adaptive test
+      // (This handles cases where user was on adaptive section but didn't start it yet)
+      if (adaptiveAptitude.session && adaptiveAptitude.currentQuestion) {
+        // Resume was successful - go directly to assessment
+        console.log('✅ Resuming adaptive section with active session');
+        flow.setShowSectionIntro(false);
+        flow.setCurrentScreen('assessment');
+      } else if (adaptiveAptitude.loading) {
+        // Session is being loaded - wait for it
+        console.log('⏳ Adaptive session loading, setting screen to assessment');
+        flow.setShowSectionIntro(false);
+        flow.setCurrentScreen('assessment');
+      } else {
+        // No active session - show intro so user can start a new test
+        console.log('ℹ️ No active adaptive session, showing section intro');
+        flow.setShowSectionIntro(true);
+        flow.setCurrentScreen('section_intro');
+      }
 
     } else {
       // For regular sections, restore the exact question index
@@ -965,15 +980,29 @@ const AssessmentTestPage: React.FC = () => {
 
       flow.setCurrentSectionIndex(sectionIndex);
 
-      // FIX: For adaptive sections, don't set questionIndex
-      // The adaptive hook manages its own question state
+      // FIX: For adaptive sections, handle resume differently
+      // Only skip intro if we have an active adaptive session
       if (targetSection?.isAdaptive) {
-
-        // Adaptive session was already resumed above
-        // Just set to question 0 and let adaptive hook take over
         flow.setCurrentQuestionIndex(0);
-        flow.setShowSectionIntro(false);
-        flow.setCurrentScreen('assessment');
+
+        // Check if adaptive session exists and has a question
+        // If not, show the intro screen so user can start the adaptive test
+        if (adaptiveAptitude.session && adaptiveAptitude.currentQuestion) {
+          // Resume was successful - go directly to assessment
+          console.log('✅ [handleResumeAssessment] Resuming adaptive section with active session');
+          flow.setShowSectionIntro(false);
+          flow.setCurrentScreen('assessment');
+        } else if (adaptiveAptitude.loading) {
+          // Session is being loaded - wait for it
+          console.log('⏳ [handleResumeAssessment] Adaptive session loading, setting screen to assessment');
+          flow.setShowSectionIntro(false);
+          flow.setCurrentScreen('assessment');
+        } else {
+          // No active session - show intro so user can start a new test
+          console.log('ℹ️ [handleResumeAssessment] No active adaptive session, showing section intro');
+          flow.setShowSectionIntro(true);
+          flow.setCurrentScreen('section_intro');
+        }
 
       } else {
         // For regular sections, restore the exact question index
@@ -1904,15 +1933,61 @@ const AssessmentTestPage: React.FC = () => {
               onContinue={handleNextSection}
             />
           )}
-          
-          {/* Loading state for adaptive section resume */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && 
-           currentSection?.isAdaptive && 
-           adaptiveAptitude.loading && 
-           !currentQuestion && (
-            <LoadingScreen message="Loading question..." />
-          )}
-          
+
+          {/* Loading/Error state for adaptive section resume */}
+          {/* Show loading screen for adaptive sections when:
+              1. We're in an adaptive section (not showing intro or complete screens)
+              2. Either actively loading OR no question is available yet (handles resume failures)
+              Note: This catches the edge case where resumeTest() completes but currentQuestion is still null */}
+          {!flow.showSectionIntro && !flow.showSectionComplete &&
+            currentSection?.isAdaptive &&
+            !currentQuestion && (
+              <div className="min-h-[60vh] flex items-center justify-center">
+                {adaptiveAptitude.error ? (
+                  // Error state with retry option
+                  <div className="text-center max-w-md mx-auto p-6 bg-white rounded-xl shadow-lg border border-red-200">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Unable to Load Test</h3>
+                    <p className="text-gray-600 mb-4">{adaptiveAptitude.error}</p>
+                    <div className="flex gap-3 justify-center">
+                      <button
+                        onClick={() => {
+                          adaptiveAptitude.clearError();
+                          adaptiveAptitude.startTest();
+                        }}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        Retry
+                      </button>
+                      <button
+                        onClick={() => flow.setShowSectionIntro(true)}
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                      >
+                        Back to Intro
+                      </button>
+                    </div>
+                  </div>
+                ) : adaptiveAptitude.loading ? (
+                  // Loading state
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-gray-600">Loading question...</p>
+                  </div>
+                ) : (
+                  // Preparing state (not loading, no error, but also no question yet)
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-gray-600">Preparing adaptive test...</p>
+                    <p className="text-sm text-gray-400 mt-2">This may take a moment...</p>
+                  </div>
+                )}
+              </div>
+            )}
+
           {/* Question with Sidebar Layout */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentQuestion && (
             <QuestionLayout
