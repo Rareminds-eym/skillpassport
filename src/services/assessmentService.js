@@ -842,9 +842,13 @@ export const getStudentAttempts = async (studentId) => {
  * @param {string} attemptId - Attempt UUID
  */
 export const getAttemptWithResults = async (attemptId) => {
+  // 🔧 CRITICAL FIX: Join with personal_assessment_results to get the result record
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
-    .select('*')
+    .select(`
+      *,
+      results:personal_assessment_results(*)
+    `)
     .eq('id', attemptId)
     .single();
 
@@ -1577,6 +1581,28 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
   console.log('Stream ID:', streamId);
   console.log('Attempt ID:', attemptId);
 
+  // 🔧 CRITICAL FIX: Get adaptive aptitude session ID from attempt's all_responses if it exists
+  let adaptiveSessionId = null;
+  try {
+    const { data: attemptData } = await supabase
+      .from('personal_assessment_attempts')
+      .select('all_responses')
+      .eq('id', attemptId)
+      .single();
+    
+    // Extract session ID from all_responses.adaptive_aptitude_results.sessionId
+    const adaptiveResults = attemptData?.all_responses?.adaptive_aptitude_results;
+    adaptiveSessionId = adaptiveResults?.sessionId || adaptiveResults?.session_id || null;
+    
+    if (adaptiveSessionId) {
+      console.log('✅ Found adaptive aptitude session ID:', adaptiveSessionId);
+    } else {
+      console.log('📊 No adaptive aptitude session found in attempt');
+    }
+  } catch (err) {
+    console.warn('Could not fetch adaptive session ID:', err);
+  }
+
   // Update attempt status to completed
   const { error: attemptError } = await supabase
     .from('personal_assessment_attempts')
@@ -1600,6 +1626,7 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
     grade_level: gradeLevel,
     stream_id: streamId,
     status: 'completed',
+    adaptive_aptitude_session_id: adaptiveSessionId, // 🔧 CRITICAL FIX: Include adaptive session ID
     // All AI fields are null - will be populated when AI analysis runs
     riasec_scores: null,
     riasec_code: null,

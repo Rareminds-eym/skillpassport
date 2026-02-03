@@ -242,6 +242,18 @@ export const validateAssessmentResults = (results, rawAnswers = {}, sectionTimin
   const warnings = [];
   let correctedResults = { ...results };
 
+  // 🔧 CRITICAL FIX: Preserve adaptive aptitude results if they exist
+  // These might be in results or in rawAnswers
+  if (!correctedResults.adaptiveAptitudeResults && !correctedResults.adaptive_aptitude_results) {
+    if (rawAnswers.adaptive_aptitude_results) {
+      correctedResults.adaptiveAptitudeResults = rawAnswers.adaptive_aptitude_results;
+      correctedResults.adaptive_aptitude_results = rawAnswers.adaptive_aptitude_results;
+    } else if (rawAnswers.adaptiveAptitudeResults) {
+      correctedResults.adaptiveAptitudeResults = rawAnswers.adaptiveAptitudeResults;
+      correctedResults.adaptive_aptitude_results = rawAnswers.adaptiveAptitudeResults;
+    }
+  }
+
   // 1. Validate and correct RIASEC topThree
   if (results.riasec) {
     const validatedRiasec = validateRiasecTopThree(results.riasec, results.gemini_results);

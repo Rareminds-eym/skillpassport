@@ -964,6 +964,24 @@ export const useAssessmentResults = () => {
                 if (directResult) {
                     console.log('✅ Found result directly by attempt_id');
                     
+                    // ✅ NEW: Fetch adaptive aptitude results if session ID exists
+                    let adaptiveAptitudeResults = null;
+                    if (directResult.adaptive_aptitude_session_id) {
+                        console.log('🔍 Fetching adaptive aptitude results for session:', directResult.adaptive_aptitude_session_id);
+                        const { data: adaptiveData, error: adaptiveError } = await supabase
+                            .from('adaptive_aptitude_results')
+                            .select('*')
+                            .eq('session_id', directResult.adaptive_aptitude_session_id)
+                            .maybeSingle();
+                        
+                        if (adaptiveData && !adaptiveError) {
+                            console.log('✅ Found adaptive aptitude results');
+                            adaptiveAptitudeResults = adaptiveData;
+                        } else if (adaptiveError) {
+                            console.warn('⚠️ Error fetching adaptive results:', adaptiveError);
+                        }
+                    }
+                    
                     // ✅ NEW: Check if data is in individual columns instead of gemini_results
                     let geminiResults = directResult.gemini_results;
                     
@@ -1000,7 +1018,9 @@ export const useAssessmentResults = () => {
                             roadmap: directResult.roadmap || {},
                             profileSnapshot: directResult.profile_snapshot || '',
                             finalNote: directResult.final_note || '',
-                            overallSummary: directResult.overall_summary || ''
+                            overallSummary: directResult.overall_summary || '',
+                            // Add adaptive aptitude results if they exist
+                            adaptiveAptitudeResults: adaptiveAptitudeResults || undefined
                         };
                         console.log('✅ Reconstructed results:', {
                             hasRiasec: !!geminiResults.riasec,
@@ -1651,6 +1671,37 @@ export const useAssessmentResults = () => {
             console.log('📚 Retry Student Context:', studentContext);
             console.log('🎓 Degree level:', studentContext.degreeLevel);
 
+            // 🔧 CRITICAL FIX: Fetch adaptive aptitude results if session ID exists
+            // This ensures high school students get their adaptive test data included in AI analysis
+            if (answers.adaptive_aptitude_session_id) {
+                console.log('🔍 Fetching adaptive aptitude results for AI analysis...');
+                console.log('   Session ID:', answers.adaptive_aptitude_session_id);
+                
+                try {
+                    const { data: adaptiveData, error: adaptiveError } = await supabase
+                        .from('adaptive_aptitude_results')
+                        .select('*')
+                        .eq('session_id', answers.adaptive_aptitude_session_id)
+                        .maybeSingle();
+                    
+                    if (adaptiveData && !adaptiveError) {
+                        console.log('✅ Found adaptive aptitude results:', {
+                            level: adaptiveData.aptitude_level,
+                            accuracy: adaptiveData.overall_accuracy,
+                            confidence: adaptiveData.confidence_tag
+                        });
+                        // Add to answers so AI can use it
+                        answers.adaptive_aptitude_results = adaptiveData;
+                    } else if (adaptiveError) {
+                        console.warn('⚠️ Error fetching adaptive results:', adaptiveError);
+                    } else {
+                        console.warn('⚠️ No adaptive results found for session:', answers.adaptive_aptitude_session_id);
+                    }
+                } catch (err) {
+                    console.error('❌ Failed to fetch adaptive results:', err);
+                }
+            }
+
             // Force regenerate with AI - pass gradeLevel and student context
             const geminiResults = await analyzeAssessmentWithGemini(
                 answers,
@@ -1668,6 +1719,14 @@ export const useAssessmentResults = () => {
 
             // Apply validation to correct RIASEC topThree and detect aptitude patterns
             const validatedResults = await applyValidation(geminiResults, answers, sectionTimings);
+
+            // 🔧 CRITICAL FIX: Preserve adaptive results in validated results
+            // The AI might not include adaptive results in its response, so we need to add them manually
+            if (answers.adaptive_aptitude_results && !validatedResults.adaptiveAptitudeResults) {
+                console.log('🔧 Adding adaptive results to validated results');
+                validatedResults.adaptiveAptitudeResults = answers.adaptive_aptitude_results;
+                validatedResults.adaptive_aptitude_results = answers.adaptive_aptitude_results;
+            }
 
             // ✅ Save to database only (no localStorage)
             try {
@@ -1722,6 +1781,13 @@ export const useAssessmentResults = () => {
                         }
                         if (validatedResults.overallSummary) {
                             updateData.overall_summary = validatedResults.overallSummary;
+                        }
+
+                        // 🔧 CRITICAL FIX: Ensure adaptive results are saved in gemini_results
+                        // This is needed for the validation check and display
+                        if (validatedResults.adaptiveAptitudeResults || validatedResults.adaptive_aptitude_results) {
+                            console.log('✅ Including adaptive results in database save');
+                            // Already in validatedResults, will be saved in gemini_results
                         }
 
                         // Update the existing result with new AI analysis
@@ -1857,8 +1923,20 @@ export const useAssessmentResults = () => {
         if (gradeLevel === 'middle' || gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
             // Basic interest exploration (mapped to RIASEC codes)
             if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('Interest Explorer');
-            // For high school and higher secondary, check aptitude sampling
-            if ((gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') && (!aptitude || !aptitude.scores)) missingFields.push('Aptitude Sampling');
+            
+            // For high school and higher secondary, check adaptive aptitude results (not aptitude sampling)
+            // Aptitude Sampling is just a self-assessment, real aptitude comes from adaptive test
+            if ((gradeLevel === 'highschool' || gradeLevel === 'higher_secondary')) {
+                // Check if adaptive aptitude results exist
+                const hasAdaptiveResults = results.adaptiveAptitudeResults || 
+                                          results.adaptive_aptitude_results ||
+                                          (results.gemini_results && results.gemini_results.adaptiveAptitudeResults);
+                
+                if (!hasAdaptiveResults) {
+                    missingFields.push('Adaptive Aptitude Test');
+                }
+            }
+            
             return missingFields;
         }
 
