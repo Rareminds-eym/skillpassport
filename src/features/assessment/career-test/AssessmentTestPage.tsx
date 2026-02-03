@@ -2047,6 +2047,14 @@ const AssessmentTestPage: React.FC = () => {
             />
           )}
           
+          {/* Loading state for adaptive section resume */}
+          {!flow.showSectionIntro && !flow.showSectionComplete && 
+           currentSection?.isAdaptive && 
+           adaptiveAptitude.loading && 
+           !currentQuestion && (
+            <LoadingScreen message="Loading question..." />
+          )}
+          
           {/* Question with Sidebar Layout */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentQuestion && (
             <QuestionLayout
