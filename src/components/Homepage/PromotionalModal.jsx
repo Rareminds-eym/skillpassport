@@ -41,7 +41,7 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
     return () => clearInterval(timer);
   }, [isOpen, getTimeRemaining]);
 
-  // Handle escape key
+  // Handle escape key and scroll lock
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === 'Escape') onClose();
@@ -49,12 +49,10 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'hidden';
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
 

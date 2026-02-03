@@ -152,7 +152,7 @@ node test-ai-field-keywords.js
 
 ### Environment Variables:
 ```env
-VITE_OPENROUTER_API_KEY=your_key_here
+OPENROUTER_API_KEY=your_key_here
 # or
 OPENROUTER_API_KEY=your_key_here
 

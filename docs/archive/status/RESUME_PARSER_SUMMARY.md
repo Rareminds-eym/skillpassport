@@ -123,7 +123,7 @@ project_root/
 # Choose ONE:
 
 # Option 1: OpenRouter (Recommended - FREE tier available)
-VITE_OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxx
+OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxx
 
 # Option 2: OpenAI (Alternative)
 VITE_OPENAI_API_KEY=sk-xxxxxxxxxxxxx

@@ -1,0 +1,61 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Skill Ecosystem",
+  "name_for_model": "skillpassport",
+  "description_for_human": "Comprehensive educational management and career development platform connecting schools,colleges,universities, students, educators,recruiters,rareminds admin and employers.",
+  "description_for_model": "Skill Ecosystem is an integrated platform for academic management, AI-powered career guidance, and recruitment. It serves K-12 schools, colleges, universities, students, educators, and recruiters. Key capabilities include: attendance tracking, timetable management, course enrollment, AI career assessments (RIASEC), job matching, recruitment pipeline management, and analytics. The platform uses AI to provide personalized career recommendations, match students with opportunities, and generate educational content. It supports multi-role users with role-based access control.",
+  "auth": {
+    "type": "service_http",
+    "authorization_type": "bearer",
+    "verification_tokens": {
+      "openai": "sk-proj-skillpassport-verification-token"
+    }
+  },
+  "api": {
+    "type": "openapi",
+    "url": "https://skillpassport.rareminds.in/openapi.json",
+    "has_user_authentication": true
+  },
+  "logo_url": "https://skillpassport.rareminds.in/logo.png",
+  "contact_email": "marketing@rareminds.in",
+  "legal_info_url": "https://skillpassport.rareminds.in/legal",
+  "capabilities": {
+    "academic_management": {
+      "attendance": true,
+      "timetable": true,
+      "grades": true,
+      "curriculum": true,
+      "examinations": true
+    },
+    "career_services": {
+      "ai_assessment": true,
+      "job_matching": true,
+      "resume_building": true,
+      "application_tracking": true,
+      "recommendations": true
+    },
+    "learning": {
+      "course_marketplace": true,
+      "skill_tracking": true,
+      "certificates": true,
+      "progress_monitoring": true
+    },
+    "recruitment": {
+      "candidate_matching": true,
+      "pipeline_management": true,
+      "communication": true,
+      "analytics": true
+    }
+  },
+  "tags": [
+    "colleges",
+    "schools",
+    "universities",
+    "education",
+    "career-guidance",
+    "recruitment",
+    "ai-assessment",
+    "student-management",
+    "learning-platform"
+  ]
+}

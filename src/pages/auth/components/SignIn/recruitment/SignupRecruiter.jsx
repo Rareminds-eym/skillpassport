@@ -108,8 +108,9 @@ export default function SignupRecruiter() {
       const firstName = capitalizeFirstLetter(formData.firstName);
       const lastName = capitalizeFirstLetter(formData.lastName);
       
-      // Use the worker API for signup with proper rollback support
-      const USER_API_URL = import.meta.env.VITE_USER_API_URL || 'https://user-api.dark-mode-d021.workers.dev';
+      // Use the Pages Function API for signup with proper rollback support
+      const { getPagesApiUrl } = await import('../../../../../utils/pagesUrl');
+      const USER_API_URL = getPagesApiUrl('user');
       
       const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
         method: 'POST',

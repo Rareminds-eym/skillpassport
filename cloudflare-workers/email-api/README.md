@@ -1,85 +1,160 @@
 # Email API - Cloudflare Worker
 
-A simple email sending service using `worker-mailer` and Cloudflare Workers.
+A well-structured email service built on Cloudflare Workers using worker-mailer with AWS SES SMTP.
 
-## Setup
+## 📁 Project Structure
 
-### 1. Install dependencies
-
-```bash
-cd cloudflare-workers/email-api
-npm install
+```
+src/
+├── index.js                    # Main entry point & worker handlers
+├── config/
+│   ├── constants.js           # Application constants
+│   └── smtp.js                # SMTP configuration builder
+├── services/
+│   ├── mailer.js              # Email sending service
+│   ├── supabase.js            # Database operations
+│   └── bulk-processor.js      # Bulk email processing
+├── handlers/
+│   ├── generic.js             # Generic email handler
+│   ├── invitation.js          # Organization invitation handler
+│   ├── countdown.js           # Single countdown email handler
+│   └── bulk-countdown.js      # Bulk countdown email handler
+├── templates/
+│   ├── invitation.js          # Invitation email HTML template
+│   └── countdown.js           # Countdown email HTML template
+├── routes/
+│   └── router.js              # Request routing logic
+├── cron/
+│   ├── countdown-processor.js # Automated countdown emails
+│   ├── retry-processor.js     # Failed email retry logic
+│   └── email-processor-helper.js # Shared CRON helpers
+└── utils/
+    ├── response.js            # HTTP response helpers
+    └── date.js                # Date/time utilities
 ```
 
-### 2. Configure SMTP credentials
+## 🎯 Features
 
-Edit `.dev.vars` with your SMTP credentials:
+- **Generic Email Sending** - Send any email via POST /
+- **Organization Invitations** - Templated invitation emails via POST /invitation
+- **Countdown Emails** - Pre-registration countdown via POST /countdown
+- **Bulk Countdown** - Send to all pre-registrations via POST /send-bulk-countdown
+- **Automated CRON** - Scheduled countdown emails on days 7, 5, 3, 1
+- **Retry Logic** - Exponential backoff for failed emails
+- **Email Tracking** - Full tracking via Supabase
 
-```env
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-FROM_NAME=My App
+## 🚀 API Endpoints
+
+### POST /
+Generic email sending
+```json
+{
+  "to": "user@example.com",
+  "subject": "Hello",
+  "html": "<h1>Hello World</h1>",
+  "text": "Hello World",
+  "from": "custom@example.com",
+  "fromName": "Custom Name"
+}
 ```
 
-#### Gmail Setup
-1. Enable 2-Step Verification in your Google Account
-2. Go to: Google Account > Security > 2-Step Verification > App passwords
-3. Generate an App Password for "Mail"
-4. Use that password in `SMTP_PASS`
-
-### 3. Run locally
-
-```bash
-npm run dev
+### POST /invitation
+Organization invitation email
+```json
+{
+  "to": "user@example.com",
+  "organizationName": "Acme Corp",
+  "memberType": "educator",
+  "invitationToken": "abc123",
+  "expiresAt": "2026-02-01T00:00:00Z",
+  "customMessage": "Welcome to our team!"
+}
 ```
 
-Worker will start at `http://localhost:8787`
-
-## API Endpoints
-
-### Health Check
-```bash
-curl http://localhost:8787/health
+### POST /countdown
+Single countdown email
+```json
+{
+  "to": "user@example.com",
+  "fullName": "John Doe",
+  "countdownDay": 7,
+  "launchDate": "2026-02-01"
+}
 ```
 
-### Check Configuration
-```bash
-curl http://localhost:8787/test
+### POST /send-bulk-countdown
+Bulk countdown emails
+```json
+{
+  "countdownDay": 7,
+  "launchDate": "2026-02-01"
+}
 ```
 
-### Send Email
-```bash
-curl -X POST http://localhost:8787/send \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "recipient@example.com",
-    "subject": "Test Email",
-    "text": "Hello from Cloudflare Worker!",
-    "html": "<h1>Hello!</h1><p>From Cloudflare Worker</p>"
-  }'
+### GET /health
+Health check endpoint
+
+## 🔧 Environment Variables
+
+Required:
+- `SMTP_HOST` - SMTP server hostname
+- `SMTP_PORT` - SMTP port (default: 587)
+- `SMTP_USER` - SMTP username
+- `SMTP_PASS` - SMTP password
+
+Optional:
+- `FROM_EMAIL` - Default sender email (default: noreply@rareminds.in)
+- `FROM_NAME` - Default sender name (default: Skill Passport)
+- `VITE_SUPABASE_URL` - Supabase URL for tracking
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service key
+- `LAUNCH_DATE` - Launch date for countdown (default: 2026-02-01)
+- `MAX_EMAIL_RETRIES` - Max retry attempts (default: 3)
+
+## 📦 Architecture Benefits
+
+### Separation of Concerns
+- **Config** - Centralized configuration
+- **Services** - Business logic layer
+- **Handlers** - Request handling
+- **Templates** - Email HTML generation
+- **Utils** - Reusable utilities
+- **CRON** - Scheduled job logic
+
+### Maintainability
+- Each file < 150 lines
+- Single responsibility principle
+- Easy to test individual components
+- Clear import dependencies
+
+### Scalability
+- Easy to add new email types
+- Modular template system
+- Pluggable services
+- Independent CRON jobs
+
+## 🧪 Testing
+
+Each module can be tested independently:
+- Services can be mocked
+- Templates return pure HTML
+- Handlers are isolated
+- Utils are pure functions
+
+## 📝 Development
+
+1. Install dependencies: `npm install`
+2. Set up environment variables
+3. Test locally: `wrangler dev`
+4. Deploy: `wrangler deploy`
+
+## 🔄 CRON Schedule
+
+The worker runs scheduled jobs for:
+- Processing countdown emails on specific days (7, 5, 3, 1)
+- Retrying failed emails with exponential backoff
+
+Configure in `wrangler.toml`:
+```toml
+[triggers]
+crons = ["0 9 * * *"]  # Daily at 9 AM UTC
 ```
-
-## Deploy to Production
-
-### 1. Add secrets
-```bash
-npx wrangler secret put SMTP_USER
-npx wrangler secret put SMTP_PASS
-```
-
-### 2. Deploy
-```bash
-npm run deploy
-```
-
-## SMTP Providers
-
-| Provider | Host | Port |
-|----------|------|------|
-| Gmail | smtp.gmail.com | 587 |
-| Outlook | smtp.office365.com | 587 |
-| AWS SES | email-smtp.{region}.amazonaws.com | 587 |
-| Mailgun | smtp.mailgun.org | 587 |
-| SendGrid | smtp.sendgrid.net | 587 |
-
-Update `wrangler.toml` to change the SMTP host/port.

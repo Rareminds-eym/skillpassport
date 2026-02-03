@@ -12,25 +12,25 @@ import { calculateStreamRecommendations } from '../features/assessment/assessmen
  */
 export const validateStreamRecommendation = (results) => {
   if (results.gradeLevel !== 'after10') return results;
-  
+
   try {
     console.log('🔍 Validating stream recommendation for After 10th student...');
-    
+
     // Calculate rule-based recommendation
     const ruleBasedStream = calculateStreamRecommendations(
       { riasec: { scores: results.riasec?.scores || {} } },
       { subjectMarks: [], projects: [], experiences: [] }
     );
-    
+
     const aiStream = results.streamRecommendation?.recommendedStream;
     const ruleStream = ruleBasedStream.recommendedStream;
     const ruleConfidence = ruleBasedStream.confidenceScore;
-    
+
     // If streamRecommendation is missing or invalid, generate it from rule-based engine
     if (!aiStream || aiStream === 'N/A' || aiStream === 'null' || aiStream === null) {
       console.warn('⚠️ streamRecommendation missing from AI response!');
       console.warn('   Generating from rule-based engine...');
-      
+
       results.streamRecommendation = {
         ...ruleBasedStream,
         isAfter10: true,
@@ -38,20 +38,20 @@ export const validateStreamRecommendation = (results) => {
         reason: 'AI response did not include streamRecommendation',
         aiSuggestion: null
       };
-      
+
       console.log('✅ Generated streamRecommendation:', results.streamRecommendation.recommendedStream);
       return results;
     }
-    
+
     console.log('AI Recommendation:', aiStream);
     console.log('Rule-Based Recommendation:', ruleStream, `(${ruleConfidence}% confidence)`);
-    
+
     // If AI and rule-based differ significantly, use rule-based if confidence is high
     if (aiStream !== ruleStream && ruleConfidence >= 75) {
       console.warn('⚠️ Stream recommendation mismatch detected!');
       console.warn('   AI suggested:', aiStream);
       console.warn('   Rule-based suggests:', ruleStream, `(${ruleConfidence}% confidence)`);
-      
+
       // Use rule-based if confidence is high
       if (ruleConfidence >= 80) {
         console.log('✅ Using rule-based recommendation due to high confidence');
@@ -84,7 +84,7 @@ export const validateStreamRecommendation = (results) => {
     console.error('❌ Error validating stream recommendation:', error);
     // Continue with AI recommendation if validation fails
   }
-  
+
   return results;
 };
 
@@ -233,12 +233,12 @@ export const updateAttemptProgress = async (attemptId, progress) => {
     section_timings: mergedSectionTimings,
     updated_at: new Date().toISOString()
   };
-  
+
   // Include timer_remaining if provided (for timed sections)
   if (progress.timerRemaining !== undefined && progress.timerRemaining !== null) {
     updateData.timer_remaining = progress.timerRemaining;
   }
-  
+
   // Include elapsed_time if provided (for non-timed sections)
   if (progress.elapsedTime !== undefined && progress.elapsedTime !== null) {
     updateData.elapsed_time = progress.elapsedTime;
@@ -257,7 +257,7 @@ export const updateAttemptProgress = async (attemptId, progress) => {
   // Include all_responses if provided (for non-UUID questions like RIASEC, BigFive, etc.)
   // IMPORTANT: Merge with existing all_responses instead of replacing
   if (progress.allResponses) {
-    
+
     // Merge existing responses with new ones (new ones take precedence)
     const mergedResponses = {
       ...(existingAttempt?.all_responses || {}),
@@ -265,7 +265,7 @@ export const updateAttemptProgress = async (attemptId, progress) => {
     };
     updateData.all_responses = mergedResponses;
   }
-  
+
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
     .update(updateData)
@@ -299,7 +299,7 @@ export const saveAllResponses = async (attemptId, allResponses) => {
       console.error('Error saving all responses:', error);
       throw error;
     }
-    
+
     console.log('✅ All responses saved to database');
     return data;
   } catch (err) {
@@ -413,6 +413,64 @@ export const getAttemptResponses = async (attemptId) => {
 };
 
 /**
+ * Validate RIASEC scores for suspicious patterns
+ * @param {Object} riasecScores - RIASEC scores object { R, I, A, S, E, C }
+ * @returns {Object} - { isValid: boolean, warning: string|null }
+ */
+const validateRIASECScores = (riasecScores) => {
+  if (!riasecScores || typeof riasecScores !== 'object') {
+    return { isValid: true, warning: null };
+  }
+
+  const scores = Object.values(riasecScores);
+  if (scores.length === 0) {
+    return { isValid: true, warning: null };
+  }
+
+  // Check if all scores are equal
+  const uniqueScores = new Set(scores);
+  if (uniqueScores.size === 1) {
+    const equalValue = scores[0];
+    return {
+      isValid: false,
+      warning: `All RIASEC scores are equal (${equalValue}). This may indicate an extraction or calculation error.`
+    };
+  }
+
+  return { isValid: true, warning: null };
+};
+
+/**
+ * Validate aptitude scores for suspicious patterns
+ * @param {Object} aptitudeScores - Aptitude scores object with categories
+ * @returns {Object} - { isValid: boolean, warning: string|null }
+ */
+const validateAptitudeScores = (aptitudeScores) => {
+  if (!aptitudeScores || typeof aptitudeScores !== 'object') {
+    return { isValid: true, warning: null };
+  }
+
+  // Check if all correct counts are zero
+  const categories = Object.values(aptitudeScores);
+  if (categories.length === 0) {
+    return { isValid: true, warning: null };
+  }
+
+  const allZero = categories.every(category => {
+    return category && category.correct === 0;
+  });
+
+  if (allZero) {
+    return {
+      isValid: false,
+      warning: 'All aptitude scores show 0 correct answers. This may indicate an extraction or scoring error.'
+    };
+  }
+
+  return { isValid: true, warning: null };
+};
+
+/**
  * Complete an assessment attempt and save results
  * 
  * IMPORTANT: This function saves results FIRST, then marks the attempt as completed.
@@ -433,7 +491,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('Stream ID:', streamId);
   console.log('Has geminiResults:', !!geminiResults);
   console.log('geminiResults keys:', geminiResults ? Object.keys(geminiResults) : []);
-  
+
   // Debug: Log the actual data being extracted
   console.log('🔍 Extracting data from geminiResults:');
   console.log('  riasec:', JSON.stringify(geminiResults?.riasec));
@@ -441,13 +499,29 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('  riasec.code:', geminiResults?.riasec?.code);
 
   // ============================================================================
+  // VALIDATION: Check for suspicious score patterns (Requirement 6.4, 6.5)
+  // ============================================================================
+
+  // Validate RIASEC scores
+  const riasecValidation = validateRIASECScores(geminiResults?.riasec?.scores);
+  if (!riasecValidation.isValid) {
+    console.warn('⚠️ RIASEC VALIDATION WARNING:', riasecValidation.warning);
+  }
+
+  // Validate aptitude scores
+  const aptitudeValidation = validateAptitudeScores(geminiResults?.aptitude?.scores);
+  if (!aptitudeValidation.isValid) {
+    console.warn('⚠️ APTITUDE VALIDATION WARNING:', aptitudeValidation.warning);
+  }
+
+  // ============================================================================
   // CRITICAL VALIDATION: Ensure AI returned complete data
   // Validation is grade-level specific since different grades have different sections
   // ============================================================================
-  
+
   // Define required fields based on grade level
   let requiredFields;
-  
+
   if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
     // Middle school and high school have simplified assessments
     // They use adaptive aptitude instead of traditional aptitude/knowledge sections
@@ -462,7 +536,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     // Comprehensive assessment for after10, after12, college, higher_secondary
     requiredFields = [
       'riasec',
-      'aptitude', 
+      'aptitude',
       'bigFive',
       'workValues',
       'employability',
@@ -473,15 +547,15 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
     ];
     console.log('📊 Using comprehensive validation for grade:', gradeLevel);
   }
-  
+
   const missingFields = requiredFields.filter(field => !geminiResults[field]);
-  
+
   if (missingFields.length > 0) {
     console.error('❌ CRITICAL: AI returned incomplete data!');
     console.error('❌ Missing required fields:', missingFields);
     console.error('❌ AI Response Keys:', Object.keys(geminiResults));
     console.error('❌ Full AI Response:', JSON.stringify(geminiResults, null, 2));
-    
+
     throw new Error(
       `AI analysis incomplete. Missing ${missingFields.length} required fields: ${missingFields.join(', ')}. ` +
       `Please try again or contact support if the issue persists.`
@@ -490,7 +564,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 
   // Validate nested required fields (grade-level specific)
   let nestedValidation;
-  
+
   if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
     // Simplified nested validation for middle/high school
     nestedValidation = [
@@ -508,13 +582,13 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
       { path: 'roadmap.projects', value: geminiResults.roadmap?.projects }
     ];
   }
-  
+
   const missingNested = nestedValidation.filter(v => !v.value).map(v => v.path);
-  
+
   if (missingNested.length > 0) {
     console.error('❌ CRITICAL: AI returned incomplete nested data!');
     console.error('❌ Missing nested fields:', missingNested);
-    
+
     throw new Error(
       `AI analysis incomplete. Missing nested fields: ${missingNested.join(', ')}. ` +
       `Please try again or contact support if the issue persists.`
@@ -538,11 +612,11 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 
   // Grade-level specific fields - only extract for comprehensive assessments
   const isSimplifiedAssessment = gradeLevel === 'middle' || gradeLevel === 'highschool';
-  
+
   // Aptitude - available for all grade levels (adaptive for middle/high school)
   const aptitudeScores = geminiResults?.aptitude?.scores || null;
   const aptitudeOverall = geminiResults?.aptitude?.overallScore ?? null;
-  
+
   // These fields are ONLY for comprehensive assessments (after10, after12, college, higher_secondary)
   const workValuesScores = isSimplifiedAssessment ? null : (geminiResults?.workValues?.scores || null);
   const employabilityScores = isSimplifiedAssessment ? null : (geminiResults?.employability?.skillScores || null);
@@ -559,6 +633,32 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('  employabilityScores:', employabilityScores, isSimplifiedAssessment ? '(excluded for simplified)' : '');
   console.log('  knowledgeScore:', knowledgeScore, isSimplifiedAssessment ? '(excluded for simplified)' : '');
   console.log('  careerFit exists:', !!careerFit);
+
+  // ============================================================================
+  // DETAILED LOGGING: Log extracted score values before database save (Requirement 6.3, 6.6)
+  // ============================================================================
+  console.log('📝 === EXTRACTED SCORES BEFORE DATABASE SAVE ===');
+  console.log('📝 RIASEC Scores:', JSON.stringify(riasecScores, null, 2));
+  console.log('📝 RIASEC Code:', riasecCode);
+  console.log('📝 Aptitude Scores:', JSON.stringify(aptitudeScores, null, 2));
+  console.log('📝 Aptitude Overall:', aptitudeOverall);
+  console.log('📝 BigFive Scores:', JSON.stringify(bigfiveScores, null, 2));
+
+  if (!isSimplifiedAssessment) {
+    console.log('📝 Work Values Scores:', JSON.stringify(workValuesScores, null, 2));
+    console.log('📝 Employability Scores:', JSON.stringify(employabilityScores, null, 2));
+    console.log('📝 Employability Readiness:', employabilityReadiness);
+    console.log('📝 Knowledge Score:', knowledgeScore);
+  }
+
+  // Log warnings for suspicious patterns
+  if (riasecValidation && !riasecValidation.isValid) {
+    console.warn('⚠️ SUSPICIOUS PATTERN DETECTED:', riasecValidation.warning);
+  }
+  if (aptitudeValidation && !aptitudeValidation.isValid) {
+    console.warn('⚠️ SUSPICIOUS PATTERN DETECTED:', aptitudeValidation.warning);
+  }
+  console.log('📝 === END EXTRACTED SCORES ===');
 
   const dataToInsert = {
     attempt_id: attemptId,
@@ -602,7 +702,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   console.log('Attempt ID:', attemptId);
   console.log('Student ID:', studentId);
   console.log('Stream ID:', streamId);
-  
+
   const { data: results, error: resultsError } = await supabase
     .from('personal_assessment_results')
     .upsert(dataToInsert, {
@@ -615,13 +715,13 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   if (resultsError) {
     console.error('❌ Error upserting results:', resultsError);
     console.error('Full error object:', JSON.stringify(resultsError, null, 2));
-    
+
     // Check if it's an RLS error
     if (resultsError.code === '42501' || resultsError.message?.includes('policy')) {
       console.error('🔒 This appears to be an RLS (Row Level Security) policy error');
       console.error('The student_id in the upsert must match auth.uid()');
     }
-    
+
     // Don't mark attempt as completed if results failed to save
     throw resultsError;
   }
@@ -683,11 +783,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 export const getStudentAttempts = async (studentId) => {
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
-    .select(`
-      *,
-      stream:personal_assessment_streams(*),
-      results:personal_assessment_results(*)
-    `)
+    .select('*')
     .eq('student_id', studentId)
     .order('created_at', { ascending: false });
 
@@ -702,11 +798,7 @@ export const getStudentAttempts = async (studentId) => {
 export const getAttemptWithResults = async (attemptId) => {
   const { data, error } = await supabase
     .from('personal_assessment_attempts')
-    .select(`
-      *,
-      stream:personal_assessment_streams(*),
-      results:personal_assessment_results(*)
-    `)
+    .select('*')
     .eq('id', attemptId)
     .single();
 
@@ -748,7 +840,7 @@ export const getLatestResult = async (studentIdOrUserId) => {
 
   // If not found, try looking up by user_id (in case we were passed auth.uid())
   console.log('🔄 No direct match, trying user_id lookup...');
-  
+
   try {
     // Get student.id from user_id
     const { data: student, error: studentError } = await supabase
@@ -853,6 +945,78 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
   }
 
   /**
+   * Validate that an attempt has all required fields and correct data structure
+   * Validates: Requirements 2.4, 3.2
+   * @param {object} attempt - The attempt object to validate
+   * @returns {boolean} True if valid, false otherwise
+   */
+  const validateAttemptStructure = (attempt) => {
+    if (!attempt) return false;
+
+    // Required fields that must exist
+    const requiredFields = [
+      'id',
+      'student_id',
+      'stream_id',
+      'grade_level',
+      'status',
+      'created_at',
+      'current_section_index',
+      'current_question_index'
+    ];
+
+    // Check all required fields exist
+    for (const field of requiredFields) {
+      if (attempt[field] === undefined || attempt[field] === null) {
+        console.error(`❌ Validation failed: Missing required field '${field}'`);
+        return false;
+      }
+    }
+
+    // Validate field types
+    if (typeof attempt.id !== 'string') {
+      console.error('❌ Validation failed: id must be a string (UUID)');
+      return false;
+    }
+
+    if (typeof attempt.student_id !== 'string') {
+      console.error('❌ Validation failed: student_id must be a string (UUID)');
+      return false;
+    }
+
+    if (typeof attempt.stream_id !== 'string') {
+      console.error('❌ Validation failed: stream_id must be a string (UUID)');
+      return false;
+    }
+
+    if (typeof attempt.grade_level !== 'string') {
+      console.error('❌ Validation failed: grade_level must be a string');
+      return false;
+    }
+
+    if (attempt.status !== 'in_progress') {
+      console.error(`❌ Validation failed: status must be 'in_progress', got '${attempt.status}'`);
+      return false;
+    }
+
+    if (typeof attempt.current_section_index !== 'number') {
+      console.error('❌ Validation failed: current_section_index must be a number');
+      return false;
+    }
+
+    if (typeof attempt.current_question_index !== 'number') {
+      console.error('❌ Validation failed: current_question_index must be a number');
+      return false;
+    }
+
+    // Note: stream and responses are optional since embedded selects were removed
+    // The all_responses JSONB field now stores responses directly
+
+    console.log('✅ Attempt structure validation passed');
+    return true;
+  };
+
+  /**
    * Helper function to check if an attempt has meaningful progress
    * An attempt is considered "started" if it has:
    * - At least one response in personal_assessment_responses table, OR
@@ -861,52 +1025,52 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
    */
   const hasProgress = (attempt) => {
     if (!attempt) return false;
-    
+
     // Check for responses in the responses table
     if (attempt.responses && attempt.responses.length > 0) {
       return true;
     }
-    
+
     // Check for answers in all_responses JSONB
     if (attempt.all_responses && typeof attempt.all_responses === 'object') {
       const keys = Object.keys(attempt.all_responses);
       // Filter out metadata keys that aren't actual answers
-      const answerKeys = keys.filter(k => 
-        !k.startsWith('_') && 
+      const answerKeys = keys.filter(k =>
+        !k.startsWith('_') &&
         k !== 'adaptive_aptitude_results'
       );
       if (answerKeys.length > 0) {
         return true;
       }
     }
-    
+
     // Check for adaptive aptitude session progress
     if (attempt.adaptive_aptitude_session_id) {
       return true;
     }
-    
+
     return false;
   };
-  
+
   /**
    * Helper function to fetch adaptive session progress
    * Returns the number of questions answered in the adaptive session
    */
   const fetchAdaptiveProgress = async (sessionId) => {
     if (!sessionId) return null;
-    
+
     try {
       const { data: sessionData, error } = await supabase
         .from('adaptive_aptitude_sessions')
         .select('questions_answered, current_question_index, status, current_phase')
         .eq('id', sessionId)
         .maybeSingle();
-      
+
       if (error || !sessionData) {
         console.warn('Could not fetch adaptive session progress:', error);
         return null;
       }
-      
+
       return {
         questionsAnswered: sessionData.questions_answered || 0,
         currentQuestionIndex: sessionData.current_question_index || 0,
@@ -920,29 +1084,39 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
   };
 
   // Try direct lookup first (assuming it's student.id)
+  // Using maybeSingle() to avoid 406 errors when no rows are found
   let { data, error } = await supabase
     .from('personal_assessment_attempts')
-    .select(`
-      *,
-      stream:personal_assessment_streams(*),
-      responses:personal_assessment_responses(*)
-    `)
+    .select('*')
     .eq('student_id', studentIdOrUserId)
     .eq('status', 'in_progress')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
+  // Handle errors (maybeSingle returns null for no rows, no error)
   if (error) {
     console.error('Error fetching in-progress attempt:', error);
     throw error;
   }
 
+  if (!data) {
+    console.log('No in-progress attempt found (direct lookup)');
+  }
+
   // If found, check if it has actual progress
   if (data) {
+    console.log('✅ Found in-progress attempt (direct lookup):', data.id);
+
+    // Validate attempt structure before proceeding
+    if (!validateAttemptStructure(data)) {
+      console.error('❌ Attempt failed validation, returning null');
+      return null;
+    }
+
     if (hasProgress(data)) {
-      console.log('✅ Found in-progress attempt with progress (direct lookup):', data.id);
-      
+      console.log('✅ Attempt has progress, returning it');
+
       // Fetch adaptive progress if there's an adaptive session
       if (data.adaptive_aptitude_session_id) {
         const adaptiveProgress = await fetchAdaptiveProgress(data.adaptive_aptitude_session_id);
@@ -951,7 +1125,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
           console.log('📊 Adaptive progress:', adaptiveProgress);
         }
       }
-      
+
       return data;
     } else {
       // Attempt exists but has no progress - abandon it silently
@@ -971,7 +1145,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
 
   // If not found or abandoned, try looking up by user_id (in case we were passed auth.uid())
   console.log('🔄 No direct match, trying user_id lookup...');
-  
+
   try {
     // Get student.id from user_id
     const { data: student, error: studentError } = await supabase
@@ -991,28 +1165,39 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
     }
 
     // Now try again with the correct student.id
+    // Using maybeSingle() to avoid 406 errors when no rows are found
     const { data: attemptData, error: attemptError } = await supabase
       .from('personal_assessment_attempts')
-      .select(`
-        *,
-        stream:personal_assessment_streams(*),
-        responses:personal_assessment_responses(*)
-      `)
+      .select('*')
       .eq('student_id', student.id)
       .eq('status', 'in_progress')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
+    // Handle errors (maybeSingle returns null for no rows, no error)
     if (attemptError) {
       console.error('Error fetching attempt by student.id:', attemptError);
       return null;
     }
 
+    if (!attemptData) {
+      console.log('No in-progress attempt found (user_id lookup)');
+      return null;
+    }
+
     if (attemptData) {
+      console.log('✅ Found in-progress attempt (user_id lookup):', attemptData.id);
+
+      // Validate attempt structure before proceeding
+      if (!validateAttemptStructure(attemptData)) {
+        console.error('❌ Attempt failed validation, returning null');
+        return null;
+      }
+
       if (hasProgress(attemptData)) {
-        console.log('✅ Found in-progress attempt with progress (via user_id lookup):', attemptData.id);
-        
+        console.log('✅ Attempt has progress, returning it');
+
         // Fetch adaptive progress if there's an adaptive session
         if (attemptData.adaptive_aptitude_session_id) {
           const adaptiveProgress = await fetchAdaptiveProgress(attemptData.adaptive_aptitude_session_id);
@@ -1021,7 +1206,7 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
             console.log('📊 Adaptive progress:', adaptiveProgress);
           }
         }
-        
+
         return attemptData;
       } else {
         // Attempt exists but has no progress - abandon it silently
@@ -1173,14 +1358,14 @@ export const calculateAptitudeScores = (answers, questions) => {
     if (questionDetails) {
       const rawCategory = questionDetails.subtype.toLowerCase();
       const category = categoryMap[rawCategory] || 'verbal';
-      
+
       scoresByCategory[category].total++;
-      
+
       const isCorrect = answer.selected_answer === questionDetails.correct_answer;
       if (isCorrect) {
         scoresByCategory[category].correct++;
       }
-      
+
       scoresByCategory[category].details.push({
         question_id: answer.question_id,
         selected_answer: answer.selected_answer,
@@ -1294,7 +1479,7 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
   console.log('Student ID:', studentId);
   console.log('Stream ID:', streamId);
   console.log('Attempt ID:', attemptId);
-  
+
   // Update attempt status to completed
   const { error: attemptError } = await supabase
     .from('personal_assessment_attempts')
@@ -1341,7 +1526,7 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
   };
 
   console.log('📝 Inserting minimal result record (AI analysis will be generated on result page)');
-  
+
   const { data: results, error: resultsError } = await supabase
     .from('personal_assessment_results')
     .upsert(dataToInsert, {

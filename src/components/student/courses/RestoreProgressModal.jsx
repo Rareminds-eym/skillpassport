@@ -28,15 +28,9 @@ const RestoreProgressModal = ({
   }, [isOpen, onClose]);
 
   // Prevent body scroll when modal is open
+  // No scroll lock needed - let modals scroll naturally
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    // Modal is controlled by parent component
   }, [isOpen]);
 
   if (!restorePoint) return null;

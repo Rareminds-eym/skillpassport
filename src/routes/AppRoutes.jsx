@@ -35,10 +35,11 @@ const SCHOOL_ADMIN_ROLES = ["school_admin"];
 const UNIVERSITY_ADMIN_ROLES = ["university_admin"];
 
 const Home = lazy(() => import("../pages/homepage/Home"));
-const About = lazy(() => import("../pages/homepage/About"));
+const About = lazy(() => import("../pages/AboutPage"));
 const Contact = lazy(() => import("../pages/homepage/Contact"));
 const TermsAndConditions = lazy(() => import("../pages/TermsAndConditions"));
 const PrivacyPolicy = lazy(() => import("../pages/PrivacyPolicy"));
+const Receipt = lazy(() => import("../pages/Receipt"));
 const PuterDemo = lazy(() => import("../pages/puter/PuterDemo"));
 const SubscriptionPlans = lazy(() =>
   import("../pages/subscription/SubscriptionPlans")
@@ -92,10 +93,17 @@ const SimpleEventRegistration = lazy(() =>
   import("../pages/register/SimpleEventRegistration")
 );
 
+// Skill Passport Pre-Registration (dedicated landing page)
+const SkillPassportPreRegistration = lazy(() =>
+  import("../pages/register/SkillPassportPreRegistration")
+);
+
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
 const UnifiedSignup = lazy(() => import("../pages/auth/UnifiedSignup"));
 const UnifiedForgotPassword = lazy(() => import("../pages/auth/UnifiedForgotPassword"));
+const PasswordReset = lazy(() => import("../pages/auth/PasswordReset"));
+const TokenPasswordReset = lazy(() => import("../pages/auth/TokenPasswordReset"));
 const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
 const DebugRoles = lazy(() => import("../pages/auth/DebugRoles"));
 const SignupRecruiter = lazy(() =>
@@ -189,6 +197,7 @@ const EducatorManagement = lazy(() => import("../pages/educator/EducatorManageme
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
 );
+const EducatorMessages = lazy(() => import("../pages/educator/Messages"));
 const SkillCurriculars = lazy(() => import("../pages/educator/SkillCurricular"))
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
@@ -503,8 +512,11 @@ const AppRoutes = () => {
     <Suspense fallback={<Loader />}>
       <ScrollToTop />
       <Routes>
-        {/* Simple Event Registration - Social media campaigns (standalone, no layout) */}
-        <Route path="/register" element={<SimpleEventRegistration />} />
+        {/* Skill Passport Pre-Registration - Main landing page */}
+        <Route path="/register" element={<SkillPassportPreRegistration />} />
+        
+        {/* Receipt Page - Download PDF receipt */}
+        <Route path="/receipt/:orderId" element={<Receipt />} />
 
         {/* Event Sales - Standalone without layout (no header/footer) */}
         <Route path="/signup/plans" element={<EventSales />} />
@@ -530,6 +542,7 @@ const AppRoutes = () => {
           <Route path="/login" element={<UnifiedLogin />} />
           <Route path="/signup" element={<UnifiedSignup />} />
           <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
+          <Route path="/password-reset" element={<TokenPasswordReset />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/debug-roles" element={<DebugRoles />} />
 
@@ -1041,6 +1054,7 @@ const AppRoutes = () => {
           <Route path="profile-debug" element={<EducatorProfileDebug />} />
           <Route path="management" element={<EducatorManagement />} />
           <Route path="communication" element={<EducatorCommunication />} />
+          <Route path="messages" element={<EducatorMessages />} />
           <Route path="analytics" element={<EducatorAnalytics />} />
           <Route path="activities" element={<EducatorActivities />} />
           <Route path="reports" element={<EducatorReports />} />

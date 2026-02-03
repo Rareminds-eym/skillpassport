@@ -939,7 +939,7 @@ const AssessmentTest = () => {
                 },
                 {
                     id: 'aptitude',
-                    title: 'Multi-Aptitude',
+                    title: 'Stream Based Aptitude',
                     icon: <Brain className="w-6 h-6 text-amber-500" />,
                     description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
                     color: "amber",
@@ -1034,7 +1034,7 @@ const AssessmentTest = () => {
                 },
                 {
                     id: 'aptitude',
-                    title: 'Multi-Aptitude',
+                    title: 'Stream Based Aptitude',
                     icon: <Zap className="w-6 h-6 text-amber-500" />,
                     description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
                     color: "amber",
@@ -1366,7 +1366,7 @@ const AssessmentTest = () => {
             }
 
             setShowSectionIntro(true);
-        } else if (level === 'after10' || level === 'higher_secondary') {
+        } else if (level === 'after10') {
             // For after 10th (11th grade), skip category selection - go directly to assessment
             // The AI will recommend the best stream based on assessment results
             setAssessmentStarted(true);
@@ -1378,7 +1378,7 @@ const AssessmentTest = () => {
 
             if (studentRecordId) {
                 try {
-                    console.log('Creating assessment attempt for after10/higher_secondary with studentRecordId:', studentRecordId);
+                    console.log('Creating assessment attempt for after10 with studentRecordId:', studentRecordId);
                     await startAssessment(streamId, level);
                     setUseDatabase(true);
                 } catch (err) {
@@ -1389,6 +1389,11 @@ const AssessmentTest = () => {
             }
 
             setShowSectionIntro(true);
+        } else if (level === 'higher_secondary') {
+            // For higher secondary (11th/12th), students have already chosen their stream
+            // Show category selection (Science/Commerce/Arts) to get their stream
+            console.log('📚 Higher Secondary student - showing category selection for stream');
+            setShowCategorySelection(true);
         } else if (level === 'college') {
             // For college students (UG/PG), skip category selection - go directly to assessment using their program
             setAssessmentStarted(true);
@@ -1419,7 +1424,7 @@ const AssessmentTest = () => {
     };
 
     // Handle category selection (Science/Commerce/Arts)
-    // For after12: Go directly to assessment (no program selection)
+    // For after12 and higher_secondary: Go directly to assessment (no program selection)
     // For college and other levels: Show program selection screen
     const handleCategorySelect = async (categoryId) => {
         setSelectedCategory(categoryId);
@@ -1429,14 +1434,16 @@ const AssessmentTest = () => {
         const effectiveGradeLevel = gradeLevel || 'after12';
         console.log('📚 handleCategorySelect - gradeLevel:', gradeLevel, 'effectiveGradeLevel:', effectiveGradeLevel, 'categoryId:', categoryId);
 
-        // For after12 students: Skip program selection, go directly to assessment
-        if (effectiveGradeLevel === 'after12') {
+        // For after12 and higher_secondary students: Skip program selection, go directly to assessment
+        if (effectiveGradeLevel === 'after12' || effectiveGradeLevel === 'higher_secondary') {
             // Mark that user has started an assessment
             setAssessmentStarted(true);
 
             // Use category as the stream
             const streamId = categoryId;
             setStudentStream(streamId);
+            
+            console.log(`✅ ${effectiveGradeLevel} student selected stream: ${categoryId}`);
 
             // Load questions from database
             await loadQuestionsFromDatabase(streamId, effectiveGradeLevel);
@@ -2409,7 +2416,7 @@ const AssessmentTest = () => {
     return (
         <div className="min-h-screen bg-gray-50/50 flex flex-col items-center py-8 px-4">
             {/* Modern Progress Header */}
-            <div className="w-full max-w-4xl mb-6">
+            <div className="w-full max-w-4xl mb-6" data-tour="section-progress">
                 {/* Progress Stats */}
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center gap-2">
@@ -3131,7 +3138,7 @@ const AssessmentTest = () => {
                                                 transition={{ type: "spring", stiffness: 100, damping: 15 }}
                                                 className="flex-1 flex flex-col"
                                             >
-                                                <div className="mb-6">
+                                                <div className="mb-6" data-tour="question-content">
                                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider mb-2 block">
                                                         Question {
                                                             currentSection?.isAdaptive
@@ -3145,7 +3152,7 @@ const AssessmentTest = () => {
                                                                         : currentSection.questions.length
                                                         }
                                                     </span>
-                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug">
+                                                    <h3 className="text-2xl md:text-3xl font-medium text-gray-800 leading-snug whitespace-pre-line">
                                                         {currentQuestion?.text}
                                                     </h3>
                                                 </div>

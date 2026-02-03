@@ -5,6 +5,8 @@
  * Optimized for A4 print (210mm x 297mm) with 15mm margins
  */
 
+import { formatStreamId } from '../../../../utils/formatters';
+
 /**
  * @typedef {Object} StudentInfo
  * @property {string} name - Student's full name
@@ -330,7 +332,7 @@ const NotebookLabel = ({ studentInfo, description }) => {
           {/* Row 1, Col 3: Programme/Stream */}
           <div>
             <span style={labelStyle}>Programme/Stream</span>
-            <span style={valueStyle}>{safeInfo.stream}</span>
+            <span style={valueStyle}>{formatStreamId(safeInfo.stream) || '—'}</span>
           </div>
           
           {/* Row 2, Col 1: Grade */}
@@ -375,15 +377,33 @@ const NotebookLabel = ({ studentInfo, description }) => {
 /**
  * CoverPage component for Assessment Report PrintView
  * @param {CoverPageProps} props - Component props
+ * @param {Object} props.studentInfo - Student information
+ * @param {string} props.generatedAt - Report generation date (optional)
  * @returns {JSX.Element} Cover page component
  */
-const CoverPage = ({ studentInfo }) => {
+const CoverPage = ({ studentInfo, generatedAt }) => {
   // Debug: Log what studentInfo is received
   console.log('CoverPage - studentInfo received:', studentInfo);
   console.log('CoverPage - studentInfo keys:', studentInfo ? Object.keys(studentInfo) : 'null');
   console.log('CoverPage - grade value:', studentInfo?.grade);
   console.log('CoverPage - school value:', studentInfo?.school);
   console.log('CoverPage - college value:', studentInfo?.college);
+  console.log('CoverPage - generatedAt:', generatedAt);
+  
+  // Format generation date
+  const formatDate = (dateString) => {
+    if (!dateString) return new Date().toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
   
   // Safe student info with fallback values and better handling
   const safeStudentInfo = {
@@ -425,6 +445,22 @@ const CoverPage = ({ studentInfo }) => {
         
         {/* NotebookLabel - Task 4 - Now displays all student profile details */}
         <NotebookLabel studentInfo={safeStudentInfo} />
+        
+        {/* ✅ NEW: Generation Date at bottom */}
+        <div style={{
+          position: 'absolute',
+          bottom: '40px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          textAlign: 'center',
+          fontSize: '11px',
+          color: '#64748b'
+        }}>
+          <div>Report Generated: {formatDate(generatedAt)}</div>
+          <div style={{ marginTop: '4px', fontSize: '9px' }}>
+            Valid for 90 days from generation date
+          </div>
+        </div>
       </div>
     </div>
   );

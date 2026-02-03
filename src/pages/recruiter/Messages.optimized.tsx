@@ -601,7 +601,7 @@ const Messages = () => {
                         <div
                           className={`rounded-2xl px-5 py-3 shadow-sm ${
                             message.sender === 'me'
-                              ? 'bg-primary-600 text-white'
+                              ? 'bg-blue-100 text-blue-900 border border-blue-200'
                               : 'bg-white text-gray-900 border border-gray-200'
                           }`}
                         >
@@ -611,7 +611,7 @@ const Messages = () => {
                           <div className="flex items-center justify-end gap-2 mt-2">
                             <span
                               className={`text-xs ${
-                                message.sender === 'me' ? 'text-primary-100' : 'text-gray-400'
+                                message.sender === 'me' ? 'text-blue-600' : 'text-gray-400'
                               }`}
                             >
                               {message.time}

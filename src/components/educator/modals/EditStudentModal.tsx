@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { updateStudent } from '../../../services/studentService';
-import { usePermission } from '../../../hooks/usePermissions';
 
 interface UpdateStudentData {
   name?: string;
@@ -84,9 +83,6 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Permission check
-  const { allowed: canEditStudents, reason: editReason, loading: permissionLoading } = usePermission('Students', 'edit');
-
   useEffect(() => {
     if (isOpen && student) {
       // Initialize form with student data
@@ -122,32 +118,6 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
       setSuccessMessage(null);
     }
   }, [isOpen, student]);
-
-  // Show access denied if user doesn't have permission
-  if (!permissionLoading && !canEditStudents) {
-    return (
-      <div className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
-          <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md sm:w-full sm:p-6">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
-                <XMarkIcon className="w-8 h-8 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Access Denied</h3>
-              <p className="text-gray-600 mb-4">{editReason || 'You don\'t have permission to edit students.'}</p>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>

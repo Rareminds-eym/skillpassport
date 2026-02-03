@@ -28,6 +28,15 @@ export const useAIJobMatching = (studentProfile, enabled = true, topN = 3) => {
         return;
       }
 
+      // Check if studentProfile has an ID
+      const studentId = studentProfile?.id || studentProfile?.student_id;
+      if (!studentId) {
+        console.warn('[useAIJobMatching] No student ID found in profile, skipping match');
+        setMatchedJobs([]);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);

@@ -37,6 +37,7 @@ import Pagination from '../../components/educator/Pagination';
 import { useAuth } from '../../context/AuthContext';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
 
@@ -52,7 +53,10 @@ const Opportunities = () => {
   const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
-  const studentId = user?.id || studentData?.id;
+  const studentId = studentData?.id; // Use students.id (database ID)
+
+  // Check profile completion status
+  const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(studentId, !!studentId);
 
   // Left sidebar tab state
   const [activeTab, setActiveTab] = useState('my-jobs'); // 'my-jobs' or 'my-applications'
@@ -91,8 +95,8 @@ const Opportunities = () => {
 
   // Memoize student type to prevent unnecessary recalculations
   const studentType = React.useMemo(() => {
-    const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-    const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+    const isSchoolStudent = !!(studentData?.school_id || studentData?.school_class_id);
+    const isUniversityStudent = !!(studentData?.university_college_id || studentData?.universityId);
     return { isSchoolStudent, isUniversityStudent };
   }, [studentData?.school_id, studentData?.school_class_id, studentData?.university_college_id, studentData?.universityId]);
 
@@ -101,8 +105,9 @@ const Opportunities = () => {
     const filters = {};
     
     // Employment type filter - for school students, force internship only
+    // NOTE: Database stores employment_type with capital first letter (e.g., "Internship", "Full-time")
     if (studentType.isSchoolStudent) {
-      filters.employmentType = ['internship'];
+      filters.employmentType = ['Internship'];
     } else if (advancedFilters.employmentType.length > 0) {
       filters.employmentType = advancedFilters.employmentType;
     }
@@ -130,6 +135,7 @@ const Opportunities = () => {
   }, [advancedFilters, studentType.isSchoolStudent]);
 
   // Fetch opportunities with server-side pagination
+  // IMPORTANT: Only fetch after studentData is loaded to ensure correct filters
   const [isLoading, setIsLoading] = useState(true);
   const { 
     opportunities, 
@@ -138,7 +144,7 @@ const Opportunities = () => {
     totalCount,
     totalPages 
   } = useOpportunities({
-    fetchOnMount: true,
+    fetchOnMount: !!studentData, // Only fetch when studentData is available
     activeOnly: true,
     searchTerm: debouncedSearch,
     page: currentPage,
@@ -181,6 +187,13 @@ const Opportunities = () => {
   useEffect(() => {
     setCurrentPage(1);
   }, [advancedFilters, sortBy]);
+
+  // Clamp current page to valid range when totalPages changes
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(Math.max(1, totalPages));
+    }
+  }, [totalPages, currentPage, totalCount]);
 
   // Pre-select opportunity from navigation state (from Dashboard)
   useEffect(() => {
@@ -362,6 +375,13 @@ const Opportunities = () => {
   const handleApply = async (opportunity) => {
     if (!studentId) {
       console.error('Please log in to apply for jobs');
+      return;
+    }
+
+    // Check if profile is complete before allowing application
+    if (needsProfileCompletion) {
+      // Navigate to settings page
+      navigate('/student/settings');
       return;
     }
 
@@ -549,6 +569,9 @@ const Opportunities = () => {
                   totalCount={totalCount}
                   totalPages={totalPages}
                   isServerPaginated={true}
+                  canApplyToJobs={canApplyToJobs}
+                  needsProfileCompletion={needsProfileCompletion}
+                  navigate={navigate}
                 />
               </>
             )}
@@ -613,7 +636,10 @@ const MyJobsContent = ({
   studentData,
   totalCount = 0,
   totalPages: serverTotalPages = 1,
-  isServerPaginated = false
+  isServerPaginated = false,
+  canApplyToJobs,
+  needsProfileCompletion,
+  navigate
 }) => {
   // Use server-side pagination values when available
   const totalPages = isServerPaginated ? serverTotalPages : Math.max(1, Math.ceil(opportunities.length / opportunitiesPerPage));
@@ -887,6 +913,7 @@ const MyJobsContent = ({
                           isSaved={savedJobs.has(opp.id)}
                           onApply={() => handleApply(opp)}
                           onToggleSave={handleToggleSave}
+                          studentData={studentData}
                         />
                       ))}
                     </div>
@@ -909,6 +936,10 @@ const MyJobsContent = ({
                 isApplied={appliedJobs.has(selectedOpportunity?.id)}
                 isSaved={savedJobs.has(selectedOpportunity?.id)}
                 isApplying={isApplying}
+                canApplyToJobs={canApplyToJobs}
+                needsProfileCompletion={needsProfileCompletion}
+                navigate={navigate}
+                studentData={studentData}
               />
             </div>
           </div>
@@ -922,7 +953,10 @@ const MyJobsContent = ({
                   totalPages={totalPages}
                   totalItems={displayCount}
                   itemsPerPage={opportunitiesPerPage}
-                  onPageChange={setCurrentPage}
+                  onPageChange={(page) => {
+                    const validPage = Math.max(1, Math.min(page, totalPages));
+                    setCurrentPage(validPage);
+                  }}
                 />
               </div>
             </div>

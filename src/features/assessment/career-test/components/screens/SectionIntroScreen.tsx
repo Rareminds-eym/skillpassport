@@ -94,7 +94,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gray-50"
+      className="min-h-[600px] flex flex-col items-center justify-center text-center p-8 bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50"
     >
       {/* Icon with Glassmorphism */}
       <motion.div
@@ -180,7 +180,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
         className="flex flex-wrap justify-center gap-4 mb-8 text-sm text-gray-600"
       >
         <span className="px-3 py-1 bg-gray-100 rounded-full">
-          {isAdaptive ? '21 questions' : `${questionCount} questions`}
+          {isAdaptive ? '50 questions' : `${questionCount} questions`}
         </span>
         {isTimed && timeLimit && (
           <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full">

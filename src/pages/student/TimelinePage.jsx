@@ -188,7 +188,7 @@ const TimelinePage = () => {
     // Certificate Milestones
     if (Array.isArray(certificates)) {
       certificates
-        .filter((cert) => cert && cert.enabled !== false)
+        .filter((cert) => cert && cert.enabled !== false && (cert.approval_status === 'verified' || cert.approval_status === 'approved'))
         .forEach((cert, index) => {
           milestones.push({
             id: `cert-${index}`,

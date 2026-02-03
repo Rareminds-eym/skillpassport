@@ -238,7 +238,7 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-2xl p-8 md:p-12"
+          className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-12 border border-slate-200/50"
         >
           {/* Animated Icon */}
           <div className="flex justify-center mb-8">
@@ -367,7 +367,7 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
                     key={stageId}
                     className={`
                       flex flex-col items-center p-2 rounded-lg transition-all
-                      ${isCompleted ? 'bg-green-50' : isCurrent ? 'bg-indigo-50' : 'bg-gray-50'}
+                      ${isCompleted ? 'bg-green-50/70' : isCurrent ? 'bg-indigo-50/70' : 'bg-slate-50/70'}
                     `}
                   >
                     <div className={`

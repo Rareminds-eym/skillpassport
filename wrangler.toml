@@ -1,0 +1,9 @@
+# Wrangler configuration for Cloudflare Pages Functions
+# This is used for local development with `wrangler pages dev`
+
+name = "skill-passport-portal"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables for local development
+# These will be loaded from .dev.vars file
