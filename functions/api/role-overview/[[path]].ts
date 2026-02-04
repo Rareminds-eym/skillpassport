@@ -18,15 +18,7 @@
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
-import { callOpenRouterWithRetry, getAPIKeys } from '../shared/ai-config';
-
-// Models to try for role overview generation - using valid OpenRouter models
-const ROLE_OVERVIEW_MODELS = [
-  'openai/gpt-3.5-turbo',                  // Reliable and affordable
-  'openai/gpt-4o-mini',                    // Backup OpenAI model
-  'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
-  'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
-];
+import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES } from '../shared/ai-config';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -174,7 +166,7 @@ CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic plac
             content: prompt
           }
         ], {
-          models: ROLE_OVERVIEW_MODELS,
+          models: [MODEL_PROFILES.question_generation.primary, ...MODEL_PROFILES.question_generation.fallbacks],
           maxRetries: 3,
           maxTokens: 2000,
           temperature: 0.7,
