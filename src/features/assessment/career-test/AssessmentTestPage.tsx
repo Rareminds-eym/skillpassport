@@ -531,8 +531,8 @@ const AssessmentTestPage: React.FC = () => {
       flow.setTimeRemaining(pendingAttempt.timer_remaining);
     }
 
-    // FIX: For adaptive sections, don't set questionIndex
-    // The adaptive hook manages its own question state
+    // FIX: For adaptive sections, handle resume differently
+    // Only skip intro if we have an active adaptive session with a question
     if (targetSection?.isAdaptive) {
       console.log('🔄 [ADAPTIVE RESUME] Restoring adaptive section position');
       
