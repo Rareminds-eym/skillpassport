@@ -3,6 +3,9 @@ main = "src/index.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+[dev]
+port = 9001
+
 # Schedule countdown emails to run daily at 6:50 AM UTC (12:20 PM IST)
 [triggers]
 crons = ["50 6 * * *"]
