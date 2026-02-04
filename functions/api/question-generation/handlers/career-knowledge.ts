@@ -1,5 +1,5 @@
 
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { PagesEnv } from '../../../../src/functions-lib/types';
 import {
     callOpenRouterWithRetry,
@@ -32,7 +32,7 @@ export async function generateKnowledgeQuestions(
     console.log(`📋 Student ID: ${studentId || 'not specified'}`);
     console.log(`📋 Attempt ID: ${attemptId || 'not specified'}`);
     
-    const supabase = createSupabaseClient(env);
+    const supabase = createSupabaseAdminClient(env);
 
     console.log(`📝 Generating fresh knowledge questions in 2 batches for: ${streamName} (topics: ${Array.isArray(topics) ? topics.join(', ') : topics})`);
 

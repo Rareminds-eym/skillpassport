@@ -445,10 +445,10 @@ export async function callOpenRouterWithRetry(
 ): Promise<string> {
     const {
         models = [
-            'google/gemini-flash-1.5-exp',           // FREE - Experimental (should work!)
-            'meta-llama/llama-3.1-8b-instruct:free', // FREE - Updated version
-            'google/gemini-flash-1.5',               // Affordable with your $0.99
-            'openai/gpt-3.5-turbo',                  // Cheap fallback
+            'openai/gpt-3.5-turbo',                  // Reliable and affordable
+            'openai/gpt-4o-mini',                    // Backup OpenAI model
+            'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
+            'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
         ],
         maxRetries = API_CONFIG.RETRY.maxRetries,
         maxTokens = 500,  // Reduced to 500 to fit within credit limits

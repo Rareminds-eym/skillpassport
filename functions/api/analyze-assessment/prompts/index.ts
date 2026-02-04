@@ -30,7 +30,8 @@ export function buildAnalysisPrompt(assessmentData: AssessmentData): string {
   }
 
   // Higher secondary (grades 11-12) - Separate prompt with all 6 sections required
-  if (gradeLevel === 'higher_secondary') {
+  // Also handle "after10" students who are choosing streams for 11th/12th
+  if (gradeLevel === 'higher_secondary' || gradeLevel === 'after10') {
     return buildHigherSecondaryPrompt(assessmentData, answersHash);
   }
 
@@ -110,7 +111,7 @@ Return ONLY the JSON object (starting with {), nothing else. ENSURE "overallSumm
     return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
   }
 
-  if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
+  if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary' || gradeLevel === 'after10') {
     return `${baseMessage} You are speaking to high school students (grades 9-12). Provide guidance on college majors and career paths. Be aspirational but realistic.${requirements}`;
   }
 

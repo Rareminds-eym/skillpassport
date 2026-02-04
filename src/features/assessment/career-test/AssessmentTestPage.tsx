@@ -343,35 +343,35 @@ const AssessmentTestPage: React.FC = () => {
   console.log('🎯 [AssessmentTestPage] Initializing useAdaptiveAptitude hook with:', {
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    attemptId: flow.attemptId,
-    hasAttemptId: !!flow.attemptId,
-    attemptIdType: typeof flow.attemptId
+    attemptId: currentAttempt?.id,
+    hasAttemptId: !!currentAttempt?.id,
+    attemptIdType: typeof currentAttempt?.id
   });
 
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    attemptId: flow.attemptId, // Pass attemptId to link session immediately
+    attemptId: currentAttempt?.id, // Pass attemptId to link session immediately
     onTestComplete: async (testResults) => {
       console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
       flow.setAnswer('adaptive_aptitude_results', testResults);
       
       // Link the adaptive session to the assessment attempt
       // NOTE: This is now also done in startTest, but keeping it here as a backup
-      if (adaptiveAptitude.session?.id && flow.attemptId) {
+      if (adaptiveAptitude.session?.id && currentAttempt?.id) {
         console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
           sessionId: adaptiveAptitude.session.id,
-          attemptId: flow.attemptId
+          attemptId: currentAttempt.id
         });
         await assessmentService.updateAttemptAdaptiveSession(
-          flow.attemptId,
+          currentAttempt.id,
           adaptiveAptitude.session.id
         );
         console.log('✅ [AssessmentTestPage] Backup linking complete');
       } else {
         console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
           hasSession: !!adaptiveAptitude.session?.id,
-          hasAttemptId: !!flow.attemptId
+          hasAttemptId: !!currentAttempt?.id
         });
       }
       
@@ -1098,6 +1098,15 @@ const AssessmentTestPage: React.FC = () => {
   const handleStartSection = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
 
+    console.log('🚀 [handleStartSection] Called:', {
+      currentSectionIndex: flow.currentSectionIndex,
+      sectionId: currentSection?.id,
+      hasCurrentAttempt: !!currentAttempt,
+      hasStudentRecordId: !!studentRecordId,
+      studentRecordId,
+      useDatabase
+    });
+
     // SAFEGUARD: Ensure resume prompt is hidden when starting a section
     // This prevents any race conditions from showing the prompt
     if (showResumePrompt) {
@@ -1105,9 +1114,12 @@ const AssessmentTestPage: React.FC = () => {
       setPendingAttempt(null);
     }
 
-    // Create database attempt on first section start (if not already created)
-    if (flow.currentSectionIndex === 0 && !currentAttempt && studentRecordId) {
+    // Create database attempt if not already created (regardless of section index)
+    // FIX: This ensures attemptId is available for all sections, not just section 0
+    // CRITICAL: Check if currentAttempt has an ID, not just if it exists
+    if (!currentAttempt?.id && studentRecordId) {
       try {
+        console.log('💾 [handleStartSection] Setting useDatabase to true');
         setUseDatabase(true);
 
         // Determine the appropriate stream ID based on grade level
@@ -1126,10 +1138,25 @@ const AssessmentTestPage: React.FC = () => {
           }
         }
 
+        console.log('🎯 [AssessmentTestPage] Creating attempt:', { 
+          streamId, 
+          gradeLevel: flow.gradeLevel, 
+          studentRecordId,
+          currentSectionIndex: flow.currentSectionIndex 
+        });
+        
         await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
+        console.log('✅ [handleStartSection] Attempt created successfully');
       } catch (err) {
-        console.error('Error starting assessment:', err);
+        console.error('❌ [handleStartSection] Error starting assessment:', err);
       }
+    } else {
+      console.log('⏭️ [handleStartSection] Skipping attempt creation:', {
+        reason: !studentRecordId ? 'No studentRecordId' : 'Already have currentAttempt with ID',
+        hasCurrentAttempt: !!currentAttempt,
+        hasAttemptId: !!currentAttempt?.id,
+        studentRecordId: !!studentRecordId
+      });
     }
 
     // Initialize timer for timed sections

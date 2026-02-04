@@ -208,6 +208,15 @@ export const AFTER_10TH_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
     instruction: "How well does each statement describe you?"
   },
   {
+    id: 'adaptive_aptitude',
+    title: 'Adaptive Aptitude Test',
+    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
+    color: "indigo",
+    isAdaptive: true,
+    individualTimeLimit: 60, // 1 minute per question
+    instruction: "Answer each question carefully. You have 1 minute per question."
+  },
+  {
     id: 'aptitude',
     title: 'Stream Based Aptitude',
     description: "Measure your cognitive strengths across verbal, numerical, logical, spatial, and clerical domains.",
@@ -217,15 +226,6 @@ export const AFTER_10TH_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
     isAptitude: true,
     individualTimeLimit: 60, // 1 minute per question
     instruction: "Choose the correct answer. You have 1 minute per question."
-  },
-  {
-    id: 'adaptive_aptitude',
-    title: 'Adaptive Aptitude Test',
-    description: "An intelligent test that adapts to your ability level for accurate aptitude measurement.",
-    color: "indigo",
-    isAdaptive: true,
-    individualTimeLimit: 60, // 1 minute per question
-    instruction: "Answer each question carefully. You have 1 minute per question."
   }
 ];
 

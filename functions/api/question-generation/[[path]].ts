@@ -84,8 +84,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         }
 
         const result = await generateAptitudeQuestions(env, streamId, questionsPerCategory, studentId, attemptId, gradeLevel);
-        console.log(`✅ Aptitude generation complete: ${result?.questions?.length || result?.length || 0} questions`);
-        return jsonResponse(result);
+        console.log(`✅ Aptitude generation complete: ${result?.length || 0} questions`);
+        // Wrap in {questions: [...]} format for frontend compatibility
+        return jsonResponse({ questions: result });
       } catch (error: any) {
         console.error('❌ Aptitude generation error:', error);
         return jsonResponse({ error: error.message || 'Failed to generate aptitude questions' }, 500);
@@ -116,8 +117,9 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         }
 
         const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId, gradeLevel);
-        console.log(`✅ Knowledge generation complete: ${result?.questions?.length || result?.length || 0} questions`);
-        return jsonResponse(result);
+        console.log(`✅ Knowledge generation complete: ${result?.length || 0} questions`);
+        // Wrap in {questions: [...]} format for frontend compatibility
+        return jsonResponse({ questions: result });
       } catch (error: any) {
         console.error('❌ Knowledge generation error:', error);
         return jsonResponse({ error: error.message || 'Failed to generate knowledge questions' }, 500);
