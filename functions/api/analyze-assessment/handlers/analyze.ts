@@ -31,7 +31,7 @@ const ASSESSMENT_MODELS = [
 // Assessment-specific configuration
 const ASSESSMENT_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
-  maxTokens: 20000,  // Increased to handle complete responses (large nested object)
+  maxTokens: 32000,  // Increased to handle complete responses with all sections (employability, knowledge, skillGap, roadmap, finalNote)
 };
 
 /**
@@ -132,10 +132,18 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
     finalNote: 'object'
   };
   
+  // CRITICAL sections that MUST be present (not just warnings)
+  const criticalSections = ['employability', 'knowledge', 'skillGap', 'roadmap', 'finalNote'];
+  
   // Check required fields
   for (const [field, expectedType] of Object.entries(requiredFields)) {
     if (!result[field]) {
-      warnings.push(`Missing field: ${field}`);
+      // Critical sections are ERRORS, not warnings
+      if (criticalSections.includes(field)) {
+        errors.push(`CRITICAL: Missing required field: ${field}`);
+      } else {
+        warnings.push(`Missing field: ${field}`);
+      }
     } else if (typeof result[field] !== expectedType) {
       errors.push(`Field '${field}' must be ${expectedType}, got ${typeof result[field]}`);
     }

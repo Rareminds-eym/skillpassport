@@ -119,40 +119,88 @@ export const normalizeAssessmentResults = (results) => {
         normalized.careerFit = normalized.gemini_results.careerFit;
     }
 
-    // Fix aptitude scores if needed
-    if (normalized.aptitude && normalized.gemini_results?.aptitude) {
-        const topLevelScores = normalized.aptitude.scores || {};
-        const originalScores = normalized.gemini_results.aptitude._originalScores || {};
+    // 🔧 CRITICAL FIX: Fix aptitude scores if needed
+    // Priority 1: Use top-level aptitude_scores column (most reliable)
+    // Priority 2: Use gemini_results.aptitude._originalScores
+    // Priority 3: Use gemini_results.aptitude.scores (may be zeros)
+    
+    // Check if we have aptitude_scores at top level (from database column)
+    if (normalized.aptitude_scores && !normalized.aptitude) {
+        console.log('🔧 Creating aptitude object from aptitude_scores column');
+        normalized.aptitude = {
+            scores: normalized.aptitude_scores
+        };
+    }
+    
+    // If aptitude exists but has zero scores, try to fix from _originalScores or aptitude_scores
+    if (normalized.aptitude || normalized.gemini_results?.aptitude) {
+        const topLevelScores = normalized.aptitude?.scores || {};
+        const originalScores = normalized.gemini_results?.aptitude?._originalScores || {};
+        const aptitudeScoresColumn = normalized.aptitude_scores || {};
 
         // Check if top-level scores are all zeros or empty
         const hasNoScores = Object.keys(topLevelScores).length === 0 ||
             Object.values(topLevelScores).every(score => {
                 if (typeof score === 'object') {
-                    return score.correct === 0 && score.total === 0;
+                    return (score.correct === 0 && score.total === 0) || score.percentage === 0;
                 }
                 return score === 0;
             });
 
         // Check if we have valid original scores
-        const hasOriginalScores = Object.keys(originalScores).length > 0;
-
-        if (hasNoScores && hasOriginalScores) {
-            console.log('🔧 Normalizing aptitude scores from gemini_results._originalScores');
-            
-            // Convert original scores to the expected format
-            normalized.aptitude.scores = {};
-            Object.entries(originalScores).forEach(([domain, data]) => {
-                if (typeof data === 'object' && data.accuracy !== undefined) {
-                    // Convert accuracy percentage to score format
-                    normalized.aptitude.scores[domain] = {
-                        correct: 0,
-                        total: 0,
-                        percentage: data.accuracy
-                    };
+        const hasOriginalScores = Object.keys(originalScores).length > 0 &&
+            Object.values(originalScores).some(score => {
+                if (typeof score === 'object') {
+                    return score.percentage > 0 || score.correct > 0;
                 }
+                return score > 0;
             });
 
-            console.log('✅ Aptitude scores normalized:', normalized.aptitude.scores);
+        // Check if we have valid aptitude_scores column data
+        const hasAptitudeScoresColumn = Object.keys(aptitudeScoresColumn).length > 0 &&
+            Object.values(aptitudeScoresColumn).some(score => {
+                if (typeof score === 'object') {
+                    return score.percentage > 0 || score.correct > 0;
+                }
+                return score > 0;
+            });
+
+        console.log('🔍 Aptitude normalization check:', {
+            hasNoScores,
+            hasOriginalScores,
+            hasAptitudeScoresColumn,
+            topLevelScores: JSON.stringify(topLevelScores),
+            originalScores: JSON.stringify(originalScores),
+            aptitudeScoresColumn: JSON.stringify(aptitudeScoresColumn)
+        });
+
+        if (hasNoScores) {
+            // Priority 1: Use aptitude_scores column
+            if (hasAptitudeScoresColumn) {
+                console.log('🔧 Normalizing aptitude scores from aptitude_scores column');
+                console.log('   Before:', JSON.stringify(topLevelScores));
+                console.log('   After:', JSON.stringify(aptitudeScoresColumn));
+                
+                if (!normalized.aptitude) {
+                    normalized.aptitude = {};
+                }
+                normalized.aptitude.scores = { ...aptitudeScoresColumn };
+                console.log('✅ Aptitude scores normalized from aptitude_scores column');
+            }
+            // Priority 2: Use _originalScores
+            else if (hasOriginalScores) {
+                console.log('🔧 Normalizing aptitude scores from gemini_results.aptitude._originalScores');
+                console.log('   Before:', JSON.stringify(topLevelScores));
+                console.log('   After:', JSON.stringify(originalScores));
+                
+                if (!normalized.aptitude) {
+                    normalized.aptitude = {};
+                }
+                normalized.aptitude.scores = { ...originalScores };
+                console.log('✅ Aptitude scores normalized from _originalScores');
+            }
+        } else {
+            console.log('ℹ️ Aptitude scores already valid, no normalization needed');
         }
     }
 

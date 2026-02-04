@@ -8,6 +8,7 @@ import { validateAssessmentResults } from '../utils/assessmentValidation';
 import { validateAptitudeScores } from '../../../../services/aptitudeScoreValidator';
 import { validateRiasecScores } from '../../../../services/riasecScoreValidator';
 import { normalizeAssessmentResults } from '../../../../utils/assessmentDataNormalizer';
+import { transformAssessmentResults } from '../../../../services/assessmentResultTransformer';
 import {
     riasecQuestions,
     bigFiveQuestions,
@@ -1703,13 +1704,20 @@ export const useAssessmentResults = () => {
             }
 
             // Force regenerate with AI - pass gradeLevel and student context
+            // 🔧 CRITICAL FIX: Pass pre-calculated aptitude scores from attempt
+            const preCalculatedScores = attempt.aptitude_scores ? {
+                aptitude: attempt.aptitude_scores
+            } : null;
+            
+            console.log('📊 Pre-calculated scores for regeneration:', preCalculatedScores);
+            
             const geminiResults = await analyzeAssessmentWithGemini(
                 answers,
                 stream,
                 questionBanks,
                 {}, // Empty timings in retry
                 storedGradeLevel, // Pass grade level for proper scoring
-                null, // preCalculatedScores (not available in retry)
+                preCalculatedScores, // Pass pre-calculated scores from attempt
                 studentContext // Pass student context for enhanced recommendations
             );
 
