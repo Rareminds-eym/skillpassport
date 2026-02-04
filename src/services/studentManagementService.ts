@@ -625,6 +625,210 @@ export const attendanceService = {
   }
 };
 
+// ============= COLLEGE ATTENDANCE MANAGEMENT =============
+
+export const collegeAttendanceService = {
+  // Create college attendance session
+  async createAttendanceSession(sessionData: {
+    date: string;
+    startTime: string;
+    endTime: string;
+    subjectName: string;
+    subjectCode?: string;
+    courseType?: string;
+    facultyId: string;
+    facultyName: string;
+    departmentName: string;
+    programName: string;
+    programCode?: string;
+    semester: number;
+    section: string;
+    roomNumber?: string;
+    academicYear?: string;
+    collegeId: string;
+    createdBy: string;
+  }) {
+    const { data, error } = await supabase
+      .from('college_attendance_sessions')
+      .insert({
+        date: sessionData.date,
+        start_time: sessionData.startTime,
+        end_time: sessionData.endTime,
+        subject_name: sessionData.subjectName,
+        subject_code: sessionData.subjectCode,
+        course_type: sessionData.courseType || 'theory',
+        faculty_id: sessionData.facultyId,
+        faculty_name: sessionData.facultyName,
+        department_name: sessionData.departmentName,
+        program_name: sessionData.programName,
+        program_code: sessionData.programCode,
+        semester: sessionData.semester,
+        section: sessionData.section,
+        room_number: sessionData.roomNumber,
+        academic_year: sessionData.academicYear || '2024-25',
+        status: 'scheduled',
+        created_by: sessionData.createdBy,
+        college_id: sessionData.collegeId
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  },
+
+  // Mark college attendance
+  async markCollegeAttendance(records: {
+    sessionId: string;
+    studentId: string;
+    studentName: string;
+    rollNumber: string;
+    departmentName: string;
+    programName: string;
+    semester: number;
+    section: string;
+    date: string;
+    status: 'present' | 'absent' | 'late' | 'excused';
+    timeIn?: string;
+    timeOut?: string;
+    subjectName: string;
+    subjectCode?: string;
+    facultyId: string;
+    facultyName: string;
+    location?: string;
+    remarks?: string;
+    markedBy: string;
+    collegeId: string;
+  }[]) {
+    const { data, error } = await supabase
+      .from('college_attendance_records')
+      .insert(records.map(record => ({
+        session_id: record.sessionId,
+        student_id: record.studentId,
+        student_name: record.studentName,
+        roll_number: record.rollNumber,
+        department_name: record.departmentName,
+        program_name: record.programName,
+        semester: record.semester,
+        section: record.section,
+        date: record.date,
+        status: record.status,
+        time_in: record.timeIn,
+        time_out: record.timeOut,
+        subject_name: record.subjectName,
+        subject_code: record.subjectCode,
+        faculty_id: record.facultyId,
+        faculty_name: record.facultyName,
+        location: record.location,
+        remarks: record.remarks,
+        marked_by: record.markedBy,
+        marked_at: new Date().toISOString(),
+        college_id: record.collegeId
+      })))
+      .select();
+
+    return { data, error };
+  },
+
+  // Get college attendance sessions for faculty
+  async getFacultyAttendanceSessions(facultyId: string, collegeId: string, date?: string) {
+    let query = supabase
+      .from('college_attendance_sessions')
+      .select('*')
+      .eq('faculty_id', facultyId)
+      .eq('college_id', collegeId);
+
+    if (date) {
+      query = query.eq('date', date);
+    }
+
+    return await query.order('date', { ascending: false }).order('start_time');
+  },
+
+  // Get college attendance records for session
+  async getSessionAttendanceRecords(sessionId: string) {
+    return await supabase
+      .from('college_attendance_records')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('roll_number');
+  },
+
+  // Get college student attendance summary
+  async getCollegeStudentAttendanceSummary(studentId: string, collegeId: string, startDate?: string, endDate?: string) {
+    const start = startDate || new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0];
+    const end = endDate || new Date().toISOString().split('T')[0];
+
+    const { data, error } = await supabase
+      .from('college_attendance_records')
+      .select('*')
+      .eq('student_id', studentId)
+      .eq('college_id', collegeId)
+      .gte('date', start)
+      .lte('date', end);
+
+    if (error) return { data: null, error };
+
+    const totalClasses = data.length;
+    const presentClasses = data.filter(r => r.status === 'present').length;
+    const absentClasses = data.filter(r => r.status === 'absent').length;
+    const lateClasses = data.filter(r => r.status === 'late').length;
+    const excusedClasses = data.filter(r => r.status === 'excused').length;
+    const percentage = totalClasses > 0 ? ((presentClasses + lateClasses + excusedClasses) / totalClasses) * 100 : 0;
+
+    return {
+      data: {
+        totalClasses,
+        presentClasses,
+        absentClasses,
+        lateClasses,
+        excusedClasses,
+        percentage,
+        isAtRisk: percentage < 75,
+        records: data
+      },
+      error: null
+    };
+  },
+
+  // Get college attendance analytics
+  async getCollegeAttendanceAnalytics(collegeId: string, facultyId?: string, startDate?: string, endDate?: string) {
+    const start = startDate || new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0];
+    const end = endDate || new Date().toISOString().split('T')[0];
+
+    let query = supabase
+      .from('college_attendance_sessions')
+      .select('*')
+      .eq('college_id', collegeId)
+      .gte('date', start)
+      .lte('date', end);
+
+    if (facultyId) {
+      query = query.eq('faculty_id', facultyId);
+    }
+
+    const { data: sessions, error } = await query;
+
+    if (error) return { data: null, error };
+
+    const totalSessions = sessions.length;
+    const completedSessions = sessions.filter(s => s.status === 'completed').length;
+    const avgAttendance = sessions.length > 0 
+      ? sessions.reduce((sum, s) => sum + (s.attendance_percentage || 0), 0) / sessions.length 
+      : 0;
+
+    return {
+      data: {
+        totalSessions,
+        completedSessions,
+        pendingSessions: totalSessions - completedSessions,
+        avgAttendance: Math.round(avgAttendance * 100) / 100,
+        sessions
+      },
+      error: null
+    };
+  }
+};
+
 // ============= STUDENT REPORTS =============
 
 export const studentReportService = {

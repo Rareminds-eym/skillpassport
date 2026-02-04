@@ -3,8 +3,8 @@ import AddAttendanceSessionModal from "@/components/admin/modals/AddAttendanceSe
 import AttendanceDetailsModal from "@/components/admin/modals/AttendanceDetailsModal";
 import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
 import { supabase } from "@/lib/supabaseClient";
-import { AttendanceRecord, AttendanceSession, Student, SubjectGroup } from "@/types/Attendance";
-import toast from 'react-hot-toast';
+import { AttendanceRecord, AttendanceSession, SubjectGroup, Student as AttendanceStudent } from "@/types/Attendance";
+import { Student as ProfileStudent } from "@/types/student";
 import {
     ArrowDownTrayIcon,
     BellAlertIcon,
@@ -285,7 +285,7 @@ const AttendanceTracking: React.FC = () => {
   const [selectedSubjectGroup, setSelectedSubjectGroup] =
     useState<SubjectGroup | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<AttendanceStudent | null>(null);
   const [showStudentHistoryModal, setShowStudentHistoryModal] = useState(false);
   const [dateRange, setDateRange] = useState({
     from: "",
@@ -310,7 +310,6 @@ const AttendanceTracking: React.FC = () => {
   // Dynamic data states
   const [subjectGroups, setSubjectGroups] = useState<SubjectGroup[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState({
@@ -588,7 +587,7 @@ const AttendanceTracking: React.FC = () => {
           ? `${f.first_name} ${f.last_name}` 
           : f.email;
         
-        const collegeName = f.colleges?.name || 'Unknown College';
+        const collegeName = f.collegeId || 'Unknown College';
         
         console.log(`Faculty: ${displayName} belongs to college: ${collegeName} (ID: ${f.collegeId})`);
         
@@ -799,7 +798,7 @@ const AttendanceTracking: React.FC = () => {
 
       if (sessionsError) {
         console.error('Error fetching sessions:', sessionsError);
-        toast.error('Error loading session details');
+        alert('Error loading session details');
         return;
       }
 
@@ -838,7 +837,7 @@ const AttendanceTracking: React.FC = () => {
       setShowDetailsModal(true);
     } catch (err: any) {
       console.error('Error in handleViewDetails:', err);
-      toast.error('Error loading details');
+      alert('Error loading details');
     }
   };
 
@@ -861,11 +860,11 @@ const AttendanceTracking: React.FC = () => {
 
         if (error) throw error;
         
-        toast.success('Sessions deleted successfully!');
+        alert('Sessions deleted successfully!');
         // Refresh the data
         fetchSubjectGroups();
       } catch (err: any) {
-        toast.error(`Error deleting sessions: ${err.message}`);
+        alert(`Error deleting sessions: ${err.message}`);
       }
     }
   };
@@ -891,86 +890,6 @@ const AttendanceTracking: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Main export function for all attendance data
-  const handleExportAllAttendance = async () => {
-    try {
-      // Show loading state
-      const exportButton = document.querySelector('[data-export-btn]') as HTMLButtonElement;
-      if (exportButton) {
-        exportButton.disabled = true;
-        exportButton.innerHTML = '<svg class="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Exporting...';
-      }
-
-      // Fetch all attendance data
-      const { data: allAttendanceData, error } = await supabase
-        .from('college_attendance_records')
-        .select(`
-          *,
-          college_attendance_sessions!inner(
-            date,
-            start_time,
-            end_time,
-            subject_name,
-            faculty_name,
-            department_name,
-            program_name,
-            semester,
-            section
-          )
-        `)
-        .order('date', { ascending: false });
-
-      if (error) throw error;
-
-      if (!allAttendanceData || allAttendanceData.length === 0) {
-        toast.error('No attendance data found to export.');
-        return;
-      }
-
-      // Transform data for CSV export
-      const exportData = allAttendanceData.map(record => ({
-        'Date': formatDate(record.date),
-        'Student Name': record.student_name || 'N/A',
-        'Roll Number': record.roll_number || 'N/A',
-        'Student ID': record.student_id || 'N/A',
-        'Subject': record.college_attendance_sessions?.subject_name || 'N/A',
-        'Faculty': record.college_attendance_sessions?.faculty_name || 'N/A',
-        'Department': record.college_attendance_sessions?.department_name || 'N/A',
-        'Course': record.college_attendance_sessions?.program_name || 'N/A',
-        'Semester': record.college_attendance_sessions?.semester || 'N/A',
-        'Section': record.college_attendance_sessions?.section || 'N/A',
-        'Status': record.status || 'N/A',
-        'Time In': record.time_in || 'N/A',
-        'Time Out': record.time_out || 'N/A',
-        'Session Start': record.college_attendance_sessions?.start_time || 'N/A',
-        'Session End': record.college_attendance_sessions?.end_time || 'N/A',
-        'Location': record.location || 'N/A',
-        'Remarks': record.remarks || 'N/A'
-      }));
-
-      // Generate filename with current date
-      const currentDate = new Date().toISOString().split('T')[0];
-      const filename = `attendance_report_${currentDate}.csv`;
-
-      // Export to CSV
-      exportToCSV(exportData, filename);
-
-      // Show success message
-      toast.success(`Successfully exported ${exportData.length} attendance records!`);
-
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast.error('Failed to export attendance data. Please try again.');
-    } finally {
-      // Reset button state
-      const exportButton = document.querySelector('[data-export-btn]') as HTMLButtonElement;
-      if (exportButton) {
-        exportButton.disabled = false;
-        exportButton.innerHTML = '<svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>Export';
-      }
-    }
-  };
-
   const handleExportSession = (session: AttendanceSession, records: AttendanceRecord[]) => {
     const exportData = records.map(record => ({
       'Roll Number': record.rollNumber,
@@ -987,16 +906,10 @@ const AttendanceTracking: React.FC = () => {
     exportToCSV(exportData, `${session.subject}_${formatDate(session.date).replace(/\//g, '-')}_attendance.csv`);
   };
 
-  const handleExportMonthly = (session: AttendanceSession, students: Student[], allRecords: AttendanceRecord[]) => {
-    const classStudents = students.filter(
-      (student) =>
-        student.department === session.department &&
-        student.course === session.course &&
-        student.semester === session.semester &&
-        student.section === session.section
-    );
-
-    const exportData = classStudents.map(student => {
+  const handleExportMonthly = (session: AttendanceSession, students: ProfileStudent[], allRecords: AttendanceRecord[]) => {
+    // Since ProfileStudent doesn't have the same structure as AttendanceStudent,
+    // we'll create a simplified export with available data
+    const exportData = students.map(student => {
       const studentRecords = allRecords.filter(r => r.studentId === student.id && r.subject === session.subject);
       const stats = {
         present: studentRecords.filter((r) => r.status === "present").length,
@@ -1008,7 +921,7 @@ const AttendanceTracking: React.FC = () => {
       };
 
       return {
-        'Roll Number': student.rollNumber,
+        'Student ID': student.id,
         'Student Name': student.name,
         'Present': stats.present,
         'Absent': stats.absent,
@@ -1022,7 +935,7 @@ const AttendanceTracking: React.FC = () => {
     exportToCSV(exportData, `${session.subject}_monthly_summary.csv`);
   };
 
-  const handleExportStudentHistory = (student: Student, session: AttendanceSession, allRecords: AttendanceRecord[]) => {
+  const handleExportStudentHistory = (student: AttendanceStudent, session: AttendanceSession, allRecords: AttendanceRecord[]) => {
     const studentHistory = allRecords.filter((record) => record.studentId === student.id && record.subject === session.subject);
 
     const exportData = studentHistory.map(record => ({
@@ -1035,7 +948,7 @@ const AttendanceTracking: React.FC = () => {
       'Faculty': record.facultyName,
     }));
 
-    exportToCSV(exportData, `${student.name}_${student.rollNumber}_attendance_history.csv`);
+    exportToCSV(exportData, `${student.name}_${student.id}_attendance_history.csv`);
   };
 
   // Add session handlers
@@ -1067,71 +980,50 @@ const AttendanceTracking: React.FC = () => {
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
         !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      toast.error("Please fill in all required fields.");
+      alert("Please fill in all required fields.");
       return;
     }
 
     try {
-      // Get current user and their college_id
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        toast.error("Please log in to create a session.");
+        alert("Please log in to create a session.");
         return;
       }
 
-      // Get college_id from user profile or session
-      let collegeId = null;
-      
-      // Option 1: Try to get from user metadata
-      if (user.user_metadata?.college_id) {
-        collegeId = user.user_metadata.college_id;
-      } else {
-        // Option 2: Get from users table or profile
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('college_id')
-          .eq('id', user.id)
-          .single();
-        
-        collegeId = userProfile?.college_id;
-      }
+      // ✅ CORRECT: Get college_id from the FACULTY MEMBER using faculty_id
+      const { data: facultyData, error: facultyError } = await supabase
+        .from('college_lecturers')
+        .select('collegeId, first_name, last_name')
+        .eq('id', sessionFormData.faculty)  // Use faculty_id from form
+        .single();
 
-      // If still no college_id, try to get the first college from organizations (fallback)
-      if (!collegeId) {
-        const { data: colleges } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'college')
-          .limit(1);
-        
-        collegeId = colleges?.[0]?.id;
-      }
-
-      if (!collegeId) {
-        toast.error("Unable to determine college. Please contact administrator.");
+      if (facultyError || !facultyData) {
+        console.error('Faculty lookup error:', facultyError);
+        alert("Unable to find faculty member. Please try again.");
         return;
       }
 
-      // Get faculty details from the selected faculty ID
-      const selectedFaculty = filterOptions.faculty.find(f => f.value === sessionFormData.faculty);
-      const facultyName = selectedFaculty?.label || sessionFormData.faculty;
+      const collegeId = facultyData.collegeId;  // ✅ Faculty's college_id
+      const facultyName = `${facultyData.first_name} ${facultyData.last_name}`;
 
-      console.log('Creating session with:', {
+      console.log('Creating session with CORRECT logic:', {
         facultyId: sessionFormData.faculty,
         facultyName: facultyName,
-        collegeId: collegeId,
-        selectedFaculty: selectedFaculty
+        collegeId: collegeId,  // ✅ This is now the faculty's college_id
+        createdBy: user.id     // ✅ Admin who created it
       });
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('college_attendance_sessions')
         .insert({
           date: sessionFormData.date,
           start_time: sessionFormData.startTime,
           end_time: sessionFormData.endTime,
           subject_name: sessionFormData.subject,
-          faculty_id: sessionFormData.faculty, // Now this is a proper UUID
-          faculty_name: facultyName, // Use the formatted faculty name
+          faculty_id: sessionFormData.faculty, // Faculty member's ID
+          faculty_name: facultyName, // Faculty member's actual name from database
           department_name: sessionFormData.department,
           program_name: sessionFormData.course,
           semester: parseInt(sessionFormData.semester),
@@ -1139,15 +1031,15 @@ const AttendanceTracking: React.FC = () => {
           room_number: sessionFormData.roomNumber,
           remarks: sessionFormData.remarks,
           status: 'scheduled',
-          college_id: collegeId, // Add the college_id
-          created_by: user.id, // Add the user who created it
+          college_id: collegeId, // ✅ Faculty member's college_id (not admin's)
+          created_by: user.id, // Admin who created the session
         })
         .select()
         .single();
 
       if (error) throw error;
       
-      toast.success('Session created successfully!');
+      alert('Session created successfully!');
       
       // Refresh the data
       fetchSubjectGroups();
@@ -1169,7 +1061,7 @@ const AttendanceTracking: React.FC = () => {
         totalStudents: 0,
       });
     } catch (err: any) {
-      toast.error(`Error creating session: ${err.message}`);
+      alert(`Error creating session: ${err.message}`);
     }
   };
 
@@ -1178,7 +1070,7 @@ const AttendanceTracking: React.FC = () => {
     if (!sessionFormData.department || !sessionFormData.course || !sessionFormData.semester ||
         !sessionFormData.section || !sessionFormData.subject || !sessionFormData.faculty ||
         !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
-      toast.error("Please fill in all required fields.");
+      alert("Please fill in all required fields.");
       return;
     }
 
@@ -1187,9 +1079,9 @@ const AttendanceTracking: React.FC = () => {
       await handleCreateSession();
       
       // In a real app, this would navigate to the attendance marking page
-      toast.success("Session created and attendance marking started!");
+      alert("Session created and attendance marking started!");
     } catch (err: any) {
-      toast.error(`Error: ${err.message}`);
+      alert(`Error: ${err.message}`);
     }
   };
 
@@ -1270,11 +1162,7 @@ const AttendanceTracking: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <button 
-              onClick={handleExportAllAttendance}
-              data-export-btn
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-            >
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
               <ArrowDownTrayIcon className="h-4 w-4" />
               Export
             </button>
@@ -1628,7 +1516,7 @@ const AttendanceTracking: React.FC = () => {
               </div>
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {paginatedSubjectGroups.map((subjectGroup, index) => (
+                {paginatedSubjectGroups.map((subjectGroup) => (
                   <EnhancedSubjectCard
                     key={`${subjectGroup.subject}-${subjectGroup.department}-${subjectGroup.course}-${subjectGroup.semester}-${subjectGroup.section}`}
                     subjectGroup={subjectGroup}
@@ -1771,10 +1659,21 @@ const AttendanceTracking: React.FC = () => {
         records={attendanceRecords.filter(
           (r) => r.subject === selectedSubjectGroup?.subject
         )}
-        students={students}
+        students={[]}
         allRecords={attendanceRecords}
         onViewStudentHistory={(student) => {
-          setSelectedStudent(student);
+          // Convert ProfileStudent to AttendanceStudent
+          const attendanceStudent: AttendanceStudent = {
+            id: student.id,
+            rollNumber: student.registration_number || student.id,
+            name: student.name || 'Unknown',
+            department: student.branch_field || 'Unknown',
+            course: student.branch_field || 'Unknown',
+            semester: student.semester || 1,
+            section: student.section || 'A',
+            email: student.email,
+          };
+          setSelectedStudent(attendanceStudent);
           setShowStudentHistoryModal(true);
         }}
         onExportSession={handleExportSession}
@@ -1805,7 +1704,7 @@ const AttendanceTracking: React.FC = () => {
         sections={sectionOptions}
         subjects={subjectOptions}
         faculty={filterOptions.faculty}
-        students={students}
+        students={[]}
       />
     </div>
   );

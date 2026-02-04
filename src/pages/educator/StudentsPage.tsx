@@ -100,7 +100,7 @@ const BadgeComponent = ({ badges }: { badges: string[] }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSelected, onToggleSelect }: {
+const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSelected, onToggleSelect, educatorType }: {
   student: UICandidate;
   onViewProfile: (student: UICandidate) => void;
   onEdit: (student: UICandidate) => void;
@@ -108,6 +108,7 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
   onMessage: (student: UICandidate) => void;
   isSelected?: boolean;
   onToggleSelect?: (studentId: string) => void;
+  educatorType?: 'school' | 'college' | null;
 }) => {
 
   return (
@@ -116,8 +117,8 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
         isSelected ? 'border-primary-500 ring-2 ring-primary-200 bg-primary-50/30' : 'border-gray-200 hover:border-gray-300'
       }`}
     >
-      {/* Professional Checkbox - Top Right Corner */}
-      {onToggleSelect && (
+      {/* Professional Checkbox - Top Right Corner - Hidden for college lecturers */}
+      {onToggleSelect && educatorType !== 'college' && (
         <div className="absolute top-3 right-3 z-10">
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -220,13 +221,16 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
             Edit
           </button>
           
-          <button
-            onClick={() => onDelete(student)}
-            className="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-colors whitespace-nowrap"
-          >
-            <TrashIcon className="h-3 w-3 mr-1.5" />
-            Delete
-          </button>
+          {/* Delete button - Hidden for college lecturers */}
+          {educatorType !== 'college' && (
+            <button
+              onClick={() => onDelete(student)}
+              className="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 hover:border-red-400 transition-colors whitespace-nowrap"
+            >
+              <TrashIcon className="h-3 w-3 mr-1.5" />
+              Delete
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -423,6 +427,11 @@ const StudentsPage = () => {
   };
 
   const handleDeleteClick = (student: UICandidate) => {
+    // Disable delete functionality for college lecturers
+    if (educatorType === 'college') {
+      console.log('Delete functionality disabled for college lecturers');
+      return;
+    }
     setStudentToDelete(student);
     setShowDeleteModal(true);
   };
@@ -434,15 +443,24 @@ const StudentsPage = () => {
 
   // Bulk selection handlers
   const handleSelectAll = () => {
+    // Disable selection functionality for college lecturers (since they can't delete)
+    if (educatorType === 'college') {
+      return;
+    }
     const allIds = new Set(paginatedStudents.map(s => s.id));
     setSelectedStudentIds(allIds);
   };
 
   const handleDeselectAll = () => {
+    // Allow deselect for all educator types
     setSelectedStudentIds(new Set());
   };
 
   const handleToggleStudent = (studentId: string) => {
+    // Disable selection functionality for college lecturers (since they can't delete)
+    if (educatorType === 'college') {
+      return;
+    }
     const newSelected = new Set(selectedStudentIds);
     if (newSelected.has(studentId)) {
       newSelected.delete(studentId);
@@ -453,6 +471,11 @@ const StudentsPage = () => {
   };
 
   const handleBulkDelete = () => {
+    // Disable bulk delete functionality for college lecturers
+    if (educatorType === 'college') {
+      console.log('Bulk delete functionality disabled for college lecturers');
+      return;
+    }
     setShowBulkDeleteModal(true);
   };
 
@@ -610,8 +633,8 @@ const StudentsPage = () => {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Bulk Actions Bar */}
-          {selectedStudentIds.size > 0 && (
+          {/* Bulk Actions Bar - Hidden for college lecturers */}
+          {selectedStudentIds.size > 0 && educatorType !== 'college' && (
             <div className="px-4 sm:px-6 lg:px-8 py-3 bg-primary-50 border-b border-primary-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
@@ -642,15 +665,18 @@ const StudentsPage = () => {
           <div className="px-4 sm:px-6 lg:px-8 py-3 bg-gray-50 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={allOnPageSelected}
-                    onChange={allOnPageSelected ? handleDeselectAll : handleSelectAll}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Select All on Page</span>
-                </label>
+                {/* Select All checkbox - Hidden for college lecturers */}
+                {educatorType !== 'college' && (
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={allOnPageSelected}
+                      onChange={allOnPageSelected ? handleDeselectAll : handleSelectAll}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Select All on Page</span>
+                  </label>
+                )}
                 <p className="text-sm text-gray-700">
                   Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
                   <span className="font-medium">{Math.min(endIndex, totalItems)}</span> of{' '}
@@ -691,6 +717,7 @@ const StudentsPage = () => {
                     onMessage={handleMessageStudent}
                     isSelected={selectedStudentIds.has(student.id)}
                     onToggleSelect={handleToggleStudent}
+                    educatorType={educatorType}
                   />
                 ))}
                 {!loading && !schoolLoading && paginatedStudents.length === 0 && !error && (
@@ -803,13 +830,16 @@ const StudentsPage = () => {
                             >
                               Edit
                             </button>
-                            <button
-                              onClick={() => handleDeleteClick(student)}
-                              className="text-red-600 hover:text-red-900 transition-colors"
-                              title="Delete Student"
-                            >
-                              Delete
-                            </button>
+                            {/* Delete button - Hidden for college lecturers */}
+                            {educatorType !== 'college' && (
+                              <button
+                                onClick={() => handleDeleteClick(student)}
+                                className="text-red-600 hover:text-red-900 transition-colors"
+                                title="Delete Student"
+                              >
+                                Delete
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -852,24 +882,28 @@ const StudentsPage = () => {
         onSuccess={handleEditSuccess}
       />
 
-      {/* Delete Student Modal */}
-      <DeleteStudentModal
-        isOpen={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setStudentToDelete(null);
-        }}
-        student={studentToDelete}
-        onSuccess={handleDeleteSuccess}
-      />
+      {/* Delete Student Modal - Hidden for college lecturers */}
+      {educatorType !== 'college' && (
+        <DeleteStudentModal
+          isOpen={showDeleteModal}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setStudentToDelete(null);
+          }}
+          student={studentToDelete}
+          onSuccess={handleDeleteSuccess}
+        />
+      )}
 
-      {/* Bulk Delete Students Modal */}
-      <BulkDeleteStudentsModal
-        isOpen={showBulkDeleteModal}
-        onClose={() => setShowBulkDeleteModal(false)}
-        students={selectedStudents}
-        onSuccess={handleBulkDeleteSuccess}
-      />
+      {/* Bulk Delete Students Modal - Hidden for college lecturers */}
+      {educatorType !== 'college' && (
+        <BulkDeleteStudentsModal
+          isOpen={showBulkDeleteModal}
+          onClose={() => setShowBulkDeleteModal(false)}
+          students={selectedStudents}
+          onSuccess={handleBulkDeleteSuccess}
+        />
+      )}
     </div>
   );
 };
