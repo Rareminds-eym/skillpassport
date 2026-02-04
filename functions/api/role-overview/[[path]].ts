@@ -20,12 +20,12 @@ import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
 import { callOpenRouterWithRetry, getAPIKeys } from '../shared/ai-config';
 
-// Models to try for role overview generation
+// Models to try for role overview generation - using valid OpenRouter models
 const ROLE_OVERVIEW_MODELS = [
-  'google/gemini-flash-1.5-exp',           // FREE - Experimental
-  'meta-llama/llama-3.1-8b-instruct:free', // FREE
-  'google/gemini-flash-1.5',               // Affordable
-  'openai/gpt-3.5-turbo',                  // Cheap fallback
+  'openai/gpt-3.5-turbo',                  // Reliable and affordable
+  'openai/gpt-4o-mini',                    // Backup OpenAI model
+  'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
+  'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
 ];
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {

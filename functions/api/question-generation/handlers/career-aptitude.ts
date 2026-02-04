@@ -1,5 +1,5 @@
 
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { PagesEnv } from '../../../../src/functions-lib/types';
 import { SCHOOL_SUBJECT_PROMPT, APTITUDE_PROMPT } from '../prompts';
 import {
@@ -48,7 +48,7 @@ export async function generateAptitudeQuestions(
     console.log(`📋 Student ID: ${studentId || 'not specified'}`);
     console.log(`📋 Attempt ID: ${attemptId || 'not specified'}`);
     
-    const supabase = createSupabaseClient(env);
+    const supabase = createSupabaseAdminClient(env);
     const isAfter10 = gradeLevel === 'after10';
 
     console.log(`📚 Grade level detection: streamId=${streamId}, gradeLevel=${gradeLevel}, isAfter10=${isAfter10}`);
