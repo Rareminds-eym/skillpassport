@@ -5,6 +5,7 @@ compatibility_flags = ["nodejs_compat"]
 
 [dev]
 port = 9001
+inspector_port = 9231
 
 # Schedule countdown emails to run daily at 6:50 AM UTC (12:20 PM IST)
 [triggers]
