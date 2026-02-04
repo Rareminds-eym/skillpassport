@@ -860,15 +860,7 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // STEP 2: Only mark attempt as completed AFTER results are saved successfully
   console.log('=== STEP 2: Marking attempt as completed ===');
   
-  // 🔧 CRITICAL FIX: Get adaptive aptitude session ID from attempt (if it exists)
-  // Note: This should already be set during the assessment, but we ensure it's preserved
-  const { data: attemptData } = await supabase
-    .from('personal_assessment_attempts')
-    .select('adaptive_aptitude_session_id')
-    .eq('id', attemptId)
-    .single();
-  
-  const adaptiveAptitudeSessionId = attemptData?.adaptive_aptitude_session_id || null;
+  // Note: adaptive_aptitude_session_id is already set during the assessment
   if (adaptiveAptitudeSessionId) {
     console.log('📊 Adaptive aptitude session already linked:', adaptiveAptitudeSessionId);
   }
