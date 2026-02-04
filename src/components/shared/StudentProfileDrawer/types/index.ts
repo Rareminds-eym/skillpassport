@@ -135,6 +135,7 @@ export interface Project {
   id: string;
   title: string;
   description?: string;
+  role?: string;
   organization?: string;
   status?: string;
   approval_status?: string;

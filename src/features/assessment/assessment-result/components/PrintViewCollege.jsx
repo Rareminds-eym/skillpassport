@@ -12,6 +12,118 @@ import PrintStyles from './shared/PrintStyles';
 import PrintPage from './shared/PrintPage';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
+import {
+  CompleteCareerFitSection,
+  CompleteSkillGapSection,
+  CompleteRoadmapSection,
+  CompleteCourseRecommendationsSection,
+  ProfileSnapshotSection,
+  TimingAnalysisSection,
+  FinalNoteSection
+} from './shared/CompletePDFSections';
+
+/**
+ * Learning Styles Section
+ * Displays student's preferred learning approaches
+ */
+const LearningStylesSection = ({ learningStyles }) => {
+  if (!learningStyles || learningStyles.length === 0) return null;
+
+  const styleDescriptions = {
+    'Visual': 'You learn best through images, diagrams, and visual aids',
+    'Auditory': 'You learn best through listening and verbal instruction',
+    'Kinesthetic': 'You learn best through hands-on practice and movement',
+    'Reading/Writing': 'You learn best through reading and taking notes',
+    'Social': 'You learn best in group settings and through discussion',
+    'Solitary': 'You learn best when studying alone and self-paced'
+  };
+
+  return (
+    <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+      <h3 style={printStyles.subTitle}>Your Learning Preferences</h3>
+      <p style={{ fontSize: '10px', color: '#4b5563', marginBottom: '15px' }}>
+        Understanding how you learn best can help you choose effective study strategies and learning environments.
+      </p>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+        {learningStyles.map((style, index) => (
+          <div 
+            key={index}
+            style={{
+              padding: '12px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px'
+            }}
+          >
+            <div style={{ 
+              fontSize: '11px', 
+              fontWeight: 'bold', 
+              color: '#1e293b',
+              marginBottom: '4px'
+            }}>
+              {style}
+            </div>
+            <div style={{ fontSize: '9px', color: '#64748b', lineHeight: '1.4' }}>
+              {styleDescriptions[style] || 'Preferred learning approach'}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Work Preferences Section
+ * Displays ideal work environment characteristics
+ */
+const WorkPreferencesSection = ({ workPreferences }) => {
+  if (!workPreferences || workPreferences.length === 0) return null;
+
+  const preferenceIcons = {
+    'Remote Work': '🏠',
+    'Team Collaboration': '👥',
+    'Independent Work': '🎯',
+    'Flexible Hours': '⏰',
+    'Structured Environment': '📋',
+    'Creative Freedom': '🎨',
+    'Fast-Paced': '⚡',
+    'Stable & Predictable': '🔒'
+  };
+
+  return (
+    <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+      <h3 style={printStyles.subTitle}>Ideal Work Environment</h3>
+      <p style={{ fontSize: '10px', color: '#4b5563', marginBottom: '15px' }}>
+        These work environment characteristics align with your personality and preferences.
+      </p>
+      
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+        {workPreferences.map((pref, index) => (
+          <div 
+            key={index}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              borderRadius: '20px',
+              fontSize: '10px',
+              fontWeight: '600',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span>{preferenceIcons[pref] || '✓'}</span>
+            <span>{pref}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 
 /**
  * PrintViewCollege Component
@@ -41,8 +153,40 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
     );
   }
 
-  // Extract data from results
-  const { riasec, aptitude, bigFive, workValues, knowledge, employability, careerFit, skillGap, roadmap, overallSummary } = results;
+  // 🔧 CRITICAL FIX: Normalize RIASEC scores before using them
+  // The normalizer moves _originalScores to riasec level, not gemini_results level
+  let normalizedResults = { ...results };
+  if (results.riasec) {
+    const scores = results.riasec.scores || {};
+    const allZeros = Object.values(scores).every(score => score === 0);
+    
+    // Check for _originalScores at riasec level (after normalization)
+    // OR at gemini_results level (before normalization)
+    const originalScores = results.riasec._originalScores || 
+                          results.gemini_results?.riasec?._originalScores || 
+                          {};
+    const hasOriginalScores = Object.keys(originalScores).length > 0 &&
+      Object.values(originalScores).some(score => score > 0);
+    
+    if (allZeros && hasOriginalScores) {
+      console.log('🔧 PDF PrintViewCollege: Normalizing RIASEC scores from _originalScores');
+      console.log('   Original scores found at:', results.riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
+      normalizedResults = {
+        ...results,
+        riasec: {
+          ...results.riasec,
+          scores: originalScores,
+          _originalScores: originalScores,
+          maxScore: results.riasec.maxScore || 
+                   results.gemini_results?.riasec?.maxScore || 
+                   20
+        }
+      };
+    }
+  }
+
+  // Extract data from normalized results
+  const { riasec, aptitude, bigFive, workValues, knowledge, employability, careerFit, skillGap, roadmap, overallSummary } = normalizedResults;
 
   // Safe student info with defaults
   const safeStudentInfo = getSafeStudentInfo(studentInfo);
@@ -62,7 +206,7 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
       <PrintStyles />
 
       {/* Cover Page */}
-      <CoverPage studentInfo={safeStudentInfo} />
+      <CoverPage studentInfo={safeStudentInfo} generatedAt={results.generatedAt} />
 
       {/* Watermarks */}
       <Watermarks />
@@ -73,25 +217,60 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         
         {/* Detailed Assessment Breakdown (All stages data) */}
         <DetailedAssessmentBreakdown 
-          results={results} 
+          results={normalizedResults} 
           riasecNames={safeRiasecNames}
           gradeLevel="college"
         />
 
-        {/* Career Fit Analysis */}
-        {careerFit && (
-          <CareerFitAnalysisSection careerFit={careerFit} />
-        )}
-        
-        {/* Skill Gap & Development Plan */}
-        {skillGap && (
-          <SkillGapDevelopmentSection skillGap={skillGap} />
+        {/* ✅ NEW: Learning Styles Section */}
+        {results.learningStyles && results.learningStyles.length > 0 && (
+          <LearningStylesSection learningStyles={results.learningStyles} />
         )}
 
-        {/* Career Roadmap */}
-        {roadmap && (
-          <DetailedCareerRoadmapSection roadmap={roadmap} />
+        {/* ✅ NEW: Work Preferences Section */}
+        {results.workPreferences && results.workPreferences.length > 0 && (
+          <WorkPreferencesSection workPreferences={results.workPreferences} />
         )}
+
+        {/* OLD SECTIONS COMMENTED OUT - Data now shown in Detailed Assessment Breakdown */}
+        {/* Career Fit Analysis */}
+        {/* {careerFit && (
+          <CareerFitAnalysisSection careerFit={careerFit} />
+        )} */}
+        
+        {/* Skill Gap & Development Plan */}
+        {/* {skillGap && (
+          <SkillGapDevelopmentSection skillGap={skillGap} />
+        )} */}
+
+        {/* ========== NEW COMPLETE DATA SECTIONS - COMMENTED OUT TO AVOID DUPLICATES ON PAGE 2 ========== */}
+        {/* Profile Snapshot */}
+        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} /> */}
+        
+        {/* Complete Skill Gap - Additional details with resources */}
+        {/* <CompleteSkillGapSection skillGap={results.skillGap} /> */}
+        
+        {/* Complete Course Recommendations */}
+        {/* <CompleteCourseRecommendationsSection 
+          skillGapCourses={results.skillGapCourses}
+          platformCourses={results.platformCourses}
+          coursesByType={results.coursesByType}
+        /> */}
+        
+        {/* Complete Roadmap */}
+        {/* <CompleteRoadmapSection roadmap={results.roadmap} /> */}
+        
+        {/* Timing Analysis */}
+        {/* <TimingAnalysisSection timingAnalysis={results.timingAnalysis} /> */}
+        
+        {/* Final Note */}
+        {/* <FinalNoteSection finalNote={results.finalNote} /> */}
+        {/* ========== END OF NEW SECTIONS ========== */}
+
+        {/* Career Roadmap */}
+        {/* {roadmap && (
+          <DetailedCareerRoadmapSection roadmap={roadmap} />
+        )} */}
         
         {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
         {/* College students are already in a degree program, they don't need degree recommendations */}
@@ -100,9 +279,21 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         )} */}
 
         {/* Final Recommendations */}
-        {overallSummary && (
+        {/* {overallSummary && (
           <FinalRecommendationsSection overallSummary={overallSummary} />
-        )}
+        )} */}
+        
+        {/* ========== DUPLICATE SECTIONS COMMENTED OUT - Already shown above ========== */}
+        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} />
+        <CompleteCourseRecommendationsSection 
+          skillGapCourses={results.skillGapCourses}
+          platformCourses={results.platformCourses}
+          coursesByType={results.coursesByType}
+        />
+        <CompleteRoadmapSection roadmap={results.roadmap} />
+        <TimingAnalysisSection timingAnalysis={results.timingAnalysis} />
+        <FinalNoteSection finalNote={results.finalNote} /> */}
+        {/* ========== END OF DUPLICATE SECTIONS ========== */}
         
         <ReportDisclaimer />
       </div>
@@ -116,6 +307,17 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
           riasecNames={safeRiasecNames}
           gradeLevel="college"
         />
+
+        {/* ✅ NEW: Learning Styles Section */}
+        {results.learningStyles && results.learningStyles.length > 0 && (
+          <LearningStylesSection learningStyles={results.learningStyles} />
+        )}
+
+        {/* ✅ NEW: Work Preferences Section */}
+        {results.workPreferences && results.workPreferences.length > 0 && (
+          <WorkPreferencesSection workPreferences={results.workPreferences} />
+        )}
+
         {/* OLD SECTIONS COMMENTED OUT - Data now shown in Detailed Assessment Breakdown */}
         {/* <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
         <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
@@ -134,7 +336,7 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         {employability && (
           <EmployabilityScoreSection employability={employability} />
         )} */}
-        {careerFit && (
+        {/* {careerFit && (
           <CareerFitAnalysisSection careerFit={careerFit} />
         )}
         {skillGap && (
@@ -142,14 +344,27 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         )}
         {roadmap && (
           <DetailedCareerRoadmapSection roadmap={roadmap} />
-        )}
+        )} */}
         {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
         {/* {courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
         )} */}
-        {overallSummary && (
+        {/* {overallSummary && (
           <FinalRecommendationsSection overallSummary={overallSummary} />
-        )}
+        )} */}
+        
+        {/* ========== DUPLICATE SECTIONS COMMENTED OUT - Already shown above ========== */}
+        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} />
+        <CompleteCourseRecommendationsSection 
+          skillGapCourses={results.skillGapCourses}
+          platformCourses={results.platformCourses}
+          coursesByType={results.coursesByType}
+        />
+        <CompleteRoadmapSection roadmap={results.roadmap} />
+        <TimingAnalysisSection timingAnalysis={results.timingAnalysis} />
+        <FinalNoteSection finalNote={results.finalNote} /> */}
+        {/* ========== END OF DUPLICATE SECTIONS ========== */}
+        
         <ReportDisclaimer />
       </div>
     </div>
@@ -164,18 +379,26 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
 const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
   if (!riasec || !riasec.scores) return null;
 
+  // 🔧 CRITICAL FIX: Use _originalScores if riasec.scores are all zeros
+  let scores = riasec.scores || {};
+  const allZeros = Object.values(scores).every(score => score === 0);
+  if (allZeros && riasec._originalScores && Object.keys(riasec._originalScores).length > 0) {
+    console.log('🔧 PDF InterestProfile (College): Using _originalScores instead of zeros');
+    scores = riasec._originalScores;
+  }
+
   const maxScore = riasec.maxScore || 20;
   const codes = ['R', 'I', 'A', 'S', 'E', 'C'];
   
   // Get top three interests
   const topThree = riasec.topThree || codes
-    .map(code => ({ code, score: riasec.scores[code] || 0 }))
+    .map(code => ({ code, score: scores[code] || 0 }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
     .map(item => item.code);
 
   const topInterestsText = topThree.map(code => safeRiasecNames[code]).join(', ');
-  const hasStrongInterests = topThree.some(code => (riasec.scores?.[code] || 0) >= maxScore * 0.5);
+  const hasStrongInterests = topThree.some(code => (scores[code] || 0) >= maxScore * 0.5);
 
   return (
     <div>
@@ -235,7 +458,7 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
           zIndex: 1
         }}>
           {topThree.map((code, idx) => {
-            const score = riasec.scores?.[code] || 0;
+            const score = scores[code] || 0;
             
             return (
               <div key={code} style={{ width: '28%', textAlign: 'center' }}>

@@ -1085,13 +1085,117 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     aptitudeScores = preCalculatedScores.aptitude;
   } else {
     console.log('⚠️ Calculating aptitude scores from questions (fallback)');
-    aptitudeScores = {
-      verbal: calculateAptitudeScore(aptitudeAnswers.verbal),
-      numerical: calculateAptitudeScore(aptitudeAnswers.numerical),
-      abstract: calculateAptitudeScore(aptitudeAnswers.abstract),
-      spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
-      clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
+    
+    // 🔧 Check if this is old Stream Based Aptitude format (aptitude_1 to aptitude_25)
+    const hasOldStreamAptitude = Object.keys(answers).some(k => k.match(/^aptitude_\d+$/));
+    
+    if (hasOldStreamAptitude && aptitudeAnswers.verbal.length === 0) {
+      console.log('🔧 Detected old Stream Based Aptitude format - scoring from responses...');
+      aptitudeScores = scoreOldStreamAptitude(answers);
+      console.log('✅ Stream Based Aptitude scores calculated:', aptitudeScores);
+    } else {
+      aptitudeScores = {
+        verbal: calculateAptitudeScore(aptitudeAnswers.verbal),
+        numerical: calculateAptitudeScore(aptitudeAnswers.numerical),
+        abstract: calculateAptitudeScore(aptitudeAnswers.abstract),
+        spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
+        clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
+      };
+    }
+  }
+  
+  /**
+   * Score old Stream Based Aptitude questions (aptitude_1 to aptitude_25)
+   * These were hardcoded questions used before adaptive aptitude
+   */
+  function scoreOldStreamAptitude(responses) {
+    const CORRECT_ANSWERS = {
+      'aptitude_1': 'Clockwise',
+      'aptitude_2': '0.1',
+      'aptitude_3': 'Cannot be determined',
+      'aptitude_4': '1',
+      'aptitude_5': '100 RPM',
+      'aptitude_6': 'They prioritize speed over accuracy.',
+      'aptitude_7': 'Different',
+      'aptitude_8': 'Different',
+      'aptitude_9': 'Same',
+      'aptitude_10': 'Different',
+      'aptitude_11': 'Same',
+      'aptitude_12': 'Same',
+      'aptitude_13': 'Different',
+      'aptitude_14': 'Same',
+      'aptitude_15': 'Different',
+      'aptitude_16': 'Same',
+      'aptitude_17': 'Same',
+      'aptitude_18': 'Different',
+      'aptitude_19': 'Same',
+      'aptitude_20': 'Same',
+      'aptitude_21': 'Different',
+      'aptitude_22': 'Different',
+      'aptitude_23': 'Same',
+      'aptitude_24': 'Same',
+      'aptitude_25': 'Same'
     };
+    
+    const CATEGORIES = {
+      'aptitude_1': 'spatial',
+      'aptitude_2': 'numerical',
+      'aptitude_3': 'abstract',
+      'aptitude_4': 'numerical',
+      'aptitude_5': 'numerical',
+      'aptitude_6': 'verbal',
+      'aptitude_7': 'clerical',
+      'aptitude_8': 'clerical',
+      'aptitude_9': 'clerical',
+      'aptitude_10': 'clerical',
+      'aptitude_11': 'clerical',
+      'aptitude_12': 'clerical',
+      'aptitude_13': 'clerical',
+      'aptitude_14': 'clerical',
+      'aptitude_15': 'clerical',
+      'aptitude_16': 'clerical',
+      'aptitude_17': 'clerical',
+      'aptitude_18': 'clerical',
+      'aptitude_19': 'clerical',
+      'aptitude_20': 'clerical',
+      'aptitude_21': 'clerical',
+      'aptitude_22': 'clerical',
+      'aptitude_23': 'clerical',
+      'aptitude_24': 'clerical',
+      'aptitude_25': 'clerical'
+    };
+    
+    const scores = {
+      verbal: { correct: 0, total: 0, percentage: 0 },
+      numerical: { correct: 0, total: 0, percentage: 0 },
+      abstract: { correct: 0, total: 0, percentage: 0 },
+      spatial: { correct: 0, total: 0, percentage: 0 },
+      clerical: { correct: 0, total: 0, percentage: 0 }
+    };
+    
+    for (let i = 1; i <= 25; i++) {
+      const key = `aptitude_${i}`;
+      const studentAnswer = responses[key];
+      const correctAnswer = CORRECT_ANSWERS[key];
+      const category = CATEGORIES[key];
+      
+      if (!studentAnswer || !category) continue;
+      
+      scores[category].total++;
+      
+      const isCorrect = studentAnswer.toString().toLowerCase().trim() === 
+                       correctAnswer.toLowerCase().trim();
+      
+      if (isCorrect) scores[category].correct++;
+    }
+    
+    Object.keys(scores).forEach(cat => {
+      if (scores[cat].total > 0) {
+        scores[cat].percentage = Math.round((scores[cat].correct / scores[cat].total) * 100);
+      }
+    });
+    
+    return scores;
   }
   
   // Log calculated scores

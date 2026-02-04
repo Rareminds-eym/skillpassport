@@ -80,14 +80,9 @@ CRITICAL JSON FORMAT RULES:
 6. Ensure all strings are properly quoted with double quotes
 7. Ensure all commas are in the right places
 8. Ensure all nested objects and arrays are properly closed
-9. Keep text concise to avoid token limits
-10. **PRIORITY ORDER**: If approaching token limit, ensure these fields are completed in order:
-    a) careerFit (3 clusters) - HIGHEST PRIORITY
-    b) finalNote - HIGH PRIORITY
-    c) overallSummary - MANDATORY, MUST BE INCLUDED
-    d) Other sections can be shortened if needed
-11. NEVER truncate mid-object - always close all braces and brackets
-12. The "overallSummary" field MUST appear at the end, right before the closing brace
+9. NEVER truncate mid-object - always close all braces and brackets
+10. ALL SECTIONS ARE MANDATORY - do not skip employability, knowledge, skillGap, roadmap, or finalNote
+11. If you must be concise, shorten descriptions but INCLUDE ALL SECTIONS
 
 EXAMPLE OF CORRECT FORMAT:
 {

@@ -9,6 +9,7 @@ import {
     X,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import toast from 'react-hot-toast';
 import { useUserRole } from "../../../../hooks/useUserRole";
 import { supabase } from "../../../../lib/supabaseClient";
 
@@ -288,7 +289,7 @@ const TimetableAllocationPage: React.FC = () => {
 
   const handleAddSlotClick = (dayIndex: number, periodNum: number) => {
     if (!selectedTeacher || !selectedClass) {
-      alert("Please select both Teacher and Class first");
+      toast.error("Please select both Teacher and Class first");
       return;
     }
     setAddingSlot({ day: dayIndex + 1, period: periodNum });
@@ -298,7 +299,7 @@ const TimetableAllocationPage: React.FC = () => {
 
   const handleSaveSlot = async () => {
     if (!addingSlot || !newSubject.trim()) {
-      alert("Please enter a subject name");
+      toast.error("Please enter a subject name");
       return;
     }
 
@@ -322,8 +323,9 @@ const TimetableAllocationPage: React.FC = () => {
       await loadSlots();
       await loadTeacherWorkload();
       setAddingSlot(null);
+      toast.success('Slot added successfully');
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -343,8 +345,9 @@ const TimetableAllocationPage: React.FC = () => {
 
       await loadSlots();
       await loadTeacherWorkload();
+      toast.success('Slot deleted successfully');
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }

@@ -35,6 +35,15 @@ const TeacherOnboardingPage: React.FC = () => {
     specialization: "",
     experience_years: 0,
     role: "subject_teacher" as "school_admin" | "principal" | "it_admin" | "class_teacher" | "subject_teacher",
+    // Additional personal information
+    employee_id: "",
+    gender: "",
+    address: "",
+    city: "",
+    state: "",
+    dob: "",
+    country: "",
+    pincode: "",
   });
 
   const [documents, setDocuments] = useState({
@@ -55,6 +64,26 @@ const TeacherOnboardingPage: React.FC = () => {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [documentUploadProgress, setDocumentUploadProgress] = useState<DocumentUploadProgress[]>([]);
   const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
+
+  // Helper function to format phone number
+  const formatPhoneNumber = (value: string) => {
+    // Remove all non-digit characters except +
+    const cleaned = value.replace(/[^\d+]/g, '');
+    
+    // If it starts with +, keep it
+    if (cleaned.startsWith('+')) {
+      const digits = cleaned.slice(1);
+      if (digits.length <= 2) return `+${digits}`;
+      if (digits.length <= 5) return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+      return `+${digits.slice(0, 2)} ${digits.slice(2, 7)} ${digits.slice(7, 12)}`;
+    }
+    
+    // For regular numbers, format as groups
+    if (cleaned.length <= 3) return cleaned;
+    if (cleaned.length <= 6) return `${cleaned.slice(0, 3)} ${cleaned.slice(3)}`;
+    if (cleaned.length <= 10) return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6)}`;
+    return `${cleaned.slice(0, 3)} ${cleaned.slice(3, 6)} ${cleaned.slice(6, 10)}`;
+  };
 
   const handleFileChange = (field: keyof typeof documents, files: FileList | null) => {
     if (!files) return;
@@ -220,10 +249,125 @@ const TeacherOnboardingPage: React.FC = () => {
     setMessage(null);
 
     // Basic validation
-    if (!formData.first_name || !formData.last_name || !formData.email || !formData.phone_number || !formData.designation || !formData.department || !formData.qualification) {
+    if (!formData.first_name || !formData.last_name || !formData.email || !formData.phone_number || !formData.designation || !formData.department || !formData.qualification || !formData.dob) {
+      const missingFields = [];
+      if (!formData.first_name) missingFields.push("First Name");
+      if (!formData.last_name) missingFields.push("Last Name");
+      if (!formData.email) missingFields.push("Email");
+      if (!formData.phone_number) missingFields.push("Phone Number");
+      if (!formData.designation) missingFields.push("Designation");
+      if (!formData.department) missingFields.push("Department");
+      if (!formData.qualification) missingFields.push("Qualification");
+      if (!formData.dob) missingFields.push("Date of Birth");
+      
       setMessage({
         type: "error",
-        text: "Please fill in all required fields."
+        text: `Please fill in the following required fields: ${missingFields.join(", ")}`
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setMessage({
+        type: "error",
+        text: "Please enter a valid email address."
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Phone number validation
+    const phoneDigitsOnly = formData.phone_number.replace(/[^\d]/g, ''); // Extract only digits
+    if (phoneDigitsOnly.length < 10 || phoneDigitsOnly.length > 15) {
+      setMessage({
+        type: "error",
+        text: "Please enter a valid phone number with 10-15 digits."
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Check if phone number has valid format
+    const phoneRegex = /^[+]?[\d\s\-\(\)]{10,15}$/;
+    if (!phoneRegex.test(formData.phone_number)) {
+      setMessage({
+        type: "error",
+        text: "Please enter a valid phone number format."
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Date of birth validation
+    const today = new Date();
+    const birthDate = new Date(formData.dob);
+    const age = Math.floor((today.getTime() - birthDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+    
+    if (birthDate >= today) {
+      setMessage({
+        type: "error",
+        text: "Date of birth must be in the past."
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (age < 18) {
+      setMessage({
+        type: "error",
+        text: "Teacher must be at least 18 years old."
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (age > 100) {
+      setMessage({
+        type: "error",
+        text: "Please enter a valid date of birth."
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Pincode validation (if provided)
+    if (formData.pincode && !/^\d{5,6}$/.test(formData.pincode)) {
+      setMessage({
+        type: "error",
+        text: "Please enter a valid pincode (5-6 digits)."
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Employee ID validation (if provided)
+    if (formData.employee_id && formData.employee_id.length < 3) {
+      setMessage({
+        type: "error",
+        text: "Employee ID must be at least 3 characters long."
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Experience years validation
+    if (formData.experience_years < 0 || formData.experience_years > 50) {
+      setMessage({
+        type: "error",
+        text: "Experience years must be between 0 and 50."
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Age vs Experience validation
+    if (formData.experience_years > (age - 18)) {
+      setMessage({
+        type: "error",
+        text: "Experience years cannot exceed working age (current age - 18)."
       });
       setLoading(false);
       return;
@@ -257,10 +401,11 @@ const TeacherOnboardingPage: React.FC = () => {
       return;
     }
 
-    if (documents.experience_letters.length === 0) {
+    // Experience letters validation - only required if teacher has experience
+    if (formData.experience_years > 0 && documents.experience_letters.length === 0) {
       setMessage({
         type: "error",
-        text: "Please upload at least one experience letter."
+        text: "Please upload at least one experience letter since you have indicated work experience."
       });
       setLoading(false);
       return;
@@ -314,13 +459,6 @@ const TeacherOnboardingPage: React.FC = () => {
 
       console.log("Using school_id:", schoolId);
 
-      // Determine status based on action
-      let status = "pending";
-      if (action === "draft") status = "pending";
-      else if (action === "submit") status = "documents_uploaded";
-      else if (action === "approve") status = "active";
-      else if (action === "reject") status = "inactive";
-
       // Get auth token for worker API
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) {
@@ -329,7 +467,7 @@ const TeacherOnboardingPage: React.FC = () => {
 
       // Use Worker API to create teacher with proper rollback
       // Note: Worker expects data wrapped in a 'teacher' object
-      const teacherResult = await createTeacher({
+      const teacherData = {
         teacher: {
           first_name: formData.first_name,
           last_name: formData.last_name,
@@ -337,9 +475,28 @@ const TeacherOnboardingPage: React.FC = () => {
           phone_number: formData.phone_number,
           qualification: formData.qualification,
           role: formData.role,
-          subject_expertise: subjects.map(s => s.name),
+          designation: formData.designation,
+          department: formData.department,
+          specialization: formData.specialization,
+          experience_years: formData.experience_years,
+          date_of_joining: new Date().toISOString().split('T')[0], // Set current date as joining date
+          subject_expertise: subjects, // Pass full subject expertise objects
+          subjects_handled: subjects.map(s => s.name), // Also pass simple subject names for compatibility
+          // Additional personal information
+          employee_id: formData.employee_id,
+          gender: formData.gender,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          dob: formData.dob,
+          country: formData.country,
+          pincode: formData.pincode,
         }
-      }, session.access_token);
+      };
+
+      console.log('📤 Sending teacher data to API:', teacherData);
+
+      const teacherResult = await createTeacher(teacherData, session.access_token);
 
       if (!teacherResult.success) {
         throw new Error(teacherResult.error || "Failed to create teacher");
@@ -419,7 +576,16 @@ const TeacherOnboardingPage: React.FC = () => {
         qualification: "",
         specialization: "",
         experience_years: 0,
-        role: "subject_teacher"
+        role: "subject_teacher",
+        // Additional personal information
+        employee_id: "",
+        gender: "",
+        address: "",
+        city: "",
+        state: "",
+        dob: "",
+        country: "",
+        pincode: "",
       });
       setDocuments({ degree_certificate: null, id_proof: null, experience_letters: [] });
       setSubjects([]);
@@ -573,6 +739,8 @@ const TeacherOnboardingPage: React.FC = () => {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., teacher@school.com"
+                title="Please enter a valid email address"
               />
             </div>
             <div>
@@ -583,8 +751,27 @@ const TeacherOnboardingPage: React.FC = () => {
                 type="tel"
                 required
                 value={formData.phone_number}
-                onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                onChange={(e) => {
+                  // Only allow digits, +, spaces, hyphens, and parentheses
+                  let value = e.target.value.replace(/[^+\d\s\-\(\)]/g, '');
+                  
+                  // Count only digits for length validation
+                  const digitsOnly = value.replace(/[^\d]/g, '');
+                  
+                  // Limit to 15 digits maximum
+                  if (digitsOnly.length <= 15) {
+                    setFormData({ ...formData, phone_number: value });
+                  }
+                }}
+                onBlur={(e) => {
+                  // Format the phone number when user leaves the field
+                  const formatted = formatPhoneNumber(e.target.value);
+                  setFormData({ ...formData, phone_number: formatted });
+                }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., +91 9876543210"
+                maxLength={18} // Allow for formatting characters
+                title="Please enter a valid phone number (10-15 digits)"
               />
             </div>
             <div>
@@ -628,15 +815,135 @@ const TeacherOnboardingPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                Specialization
+              </label>
+              <input
+                type="text"
+                value={formData.specialization}
+                onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., Applied Mathematics, Theoretical Physics"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Total Experience (Years) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 min="0"
+                max="50"
                 required
                 value={formData.experience_years}
                 onChange={(e) => setFormData({ ...formData, experience_years: parseInt(e.target.value) || 0 })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                title="Please enter experience between 0 and 50 years"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Employee ID
+              </label>
+              <input
+                type="text"
+                value={formData.employee_id}
+                onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., EMP001"
+                minLength={3}
+                title="Employee ID must be at least 3 characters long"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Gender
+              </label>
+              <select
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+                <option value="prefer_not_to_say">Prefer not to say</option>
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Address
+              </label>
+              <textarea
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Full address"
+                rows={3}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                City
+              </label>
+              <input
+                type="text"
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., Mumbai"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                State
+              </label>
+              <input
+                type="text"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., Maharashtra"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Date of Birth <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                value={formData.dob}
+                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                max={new Date().toISOString().split('T')[0]} // Prevent future dates
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Country
+              </label>
+              <input
+                type="text"
+                value={formData.country}
+                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., India"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pincode
+              </label>
+              <input
+                type="text"
+                value={formData.pincode}
+                onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="e.g., 400001"
+                pattern="\d{5,6}"
+                title="Please enter a valid pincode (5-6 digits)"
+                maxLength={6}
               />
             </div>
             <div className="md:col-span-2">
@@ -717,17 +1024,20 @@ const TeacherOnboardingPage: React.FC = () => {
             {/* Experience Letters */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Experience Letters <span className="text-red-500">*</span>
+                Experience Letters {formData.experience_years > 0 && (
+                  <span className="text-red-500">*</span>
+                )}
               </label>
               <div className="space-y-2">
                 <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-500 cursor-pointer transition">
                   <Upload className="h-5 w-5 text-gray-400" />
-                  <span className="text-sm text-gray-600">Upload experience letters</span>
+                  <span className="text-sm text-gray-600">
+                    {formData.experience_years > 0 ? 'Upload experience letters' : 'Upload experience letters (optional)'}
+                  </span>
                   <input
                     type="file"
                     multiple
                     accept=".pdf,.jpg,.jpeg,.png"
-                    required={documents.experience_letters.length === 0}
                     onChange={(e) => handleFileChange("experience_letters", e.target.files)}
                     className="hidden"
                   />

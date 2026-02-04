@@ -70,6 +70,21 @@ export const ManageStudentsModal = ({
       return
     }
 
+    // Check if adding these students would exceed the maximum capacity
+    const currentCount = classStudents.length
+    const newCount = currentCount + selectedStudents.length
+    
+    if (newCount > classItem.max_students) {
+      const availableSpots = classItem.max_students - currentCount
+      if (availableSpots <= 0) {
+        toast.error("This class is already at maximum capacity")
+        return
+      } else {
+        toast.error(`Cannot add ${selectedStudents.length} students. Only ${availableSpots} spot${availableSpots === 1 ? '' : 's'} available (${currentCount}/${classItem.max_students})`)
+        return
+      }
+    }
+
     setLoading(true)
     try {
       const { error } = await supabase
@@ -82,7 +97,7 @@ export const ManageStudentsModal = ({
       await supabase
         .from("school_classes")
         .update({ 
-          current_students: classStudents.length + selectedStudents.length,
+          current_students: newCount,
           updated_at: new Date().toISOString()
         })
         .eq("id", classItem.id)
@@ -136,6 +151,8 @@ export const ManageStudentsModal = ({
   }
 
   const studentCount = classStudents.length
+  const isAtCapacity = studentCount >= classItem.max_students
+  const availableSpots = classItem.max_students - studentCount
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -146,11 +163,32 @@ export const ManageStudentsModal = ({
             <div>
               <div className="flex items-center space-x-3">
                 <h2 className="text-lg font-semibold text-gray-900">Manage Students</h2>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">
-                  {studentCount}
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                  isAtCapacity 
+                    ? 'bg-red-100 text-red-700' 
+                    : studentCount > classItem.max_students * 0.8 
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-indigo-100 text-indigo-700'
+                }`}>
+                  {studentCount} / {classItem.max_students}
                 </span>
+                {isAtCapacity && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    At Capacity
+                  </span>
+                )}
               </div>
               <p className="mt-1 text-sm text-gray-500">{classItem.name}</p>
+              {isAtCapacity && (
+                <p className="mt-1 text-xs text-red-600">
+                  This class has reached its maximum capacity of {classItem.max_students} students.
+                </p>
+              )}
+              {!isAtCapacity && availableSpots <= 3 && availableSpots > 0 && (
+                <p className="mt-1 text-xs text-yellow-600">
+                  Only {availableSpots} spot{availableSpots === 1 ? '' : 's'} remaining.
+                </p>
+              )}
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
               <XMarkIcon className="h-6 w-6" />
@@ -195,8 +233,17 @@ export const ManageStudentsModal = ({
 
             {/* Add Students - Right side (1/3 width) */}
             <div className="lg:col-span-1">
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+              <div className={`border border-gray-200 rounded-lg p-4 ${isAtCapacity ? 'bg-red-50' : 'bg-gray-50'}`}>
                 <h3 className="text-sm font-medium text-gray-900">Add Student</h3>
+                
+                {isAtCapacity && (
+                  <div className="mt-2 p-3 bg-red-100 border border-red-200 rounded-md">
+                    <p className="text-xs text-red-700">
+                      <strong>Class Full:</strong> This class has reached its maximum capacity of {classItem.max_students} students. 
+                      To add more students, either increase the class capacity or remove some existing students.
+                    </p>
+                  </div>
+                )}
                 
                 <div className="mt-4 space-y-4">
                   <div>
@@ -205,11 +252,14 @@ export const ManageStudentsModal = ({
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       type="text"
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"
-                      placeholder="Search by name or email"
+                      disabled={isAtCapacity}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      placeholder={isAtCapacity ? "Class at capacity" : "Search by name or email"}
                     />
                     <div className="max-h-64 overflow-y-auto rounded-md border border-gray-200 bg-white">
-                      {availableStudents.length === 0 ? (
+                      {isAtCapacity ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">Cannot add students - class at maximum capacity</div>
+                      ) : availableStudents.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-gray-500">No students available</div>
                       ) : filteredAvailable.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-gray-500">No students match your search</div>
@@ -233,22 +283,29 @@ export const ManageStudentsModal = ({
                         ))
                       )}
                     </div>
-                    {selectedStudents.length > 0 && (
-                      <p className="mt-2 text-xs text-gray-500">
-                        {selectedStudents.length} student{selectedStudents.length === 1 ? "" : "s"} selected
-                      </p>
+                    {selectedStudents.length > 0 && !isAtCapacity && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500">
+                          {selectedStudents.length} student{selectedStudents.length === 1 ? "" : "s"} selected
+                        </p>
+                        {selectedStudents.length > availableSpots && (
+                          <p className="text-xs text-red-600">
+                            Warning: Only {availableSpots} spot{availableSpots === 1 ? '' : 's'} available
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
 
                 <button
                   onClick={handleAddStudents}
-                  disabled={loading || selectedStudents.length === 0}
+                  disabled={loading || selectedStudents.length === 0 || isAtCapacity}
                   className="mt-6 w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                   type="button"
                 >
                   <UserPlusIcon className="h-4 w-4 mr-2" />
-                  {loading ? "Saving..." : "Add Student"}
+                  {loading ? "Saving..." : isAtCapacity ? "Class Full" : "Add Student"}
                 </button>
               </div>
             </div>

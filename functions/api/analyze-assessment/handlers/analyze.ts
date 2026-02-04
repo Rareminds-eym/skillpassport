@@ -32,7 +32,7 @@ const ASSESSMENT_MODELS = [
 // Assessment-specific configuration
 const ASSESSMENT_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
-  maxTokens: 4000,   // Increased to 4000 to ensure complete responses including overallSummary
+  maxTokens: 32000,  // Increased to handle complete responses with all sections (employability, knowledge, skillGap, roadmap, finalNote)
 };
 
 /**
@@ -99,29 +99,20 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
     careerFit: 'object',
     skillGap: 'object',
     roadmap: 'object',
-    finalNote: 'object',
-    overallSummary: 'string'  // CRITICAL: This must be a string
+    finalNote: 'object'
   };
   
-  // ============================================================================
-  // ENHANCED LOGGING: Log missing fields (Requirement 4.5)
-  // ============================================================================
-  console.log('[VALIDATION] Checking required fields...');
-  const missingFieldsList: string[] = [];
-  const typeErrorsList: string[] = [];
+  // CRITICAL sections that MUST be present (not just warnings)
+  const criticalSections = ['employability', 'knowledge', 'skillGap', 'roadmap', 'finalNote'];
   
   // Check required fields
   for (const [field, expectedType] of Object.entries(requiredFields)) {
     if (!result[field]) {
-      missingFieldsList.push(field);
-      if (field === 'overallSummary') {
-        const error = `CRITICAL: Missing required field: ${field} - This field is MANDATORY for the Career Direction summary`;
-        errors.push(error);
-        console.error('[VALIDATION] ❌', error);
+      // Critical sections are ERRORS, not warnings
+      if (criticalSections.includes(field)) {
+        errors.push(`CRITICAL: Missing required field: ${field}`);
       } else {
-        const warning = `Missing field: ${field}`;
-        warnings.push(warning);
-        console.warn('[VALIDATION] ⚠️', warning);
+        warnings.push(`Missing field: ${field}`);
       }
     } else if (typeof result[field] !== expectedType) {
       const error = `Field '${field}' must be ${expectedType}, got ${typeof result[field]}`;

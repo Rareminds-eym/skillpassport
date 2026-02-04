@@ -18,6 +18,7 @@ import {
   ExternalLink,
   BookOpen,
 } from "lucide-react";
+import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { examinationService } from "../../../services/college";
 import { assessmentService } from "../../../services/college/assessmentService";
@@ -286,9 +287,9 @@ const ExaminationManagement: React.FC = () => {
           id, 
           data: { status: 'scheduled' } 
         });
-        alert('Assessment submitted successfully');
+        toast.success('Assessment submitted successfully');
       } catch (error: any) {
-        alert('Error submitting assessment: ' + error.message);
+        toast.error('Error submitting assessment: ' + error.message);
       }
     }
   };

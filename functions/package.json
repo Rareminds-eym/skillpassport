@@ -1,0 +1,9 @@
+{
+  "name": "functions",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "aws4fetch": "^1.0.20",
+    "@supabase/supabase-js": "^2.57.4"
+  }
+}

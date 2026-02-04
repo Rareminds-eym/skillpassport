@@ -9,12 +9,12 @@ inspector_port = 9231
 
 # Schedule countdown emails to run daily at 6:50 AM UTC (12:20 PM IST)
 [triggers]
-crons = ["50 6 * * *"]
+crons = ["25 11 * * *"]
 
 [vars]
 SMTP_HOST = "email-smtp.ap-south-1.amazonaws.com"
 SMTP_PORT = "587"
-LAUNCH_DATE = "2026-02-01"
+LAUNCH_DATE = "2026-02-02"
 MAX_EMAIL_RETRIES = "3"
 
 # Add these secrets using: wrangler secret put SECRET_NAME

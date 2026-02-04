@@ -11,6 +11,15 @@ import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer, RepeatingHeader, RepeatingFooter } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
+import {
+  CompleteCareerFitSection,
+  CompleteSkillGapSection,
+  CompleteRoadmapSection,
+  CompleteCourseRecommendationsSection,
+  ProfileSnapshotSection,
+  TimingAnalysisSection,
+  FinalNoteSection as CompleteFinalNoteSection
+} from './shared/CompletePDFSections';
 
 /**
  * PrintViewMiddleHighSchool Component
@@ -22,6 +31,7 @@ import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
  * @param {Object} props.riasecNames - RIASEC code to name mapping (optional)
  * @param {Object} props.streamRecommendation - Stream recommendation for after10 students (optional)
  * @param {Object} props.studentAcademicData - Student academic data (optional)
+ * @param {string} props.gradeLevel - Grade level (middle, highschool) (optional)
  * @returns {JSX.Element} - Print view component
  */
 const PrintViewMiddleHighSchool = ({ 
@@ -29,7 +39,8 @@ const PrintViewMiddleHighSchool = ({
   studentInfo, 
   riasecNames,
   streamRecommendation,
-  studentAcademicData
+  studentAcademicData,
+  gradeLevel
 }) => {
   // Handle null results
   if (!results) {
@@ -42,8 +53,89 @@ const PrintViewMiddleHighSchool = ({
     );
   }
 
-  // Extract data from results
-  const { riasec, careerFit, skillGap, roadmap, finalNote, profileSnapshot } = results;
+  // 🔧 CRITICAL FIX: Normalize RIASEC scores before using them
+  // The normalizer moves _originalScores to riasec level, not gemini_results level
+  let normalizedResults = { ...results };
+  
+  console.log('🔍 PDF PrintViewMiddleHighSchool - Input data:', {
+    hasRiasec: !!results.riasec,
+    riasecScores: results.riasec?.scores,
+    hasRiasecOriginal: !!results.riasec?._originalScores,
+    riasecOriginal: results.riasec?._originalScores,
+    hasGeminiResults: !!results.gemini_results,
+    hasGeminiRiasec: !!results.gemini_results?.riasec,
+    geminiOriginal: results.gemini_results?.riasec?._originalScores
+  });
+  
+  if (results.riasec) {
+    const scores = results.riasec.scores || {};
+    const allZeros = Object.values(scores).every(score => score === 0);
+    
+    // Check for _originalScores at riasec level (after normalization)
+    // OR at gemini_results level (before normalization)
+    const originalScores = results.riasec._originalScores || 
+                          results.gemini_results?.riasec?._originalScores || 
+                          {};
+    const hasOriginalScores = Object.keys(originalScores).length > 0 &&
+      Object.values(originalScores).some(score => score > 0);
+    
+    console.log('🔍 PDF PrintViewMiddleHighSchool - Normalization check:', {
+      allZeros,
+      hasOriginalScores,
+      originalScores,
+      foundAt: results.riasec._originalScores ? 'riasec._originalScores' : 
+               results.gemini_results?.riasec?._originalScores ? 'gemini_results.riasec._originalScores' : 
+               'NOT FOUND'
+    });
+    
+    if (allZeros && hasOriginalScores) {
+      console.log('🔧 PDF PrintView: Normalizing RIASEC scores from _originalScores');
+      console.log('   Original scores found at:', results.riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
+      normalizedResults = {
+        ...results,
+        riasec: {
+          ...results.riasec,
+          scores: originalScores,
+          _originalScores: originalScores,
+          maxScore: results.riasec.maxScore || 
+                   results.gemini_results?.riasec?.maxScore || 
+                   24
+        }
+      };
+      console.log('✅ PDF PrintView - Normalized scores:', normalizedResults.riasec.scores);
+    } else {
+      console.log('⚠️ PDF PrintView - No normalization applied:', {
+        reason: !allZeros ? 'Scores are not all zeros' : 'No original scores found'
+      });
+    }
+  }
+
+  // Extract data from normalized results
+  // 🔧 CRITICAL FIX: Also check gemini_results for data that might not be at top level
+  const { 
+    riasec, 
+    careerFit = normalizedResults.careerFit || normalizedResults.gemini_results?.careerFit,
+    skillGap = normalizedResults.skillGap || normalizedResults.gemini_results?.skillGap,
+    roadmap = normalizedResults.roadmap || normalizedResults.gemini_results?.roadmap,
+    finalNote = normalizedResults.finalNote || normalizedResults.gemini_results?.finalNote,
+    profileSnapshot = normalizedResults.profileSnapshot || normalizedResults.gemini_results?.profileSnapshot,
+    characterStrengths = normalizedResults.characterStrengths || normalizedResults.gemini_results?.characterStrengths,
+    learningStyle = normalizedResults.learningStyle || normalizedResults.gemini_results?.learningStyle,
+    adaptiveAptitudeResults = normalizedResults.adaptiveAptitudeResults || normalizedResults.gemini_results?.adaptiveAptitudeResults
+  } = normalizedResults;
+
+  console.log('🔍 PDF PrintViewMiddleHighSchool - Extracted data:', {
+    hasCharacterStrengths: !!characterStrengths,
+    hasLearningStyle: !!learningStyle,
+    hasAdaptiveAptitude: !!adaptiveAptitudeResults,
+    adaptiveLevel: adaptiveAptitudeResults?.aptitude_level || adaptiveAptitudeResults?.aptitudeLevel,
+    hasCareerFit: !!careerFit
+  });
+
+  // Determine if this is middle school (grades 6-8)
+  // Middle school students should NOT see career exploration, skills, or roadmap sections
+  const isMiddleSchool = gradeLevel === 'middle' || 
+                         (studentInfo?.grade && parseInt(studentInfo.grade.toString().match(/\d+/)?.[0]) <= 8);
 
   // Safe student info with defaults
   const safeStudentInfo = getSafeStudentInfo(studentInfo);
@@ -83,47 +175,58 @@ const PrintViewMiddleHighSchool = ({
               {/* Interest Explorer Section */}
               <InterestExplorerSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
 
-              {/* Character Strengths Section */}
-              {profileSnapshot?.aptitudeStrengths && (
-                <CharacterStrengthsSection aptitudeStrengths={profileSnapshot.aptitudeStrengths} />
+              {/* Character Strengths Section - Use characterStrengths from middle school data */}
+              {(characterStrengths || profileSnapshot?.aptitudeStrengths) && (
+                <CharacterStrengthsSection 
+                  characterStrengths={characterStrengths}
+                  aptitudeStrengths={profileSnapshot?.aptitudeStrengths} 
+                />
               )}
 
-              {/* Learning & Work Style Section */}
-              {profileSnapshot?.keyPatterns && (
-                <LearningWorkStyleSection keyPatterns={profileSnapshot.keyPatterns} />
+              {/* Learning & Work Style Section - Use learningStyle from middle school data */}
+              {(learningStyle || profileSnapshot?.keyPatterns) && (
+                <LearningWorkStyleSection 
+                  learningStyle={learningStyle}
+                  keyPatterns={profileSnapshot?.keyPatterns} 
+                />
+              )}
+
+              {/* Adaptive Aptitude Section - Show adaptive test results */}
+              {adaptiveAptitudeResults && (
+                <AdaptiveAptitudeSection adaptiveAptitudeResults={adaptiveAptitudeResults} />
               )}
 
               {/* Detailed Assessment Breakdown (Developer Reference) */}
               <div style={{ pageBreakBefore: 'always' }}>
                 <DetailedAssessmentBreakdown 
-                  results={results} 
+                  results={normalizedResults} 
                   riasecNames={safeRiasecNames}
-                  gradeLevel="highschool"
+                  gradeLevel={isMiddleSchool ? 'middle' : 'highschool'}
                 />
               </div>
 
-              {/* Section 2: Career Exploration */}
-              {careerFit && (
+              {/* Section 2: Career Exploration - ONLY for high school (grades 9-10), NOT for middle school */}
+              {!isMiddleSchool && careerFit && (
                 <CareerExplorationSection careerFit={careerFit} />
               )}
 
-              {/* Section 3: Skills to Develop */}
-              {skillGap && (
+              {/* Section 3: Skills to Develop - ONLY for high school (grades 9-10), NOT for middle school */}
+              {!isMiddleSchool && skillGap && (
                 <SkillsToDevelopSection skillGap={skillGap} />
               )}
 
-              {/* Section 4: 12-Month Journey */}
-              {roadmap?.twelveMonthJourney && (
+              {/* Section 4: 12-Month Journey - ONLY for high school (grades 9-10), NOT for middle school */}
+              {!isMiddleSchool && roadmap?.twelveMonthJourney && (
                 <TwelveMonthJourneySection twelveMonthJourney={roadmap.twelveMonthJourney} />
               )}
 
-              {/* Projects to Try */}
-              {roadmap?.projects && roadmap.projects.length > 0 && (
+              {/* Projects to Try - ONLY for high school (grades 9-10), NOT for middle school */}
+              {!isMiddleSchool && roadmap?.projects && roadmap.projects.length > 0 && (
                 <ProjectsSection projects={roadmap.projects} />
               )}
 
-              {/* Activities & Exposure */}
-              {roadmap?.exposure && (
+              {/* Activities & Exposure - ONLY for high school (grades 9-10), NOT for middle school */}
+              {!isMiddleSchool && roadmap?.exposure && (
                 <ActivitiesExposureSection exposure={roadmap.exposure} />
               )}
 
@@ -150,9 +253,17 @@ const PrintViewMiddleHighSchool = ({
 const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
   if (!riasec || !riasec.topThree) return null;
 
+  // 🔧 CRITICAL FIX: Use _originalScores if riasec.scores are all zeros
+  let scores = riasec.scores || {};
+  const allZeros = Object.values(scores).every(score => score === 0);
+  if (allZeros && riasec._originalScores && Object.keys(riasec._originalScores).length > 0) {
+    console.log('🔧 PDF InterestExplorer: Using _originalScores instead of zeros');
+    scores = riasec._originalScores;
+  }
+
   const maxScore = riasec.maxScore || 20;
   const topInterestsText = riasec.topThree.map(code => safeRiasecNames[code]).join(', ');
-  const hasStrongInterests = riasec.topThree.some(code => (riasec.scores?.[code] || 0) >= maxScore * 0.5);
+  const hasStrongInterests = riasec.topThree.some(code => (scores[code] || 0) >= maxScore * 0.5);
   
   return (
     <div>
@@ -212,7 +323,7 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
           zIndex: 1
         }}>
           {riasec.topThree.map((code, idx) => {
-            const score = riasec.scores?.[code] || 0;
+            const score = scores[code] || 0;
             
             return (
               <div key={code} style={{ width: '28%', textAlign: 'center' }}>
@@ -319,26 +430,94 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
  * Renders character strengths and personal qualities
  * Requirements: 1.1, 2.1 - Character strengths for middle/high school
  */
-const CharacterStrengthsSection = ({ aptitudeStrengths }) => {
-  if (!aptitudeStrengths || aptitudeStrengths.length === 0) return null;
+const CharacterStrengthsSection = ({ characterStrengths, aptitudeStrengths }) => {
+  // Use characterStrengths (middle school format) or aptitudeStrengths (fallback)
+  const strengths = characterStrengths?.strengthDescriptions || 
+                   characterStrengths?.topStrengths || 
+                   aptitudeStrengths || 
+                   [];
+  
+  if (!strengths || strengths.length === 0) return null;
 
   return (
     <div style={{ marginTop: '15px' }}>
       <h3 style={printStyles.subTitle}>Character Strengths & Personal Qualities</h3>
-      <div style={printStyles.twoCol}>
-        {aptitudeStrengths.map((strength, idx) => (
-          <div key={idx} style={printStyles.card}>
-            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
-              {safeRender(strength.name || strength)}
-            </div>
-            {strength.description && (
-              <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-                {strength.description}
-              </p>
-            )}
+      
+      {/* Top Strengths List */}
+      {characterStrengths?.topStrengths && Array.isArray(characterStrengths.topStrengths) && (
+        <div style={{ marginBottom: '10px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '6px' }}>
+            Your Top Strengths:
           </div>
-        ))}
-      </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {characterStrengths.topStrengths.map((strength, idx) => (
+              <span
+                key={idx}
+                style={{
+                  ...printStyles.badge,
+                  background: '#dbeafe',
+                  color: '#1e40af',
+                  border: '1px solid #93c5fd'
+                }}
+              >
+                {safeRender(strength)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Detailed Strength Descriptions */}
+      {characterStrengths?.strengthDescriptions && characterStrengths.strengthDescriptions.length > 0 && (
+        <div style={printStyles.twoCol}>
+          {characterStrengths.strengthDescriptions.map((strength, idx) => (
+            <div key={idx} style={printStyles.card}>
+              <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+                {safeRender(strength.name)}
+                {strength.rating && (
+                  <span style={{ 
+                    marginLeft: '6px', 
+                    fontSize: '9px', 
+                    color: '#059669',
+                    fontWeight: 'normal'
+                  }}>
+                    ({strength.rating}/5)
+                  </span>
+                )}
+              </div>
+              {strength.description && (
+                <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+                  {strength.description}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Growth Areas */}
+      {characterStrengths?.growthAreas && characterStrengths.growthAreas.length > 0 && (
+        <div style={{ marginTop: '10px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '6px' }}>
+            Areas to Develop:
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {characterStrengths.growthAreas.map((area, idx) => (
+              <span
+                key={idx}
+                style={{
+                  ...printStyles.badge,
+                  background: '#fef3c7',
+                  color: '#92400e',
+                  border: '1px solid #fde047'
+                }}
+              >
+                {safeRender(area)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -348,30 +527,91 @@ const CharacterStrengthsSection = ({ aptitudeStrengths }) => {
  * Renders learning and work style patterns
  * Requirements: 1.1, 2.1 - Learning & work style for middle/high school
  */
-const LearningWorkStyleSection = ({ keyPatterns }) => {
-  if (!keyPatterns) return null;
-
-  const patterns = [
-    { title: 'What You Enjoy', value: keyPatterns.enjoyment },
-    { title: 'How You Work Best', value: keyPatterns.workStyle },
-    { title: 'Your Strengths', value: keyPatterns.strength },
-    { title: 'What Motivates You', value: keyPatterns.motivation }
-  ];
+const LearningWorkStyleSection = ({ learningStyle, keyPatterns }) => {
+  // Use learningStyle (middle school format) or keyPatterns (fallback)
+  const style = learningStyle || keyPatterns;
+  if (!style) return null;
 
   return (
-    <div style={{ ...printStyles.twoCol, marginTop: '15px' }}>
-      {patterns.map((pattern, idx) => (
-        pattern.value && (
-          <div key={idx} style={printStyles.card}>
+    <div style={{ marginTop: '15px' }}>
+      <h3 style={printStyles.subTitle}>Learning & Work Preferences</h3>
+      <div style={printStyles.twoCol}>
+        {/* Preferred Learning Methods */}
+        {style.preferredMethods && style.preferredMethods.length > 0 && (
+          <div style={printStyles.card}>
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
-              {pattern.title}
+              How You Learn Best
+            </div>
+            <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+              {style.preferredMethods.map((method, idx) => (
+                <li key={idx}>{safeRender(method)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        
+        {/* Work Preference */}
+        {style.workPreference && (
+          <div style={printStyles.card}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+              Work Preference
             </div>
             <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-              {safeRender(pattern.value)}
+              {safeRender(style.workPreference)}
             </p>
           </div>
-        )
-      ))}
+        )}
+        
+        {/* Team Role */}
+        {style.teamRole && (
+          <div style={printStyles.card}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+              Your Team Role
+            </div>
+            <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+              {safeRender(style.teamRole)}
+            </p>
+          </div>
+        )}
+        
+        {/* Problem Solving Approach */}
+        {style.problemSolvingApproach && (
+          <div style={printStyles.card}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+              Problem Solving Style
+            </div>
+            <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+              {safeRender(style.problemSolvingApproach)}
+            </p>
+          </div>
+        )}
+        
+        {/* Fallback to keyPatterns format */}
+        {keyPatterns && !learningStyle && (
+          <>
+            {keyPatterns.enjoyment && (
+              <div style={printStyles.card}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+                  What You Enjoy
+                </div>
+                <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+                  {safeRender(keyPatterns.enjoyment)}
+                </p>
+              </div>
+            )}
+            {keyPatterns.workStyle && (
+              <div style={printStyles.card}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+                  How You Work Best
+                </div>
+                <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+                  {safeRender(keyPatterns.workStyle)}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -382,49 +622,178 @@ const LearningWorkStyleSection = ({ keyPatterns }) => {
  * Requirements: 1.1 - Career exploration for middle/high school
  */
 const CareerExplorationSection = ({ careerFit }) => {
+  if (!careerFit) return null;
+
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Career Exploration</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px', pageBreakBefore: 'always' }}>2. Career Exploration</h2>
 
-      {/* Career Clusters */}
+      {/* Career Clusters with detailed information */}
       {careerFit.clusters && careerFit.clusters.length > 0 && (
-        <div style={{ marginBottom: '15px' }}>
-          <h3 style={printStyles.subTitle}>Career Clusters That Match Your Interests</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {careerFit.clusters.map((cluster, idx) => (
-              <span
-                key={idx}
-                style={{
-                  ...printStyles.badge,
-                  background: '#dbeafe',
-                  color: '#1e40af',
-                  border: '1px solid #93c5fd'
-                }}
-              >
-                {safeRender(cluster)}
-              </span>
-            ))}
-          </div>
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={printStyles.subTitle}>Career Paths That Match Your Profile</h3>
+          {careerFit.clusters.map((cluster, idx) => (
+            <div key={idx} style={{ ...printStyles.card, marginBottom: '12px', pageBreakInside: 'avoid' }}>
+              {/* Cluster Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b' }}>
+                  {safeRender(cluster.title)}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{
+                    ...printStyles.badge,
+                    background: cluster.fit === 'High' ? '#dcfce7' : cluster.fit === 'Medium' ? '#fef3c7' : '#e0f2fe',
+                    color: cluster.fit === 'High' ? '#166534' : cluster.fit === 'Medium' ? '#92400e' : '#1e40af',
+                    border: cluster.fit === 'High' ? '1px solid #86efac' : cluster.fit === 'Medium' ? '1px solid #fde047' : '1px solid #93c5fd'
+                  }}>
+                    {cluster.fit} Fit
+                  </span>
+                  <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#059669' }}>
+                    {cluster.matchScore}%
+                  </span>
+                </div>
+              </div>
+              
+              {/* Description */}
+              {cluster.description && (
+                <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.5' }}>
+                  {safeRender(cluster.description)}
+                </p>
+              )}
+              
+              {/* Why It Fits */}
+              {cluster.whyItFits && (
+                <div style={{ fontSize: '9px', color: '#1e40af', margin: '0 0 8px 0', lineHeight: '1.5', fontStyle: 'italic' }}>
+                  <strong>Why this fits you:</strong> {safeRender(cluster.whyItFits)}
+                </div>
+              )}
+              
+              {/* Example Careers */}
+              {cluster.examples && cluster.examples.length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                    Example Careers:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {cluster.examples.map((example, exIdx) => (
+                      <span
+                        key={exIdx}
+                        style={{
+                          ...printStyles.badge,
+                          background: '#f3f4f6',
+                          color: '#374151',
+                          border: '1px solid #d1d5db',
+                          fontSize: '8px'
+                        }}
+                      >
+                        {safeRender(example)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Career Roles */}
+              {cluster.roles && (
+                <div style={{ marginTop: '8px', display: 'flex', gap: '12px' }}>
+                  {cluster.roles.entry && cluster.roles.entry.length > 0 && (
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                        Entry-Level:
+                      </div>
+                      <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '8px', color: '#6b7280', lineHeight: '1.5' }}>
+                        {cluster.roles.entry.map((role, roleIdx) => (
+                          <li key={roleIdx}>{safeRender(role)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {cluster.roles.mid && cluster.roles.mid.length > 0 && (
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+                        Career-Level:
+                      </div>
+                      <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '8px', color: '#6b7280', lineHeight: '1.5' }}>
+                        {cluster.roles.mid.map((role, roleIdx) => (
+                          <li key={roleIdx}>{safeRender(role)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Sample Careers */}
-      {careerFit.topCareers && careerFit.topCareers.length > 0 && (
-        <div>
-          <h3 style={printStyles.subTitle}>Sample Careers to Explore</h3>
+      {/* Specific Career Options by Fit Level */}
+      {careerFit.specificOptions && (
+        <div style={{ marginTop: '15px' }}>
+          <h3 style={printStyles.subTitle}>Recommended Career Options</h3>
           <div style={printStyles.twoCol}>
-            {careerFit.topCareers.slice(0, 6).map((career, idx) => (
-              <div key={idx} style={printStyles.card}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
-                  {safeRender(career.name || career)}
+            {/* High Fit Careers */}
+            {careerFit.specificOptions.highFit && careerFit.specificOptions.highFit.length > 0 && (
+              <div style={printStyles.card}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#166534', marginBottom: '6px' }}>
+                  ⭐ Best Match Careers
                 </div>
-                {career.description && (
-                  <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-                    {career.description}
-                  </p>
-                )}
+                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.6' }}>
+                  {careerFit.specificOptions.highFit.map((career, idx) => (
+                    <li key={idx}>
+                      {safeRender(career.name || career)}
+                      {career.salary && (
+                        <span style={{ fontSize: '8px', color: '#6b7280', marginLeft: '4px' }}>
+                          (₹{career.salary.min}-{career.salary.max} LPA)
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
-            ))}
+            )}
+            
+            {/* Medium Fit Careers */}
+            {careerFit.specificOptions.mediumFit && careerFit.specificOptions.mediumFit.length > 0 && (
+              <div style={printStyles.card}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#92400e', marginBottom: '6px' }}>
+                  💡 Good Match Careers
+                </div>
+                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.6' }}>
+                  {careerFit.specificOptions.mediumFit.map((career, idx) => (
+                    <li key={idx}>
+                      {safeRender(career.name || career)}
+                      {career.salary && (
+                        <span style={{ fontSize: '8px', color: '#6b7280', marginLeft: '4px' }}>
+                          (₹{career.salary.min}-{career.salary.max} LPA)
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {/* Explore Later Careers */}
+            {careerFit.specificOptions.exploreLater && careerFit.specificOptions.exploreLater.length > 0 && (
+              <div style={printStyles.card}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e40af', marginBottom: '6px' }}>
+                  🔍 Careers to Explore
+                </div>
+                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.6' }}>
+                  {careerFit.specificOptions.exploreLater.map((career, idx) => (
+                    <li key={idx}>
+                      {safeRender(career.name || career)}
+                      {career.salary && (
+                        <span style={{ fontSize: '8px', color: '#6b7280', marginLeft: '4px' }}>
+                          (₹{career.salary.min}-{career.salary.max} LPA)
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -610,6 +979,99 @@ const FinalNoteSection = ({ finalNote }) => {
         <p style={{ margin: '8px 0 0 0', fontSize: '10px', lineHeight: '1.6', fontStyle: 'italic' }}>
           {finalNote.nextReview}
         </p>
+      )}
+    </div>
+  );
+};
+
+/**
+ * AdaptiveAptitudeSection Component
+ * Renders adaptive aptitude test results
+ * Requirements: 1.1, 2.1 - Adaptive aptitude for middle/high school
+ */
+const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
+  if (!adaptiveAptitudeResults) return null;
+
+  // Handle both snake_case and camelCase field names
+  const {
+    aptitude_level,
+    aptitudeLevel,
+    overall_accuracy,
+    overallAccuracy,
+    total_questions,
+    totalQuestions,
+    total_correct,
+    totalCorrect,
+    confidence_tag,
+    confidenceTag,
+    tier,
+    accuracy_by_subtag,
+    accuracyBySubtag
+  } = adaptiveAptitudeResults;
+
+  const level = aptitude_level || aptitudeLevel;
+  const accuracy = overall_accuracy || overallAccuracy;
+  const questions = total_questions || totalQuestions;
+  const correct = total_correct || totalCorrect;
+  const confidence = confidence_tag || confidenceTag;
+  const subtags = accuracy_by_subtag || accuracyBySubtag;
+
+  return (
+    <div style={{ marginTop: '15px' }}>
+      <h3 style={printStyles.subTitle}>Adaptive Aptitude Test Results</h3>
+      
+      {/* Overall Summary */}
+      <div style={{ ...printStyles.card, marginBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div>
+            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b' }}>
+              Aptitude Level: {level}/10
+            </div>
+            <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '2px' }}>
+              Tier: {tier} | Confidence: {confidence}
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#059669' }}>
+              {typeof accuracy === 'number' ? accuracy.toFixed(1) : accuracy}% Accuracy
+            </div>
+            <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '2px' }}>
+              {correct}/{questions} correct
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Question Type Breakdown */}
+      {subtags && Object.keys(subtags).length > 0 && (
+        <div>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>
+            Performance by Question Type:
+          </div>
+          <div style={printStyles.twoCol}>
+            {Object.entries(subtags).map(([type, data]) => {
+              const typeName = type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              const acc = data.accuracy?.toFixed(1) || 0;
+              const color = acc >= 70 ? '#059669' : acc >= 50 ? '#d97706' : '#dc2626';
+              
+              return (
+                <div key={type} style={printStyles.card}>
+                  <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+                    {typeName}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '9px', color: '#6b7280' }}>
+                      {data.correct}/{data.total} correct
+                    </span>
+                    <span style={{ fontSize: '10px', fontWeight: 'bold', color }}>
+                      {acc}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );

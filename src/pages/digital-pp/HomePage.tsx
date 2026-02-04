@@ -1,13 +1,16 @@
 import { motion } from 'framer-motion';
-import { ArrowRight, BookOpen, CheckCircle, Sparkles, User } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, CheckCircle, Sparkles, User } from 'lucide-react';
 import React, { useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BackgroundRippleEffect } from '../../components/digital-pp/ui/background-ripple-effect';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { useAuth } from '../../context/AuthContext';
 
 const HomePage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { setStudent } = usePortfolio();
+  const { role } = useAuth();
 
   useEffect(() => {
     // Set the candidate data from navigation state into PortfolioContext
@@ -16,8 +19,35 @@ const HomePage: React.FC = () => {
     }
   }, [location.state, setStudent]);
 
+  // Determine if user is an admin viewing a student portfolio
+  const isAdminViewing = role && (role.includes('admin') || role === 'admin');
+  
+  // For admins, use the direct portfolio routes that don't require student role
+  const portfolioPath = isAdminViewing ? '/portfolio' : '/student/digital-portfolio/portfolio';
+  const passportPath = isAdminViewing ? '/passport' : '/student/digital-portfolio/passport';
+  const handleGoBack = () => {
+    // Go back to the previous page
+    navigate(-1);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
+      
+      {/* Back Button - Fixed at top */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="fixed top-6 left-6 z-50"
+      >
+        <button
+          onClick={handleGoBack}
+          className="inline-flex items-center px-4 py-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-all group"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+          <span className="font-medium">Back</span>
+        </button>
+      </motion.div>
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 min-h-[90vh] flex items-center justify-center overflow-hidden">
@@ -83,7 +113,7 @@ const HomePage: React.FC = () => {
               whileTap={{ scale: 0.95 }}
             >
               <Link
-                to="/student/digital-portfolio/portfolio"
+                to={portfolioPath}
                 className="inline-flex items-center px-10 py-5 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-full font-semibold text-lg shadow-2xl hover:shadow-purple-500/50 transition-all group relative overflow-hidden"
               >
                 <span className="relative z-10 flex items-center">
@@ -230,7 +260,7 @@ const HomePage: React.FC = () => {
                   className="flex justify-center"
                 >
                   <Link
-                    to="/student/digital-portfolio/portfolio"
+                    to={portfolioPath}
                     className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
                   >
                     <span className="relative z-10 flex items-center">
@@ -348,7 +378,7 @@ const HomePage: React.FC = () => {
                   className="flex justify-center"
                 >
                   <Link
-                    to="/student/digital-portfolio/passport"
+                    to={passportPath}
                     className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
                   >
                     <span className="relative z-10 flex items-center">

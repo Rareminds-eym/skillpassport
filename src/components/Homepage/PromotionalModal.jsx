@@ -4,7 +4,6 @@ import { X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import discountAnimation from '../../assets/HomePage/DiscountIcon.json';
-import { lockScroll, unlockScroll } from '../../utils/scrollLock';
 
 /**
  * PromotionalModal - Modern promotional modal with starburst badge
@@ -50,12 +49,10 @@ const PromotionalModal = ({ event, isOpen, onClose, getTimeRemaining }) => {
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
-      lockScroll();
     }
 
     return () => {
       document.removeEventListener('keydown', handleEscape);
-      unlockScroll();
     };
   }, [isOpen, onClose]);
 

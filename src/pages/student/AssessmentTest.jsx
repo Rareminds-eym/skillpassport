@@ -692,6 +692,14 @@ const AssessmentTest = () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
             // Support 'after10', 'higher_secondary', 'after12' and 'college' grade levels
             if ((gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
+                console.log('🔄 loadAIQuestions effect triggered:', {
+                    gradeLevel,
+                    studentStream,
+                    studentId: studentId || 'NOT SET',
+                    attemptId: currentAttempt?.id || 'NOT SET',
+                    aiQuestionsLoading
+                });
+                
                 setAiQuestionsLoading(true);
                 try {
                     console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
@@ -702,13 +710,31 @@ const AssessmentTest = () => {
                         studentId || null,
                         currentAttempt?.id || null
                     );
-                    setAiQuestions(questions);
+                    
+                    // Validate that we got questions
+                    if (!questions || (!questions.aptitude && !questions.knowledge)) {
+                        console.warn('⚠️ No AI questions returned, retrying in 2 seconds...');
+                        // Retry once after a delay
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        const retryQuestions = await loadCareerAssessmentQuestions(
+                            studentStream,
+                            gradeLevel,
+                            studentId || null,
+                            currentAttempt?.id || null
+                        );
+                        setAiQuestions(retryQuestions || { aptitude: null, knowledge: null });
+                    } else {
+                        setAiQuestions(questions);
+                    }
+                    
                     console.log('✅ AI questions loaded:', {
-                        aptitude: questions.aptitude?.length || 0,
-                        knowledge: questions.knowledge?.length || 0
+                        aptitude: questions?.aptitude?.length || 0,
+                        knowledge: questions?.knowledge?.length || 0
                     });
                 } catch (error) {
-                    console.warn('Failed to load AI questions:', error);
+                    console.error('❌ Failed to load AI questions:', error);
+                    // Set empty state so UI doesn't hang
+                    setAiQuestions({ aptitude: [], knowledge: [] });
                 }
                 setAiQuestionsLoading(false);
             }
@@ -747,6 +773,10 @@ const AssessmentTest = () => {
                 if (aiQuestions.knowledge?.length > 0) {
                     console.log('✅ Using AI-generated knowledge questions:', aiQuestions.knowledge.length);
                     return aiQuestions.knowledge.map(normalizeAIQuestion);
+                }
+                // If knowledge is explicitly an empty array (failed to load), show error
+                if (Array.isArray(aiQuestions.knowledge) && aiQuestions.knowledge.length === 0) {
+                    console.error('❌ Knowledge questions failed to load');
                 }
                 console.log('⚠️ No AI knowledge questions available yet');
                 return []; // Wait for AI questions

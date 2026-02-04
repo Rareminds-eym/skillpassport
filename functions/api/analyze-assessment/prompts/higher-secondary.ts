@@ -360,6 +360,26 @@ Each career cluster MUST include:
 - Education & Teaching (Teacher, Professor, Education Consultant)
 - Law & Humanities (Lawyer, Legal Researcher, Human Rights Advocate)
 
+## ⚠️ CRITICAL: COMPLETE RESPONSE REQUIRED
+
+You MUST include ALL sections in your response. DO NOT truncate or skip any sections.
+
+**MANDATORY SECTIONS (ALL REQUIRED):**
+1. ✅ profileSnapshot
+2. ✅ riasec
+3. ✅ aptitude
+4. ✅ bigFive
+5. ✅ workValues
+6. ✅ employability (REQUIRED - DO NOT SKIP)
+7. ✅ knowledge (REQUIRED - DO NOT SKIP)
+8. ✅ careerFit (with 3 clusters, each with evidence from ALL 6 sections)
+9. ✅ skillGap (REQUIRED - DO NOT SKIP)
+10. ✅ roadmap (REQUIRED - DO NOT SKIP)
+11. ✅ finalNote (REQUIRED - DO NOT SKIP)
+12. ✅ overallSummary
+
+**If you skip employability, knowledge, skillGap, roadmap, or finalNote, your response is INCOMPLETE and INVALID!**
+
 ## OUTPUT FORMAT
 
 Return ONLY a JSON object (no markdown). Use this exact structure:
@@ -610,26 +630,20 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
 
 Before returning your response, verify:
 
-1. ✅ Each career cluster has evidence from ALL 7 sections (interest, aptitude, personality, values, employability, knowledge, adaptiveAptitude)
-2. ✅ Career clusters align with the student's stream (${assessmentData.stream})
-3. ✅ Entrance exams and college majors are specified for each cluster
-4. ✅ Knowledge scores are referenced in the evidence
-5. ✅ Work values are mentioned in the evidence
-6. ✅ Employability skills are referenced in the evidence
-7. ✅ Adaptive aptitude results are referenced in the evidence
-8. ✅ All 3 career clusters are provided with complete information
-8. ✅ Salary ranges are realistic for India (2025-2030) AND VARY BY CAREER:
-   - Engineering/Tech: 4-15 LPA (entry to senior)
-   - Medical/Healthcare: 5-20 LPA (entry to senior)
-   - Finance/Banking: 4-18 LPA (entry to senior)
-   - Creative/Design: 3-12 LPA (entry to senior)
-   - Teaching/Education: 3-10 LPA (entry to senior)
-   - Law/Legal: 4-25 LPA (entry to senior)
-   - Business/Management: 4-20 LPA (entry to senior)
-   - Research/Academia: 4-15 LPA (entry to senior)
-   **CRITICAL**: Each career should have DIFFERENT salary ranges based on industry standards!
-9. ✅ Preparation guidance is specific to 11th/12th grade students
-10. ✅ The response is personalized based on THEIR specific scores, not generic
+1. ✅ **employability section is included** (skillScores, strengthAreas, developmentAreas, overallReadiness, recommendation)
+2. ✅ **knowledge section is included** (score, correctCount, strongTopics, weakTopics, streamAlignment, recommendation)
+3. ✅ **skillGap section is included** (currentStrengths, priorityA, priorityB, learningTracks, recommendedTrack)
+4. ✅ **roadmap section is included** (immediate, shortTerm, projects)
+5. ✅ **finalNote section is included** (advantage, growthFocus, collegeGuidance, entranceExamStrategy)
+6. ✅ Each career cluster has evidence from ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
+7. ✅ Career clusters align with the student's stream (${assessmentData.stream})
+8. ✅ Entrance exams and college majors are specified for each cluster
+9. ✅ All 3 career clusters are provided with complete information
+10. ✅ Salary ranges are realistic for India (2025-2030)
+11. ✅ Preparation guidance is specific to 11th/12th grade students
+12. ✅ The response is personalized based on THEIR specific scores, not generic
 
-If any of these are missing, YOUR RESPONSE IS INCOMPLETE!`;
+**CRITICAL: If employability, knowledge, skillGap, roadmap, or finalNote sections are missing, YOUR RESPONSE IS INCOMPLETE AND INVALID!**
+
+**DO NOT TRUNCATE THE RESPONSE - Complete all sections before ending the JSON object!**`;
 }

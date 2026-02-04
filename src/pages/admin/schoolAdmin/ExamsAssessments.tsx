@@ -14,6 +14,7 @@ import {
   EyeIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
+import toast from 'react-hot-toast';
 import { useExams, UIExam, UIStudentMark } from "../../../hooks/useExams";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabaseClient";
@@ -193,7 +194,7 @@ const ExamsAssessments: React.FC = () => {
     } catch (error: unknown) {
       console.error('Error saving exam:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to save exam: ${message}. Please try again.`);
+      toast.error(`Failed to save exam: ${message}. Please try again.`);
     }
   }, [checkDateOverlap, editingExam, updateExam, createExam, user?.id]);
 
@@ -204,7 +205,7 @@ const ExamsAssessments: React.FC = () => {
     } catch (error: unknown) {
       console.error('Error updating exam:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      alert(`Failed to update exam: ${message}. Please try again.`);
+      toast.error(`Failed to update exam: ${message}. Please try again.`);
     }
   }, [updateExam]);
 
@@ -399,7 +400,7 @@ const ExamsAssessments: React.FC = () => {
                       <button 
                         onClick={() => {
                           // Generate report card
-                          alert("📄 Report card generation feature\n\nThis will generate:\n- Individual student report cards\n- Class performance summary\n- Subject-wise analysis\n- Export to PDF");
+                          toast.success("📄 Report card generation feature\n\nThis will generate:\n- Individual student report cards\n- Class performance summary\n- Subject-wise analysis\n- Export to PDF");
                         }}
                         className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100"
                       >

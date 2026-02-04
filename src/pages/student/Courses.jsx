@@ -23,6 +23,15 @@ import CourseAdvancedFilters from '../../components/Students/components/CourseAd
 import { Badge } from '../../components/Students/components/ui/badge';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '../../components/Students/components/ui/pagination';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { downloadCertificate, getCertificateProxyUrl } from '../../services/certificateService';
@@ -56,12 +65,23 @@ const Courses = () => {
   const [enrollmentProgress, setEnrollmentProgress] = useState({}); // Track progress per course
   const [certificateUrls, setCertificateUrls] = useState({}); // Track certificate URLs per course
   const [downloadingCertificate, setDownloadingCertificate] = useState(null); // Track which certificate is downloading
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
   
   // Refs to prevent duplicate fetches and track initialization
   const isFetchingRef = useRef(false);
   const hasFetchedCoursesRef = useRef(false);
   const hasFetchedEnrollmentsRef = useRef(false);
   const userEmailRef = useRef(user?.email);
+
+  // Handle window resize for responsive pagination
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Fetch courses and enrollments from Supabase
   // Use user?.email as dependency instead of user object to prevent re-fetches on object reference changes
@@ -319,37 +339,63 @@ const Courses = () => {
   // Pagination logic - use totalCount from server
   const totalPages = Math.ceil(totalCount / coursesPerPage);
 
-  // Generate page numbers for pagination
+  // Generate page numbers for pagination - responsive version
   const getPageNumbers = () => {
     const pages = [];
+    const isMobile = windowWidth < 640; // sm breakpoint
+    const maxVisiblePages = isMobile ? 3 : 5;
 
-    if (totalPages <= 5) {
-      // Show all pages if 5 or fewer
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if within limit
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
     } else {
-      // Always show first 3 pages
-      pages.push(1, 2, 3);
-
-      // Add ellipsis and last page if there are more pages
-      if (totalPages > 3) {
-        if (currentPage > 4) {
+      if (isMobile) {
+        // Mobile: Show current page and adjacent pages
+        if (currentPage <= 2) {
+          pages.push(1, 2, 3);
+          if (totalPages > 3) {
+            pages.push('...');
+            pages.push(totalPages);
+          }
+        } else if (currentPage >= totalPages - 1) {
+          pages.push(1);
+          if (totalPages > 3) {
+            pages.push('...');
+          }
+          pages.push(totalPages - 2, totalPages - 1, totalPages);
+        } else {
+          pages.push(1);
           pages.push('...');
-        }
-
-        // Show current page if it's beyond page 3 and not the last page
-        if (currentPage > 3 && currentPage < totalPages) {
           pages.push(currentPage);
-        }
-
-        // Add ellipsis before last page if needed
-        if (currentPage < totalPages - 1) {
           pages.push('...');
+          pages.push(totalPages);
         }
+      } else {
+        // Desktop: Show more pages
+        // Always show first 3 pages
+        pages.push(1, 2, 3);
 
-        // Always show last page
-        pages.push(totalPages);
+        // Add ellipsis and last page if there are more pages
+        if (totalPages > 3) {
+          if (currentPage > 4) {
+            pages.push('...');
+          }
+
+          // Show current page if it's beyond page 3 and not the last page
+          if (currentPage > 3 && currentPage < totalPages) {
+            pages.push(currentPage);
+          }
+
+          // Add ellipsis before last page if needed
+          if (currentPage < totalPages - 1) {
+            pages.push('...');
+          }
+
+          // Always show last page
+          pages.push(totalPages);
+        }
       }
     }
 
@@ -1075,60 +1121,57 @@ const Courses = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="mt-8 flex justify-center items-center gap-2"
+            className="mt-8"
           >
-            {/* Previous Button */}
-            <Button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className={`px-3 py-2 ${
-                currentPage === 1
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
-              }`}
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
+            <Pagination>
+              <PaginationContent className="flex flex-wrap items-center justify-center gap-1">
+                <PaginationItem>
+                  <PaginationPrevious 
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (currentPage > 1) {
+                        setCurrentPage(prev => prev - 1);
+                      }
+                    }}
+                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
 
-            {/* Page Numbers */}
-            <div className="flex gap-2">
-              {getPageNumbers().map((pageNum, index) => (
-                <React.Fragment key={index}>
-                  {pageNum === '...' ? (
-                    <span className="px-3 py-2 text-gray-500">...</span>
-                  ) : (
-                    <Button
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-4 py-2 min-w-[40px] ${
-                        currentPage === pageNum
-                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-                      }`}
-                    >
-                      {pageNum}
-                    </Button>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
+                {getPageNumbers().map((pageNum, index) => (
+                  <PaginationItem key={index}>
+                    {pageNum === '...' ? (
+                      <PaginationEllipsis />
+                    ) : (
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCurrentPage(pageNum);
+                        }}
+                        isActive={currentPage === pageNum}
+                        className="cursor-pointer min-w-[40px] text-center"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    )}
+                  </PaginationItem>
+                ))}
 
-            {/* Next Button */}
-            <Button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-2 ${
-                currentPage === totalPages
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
-              }`}
-            >
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-
-            {/* Page Info */}
-            <span className="ml-4 text-sm text-gray-600">
-              Page {currentPage} of {totalPages}
-            </span>
+                <PaginationItem>
+                  <PaginationNext 
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (currentPage < totalPages) {
+                        setCurrentPage(prev => prev + 1);
+                      }
+                    }}
+                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           </motion.div>
         )}
         </div>

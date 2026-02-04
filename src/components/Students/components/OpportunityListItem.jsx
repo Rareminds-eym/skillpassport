@@ -176,7 +176,8 @@ const OpportunityListItem = ({
   isApplied = false, 
   isSaved = false,
   onApply,
-  onToggleSave
+  onToggleSave,
+  studentData
 }) => {
   const getInitials = (name) => {
     return name
@@ -213,6 +214,10 @@ const OpportunityListItem = ({
 
   const salary = formatSalary(opportunity.salary_range_min, opportunity.salary_range_max);
   const logoColor = getColorFromName(opportunity.company_name);
+
+  // Check if student has current backlogs
+  const currentBacklogsValue = studentData?.currentBacklogs || 0;
+  const hasCurrentBacklogs = currentBacklogsValue > 0;
 
   const handleSaveClick = (e) => {
     e.stopPropagation();
@@ -332,14 +337,16 @@ const OpportunityListItem = ({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          if (onApply && !isApplied) {
+          if (onApply && !isApplied && !hasCurrentBacklogs) {
             onApply();
           }
         }}
-        disabled={isApplied}
+        disabled={isApplied || hasCurrentBacklogs}
         className={`px-4 sm:px-8 py-2 sm:py-3 font-semibold rounded-lg sm:rounded-xl text-sm sm:text-base transition-colors whitespace-nowrap ${
           isApplied
             ? 'bg-green-500 text-white cursor-not-allowed'
+            : hasCurrentBacklogs
+            ? 'bg-red-500 text-white cursor-not-allowed'
             : 'bg-white border-2 border-gray-900 hover:bg-gray-900 hover:text-white text-gray-900'
         }`}
       >
@@ -347,6 +354,11 @@ const OpportunityListItem = ({
           <>
             <span className="hidden sm:inline">✓ Applied</span>
             <span className="sm:hidden">✓</span>
+          </>
+        ) : hasCurrentBacklogs ? (
+          <>
+            <span className="hidden sm:inline">Not Eligible</span>
+            <span className="sm:hidden">N/A</span>
           </>
         ) : (
           <>

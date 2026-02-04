@@ -374,12 +374,11 @@ const MyExperience = () => {
   const handleSaveExperience = async (updatedData) => {
     console.log("💾 Saving experience data:", updatedData);
     try {
-      // Update local state immediately for instant UI feedback
-      const filteredData = updatedData.filter(
-        exp => exp.enabled !== false && 
-        (exp.approval_status === "verified" || exp.approval_status === "approved")
-      );
-      setLocalExperience(filteredData);
+      // Update local state with ALL data (including hidden items)
+      // Filtering will happen at display time
+      setLocalExperience(updatedData.filter(
+        exp => exp.approval_status === "verified" || exp.approval_status === "approved"
+      ));
 
       const result = await updateExperience(updatedData);
       console.log("✅ Save result:", result);
@@ -499,11 +498,11 @@ const MyExperience = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-3">
-                {localExperience.length > 0 ? (
+                {localExperience.filter(exp => exp.enabled !== false).length > 0 ? (
                   <>
                     {(showAllExperience
-                      ? localExperience
-                      : localExperience.slice(0, 2)
+                      ? localExperience.filter(exp => exp.enabled !== false)
+                      : localExperience.filter(exp => exp.enabled !== false).slice(0, 2)
                     ).map((exp, idx) => (
                       <div
                         key={exp.id || `${exp.role}-${exp.organization}-${idx}`}
@@ -530,7 +529,7 @@ const MyExperience = () => {
                         </div>
                       </div>
                     ))}
-                    {localExperience.length > 2 && (
+                    {localExperience.filter(exp => exp.enabled !== false).length > 2 && (
                       <Button
                         variant="outline"
                         onClick={() => setShowAllExperience((v) => !v)}

@@ -9,7 +9,6 @@ import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { useNavigate } from "react-router-dom";
 import KPIDashboard from "../../../components/admin/KPIDashboard";
-import NotificationBell from "../../../components/admin/schoolAdmin/NotificationBell";
 import { useAuth } from "../../../context/AuthContext";
 import { supabase } from "../../../lib/supabaseClient";
 
@@ -23,6 +22,7 @@ interface RecentActivity {
   title: string;
   description: string;
   time: string;
+  timestamp: string; // Original timestamp for sorting
   type: "success" | "info" | "warning" | "error";
   icon: any;
 }
@@ -46,6 +46,38 @@ const SchoolDashboard: React.FC = () => {
     []
   );
   const [loading, setLoading] = useState(true);
+
+  // Utility function to format dates consistently and handle future dates
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    
+    // If the date is in the future (like 2026), treat it as today's activity
+    if (date > now) {
+      return "Today";
+    }
+    
+    // Calculate days difference
+    const diffTime = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return "Today";
+    } else if (diffDays === 1) {
+      return "Yesterday";
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`;
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+      });
+    }
+  };
 
 
   useEffect(() => {
@@ -126,26 +158,28 @@ const SchoolDashboard: React.FC = () => {
             title,
             category,
             duration,
-            status
+            status,
+            created_at,
+            enrollment_count
           `
           )
           .eq("school_id", schoolId)
-          .eq("status", "Active");
+          .order("created_at", { ascending: false });
 
         if (coursesError) {
           console.warn("Error fetching courses:", coursesError);
         }
 
         // Fetch enrollments for this school's courses
-        // Note: course_enrollments doesn't have school_id, so we filter by course_ids from the school
         const courseIds = (coursesData || []).map(c => c.course_id).filter(Boolean);
         
         let enrollmentsData: any[] = [];
         if (courseIds.length > 0) {
           const { data, error: enrollmentsError } = await supabase
             .from("course_enrollments")
-            .select("course_id, student_id, status, progress, enrolled_at")
-            .in("course_id", courseIds);
+            .select("course_id, student_id, student_name, status, progress, enrolled_at, last_accessed")
+            .in("course_id", courseIds)
+            .order("enrolled_at", { ascending: false });
 
           if (enrollmentsError) {
             console.warn("Error fetching enrollments:", enrollmentsError);
@@ -154,22 +188,52 @@ const SchoolDashboard: React.FC = () => {
           }
         }
 
-        // Group by category for chart
+        // Fetch recent attendance records for activities
+        const { data: attendanceData, error: attendanceError } = await supabase
+          .from("attendance_records")
+          .select("student_id, status, date, created_at")
+          .eq("school_id", schoolId)
+          .gte("date", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        if (attendanceError) {
+          console.warn("Error fetching attendance:", attendanceError);
+        }
+
+        // Fetch recent student registrations
+        const { data: studentsData, error: studentsError } = await supabase
+          .from("students")
+          .select("id, name, created_at, grade, section")
+          .eq("school_id", schoolId)
+          .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        if (studentsError) {
+          console.warn("Error fetching students:", studentsError);
+        }
+
+        // Group by category for chart with better data
         const categoryMap = new Map<string, number>();
-        if (coursesData && enrollmentsData) {
+        const categoryEnrollmentMap = new Map<string, number>();
+        
+        if (coursesData) {
           coursesData.forEach((course) => {
+            const category = course.category || "Other";
             const enrollmentCount = enrollmentsData.filter(
               (e) => e.course_id === course.course_id
             ).length;
-            const category = course.category || "Other";
-            categoryMap.set(
+            
+            categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+            categoryEnrollmentMap.set(
               category,
-              (categoryMap.get(category) || 0) + enrollmentCount
+              (categoryEnrollmentMap.get(category) || 0) + enrollmentCount
             );
           });
         }
 
-        const stats: CourseStats[] = Array.from(categoryMap.entries()).map(
+        const stats: CourseStats[] = Array.from(categoryEnrollmentMap.entries()).map(
           ([category, count]) => ({
             category,
             studentCount: count,
@@ -177,57 +241,89 @@ const SchoolDashboard: React.FC = () => {
         );
         setCourseStats(stats);
 
-        // Build program overview from courses
+        // Build enhanced program overview from courses
         const programs: ProgramOverviewItem[] = (coursesData || [])
-          .slice(0, 5)
           .map((course) => {
-            const enrollmentCount = (enrollmentsData || []).filter(
+            const enrollmentCount = enrollmentsData.filter(
               (e) => e.course_id === course.course_id
             ).length;
+            const activeStudents = enrollmentsData.filter(
+              (e) => e.course_id === course.course_id && 
+              (e.status === "active" || e.status === "in_progress")
+            ).length;
+            
             return {
               program: course.title,
               enrollments: enrollmentCount,
-              students: enrollmentCount,
+              students: activeStudents,
               duration: course.duration || "N/A",
             };
-          });
+          })
+          .sort((a, b) => b.enrollments - a.enrollments)
+          .slice(0, 8); // Show more courses
         setProgramOverview(programs);
 
-        // Build recent activities from recent enrollments
-        const recentEnrollments = (enrollmentsData || [])
-          .sort(
-            (a, b) =>
-              new Date(b.enrolled_at).getTime() -
-              new Date(a.enrolled_at).getTime()
-          )
-          .slice(0, 4);
+        // Build diverse recent activities from multiple sources
+        const activities: RecentActivity[] = [];
 
-        const activities: RecentActivity[] = recentEnrollments.map(
-          (enrollment, index) => {
-            const course = (coursesData || []).find(
-              (c) => c.course_id === enrollment.course_id
-            );
-            return {
-              id: index + 1,
-              title: course?.title || "Course Enrollment",
-              description: `Student enrolled in ${course?.category || "course"}`,
-              time: new Date(enrollment.enrolled_at).toLocaleDateString(),
-              type:
-                enrollment.status === "completed"
-                  ? "success"
-                  : enrollment.progress > 50
-                    ? "info"
-                    : "warning",
-              icon:
-                enrollment.status === "completed"
-                  ? GraduationCap
-                  : enrollment.progress > 50
-                    ? BookOpen
-                    : UserPlus,
-            };
-          }
-        );
-        setRecentActivities(activities);
+        // Add recent enrollments
+        const recentEnrollments = enrollmentsData.slice(0, 3);
+        recentEnrollments.forEach((enrollment, index) => {
+          const course = coursesData?.find(c => c.course_id === enrollment.course_id);
+          activities.push({
+            id: activities.length + 1,
+            title: `New Enrollment: ${course?.title || "Course"}`,
+            description: `${enrollment.student_name || "Student"} enrolled in ${course?.category || "course"}`,
+            time: formatDate(enrollment.enrolled_at),
+            timestamp: enrollment.enrolled_at,
+            type: "info",
+            icon: UserPlus,
+          });
+        });
+
+        // Add recent attendance activities
+        if (attendanceData && attendanceData.length > 0) {
+          const recentAttendance = attendanceData.slice(0, 2);
+          recentAttendance.forEach((attendance) => {
+            activities.push({
+              id: activities.length + 1,
+              title: `Attendance Marked`,
+              description: `Student marked ${attendance.status} on ${new Date(attendance.date).toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric' 
+              })}`,
+              time: formatDate(attendance.created_at),
+              timestamp: attendance.created_at,
+              type: attendance.status === "present" ? "success" : "warning",
+              icon: attendance.status === "present" ? GraduationCap : Clock,
+            });
+          });
+        }
+
+        // Add recent student registrations
+        if (studentsData && studentsData.length > 0) {
+          const recentStudents = studentsData.slice(0, 2);
+          recentStudents.forEach((student) => {
+            activities.push({
+              id: activities.length + 1,
+              title: `New Student Registration`,
+              description: `${student.name} joined ${student.grade ? `Grade ${student.grade}` : "the school"}${student.section ? ` Section ${student.section}` : ""}`,
+              time: formatDate(student.created_at),
+              timestamp: student.created_at,
+              type: "success",
+              icon: UserPlus,
+            });
+          });
+        }
+
+        // Sort activities by most recent using original timestamps
+        activities.sort((a, b) => {
+          const dateA = new Date(a.timestamp);
+          const dateB = new Date(b.timestamp);
+          return dateB.getTime() - dateA.getTime();
+        });
+        setRecentActivities(activities.slice(0, 6));
+
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
       } finally {
@@ -236,25 +332,17 @@ const SchoolDashboard: React.FC = () => {
     };
 
     fetchDashboardData();
+    
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(fetchDashboardData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [schoolId]);
 
-  // Handle notification click
-  const handleNotificationClick = (notification: any) => {
-    if (notification.viewAll) {
-      // Navigate to verifications page
-      navigate("/school-admin/students/verifications");
-      return;
-    }
-
-    // Navigate to verifications page for individual notifications
-    navigate("/school-admin/students/verifications");
-  };
-
-  // ===== Chart Data - Dynamic from Database =====
+  // ===== Chart Data - Enhanced Dynamic from Database =====
   const programDistribution = {
     series: [
       {
-        name: "Students",
+        name: "Students Enrolled",
         data:
           courseStats.length > 0
             ? courseStats.map((s) => s.studentCount)
@@ -286,25 +374,29 @@ const SchoolDashboard: React.FC = () => {
             ? courseStats.map((s) => s.category)
             : ["No Data"],
         labels: { style: { colors: "#6b7280" } },
+        title: { text: "Number of Students", style: { color: "#6b7280" } },
       },
       yaxis: {
         labels: {
           style: { colors: "#6b7280", fontSize: "11px" },
         },
       },
-      tooltip: { theme: "light" },
+      tooltip: { 
+        theme: "light",
+        y: { formatter: (val: number) => `${val} Students` },
+      },
       grid: { borderColor: "#f1f5f9" },
       noData: {
-        text: "No course data available",
+        text: "No course enrollment data available",
         style: { color: "#6b7280" },
       },
     },
   };
 
-  const districtsProgress = {
+  const enrollmentTrends = {
     series: [
       {
-        name: "Enrollments",
+        name: "Total Enrollments",
         data:
           courseStats.length > 0
             ? courseStats.map((s) => s.studentCount)
@@ -316,11 +408,21 @@ const SchoolDashboard: React.FC = () => {
         type: "area" as const,
         toolbar: { show: false },
         height: 250,
+        animations: {
+          enabled: true,
+          easing: 'easeinout',
+          speed: 800,
+        },
       },
       stroke: { curve: "smooth" as const, width: 3 },
       fill: {
         type: "gradient",
-        gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1 },
+        gradient: { 
+          shadeIntensity: 1, 
+          opacityFrom: 0.4, 
+          opacityTo: 0.1,
+          stops: [0, 90, 100]
+        },
       },
       colors: ["#8b5cf6"],
       dataLabels: { enabled: false },
@@ -332,16 +434,31 @@ const SchoolDashboard: React.FC = () => {
         labels: { style: { colors: "#6b7280" } },
       },
       yaxis: {
-        title: { text: "Enrollments", style: { color: "#6b7280" } },
-        labels: { style: { colors: "#6b7280" } },
+        title: { text: "Student Enrollments", style: { color: "#6b7280" } },
+        labels: { 
+          style: { colors: "#6b7280" },
+          formatter: (val: number) => val.toFixed(0),
+        },
       },
       tooltip: {
         theme: "light",
         y: { formatter: (val: number) => `${val} Students` },
       },
-      grid: { borderColor: "#f1f5f9" },
+      grid: { 
+        borderColor: "#f1f5f9",
+        strokeDashArray: 4,
+      },
+      markers: {
+        size: 4,
+        colors: ["#8b5cf6"],
+        strokeColors: "#fff",
+        strokeWidth: 2,
+        hover: {
+          size: 6,
+        }
+      },
       noData: {
-        text: "No enrollment data available",
+        text: "No enrollment trend data available",
         style: { color: "#6b7280" },
       },
     },
@@ -358,7 +475,7 @@ const SchoolDashboard: React.FC = () => {
   // ===== Render =====
   return (
     <div className="space-y-8 p-4 sm:p-6 lg:p-8">
-      {/* Header with gradient background and notifications */}
+      {/* Header with gradient background - Enhanced */}
       <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 border border-blue-100">
         <div className="flex items-center justify-between">
           <div>
@@ -369,14 +486,6 @@ const SchoolDashboard: React.FC = () => {
               Overview of school activities and academic performance
             </p>
           </div>
-          
-          {/* Notification Bell */}
-          {schoolId && (
-            <NotificationBell 
-              schoolId={schoolId} 
-              onNotificationClick={handleNotificationClick}
-            />
-          )}
         </div>
       </div>
 
@@ -455,8 +564,8 @@ const SchoolDashboard: React.FC = () => {
             </div>
           ) : (
             <ReactApexChart
-              options={districtsProgress.options}
-              series={districtsProgress.series}
+              options={enrollmentTrends.options}
+              series={enrollmentTrends.series}
               type="area"
               height={300}
             />
@@ -466,13 +575,13 @@ const SchoolDashboard: React.FC = () => {
 
       {/* Activities + Program Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activities */}
+        {/* Recent Activities - Enhanced */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-lg font-bold text-gray-900">Recent Activity</h2>
-            <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
-              View All <ChevronRight className="h-4 w-4" />
-            </button>
+              <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
+                View All <ChevronRight className="h-4 w-4" />
+              </button>
           </div>
 
           <div className="space-y-4">
@@ -510,21 +619,26 @@ const SchoolDashboard: React.FC = () => {
               <div className="text-center py-8 text-gray-500">
                 <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No recent activity</p>
-                <p className="text-sm">Course enrollments will appear here</p>
+                <p className="text-sm">Activities will appear here as they happen</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Program Overview */}
+        {/* Course Overview - Enhanced */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm backdrop-blur-sm hover:shadow-md transition-shadow">
           <div className="flex justify-between items-center mb-5">
             <h2 className="text-lg font-bold text-gray-900">
               Course Overview
             </h2>
-            <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
-              View Details <ChevronRight className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                {programOverview.length} courses
+              </span>
+              <button className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition">
+                View Details <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -539,16 +653,25 @@ const SchoolDashboard: React.FC = () => {
                       <GraduationCap className="h-5 w-5 text-indigo-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-800">{prog.program}</p>
-                      <p className="text-xs text-gray-500">
-                        {prog.students} enrolled
+                      <p className="font-semibold text-gray-800 truncate max-w-[200px]" title={prog.program}>
+                        {prog.program}
                       </p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500">
+                        <span>{prog.students} active students</span>
+                        <span>•</span>
+                        <span>{prog.enrollments} total enrollments</span>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right">
                     <span className="text-sm font-semibold px-3 py-1 rounded-full text-green-600 bg-green-100">
                       {prog.duration}
                     </span>
+                    {prog.enrollments > 0 && (
+                      <div className="text-xs text-gray-500 mt-1">
+                        {Math.round((prog.students / prog.enrollments) * 100)}% active
+                      </div>
+                    )}
                   </div>
                 </div>
               ))

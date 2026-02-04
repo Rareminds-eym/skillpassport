@@ -2,6 +2,7 @@
 name = "embedding-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
+account_id = "8c79b0992cfe6e720d17d0a2394ef0fd"
 
 [dev]
 port = 9002
@@ -14,10 +15,10 @@ inspector_port = 9232
 
 [vars]
 # Supabase Configuration
-VITE_SUPABASE_URL = "https://dpooleduinyyzxgrcwko.supabase.co"
+VITE_SUPABASE_URL = "https://eaxbpcehssbzvmfpaaya.supabase.co"
 
 # Supabase Service Role Key
-SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwb29sZWR1aW55eXp4Z3Jjd2tvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk5NDY5OCwiZXhwIjoyMDc1NTcwNjk4fQ.WIrwkA_-2oCjwmD6WpCf9N38hYXEwrIIXXHB4x5km10"
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVheGJwY2Voc3NienZtZnBhYXlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTg0NzA5OSwiZXhwIjoyMDg1NDIzMDk5fQ.T_81GTNvce9086t-DJrcwA6EaFhSqb7aQWeIwYhk_k0"
 
 # OPENROUTER_API_KEY should be set via: wrangler secret put OPENROUTER_API_KEY
 
