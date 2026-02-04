@@ -8,6 +8,7 @@ import {
     UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabaseClient';
 import { attendanceService, studentReportService } from '../../../services/studentManagementService';
 
@@ -152,7 +153,7 @@ const StudentReports: React.FC = () => {
 
   const generateReport = async (studentId: string, type: string) => {
     if (!schoolId) {
-      alert('School information not available');
+      toast.error('School information not available');
       return;
     }
 
@@ -173,12 +174,12 @@ const StudentReports: React.FC = () => {
       }
 
       if (result?.data) {
-        alert('Report generated successfully!');
+        toast.success('Report generated successfully!');
         // Optionally download or display the report
       }
     } catch (error) {
       console.error('Error generating report:', error);
-      alert('Failed to generate report');
+      toast.error('Failed to generate report');
     }
   };
 

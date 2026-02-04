@@ -1016,7 +1016,7 @@ const Dashboard = () => {
               </button>
 
               <button
-                onClick={() => navigate('/educator/import')}
+                //onClick={() => navigate('/educator/import')}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-purple-200 hover:bg-purple-50 transition-all group"
                 data-testid="quick-action-import"
               >

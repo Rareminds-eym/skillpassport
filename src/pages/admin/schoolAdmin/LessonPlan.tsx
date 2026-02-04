@@ -27,6 +27,7 @@ import {
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
 import { FileTextIcon } from "lucide-react";
+import toast from 'react-hot-toast';
 import { useCurriculum } from "../../../hooks/useLessonPlans";
 import type { LessonPlan as LessonPlanType } from "../../../services/lessonPlansService";
 import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } from "../../../services/curriculumService";
@@ -888,7 +889,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         });
 
         if (!validation.valid) {
-          alert(`${file.name}: ${validation.error}`);
+          toast.error(`${file.name}: ${validation.error}`);
           continue;
         }
 
@@ -918,7 +919,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
           };
           newUploadedFiles.push(newFile);
         } else {
-          alert(`Failed to upload ${file.name}: ${uploadResult.error}`);
+          toast.error(`Failed to upload ${file.name}: ${uploadResult.error}`);
         }
 
         // Clear progress for this file
@@ -936,7 +937,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
 
     } catch (error) {
       console.error('File upload error:', error);
-      alert('Error uploading files. Please try again.');
+      toast.error('Error uploading files. Please try again.');
     } finally {
       setUploadingFiles(false);
       e.target.value = ""; // Reset input
@@ -984,7 +985,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
     if (newCriterion.trim() && !isNaN(percentage) && percentage > 0 && percentage <= 100) {
       const currentTotal = evaluationItems.reduce((sum, item) => sum + item.percentage, 0);
       if (currentTotal + percentage > 100) {
-        alert(`Total percentage cannot exceed 100%. Current total: ${currentTotal}%`);
+        toast.error(`Total percentage cannot exceed 100%. Current total: ${currentTotal}%`);
         return;
       }
 
@@ -1156,7 +1157,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         if (onUpdateLessonPlan) {
           const { data, error } = await onUpdateLessonPlan(editingPlan.id, submitData, classId);
           if (error) {
-            alert("Error updating lesson plan: " + error);
+            toast.error("Error updating lesson plan: " + error);
             setSubmitting(false);
             return;
           }
@@ -1195,7 +1196,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         if (onCreateLessonPlan) {
           const { data, error } = await onCreateLessonPlan(submitData, classId);
           if (error) {
-            alert("Error creating lesson plan: " + error);
+            toast.error("Error creating lesson plan: " + error);
             setSubmitting(false);
             return;
           }
@@ -1228,7 +1229,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       setShowEditor(false);
     } catch (error: any) {
       console.error("Error saving lesson plan:", error);
-      alert("Error: " + (error.message || "Failed to save lesson plan"));
+      toast.error("Error: " + (error.message || "Failed to save lesson plan"));
     } finally {
       setSubmitting(false);
     }

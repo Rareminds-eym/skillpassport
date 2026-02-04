@@ -106,8 +106,8 @@ const FloatingAIButton: React.FC = () => {
               rounded-full
               mix-blend-screen
               opacity-95
-              [mask-image:radial-gradient(circle,white_60%,transparent_80%)]
-              [-webkit-mask-image:radial-gradient(circle,white_60%,transparent_80%)]
+              [mask-image:radial-gradient(circle_at_center,white_60%,transparent_80%)]
+              [-webkit-mask-image:radial-gradient(circle_at_center,white_60%,transparent_80%)]
             "
             loading="lazy"
           />

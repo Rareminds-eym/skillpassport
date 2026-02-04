@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { softDeleteStudent } from '../../../services/studentService';
-import { getCurrentEducatorId } from '../../../services/educatorService';
+import { getCurrentEducator } from '../../../services/educatorService';
 
 interface Student {
   id: string;
@@ -38,14 +38,17 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
     setProgress({ current: 0, total: students.length });
 
     try {
-      // Get the current educator's ID
-      const educatorId = await getCurrentEducatorId();
+      // Get the current educator's ID and type
+      const educatorData = await getCurrentEducator();
       
-      if (!educatorId) {
+      if (!educatorData.data) {
         setError('Could not identify the educator. Please try logging in again.');
         setLoading(false);
         return;
       }
+
+      const educatorId = educatorData.data.id;
+      const educatorType = educatorData.data.type; // 'school' or 'college'
 
       // Delete students one by one
       const results = [];
@@ -53,7 +56,7 @@ const BulkDeleteStudentsModal: React.FC<BulkDeleteStudentsModalProps> = ({
         const student = students[i];
         setProgress({ current: i + 1, total: students.length });
         
-        const result = await softDeleteStudent(student.id, educatorId);
+        const result = await softDeleteStudent(student.id, educatorId, educatorType);
         results.push({ student, result });
         
         // Small delay to avoid overwhelming the database

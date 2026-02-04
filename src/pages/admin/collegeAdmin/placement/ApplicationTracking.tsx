@@ -14,7 +14,10 @@ import {
   GraduationCap,
   Award,
   AlertCircle,
-  RefreshCw,
+  CheckCircle2,
+  Calendar,
+  Bell,
+  Video,
 } from "lucide-react";
 import toast from 'react-hot-toast';
 import { opportunitiesService } from '@/services/opportunitiesService';
@@ -27,6 +30,9 @@ const ApplicationTracking: React.FC = () => {
   const [selectedApplicationStatus, setSelectedApplicationStatus] = useState("");
   const [showApplicationFilterModal, setShowApplicationFilterModal] = useState(false);
   const [showStudentDetailsModal, setShowStudentDetailsModal] = useState(false);
+  const [showPipelineModal, setShowPipelineModal] = useState(false);
+  const [selectedApplicationPipeline, setSelectedApplicationPipeline] = useState<any>(null);
+  const [pipelineModalView, setPipelineModalView] = useState<'pipeline' | 'student'>('pipeline');
   const [showUpdateStageModal, setShowUpdateStageModal] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<ApplicationTrackingData | null>(null);
   const [showJobDetailsModal, setShowJobDetailsModal] = useState(false);
@@ -208,6 +214,32 @@ const ApplicationTracking: React.FC = () => {
     setShowStudentDetailsModal(true);
   };
 
+  const viewPipelineDetails = async (application: ApplicationTrackingData) => {
+    try {
+      // Get pipeline data for this application
+      const pipelineData = await applicationTrackingService.getPipelineDataForApplication(
+        application.student_id,
+        application.opportunity_id
+      );
+      
+      setSelectedApplication(application);
+      setSelectedApplicationPipeline(pipelineData);
+      setPipelineModalView('pipeline');
+      setShowPipelineModal(true);
+    } catch (error) {
+      console.error('Error loading pipeline data:', error);
+      toast.error('Failed to load pipeline data');
+    }
+  };
+
+  const switchToStudentView = () => {
+    setPipelineModalView('student');
+  };
+
+  const switchToPipelineView = () => {
+    setPipelineModalView('pipeline');
+  };
+
   const viewJobDetails = () => {
     setShowJobDetailsModal(true);
   };
@@ -279,6 +311,82 @@ const ApplicationTracking: React.FC = () => {
   const clearApplicationFilters = () => {
     setSelectedApplicationStatus("");
     setShowApplicationFilterModal(false);
+  };
+
+  // Pipeline stage configuration
+  const getPipelineStageConfig = (stage: string) => {
+    const configs: { [key: string]: any } = {
+      sourced: {
+        label: 'Sourced',
+        icon: Users,
+        bg: 'bg-blue-100',
+        color: 'text-blue-800',
+        description: 'Your profile has been identified as a potential match!'
+      },
+      screened: {
+        label: 'Screened',
+        icon: CheckCircle2,
+        bg: 'bg-green-100',
+        color: 'text-green-800',
+        description: 'Your application is being reviewed by the recruitment team.'
+      },
+      interview_1: {
+        label: 'Interview 1',
+        icon: Video,
+        bg: 'bg-purple-100',
+        color: 'text-purple-800',
+        description: 'First round interview scheduled or completed.'
+      },
+      interview_2: {
+        label: 'Interview 2',
+        icon: Video,
+        bg: 'bg-indigo-100',
+        color: 'text-indigo-800',
+        description: 'Second round interview scheduled or completed.'
+      },
+      offer: {
+        label: 'Offer',
+        icon: Award,
+        bg: 'bg-yellow-100',
+        color: 'text-yellow-800',
+        description: 'Congratulations! An offer has been extended to you.'
+      },
+      hired: {
+        label: 'Hired',
+        icon: CheckCircle,
+        bg: 'bg-green-100',
+        color: 'text-green-800',
+        description: 'Welcome to the team! You have been successfully hired.'
+      },
+      rejected: {
+        label: 'Rejected',
+        icon: X,
+        bg: 'bg-red-100',
+        color: 'text-red-800',
+        description: 'Unfortunately, your application was not selected for this position.'
+      }
+    };
+
+    return configs[stage] || {
+      label: stage,
+      icon: Clock,
+      bg: 'bg-gray-100',
+      color: 'text-gray-800',
+      description: 'Application status unknown.'
+    };
+  };
+
+  const getStageOrder = (stage: string) => {
+    const stageOrder: { [key: string]: number } = {
+      sourced: 1,
+      screened: 2,
+      interview_1: 3,
+      interview_2: 4,
+      offer: 5,
+      hired: 6,
+      rejected: 0
+    };
+    return stageOrder[stage] || 0;
   };
 
   return (
@@ -496,18 +604,11 @@ const ApplicationTracking: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
                         <button 
-                          onClick={() => viewApplicationDetails(application)}
+                          onClick={() => viewPipelineDetails(application)}
                           className="text-blue-600 hover:text-blue-900"
-                          title="View Application Details"
+                          title="View Pipeline Status"
                         >
                           <Eye className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => updateApplicationStage(application)}
-                          className="text-green-600 hover:text-green-900"
-                          title="Update Application Stage"
-                        >
-                          <Edit className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -682,8 +783,16 @@ const ApplicationTracking: React.FC = () => {
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Application Details</h2>
-                  <p className="text-sm text-gray-600">Student application information</p>
+                  <h2 className="text-xl font-bold text-gray-900">{selectedApplication.student?.name || 'Unknown Student'}</h2>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span>Application Details</span>
+                    {selectedApplication.student?.contact_number && (
+                      <>
+                        <span>•</span>
+                        <span className="font-medium">{selectedApplication.student.contact_number}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -700,73 +809,39 @@ const ApplicationTracking: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Student Overview */}
+              {/* Student Information */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">{selectedApplication.student?.name || 'Unknown'}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">Student Information</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Student ID:</p>
-                    <p className="font-medium text-gray-900">{selectedApplication.student?.id || selectedApplication.student_id}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Email Address:</p>
+                    <p className="text-sm text-gray-600">Email Address</p>
                     <p className="font-medium text-gray-900">{selectedApplication.student?.email || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Department:</p>
+                    <p className="text-sm text-gray-600">Department</p>
                     <p className="font-medium text-gray-900">{selectedApplication.student?.branch_field || selectedApplication.student?.course_name || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">University:</p>
+                    <p className="text-sm text-gray-600">University</p>
                     <p className="font-medium text-gray-900">{selectedApplication.student?.university || 'N/A'}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Personal Information */}
+              {/* Academic & Job Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <User className="h-5 w-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">Personal Information</h4>
-                  </div>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-sm text-gray-600">Full Name</p>
-                      <p className="font-medium text-gray-900">{selectedApplication.student?.name || 'Unknown'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Student ID</p>
-                      <p className="font-medium text-gray-900">{selectedApplication.student?.id || selectedApplication.student_id}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Email Address</p>
-                      <p className="font-medium text-gray-900">{selectedApplication.student?.email || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Contact Number</p>
-                      <p className="font-medium text-gray-900">{selectedApplication.student?.contact_number || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <GraduationCap className="h-5 w-5 text-green-600" />
                     <h4 className="font-semibold text-gray-900">Academic Information</h4>
                   </div>
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-sm text-gray-600">Department</p>
-                      <p className="font-medium text-gray-900">{selectedApplication.student?.branch_field || selectedApplication.student?.course_name || 'N/A'}</p>
-                    </div>
+                  <div className="space-y-3">
                     <div>
                       <p className="text-sm text-gray-600">CGPA</p>
                       <p className="font-medium text-gray-900">{selectedApplication.student?.currentCgpa || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">University</p>
-                      <p className="font-medium text-gray-900">{selectedApplication.student?.university || 'N/A'}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Expected Graduation</p>
@@ -774,30 +849,29 @@ const ApplicationTracking: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Job Information */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Award className="h-5 w-5 text-purple-600" />
-                  <h4 className="font-semibold text-gray-900">Job Information</h4>
-                </div>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-sm text-gray-600">Job Title:</p>
-                    <p className="font-medium text-gray-900">{selectedApplication.opportunity?.title || selectedApplication.opportunity?.job_title || 'N/A'}</p>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Award className="h-5 w-5 text-purple-600" />
+                    <h4 className="font-semibold text-gray-900">Job Information</h4>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Company:</p>
-                    <p className="font-medium text-gray-900">{selectedApplication.opportunity?.company_name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Employment Type:</p>
-                    <p className="font-medium text-gray-900">{selectedApplication.opportunity?.employment_type || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Location:</p>
-                    <p className="font-medium text-gray-900">{selectedApplication.opportunity?.location || 'N/A'}</p>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-gray-600">Job Title</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.opportunity?.title || selectedApplication.opportunity?.job_title || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Company</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.opportunity?.company_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Employment Type</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.opportunity?.employment_type || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Location</p>
+                      <p className="font-medium text-gray-900">{selectedApplication.opportunity?.location || 'N/A'}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -808,22 +882,22 @@ const ApplicationTracking: React.FC = () => {
                   <Clock className="h-5 w-5 text-orange-600" />
                   <h4 className="font-semibold text-gray-900">Application Progress</h4>
                 </div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Current Status:</p>
+                    <p className="text-sm text-gray-600">Current Status</p>
                     <p className="font-medium text-gray-900">{selectedApplication.application_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Applied Date:</p>
+                    <p className="text-sm text-gray-600">Applied Date</p>
                     <p className="font-medium text-gray-900">{new Date(selectedApplication.applied_at).toLocaleDateString()}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Last Updated:</p>
+                    <p className="text-sm text-gray-600">Last Updated</p>
                     <p className="font-medium text-gray-900">{new Date(selectedApplication.updated_at).toLocaleDateString()}</p>
                   </div>
                   {selectedApplication.notes && (
                     <div>
-                      <p className="text-sm text-gray-600">Notes:</p>
+                      <p className="text-sm text-gray-600">Notes</p>
                       <p className="font-medium text-gray-900">{selectedApplication.notes}</p>
                     </div>
                   )}
@@ -838,16 +912,6 @@ const ApplicationTracking: React.FC = () => {
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
                 Close
-              </button>
-              <button
-                onClick={() => {
-                  setShowStudentDetailsModal(false);
-                  updateApplicationStage(selectedApplication);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-              >
-                <Edit className="h-4 w-4" />
-                Update Status
               </button>
             </div>
           </div>
@@ -988,69 +1052,50 @@ const ApplicationTracking: React.FC = () => {
                 </div>
               ) : (
                 <>
-                  {/* Job Selection Dropdown */}
-                  <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Job Posting</label>
-                    <select
-                      value={selectedJobDetails.id}
-                      onChange={(e) => {
-                        const job = opportunities.find(j => j.id === parseInt(e.target.value));
-                        if (job) setSelectedJobDetails(job);
-                      }}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      {opportunities.map(job => (
-                        <option key={job.id} value={job.id}>
-                          {job.title} - {job.company_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
                   {/* Job Overview */}
-                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedJobDetails.title}</h3>
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6" key={selectedJobDetails?.id}>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedJobDetails?.title || selectedJobDetails?.job_title}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Company:</p>
-                        <p className="font-medium text-gray-900">{selectedJobDetails.company_name || 'Not specified'}</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails?.company_name || 'Not specified'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Department:</p>
-                        <p className="font-medium text-gray-900">{selectedJobDetails.department}</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails?.department}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Location:</p>
-                        <p className="font-medium text-gray-900">{selectedJobDetails.location}</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails?.location}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Mode:</p>
-                        <p className="font-medium text-gray-900">{selectedJobDetails.mode || 'Not specified'}</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails?.mode || 'Not specified'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Salary:</p>
                         <p className="font-medium text-gray-900">
-                          {opportunitiesService.formatSalary(selectedJobDetails)}
+                          {selectedJobDetails ? opportunitiesService.formatSalary(selectedJobDetails) : 'Not specified'}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Experience:</p>
-                        <p className="font-medium text-gray-900">{selectedJobDetails.experience_required || 'Not specified'}</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails?.experience_required || 'Not specified'}</p>
                       </div>
                     </div>
                   </div>
 
                   {/* Job Description */}
-                  {selectedJobDetails.description && (
-                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  {selectedJobDetails?.description && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6" key={`desc-${selectedJobDetails.id}`}>
                       <h4 className="text-lg font-semibold text-gray-900 mb-4">Job Description</h4>
                       <p className="text-gray-700 whitespace-pre-wrap">{selectedJobDetails.description}</p>
                     </div>
                   )}
 
                   {/* Skills Required */}
-                  {selectedJobDetails.skills_required && (
-                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  {selectedJobDetails?.skills_required && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6" key={`skills-${selectedJobDetails.id}`}>
                       <h4 className="text-lg font-semibold text-gray-900 mb-4">Skills Required</h4>
                       <div className="flex flex-wrap gap-2">
                         {opportunitiesService.formatSkills(selectedJobDetails.skills_required).map((skill, index) => (
@@ -1063,8 +1108,8 @@ const ApplicationTracking: React.FC = () => {
                   )}
 
                   {/* Requirements */}
-                  {selectedJobDetails.requirements && (
-                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  {selectedJobDetails?.requirements && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6" key={`req-${selectedJobDetails.id}`}>
                       <h4 className="text-lg font-semibold text-gray-900 mb-4">Requirements</h4>
                       <div className="text-gray-700">
                         {Array.isArray(selectedJobDetails.requirements) ? (
@@ -1081,8 +1126,8 @@ const ApplicationTracking: React.FC = () => {
                   )}
 
                   {/* Responsibilities */}
-                  {selectedJobDetails.responsibilities && (
-                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  {selectedJobDetails?.responsibilities && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6" key={`resp-${selectedJobDetails.id}`}>
                       <h4 className="text-lg font-semibold text-gray-900 mb-4">Responsibilities</h4>
                       <div className="text-gray-700">
                         {Array.isArray(selectedJobDetails.responsibilities) ? (
@@ -1099,8 +1144,8 @@ const ApplicationTracking: React.FC = () => {
                   )}
 
                   {/* Benefits */}
-                  {selectedJobDetails.benefits && (
-                    <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  {selectedJobDetails?.benefits && (
+                    <div className="bg-gray-50 rounded-lg p-6 mb-6" key={`benefits-${selectedJobDetails.id}`}>
                       <h4 className="text-lg font-semibold text-gray-900 mb-4">Benefits</h4>
                       <div className="text-gray-700">
                         {Array.isArray(selectedJobDetails.benefits) ? (
@@ -1117,20 +1162,20 @@ const ApplicationTracking: React.FC = () => {
                   )}
 
                   {/* Application Statistics */}
-                  <div className="bg-gray-50 rounded-lg p-6">
+                  <div className="bg-gray-50 rounded-lg p-6" key={`stats-${selectedJobDetails?.id}`}>
                     <h4 className="text-lg font-semibold text-gray-900 mb-4">Application Statistics</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm text-gray-600">Total Applications:</p>
-                        <p className="font-medium text-gray-900">{selectedJobDetails.applications_count || 0}</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails?.applications_count || 0}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Total Views:</p>
-                        <p className="font-medium text-gray-900">{selectedJobDetails.views_count || 0}</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails?.views_count || 0}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Messages:</p>
-                        <p className="font-medium text-gray-900">{selectedJobDetails.messages_count || 0}</p>
+                        <p className="font-medium text-gray-900">{selectedJobDetails?.messages_count || 0}</p>
                       </div>
                     </div>
                   </div>
@@ -1158,7 +1203,7 @@ const ApplicationTracking: React.FC = () => {
                     const link = document.createElement('a');
                     const url = URL.createObjectURL(blob);
                     link.setAttribute('href', url);
-                    link.setAttribute('download', `${selectedJobDetails.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_job_details.json`);
+                    link.setAttribute('download', `${(selectedJobDetails.title || selectedJobDetails.job_title || 'job').replace(/[^a-z0-9]/gi, '_').toLowerCase()}_job_details.json`);
                     link.style.visibility = 'hidden';
                     document.body.appendChild(link);
                     link.click();
@@ -1173,6 +1218,309 @@ const ApplicationTracking: React.FC = () => {
                   Export Job Details
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pipeline Status Modal */}
+      {showPipelineModal && selectedApplication && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  {pipelineModalView === 'pipeline' ? (
+                    <Users className="h-5 w-5 text-blue-600" />
+                  ) : (
+                    <User className="h-5 w-5 text-blue-600" />
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {pipelineModalView === 'pipeline' ? 'Recruitment Pipeline Status' : 'Student Details'}
+                  </h2>
+                  <p className="text-sm text-gray-600">{selectedApplication.student?.name} • {selectedApplication.opportunity?.title}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* View Toggle Buttons */}
+                <div className="flex bg-gray-100 rounded-lg p-1">
+                  <button
+                    onClick={switchToPipelineView}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition ${
+                      pipelineModalView === 'pipeline'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Pipeline
+                  </button>
+                  <button
+                    onClick={switchToStudentView}
+                    className={`px-3 py-1 text-sm font-medium rounded-md transition ${
+                      pipelineModalView === 'student'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Student
+                  </button>
+                </div>
+                <button
+                  onClick={() => setShowPipelineModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {pipelineModalView === 'pipeline' ? (
+                // Pipeline View
+                selectedApplicationPipeline ? (
+                  <div className="space-y-6">
+                    {/* Visual Pipeline Stepper */}
+                    <div className="relative mb-6">
+                      <div className="flex items-center justify-between">
+                        {Object.entries({
+                          sourced: 'Sourced',
+                          screened: 'Screened',
+                          interview_1: 'Interview 1',
+                          interview_2: 'Interview 2',
+                          offer: 'Offer',
+                          hired: 'Hired'
+                        }).map(([stageKey, stageLabel], index, array) => {
+                          const isCompleted = getStageOrder(selectedApplicationPipeline.stage) > getStageOrder(stageKey);
+                          const isCurrent = selectedApplicationPipeline.stage === stageKey;
+                          const isRejected = selectedApplicationPipeline.stage === 'rejected';
+
+                          return (
+                            <div key={stageKey} className="flex flex-col items-center flex-1 relative">
+                              {/* Stage Number Circle */}
+                              <div className="relative z-10 mb-2">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                                  isCompleted
+                                    ? 'bg-green-500 text-white shadow-lg shadow-green-200'
+                                    : isCurrent
+                                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
+                                      : isRejected && index > getStageOrder('sourced')
+                                        ? 'bg-gray-200 text-gray-400'
+                                        : 'bg-white text-gray-400 border-2 border-gray-300'
+                                }`}>
+                                  {isCompleted ? (
+                                    <CheckCircle2 className="w-6 h-6" />
+                                  ) : (
+                                    index + 1
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Connecting Line */}
+                              {index < array.length - 1 && (
+                                <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${
+                                  isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                                }`} style={{ transform: 'translateY(-50%)' }} />
+                              )}
+
+                              {/* Stage Label */}
+                              <div className={`text-xs font-medium text-center px-1 transition-all ${
+                                isCurrent
+                                  ? 'text-blue-700 font-bold'
+                                  : isCompleted
+                                    ? 'text-green-700'
+                                    : 'text-gray-500'
+                              }`}>
+                                {stageLabel}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Current Status Info */}
+                    <div className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-3 rounded-lg ${getPipelineStageConfig(selectedApplicationPipeline.stage)?.bg || 'bg-gray-100'}`}>
+                          {React.createElement(getPipelineStageConfig(selectedApplicationPipeline.stage)?.icon || Clock, {
+                            className: "w-6 h-6"
+                          })}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-sm text-gray-600">Current Stage</div>
+                          <div className="text-lg font-bold text-gray-900">
+                            {getPipelineStageConfig(selectedApplicationPipeline.stage)?.label || selectedApplicationPipeline.stage}
+                          </div>
+                          {selectedApplicationPipeline.stage_changed_at && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              Updated {new Date(selectedApplicationPipeline.stage_changed_at).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className={`px-4 py-2 rounded-lg font-semibold ${getPipelineStageConfig(selectedApplicationPipeline.stage)?.bg || 'bg-gray-100'} ${getPipelineStageConfig(selectedApplicationPipeline.stage)?.color || 'text-gray-800'}`}>
+                            Stage {getStageOrder(selectedApplicationPipeline.stage)} of 6
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Progress Message */}
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <p className="text-sm text-gray-700 font-medium">
+                          {getPipelineStageConfig(selectedApplicationPipeline.stage)?.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Additional Pipeline Details */}
+                    {selectedApplicationPipeline.recruiter_notes && (
+                      <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h5 className="text-sm font-bold text-gray-900 mb-1">Recruiter Notes:</h5>
+                            <p className="text-sm text-blue-700 font-semibold bg-blue-50 px-3 py-2 rounded-lg">
+                              {selectedApplicationPipeline.recruiter_notes}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Next Action */}
+                    {selectedApplicationPipeline.next_action && (
+                      <div className="flex items-start gap-2 p-3 bg-blue-100 rounded-lg border-2 border-blue-300">
+                        <Bell className="w-5 h-5 text-blue-700 mt-0.5 flex-shrink-0 animate-pulse" />
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-blue-900 uppercase tracking-wide">Next Action:</p>
+                          <p className="text-sm font-semibold text-blue-800 mt-1">
+                            {selectedApplicationPipeline.next_action.replace(/_/g, ' ').toUpperCase()}
+                          </p>
+                          {selectedApplicationPipeline.next_action_date && (
+                            <p className="text-xs text-blue-700 mt-1 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Scheduled: {new Date(selectedApplicationPipeline.next_action_date).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rejection Reason */}
+                    {selectedApplicationPipeline.rejection_reason && (
+                      <div className="flex items-start gap-2 p-3 bg-red-50 rounded-lg border-2 border-red-200">
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-xs font-bold text-red-900 uppercase tracking-wide">Rejection Reason:</p>
+                          <p className="text-sm text-red-700 mt-1">{selectedApplicationPipeline.rejection_reason}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Pipeline Data Found</h3>
+                    <p className="text-gray-500">This application doesn't have pipeline tracking data yet.</p>
+                  </div>
+                )
+              ) : (
+                // Student Details View
+                <div className="space-y-6">
+                  {/* Student Overview */}
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">{selectedApplication.student?.name || 'Unknown'}</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-600">Email Address:</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.student?.email || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Department:</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.student?.branch_field || selectedApplication.student?.course_name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">University:</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.student?.university || 'N/A'}</p>
+                      </div>
+                       <div>
+                          <p className="text-sm text-gray-600">Contact Number</p>
+                          <p className="font-medium text-gray-900">{selectedApplication.student?.contact_number || 'N/A'}</p>
+                        </div>
+                    </div>
+                  </div>
+
+                
+
+                  {/* Job Information */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Award className="h-5 w-5 text-purple-600" />
+                      <h4 className="font-semibold text-gray-900">Job Information</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-600">Job Title:</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.opportunity?.title || selectedApplication.opportunity?.job_title || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Company:</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.opportunity?.company_name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Employment Type:</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.opportunity?.employment_type || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Location:</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.opportunity?.location || 'N/A'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Application Progress */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="h-5 w-5 text-orange-600" />
+                      <h4 className="font-semibold text-gray-900">Application Progress</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-sm text-gray-600">Current Status:</p>
+                        <p className="font-medium text-gray-900">{selectedApplication.application_status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Applied Date:</p>
+                        <p className="font-medium text-gray-900">{new Date(selectedApplication.applied_at).toLocaleDateString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Last Updated:</p>
+                        <p className="font-medium text-gray-900">{new Date(selectedApplication.updated_at).toLocaleDateString()}</p>
+                      </div>
+                      {selectedApplication.notes && (
+                        <div>
+                          <p className="text-sm text-gray-600">Notes:</p>
+                          <p className="font-medium text-gray-900">{selectedApplication.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowPipelineModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

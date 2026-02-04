@@ -1762,6 +1762,16 @@ export async function updateTrainingByEmail(email, trainingData = []) {
     // Use studentRecord.id (NOT user_id) because trainings.student_id FK references students.id
     const studentId = studentRecord.id;
 
+    // Determine approval authority based on student type
+    let approvalAuthority = 'rareminds_admin'; // default
+    if (studentRecord.student_type === 'college') {
+      approvalAuthority = 'college_admin';
+    } else if (studentRecord.student_type === 'school' || studentRecord.student_type === 'school-student') {
+      approvalAuthority = 'school_admin';
+    }
+
+    console.log('🔧 Training - Student type:', studentRecord.student_type, '→ Approval authority:', approvalAuthority);
+
     // Get existing training records
     const { data: existingTrainings, error: existingError } = await supabase
       .from('trainings')
@@ -1799,6 +1809,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
           completed_modules: train.completedModules || 0,
           total_modules: train.totalModules || 0,
           hours_spent: train.hoursSpent || 0,
+          approval_authority: approvalAuthority,
           updated_at: nowIso,
         };
 
@@ -2229,7 +2240,7 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
 
     const { data: directByEmail, error: directEmailError } = await supabase
       .from('students')
-      .select('id, user_id')
+      .select('id, user_id, student_type')
       .eq('email', email)
       .maybeSingle();
 
@@ -2282,6 +2293,16 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
     // Use user_id as student_id (as per foreign key constraint)
     const studentId = studentRecord.user_id;
 
+    // Determine approval authority based on student type
+    let approvalAuthority = 'rareminds_admin'; // default
+    if (studentRecord.student_type === 'college') {
+      approvalAuthority = 'college_admin';
+    } else if (studentRecord.student_type === 'school' || studentRecord.student_type === 'school-student') {
+      approvalAuthority = 'school_admin';
+    }
+
+    console.log('🔧 Experience - Student type:', studentRecord.student_type, '→ Approval authority:', approvalAuthority);
+
     // Get existing experience records
     const { data: existingExperience, error: existingError } = await supabase
       .from('experience')
@@ -2308,6 +2329,7 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
           description: exp.description?.trim() || null,
           verified: exp.verified || false,
           approval_status: exp.approval_status || 'pending',
+          approval_authority: approvalAuthority,
           enabled: exp.enabled !== false, // Add enabled field (default to true)
           updated_at: nowIso,
         };
@@ -2890,6 +2912,16 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
 
     const studentId = studentRecord.id;
 
+    // Determine approval authority based on student type
+    let approvalAuthority = 'rareminds_admin'; // default
+    if (studentRecord.student_type === 'college') {
+      approvalAuthority = 'college_admin';
+    } else if (studentRecord.student_type === 'school' || studentRecord.student_type === 'school-student') {
+      approvalAuthority = 'school_admin';
+    }
+
+    console.log('🔧 Student type:', studentRecord.student_type, '→ Approval authority:', approvalAuthority);
+
     // Get existing projects
     const { data: existingProjects, error: existingError } = await supabase
       .from('projects')
@@ -2936,7 +2968,7 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
           ppt_url: project.ppt_url || null,
           enabled: typeof project.enabled === 'boolean' ? project.enabled : true,
           approval_status: project.approval_status || 'pending',
-          approval_authority: project.approval_authority || 'rareminds_admin',
+          approval_authority: approvalAuthority,
           updated_at: nowIso,
         };
         
