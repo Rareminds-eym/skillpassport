@@ -1103,6 +1103,10 @@ export function validateQuestionBatch(questions, questionType, expectedCount) {
       }
     } else {
       console.warn(`❌ Question ${idx + 1} failed validation:`, validation.errors);
+      console.warn(`   Question text: ${q.text || q.question || 'N/A'}`);
+      console.warn(`   Category: ${q.category || q.subtype || 'N/A'}`);
+      console.warn(`   Options count: ${q.options?.length || 0}`);
+      console.warn(`   Correct answer: ${q.correct || q.correct_answer || 'N/A'}`);
       invalid.push({ question: q, errors: validation.errors });
     }
   });
@@ -1110,6 +1114,19 @@ export function validateQuestionBatch(questions, questionType, expectedCount) {
   const needsMore = valid.length < expectedCount;
   
   console.log(`📊 Validation results: ${valid.length}/${expectedCount} valid, ${invalid.length} invalid${autoFixedCount > 0 ? `, ${autoFixedCount} auto-fixed` : ''}`);
+  
+  if (invalid.length > 0) {
+    console.warn(`⚠️ ${invalid.length} questions failed validation. Common issues:`);
+    const errorCounts = {};
+    invalid.forEach(({ errors }) => {
+      errors.forEach(err => {
+        errorCounts[err] = (errorCounts[err] || 0) + 1;
+      });
+    });
+    Object.entries(errorCounts).forEach(([error, count]) => {
+      console.warn(`   - ${error}: ${count} questions`);
+    });
+  }
   
   return { valid, invalid, needsMore, autoFixedCount };
 }
@@ -1614,8 +1631,15 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
   if (studentId) {
     const saved = await getSavedQuestionsForStudent(studentId, streamId, 'aptitude');
     if (saved && saved.length > 0) {
-      console.log('✅ Using saved aptitude questions for student:', saved.length);
-      return saved;
+      // Validate that saved questions have the expected count
+      if (saved.length === questionCount) {
+        console.log(`✅ Using saved aptitude questions for student: ${saved.length}/${questionCount}`);
+        return saved;
+      } else {
+        console.warn(`⚠️ Saved questions count mismatch: ${saved.length}/${questionCount} - regenerating`);
+        // Clear invalid cached questions
+        await clearSavedQuestionsForStudent(studentId, streamId, 'aptitude');
+      }
     }
   }
 
@@ -1627,9 +1651,20 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
   const maxRetries = 3;
   const questionsPerCategory = Math.ceil(questionCount / APTITUDE_CATEGORIES.length); // 10 per category for 50 total
   
+  // Accumulate valid questions across retries
+  let allValidQuestions = [];
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`📡 Calling API (attempt ${attempt}/${maxRetries})`);
+      // Calculate how many questions we still need
+      const questionsNeeded = questionCount - allValidQuestions.length;
+      
+      if (questionsNeeded <= 0) {
+        console.log(`✅ Already have ${allValidQuestions.length} valid questions, no need to retry`);
+        break;
+      }
+      
+      console.log(`📡 Calling API (attempt ${attempt}/${maxRetries}) - Need ${questionsNeeded} more questions`);
       
       const response = await fetch(`${apiUrl}/career-assessment/generate-aptitude`, {
         method: 'POST',
@@ -1678,48 +1713,58 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
       // Validate question quality using validateQuestionBatch
       const validation = validateQuestionBatch(data.questions, 'aptitude', questionCount);
       
-      // Filter out invalid questions - only use valid ones
-      const validQuestions = validation.valid;
-      console.log(`📊 Validation: ${validQuestions.length} valid, ${validation.invalid.length} invalid`);
+      // Add valid questions to our accumulator
+      const newValidQuestions = validation.valid;
+      allValidQuestions = [...allValidQuestions, ...newValidQuestions];
       
-      // STRICT: Must have EXACTLY the expected count
-      if (validQuestions.length !== questionCount) {
-        console.warn(`⚠️ Question count mismatch: ${validQuestions.length}/${questionCount} (${questionCount - validQuestions.length} missing)`);
+      // Remove duplicates based on question text
+      allValidQuestions = allValidQuestions.filter((q, index, self) =>
+        index === self.findIndex((t) => (t.text || t.question) === (q.text || q.question))
+      );
+      
+      console.log(`📊 Validation: ${newValidQuestions.length} new valid, ${validation.invalid.length} invalid`);
+      console.log(`📊 Total accumulated: ${allValidQuestions.length}/${questionCount} questions`);
+      
+      // Check if we have enough questions now
+      if (allValidQuestions.length >= questionCount) {
+        // Take only the first questionCount questions
+        const finalQuestions = allValidQuestions.slice(0, questionCount);
+        console.log(`✅ Success! Have ${finalQuestions.length} valid questions`);
         
-        // If we have retries left, try again
-        if (attempt < maxRetries) {
-          const needed = questionCount - validQuestions.length;
-          console.log(`🔄 Retrying to get exactly ${questionCount} questions (attempt ${attempt + 1}/${maxRetries})...`);
-          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
-          continue;
+        // Save valid questions if we have studentId
+        if (finalQuestions.length > 0 && studentId && !data.cached) {
+          console.log('💾 Saving questions to database...');
+          await saveAptitudeQuestions(studentId, streamId, attemptId, finalQuestions, gradeLevel);
         }
         
-        // Last attempt - REJECT if not exactly the expected count
-        console.error(`❌ Failed to get exactly ${questionCount} questions after ${maxRetries} attempts. Got ${validQuestions.length}.`);
-        return null; // Reject - must be exactly 50
+        return finalQuestions;
       }
       
-      // We have EXACTLY the expected count - save and return
-      console.log(`✅ Validation passed: Exactly ${questionCount} valid questions`);
-      
-      // Save valid questions if we have studentId
-      if (validQuestions.length > 0 && studentId && !data.cached) {
-        console.log('💾 Saving questions to database...');
-        await saveAptitudeQuestions(studentId, streamId, attemptId, validQuestions, gradeLevel);
+      // If we still need more questions and have retries left, continue
+      if (attempt < maxRetries) {
+        const needed = questionCount - allValidQuestions.length;
+        console.log(`🔄 Need ${needed} more questions, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        continue;
       }
       
-      return validQuestions;
-      const finalQuestions = validQuestions.slice(0, questionCount);
-      console.log(`✅ Final question count: ${finalQuestions.length}/${questionCount}`);
-      
-      // If API returned questions but didn't save them (cached: false, generated: true),
-      // save them from frontend as a fallback
-      if (finalQuestions.length > 0 && studentId && !data.cached) {
-        console.log('💾 Saving questions from frontend as fallback...');
-        await saveAptitudeQuestions(studentId, streamId, attemptId, finalQuestions, gradeLevel);
+      // Last attempt - use what we have if it's close enough (within 10%)
+      const threshold = Math.floor(questionCount * 0.9); // 90% threshold
+      if (allValidQuestions.length >= threshold) {
+        console.warn(`⚠️ Only have ${allValidQuestions.length}/${questionCount} questions, but accepting (above 90% threshold)`);
+        
+        // Save what we have
+        if (allValidQuestions.length > 0 && studentId && !data.cached) {
+          console.log('💾 Saving questions to database...');
+          await saveAptitudeQuestions(studentId, streamId, attemptId, allValidQuestions, gradeLevel);
+        }
+        
+        return allValidQuestions;
       }
       
-      return finalQuestions;
+      // Failed to get enough questions
+      console.error(`❌ Failed to get enough questions after ${maxRetries} attempts. Got ${allValidQuestions.length}/${questionCount}.`);
+      return null;
     } catch (error) {
       // Handle network/fetch errors
       const errorInfo = handleNetworkError(error, attempt, maxRetries);

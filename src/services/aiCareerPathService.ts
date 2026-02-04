@@ -380,14 +380,17 @@ function parseResponsibilitiesResponse(content: string, roleName: string): strin
 
 /**
  * Get fallback responsibilities when AI is unavailable
+ * IMPORTANT: These are EMERGENCY fallbacks only - should NOT be displayed to users
+ * The backend AI should ALWAYS generate real, personalized responsibilities
  * @param roleName - The specific job role name
  * @returns string[] - Array of 3 generic responsibility strings
  */
 export function getFallbackResponsibilities(roleName: string): string[] {
+  console.warn(`⚠️ USING FALLBACK RESPONSIBILITIES - AI generation failed for: ${roleName}`);
   return [
-    `Design and develop solutions in the ${roleName} domain`,
-    `Collaborate with cross-functional teams on projects`,
-    `Continuously learn and apply new skills in your field`
+    `[AI UNAVAILABLE] Design and develop solutions in the ${roleName} domain`,
+    `[AI UNAVAILABLE] Collaborate with cross-functional teams on projects`,
+    `[AI UNAVAILABLE] Continuously learn and apply new skills in your field`
   ];
 }
 
@@ -511,11 +514,13 @@ export interface IndustryDemandData {
 
 /**
  * Get fallback industry demand when AI is unavailable
- * Uses role name to provide slightly varied fallback data
+ * IMPORTANT: This is an EMERGENCY fallback only - should NOT be displayed to users
+ * The backend AI should ALWAYS generate real, personalized industry demand data
  * @param roleName - The specific job role name
  * @returns IndustryDemandData - Fallback industry demand data
  */
 export function getFallbackIndustryDemand(roleName: string): IndustryDemandData {
+  console.warn(`⚠️ USING FALLBACK INDUSTRY DEMAND - AI generation failed for: ${roleName}`);
   // Generate varied fallback based on role name hash to avoid always showing "High"
   const hash = roleName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const levels: Array<{ level: IndustryDemandData['demandLevel']; percentage: number }> = [
@@ -527,7 +532,7 @@ export function getFallbackIndustryDemand(roleName: string): IndustryDemandData 
   const selected = levels[hash % levels.length];
   
   return {
-    description: `${roleName} roles show ${selected.level.toLowerCase()} market demand with steady opportunities.`,
+    description: `[AI UNAVAILABLE] ${roleName} roles show ${selected.level.toLowerCase()} market demand with steady opportunities.`,
     demandLevel: selected.level,
     demandPercentage: selected.percentage
   };
@@ -715,24 +720,30 @@ export interface RoleOverviewData {
 
 /**
  * Get fallback career progression
+ * IMPORTANT: This is an EMERGENCY fallback only - should NOT be displayed to users
+ * The backend AI should ALWAYS generate real, personalized career progression
  */
 export function getFallbackCareerProgression(roleName: string): CareerStage[] {
+  console.warn(`⚠️ USING FALLBACK CAREER PROGRESSION - AI generation failed for: ${roleName}`);
   return [
-    { title: `Junior ${roleName}`, yearsExperience: '0-2 yrs' },
-    { title: `${roleName}`, yearsExperience: '2-5 yrs' },
-    { title: `Senior ${roleName}`, yearsExperience: '5-8 yrs' },
-    { title: `Lead ${roleName}`, yearsExperience: '8+ yrs' }
+    { title: `[AI UNAVAILABLE] Junior ${roleName}`, yearsExperience: '0-2 yrs' },
+    { title: `[AI UNAVAILABLE] ${roleName}`, yearsExperience: '2-5 yrs' },
+    { title: `[AI UNAVAILABLE] Senior ${roleName}`, yearsExperience: '5-8 yrs' },
+    { title: `[AI UNAVAILABLE] Lead ${roleName}`, yearsExperience: '8+ yrs' }
   ];
 }
 
 /**
  * Get fallback learning roadmap - more role-specific content
+ * IMPORTANT: This is an EMERGENCY fallback only - should NOT be displayed to users
+ * The backend AI should ALWAYS generate real, personalized learning roadmap
  */
 export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
+  console.warn(`⚠️ USING FALLBACK LEARNING ROADMAP - AI generation failed for: ${roleName}`);
   return [
     {
       month: 'Month 1-2',
-      title: `${roleName} Foundations`,
+      title: `[AI UNAVAILABLE] ${roleName} Foundations`,
       description: `Master the core concepts, tools, and fundamentals required for ${roleName} roles`,
       tasks: [
         `Learn essential ${roleName} concepts and terminology`,
@@ -744,7 +755,7 @@ export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
     },
     {
       month: 'Month 3-4',
-      title: `Hands-on ${roleName} Practice`,
+      title: `[AI UNAVAILABLE] Hands-on ${roleName} Practice`,
       description: `Build practical ${roleName} skills through real projects and exercises`,
       tasks: [
         `Build 2-3 guided ${roleName} projects`,
@@ -756,7 +767,7 @@ export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
     },
     {
       month: 'Month 5-6',
-      title: `${roleName} Portfolio & Career`,
+      title: `[AI UNAVAILABLE] ${roleName} Portfolio & Career`,
       description: `Create an impressive ${roleName} portfolio and prepare for job applications`,
       tasks: [
         `Complete 2-3 portfolio-worthy ${roleName} projects`,
@@ -771,32 +782,35 @@ export function getFallbackLearningRoadmap(roleName: string): RoadmapPhase[] {
 
 /**
  * Get fallback recommended courses
+ * IMPORTANT: This is an EMERGENCY fallback only - should NOT be displayed to users
+ * The backend AI should ALWAYS generate real, personalized course recommendations
  */
 export function getFallbackRecommendedCourses(roleName: string): RecommendedCourse[] {
+  console.warn(`⚠️ USING FALLBACK RECOMMENDED COURSES - AI generation failed for: ${roleName}`);
   return [
     {
-      title: `${roleName} Fundamentals`,
+      title: `[AI UNAVAILABLE] ${roleName} Fundamentals`,
       description: `Master the core concepts and skills needed for ${roleName} roles`,
       duration: '4 weeks',
       level: 'Beginner',
       skills: ['Core Concepts', 'Best Practices', 'Tools']
     },
     {
-      title: `Advanced ${roleName} Skills`,
+      title: `[AI UNAVAILABLE] Advanced ${roleName} Skills`,
       description: 'Take your skills to the next level with advanced techniques',
       duration: '6 weeks',
       level: 'Intermediate',
       skills: ['Advanced Techniques', 'Problem Solving', 'Optimization']
     },
     {
-      title: 'Project-Based Learning',
+      title: '[AI UNAVAILABLE] Project-Based Learning',
       description: 'Build real-world projects to strengthen your portfolio',
       duration: '8 weeks',
       level: 'Advanced',
       skills: ['Project Management', 'Implementation', 'Deployment']
     },
     {
-      title: 'Industry Certification Prep',
+      title: '[AI UNAVAILABLE] Industry Certification Prep',
       description: 'Prepare for industry-recognized certifications',
       duration: '4 weeks',
       level: 'Professional',
@@ -807,24 +821,27 @@ export function getFallbackRecommendedCourses(roleName: string): RecommendedCour
 
 /**
  * Get fallback free resources
+ * IMPORTANT: This is an EMERGENCY fallback only - should NOT be displayed to users
+ * The backend AI should ALWAYS generate real, personalized free resources
  */
 export function getFallbackFreeResources(roleName: string): FreeResource[] {
+  console.warn(`⚠️ USING FALLBACK FREE RESOURCES - AI generation failed for: ${roleName}`);
   const searchQuery = encodeURIComponent(roleName + ' tutorial');
   return [
     {
-      title: 'YouTube Tutorials',
+      title: '[AI UNAVAILABLE] YouTube Tutorials',
       description: `Free video tutorials from industry experts on ${roleName} topics`,
       type: 'YouTube',
       url: `https://www.youtube.com/results?search_query=${searchQuery}`
     },
     {
-      title: 'Official Documentation',
+      title: '[AI UNAVAILABLE] Official Documentation',
       description: 'Comprehensive guides and references for tools and frameworks',
       type: 'Documentation',
       url: `https://www.google.com/search?q=${encodeURIComponent(roleName + ' documentation')}`
     },
     {
-      title: 'Industry Certifications',
+      title: '[AI UNAVAILABLE] Industry Certifications',
       description: 'Free certification programs to validate your skills',
       type: 'Certification',
       url: `https://www.google.com/search?q=${encodeURIComponent(roleName + ' free certification')}`
@@ -834,37 +851,43 @@ export function getFallbackFreeResources(roleName: string): FreeResource[] {
 
 /**
  * Get fallback action items
+ * IMPORTANT: This is an EMERGENCY fallback only - should NOT be displayed to users
+ * The backend AI should ALWAYS generate real, personalized action items
  */
 export function getFallbackActionItems(roleName: string): ActionItem[] {
+  console.warn(`⚠️ USING FALLBACK ACTION ITEMS - AI generation failed for: ${roleName}`);
   return [
-    { title: 'Start Learning', description: `Enroll in a ${roleName} foundational course` },
-    { title: 'Build Daily Habits', description: 'Dedicate 1-2 hours daily to practice' },
-    { title: 'Join Communities', description: `Connect with ${roleName} professionals online` },
-    { title: 'Track Progress', description: 'Set weekly goals and review your growth' }
+    { title: '[AI UNAVAILABLE] Start Learning', description: `Enroll in a ${roleName} foundational course` },
+    { title: '[AI UNAVAILABLE] Build Daily Habits', description: 'Dedicate 1-2 hours daily to practice' },
+    { title: '[AI UNAVAILABLE] Join Communities', description: `Connect with ${roleName} professionals online` },
+    { title: '[AI UNAVAILABLE] Track Progress', description: 'Set weekly goals and review your growth' }
   ];
 }
 
 /**
  * Get fallback suggested projects
+ * IMPORTANT: This is an EMERGENCY fallback only - should NOT be displayed to users
+ * The backend AI should ALWAYS generate real, personalized project suggestions
  */
 export function getFallbackSuggestedProjects(roleName: string): SuggestedProject[] {
+  console.warn(`⚠️ USING FALLBACK SUGGESTED PROJECTS - AI generation failed for: ${roleName}`);
   return [
     {
-      title: `Build Your First ${roleName} Project`,
+      title: `[AI UNAVAILABLE] Build Your First ${roleName} Project`,
       description: `Start with a simple beginner project to understand the fundamentals. You'll learn the basic tools, workflows, and concepts that every ${roleName} needs to know. This is your foundation for more complex work!`,
       difficulty: 'Beginner',
       skills: ['Core Concepts', 'Basic Tools', 'Problem Solving'],
       estimatedTime: '2-4 hours',
     },
     {
-      title: `${roleName} Portfolio Piece`,
+      title: `[AI UNAVAILABLE] ${roleName} Portfolio Piece`,
       description: `Create a real-world project that solves an actual problem. This intermediate project will challenge you to apply multiple skills together and give you something impressive to show potential employers or clients.`,
       difficulty: 'Intermediate',
       skills: ['Applied Skills', 'Project Planning', 'Documentation', 'Best Practices'],
       estimatedTime: '1-2 weeks',
     },
     {
-      title: `Advanced ${roleName} Challenge`,
+      title: `[AI UNAVAILABLE] Advanced ${roleName} Challenge`,
       description: `Take on a complex project that pushes your boundaries. You'll integrate advanced techniques, optimize for performance, and create something that demonstrates mastery of ${roleName} skills.`,
       difficulty: 'Advanced',
       skills: ['Advanced Techniques', 'Optimization', 'System Design', 'Leadership'],
@@ -1054,8 +1077,9 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
 }
 
 // Worker API URL for role overview
+// Use local API endpoint instead of external Cloudflare Worker
 const ROLE_OVERVIEW_API_URL = import.meta.env.VITE_ROLE_OVERVIEW_API_URL || 
-  'https://role-overview-api.dark-mode-d021.workers.dev';
+  (typeof window !== 'undefined' ? `${window.location.origin}/api/role-overview` : '/api/role-overview');
 
 /**
  * Generate combined role overview data via Cloudflare Worker

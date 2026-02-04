@@ -15,10 +15,10 @@ import { STREAM_CONTEXTS } from '../stream-contexts';
 // Categories with specific question counts to match UI expectations (total: 50)
 const APTITUDE_CATEGORIES = [
     { id: 'verbal', name: 'Verbal Reasoning', description: 'Language comprehension, vocabulary, analogies', count: 8 },
-    { id: 'numerical', name: 'Numerical Ability', description: 'Mathematical reasoning, data interpretation', count: 8 },
-    { id: 'abstract', name: 'Abstract / Logical Reasoning', description: 'Pattern recognition, deductive reasoning, sequences', count: 8 },
-    { id: 'spatial', name: 'Spatial / Mechanical Reasoning', description: 'Visual-spatial relationships, gears, rotation', count: 6 },
-    { id: 'clerical', name: 'Clerical Speed & Accuracy', description: 'String comparison, attention to detail - mark Same or Different', count: 20 }
+    { id: 'numerical', name: 'Numerical Ability', description: 'Mathematical reasoning, data interpretation', count: 20 },
+    { id: 'abstract', name: 'Abstract / Logical Reasoning', description: 'Pattern recognition, deductive reasoning, sequences', count: 9 },
+    { id: 'spatial', name: 'Spatial / Mechanical Reasoning', description: 'Visual-spatial relationships, gears, rotation', count: 8 },
+    { id: 'clerical', name: 'Clerical Speed & Accuracy', description: 'String comparison, attention to detail - mark Same or Different', count: 5 }
 ];
 
 // School Subject Categories for After 10th students (total: 50 questions)
@@ -39,6 +39,15 @@ export async function generateAptitudeQuestions(
     attemptId?: string,
     gradeLevel?: string
 ) {
+    console.log('🧠 ============================================');
+    console.log('🧠 APTITUDE QUESTION GENERATION STARTED');
+    console.log('🧠 ============================================');
+    console.log(`📋 Stream ID: ${streamId}`);
+    console.log(`📋 Questions Per Category: ${questionsPerCategory}`);
+    console.log(`📋 Grade Level: ${gradeLevel || 'not specified'}`);
+    console.log(`📋 Student ID: ${studentId || 'not specified'}`);
+    console.log(`📋 Attempt ID: ${attemptId || 'not specified'}`);
+    
     const supabase = createSupabaseClient(env);
     const isAfter10 = gradeLevel === 'after10';
 
@@ -47,6 +56,8 @@ export async function generateAptitudeQuestions(
     const categories = isAfter10 ? SCHOOL_SUBJECT_CATEGORIES : APTITUDE_CATEGORIES;
     const totalQuestions = categories.reduce((sum, cat) => sum + cat.count, 0);
 
+    console.log(`📊 Categories being used:`, JSON.stringify(categories, null, 2));
+    console.log(`📊 Total questions expected: ${totalQuestions}`);
     console.log(`📝 Generating fresh aptitude questions in 2 batches for stream: ${streamId}`);
 
     const { openRouter: openRouterKey } = getAPIKeys(env);
@@ -85,6 +96,9 @@ export async function generateAptitudeQuestions(
 
         const batchTotal = batchCategories.reduce((sum, cat) => sum + cat.count, 0);
 
+        console.log(`📦 Batch ${batchNum} categories:`, JSON.stringify(batchCategories, null, 2));
+        console.log(`📦 Batch ${batchNum} total questions: ${batchTotal}`);
+
         let prompt: string;
         if (isAfter10) {
             prompt = SCHOOL_SUBJECT_PROMPT
@@ -111,10 +125,12 @@ export async function generateAptitudeQuestions(
             const streamContext = STREAM_CONTEXTS[contextKey] || STREAM_CONTEXTS.college || STREAM_CONTEXTS.general;
 
             console.log(`🧠 Using stream context: '${contextKey}' for streamId: '${streamId}'`);
+            console.log(`📝 Stream name: ${streamContext?.name || 'Unknown'}`);
 
             prompt = APTITUDE_PROMPT
                 .replace(/{{QUESTION_COUNT}}/g, batchTotal.toString())
                 .replace(/{{CATEGORIES}}/g, JSON.stringify(batchCategories, null, 2))
+                .replace(/{{STREAM_NAME}}/g, streamContext?.name || 'General')
                 .replace(/{{STREAM_CONTEXT}}/g, streamContext?.context || 'General aptitude context')
                 .replace(/{{CLERICAL_EXAMPLE}}/g, streamContext?.clericalExample || 'GEN-123-TST');
         }
@@ -124,12 +140,16 @@ export async function generateAptitudeQuestions(
             : `You are an expert psychometric assessment creator. Generate EXACTLY ${batchTotal} questions total. Generate ONLY valid JSON.`;
 
         // Use OpenRouter with automatic retry and fallback
-        console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry for ${batchTotal} questions`);
+        // Calculate token limit: ~150 tokens per question + 500 buffer
+        const estimatedTokens = batchTotal * 150 + 500;
+        console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry for ${batchTotal} questions (maxTokens: ${estimatedTokens})`);
 
         const jsonText = await callOpenRouterWithRetry(openRouterKey, [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
-        ]);
+        ], {
+            maxTokens: estimatedTokens
+        });
 
         const parsed = repairAndParseJSON(jsonText);
         const batchQuestions = parsed.questions || parsed;
@@ -143,6 +163,7 @@ export async function generateAptitudeQuestions(
     }
 
     console.log(`✅ Generated ${allGeneratedQuestions.length} total questions via AI`);
+    console.log('🧠 ============================================');
 
     const processedQuestions = allGeneratedQuestions.map((q: any) => ({
         id: generateUUID(),

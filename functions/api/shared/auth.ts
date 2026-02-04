@@ -44,10 +44,30 @@ export async function authenticateUser(
     console.warn('JWT decode failed:', jwtErr);
   }
 
+  // Get Supabase URL with fallback
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+  
+  // Debug logging
+  console.log('🔍 Auth Debug - Available env vars:', {
+    hasSupabaseUrl: !!env.SUPABASE_URL,
+    hasViteSupabaseUrl: !!env.VITE_SUPABASE_URL,
+    hasSupabaseAnonKey: !!env.SUPABASE_ANON_KEY,
+    hasViteSupabaseAnonKey: !!env.VITE_SUPABASE_ANON_KEY,
+    hasServiceRoleKey: !!env.SUPABASE_SERVICE_ROLE_KEY,
+    resolvedUrl: supabaseUrl ? 'present' : 'missing',
+    resolvedAnonKey: supabaseAnonKey ? 'present' : 'missing'
+  });
+  
+  if (!supabaseUrl) {
+    console.error('❌ Missing SUPABASE_URL or VITE_SUPABASE_URL environment variable');
+    return null;
+  }
+
   // Method 2: Fallback to Supabase auth with service role
   if (!userId && env.SUPABASE_SERVICE_ROLE_KEY) {
     try {
-      const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+      const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
       const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
       
       if (!authError && authUser) {
@@ -63,8 +83,8 @@ export async function authenticateUser(
   if (!userId) return null;
 
   // Create Supabase clients
-  const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-  const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: { headers: { Authorization: authHeader } },
   });
 

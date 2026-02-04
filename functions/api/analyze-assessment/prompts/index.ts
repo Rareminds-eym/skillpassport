@@ -56,6 +56,19 @@ CRITICAL REQUIREMENTS:
 2) You MUST provide EXACTLY 3 career clusters (High fit, Medium fit, Explore fit) - this is MANDATORY.
 3) Ensure all arrays and objects are properly closed.
 4) Each cluster must have description, evidence, roles, domains, and whyItFits fields filled.
+5) **CRITICAL**: You MUST include the "overallSummary" field at the end of the JSON - this is MANDATORY and must be 3-4 sentences.
+6) **SALARY RANGES MUST VARY**: Each career must have DIFFERENT salary ranges based on the actual industry standards. DO NOT use the same salary range for all careers!
+
+SALARY GUIDELINES (India, 2025-2030, in LPA):
+- Engineering/Tech: Entry 4-8, Mid 10-15, Senior 15-25
+- Medical/Healthcare: Entry 5-10, Mid 12-20, Senior 20-40
+- Finance/Banking: Entry 4-8, Mid 10-18, Senior 18-35
+- Creative/Design: Entry 3-6, Mid 8-12, Senior 12-20
+- Teaching/Education: Entry 3-6, Mid 7-10, Senior 10-15
+- Law/Legal: Entry 4-8, Mid 12-25, Senior 25-50
+- Business/Management: Entry 4-8, Mid 10-20, Senior 20-40
+- Research/Academia: Entry 4-8, Mid 10-15, Senior 15-25
+**IMPORTANT**: Adjust based on specific role seniority and specialization!
 
 CRITICAL JSON FORMAT RULES:
 1. Start your response with { (opening brace) - NOT with [ (bracket)
@@ -75,7 +88,9 @@ EXAMPLE OF CORRECT FORMAT:
   "profileSnapshot": {...},
   "riasec": {...},
   "aptitude": {...},
-  "careerFit": {...}
+  "careerFit": {...},
+  "finalNote": {...},
+  "overallSummary": "This is a 3-4 sentence summary that MUST be included."
 }
 
 WRONG FORMAT (DO NOT USE):
@@ -84,7 +99,7 @@ WRONG FORMAT (DO NOT USE):
   {"name": "..."}
 ]
 
-Return ONLY the JSON object (starting with {), nothing else.`;
+Return ONLY the JSON object (starting with {), nothing else. ENSURE "overallSummary" is included at the end!`;
 
   if (gradeLevel === 'middle') {
     return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
