@@ -19,8 +19,8 @@ export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary';
 /**
  * Test phases in the adaptive aptitude test flow
  * - diagnostic_screener: Initial 8 questions to classify student tier (L/M/H)
- * - adaptive_core: 30-36 questions with adaptive difficulty adjustment
- * - stability_confirmation: 6 questions to confirm final aptitude level
+ * - adaptive_core: Exactly 36 questions with adaptive difficulty adjustment
+ * - stability_confirmation: Final 6 questions to confirm final aptitude level
  */
 export type TestPhase = 'diagnostic_screener' | 'adaptive_core' | 'stability_confirmation';
 
@@ -378,11 +378,11 @@ export interface AdaptiveTestConfig {
 /**
  * Default configuration for the adaptive aptitude test
  * 
- * Question Pattern:
+ * Question Pattern (EXACTLY 50 QUESTIONS):
  * - Phase 1 (Diagnostic Screener): Q1-Q8 all at Level 3 (baseline) - 8 questions
- * - Phase 2 (Adaptive Core): Q9-Q44 truly adaptive based on performance - 36 questions
+ * - Phase 2 (Adaptive Core): Q9-Q44 truly adaptive based on performance - 36 questions (FIXED, not variable)
  * - Phase 3 (Stability Confirmation): Q45-Q50 at final level - 6 questions
- * Total: 50 questions
+ * Total: EXACTLY 50 questions (8 + 36 + 6)
  */
 export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
   phases: {
@@ -400,8 +400,8 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     },
     adaptive_core: {
       phase: 'adaptive_core',
-      minQuestions: 30,
-      maxQuestions: 36,  // 36 questions for adaptive core
+      minQuestions: 36,
+      maxQuestions: 36,  // Exactly 36 questions for adaptive core (not a range)
       maxConsecutiveSameSubtag: 3,
       maxConsecutiveSameDirectionJumps: 3,
     },
@@ -417,8 +417,8 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     M: 3,
     H: 4,
   },
-  minimumQuestionsForStop: 40,
-  consistencyWindowSize: 8,
+  minimumQuestionsForStop: 40,  // Not used - always complete exactly 36 adaptive core questions
+  consistencyWindowSize: 8,     // Used for analytics only
   maxDirectionChangesForHighConfidence: 2,
   maxDirectionChangesForMediumConfidence: 4,
 };

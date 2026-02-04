@@ -577,6 +577,7 @@ const AssessmentResult = () => {
         loading,
         error,
         retrying,
+        retryAttemptCount,
         gradeLevel,
         monthsInGrade,
         studentInfo,
@@ -965,7 +966,7 @@ const AssessmentResult = () => {
 
     // Loading state
     if (loading) {
-        return <LoadingState />;
+        return <LoadingState isAutoRetry={retrying} retryAttemptCount={retryAttemptCount} />;
     }
 
     // Error state
@@ -975,6 +976,7 @@ const AssessmentResult = () => {
                 error={error}
                 onRetry={handleRetry}
                 retrying={retrying}
+                retryAttemptCount={retryAttemptCount}
                 onRetake={() => navigate('/student/assessment/test')}
             />
         );
@@ -1001,6 +1003,14 @@ const AssessmentResult = () => {
             <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
 
             {/* Print View - Simple document format for PDF */}
+            {/* Debug: Log what PrintView receives */}
+            {results && console.log('📄 AssessmentResult passing to PrintView:', {
+                hasRiasec: !!results.riasec,
+                riasecScores: results.riasec?.scores,
+                riasecOriginal: results.riasec?._originalScores,
+                geminiOriginal: results.gemini_results?.riasec?._originalScores,
+                gradeLevel
+            })}
             <PrintView
                 results={results}
                 studentInfo={studentInfo}
@@ -1419,10 +1429,13 @@ const AssessmentResult = () => {
                                                                     </h5>
                                                                     <div className="space-y-2">
                                                                         {streamRec.reasoning.interests && (
-                                                                            <p className="text-gray-300 text-sm">• {streamRec.reasoning.interests}</p>
+                                                                            <p className="text-gray-300 text-sm">• <strong>Interests:</strong> {streamRec.reasoning.interests}</p>
                                                                         )}
                                                                         {streamRec.reasoning.aptitude && (
-                                                                            <p className="text-gray-300 text-sm">• {streamRec.reasoning.aptitude}</p>
+                                                                            <p className="text-gray-300 text-sm">• <strong>Aptitude:</strong> {streamRec.reasoning.aptitude}</p>
+                                                                        )}
+                                                                        {streamRec.reasoning.personality && (
+                                                                            <p className="text-gray-300 text-sm">• <strong>Personality:</strong> {streamRec.reasoning.personality}</p>
                                                                         )}
                                                                     </div>
                                                                 </div>

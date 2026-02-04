@@ -21,6 +21,7 @@ import {
   ClockIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
 import SearchBar from '../../../components/common/SearchBar';
 import KPICard from '../../../components/admin/KPICard';
 
@@ -1070,10 +1071,10 @@ const GraduationEligibility: React.FC = () => {
       }));
 
       // Show success message (you can add toast notification here)
-      alert(`Action completed successfully!`);
+      toast.success(`Action completed successfully!`);
     } catch (error) {
       console.error('Action failed:', error);
-      alert('Action failed. Please try again.');
+      toast.error('Action failed. Please try again.');
     }
   };
 
@@ -1094,7 +1095,7 @@ const GraduationEligibility: React.FC = () => {
   const handleGenerateEligibilityList = () => {
     const eligibleStudents = students.filter(s => s.eligibility_flag);
     console.log('Generating eligibility list for:', eligibleStudents);
-    alert(`Generated eligibility list for ${eligibleStudents.length} students`);
+    toast.success(`Generated eligibility list for ${eligibleStudents.length} students`);
   };
 
   if (loading) {

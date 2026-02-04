@@ -4,7 +4,7 @@ import { Sparkles } from 'lucide-react';
  * Loading State Component
  * Displays while the assessment results are being generated
  */
-const LoadingState = () => (
+const LoadingState = ({ isAutoRetry = false, retryAttemptCount = 0 }) => (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
         <div className="text-center">
             <div className="relative w-32 h-32 mx-auto mb-6">
@@ -18,8 +18,20 @@ const LoadingState = () => (
                     />
                 </div>
             </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Generating Your Report</h3>
-            <p className="text-gray-500 max-w-xs mx-auto">Our AI is analyzing your profile to create a comprehensive 4-page career report...</p>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">
+                {isAutoRetry ? 'Analyzing Your Results' : 'Generating Your Report'}
+            </h3>
+            <p className="text-gray-500 max-w-xs mx-auto">
+                {isAutoRetry 
+                    ? 'Our AI is processing your assessment data to create personalized career recommendations...'
+                    : 'Our AI is analyzing your profile to create a comprehensive 4-page career report...'
+                }
+            </p>
+            {isAutoRetry && retryAttemptCount > 0 && (
+                <p className="text-sm text-gray-400 mt-3">
+                    Attempt {retryAttemptCount} of 3
+                </p>
+            )}
         </div>
     </div>
 );

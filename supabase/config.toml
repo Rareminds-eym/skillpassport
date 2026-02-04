@@ -70,11 +70,9 @@ schema_paths = []
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
 enabled = true
-
-# Ordered list of seed files to load during db reset.
-sql_paths = [
-  "./seed.sql",
-]
+# Specifies an ordered list of seed files to load during db reset.
+# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
+sql_paths = ["./seed_no_storage.sql"]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
@@ -153,9 +151,9 @@ max_indexes = 5
 [auth]
 enabled = true
 
-site_url = []
+site_url = "http://127.0.0.1:3000"
 
-additional_redirect_urls = []
+additional_redirect_urls = ["http://127.0.0.1:3000/**", "http://localhost:3000/**"]
 
 jwt_expiry = 3600
 
