@@ -1,13 +1,7 @@
 import {
   ArrowPathIcon,
-  CalendarDaysIcon,
-  ChevronDownIcon,
-  ClipboardDocumentCheckIcon,
   ClockIcon,
-  EnvelopeIcon,
   EyeIcon,
-  FunnelIcon,
-  PencilIcon,
   PlusCircleIcon,
   Squares2X2Icon,
   TableCellsIcon,
@@ -15,7 +9,7 @@ import {
   XMarkIcon
 } from "@heroicons/react/24/outline"
 import { useEffect, useMemo, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import SearchBar from "../../components/common/SearchBar"
 import { useProgramSections } from "../../hooks/useProgramSections"
 import { useEducatorSchool } from "../../hooks/useEducatorSchool"
@@ -167,215 +161,6 @@ const ProgramSectionDetailsDrawer = ({
   )
 }
 
-const CreateProgramSectionModal = ({
-  isOpen,
-  onClose,
-  departments,
-  onCreate,
-  loading
-}: {
-  isOpen: boolean
-  onClose: () => void
-  departments: any[]
-  onCreate: (departmentId: string, programData: any, sectionData: any) => void
-  loading: boolean
-}) => {
-  const [departmentId, setDepartmentId] = useState<string>("")
-  const [programName, setProgramName] = useState<string>("")
-  const [programCode, setProgramCode] = useState<string>("")
-  const [degreeLevel, setDegreeLevel] = useState<string>("Bachelor")
-  const [semester, setSemester] = useState<number>(1)
-  const [section, setSection] = useState<string>("A")
-  const [academicYear, setAcademicYear] = useState<string>("2024-2025")
-  const [maxStudents, setMaxStudents] = useState<number>(60)
-  const [status, setStatus] = useState<string>("active")
-
-  useEffect(() => {
-    if (!isOpen) {
-      setDepartmentId("")
-      setProgramName("")
-      setProgramCode("")
-      setDegreeLevel("Bachelor")
-      setSemester(1)
-      setSection("A")
-      setAcademicYear("2024-2025")
-      setMaxStudents(60)
-      setStatus("active")
-    }
-  }, [isOpen])
-
-  if (!isOpen) return null
-
-  const handleSubmit = () => {
-    if (departmentId && programName && programCode) {
-      onCreate(
-        departmentId,
-        { name: programName, code: programCode, degree_level: degreeLevel },
-        { semester, section, academic_year: academicYear, max_students: maxStudents, status }
-      )
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
-      <div className="flex min-h-screen items-center justify-center px-4 py-8 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-900/50 transition-opacity" onClick={onClose} />
-        <div className="inline-block w-full max-w-2xl transform overflow-hidden rounded-lg bg-white px-4 pt-5 pb-4 text-left align-middle shadow-xl transition-all sm:my-8 sm:p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Create New Program Section</h2>
-              <p className="mt-1 text-sm text-gray-500">Enter program details to add it to your educator workspace.</p>
-            </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600" type="button">
-              <XMarkIcon className="h-6 w-6" />
-              <span className="sr-only">Close</span>
-            </button>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-gray-700">Department *</label>
-                <select
-                  value={departmentId}
-                  onChange={(e) => setDepartmentId(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                >
-                  <option value="">Select Department...</option>
-                  {departments.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name} ({dept.code})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Program Name *</label>
-                <input
-                  value={programName}
-                  onChange={(e) => setProgramName(e.target.value)}
-                  type="text"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="Computer Science"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Program Code *</label>
-                <input
-                  value={programCode}
-                  onChange={(e) => setProgramCode(e.target.value)}
-                  type="text"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="CS"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Degree Level</label>
-                <select
-                  value={degreeLevel}
-                  onChange={(e) => setDegreeLevel(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="Bachelor">Bachelor</option>
-                  <option value="Master">Master</option>
-                  <option value="PhD">PhD</option>
-                  <option value="Diploma">Diploma</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Semester *</label>
-                <input
-                  value={semester}
-                  onChange={(e) => setSemester(parseInt(e.target.value))}
-                  type="number"
-                  min="1"
-                  max="12"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Section *</label>
-                <input
-                  value={section}
-                  onChange={(e) => setSection(e.target.value)}
-                  type="text"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="A"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Academic Year *</label>
-                <input
-                  value={academicYear}
-                  onChange={(e) => setAcademicYear(e.target.value)}
-                  type="text"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="2024-2025"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Max Students *</label>
-                <input
-                  value={maxStudents}
-                  onChange={(e) => setMaxStudents(parseInt(e.target.value))}
-                  type="number"
-                  min="1"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-700">Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 flex items-center justify-end gap-3">
-            <button
-              onClick={onClose}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              disabled={loading}
-              type="button"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-              disabled={loading || !departmentId || !programName || !programCode}
-              type="button"
-            >
-              {loading ? 'Creating...' : 'Create Program Section'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
   return (
     <div className="flex flex-col items-center justify-center text-center bg-white border border-dashed border-gray-300 rounded-lg p-10">
@@ -402,32 +187,26 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 const ProgramSectionsPage = () => {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
-  const { college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool()
+  const { college: educatorCollege, loading: schoolLoading } = useEducatorSchool()
   
   // Permission controls for Classroom Management module
   const canView = usePermission("Classroom Management", "view")
   const canCreate = usePermission("Classroom Management", "create")
-  const canEdit = usePermission("Classroom Management", "edit")
   
   const {
     programSections,
-    departments,
     loading,
     error,
     fetchDepartments,
-    createNewProgramSection,
     unassignFromSection,
     refetch
   } = useProgramSections()
 
   const [viewMode, setViewMode] = useState("grid")
-  const [showFilters, setShowFilters] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(25)
   const [detailSection, setDetailSection] = useState<ProgramSection | null>(null)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [createLoading, setCreateLoading] = useState(false)
   const [manageStudentsSection, setManageStudentsSection] = useState<ProgramSection | null>(null)
 
   // Security check
@@ -489,25 +268,6 @@ const ProgramSectionsPage = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleCreateProgramSection = async (
-    departmentId: string,
-    programData: any,
-    sectionData: any
-  ) => {
-    setCreateLoading(true)
-    try {
-      const success = await createNewProgramSection(departmentId, programData, sectionData)
-      if (success) {
-        toast.success('Successfully created program section')
-        setShowCreateModal(false)
-      }
-    } catch (err) {
-      toast.error('Failed to create program section')
-    } finally {
-      setCreateLoading(false)
-    }
-  }
-
   const handleUnassignFromSection = async (section: ProgramSection) => {
     try {
       const success = await unassignFromSection(section.id)
@@ -550,39 +310,6 @@ const ProgramSectionsPage = () => {
 
   return (
     <div className="flex overflow-y-auto mb-4 flex-col h-screen">
-      {/* Permission Debug Panel - Only in development */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">
-                🎓 Educator Permission Debug - Classroom Management
-              </h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p><strong>User Role:</strong> {user?.role}</p>
-                <p><strong>Module:</strong> Classroom Management</p>
-                <div className="flex gap-4 mt-1">
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canView ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    View: {canView ? '✅' : '❌'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canCreate ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    Create: {canCreate ? '✅' : '❌'}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                    canEdit ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    Edit: {canEdit ? '✅' : '❌'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       <div className='p-4 sm:p-6 lg:p-8 mb-2'>
         <h1 className="text-xl md:text-3xl font-bold text-gray-900">Program Sections</h1>
         <p className="text-base md:text-lg mt-2 text-gray-600">Manage your assigned program sections and students.</p>
@@ -698,7 +425,7 @@ const ProgramSectionsPage = () => {
                 {error}
               </div>
             )}
-            {!isLoading && isEmpty && <EmptyState onCreate={() => setShowCreateModal(true)} />}
+            {!isLoading && isEmpty && <EmptyState onCreate={() => {}} />}
 
             {!isLoading && !isEmpty && viewMode === "grid" && paginatedSections.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -745,23 +472,9 @@ const ProgramSectionsPage = () => {
                         <button
                           onClick={() => {
                             if (!canCreate) {
-                              console.log('❌ [ProgramSectionsPage] Action Blocked: Students Button - No Create Permission');
                               alert('❌ Access Denied: You need CREATE permission to manage students');
                               return;
                             }
-                            console.log('🎓 [ProgramSectionsPage] Action: Students Button Clicked', {
-                              userRole: user?.role,
-                              module: 'Classroom Management',
-                              action: 'Manage Students',
-                              permissions: {
-                                canView: canView.allowed,
-                                canCreate: canCreate.allowed,
-                                canEdit: canEdit.allowed
-                              },
-                              sectionId: section.id,
-                              sectionName: section.program.name,
-                              timestamp: new Date().toISOString()
-                            });
                             setManageStudentsSection(section);
                           }}
                           disabled={!canCreate.allowed}
@@ -781,23 +494,9 @@ const ProgramSectionsPage = () => {
                         <button
                           onClick={() => {
                             if (!canView) {
-                              console.log('❌ [ProgramSectionsPage] Action Blocked: View Button - No View Permission');
                               alert('❌ Access Denied: You need VIEW permission to see details');
                               return;
                             }
-                            console.log('🎓 [ProgramSectionsPage] Action: View Button Clicked', {
-                              userRole: user?.role,
-                              module: 'Classroom Management',
-                              action: 'View Details',
-                              permissions: {
-                                canView: canView.allowed,
-                                canCreate: canCreate.allowed,
-                                canEdit: canEdit.allowed
-                              },
-                              sectionId: section.id,
-                              sectionName: section.program.name,
-                              timestamp: new Date().toISOString()
-                            });
                             setDetailSection(section);
                           }}
                           disabled={!canView.allowed}
@@ -858,23 +557,9 @@ const ProgramSectionsPage = () => {
                             <button 
                               onClick={() => {
                                 if (!canCreate) {
-                                  console.log('❌ [ProgramSectionsPage] Action Blocked: Students Button (Table) - No Create Permission');
                                   alert('❌ Access Denied: You need CREATE permission to manage students');
                                   return;
                                 }
-                                console.log('🎓 [ProgramSectionsPage] Action: Students Button Clicked (Table)', {
-                                  userRole: user?.role,
-                                  module: 'Classroom Management',
-                                  action: 'Manage Students',
-                                  permissions: {
-                                    canView: canView.allowed,
-                                    canCreate: canCreate.allowed,
-                                    canEdit: canEdit.allowed
-                                  },
-                                  sectionId: section.id,
-                                  sectionName: section.program.name,
-                                  timestamp: new Date().toISOString()
-                                });
                                 setManageStudentsSection(section);
                               }} 
                               disabled={!canCreate.allowed}
@@ -890,23 +575,9 @@ const ProgramSectionsPage = () => {
                             </button>
                             <button onClick={() => {
                               if (!canView) {
-                                console.log('❌ [ProgramSectionsPage] Action Blocked: View Button (Table) - No View Permission');
                                 alert('❌ Access Denied: You need VIEW permission to see details');
                                 return;
                               }
-                              console.log('🎓 [ProgramSectionsPage] Action: View Button Clicked (Table)', {
-                                userRole: user?.role,
-                                module: 'Classroom Management',
-                                action: 'View Details',
-                                permissions: {
-                                  canView: canView.allowed,
-                                  canCreate: canCreate.allowed,
-                                  canEdit: canEdit.allowed
-                                },
-                                sectionId: section.id,
-                                sectionName: section.program.name,
-                                timestamp: new Date().toISOString()
-                              });
                               setDetailSection(section);
                             }} 
                             disabled={!canView.allowed}
@@ -947,14 +618,6 @@ const ProgramSectionsPage = () => {
           )}
         </div>
       </div>
-
-      <CreateProgramSectionModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        departments={departments}
-        onCreate={handleCreateProgramSection}
-        loading={createLoading}
-      />
 
       <ManageProgramStudentsModal
         isOpen={!!manageStudentsSection}

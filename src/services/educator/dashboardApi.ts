@@ -2,12 +2,19 @@ import { supabase } from '../../lib/supabaseClient';
 
 // Shared function to get authenticated educator data with class assignments
 async function getAuthenticatedEducator() {
+  console.log('🔍 Starting educator authentication check...');
+  
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) throw new Error('No authenticated user');
+  if (!session?.user) {
+    console.error('❌ No authenticated user found');
+    throw new Error('No authenticated user');
+  }
   
   const user = session.user;
+  console.log('✅ Authenticated user found:', user.email);
 
   // First check if they are a school educator
+  console.log('🏫 Checking school_educators table...');
   const { data: schoolEducatorData, error: schoolEducatorError } = await supabase
     .from('school_educators')
     .select('id, school_id, role')
@@ -15,10 +22,14 @@ async function getAuthenticatedEducator() {
     .maybeSingle();
 
   if (schoolEducatorError && schoolEducatorError.code !== 'PGRST116') {
+    console.error('❌ School educator query error:', schoolEducatorError);
     throw schoolEducatorError;
   }
 
+  console.log('🏫 School educator data:', schoolEducatorData);
+
   if (schoolEducatorData?.school_id) {
+    console.log('✅ Found school educator, getting class assignments...');
     // Get assigned class IDs for this educator (if not admin)
     let assignedClassIds: string[] = [];
     
@@ -31,6 +42,9 @@ async function getAuthenticatedEducator() {
       if (!classError && classAssignments) {
         assignedClassIds = classAssignments.map(assignment => assignment.class_id);
       }
+      console.log('📚 Class assignments:', assignedClassIds);
+    } else {
+      console.log('👑 School admin - can see all classes');
     }
 
     return { 
@@ -42,6 +56,7 @@ async function getAuthenticatedEducator() {
   }
 
   // Check if they are a college lecturer
+  console.log('🎓 Checking college_lecturers table...');
   const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
     .from('college_lecturers')
     .select('id, collegeId, department')
@@ -49,10 +64,14 @@ async function getAuthenticatedEducator() {
     .maybeSingle();
 
   if (collegeLecturerError && collegeLecturerError.code !== 'PGRST116') {
+    console.error('❌ College lecturer query error:', collegeLecturerError);
     throw collegeLecturerError;
   }
 
+  console.log('🎓 College lecturer data:', collegeLecturerData);
+
   if (collegeLecturerData?.collegeId) {
+    console.log('✅ Found college lecturer, getting course assignments...');
     // Check if lecturer is an admin (department = 'Administration')
     const isCollegeAdmin = collegeLecturerData.department === 'Administration';
     
@@ -61,13 +80,17 @@ async function getAuthenticatedEducator() {
     
     if (!isCollegeAdmin) {
       const { data: courseAssignments, error: courseError } = await supabase
-        .from('college_lecturer_course_assignments')
-        .select('courseId')
-        .eq('lecturerId', collegeLecturerData.id);
+        .from('college_course_mappings')
+        .select('course_id')
+        .eq('faculty_id', collegeLecturerData.id);
 
       if (!courseError && courseAssignments) {
-        assignedCourseIds = courseAssignments.map(assignment => assignment.courseId);
+        assignedCourseIds = courseAssignments.map(assignment => assignment.course_id);
       }
+      console.log('📚 Course assignments:', assignedCourseIds);
+      console.log('📚 Course assignment query error:', courseError);
+    } else {
+      console.log('👑 College admin - can see all courses');
     }
 
     return { 
@@ -83,17 +106,22 @@ async function getAuthenticatedEducator() {
   }
 
   // Check if they are an educator in the users table (college_educator, school_educator, etc.)
+  console.log('👤 Checking users table for educator role...');
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('*')
     .eq('id', user.id)
     .maybeSingle();
 
+  console.log('👤 Users table data:', userData);
+
   if (!userError && userData && userData.role) {
     const userRole = userData.role as string;
+    console.log('👤 User role found:', userRole);
     
     // Handle college_educator role
     if (userRole === 'college_educator') {
+      console.log('✅ Found college_educator role in users table');
       return { 
         user, 
         educatorData: { 
@@ -108,6 +136,7 @@ async function getAuthenticatedEducator() {
     
     // Handle school_educator role
     if (userRole === 'school_educator') {
+      console.log('✅ Found school_educator role in users table');
       return { 
         user, 
         educatorData: { 
@@ -121,6 +150,7 @@ async function getAuthenticatedEducator() {
     }
   }
 
+  console.error('❌ Educator not found in any table');
   throw new Error('Educator not registered with any school or college. Please contact your administrator.');
 }
 
@@ -159,10 +189,14 @@ export interface Announcement {
 export const dashboardApi = {
   async getKPIs(): Promise<DashboardKPIs> {
     try {
+      console.log('📊 Starting KPIs fetch...');
       const { user, educatorData, educatorType, assignedClassIds } = await getAuthenticatedEducator();
+      
+      console.log('📊 Educator info:', { user, educatorType, role: educatorData.role, assignedClassIds: assignedClassIds.length });
 
       // Check if educator has no class assignments (and is not admin)
       if (educatorType === 'school' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
+        console.log('⚠️ School educator with no class assignments - returning zeros');
         // School educators with no class assignments should see no students
         return {
           totalStudents: 0,
@@ -178,17 +212,9 @@ export const dashboardApi = {
 
       // Check if college lecturer has no course assignments (and is not admin)
       if (educatorType === 'college' && educatorData.role !== 'admin' && assignedClassIds.length === 0) {
-        // College lecturers with no course assignments should see no students
-        return {
-          totalStudents: 0,
-          activeStudents: 0,
-          pendingActivities: 0,
-          verifiedActivities: 0,
-          totalActivities: 0,
-          verificationRate: 0,
-          recentActivitiesCount: 0,
-          totalMentorNotes: 0,
-        };
+        console.log('⚠️ College lecturer with no course assignments - showing all college students');
+        // For college lecturers with no course assignments, show all students in their college
+        // This is different from school educators who need specific class assignments
       }
 
       let studentsQuery = supabase
@@ -196,39 +222,203 @@ export const dashboardApi = {
         .select('id, user_id')
         .eq('is_deleted', false);
 
+      console.log('👥 Building students query for:', educatorType);
+
       // Apply filtering based on educator type and role
       if (educatorType === 'school') {
         // For school educators, check if they have class assignments
         if (educatorData.role === 'admin') {
+          console.log('👑 School admin - querying all students in school:', educatorData.school_id);
           // School admins can see all students in their school
           studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
         } else if (assignedClassIds.length > 0) {
+          console.log('📚 Regular educator - querying students in assigned classes:', assignedClassIds);
           // Regular educators can only see students in their assigned classes
           studentsQuery = studentsQuery
             .eq('school_id', educatorData.school_id)
             .in('school_class_id', assignedClassIds);
         }
       } else if (educatorType === 'college') {
-        if (educatorData.role === 'admin') {
-          // College admins can see all students in their college
-          studentsQuery = studentsQuery.eq('college_id', educatorData.school_id);
-        } else if (assignedClassIds.length > 0) {
-          // Regular lecturers can only see students in their assigned courses
-          studentsQuery = studentsQuery
-            .eq('college_id', educatorData.school_id)
-            .in('collegeCourseId', assignedClassIds);
+        console.log('🎓 College educator - using exact program section filtering (program_id + semester + section) to match student management');
+        console.log('🔍 Using user.id:', user.id);
+        
+        // Step 1: Get program sections (same as getProgramSectionStudents)
+        const { data: sections, error: sectionsError } = await supabase
+          .from('program_sections')
+          .select('program_id, semester, section')
+          .eq('faculty_id', user.id)
+          .eq('status', 'active');
+
+        console.log('📚 Program sections query result:', { data: sections, error: sectionsError });
+
+        if (sectionsError) {
+          console.error('❌ Error fetching lecturer program sections:', sectionsError);
+          throw sectionsError;
         }
+
+        if (!sections || sections.length === 0) {
+          console.log('� No program sections found - returning zeros');
+          return {
+            totalStudents: 0,
+            activeStudents: 0,
+            pendingActivities: 0,
+            verifiedActivities: 0,
+            totalActivities: 0,
+            verificationRate: 0,
+            recentActivitiesCount: 0,
+            totalMentorNotes: 0,
+          };
+        }
+
+        // Step 2: Get students with EXACT same filtering as getProgramSectionStudents
+        // Build OR conditions for each program section (program_id + semester + section)
+        let studentsQuery = supabase
+          .from('students')
+          .select('id, user_id, name, email, college_id, program_id, semester, section')
+          .eq('is_deleted', false);
+
+        // Apply filtering for each program section combination
+        // Build a complex OR condition: (program_id=X AND semester=Y AND section=Z) OR (program_id=A AND semester=B AND section=C)
+        const orConditions = sections.map(section => 
+          `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
+        ).join(',');
+
+        console.log('🔍 Applying exact filtering conditions:', orConditions);
+
+        // Use the or() method to combine all conditions
+        studentsQuery = studentsQuery.or(orConditions);
+
+        const { data: studentsData, error: studentsError } = await studentsQuery;
+
+        console.log('📊 Students query result:', { 
+          count: studentsData?.length || 0, 
+          error: studentsError,
+          sampleData: studentsData?.slice(0, 2)
+        });
+
+        if (studentsError) {
+          console.error('❌ Students query error:', studentsError);
+          throw studentsError;
+        }
+
+        const totalStudents = studentsData?.length || 0;
+        const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
+        const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
+        
+        console.log('👥 Students with user_id:', studentUserIds.length, 'out of', totalStudents);
+        console.log('👥 Students with valid IDs:', studentIds.length);
+        console.log("📊 Total students found:", totalStudents);
+
+        if (totalStudents === 0) {
+          console.log('⚠️ No students found - returning zeros');
+          return {
+            totalStudents: 0,
+            activeStudents: 0,
+            pendingActivities: 0,
+            verifiedActivities: 0,
+            totalActivities: 0,
+            verificationRate: 0,
+            recentActivitiesCount: 0,
+            totalMentorNotes: 0,
+          };
+        }
+
+        // Continue with activity fetching using the same logic as the rest of the function
+        console.log('📊 Fetching activities for', studentUserIds.length, 'students...');
+
+        // Get activities from all relevant tables
+        const [
+          projectsData, 
+          trainingsData, 
+          certificatesData,
+          attendanceData,
+          assessmentData,
+          assignmentData,
+          mentorNotesData
+        ] = await Promise.all([
+          supabase.from('projects').select('approval_status').in('student_id', studentUserIds),
+          supabase.from('trainings').select('approval_status').in('student_id', studentUserIds),
+          supabase.from('certificates').select('approval_status').in('student_id', studentUserIds),
+          supabase.from('attendance_records').select('status').in('student_id', studentIds),
+          supabase.from('personal_assessment_results').select('status').in('student_id', studentUserIds).eq('status', 'completed'),
+          supabase.from('student_assignments').select('status').in('student_id', studentIds).in('status', ['submitted', 'graded']),
+          supabase.from('mentor_notes').select('id').eq('educator_id', user.id).in('student_id', studentIds)
+        ]);
+
+        console.log('📊 Activities found:', {
+          projects: projectsData.data?.length || 0,
+          trainings: trainingsData.data?.length || 0,
+          certificates: certificatesData.data?.length || 0,
+          attendance: attendanceData.data?.length || 0,
+          assessments: assessmentData.data?.length || 0,
+          assignments: assignmentData.data?.length || 0,
+          mentorNotes: mentorNotesData.data?.length || 0
+        });
+
+        // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
+        const verifiableActivities = [
+          ...(projectsData.data || []).map(p => ({ status: p.approval_status })),
+          ...(trainingsData.data || []).map(t => ({ status: t.approval_status })),
+          ...(certificatesData.data || []).map(c => ({ status: c.approval_status }))
+          // Note: Assignments excluded - they use separate grading system (submitted → graded)
+        ];
+
+        // Count all activities including non-verifiable ones
+        const totalActivities = verifiableActivities.length + 
+                               (attendanceData.data?.length || 0) + 
+                               (assessmentData.data?.length || 0) + 
+                               (assignmentData.data?.length || 0) + 
+                               (mentorNotesData.data?.length || 0);
+
+        const pendingActivities = verifiableActivities.filter(a => a.status === 'pending').length;
+        const verifiedActivities = verifiableActivities.filter(a => 
+          a.status === 'approved' || a.status === 'sent_to_admin'
+        ).length;
+        const verificationRate = verifiableActivities.length > 0 ? 
+          Math.round((verifiedActivities / verifiableActivities.length) * 100) : 0;
+
+        const result = {
+          totalStudents,
+          activeStudents: totalStudents,
+          pendingActivities,
+          verifiedActivities,
+          totalActivities,
+          verificationRate,
+          recentActivitiesCount: Math.min(totalActivities, 10),
+          totalMentorNotes: mentorNotesData.data?.length || 0,
+        };
+
+        console.log('✅ KPIs calculated for college educator:', result);
+        return result;
       }
 
+      console.log('🔍 Executing students query...');
       const { data: studentsData, error: studentsError } = await studentsQuery;
 
-      if (studentsError) throw studentsError;
+      console.log('📊 Students query result:', { 
+        count: studentsData?.length || 0, 
+        error: studentsError,
+        sampleData: studentsData?.slice(0, 2) // Show first 2 students for debugging
+      });
 
-      const studentUserIds = studentsData?.map(s => s.user_id) || [];
-      const studentIds = studentsData?.map(s => s.id) || [];
-      const totalStudents = studentsData?.length || 0;
+      if (studentsError) {
+        console.error('❌ Students query error:', studentsError);
+        throw studentsError;
+      }
 
-      if (studentUserIds.length === 0) {
+      console.log('👥 Students found:', studentsData?.length || 0);
+
+      const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
+      const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
+      const totalStudents = studentsData?.length || 0; // Count ALL students, not just those with user_id
+
+      console.log("total students", totalStudents);
+      console.log('👥 Students with user_id:', studentUserIds.length, 'out of', totalStudents);
+      console.log('👥 Students with valid IDs:', studentIds.length);
+      console.log("� Total students found:", totalStudents);
+
+      if (totalStudents === 0) {
+        console.log('⚠️ No students found - returning zeros');
         return {
           totalStudents: 0,
           activeStudents: 0,
@@ -240,6 +430,8 @@ export const dashboardApi = {
           totalMentorNotes: 0,
         };
       }
+
+      console.log('📊 Fetching activities for', studentUserIds.length, 'students...');
 
       // Get activities from all relevant tables
       const [
@@ -259,6 +451,16 @@ export const dashboardApi = {
         supabase.from('student_assignments').select('status').in('student_id', studentIds).in('status', ['submitted', 'graded']),
         supabase.from('mentor_notes').select('id').eq('educator_id', user.id).in('student_id', studentIds)
       ]);
+
+      console.log('📊 Activities found:', {
+        projects: projectsData.data?.length || 0,
+        trainings: trainingsData.data?.length || 0,
+        certificates: certificatesData.data?.length || 0,
+        attendance: attendanceData.data?.length || 0,
+        assessments: assessmentData.data?.length || 0,
+        assignments: assignmentData.data?.length || 0,
+        mentorNotes: mentorNotesData.data?.length || 0
+      });
 
       // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
       const verifiableActivities = [
@@ -282,7 +484,7 @@ export const dashboardApi = {
       const verificationRate = verifiableActivities.length > 0 ? 
         Math.round((verifiedActivities / verifiableActivities.length) * 100) : 0;
 
-      return {
+      const result = {
         totalStudents,
         activeStudents: totalStudents,
         pendingActivities,
@@ -292,8 +494,11 @@ export const dashboardApi = {
         recentActivitiesCount: Math.min(totalActivities, 10),
         totalMentorNotes: mentorNotesData.data?.length || 0,
       };
+
+      console.log('✅ KPIs calculated:', result);
+      return result;
     } catch (error) {
-      console.error('Error fetching KPIs:', error);
+      console.error('❌ Error fetching KPIs:', error);
       return {
         totalStudents: 0,
         activeStudents: 0,
@@ -340,13 +545,14 @@ export const dashboardApi = {
 
       const { data: studentsData } = await studentsQuery;
 
-      const studentUserIds = studentsData?.map(s => s.user_id) || [];
-      const studentIds = studentsData?.map(s => s.id) || [];
+      const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
+      const studentIds = studentsData?.map(s => s.id).filter(id => id !== null && id !== undefined) || [];
       const studentMap: { [key: string]: string } = {};
       const studentIdMap: { [key: string]: string } = {};
       
       console.log('🎓 Found students:', studentsData?.length || 0);
-      console.log('📋 Student IDs for assignment query:', studentIds);
+      console.log('� Valid student user IDs:', studentUserIds.length);
+      console.log('👥 Valid student IDs:', studentIds.length);
       
       studentsData?.forEach(student => {
         const studentName = student.name || `Student ${student.id.substring(0, 8)}`;
@@ -354,7 +560,7 @@ export const dashboardApi = {
         studentIdMap[student.id] = studentName;
         console.log(`👤 Student: ${studentName} (ID: ${student.id})`);
       });
-
+      console.log("Checking student data",studentsData)
       if (studentUserIds.length === 0) {
         return [];
       }
@@ -790,7 +996,7 @@ export const dashboardApi = {
 
       const { data: studentsData } = await studentsQuery;
 
-      const studentUserIds = studentsData?.map(s => s.user_id) || [];
+      const studentUserIds = studentsData?.map(s => s.user_id).filter(id => id !== null && id !== undefined) || [];
 
       if (studentUserIds.length === 0) {
         return {
