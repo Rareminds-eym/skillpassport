@@ -15,6 +15,11 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "pages:dev": "wrangler pages dev dist --compatibility-date=2024-01-01 --port=8788",
     "pages:build": "npm run build && npm run pages:dev",
+    "workers:email": "npm run dev --prefix cloudflare-workers/email-api",
+    "workers:embedding": "npm run dev --prefix cloudflare-workers/embedding-api",
+    "workers:payments": "npm run dev --prefix cloudflare-workers/payments-api",
+    "workers:dev": "concurrently -n \"email,embed,pay\" -c \"blue,green,yellow\" \"npm run workers:email\" \"npm run workers:embedding\" \"npm run workers:payments\"",
+    "workers:all": "npm run workers:dev",
     "generate-embeddings": "node scripts/generateEmbeddings.js",
     "generate-student-embeddings": "node scripts/generateStudentEmbeddingsViaEdge.js",
     "embed-courses": "node scripts/embedCourses.js"

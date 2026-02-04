@@ -21,12 +21,12 @@ interface RequestBody {
   assessmentData: AssessmentData;
 }
 
-// AI Models to try (in order of preference) - using shared AI_MODELS
+// AI Models to try (in order of preference) - using valid OpenRouter models
 const ASSESSMENT_MODELS = [
-  'google/gemini-flash-1.5-exp',           // FREE - Experimental
-  'meta-llama/llama-3.1-8b-instruct:free', // FREE
-  'google/gemini-flash-1.5',               // Affordable with $0.99
-  'openai/gpt-3.5-turbo',                  // Cheap fallback
+  'openai/gpt-3.5-turbo',                  // Reliable and affordable
+  'openai/gpt-4o-mini',                    // Backup OpenAI model
+  'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
+  'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
 ];
 
 // Assessment-specific configuration

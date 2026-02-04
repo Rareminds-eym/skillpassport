@@ -18,15 +18,7 @@
 
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
-import { callOpenRouterWithRetry, getAPIKeys } from '../shared/ai-config';
-
-// Models to try for role overview generation
-const ROLE_OVERVIEW_MODELS = [
-  'google/gemini-flash-1.5-exp',           // FREE - Experimental
-  'meta-llama/llama-3.1-8b-instruct:free', // FREE
-  'google/gemini-flash-1.5',               // Affordable
-  'openai/gpt-3.5-turbo',                  // Cheap fallback
-];
+import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES } from '../shared/ai-config';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -174,7 +166,7 @@ CRITICAL: All content must be SPECIFIC to ${body.roleName} role. NO generic plac
             content: prompt
           }
         ], {
-          models: ROLE_OVERVIEW_MODELS,
+          models: [MODEL_PROFILES.question_generation.primary, ...MODEL_PROFILES.question_generation.fallbacks],
           maxRetries: 3,
           maxTokens: 2000,
           temperature: 0.7,

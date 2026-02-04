@@ -343,22 +343,38 @@ const AssessmentTestPage: React.FC = () => {
   console.log('🎯 [AssessmentTestPage] Initializing useAdaptiveAptitude hook with:', {
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    attemptId: flow.attemptId,
-    hasAttemptId: !!flow.attemptId,
-    attemptIdType: typeof flow.attemptId
+    attemptId: currentAttempt?.id,
+    hasAttemptId: !!currentAttempt?.id,
+    attemptIdType: typeof currentAttempt?.id
   });
 
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    onTestComplete: (testResults) => {
-      console.log('✅ Adaptive aptitude test completed:', testResults);
-      
-      // 🔧 CRITICAL FIX: Store both results AND session ID for database linking
+    attemptId: currentAttempt?.id, // Pass attemptId to link session immediately
+    onTestComplete: async (testResults) => {
+      console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
       flow.setAnswer('adaptive_aptitude_results', testResults);
       flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
       
-      console.log('📊 Stored adaptive aptitude session ID:', testResults.sessionId);
+      // Link the adaptive session to the assessment attempt
+      // NOTE: This is now also done in startTest, but keeping it here as a backup
+      if (adaptiveAptitude.session?.id && currentAttempt?.id) {
+        console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
+          sessionId: adaptiveAptitude.session.id,
+          attemptId: currentAttempt.id
+        });
+        await assessmentService.updateAttemptAdaptiveSession(
+          currentAttempt.id,
+          adaptiveAptitude.session.id
+        );
+        console.log('✅ [AssessmentTestPage] Backup linking complete');
+      } else {
+        console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
+          hasSession: !!adaptiveAptitude.session?.id,
+          hasAttemptId: !!currentAttempt?.id
+        });
+      }
       
       // Always call completeSection to show the section complete screen
       // The auto-submit useEffect will handle submission if it's the last section
@@ -1193,6 +1209,15 @@ const AssessmentTestPage: React.FC = () => {
   const handleStartSection = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
 
+    console.log('🚀 [handleStartSection] Called:', {
+      currentSectionIndex: flow.currentSectionIndex,
+      sectionId: currentSection?.id,
+      hasCurrentAttempt: !!currentAttempt,
+      hasStudentRecordId: !!studentRecordId,
+      studentRecordId,
+      useDatabase
+    });
+
     // SAFEGUARD: Ensure resume prompt is hidden when starting a section
     // This prevents any race conditions from showing the prompt
     if (showResumePrompt) {
@@ -1200,9 +1225,12 @@ const AssessmentTestPage: React.FC = () => {
       setPendingAttempt(null);
     }
 
-    // Create database attempt on first section start (if not already created)
-    if (flow.currentSectionIndex === 0 && !currentAttempt && studentRecordId) {
+    // Create database attempt if not already created (regardless of section index)
+    // FIX: This ensures attemptId is available for all sections, not just section 0
+    // CRITICAL: Check if currentAttempt has an ID, not just if it exists
+    if (!currentAttempt?.id && studentRecordId) {
       try {
+        console.log('💾 [handleStartSection] Setting useDatabase to true');
         setUseDatabase(true);
 
         // Determine the appropriate stream ID based on grade level
@@ -1221,10 +1249,25 @@ const AssessmentTestPage: React.FC = () => {
           }
         }
 
+        console.log('🎯 [AssessmentTestPage] Creating attempt:', { 
+          streamId, 
+          gradeLevel: flow.gradeLevel, 
+          studentRecordId,
+          currentSectionIndex: flow.currentSectionIndex 
+        });
+        
         await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
+        console.log('✅ [handleStartSection] Attempt created successfully');
       } catch (err) {
-        console.error('Error starting assessment:', err);
+        console.error('❌ [handleStartSection] Error starting assessment:', err);
       }
+    } else {
+      console.log('⏭️ [handleStartSection] Skipping attempt creation:', {
+        reason: !studentRecordId ? 'No studentRecordId' : 'Already have currentAttempt with ID',
+        hasCurrentAttempt: !!currentAttempt,
+        hasAttemptId: !!currentAttempt?.id,
+        studentRecordId: !!studentRecordId
+      });
     }
 
     // Initialize timer for timed sections
@@ -1774,13 +1817,26 @@ const AssessmentTestPage: React.FC = () => {
     console.log(`🔍 [MCQ Check] QuestionID local:`, questionId);
     console.log(`🔍 [MCQ Check] Are they equal?:`, flow.questionId === questionId);
     
+    // Check for adaptive sections
     if (currentSection?.isAdaptive) {
       const isAnswered = adaptiveAptitudeAnswer !== null;
       console.log(`🔍 [Adaptive Check] Is answered:`, isAnswered);
       return isAnswered;
     }
 
+    // Validate questionId
+    if (!questionId || questionId.includes('undefined')) {
+      console.log(`🔍 [Validation] Invalid questionId:`, questionId);
+      return false;
+    }
+
     const answer = flow.answers[questionId];
+    
+    // Check for empty/null/undefined answers first
+    if (answer === null || answer === undefined || answer === '') {
+      console.log(`🔍 [Empty Check] No answer found for questionId:`, questionId);
+      return false;
+    }
     
     // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
     if (currentSection?.isAptitude || currentSection?.isKnowledge) {
@@ -1792,31 +1848,32 @@ const AssessmentTestPage: React.FC = () => {
       console.log(`🔍 [MCQ Check] All answer keys:`, Object.keys(flow.answers));
       return isAnswered;
     }
-    
-    // For other question types, check if answer exists
-    if (answer === undefined || answer === null) {
-      console.log(`🔍 [Other Check] No answer found`);
-      return false;
-    }
 
+    // For SJT questions, both best and worst must be selected
     if (currentQuestion?.partType === 'sjt') {
       const isAnswered = answer.best && answer.worst;
       console.log(`🔍 [SJT Check] Is answered:`, isAnswered);
       return isAnswered;
     }
+    
+    // For multiselect questions, check if required number of selections made
     if (currentQuestion?.type === 'multiselect') {
       const isAnswered = Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
       console.log(`🔍 [Multiselect Check] Is answered:`, isAnswered);
       return isAnswered;
     }
+    
+    // For text questions, check if there's some content (at least 10 characters for meaningful response)
     if (currentQuestion?.type === 'text') {
       const isAnswered = typeof answer === 'string' && answer.trim().length >= 10;
       console.log(`🔍 [Text Check] Is answered:`, isAnswered);
       return isAnswered;
     }
     
-    console.log(`🔍 [Default Check] Returning true`);
-    return true;
+    // For other question types (Likert scales, etc.), ensure answer is not empty
+    const isAnswered = answer !== null && answer !== undefined && answer !== '';
+    console.log(`🔍 [Default Check] Is answered:`, isAnswered, 'Answer:', answer);
+    return isAnswered;
   }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion, flow.questionId]);
 
   // Loading state - only show loading screen for initial checks, not for AI questions

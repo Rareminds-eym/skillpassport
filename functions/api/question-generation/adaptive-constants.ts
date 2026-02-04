@@ -336,6 +336,12 @@ CRITICAL GUIDELINES FOR HIGH SCHOOL:
 - Critical reading and analysis
 - Passage-based reasoning
 
+**CRITICAL FOR PASSAGE-BASED QUESTIONS:**
+If generating reading comprehension questions with passages, you MUST include the complete passage text within the question itself.
+Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT HERE]\n\nQuestion: [Your question about the passage]"
+DO NOT say "Passage here" or reference external passages - include the actual passage text in the question field.
+Alternatively, focus on vocabulary, analogies, and logic-based verbal questions instead of passage comprehension.
+
 **Sentence Completion:**
 - Context clues and logical flow
 - Vocabulary in context
@@ -359,6 +365,13 @@ CRITICAL GUIDELINES FOR HIGH SCHOOL:
 - Logical flow and coherence
 - Error identification
 - Style and clarity
+
+**CRITICAL FOR GRAMMAR/SENTENCE CORRECTION QUESTIONS:**
+- For "identify the error" questions: Provide 4 DIFFERENT sentences as options, ask which one is incorrect
+- For "correct the sentence" questions: Provide 1 incorrect sentence in the question, and 4 different corrected versions as options
+- DO NOT include the sentence to identify in the question AND repeat it in the options
+- Example GOOD: "Which sentence is grammatically incorrect?" with 4 different sentences as options
+- Example BAD: "Identify the incorrect sentence: 'He don't like football'" with the same sentence in options
 
 **VARIETY REQUIREMENT:** Rotate through vocabulary, comprehension, and logic-based verbal questions. Use diverse topics and contexts.
 
@@ -523,16 +536,23 @@ CRITICAL GUIDELINES FOR HIGH SCHOOL:
 - Logical deduction (syllogisms, arguments)
 - Critical reasoning (assumptions, inferences)
 - Analytical reasoning (puzzles described in text)
-- Reading comprehension (passages)
+- Reading comprehension (passages) - MUST include full passage text in question
 - Argument evaluation
 
 **SAT Style:**
-- Evidence-based reading (passage analysis)
+- Evidence-based reading (passage analysis) - MUST include full passage text in question
 - Problem-solving and data analysis
 - Heart of algebra (linear equations, systems)
 - Passport to advanced math (quadratics, functions)
 - Additional topics (geometry described verbally)
 - Text-based problem solving
+
+**CRITICAL REMINDER FOR ALL PASSAGE-BASED QUESTIONS:**
+When generating reading comprehension or passage analysis questions:
+1. Include the COMPLETE passage text within the question field
+2. Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT]\n\nQuestion: [Your question]"
+3. DO NOT say "Passage here" or reference external passages
+4. The passage must be self-contained in the question text
 
 🔄 SUBTAG ROTATION ENFORCEMENT:
 - NEVER use the same subtag consecutively
@@ -618,6 +638,13 @@ CRITICAL GUIDELINES FOR HIGHER SECONDARY / COLLEGE:
 - Reference professional aptitude test formats (GRE, GMAT, CAT, GATE style questions)
 - Questions should prepare students for competitive exams and professional assessments
 - Use real-world business, scientific, and professional contexts
+
+**CRITICAL FOR PASSAGE-BASED VERBAL QUESTIONS:**
+If generating reading comprehension or critical reading questions with passages:
+- Include the COMPLETE passage text within the question field
+- Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT]\n\nQuestion: [Your question]"
+- DO NOT reference external passages - the passage must be self-contained
+- Alternatively, focus on vocabulary, analogies, and logic-based verbal questions
 
 🔄 SUBTAG ROTATION ENFORCEMENT:
 - NEVER use the same subtag consecutively
@@ -799,20 +826,15 @@ TEXT-ONLY QUESTION EXAMPLES:
 
 // AI Models to try in order of preference
 // These models will be tried sequentially if one fails
-// Using models without :free suffix (requires OpenRouter credits but more reliable)
 export const ADAPTIVE_AI_MODELS = [
-  // Free Models - Primary choices for question generation
-  'google/gemini-2.0-flash-001',
-  'google/gemini-2.0-flash-exp:free',
-  'meta-llama/llama-3-8b-instruct:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'google/gemini-pro',
-  'google/gemini-flash-1.5-8b',
-  'xiaomi/mimo-v2-flash:free',
-  // Paid Models - Higher quality (if needed)
-  'openai/gpt-4o-mini',
-  'claude-3-haiku-20240307',
-  'anthropic/claude-3.5-sonnet',
-  // Specialized Models
-  'openai/text-embedding-3-small',               // Claude Haiku (cheap, reliable)
+  // Primary Models - Reliable and affordable
+  'openai/gpt-3.5-turbo',                  // Reliable and affordable
+  'openai/gpt-4o-mini',                    // Backup OpenAI model
+  // Free Models - Fallback choices
+  'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
+  'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
+  'google/gemini-2.0-flash-001',           // Gemini Flash (paid)
+  // Higher quality paid models (if needed)
+  'anthropic/claude-3-haiku',              // Claude Haiku (cheap, reliable)
+  'anthropic/claude-3.5-sonnet',           // Claude Sonnet (high quality)
 ] as const;
