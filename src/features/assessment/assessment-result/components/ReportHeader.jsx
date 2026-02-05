@@ -4,16 +4,17 @@
  */
 
 import { formatStreamId } from '../../../../utils/formatters';
+import { isCollegeStudent as checkIsCollegeStudent } from '../../../../utils/studentType';
 
 const ReportHeader = ({ studentInfo, gradeLevel }) => {
     // Debug
     console.log('ReportHeader gradeLevel:', gradeLevel);
     console.log('ReportHeader studentInfo:', studentInfo);
-    
+
     // Format stream display name
     const formatStreamDisplay = (stream) => {
         if (!stream || stream === '—') return '—';
-        
+
         // Convert stream IDs to friendly labels
         const streamMap = {
             'middle_school': 'Middle School (Grades 6-8)',
@@ -25,31 +26,31 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
             'college': 'College',
             'university': 'University'
         };
-        
+
         // Check if it's a stream ID that needs conversion
         const lowerStream = stream.toLowerCase();
         if (streamMap[lowerStream]) {
             return streamMap[lowerStream];
         }
-        
+
         // If it's already formatted (contains parentheses), return as is
         if (stream.includes('(') && stream.includes(')')) {
             return stream;
         }
-        
+
         // Otherwise, convert to title case (SCIENCE → Science, COMMERCE → Commerce)
         return stream.charAt(0).toUpperCase() + stream.slice(1).toLowerCase();
     };
-    
+
     // Determine the label and value for the grade/course field based on grade level
     const getGradeCourseField = () => {
         const level = gradeLevel?.toLowerCase();
-        
+
         // For college/university students, show course name instead of grade
         if (level === 'college' || level === 'university') {
             return { label: 'Course', value: studentInfo.courseName || '—' };
         }
-        
+
         // For after12 students, check if they have a course name (college) or grade (12th)
         if (level === 'after12' || level === 'after12th' || level === '12th') {
             // If they have a course name, they're in college - show course
@@ -59,12 +60,12 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
             // Otherwise show grade (12th or whatever is in the field)
             return { label: 'Grade', value: studentInfo.grade || '12th' };
         }
-        
+
         // For school students (middle, high school), show grade
         if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
             return { label: 'Grade', value: studentInfo.grade || '—' };
         }
-        
+
         // Default fallback - check if course name exists
         if (studentInfo.courseName && studentInfo.courseName !== '—') {
             return { label: 'Course', value: studentInfo.courseName };
@@ -75,18 +76,18 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     // Determine the institution label based on grade level and student data
     const getInstitutionLabel = () => {
         const level = gradeLevel?.toLowerCase();
-        
+
         // Check if student has actual school vs college data
         const hasSchoolData = studentInfo.school && studentInfo.school !== '—';
         const hasCollegeData = studentInfo.college && studentInfo.college !== '—';
-        
+
         // If we have actual data, use that to determine the label
         if (hasSchoolData && !hasCollegeData) {
             return 'School';
         } else if (hasCollegeData && !hasSchoolData) {
             return 'College';
         }
-        
+
         // Fallback to grade level logic
         if (level === 'middle' || level === 'high' || level === 'middleschool' || level === 'highschool' || level === 'higher_secondary') {
             return 'School';
@@ -103,15 +104,16 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     // Determine the roll number label based on student type
     const getRollNumberLabel = () => {
         const level = gradeLevel?.toLowerCase();
-        
-        // Check if student is in college/university
-        const isCollegeStudent = level === 'college' || 
-                                 level === 'university' || 
-                                 level === 'after12' ||
-                                 (studentInfo.college && studentInfo.college !== '—');
-        
+
+        // Check if student is in college/university using centralized utility
+        const isCollege = checkIsCollegeStudent({
+            university_college_id: studentInfo.college && studentInfo.college !== '—' ? studentInfo.college : null,
+            school_id: studentInfo.school && studentInfo.school !== '—' ? studentInfo.school : null,
+            grade: studentInfo.grade
+        }) || level === 'college' || level === 'university' || level === 'after12';
+
         // For college/university students
-        if (isCollegeStudent) {
+        if (isCollege) {
             if (studentInfo.rollNumberType === 'university') {
                 return 'University Roll No';
             } else if (studentInfo.rollNumberType === 'institute') {
@@ -120,7 +122,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
                 return 'Enrollment Number';
             }
         }
-        
+
         // For school students
         return 'School Roll No';
     };
@@ -143,7 +145,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
             {/* Main Card - Light Glass */}
             <div className="relative w-full rounded-xl overflow-hidden bg-white backdrop-blur-xl shadow-lg">
                 {/* Subtle gradient overlay */}
-                <div 
+                <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
                         background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03), transparent 50%, rgba(147, 197, 253, 0.03))'
@@ -159,7 +161,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
                             </h1>
                             {/* Animated Gradient Underline */}
                             <div className="relative h-[2px] w-40 md:w-56 mb-2 rounded-full overflow-hidden">
-                                <div 
+                                <div
                                     className="absolute inset-0 rounded-full"
                                     style={{
                                         background: 'linear-gradient(90deg, #1E3A8A, #3B82F6, #60A5FA, #93C5FD, #BFDBFE)',
@@ -172,11 +174,11 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
                                 AI-Powered Career Assessment
                             </p>
                         </div>
-                        <img 
-                            src="/logo.png" 
-                            alt="SkillPassport" 
-                            className="h-12 md:h-14 opacity-90 hidden md:block" 
-                            onError={(e) => e.target.style.display = 'none'} 
+                        <img
+                            src="/logo.png"
+                            alt="SkillPassport"
+                            className="h-12 md:h-14 opacity-90 hidden md:block"
+                            onError={(e) => e.target.style.display = 'none'}
                         />
                     </div>
                 </div>

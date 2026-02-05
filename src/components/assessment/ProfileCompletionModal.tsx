@@ -16,6 +16,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useStudentSettings } from '../../hooks/useStudentSettings';
 // @ts-ignore - JS hook without types
 import { useInstitutions } from '../../hooks/useInstitutions';
+import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '../../utils/studentType';
 
 interface ProfileCompletionModalProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 }) => {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Use the same complete profile data structure as Settings page
   const [profileData, setProfileData] = useState({
     name: "",
@@ -153,7 +154,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       // Detect student type based on existing data
       const hasSchoolId = initialProfileData.school_id || initialProfileData.schoolId;
       const hasUniversityId = initialProfileData.university_id || initialProfileData.universityId;
-      
+
       if (hasSchoolId && !hasUniversityId) {
         setStudentType('school');
       } else if (hasUniversityId && !hasSchoolId) {
@@ -179,7 +180,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   // Handle student type change
   const handleStudentTypeChange = (type: 'school' | 'college' | '') => {
     setStudentType(type);
-    
+
     // Clear opposite type data when switching
     if (type === 'school') {
       setProfileData(prev => ({
@@ -206,19 +207,22 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     }
   };
 
-  // Determine student type
-  const hasSchoolId = profileData.schoolId;
-  const hasUniversityId = profileData.universityId;
-  const isSchoolStudent = studentType === 'school' || (hasSchoolId && !hasUniversityId);
-  const isCollegeStudent = studentType === 'college' || (hasUniversityId && !hasSchoolId);
-  const isUndetermined = !studentType && !hasSchoolId && !hasUniversityId;
+  // Determine student type using centralized utility
+  const studentDataForTypeCheck = {
+    university_college_id: profileData.universityCollegeId || profileData.universityId,
+    school_id: profileData.schoolId,
+    role: studentType === 'college' ? 'college_student' : studentType === 'school' ? 'school_student' : undefined
+  };
+  const isSchoolStudent = checkIsSchoolStudent(studentDataForTypeCheck);
+  const isCollegeStudent = checkIsCollegeStudent(studentDataForTypeCheck);
+  const isUndetermined = !studentType && !profileData.schoolId && !profileData.universityId && !profileData.universityCollegeId;
 
   // Get filtered options based on selections
-  const filteredColleges = universityColleges?.filter((college: any) => 
+  const filteredColleges = universityColleges?.filter((college: any) =>
     !profileData.universityId || college.university_id === profileData.universityId
   ) || [];
 
-  const filteredPrograms = programs?.filter((program: any) => 
+  const filteredPrograms = programs?.filter((program: any) =>
     !profileData.universityCollegeId || program.college_id === profileData.universityCollegeId
   ) || [];
 
@@ -320,7 +324,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     try {
       // Pass the complete profile data object (same as Settings page)
       await updateProfile(profileData);
-      
+
       toast({
         title: "Profile Updated",
         description: "Your profile has been updated successfully!",
@@ -351,11 +355,11 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     <div className="fixed inset-0 z-50 overflow-y-auto bg-gradient-to-br from-slate-50/95 via-blue-50/95 to-slate-50/95 backdrop-blur-sm">
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Backdrop */}
-        <div 
+        <div
           className="fixed inset-0 bg-black/20 transition-opacity"
           onClick={onClose}
         />
-        
+
         {/* Modal */}
         <div className="relative bg-white/90 backdrop-blur-sm rounded-xl shadow-xl w-full max-w-2xl transform transition-all border border-slate-200/50">
           <Card className="border-none shadow-none bg-transparent">
@@ -397,7 +401,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                       Please select whether you are a school student or college student.
                     </p>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700">I am a *</label>
                     <select
@@ -419,7 +423,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                   <h3 className="font-semibold text-gray-800 border-b border-slate-100 pb-2">
                     School Information
                   </h3>
-                  
+
                   {/* School Selection */}
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700" htmlFor="school">School *</label>
@@ -502,7 +506,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                   <h3 className="font-semibold text-gray-800 border-b border-slate-100 pb-2">
                     College Information
                   </h3>
-                  
+
                   {/* University Selection */}
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700" htmlFor="university">University *</label>
@@ -693,11 +697,11 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={studentType && !hasSchoolId && !hasUniversityId ? () => handleStudentTypeChange('') : onClose}
+                  onClick={studentType && !profileData.schoolId && !profileData.universityId ? () => handleStudentTypeChange('') : onClose}
                   disabled={isSaving}
                   className="px-6 border-slate-200 hover:bg-slate-50 rounded-xl"
                 >
-                  {studentType && !hasSchoolId && !hasUniversityId ? 'Back' : 'Cancel'}
+                  {studentType && !profileData.schoolId && !profileData.universityId ? 'Back' : 'Cancel'}
                 </Button>
               </div>
             </CardContent>

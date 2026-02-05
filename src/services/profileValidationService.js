@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { isSchoolStudent as checkIsSchoolStudent, isCollegeStudent as checkIsCollegeStudent } from '../utils/studentType';
 
 /**
  * Service for validating student profile completeness before job applications
@@ -26,17 +27,17 @@ export class ProfileValidationService {
         throw new Error('Student not found');
       }
 
-      // Determine student type
-      const isSchoolStudent = student.school_id || student.school_class_id;
-      const isUniversityStudent = student.university_college_id || student.universityId;
+      // Determine student type using centralized utility
+      const isSchoolStudent = checkIsSchoolStudent(student);
+      const isUniversityStudent = checkIsCollegeStudent(student);
       const studentType = isSchoolStudent ? 'school' : isUniversityStudent ? 'university' : 'unknown';
 
       // Define required fields based on student type
       const requiredFields = this.getRequiredFields(studentType);
-      
+
       // Check field completion
       const fieldStatus = this.checkFieldCompletion(student, requiredFields);
-      
+
       // Calculate completion percentage
       const completionPercentage = Math.round(
         (fieldStatus.completedFields / fieldStatus.totalFields) * 100
@@ -51,8 +52,8 @@ export class ProfileValidationService {
         missingFields: fieldStatus.missingFields,
         studentType,
         studentData: student,
-        message: isComplete 
-          ? 'Profile is complete for job applications' 
+        message: isComplete
+          ? 'Profile is complete for job applications'
           : `Profile is ${completionPercentage}% complete. Please complete the missing fields to apply for jobs.`
       };
 
@@ -117,10 +118,10 @@ export class ProfileValidationService {
 
     requiredFields.forEach(field => {
       const value = student[field];
-      
+
       // Check if field has a meaningful value
-      if (value === null || value === undefined || value === '' || 
-          (typeof value === 'string' && value.trim() === '')) {
+      if (value === null || value === undefined || value === '' ||
+        (typeof value === 'string' && value.trim() === '')) {
         missingFields.push(field);
       } else {
         completedFields++;

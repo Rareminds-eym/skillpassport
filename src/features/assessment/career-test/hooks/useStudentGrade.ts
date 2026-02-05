@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../lib/supabaseClient';
 import { calculateMonthsInGrade, getGradeLevelFromGrade } from '../../utils/gradeUtils';
+import { isCollegeStudent as checkIsCollegeStudent } from '../../../../utils/studentType';
 import type { GradeLevel } from '../config/sections';
 
 interface StudentGradeData {
@@ -101,8 +102,8 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         // Save student ID
         setStudentId(student.id);
 
-        // Check if student is a college student
-        const isCollege = Boolean(student.university_college_id && !student.school_id);
+        // Check if student is a college student (using centralized utility)
+        const isCollege = checkIsCollegeStudent(student);
         setIsCollegeStudent(isCollege);
 
         // Set program name if available

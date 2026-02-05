@@ -1,35 +1,35 @@
 import {
-    ChartBarIcon,
-    RectangleStackIcon,
+  ChartBarIcon,
+  RectangleStackIcon,
 } from "@heroicons/react/24/outline";
 import {
-    Award,
-    BookOpen,
-    Briefcase,
-    Building2,
-    Calendar,
-    CheckCircle,
-    ChevronRight,
-    ClipboardList,
-    Clock,
-    Cpu,
-    ExternalLink,
-    Eye,
-    FileText,
-    Github,
-    GraduationCap,
-    Lightbulb,
-    MapPin,
-    Medal,
-    MoreVertical,
-    PresentationIcon,
-    Rocket,
-    Sparkles,
-    Star,
-    Target,
-    Trash2,
-    TrendingUp,
-    Users2
+  Award,
+  BookOpen,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  ClipboardList,
+  Clock,
+  Cpu,
+  ExternalLink,
+  Eye,
+  FileText,
+  Github,
+  GraduationCap,
+  Lightbulb,
+  MapPin,
+  Medal,
+  MoreVertical,
+  PresentationIcon,
+  Rocket,
+  Sparkles,
+  Star,
+  Target,
+  Trash2,
+  TrendingUp,
+  Users2
 } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from "motion/react";
@@ -39,36 +39,36 @@ import { useLocation, useNavigate } from "react-router-dom";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
 import {
-    CertificatesEditModal,
-    EducationEditModal,
-    ExperienceEditModal,
-    ProjectsEditModal,
-    SkillsEditModal,
-    TrainingEditModal,
+  CertificatesEditModal,
+  EducationEditModal,
+  ExperienceEditModal,
+  ProjectsEditModal,
+  SkillsEditModal,
+  TrainingEditModal,
 } from "../../components/Students/components/ProfileEditModals";
 import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
 import { Badge } from "../../components/Students/components/ui/badge";
 import { Button } from "../../components/Students/components/ui/button";
 import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
 } from "../../components/Students/components/ui/card";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "../../components/Students/components/ui/dropdown-menu";
 import { LampContainer } from "../../components/Students/components/ui/lamp";
 import {
-    educationData,
-    experienceData,
-    softSkills,
-    suggestions,
-    technicalSkills,
-    trainingData,
+  educationData,
+  experienceData,
+  softSkills,
+  suggestions,
+  technicalSkills,
+  trainingData,
 } from "../../components/Students/data/mockData";
 import { useAIRecommendations } from "../../hooks/useAIRecommendations";
 import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
@@ -82,6 +82,7 @@ import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { supabase } from "../../lib/supabaseClient";
+import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -94,20 +95,20 @@ const StudentDashboard = () => {
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
     if (!startDate) return "";
-    
+
     const start = new Date(startDate);
     const end = endDate ? new Date(endDate) : new Date();
-    
+
     if (isNaN(start.getTime())) return "";
     if (endDate && isNaN(end.getTime())) return "";
-    
+
     const formatDate = (date) => {
       return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     };
-    
+
     const startLabel = formatDate(start);
     const endLabel = endDate ? formatDate(end) : 'Present';
-    
+
     return `${startLabel} - ${endLabel}`;
   };
 
@@ -230,7 +231,7 @@ const StudentDashboard = () => {
     loading: achievementsLoading,
   } = useStudentAchievements(studentId, userEmail);
 
-    const {
+  const {
     recommendations: assessmentRecommendations,
     loading: recommendationsLoading,
     hasAssessment,
@@ -291,7 +292,7 @@ const StudentDashboard = () => {
           if (project.year) return new Date(project.year, 11, 31);
           return new Date(0); // Default to epoch if no date found
         };
-        
+
         const dateA = getDate(a);
         const dateB = getDate(b);
         return dateB - dateA; // Descending order (most recent first)
@@ -304,7 +305,7 @@ const StudentDashboard = () => {
       ? tableCertificates
       : userData.certificates;
     if (!Array.isArray(certificatesData)) return [];
-    
+
     return certificatesData
       .map((cert) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
@@ -344,7 +345,7 @@ const StudentDashboard = () => {
           if (cert.year) return new Date(cert.year, 11, 31);
           return new Date(0); // Default to epoch if no date found
         };
-        
+
         const dateA = getDate(a);
         const dateB = getDate(b);
         return dateB - dateA; // Descending order (most recent first)
@@ -458,7 +459,7 @@ const StudentDashboard = () => {
     };
 
     window.addEventListener('student_settings_updated', handleSettingsUpdate);
-    
+
     return () => {
       window.removeEventListener('student_settings_updated', handleSettingsUpdate);
     };
@@ -595,7 +596,7 @@ const StudentDashboard = () => {
 
   const renderStars = (level) => {
     const numericLevel = parseInt(level) || 0;
-    
+
     return [...Array(5)].map((_, i) => (
       <Star
         key={i}
@@ -746,25 +747,25 @@ const StudentDashboard = () => {
                       onClick={async () => {
                         if (!studentId) return;
                         if (!window.confirm('DEV: Are you sure you want to clear your assessment data? This will delete all your assessment results.')) return;
-                        
+
                         try {
                           const { error: resultsError } = await supabase
                             .from('personal_assessment_results')
                             .delete()
                             .eq('student_id', studentId);
-                          
+
                           if (resultsError) throw resultsError;
 
                           const { error: attemptsError } = await supabase
                             .from('personal_assessment_attempts')
                             .delete()
                             .eq('student_id', studentId);
-                          
+
                           if (attemptsError) throw attemptsError;
 
                           localStorage.removeItem('assessment_gemini_results');
                           localStorage.removeItem('assessment_section_timings');
-                          
+
                           alert('Assessment data cleared! Refreshing page...');
                           window.location.reload();
                         } catch (err) {
@@ -785,11 +786,11 @@ const StudentDashboard = () => {
         </CardHeader>
         <CardContent className="p-8 space-y-4">
           <p className="text-gray-900 text-base leading-normal font-medium">
-            {hasAssessment 
+            {hasAssessment
               ? "You've completed your assessment! View your personalized career insights and recommendations."
               : hasInProgressAssessment
-              ? "You have an assessment in progress. Continue where you left off to get your personalized career roadmap."
-              : "Take our comprehensive assessment to discover your strengths and get a personalized career roadmap."
+                ? "You have an assessment in progress. Continue where you left off to get your personalized career roadmap."
+                : "Take our comprehensive assessment to discover your strengths and get a personalized career roadmap."
             }
           </p>
 
@@ -865,99 +866,99 @@ const StudentDashboard = () => {
           ) : (
             // Show Career AI Tools when assessment completed
             <div className="mt-6 pt-6 border-t-2 border-gray-200">
-            <h3 className="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
-              <Rocket className="w-5 h-5 text-blue-600" />
-              Career AI Tools
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'What jobs match my skills and experience?' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Briefcase className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Find Jobs</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+              <h3 className="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Rocket className="w-5 h-5 text-blue-600" />
+                Career AI Tools
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => navigate("/student/career-ai", { state: { query: 'What jobs match my skills and experience?' } })}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Briefcase className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Find Jobs</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Analyze my skill gaps for my target career' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Target className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Skill Gap Analysis</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() => navigate("/student/career-ai", { state: { query: 'Analyze my skill gaps for my target career' } })}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Target className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Skill Gap Analysis</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Help me prepare for upcoming interviews' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <BookOpen className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Interview Prep</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() => navigate("/student/career-ai", { state: { query: 'Help me prepare for upcoming interviews' } })}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Interview Prep</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Review my resume and suggest improvements?' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Resume Review</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() => navigate("/student/career-ai", { state: { query: 'Review my resume and suggest improvements?' } })}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Resume Review</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Create a learning roadmap for my career goals' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <GraduationCap className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Learning Path</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() => navigate("/student/career-ai", { state: { query: 'Create a learning roadmap for my career goals' } })}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <GraduationCap className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Learning Path</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'What career paths are best suited for me?' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Career Guidance</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() => navigate("/student/career-ai", { state: { query: 'What career paths are best suited for me?' } })}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Career Guidance</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'Give me networking strategies for my field' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Users2 className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Networking Tips</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
+                <button
+                  onClick={() => navigate("/student/career-ai", { state: { query: 'Give me networking strategies for my field' } })}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Users2 className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Networking Tips</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
 
-              <button
-                onClick={() => navigate("/student/career-ai", { state: { query: 'I need career advice and guidance' } })}
-                className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-              >
-                <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <Lightbulb className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-sm flex-1">Career Advice</span>
-                <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-              </button>
-            </div>
+                <button
+                  onClick={() => navigate("/student/career-ai", { state: { query: 'I need career advice and guidance' } })}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                >
+                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <Lightbulb className="w-5 h-5" />
+                  </div>
+                  <span className="font-semibold text-sm flex-1">Career Advice</span>
+                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -996,7 +997,7 @@ const StudentDashboard = () => {
               </p>
             </div>
           )} */}
-          
+
           {/* Info message for college students */}
           {/* {(studentData?.university_college_id || studentData?.universityId) && (
             <div className="bg-green-50 rounded-lg p-3 mb-4">
@@ -1031,8 +1032,8 @@ const StudentDashboard = () => {
             </div>
           ) : (() => {
             // Filter opportunities based on student type and grade
-            const isSchoolStudent = studentData?.school_id || studentData?.school_class_id;
-            const isUniversityStudent = studentData?.university_college_id || studentData?.universityId;
+            const isSchool = isSchoolStudent(studentData);
+            const isUniversity = isCollegeStudent(studentData);
             const studentGrade = studentData?.grade;
 
             // Fallback: Check education level if database fields are not available
@@ -1043,25 +1044,25 @@ const StudentDashboard = () => {
 
             let filteredOpportunities = opportunities;
 
-            if (isSchoolStudent || hasHighSchoolOnly) {
+            if (isSchool || hasHighSchoolOnly) {
               // School students: Filter based on grade level
               filteredOpportunities = opportunities.filter(opp => {
                 const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
-                
+
                 // For grades 6-8: Show ONLY internships
                 if (studentGrade && parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8) {
                   return isInternship;
                 }
-                
+
                 // For grade 9+: Show ALL opportunities (internships + full-time + part-time, etc.)
                 if (studentGrade && parseInt(studentGrade) >= 9) {
                   return true; // Show all opportunities
                 }
-                
+
                 // Fallback for students without grade info: show only internships
                 return isInternship;
               });
-            } else if (isUniversityStudent) {
+            } else if (isUniversity) {
               // University/College students: Show ALL opportunities (internships + jobs)
               filteredOpportunities = opportunities; // Show everything
             }
@@ -1266,11 +1267,10 @@ const StudentDashboard = () => {
                         {calculateDuration(project.start_date || project.startDate, project.end_date || project.endDate) || project.duration || project.timeline || project.period || ""}
                       </p>
                       {project.status && (
-                        <Badge className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${
-                          project.status.toLowerCase() === "completed"
+                        <Badge className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${project.status.toLowerCase() === "completed"
                             ? "!bg-green-100 !text-green-600"
                             : "!bg-blue-100 !text-blue-600"
-                        }`}>
+                          }`}>
                           {project.status}
                         </Badge>
                       )}
@@ -1369,11 +1369,10 @@ const StudentDashboard = () => {
                       </h4>
                       {education.status && (
                         <Badge
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${
-                            education.status === "ongoing"
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${education.status === "ongoing"
                               ? "!bg-gradient-to-r !from-blue-100 !to-indigo-100 !text-blue-700"
                               : "!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700"
-                          }`}
+                            }`}
                         >
                           {education.status}
                         </Badge>
@@ -1438,12 +1437,12 @@ const StudentDashboard = () => {
             </button>
           </div>
         </CardHeader>
-<CardContent className="pt-4 p-8 space-y-4">
+        <CardContent className="pt-4 p-8 space-y-4">
           {/* No Assessment CTA - TOP (only show when not expanded) */}
           {!hasAssessment && !recommendationsLoading && !showAllTraining && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <div 
+                <div
                   className="w-16 h-16 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 overflow-hidden border border-white/50"
                   style={{
                     boxShadow: '0 0 15px rgba(255, 255, 255, 0.5), 0 0 30px rgba(255, 255, 255, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.1)'
@@ -1505,127 +1504,127 @@ const StudentDashboard = () => {
                       if (training.year) return new Date(training.year, 11, 31);
                       return new Date(0); // Default to epoch if no date found
                     };
-                    
+
                     const dateA = getDate(a);
                     const dateB = getDate(b);
                     return dateB - dateA; // Descending order (most recent first)
                   })
                   .map((training, idx) => {
-            // Calculate progress
-            const statusLower = (training.status || "").toLowerCase();
-            let progressValue = 0;
-            if (statusLower === "completed") {
-              progressValue = 100;
-            } else if (training.total_modules > 0) {
-              const completed = Math.min(training.completed_modules, training.total_modules);
-              progressValue = Math.round((completed / training.total_modules) * 100);
-            }
+                    // Calculate progress
+                    const statusLower = (training.status || "").toLowerCase();
+                    let progressValue = 0;
+                    if (statusLower === "completed") {
+                      progressValue = 100;
+                    } else if (training.total_modules > 0) {
+                      const completed = Math.min(training.completed_modules, training.total_modules);
+                      progressValue = Math.round((completed / training.total_modules) * 100);
+                    }
 
-            return (
-              <div
-                key={training.id || `training-${training.course}-${idx}`}
-                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <h4 className="text-base font-bold text-gray-900 truncate flex-1">
-                    {training.course}
-                  </h4>
-                  <Badge
-                    className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${training.status === "completed"
-                      ? "!bg-green-100 !text-green-600"
-                      : "!bg-blue-100 !text-blue-600"
-                      }`}
-                  >
-                    {training.status === "completed" ? "Completed" : "Ongoing"}
-                  </Badge>
-                </div>
-
-                {/* Meta info */}
-                <div className="flex items-center gap-4 mb-3 text-sm text-gray-900 font-medium flex-wrap">
-                  {training.provider && (
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium">{training.provider}</span>
-                    </div>
-                  )}
-                  {(training.duration || training.start_date || training.startDate) && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-blue-600" />
-                      <span className="font-medium">
-                        {calculateDuration(training.start_date || training.startDate, training.end_date || training.endDate) || training.duration}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Progress bar */}
-                {(training.total_modules > 0 || training.completed_modules > 0 || training.hours_spent > 0) && (
-                  <div className="mt-3">
-                    {/* Progress Header */}
-                    <div className="flex justify-between items-center text-sm text-gray-900 font-medium mb-2">
-                      <span>Progress</span>
-                      <span className="text-blue-600 font-semibold">{progressValue}%</span>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                    return (
                       <div
-                        className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${progressValue}%` }}
-                      />
-                    </div>
-
-                    {/* Modules & Hours Info */}
-                    <div className="text-xs text-gray-900 font-medium mt-2 space-x-3">
-                      {training.completed_modules != null && training.total_modules != null && (
-                        <span>
-                          Modules: {training.completed_modules}/{training.total_modules}
-                        </span>
-                      )}
-                      {training.hours_spent != null && <span>Hours: {training.hours_spent}</span>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Skills */}
-                {Array.isArray(training.skills) && training.skills.length > 0 && (
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-900 font-medium mb-2">Skills Covered:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(training.showAllSkills ? training.skills : training.skills.slice(0, 4)).map(
-                        (skill, i) => (
-                          <span
-                            key={`skill-${training.id}-${i}`}
-                            className="px-3 py-1.5 text-xs rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-200 shadow-sm"
-                          >
-                            {skill}
-                          </span>
-                        )
-                      )}
-                    </div>
-                    {training.skills.length > 4 && (
-                      <button
-                        onClick={() =>
-                          setUserData((prev) => ({
-                            ...prev,
-                            training: prev.training.map((t) =>
-                              t.id === training.id ? { ...t, showAllSkills: !t.showAllSkills } : t
-                            ),
-                          }))
-                        }
-                        className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                        key={training.id || `training-${training.course}-${idx}`}
+                        className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
                       >
-                        {training.showAllSkills
-                          ? "Show Less"
-                          : `Show All (${training.skills.length})`}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                        {/* Header */}
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <h4 className="text-base font-bold text-gray-900 truncate flex-1">
+                            {training.course}
+                          </h4>
+                          <Badge
+                            className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${training.status === "completed"
+                              ? "!bg-green-100 !text-green-600"
+                              : "!bg-blue-100 !text-blue-600"
+                              }`}
+                          >
+                            {training.status === "completed" ? "Completed" : "Ongoing"}
+                          </Badge>
+                        </div>
+
+                        {/* Meta info */}
+                        <div className="flex items-center gap-4 mb-3 text-sm text-gray-900 font-medium flex-wrap">
+                          {training.provider && (
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="w-4 h-4 text-blue-600" />
+                              <span className="font-medium">{training.provider}</span>
+                            </div>
+                          )}
+                          {(training.duration || training.start_date || training.startDate) && (
+                            <div className="flex items-center gap-2">
+                              <Calendar className="w-4 h-4 text-blue-600" />
+                              <span className="font-medium">
+                                {calculateDuration(training.start_date || training.startDate, training.end_date || training.endDate) || training.duration}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Progress bar */}
+                        {(training.total_modules > 0 || training.completed_modules > 0 || training.hours_spent > 0) && (
+                          <div className="mt-3">
+                            {/* Progress Header */}
+                            <div className="flex justify-between items-center text-sm text-gray-900 font-medium mb-2">
+                              <span>Progress</span>
+                              <span className="text-blue-600 font-semibold">{progressValue}%</span>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
+                              <div
+                                className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
+                                style={{ width: `${progressValue}%` }}
+                              />
+                            </div>
+
+                            {/* Modules & Hours Info */}
+                            <div className="text-xs text-gray-900 font-medium mt-2 space-x-3">
+                              {training.completed_modules != null && training.total_modules != null && (
+                                <span>
+                                  Modules: {training.completed_modules}/{training.total_modules}
+                                </span>
+                              )}
+                              {training.hours_spent != null && <span>Hours: {training.hours_spent}</span>}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Skills */}
+                        {Array.isArray(training.skills) && training.skills.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-sm text-gray-900 font-medium mb-2">Skills Covered:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {(training.showAllSkills ? training.skills : training.skills.slice(0, 4)).map(
+                                (skill, i) => (
+                                  <span
+                                    key={`skill-${training.id}-${i}`}
+                                    className="px-3 py-1.5 text-xs rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-200 shadow-sm"
+                                  >
+                                    {skill}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                            {training.skills.length > 4 && (
+                              <button
+                                onClick={() =>
+                                  setUserData((prev) => ({
+                                    ...prev,
+                                    training: prev.training.map((t) =>
+                                      t.id === training.id ? { ...t, showAllSkills: !t.showAllSkills } : t
+                                    ),
+                                  }))
+                                }
+                                className="text-xs text-blue-600 hover:text-blue-800 mt-1"
+                              >
+                                {training.showAllSkills
+                                  ? "Show Less"
+                                  : `Show All (${training.skills.length})`}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           )}
@@ -1638,248 +1637,248 @@ const StudentDashboard = () => {
         data-tour="certificates-card"
         className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
       >
-         <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
-      <div className="flex items-center w-full justify-between">
-        <CardTitle className="flex items-center gap-3 m-0 p-0">
-          <div className="p-2 rounded-lg bg-blue-600">
-            <Medal className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-lg font-bold text-gray-800">
-            Certificates
-          </span>
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <button
-            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-            title="View All Certificates"
-            onClick={() => setActiveModal("certificates")}
-          >
-            <Eye className="w-5 h-5 text-blue-600" />
-          </button>
-        </div>
-      </div>
-    </CardHeader>
-        <CardContent className="p-8">
-  {enabledCertificates.length === 0 ? (
-    <div className="text-center py-8">
-      <p className="text-gray-900 text-base leading-normal font-medium">
-        No certificates uploaded yet
-      </p>
-    </div>
-  ) : (
-    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-      {enabledCertificates.map((cert, idx) => {
-        const certificateLink =
-          cert.link ||
-          cert.url ||
-          cert.certificateUrl ||
-          cert.credentialUrl ||
-          cert.viewUrl;
-        const issuedOn =
-          cert.year || cert.date || cert.issueDate || cert.issuedOn;
-        return (
-          <div
-            key={cert.id || `certificate-${idx}`}
-            className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${cert.enabled ? "" : "opacity-75"
-              }`}
-          >
-            {/* Certificate Name + Verified Badge */}
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h4 className="text-base font-bold text-gray-900">
-                {cert.title ||
-                  cert.name ||
-                  cert.certificate ||
-                  "Certificate"}
-              </h4>
-              {(cert.approval_status === "verified" || cert.approval_status === "approved") && (
-                <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Verified
-                </Badge>
-              )}
-            </div>
-
-            {/* Credential ID + Date */}
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <div className="text-xs text-gray-600 font-medium">
-                {cert.credentialId ? (
-                  <span>{cert.credentialId}</span>
-                ) : (
-                  <span className="text-gray-400">No credential ID</span>
-                )}
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Medal className="w-6 h-6 text-white" />
               </div>
-              {issuedOn && (
-                <Badge className="px-3 py-1 text-xs font-semibold !bg-gradient-to-r !from-gray-100 !to-gray-200 !text-gray-700 rounded-full shadow-sm">
-                  {issuedOn}
-                </Badge>
-              )}
-            </div>
-
-            {/* Icon + Organization + View Button */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-600" />
-                <p className="text-blue-600 text-sm leading-relaxed font-medium">
-                  {cert.issuer ||
-                    cert.organization ||
-                    cert.institution ||
-                    "Organization"}
-                </p>
-              </div>
-
-              {/* View Button */}
-              {certificateLink && (
-                <Button
-                  size="sm"
-                  onClick={() => window.open(certificateLink, '_blank')}
-                  className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View
-                </Button>
-              )}
+              <span className="text-lg font-bold text-gray-800">
+                Certificates
+              </span>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <button
+                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                title="View All Certificates"
+                onClick={() => setActiveModal("certificates")}
+              >
+                <Eye className="w-5 h-5 text-blue-600" />
+              </button>
             </div>
           </div>
-        );
-      })}
-    </div>
-  )}
-</CardContent>
-      </Card>
-    ),
-       experience: (
-  <Card
-    key="experience"
-    data-tour="experience-card"
-    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
-  >
-    <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
-      <div className="flex items-center w-full justify-between">
-        <CardTitle className="flex items-center gap-3 m-0 p-0">
-          <div className="p-2 rounded-lg bg-blue-600">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-lg font-bold text-gray-800">
-            My Experience
-          </span>
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <button
-            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-            title="View All Experience"
-            onClick={() => setActiveModal("experience")}
-          >
-            <Eye className="w-5 h-5 text-blue-600" />
-          </button>
-        </div>
-      </div>
-    </CardHeader>
+        </CardHeader>
         <CardContent className="p-8">
-  {userData.experience?.filter(exp =>
-    exp.enabled !== false &&
-    (exp.approval_status === "verified" || exp.approval_status === "approved")
-  ).length === 0 ? (
-    <div className="text-center py-8">
-      <p className="text-gray-900 text-base leading-normal font-medium">
-        No experience added yet
-      </p>
-    </div>
-  ) : (
-    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-      {userData.experience
-        .filter(exp =>
-          exp.enabled !== false &&
-          (exp.approval_status === "verified" || exp.approval_status === "approved")
-        )
-        .sort((a, b) => {
-          // Sort by end date/year in descending order (most recent first)
-          // Try multiple date field formats
-          const getEndDate = (exp) => {
-            if (exp.endDate) return new Date(exp.endDate);
-            if (exp.end_date) return new Date(exp.end_date);
-            if (exp.endYear) return new Date(exp.endYear, 11, 31); // December 31st of end year
-            if (exp.year) return new Date(exp.year, 11, 31);
-            // If no end date, use start date
-            if (exp.startDate) return new Date(exp.startDate);
-            if (exp.start_date) return new Date(exp.start_date);
-            if (exp.startYear) return new Date(exp.startYear, 0, 1); // January 1st of start year
-            return new Date(0); // Default to epoch if no date found
-          };
-          
-          const dateA = getEndDate(a);
-          const dateB = getEndDate(b);
-          return dateB - dateA; // Descending order (most recent first)
-        })
-        .map((exp, idx) => (
-          <div
-          key={exp.id || `exp-${idx}`}
-          className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-        >
-          {/* Title + Status Badge */}
-          <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="flex items-center gap-2">
-              <h4 className="text-base font-bold text-gray-900">
-                {exp.role || "Experience Role"}
-              </h4>
-              {/* Present Badge for ongoing experiences */}
-              {(!exp.end_date && !exp.endDate) && (
-                <Badge className="!bg-gradient-to-r !from-blue-100 !to-blue-200 !text-blue-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm">
-                  Present
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
-                <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Verified
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          {/* Type */}
-          {exp.type && (
-            <div className="flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-gray-700 font-medium">{exp.type}</span>
-            </div>
-          )}
-
-          {/* Icon + Location */}
-          {(exp.organization || exp.company || exp.location) && (
-            <div className="flex items-center gap-2 mb-3">
-              <Building2 className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-blue-600 font-medium">
-                {exp.organization || exp.company || "Organization"}
-                {exp.location && `, ${exp.location}`}
-              </span>
-            </div>
-          )}
-
-          {/* Date */}
-          {(exp.duration || exp.period || exp.start_date || exp.startDate) && (
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-4 h-4 text-gray-600" />
-              <span className="text-sm text-gray-600 font-medium">
-                {calculateDuration(exp.start_date || exp.startDate, exp.end_date || exp.endDate) || exp.duration || exp.period}
-              </span>
-            </div>
-          )}
-
-          {/* Description */}
-          {exp.description && (
-            <div className="mt-3">
-              <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
-                {exp.description}
+          {enabledCertificates.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No certificates uploaded yet
               </p>
             </div>
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {enabledCertificates.map((cert, idx) => {
+                const certificateLink =
+                  cert.link ||
+                  cert.url ||
+                  cert.certificateUrl ||
+                  cert.credentialUrl ||
+                  cert.viewUrl;
+                const issuedOn =
+                  cert.year || cert.date || cert.issueDate || cert.issuedOn;
+                return (
+                  <div
+                    key={cert.id || `certificate-${idx}`}
+                    className={`p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200 ${cert.enabled ? "" : "opacity-75"
+                      }`}
+                  >
+                    {/* Certificate Name + Verified Badge */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <h4 className="text-base font-bold text-gray-900">
+                        {cert.title ||
+                          cert.name ||
+                          cert.certificate ||
+                          "Certificate"}
+                      </h4>
+                      {(cert.approval_status === "verified" || cert.approval_status === "approved") && (
+                        <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Credential ID + Date */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="text-xs text-gray-600 font-medium">
+                        {cert.credentialId ? (
+                          <span>{cert.credentialId}</span>
+                        ) : (
+                          <span className="text-gray-400">No credential ID</span>
+                        )}
+                      </div>
+                      {issuedOn && (
+                        <Badge className="px-3 py-1 text-xs font-semibold !bg-gradient-to-r !from-gray-100 !to-gray-200 !text-gray-700 rounded-full shadow-sm">
+                          {issuedOn}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Icon + Organization + View Button */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-blue-600" />
+                        <p className="text-blue-600 text-sm leading-relaxed font-medium">
+                          {cert.issuer ||
+                            cert.organization ||
+                            cert.institution ||
+                            "Organization"}
+                        </p>
+                      </div>
+
+                      {/* View Button */}
+                      {certificateLink && (
+                        <Button
+                          size="sm"
+                          onClick={() => window.open(certificateLink, '_blank')}
+                          className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          View
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
-        </div>
-      ))}
-    </div>
-  )}
-</CardContent>
+        </CardContent>
+      </Card>
+    ),
+    experience: (
+      <Card
+        key="experience"
+        data-tour="experience-card"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
+      >
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-lg font-bold text-gray-800">
+                My Experience
+              </span>
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              <button
+                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                title="View All Experience"
+                onClick={() => setActiveModal("experience")}
+              >
+                <Eye className="w-5 h-5 text-blue-600" />
+              </button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-8">
+          {userData.experience?.filter(exp =>
+            exp.enabled !== false &&
+            (exp.approval_status === "verified" || exp.approval_status === "approved")
+          ).length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No experience added yet
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {userData.experience
+                .filter(exp =>
+                  exp.enabled !== false &&
+                  (exp.approval_status === "verified" || exp.approval_status === "approved")
+                )
+                .sort((a, b) => {
+                  // Sort by end date/year in descending order (most recent first)
+                  // Try multiple date field formats
+                  const getEndDate = (exp) => {
+                    if (exp.endDate) return new Date(exp.endDate);
+                    if (exp.end_date) return new Date(exp.end_date);
+                    if (exp.endYear) return new Date(exp.endYear, 11, 31); // December 31st of end year
+                    if (exp.year) return new Date(exp.year, 11, 31);
+                    // If no end date, use start date
+                    if (exp.startDate) return new Date(exp.startDate);
+                    if (exp.start_date) return new Date(exp.start_date);
+                    if (exp.startYear) return new Date(exp.startYear, 0, 1); // January 1st of start year
+                    return new Date(0); // Default to epoch if no date found
+                  };
+
+                  const dateA = getEndDate(a);
+                  const dateB = getEndDate(b);
+                  return dateB - dateA; // Descending order (most recent first)
+                })
+                .map((exp, idx) => (
+                  <div
+                    key={exp.id || `exp-${idx}`}
+                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                  >
+                    {/* Title + Status Badge */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-bold text-gray-900">
+                          {exp.role || "Experience Role"}
+                        </h4>
+                        {/* Present Badge for ongoing experiences */}
+                        {(!exp.end_date && !exp.endDate) && (
+                          <Badge className="!bg-gradient-to-r !from-blue-100 !to-blue-200 !text-blue-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm">
+                            Present
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
+                          <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Verified
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Type */}
+                    {exp.type && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Briefcase className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm text-gray-700 font-medium">{exp.type}</span>
+                      </div>
+                    )}
+
+                    {/* Icon + Location */}
+                    {(exp.organization || exp.company || exp.location) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Building2 className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm text-blue-600 font-medium">
+                          {exp.organization || exp.company || "Organization"}
+                          {exp.location && `, ${exp.location}`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Date */}
+                    {(exp.duration || exp.period || exp.start_date || exp.startDate) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Calendar className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm text-gray-600 font-medium">
+                          {calculateDuration(exp.start_date || exp.startDate, exp.end_date || exp.endDate) || exp.duration || exp.period}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    {exp.description && (
+                      <div className="mt-3">
+                        <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+                          {exp.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </CardContent>
       </Card>
     ),
     softSkills: (
@@ -1969,13 +1968,13 @@ const StudentDashboard = () => {
   // Define 3x3 grid layout
   const threeByThreeCards = [
     "assessment",
-    "trainings", 
+    "trainings",
     "opportunities",
-    "Projects", 
-    "Certificates", 
+    "Projects",
+    "Certificates",
     "My experience",
-    "Education", 
-    "technicalSkills", 
+    "Education",
+    "technicalSkills",
     "softSkills"
   ];
 
@@ -1999,7 +1998,7 @@ const StudentDashboard = () => {
           const cardKey = cardNameMapping[cardName];
           const card = allCards[cardKey];
           if (!card) return null;
-          
+
           return (
             <div key={cardName} className="h-full">
               {card}
@@ -2014,8 +2013,8 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] py-6 px-4">
-        
-        {/* Hot-toast notification container */}
+
+      {/* Hot-toast notification container */}
       <Toaster
         position="top-right"
         toastOptions={{
@@ -2040,24 +2039,20 @@ const StudentDashboard = () => {
                 <button
                   data-tour="dashboard-tab"
                   onClick={() => setActiveView('dashboard')}
-                  className={`relative text-left p-3 sm:p-4 rounded-lg transition-all ${
-                    activeView === 'dashboard'
+                  className={`relative text-left p-3 sm:p-4 rounded-lg transition-all ${activeView === 'dashboard'
                       ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
                       : 'bg-white hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start gap-2 sm:gap-3">
-                    <div className={`p-1.5 sm:p-2 rounded-lg ${
-                      activeView === 'dashboard' ? 'bg-blue-600' : 'bg-gray-100'
-                    }`}>
-                      <RectangleStackIcon className={`w-5 sm:w-6 h-5 sm:h-6 ${
-                        activeView === 'dashboard' ? 'text-white' : 'text-gray-600'
-                      }`} />
+                    <div className={`p-1.5 sm:p-2 rounded-lg ${activeView === 'dashboard' ? 'bg-blue-600' : 'bg-gray-100'
+                      }`}>
+                      <RectangleStackIcon className={`w-5 sm:w-6 h-5 sm:h-6 ${activeView === 'dashboard' ? 'text-white' : 'text-gray-600'
+                        }`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h1 className={`font-bold text-base sm:text-lg ${
-                        activeView === 'dashboard' ? 'text-blue-600' : 'text-gray-900'
-                      }`}>
+                      <h1 className={`font-bold text-base sm:text-lg ${activeView === 'dashboard' ? 'text-blue-600' : 'text-gray-900'
+                        }`}>
                         Dashboard
                       </h1>
                       <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
@@ -2071,24 +2066,20 @@ const StudentDashboard = () => {
                 <button
                   data-tour="analytics-tab"
                   onClick={() => setActiveView('analytics')}
-                  className={`relative text-left p-3 sm:p-4 rounded-lg transition-all ${
-                    activeView === 'analytics'
+                  className={`relative text-left p-3 sm:p-4 rounded-lg transition-all ${activeView === 'analytics'
                       ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
                       : 'bg-white hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start gap-2 sm:gap-3">
-                    <div className={`p-1.5 sm:p-2 rounded-lg ${
-                      activeView === 'analytics' ? 'bg-blue-600' : 'bg-gray-100'
-                    }`}>
-                      <ChartBarIcon className={`w-5 sm:w-6 h-5 sm:h-6 ${
-                        activeView === 'analytics' ? 'text-white' : 'text-gray-600'
-                      }`} />
+                    <div className={`p-1.5 sm:p-2 rounded-lg ${activeView === 'analytics' ? 'bg-blue-600' : 'bg-gray-100'
+                      }`}>
+                      <ChartBarIcon className={`w-5 sm:w-6 h-5 sm:h-6 ${activeView === 'analytics' ? 'text-white' : 'text-gray-600'
+                        }`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h1 className={`font-bold text-base sm:text-lg ${
-                        activeView === 'analytics' ? 'text-blue-600' : 'text-gray-900'
-                      }`}>
+                      <h1 className={`font-bold text-base sm:text-lg ${activeView === 'analytics' ? 'text-blue-600' : 'text-gray-900'
+                        }`}>
                         Analytics
                       </h1>
                       <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-tight">
@@ -2181,198 +2172,198 @@ const StudentDashboard = () => {
             >
               {render3x3Grid()}
             </motion.div>
-            
+
             {/* Separate Section: Achievement Timeline */}
             <div className="grid grid-cols-1 gap-6">
               {/* Suggested Steps - Commented Out */}
               {false && (
-              <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
-                <Card
-                  ref={suggestedNextStepsRef}
-                  className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
-                  data-testid="suggested-next-steps-card"
-                >
-                  <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
-                    <div className="flex items-center w-full justify-between">
-                      <CardTitle className="flex items-center gap-3 m-0 p-0">
-                        <div className="p-2 rounded-lg bg-blue-600">
-                          <Lightbulb className="w-6 h-6 text-white" />
-                        </div>
-                        <span className="text-lg font-bold text-gray-800">Suggested Steps</span>
-                      </CardTitle>
-                      <button
-                        className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-                        title="View All Suggested Steps"
-                        onClick={() => navigate("/student/suggested-steps")}
-                      >
-                        <Eye className="w-5 h-5 text-blue-600" />
-                      </button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-8">
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-                    {matchingLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-                        <p className="ml-3 text-sm text-gray-500">
-                          Finding best job matches for you...
-                        </p>
+                <div className="lg:col-span-1 lg:sticky lg:top-16 lg:self-start">
+                  <Card
+                    ref={suggestedNextStepsRef}
+                    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
+                    data-testid="suggested-next-steps-card"
+                  >
+                    <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+                      <div className="flex items-center w-full justify-between">
+                        <CardTitle className="flex items-center gap-3 m-0 p-0">
+                          <div className="p-2 rounded-lg bg-blue-600">
+                            <Lightbulb className="w-6 h-6 text-white" />
+                          </div>
+                          <span className="text-lg font-bold text-gray-800">Suggested Steps</span>
+                        </CardTitle>
+                        <button
+                          className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                          title="View All Suggested Steps"
+                          onClick={() => navigate("/student/suggested-steps")}
+                        >
+                          <Eye className="w-5 h-5 text-blue-600" />
+                        </button>
                       </div>
-                    ) : matchingError ? (
-                      <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-                        <p className="text-sm text-red-700">
-                          ⚠️ {matchingError}
-                        </p>
-                      </div>
-                    ) : matchedJobs.length > 0 ? (
-                      <>
-                        {matchedJobs.slice(0, 4).map((match, idx) => (
-                          <div
-                            key={match.job_id || `job-match-${idx}`}
-                            className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
-                            data-testid={`matched-job-${idx}`}
-                            onClick={() => {
-                              // Navigate to opportunities page or show details
-                              if (match.opportunity?.application_link) {
-                                window.open(
-                                  match.opportunity.application_link,
-                                  "_blank"
-                                );
-                              }
-                            }}
-                          >
-                            {/* Match Score Badge */}
-                            <div className="flex items-start justify-between mb-2">
-                              <Badge className="!bg-gradient-to-r !from-green-500 !to-emerald-500 !text-white border-0 text-xs font-semibold">
-                                {match.match_score}% Match
-                              </Badge>
-                              <ExternalLink className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
+                    </CardHeader>
+                    <CardContent className="p-8">
+                      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+                        {matchingLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                            <p className="ml-3 text-sm text-gray-500">
+                              Finding best job matches for you...
+                            </p>
+                          </div>
+                        ) : matchingError ? (
+                          <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+                            <p className="text-sm text-red-700">
+                              ⚠️ {matchingError}
+                            </p>
+                          </div>
+                        ) : matchedJobs.length > 0 ? (
+                          <>
+                            {matchedJobs.slice(0, 4).map((match, idx) => (
+                              <div
+                                key={match.job_id || `job-match-${idx}`}
+                                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
+                                data-testid={`matched-job-${idx}`}
+                                onClick={() => {
+                                  // Navigate to opportunities page or show details
+                                  if (match.opportunity?.application_link) {
+                                    window.open(
+                                      match.opportunity.application_link,
+                                      "_blank"
+                                    );
+                                  }
+                                }}
+                              >
+                                {/* Match Score Badge */}
+                                <div className="flex items-start justify-between mb-2">
+                                  <Badge className="!bg-gradient-to-r !from-green-500 !to-emerald-500 !text-white border-0 text-xs font-semibold">
+                                    {match.match_score}% Match
+                                  </Badge>
+                                  <ExternalLink className="w-4 h-4 text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
 
-                            {/* Job Title & Company */}
-                            <div className="mb-3">
-                              <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-amber-700 transition-colors">
-                                {match.job_title ||
-                                  match.opportunity?.job_title}
-                              </h4>
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <Building2 className="w-4 h-4" />
-                                <span className="font-medium">
-                                  {match.company_name ||
-                                    match.opportunity?.company_name}
-                                </span>
-                              </div>
+                                {/* Job Title & Company */}
+                                <div className="mb-3">
+                                  <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-amber-700 transition-colors">
+                                    {match.job_title ||
+                                      match.opportunity?.job_title}
+                                  </h4>
+                                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <Building2 className="w-4 h-4" />
+                                    <span className="font-medium">
+                                      {match.company_name ||
+                                        match.opportunity?.company_name}
+                                    </span>
+                                  </div>
 
-                              {/* Job Details */}
-                              {match.opportunity && (
-                                <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-gray-600">
-                                  {match.opportunity.employment_type && (
-                                    <div className="flex items-center gap-1">
-                                      <Briefcase className="w-3.5 h-3.5" />
-                                      <span>
-                                        {match.opportunity.employment_type}
-                                      </span>
+                                  {/* Job Details */}
+                                  {match.opportunity && (
+                                    <div className="flex flex-wrap items-center gap-3 mb-3 text-xs text-gray-600">
+                                      {match.opportunity.employment_type && (
+                                        <div className="flex items-center gap-1">
+                                          <Briefcase className="w-3.5 h-3.5" />
+                                          <span>
+                                            {match.opportunity.employment_type}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {match.opportunity.location && (
+                                        <div className="flex items-center gap-1">
+                                          <MapPin className="w-3.5 h-3.5" />
+                                          <span>{match.opportunity.location}</span>
+                                        </div>
+                                      )}
+                                      {match.opportunity.deadline && (
+                                        <div className="flex items-center gap-1 text-orange-600">
+                                          <Clock className="w-3.5 h-3.5" />
+                                          <span>
+                                            Deadline:{" "}
+                                            {new Date(
+                                              match.opportunity.deadline
+                                            ).toLocaleDateString()}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
-                                  {match.opportunity.location && (
-                                    <div className="flex items-center gap-1">
-                                      <MapPin className="w-3.5 h-3.5" />
-                                      <span>{match.opportunity.location}</span>
-                                    </div>
-                                  )}
-                                  {match.opportunity.deadline && (
-                                    <div className="flex items-center gap-1 text-orange-600">
-                                      <Clock className="w-3.5 h-3.5" />
-                                      <span>
-                                        Deadline:{" "}
-                                        {new Date(
-                                          match.opportunity.deadline
-                                        ).toLocaleDateString()}
+
+                                  {/* Match Reason */}
+                                  <div className="mb-3 p-3 bg-white/60 rounded-lg border border-amber-100">
+                                    <p className="text-xs text-gray-700 leading-relaxed">
+                                      <span className="font-semibold text-amber-700">
+                                        Why this matches:{" "}
                                       </span>
+                                      {match.match_reason}
+                                    </p>
+                                  </div>
+
+                                  {/* Key Matching Skills */}
+                                  {match.key_matching_skills &&
+                                    match.key_matching_skills.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 mb-3">
+                                        {match.key_matching_skills
+                                          .slice(0, 4)
+                                          .map((skill, skillIdx) => (
+                                            <Badge
+                                              key={skillIdx}
+                                              variant="secondary"
+                                              className="text-xs !bg-white/80 !text-gray-700 border border-amber-200"
+                                            >
+                                              {skill}
+                                            </Badge>
+                                          ))}
+                                      </div>
+                                    )}
+
+                                  {/* Recommendation */}
+                                  {match.recommendation && (
+                                    <div className="pt-3 border-t border-amber-200/50">
+                                      <p className="text-xs text-gray-600 italic">
+                                        💡 {match.recommendation}
+                                      </p>
                                     </div>
                                   )}
                                 </div>
-                              )}
+                              </div>
+                            ))}
 
-                              {/* Match Reason */}
-                              <div className="mb-3 p-3 bg-white/60 rounded-lg border border-amber-100">
-                                <p className="text-xs text-gray-700 leading-relaxed">
-                                  <span className="font-semibold text-amber-700">
-                                    Why this matches:{" "}
-                                  </span>
-                                  {match.match_reason}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={refreshMatches}
+                              className="w-full mt-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+                              data-testid="refresh-matches-button"
+                            >
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Refresh Job Matches
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            {suggestions.map((suggestion, idx) => (
+                              <div
+                                key={suggestion.id || `suggestion-${idx}`}
+                                className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 transition-all"
+                              >
+                                <p className="text-sm font-medium text-gray-900">
+                                  {typeof suggestion === "string"
+                                    ? suggestion
+                                    : suggestion.message || suggestion}
                                 </p>
                               </div>
-
-                              {/* Key Matching Skills */}
-                              {match.key_matching_skills &&
-                                match.key_matching_skills.length > 0 && (
-                                  <div className="flex flex-wrap gap-1.5 mb-3">
-                                    {match.key_matching_skills
-                                      .slice(0, 4)
-                                      .map((skill, skillIdx) => (
-                                        <Badge
-                                          key={skillIdx}
-                                          variant="secondary"
-                                          className="text-xs !bg-white/80 !text-gray-700 border border-amber-200"
-                                        >
-                                          {skill}
-                                        </Badge>
-                                      ))}
-                                  </div>
-                                )}
-
-                              {/* Recommendation */}
-                              {match.recommendation && (
-                                <div className="pt-3 border-t border-amber-200/50">
-                                  <p className="text-xs text-gray-600 italic">
-                                    💡 {match.recommendation}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={refreshMatches}
-                          className="w-full mt-2 text-blue-600 border-blue-300 hover:bg-blue-50"
-                          data-testid="refresh-matches-button"
-                        >
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Refresh Job Matches
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        {suggestions.map((suggestion, idx) => (
-                          <div
-                            key={suggestion.id || `suggestion-${idx}`}
-                            className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:border-blue-300 transition-all"
-                          >
-                            <p className="text-sm font-medium text-gray-900">
-                              {typeof suggestion === "string"
-                                ? suggestion
-                                : suggestion.message || suggestion}
-                            </p>
-                          </div>
-                        ))}
-                        {!matchingLoading && (
-                          <div className="text-center py-4">
-                            <p className="text-sm text-gray-500">
-                              No job matches found at the moment. Complete your
-                              profile to get better matches!
-                            </p>
-                          </div>
+                            ))}
+                            {!matchingLoading && (
+                              <div className="text-center py-4">
+                                <p className="text-sm text-gray-500">
+                                  No job matches found at the moment. Complete your
+                                  profile to get better matches!
+                                </p>
+                              </div>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               )}
 
               {/* Achievement Timeline - 1 column */}
@@ -2459,7 +2450,7 @@ const StudentDashboard = () => {
           onSave={(data) => handleSave("certificates", data)}
         />
       )}
-      </div>
+    </div>
   );
 };
 
