@@ -1252,26 +1252,23 @@ const AssessmentTestPage: React.FC = () => {
         setUseDatabase(true);
 
         // Determine the appropriate stream ID based on grade level
+        // Only use 'college' stream for actual college students
         let streamId = flow.studentStream;
-        if (!streamId) {
-          // Fallback based on grade level if stream wasn't set
-          switch (flow.gradeLevel) {
-            case 'middle':
-              streamId = 'middle_school';
-              break;
-            case 'highschool':
-              streamId = 'high_school';
-              break;
-            default:
-              streamId = 'general';
-          }
+        
+        // If no stream selected and grade level is college, use 'college' stream
+        if (!streamId && flow.gradeLevel === 'college') {
+          streamId = 'college';
         }
+        // For after12, after10, middle, highschool: streamId remains null if not selected
 
         console.log('🎯 [AssessmentTestPage] Creating attempt:', { 
           streamId, 
           gradeLevel: flow.gradeLevel, 
           studentRecordId,
-          currentSectionIndex: flow.currentSectionIndex 
+          currentSectionIndex: flow.currentSectionIndex,
+          note: streamId === 'college' ? 'Using college stream (program-based)' : 
+                streamId ? 'Using selected stream' : 
+                'No stream (will be null)'
         });
         
         await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
@@ -2085,7 +2082,11 @@ const AssessmentTestPage: React.FC = () => {
                 setUseDatabase(true);
 
                 try {
-                  await dbStartAssessment(flow.studentStream || 'general', flow.gradeLevel || 'after12');
+                  // Only use 'college' stream for actual college students
+                  const streamId = flow.studentStream || 
+                    (flow.gradeLevel === 'college' ? 'college' : null);
+                  
+                  await dbStartAssessment(streamId, flow.gradeLevel || 'after12');
 
                   // Wait a bit for the attempt to be created
                   await new Promise(resolve => setTimeout(resolve, 500));

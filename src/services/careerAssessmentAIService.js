@@ -254,6 +254,54 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   },
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // M.SC / POSTGRADUATE SCIENCES (Masters)
+  // ═══════════════════════════════════════════════════════════════════════════
+  'msc_ds': {
+    name: 'M.Sc Data Science',
+    topics: ['Advanced Statistics', 'Machine Learning', 'Big Data Analytics', 'Deep Learning', 'Data Mining', 'Research Methodology']
+  },
+  'msc_cs': {
+    name: 'M.Sc Computer Science',
+    topics: ['Advanced Algorithms', 'Distributed Systems', 'Artificial Intelligence', 'Software Engineering', 'Database Systems', 'Research Methods']
+  },
+  'msc_physics': {
+    name: 'M.Sc Physics',
+    topics: ['Quantum Mechanics', 'Statistical Mechanics', 'Condensed Matter Physics', 'Particle Physics', 'Astrophysics', 'Research Methodology']
+  },
+  'msc_chemistry': {
+    name: 'M.Sc Chemistry',
+    topics: ['Advanced Organic Chemistry', 'Inorganic Chemistry', 'Physical Chemistry', 'Analytical Techniques', 'Spectroscopy', 'Research Methods']
+  },
+  'msc_maths': {
+    name: 'M.Sc Mathematics',
+    topics: ['Advanced Calculus', 'Topology', 'Functional Analysis', 'Number Theory', 'Differential Equations', 'Mathematical Modeling']
+  },
+  'msc_biology': {
+    name: 'M.Sc Biology',
+    topics: ['Molecular Biology', 'Cell Biology', 'Genetics', 'Biotechnology', 'Bioinformatics', 'Research Methodology']
+  },
+  'msc_biotech': {
+    name: 'M.Sc Biotechnology',
+    topics: ['Genetic Engineering', 'Molecular Biology', 'Bioinformatics', 'Immunology', 'Bioprocess Engineering', 'Research Methods']
+  },
+  'msc_it': {
+    name: 'M.Sc Information Technology',
+    topics: ['Advanced Networking', 'Cloud Computing', 'Cybersecurity', 'Software Architecture', 'Data Analytics', 'IT Management']
+  },
+  'msc_ai': {
+    name: 'M.Sc Artificial Intelligence',
+    topics: ['Machine Learning', 'Deep Learning', 'Natural Language Processing', 'Computer Vision', 'Neural Networks', 'AI Research']
+  },
+  'msc_stats': {
+    name: 'M.Sc Statistics',
+    topics: ['Advanced Statistics', 'Probability Theory', 'Statistical Modeling', 'Data Analysis', 'Econometrics', 'Research Methodology']
+  },
+  msc: {
+    name: 'M.Sc Sciences',
+    topics: ['Advanced Research Methods', 'Scientific Analysis', 'Data Interpretation', 'Laboratory Techniques', 'Critical Thinking', 'Research Methodology']
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // B.SC SPECIALIZATIONS (College/University)
   // ═══════════════════════════════════════════════════════════════════════════
   bsc: {
@@ -752,6 +800,59 @@ export function normalizeStreamId(programName) {
     'master of technology in data science': 'mtech_ds',
     'm.tech data science': 'mtech_ds',
     'mtech data science': 'mtech_ds',
+    
+    // M.Sc variations -> short keys
+    'master of science in data science': 'msc_ds',
+    'master of science data science': 'msc_ds',
+    'm.sc data science': 'msc_ds',
+    'msc data science': 'msc_ds',
+    'm.sc ds': 'msc_ds',
+    'msc ds': 'msc_ds',
+    
+    'master of science in computer science': 'msc_cs',
+    'master of science computer science': 'msc_cs',
+    'm.sc computer science': 'msc_cs',
+    'msc computer science': 'msc_cs',
+    'm.sc cs': 'msc_cs',
+    'msc cs': 'msc_cs',
+    
+    'master of science in physics': 'msc_physics',
+    'm.sc physics': 'msc_physics',
+    'msc physics': 'msc_physics',
+    
+    'master of science in chemistry': 'msc_chemistry',
+    'm.sc chemistry': 'msc_chemistry',
+    'msc chemistry': 'msc_chemistry',
+    
+    'master of science in mathematics': 'msc_maths',
+    'm.sc mathematics': 'msc_maths',
+    'msc mathematics': 'msc_maths',
+    'm.sc maths': 'msc_maths',
+    'msc maths': 'msc_maths',
+    
+    'master of science in biology': 'msc_biology',
+    'm.sc biology': 'msc_biology',
+    'msc biology': 'msc_biology',
+    
+    'master of science in biotechnology': 'msc_biotech',
+    'm.sc biotechnology': 'msc_biotech',
+    'msc biotechnology': 'msc_biotech',
+    
+    'master of science in information technology': 'msc_it',
+    'm.sc information technology': 'msc_it',
+    'msc information technology': 'msc_it',
+    'm.sc it': 'msc_it',
+    'msc it': 'msc_it',
+    
+    'master of science in artificial intelligence': 'msc_ai',
+    'm.sc artificial intelligence': 'msc_ai',
+    'msc artificial intelligence': 'msc_ai',
+    'm.sc ai': 'msc_ai',
+    'msc ai': 'msc_ai',
+    
+    'master of science in statistics': 'msc_stats',
+    'm.sc statistics': 'msc_stats',
+    'msc statistics': 'msc_stats',
     
     // B.Sc variations
     'b.sc physics': 'bsc_physics',

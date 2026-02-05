@@ -350,7 +350,7 @@ const NotebookLabel = ({ studentInfo, description }) => {
           {/* Row 2, Col 3: Assessment Date */}
           <div>
             <span style={labelStyle}>Assessment Date</span>
-            <span style={valueStyle}>{new Date().toLocaleDateString()}</span>
+            <span style={valueStyle}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </div>
         </div>
         

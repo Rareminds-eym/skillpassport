@@ -102,13 +102,27 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
 
     // Determine the roll number label based on student type
     const getRollNumberLabel = () => {
-        if (studentInfo.rollNumberType === 'university') {
-            return 'University Roll No';
-        } else if (studentInfo.rollNumberType === 'institute') {
-            return 'Institute Roll No';
-        } else {
-            return 'School Roll No';
+        const level = gradeLevel?.toLowerCase();
+        
+        // Check if student is in college/university
+        const isCollegeStudent = level === 'college' || 
+                                 level === 'university' || 
+                                 level === 'after12' ||
+                                 (studentInfo.college && studentInfo.college !== '—');
+        
+        // For college/university students
+        if (isCollegeStudent) {
+            if (studentInfo.rollNumberType === 'university') {
+                return 'University Roll No';
+            } else if (studentInfo.rollNumberType === 'institute') {
+                return 'Institute Roll No';
+            } else {
+                return 'Enrollment Number';
+            }
         }
+        
+        // For school students
+        return 'School Roll No';
     };
 
     const gradeCourseField = getGradeCourseField();
@@ -121,7 +135,7 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
         { label: 'Programme/Stream', value: formatStreamId(studentInfo.stream || studentInfo.branchField) || '—' },
         { label: gradeCourseField.label, value: gradeCourseField.value },
         { label: institutionLabel, value: (studentInfo.college && studentInfo.college !== '—') ? studentInfo.college : studentInfo.school, truncate: true },
-        { label: 'Assessment Date', value: new Date().toLocaleDateString() },
+        { label: 'Assessment Date', value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },
     ];
 
     return (

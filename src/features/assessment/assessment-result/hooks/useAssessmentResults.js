@@ -367,7 +367,13 @@ export const useAssessmentResults = () => {
         }
 
         // Validate and correct aptitude scores if we have the necessary data
-        if (validatedResults.aptitude && rawAnswers && Object.keys(rawAnswers).length > 0) {
+        // 🔧 CRITICAL FIX: Skip aptitude validation if adaptive results exist
+        // For college students with adaptive aptitude, scores come from adaptive test, not MCQ questions
+        const hasAdaptiveResults = validatedResults.adaptiveAptitudeResults || 
+                                   validatedResults.adaptive_aptitude_results ||
+                                   rawAnswers?.adaptive_aptitude_session_id;
+        
+        if (validatedResults.aptitude && rawAnswers && Object.keys(rawAnswers).length > 0 && !hasAdaptiveResults) {
             try {
                 // Fetch aptitude questions for this student
                 const { data: { user } } = await supabase.auth.getUser();
@@ -392,6 +398,8 @@ export const useAssessmentResults = () => {
                 console.error('❌ Error validating aptitude scores:', error);
                 // Continue with original scores if validation fails
             }
+        } else if (hasAdaptiveResults) {
+            console.log('✅ Skipping aptitude validation - using adaptive aptitude results');
         }
 
         return validatedResults;
@@ -1757,6 +1765,10 @@ export const useAssessmentResults = () => {
             
             console.log('📊 Pre-calculated scores for regeneration:', preCalculatedScores);
             
+            // 🔧 CRITICAL FIX: Pass adaptive results as 8th parameter
+            const adaptiveResultsForAI = answers.adaptive_aptitude_results || null;
+            console.log('📊 Adaptive results for AI:', adaptiveResultsForAI ? 'Available' : 'Not available');
+            
             const geminiResults = await analyzeAssessmentWithGemini(
                 answers,
                 stream,
@@ -1764,7 +1776,8 @@ export const useAssessmentResults = () => {
                 {}, // Empty timings in retry
                 storedGradeLevel, // Pass grade level for proper scoring
                 preCalculatedScores, // Pass pre-calculated scores from attempt
-                studentContext // Pass student context for enhanced recommendations
+                studentContext, // Pass student context for enhanced recommendations
+                adaptiveResultsForAI // Pass adaptive results for aptitude scoring
             );
 
             if (!geminiResults) {

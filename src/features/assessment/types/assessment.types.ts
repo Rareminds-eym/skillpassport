@@ -149,7 +149,7 @@ export type AttemptStatus = 'in_progress' | 'completed' | 'abandoned';
 export interface AssessmentAttempt {
   id: string;
   student_id: string;
-  stream_id: string;
+  stream_id: string | null;
   grade_level: GradeLevel;
   status: AttemptStatus;
   current_section_index: number;

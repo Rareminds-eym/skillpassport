@@ -1356,7 +1356,7 @@ const AssessmentTest = () => {
         // For middle school, high school, skip stream selection and go directly to assessment
         if (level === 'middle') {
             setAssessmentStarted(true);
-            const streamId = 'middle_school'; // Use a generic stream for middle school
+            const streamId = null; // No stream for middle school
             setStudentStream(streamId);
 
             // Load questions and create attempt for middle school
@@ -1377,7 +1377,7 @@ const AssessmentTest = () => {
             setShowSectionIntro(true);
         } else if (level === 'highschool') {
             setAssessmentStarted(true);
-            const streamId = 'high_school'; // Use a generic stream for high school
+            const streamId = null; // No stream for high school
             setStudentStream(streamId);
 
             // Load questions and create attempt for high school
@@ -1400,7 +1400,7 @@ const AssessmentTest = () => {
             // For after 10th (11th grade), skip category selection - go directly to assessment
             // The AI will recommend the best stream based on assessment results
             setAssessmentStarted(true);
-            const streamId = 'general';
+            const streamId = null; // No stream yet - student is deciding
             setStudentStream(streamId);
 
             // Load questions and create attempt
@@ -1425,13 +1425,12 @@ const AssessmentTest = () => {
             console.log('📚 Higher Secondary student - showing category selection for stream');
             setShowCategorySelection(true);
         } else if (level === 'college') {
-            // For college students (UG/PG), skip category selection - go directly to assessment using their program
+            // For college students (UG/PG), use 'college' stream for program-based assessment
             setAssessmentStarted(true);
 
-            // Use student's program as the stream, normalize it to match STREAM_KNOWLEDGE_PROMPTS
-            // Pass the original program name to normalizeStreamId (it handles the conversion)
-            const streamId = normalizeStreamId(studentProgram || 'college');
-            console.log(`🎓 College student stream: ${studentProgram} -> normalized: ${streamId}`);
+            // Use 'college' stream for college students (program-based assessment)
+            const streamId = 'college';
+            console.log(`🎓 College student - using 'college' stream for program-based assessment`);
             setStudentStream(streamId);
 
             // Load questions and create attempt for college
@@ -2037,6 +2036,10 @@ const AssessmentTest = () => {
 
             console.log('📚 Student Context for AI:', studentContext);
 
+            // 🔧 CRITICAL FIX: Extract adaptive results to pass as parameter
+            const adaptiveResultsForAI = answers.adaptive_aptitude_results || null;
+            console.log('📊 Adaptive results for AI:', adaptiveResultsForAI ? 'Available' : 'Not available');
+
             // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
                 answersWithAdaptive,
@@ -2045,7 +2048,8 @@ const AssessmentTest = () => {
                 finalTimings, // Pass section timings to Gemini
                 gradeLevel, // Pass grade level for proper scoring
                 null, // preCalculatedScores (not available here)
-                studentContext // Pass student context for enhanced recommendations
+                studentContext, // Pass student context for enhanced recommendations
+                adaptiveResultsForAI // Pass adaptive results for aptitude scoring
             );
 
             if (geminiResults) {
