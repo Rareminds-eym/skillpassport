@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import AIPersonaLayout from '../../components/digital-pp/portfolio/layouts/AIPersonaLayout';
 import CompactResumeDashboard from '../../components/digital-pp/portfolio/layouts/CompactResumeDashboard';
 import CreativeLayout from '../../components/digital-pp/portfolio/layouts/CreativeLayout';
@@ -154,6 +155,17 @@ const PortfolioPage: React.FC = () => {
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Back Button */}
+      <div className="fixed top-4 left-4 z-50">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-all duration-200 backdrop-blur-sm bg-opacity-90"
+        >
+         
+          <span className="text-sm font-medium">Back</span>
+        </button>
+      </div>
+
       {/* Layout Content */}
       <div>
         {renderLayout()}
