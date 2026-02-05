@@ -984,6 +984,39 @@ const AttendanceTracking: React.FC = () => {
       return;
     }
 
+    // Date and time validation
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+    
+    // Check if date is in the past
+    if (sessionFormData.date < currentDate) {
+      alert("Cannot schedule attendance for past dates.");
+      return;
+    }
+    
+    // Check if time is in the past (for today's date)
+    if (sessionFormData.date === currentDate) {
+      if (sessionFormData.startTime < currentTime) {
+        alert("Cannot schedule attendance for past time.");
+        return;
+      }
+      if (sessionFormData.endTime < currentTime) {
+        alert("End time cannot be in the past.");
+        return;
+      }
+    }
+    
+    // Check if end time is after start time
+    if (sessionFormData.startTime && sessionFormData.endTime) {
+      const start = new Date(`2000-01-01T${sessionFormData.startTime}`);
+      const end = new Date(`2000-01-01T${sessionFormData.endTime}`);
+      if (end <= start) {
+        alert("End time must be after start time.");
+        return;
+      }
+    }
+
     try {
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -1072,6 +1105,39 @@ const AttendanceTracking: React.FC = () => {
         !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
       alert("Please fill in all required fields.");
       return;
+    }
+
+    // Date and time validation
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+    
+    // Check if date is in the past
+    if (sessionFormData.date < currentDate) {
+      alert("Cannot schedule attendance for past dates.");
+      return;
+    }
+    
+    // Check if time is in the past (for today's date)
+    if (sessionFormData.date === currentDate) {
+      if (sessionFormData.startTime < currentTime) {
+        alert("Cannot schedule attendance for past time.");
+        return;
+      }
+      if (sessionFormData.endTime < currentTime) {
+        alert("End time cannot be in the past.");
+        return;
+      }
+    }
+    
+    // Check if end time is after start time
+    if (sessionFormData.startTime && sessionFormData.endTime) {
+      const start = new Date(`2000-01-01T${sessionFormData.startTime}`);
+      const end = new Date(`2000-01-01T${sessionFormData.endTime}`);
+      if (end <= start) {
+        alert("End time must be after start time.");
+        return;
+      }
     }
 
     try {
