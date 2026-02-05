@@ -21,18 +21,19 @@ interface RequestBody {
   assessmentData: AssessmentData;
 }
 
-// AI Models to try (in order of preference) - using valid OpenRouter models
+// AI Models to try (in order of preference) - imported from ai-config
 const ASSESSMENT_MODELS = [
-  'openai/gpt-3.5-turbo',                  // Reliable and affordable
-  'openai/gpt-4o-mini',                    // Backup OpenAI model
-  'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
-  'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
+  AI_MODELS.GPT_4O_MINI,           // Primary: OpenAI GPT-4o-mini
+  AI_MODELS.GPT_4O,                // Fallback 1: OpenAI GPT-4o
+  AI_MODELS.GEMINI_2_FLASH,        // Fallback 2: Google Gemini 2.0 Flash
+  AI_MODELS.LLAMA_3_2_3B,          // Fallback 3: Meta Llama 3.2 3B (free)
 ];
 
 // Assessment-specific configuration
 const ASSESSMENT_CONFIG = {
   temperature: 0.1,  // Low temperature for consistent, deterministic results
   maxTokens: 32000,  // Increased to handle complete responses with all sections (employability, knowledge, skillGap, roadmap, finalNote)
+  maxRetries: API_CONFIG.RETRY.maxRetries,
 };
 
 /**
@@ -105,9 +106,16 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
   // CRITICAL sections that MUST be present (not just warnings)
   const criticalSections = ['employability', 'knowledge', 'skillGap', 'roadmap', 'finalNote'];
   
+  // Track missing fields and type errors
+  const missingFieldsList: string[] = [];
+  const typeErrorsList: string[] = [];
+  
   // Check required fields
   for (const [field, expectedType] of Object.entries(requiredFields)) {
     if (!result[field]) {
+      // Track missing field
+      missingFieldsList.push(field);
+      
       // Critical sections are ERRORS, not warnings
       if (criticalSections.includes(field)) {
         errors.push(`CRITICAL: Missing required field: ${field}`);
@@ -394,7 +402,7 @@ async function analyzeAssessment(
         { role: 'user', content: prompt }
       ], {
         models: [currentModel], // Single model - we handle fallback here
-        maxRetries: 2, // Reduced retries since we have model-level fallback
+        maxRetries: ASSESSMENT_CONFIG.maxRetries,
         maxTokens: ASSESSMENT_CONFIG.maxTokens,
         temperature: ASSESSMENT_CONFIG.temperature,
       });

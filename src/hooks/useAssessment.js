@@ -205,17 +205,20 @@ export const useAssessment = () => {
 
   // Save a response
   const saveResponse = useCallback(async (sectionName, questionId, value, isCorrect = null) => {
-    if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
+    if (!currentAttempt?.id) {
+      console.warn('⚠️ No active attempt, skipping save');
+      return { success: false, error: 'No active attempt' };
+    }
 
     const responseKey = `${sectionName}_${questionId}`;
     
-    // Update local state immediately
+    // Update local state immediately (optimistic update)
     setResponses(prev => ({
       ...prev,
       [responseKey]: value
     }));
 
-    // Save to database
+    // Save to database with error handling
     try {
       await assessmentService.saveResponse(
         currentAttempt.id,
@@ -225,14 +228,33 @@ export const useAssessment = () => {
       );
       return { success: true };
     } catch (err) {
-      console.error('Error saving response:', err);
-      return { success: false, error: err.message };
+      console.error('❌ Error saving response:', err);
+      
+      // Provide user-friendly error message
+      let userMessage = 'Failed to save answer';
+      if (err.code === 'VALIDATION_ERROR') {
+        userMessage = 'Invalid data - please try again';
+      } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        userMessage = 'Network error - please check your connection';
+      } else if (err.code === 'RESPONSE_SAVE_FAILED') {
+        userMessage = 'Failed to save answer after multiple attempts';
+      }
+      
+      return { 
+        success: false, 
+        error: err.message,
+        userMessage,
+        code: err.code
+      };
     }
   }, [currentAttempt?.id]);
 
   // Update progress
   const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null, aptitudeQuestionTimer = null) => {
-    if (!currentAttempt?.id) return { success: false, error: 'No active attempt' };
+    if (!currentAttempt?.id) {
+      console.warn('⚠️ No active attempt, skipping progress update');
+      return { success: false, error: 'No active attempt' };
+    }
 
     try {
       await assessmentService.updateAttemptProgress(currentAttempt.id, {
@@ -246,8 +268,24 @@ export const useAssessment = () => {
       });
       return { success: true };
     } catch (err) {
-      console.error('Error updating progress:', err);
-      return { success: false, error: err.message };
+      console.error('❌ Error updating progress:', err);
+      
+      // Provide user-friendly error message
+      let userMessage = 'Failed to save progress';
+      if (err.code === 'VALIDATION_ERROR') {
+        userMessage = 'Invalid progress data';
+      } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        userMessage = 'Network error - progress not saved';
+      } else if (err.code === 'PROGRESS_UPDATE_FAILED') {
+        userMessage = 'Failed to save progress after multiple attempts';
+      }
+      
+      return { 
+        success: false, 
+        error: err.message,
+        userMessage,
+        code: err.code
+      };
     }
   }, [currentAttempt?.id]);
 
