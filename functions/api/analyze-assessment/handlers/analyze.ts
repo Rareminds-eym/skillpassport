@@ -16,6 +16,11 @@ import {
   API_CONFIG,
   callOpenRouterWithRetry
 } from '../../shared/ai-config';
+import { 
+  fetchJobMarketData, 
+  generateJobMarketSection, 
+  extractCareerCategories 
+} from '../services/job-market-data';
 
 interface RequestBody {
   assessmentData: AssessmentData;
@@ -366,13 +371,47 @@ async function analyzeAssessment(
   assessmentData: AssessmentData
 ): Promise<any> {
   const gradeLevel = assessmentData.gradeLevel || 'after12';
-  const prompt = buildAnalysisPrompt(assessmentData);
+  
+  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS WITH VALIDATION FALLBACK ===`);
+  console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
+  
+  // ============================================================================
+  // STEP 1: Fetch real-time job market data (NEW)
+  // ============================================================================
+  console.log('[ASSESSMENT] 📊 Fetching real-time Indian job market data...');
+  
+  // Extract preliminary RIASEC to determine relevant categories
+  const preliminaryRiasec = assessmentData.riasecAnswers ? 
+    Object.keys(assessmentData.riasecAnswers).slice(0, 3).join('') : 'RIA';
+  const aptitudeLevel = assessmentData.adaptiveAptitudeResults?.aptitudeLevel || 3;
+  
+  const categories = extractCareerCategories(
+    preliminaryRiasec,
+    aptitudeLevel,
+    []
+  );
+  
+  console.log('[ASSESSMENT] 🎯 Identified relevant career categories:', categories.join(', '));
+  
+  // Fetch job market data for these categories
+  const jobMarketData = await fetchJobMarketData(env, categories);
+  const jobMarketSection = generateJobMarketSection(jobMarketData);
+  
+  if (jobMarketSection) {
+    console.log('[ASSESSMENT] ✅ Successfully fetched real-time job market data');
+  } else {
+    console.log('[ASSESSMENT] ⚠️ Using fallback hardcoded data (job market fetch failed)');
+  }
+  
+  // ============================================================================
+  // STEP 2: Build prompt with dynamic job data
+  // ============================================================================
+  const basePrompt = buildAnalysisPrompt(assessmentData);
+  const prompt = jobMarketSection + '\n\n' + basePrompt;
   const systemMessage = getSystemMessage(gradeLevel);
   const seed = generateSeed(assessmentData);
 
-  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS WITH VALIDATION FALLBACK ===`);
   console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
-  console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
   console.log(`[ASSESSMENT] Available models: ${ASSESSMENT_MODELS.length}`);
   console.log(`[ASSESSMENT] Models: ${ASSESSMENT_MODELS.join(', ')}`);
 

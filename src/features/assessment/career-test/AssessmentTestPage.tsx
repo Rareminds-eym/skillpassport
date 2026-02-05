@@ -1059,14 +1059,35 @@ const AssessmentTestPage: React.FC = () => {
     // FIX 1: Resume adaptive aptitude session if exists
     if (pendingAttempt.adaptive_aptitude_session_id) {
       console.log('🔄 [ADAPTIVE RESUME] Found adaptive session ID, attempting to resume:', pendingAttempt.adaptive_aptitude_session_id);
-      try {
-        await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
-        console.log('✅ [ADAPTIVE RESUME] Session resumed successfully');
-      } catch (err) {
-        console.error('❌ [ADAPTIVE RESUME] Failed to resume adaptive session:', err);
-        // Show error to user but allow them to continue
-        flow.setError('Could not resume adaptive test session. The section will restart from the beginning.');
-        // Continue with regular resume - adaptive section will restart if needed
+      
+      // Check if the adaptive session is already completed
+      const { data: adaptiveSession } = await supabase
+        .from('adaptive_aptitude_sessions')
+        .select('status, questions_answered')
+        .eq('id', pendingAttempt.adaptive_aptitude_session_id)
+        .single();
+      
+      if (adaptiveSession?.status === 'completed') {
+        console.log('✅ [ADAPTIVE RESUME] Adaptive session already completed, skipping resume');
+        console.log('✅ [ADAPTIVE RESUME] Will show section complete screen');
+        // Don't try to resume - the section is already complete
+        // Check if we're currently on the adaptive section
+        const adaptiveSectionIndex = sections.findIndex(s => s.isAdaptive);
+        if (sectionIndex === adaptiveSectionIndex) {
+          console.log('✅ [ADAPTIVE RESUME] Currently on adaptive section, showing section complete');
+          flow.setShowSectionComplete(true);
+        }
+      } else {
+        // Session is in progress, try to resume it
+        try {
+          await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
+          console.log('✅ [ADAPTIVE RESUME] Session resumed successfully');
+        } catch (err) {
+          console.error('❌ [ADAPTIVE RESUME] Failed to resume adaptive session:', err);
+          // Show error to user but allow them to continue
+          flow.setError('Could not resume adaptive test session. The section will restart from the beginning.');
+          // Continue with regular resume - adaptive section will restart if needed
+        }
       }
     } else {
       console.log('ℹ️ [ADAPTIVE RESUME] No adaptive session ID found - user may not have started adaptive section yet');
@@ -1126,12 +1147,27 @@ const AssessmentTestPage: React.FC = () => {
           flow.setShowSectionIntro(true);
           flow.setCurrentScreen('section_intro');
         } else {
-          console.log('✅ [ADAPTIVE RESUME] Adaptive session exists, resuming to assessment screen');
-          // Adaptive session was already resumed above
-          // Just set to question 0 and let adaptive hook take over
-          flow.setCurrentQuestionIndex(0);
-          flow.setShowSectionIntro(false);
-          flow.setCurrentScreen('assessment');
+          // Check if the adaptive session is completed
+          const { data: adaptiveSession } = await supabase
+            .from('adaptive_aptitude_sessions')
+            .select('status')
+            .eq('id', pendingAttempt.adaptive_aptitude_session_id)
+            .single();
+          
+          if (adaptiveSession?.status === 'completed') {
+            console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
+            flow.setCurrentQuestionIndex(0);
+            flow.setShowSectionIntro(false);
+            flow.setShowSectionComplete(true);
+            flow.setCurrentScreen('section_complete');
+          } else {
+            console.log('✅ [ADAPTIVE RESUME] Adaptive session exists and in progress, resuming to assessment screen');
+            // Adaptive session was already resumed above
+            // Just set to question 0 and let adaptive hook take over
+            flow.setCurrentQuestionIndex(0);
+            flow.setShowSectionIntro(false);
+            flow.setCurrentScreen('assessment');
+          }
         }
 
       } else {
@@ -2188,7 +2224,7 @@ const AssessmentTestPage: React.FC = () => {
           )}
           
           {/* Adaptive Section Loading - Show loading when adaptive test is initializing */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && (adaptiveAptitude.loading || !adaptiveAptitude.currentQuestion) && !adaptiveAptitude.error && (
+          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && (adaptiveAptitude.loading || !adaptiveAptitude.currentQuestion) && !adaptiveAptitude.error && !adaptiveAptitude.isTestComplete && (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
               <div className="text-center max-w-md px-4">
                 <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
