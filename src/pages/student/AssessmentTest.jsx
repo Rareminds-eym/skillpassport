@@ -2254,7 +2254,7 @@ const AssessmentTest = () => {
     const isCurrentAnswered = (() => {
         // For adaptive sections, check if an answer is selected
         if (currentSection?.isAdaptive) {
-            return adaptiveAptitudeAnswer !== null;
+            return adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
         }
         
         // Check if questionId is valid
@@ -2264,7 +2264,14 @@ const AssessmentTest = () => {
         
         const answer = answers[questionId];
         
-        // No answer selected
+        // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
+        // CRITICAL: Check this BEFORE the general empty check to ensure strict validation
+        if (currentSection?.isAptitude || currentSection?.isKnowledge) {
+            // Answer must be a non-empty string (option value)
+            return typeof answer === 'string' && answer.trim().length > 0;
+        }
+        
+        // No answer selected for other question types
         if (answer === null || answer === undefined || answer === '') {
             return false;
         }
@@ -2285,7 +2292,6 @@ const AssessmentTest = () => {
         }
         
         // For MCQ and other question types, ensure answer is not empty
-        // This handles aptitude and knowledge sections
         return answer !== null && answer !== undefined && answer !== '';
     })();
 

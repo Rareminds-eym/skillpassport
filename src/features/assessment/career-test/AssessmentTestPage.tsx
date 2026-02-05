@@ -274,10 +274,7 @@ const AssessmentTestPage: React.FC = () => {
   // Flow state machine
   const flow = useAssessmentFlow({
     sections,
-    onSectionComplete: (sectionId, timeSpent) => {
-
-
-
+    onSectionComplete: async (sectionId, timeSpent) => {
       // Update section timings in state so it shows on the complete screen
       const updatedTimings = {
         ...flow.sectionTimings,
@@ -285,14 +282,19 @@ const AssessmentTestPage: React.FC = () => {
       };
       flow.setSectionTimings(updatedTimings);
 
-
       if (useDatabase && currentAttempt?.id) {
         // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
-
-        dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
+        const progressResult = await dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
+        
+        // BLOCKING: Show error if section completion save failed
+        if (!progressResult.success) {
+          const errorMsg = progressResult.userMessage || 'Failed to save section completion';
+          alert(`❌ Save Failed\n\n${errorMsg}\n\nYour section completion was not saved. Please try again or check your internet connection.`);
+          throw new Error(errorMsg);
+        }
       }
     },
-    onAnswerChange: (questionId, answer) => {
+    onAnswerChange: async (questionId, answer) => {
       // Save to database if database mode is enabled and we have an active attempt
       if (useDatabase && currentAttempt?.id) {
         const [sectionId, qId] = questionId.split('_');
@@ -302,7 +304,16 @@ const AssessmentTestPage: React.FC = () => {
 
         if (isUUID) {
           // UUID questions (AI-generated) go to personal_assessment_responses table
-          dbSaveResponse(sectionId, qId, answer);
+          const saveResult = await dbSaveResponse(sectionId, qId, answer);
+          
+          // BLOCKING: Show error and prevent continuing if save failed
+          if (!saveResult.success) {
+            const errorMsg = saveResult.userMessage || 'Failed to save answer';
+            alert(`❌ Save Failed\n\n${errorMsg}\n\nYour answer was not saved. Please try again or check your internet connection.`);
+            // Revert the answer in UI since save failed
+            flow.setAnswer(questionId, flow.answers[questionId] || null);
+            throw new Error(errorMsg);
+          }
         }
         // Note: Non-UUID questions (RIASEC, BigFive, etc.) are saved via all_responses
         // in the updateProgress call below
@@ -313,7 +324,14 @@ const AssessmentTestPage: React.FC = () => {
 
         // Update progress (current position) after every answer
         // Also save all responses to the all_responses column
-        dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers);
+        const progressResult = await dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers);
+        
+        // BLOCKING: Show error and prevent continuing if progress update failed
+        if (!progressResult.success) {
+          const errorMsg = progressResult.userMessage || 'Failed to save progress';
+          alert(`❌ Save Failed\n\n${errorMsg}\n\nYour progress was not saved. Please try again or check your internet connection.`);
+          throw new Error(errorMsg);
+        }
       }
     }
   });
@@ -1359,7 +1377,7 @@ const AssessmentTestPage: React.FC = () => {
     // CRITICAL: Block navigation if database is required but we can't save
     if (useDatabase && !currentAttempt?.id) {
       console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
-      showToastError('Assessment session not found. Please refresh the page and try again.');
+      showBlockingError('Assessment session not found. Please refresh the page and try again.');
       return;
     }
 
@@ -1420,7 +1438,7 @@ const AssessmentTestPage: React.FC = () => {
           if (!saveResult?.success) {
             console.error('❌ [SAVE BLOCK] Critical save failed - Navigation BLOCKED');
             console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-            showToastError('Failed to save your progress. Please check your internet connection and try again.');
+            showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
             return; // BLOCK NAVIGATION - critical save failed
           }
 
@@ -1443,7 +1461,7 @@ const AssessmentTestPage: React.FC = () => {
             if (!saveResult?.success) {
               console.error('❌ [SAVE BLOCK] Checkpoint save failed - Navigation BLOCKED');
               console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-              showToastError('Failed to save your progress. Please check your internet connection and try again.');
+              showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
               return; // BLOCK NAVIGATION - checkpoint save failed
             }
 
@@ -1462,7 +1480,7 @@ const AssessmentTestPage: React.FC = () => {
             if (!saveResult?.success) {
               console.error('❌ [SAVE BLOCK] Light save failed - Navigation BLOCKED');
               console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-              showToastError('Failed to save your progress. Please check your internet connection and try again.');
+              showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
               return; // BLOCK NAVIGATION - light save failed
             }
 
@@ -1490,13 +1508,13 @@ const AssessmentTestPage: React.FC = () => {
 
       // Provide user-friendly error messages based on error type
       if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
-        showToastError('Network connection lost. Please check your internet connection and try again.');
+        showBlockingError('Network connection lost. Please check your internet connection and try again.');
       } else if (error?.message?.includes('timeout')) {
-        showToastError('Request timed out. Please try again.');
+        showBlockingError('Request timed out. Please try again.');
       } else if (error?.message?.includes('session')) {
-        showToastError('Your session has expired. Please refresh the page and try again.');
+        showBlockingError('Your session has expired. Please refresh the page and try again.');
       } else {
-        showToastError('An unexpected error occurred. Please try again or refresh the page.');
+        showBlockingError('An unexpected error occurred. Please try again or refresh the page.');
       }
 
       // Don't navigate on error
@@ -1590,7 +1608,7 @@ const AssessmentTestPage: React.FC = () => {
       if (useDatabase && !currentAttempt?.id) {
         console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
         console.error('❌ [SAVE BLOCK] Section navigation BLOCKED - database enabled but no attempt');
-        showToastError('Assessment session not found. Please refresh the page and try again.');
+        showBlockingError('Assessment session not found. Please refresh the page and try again.');
         return; // BLOCK NAVIGATION - cannot save at all
       }
 
@@ -1630,7 +1648,7 @@ const AssessmentTestPage: React.FC = () => {
           if (!saveResult?.success) {
             console.error('❌ [SAVE BLOCK] Section save failed - Navigation BLOCKED');
             console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-            showToastError('Failed to save your progress. Please check your internet connection and try again.');
+            showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
             return; // BLOCK NAVIGATION - critical save failed
           }
 
@@ -1641,13 +1659,13 @@ const AssessmentTestPage: React.FC = () => {
 
           // Provide user-friendly error messages based on error type
           if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
-            showToastError('Network connection lost. Please check your internet connection and try again.');
+            showBlockingError('Network connection lost. Please check your internet connection and try again.');
           } else if (error?.message?.includes('timeout')) {
-            showToastError('Request timed out. Please try again.');
+            showBlockingError('Request timed out. Please try again.');
           } else if (error?.message?.includes('session')) {
-            showToastError('Your session has expired. Please refresh the page and try again.');
+            showBlockingError('Your session has expired. Please refresh the page and try again.');
           } else {
-            showToastError('An unexpected error occurred. Please try again or refresh the page.');
+            showBlockingError('An unexpected error occurred. Please try again or refresh the page.');
           }
 
           return; // BLOCK NAVIGATION - critical save error
@@ -1682,14 +1700,10 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [sections, flow]);
 
-  // Toast error helper function
-  const showToastError = useCallback((message: string) => {
-    console.log('🚨 [TOAST ERROR] Showing user-friendly error:', message);
-    setToastError(message);
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      setToastError(null);
-    }, 5000);
+  // Blocking error helper function - shows alert and blocks user
+  const showBlockingError = useCallback((message: string) => {
+    console.log('🚨 [BLOCKING ERROR] Showing blocking error:', message);
+    alert(`❌ Save Failed\n\n${message}\n\nPlease try again or check your internet connection.`);
   }, []);
 
   // Test mode functions
@@ -1811,68 +1825,71 @@ const AssessmentTestPage: React.FC = () => {
 
   // Check if current question is answered
   const isCurrentAnswered = useMemo(() => {
-    console.log(`🔍 [MCQ Check START] Checking if answered...`);
-    console.log(`🔍 [MCQ Check] Current section:`, currentSection?.id, 'isAptitude:', currentSection?.isAptitude, 'isKnowledge:', currentSection?.isKnowledge);
-    console.log(`🔍 [MCQ Check] QuestionID from flow:`, flow.questionId);
-    console.log(`🔍 [MCQ Check] QuestionID local:`, questionId);
-    console.log(`🔍 [MCQ Check] Are they equal?:`, flow.questionId === questionId);
+    console.log('🔍 [MCQ Check START] Checking if answered...');
+    console.log('🔍 [MCQ Check] Current section:', currentSection?.id, 'isAptitude:', currentSection?.isAptitude, 'isKnowledge:', currentSection?.isKnowledge);
+    console.log('🔍 [MCQ Check] QuestionID from flow:', flow.questionId);
+    console.log('🔍 [MCQ Check] QuestionID local:', questionId);
+    console.log('🔍 [MCQ Check] Are they equal?:', flow.questionId === questionId);
     
     // Check for adaptive sections
     if (currentSection?.isAdaptive) {
-      const isAnswered = adaptiveAptitudeAnswer !== null;
-      console.log(`🔍 [Adaptive Check] Is answered:`, isAnswered);
+      const isAnswered = adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
+      console.log('🔍 [Adaptive Check] Is answered:', isAnswered);
       return isAnswered;
     }
 
     // Validate questionId
     if (!questionId || questionId.includes('undefined')) {
-      console.log(`🔍 [Validation] Invalid questionId:`, questionId);
+      console.log('🔍 [Validation] Invalid questionId:', questionId);
       return false;
     }
 
     const answer = flow.answers[questionId];
-    
-    // Check for empty/null/undefined answers first
-    if (answer === null || answer === undefined || answer === '') {
-      console.log(`🔍 [Empty Check] No answer found for questionId:`, questionId);
-      return false;
-    }
+    console.log('🔍 [Answer Check] QuestionID:', questionId, 'Answer:', answer, 'Type:', typeof answer);
     
     // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
+    // CRITICAL: Check this BEFORE the general empty check to ensure strict validation
     if (currentSection?.isAptitude || currentSection?.isKnowledge) {
-      const isAnswered = typeof answer === 'string' && answer.length > 0;
-      console.log(`🔍 [MCQ Check] Answer value:`, answer);
-      console.log(`🔍 [MCQ Check] Answer type:`, typeof answer);
-      console.log(`🔍 [MCQ Check] Is answered:`, isAnswered);
-      console.log(`🔍 [MCQ Check] Total answers in flow:`, Object.keys(flow.answers).length);
-      console.log(`🔍 [MCQ Check] All answer keys:`, Object.keys(flow.answers));
+      // Answer must be a non-empty string (option value like "A", "B", "C", "D" or the actual option text)
+      const isAnswered = typeof answer === 'string' && answer.trim().length > 0;
+      console.log('🔍 [MCQ Check] Answer value:', answer);
+      console.log('🔍 [MCQ Check] Answer type:', typeof answer);
+      console.log('🔍 [MCQ Check] Is answered:', isAnswered);
+      console.log('🔍 [MCQ Check] Total answers in flow:', Object.keys(flow.answers).length);
+      console.log('🔍 [MCQ Check] All answer keys:', Object.keys(flow.answers));
       return isAnswered;
+    }
+    
+    // Check for empty/null/undefined answers for other question types
+    if (answer === null || answer === undefined || answer === '') {
+      console.log('🔍 [Empty Check] No answer found for questionId:', questionId);
+      return false;
     }
 
     // For SJT questions, both best and worst must be selected
     if (currentQuestion?.partType === 'sjt') {
       const isAnswered = answer.best && answer.worst;
-      console.log(`🔍 [SJT Check] Is answered:`, isAnswered);
+      console.log('🔍 [SJT Check] Is answered:', isAnswered);
       return isAnswered;
     }
     
     // For multiselect questions, check if required number of selections made
     if (currentQuestion?.type === 'multiselect') {
       const isAnswered = Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
-      console.log(`🔍 [Multiselect Check] Is answered:`, isAnswered);
+      console.log('🔍 [Multiselect Check] Is answered:', isAnswered);
       return isAnswered;
     }
     
     // For text questions, check if there's some content (at least 10 characters for meaningful response)
     if (currentQuestion?.type === 'text') {
       const isAnswered = typeof answer === 'string' && answer.trim().length >= 10;
-      console.log(`🔍 [Text Check] Is answered:`, isAnswered);
+      console.log('🔍 [Text Check] Is answered:', isAnswered);
       return isAnswered;
     }
     
     // For other question types (Likert scales, etc.), ensure answer is not empty
     const isAnswered = answer !== null && answer !== undefined && answer !== '';
-    console.log(`🔍 [Default Check] Is answered:`, isAnswered, 'Answer:', answer);
+    console.log('🔍 [Default Check] Is answered:', isAnswered, 'Answer:', answer);
     return isAnswered;
   }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion, flow.questionId]);
 
@@ -2294,7 +2311,6 @@ const AssessmentTestPage: React.FC = () => {
                     onPrevious={flow.goToPreviousQuestion}
                     onNext={handleNextQuestion}
                     canGoPrevious={flow.currentQuestionIndex > 0 && !currentSection?.isAdaptive}
-                    canGoNext={isCurrentAnswered}
                     isAnswered={isCurrentAnswered}
                     isSubmitting={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
                     isLastQuestion={flow.isLastQuestion}

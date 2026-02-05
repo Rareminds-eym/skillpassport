@@ -212,69 +212,108 @@ export const createAttempt = async (studentId, streamId, gradeLevel) => {
  * @param {string} attemptId - Attempt UUID
  * @param {object} progress - Progress data including timerRemaining for timed sections and elapsedTime for non-timed
  */
+/**
+ * Update assessment attempt progress (industrial-grade error handling)
+ * @param {string} attemptId - Attempt UUID
+ * @param {object} progress - Progress data including timerRemaining for timed sections and elapsedTime for non-timed
+ * @returns {Promise<object>} Updated attempt data
+ */
 export const updateAttemptProgress = async (attemptId, progress) => {
-  // First fetch existing data to merge section_timings and all_responses
-  const { data: existingAttempt } = await supabase
-    .from('personal_assessment_attempts')
-    .select('section_timings, all_responses')
-    .eq('id', attemptId)
-    .single();
-
-  // IMPORTANT: Merge section_timings with existing timings instead of replacing
-  // This ensures all section timings are preserved across multiple updates
-  const mergedSectionTimings = {
-    ...(existingAttempt?.section_timings || {}),
-    ...(progress.sectionTimings || {})
-  };
-
-  const updateData = {
-    current_section_index: progress.sectionIndex,
-    current_question_index: progress.questionIndex,
-    section_timings: mergedSectionTimings,
-    updated_at: new Date().toISOString()
-  };
-
-  // Include timer_remaining if provided (for timed sections)
-  if (progress.timerRemaining !== undefined && progress.timerRemaining !== null) {
-    updateData.timer_remaining = progress.timerRemaining;
+  // Validate required parameters
+  if (!attemptId) {
+    const error = new Error('Attempt ID is required');
+    error.code = 'VALIDATION_ERROR';
+    throw error;
   }
 
-  // Include elapsed_time if provided (for non-timed sections)
-  if (progress.elapsedTime !== undefined && progress.elapsedTime !== null) {
-    updateData.elapsed_time = progress.elapsedTime;
-  }
+  try {
+    // First fetch existing data to merge section_timings and all_responses
+    const existingAttempt = await retryWithBackoff(async () => {
+      const { data, error } = await supabase
+        .from('personal_assessment_attempts')
+        .select('section_timings, all_responses')
+        .eq('id', attemptId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    }, 2, 500, 'fetch existing attempt data');
 
-  // Include aptitude_question_timer if provided (for aptitude section per-question timer)
-  if (progress.aptitudeQuestionTimer !== undefined && progress.aptitudeQuestionTimer !== null) {
-    updateData.aptitude_question_timer = progress.aptitudeQuestionTimer;
-  }
-
-  // Include adaptive_aptitude_session_id if provided (for adaptive section)
-  if (progress.adaptiveAptitudeSessionId) {
-    updateData.adaptive_aptitude_session_id = progress.adaptiveAptitudeSessionId;
-  }
-
-  // Include all_responses if provided (for non-UUID questions like RIASEC, BigFive, etc.)
-  // IMPORTANT: Merge with existing all_responses instead of replacing
-  if (progress.allResponses) {
-
-    // Merge existing responses with new ones (new ones take precedence)
-    const mergedResponses = {
-      ...(existingAttempt?.all_responses || {}),
-      ...progress.allResponses
+    // IMPORTANT: Merge section_timings with existing timings instead of replacing
+    // This ensures all section timings are preserved across multiple updates
+    const mergedSectionTimings = {
+      ...(existingAttempt?.section_timings || {}),
+      ...(progress.sectionTimings || {})
     };
-    updateData.all_responses = mergedResponses;
+
+    const updateData = {
+      current_section_index: progress.sectionIndex,
+      current_question_index: progress.questionIndex,
+      section_timings: mergedSectionTimings,
+      updated_at: new Date().toISOString()
+    };
+
+    // Include timer_remaining if provided (for timed sections)
+    if (progress.timerRemaining !== undefined && progress.timerRemaining !== null) {
+      updateData.timer_remaining = progress.timerRemaining;
+    }
+
+    // Include elapsed_time if provided (for non-timed sections)
+    if (progress.elapsedTime !== undefined && progress.elapsedTime !== null) {
+      updateData.elapsed_time = progress.elapsedTime;
+    }
+
+    // Include aptitude_question_timer if provided (for aptitude section per-question timer)
+    if (progress.aptitudeQuestionTimer !== undefined && progress.aptitudeQuestionTimer !== null) {
+      updateData.aptitude_question_timer = progress.aptitudeQuestionTimer;
+    }
+
+    // Include adaptive_aptitude_session_id if provided (for adaptive section)
+    if (progress.adaptiveAptitudeSessionId) {
+      updateData.adaptive_aptitude_session_id = progress.adaptiveAptitudeSessionId;
+    }
+
+    // Include all_responses if provided (for non-UUID questions like RIASEC, BigFive, etc.)
+    // IMPORTANT: Merge with existing all_responses instead of replacing
+    if (progress.allResponses) {
+      // Merge existing responses with new ones (new ones take precedence)
+      const mergedResponses = {
+        ...(existingAttempt?.all_responses || {}),
+        ...progress.allResponses
+      };
+      updateData.all_responses = mergedResponses;
+    }
+
+    // Update with retry logic
+    const data = await retryWithBackoff(async () => {
+      const { data: updatedData, error } = await supabase
+        .from('personal_assessment_attempts')
+        .update(updateData)
+        .eq('id', attemptId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return updatedData;
+    }, 3, 500, 'update attempt progress');
+
+    console.log('✅ Progress updated successfully');
+    return data;
+  } catch (error) {
+    // Enhanced error for better debugging
+    const enhancedError = new Error(`Failed to update progress: ${error.message}`);
+    enhancedError.code = error.code || 'PROGRESS_UPDATE_FAILED';
+    enhancedError.originalError = error;
+    enhancedError.attemptId = attemptId;
+    enhancedError.progress = progress;
+    
+    // Log but don't throw for non-critical progress updates
+    // This allows the assessment to continue even if progress save fails
+    console.error('⚠️ Progress update failed:', enhancedError);
+    console.error('⚠️ Assessment can continue, but progress may not be saved');
+    
+    throw enhancedError;
   }
-
-  const { data, error } = await supabase
-    .from('personal_assessment_attempts')
-    .update(updateData)
-    .eq('id', attemptId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
 };
 
 /**
@@ -356,7 +395,27 @@ export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId)
  * @param {any} responseValue - The response value (can be number, string, or object)
  * @param {boolean} isCorrect - Whether the answer is correct (for MCQ)
  */
+/**
+ * Save a response to a question (industrial-grade error handling)
+ * @param {string} attemptId - Attempt UUID
+ * @param {string} questionId - Question UUID
+ * @param {any} responseValue - Response value
+ * @param {boolean} isCorrect - Whether the answer is correct (for MCQ)
+ * @returns {Promise<object>} Saved response data
+ */
 export const saveResponse = async (attemptId, questionId, responseValue, isCorrect = null) => {
+  // Validate required parameters
+  if (!attemptId) {
+    const error = new Error('Attempt ID is required');
+    error.code = 'VALIDATION_ERROR';
+    throw error;
+  }
+  if (!questionId) {
+    const error = new Error('Question ID is required');
+    error.code = 'VALIDATION_ERROR';
+    throw error;
+  }
+
   // Ensure responseValue is never null or undefined
   // Convert null/undefined to appropriate defaults based on type
   let sanitizedValue = responseValue;
@@ -369,7 +428,7 @@ export const saveResponse = async (attemptId, questionId, responseValue, isCorre
     sanitizedValue = [];
   }
 
-  console.log('Saving response:', {
+  console.log('💾 Saving response:', {
     attemptId,
     questionId,
     originalValue: responseValue,
@@ -378,32 +437,48 @@ export const saveResponse = async (attemptId, questionId, responseValue, isCorre
     isCorrect
   });
 
-  const { data, error } = await supabase
-    .from('personal_assessment_responses')
-    .upsert({
-      attempt_id: attemptId,
-      question_id: questionId,
-      response_value: sanitizedValue,
-      is_correct: isCorrect,
-      responded_at: new Date().toISOString()
-    }, {
-      onConflict: 'attempt_id,question_id'
-    })
-    .select()
-    .single();
+  try {
+    const data = await retryWithBackoff(async () => {
+      const { data: responseData, error } = await supabase
+        .from('personal_assessment_responses')
+        .upsert({
+          attempt_id: attemptId,
+          question_id: questionId,
+          response_value: sanitizedValue,
+          is_correct: isCorrect,
+          responded_at: new Date().toISOString()
+        }, {
+          onConflict: 'attempt_id,question_id'
+        })
+        .select()
+        .single();
 
-  if (error) {
-    console.error('Error saving response:', error);
-    console.error('Failed data:', {
-      attempt_id: attemptId,
-      question_id: questionId,
-      response_value: sanitizedValue,
-      is_correct: isCorrect
-    });
-    throw error;
+      if (error) {
+        console.error('❌ Error saving response:', error);
+        console.error('Failed data:', {
+          attempt_id: attemptId,
+          question_id: questionId,
+          response_value: sanitizedValue,
+          is_correct: isCorrect
+        });
+        throw error;
+      }
+
+      return responseData;
+    }, 3, 500, `save response for question ${questionId}`);
+
+    console.log('✅ Response saved successfully');
+    return data;
+  } catch (error) {
+    // Enhanced error for better debugging
+    const enhancedError = new Error(`Failed to save response: ${error.message}`);
+    enhancedError.code = error.code || 'RESPONSE_SAVE_FAILED';
+    enhancedError.originalError = error;
+    enhancedError.attemptId = attemptId;
+    enhancedError.questionId = questionId;
+    enhancedError.responseValue = sanitizedValue;
+    throw enhancedError;
   }
-
-  return data;
 };
 
 /**
@@ -1664,6 +1739,59 @@ export const calculateKnowledgeScores = (answers, questions) => {
  * @param {string} gradeLevel - Grade level: 'middle', 'highschool', 'higher_secondary', or 'after12'
  * @param {object} sectionTimings - Time spent on each section
  */
+/**
+ * Retry helper with exponential backoff
+ * @param {Function} fn - Async function to retry
+ * @param {number} maxRetries - Maximum number of retry attempts
+ * @param {number} baseDelay - Base delay in ms (will be exponentially increased)
+ * @param {string} operationName - Name of operation for logging
+ * @returns {Promise<any>} Result of the function
+ */
+const retryWithBackoff = async (fn, maxRetries = 3, baseDelay = 1000, operationName = 'operation') => {
+  let lastError;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        const delay = baseDelay * Math.pow(2, attempt - 1);
+        console.log(`🔄 Retry attempt ${attempt}/${maxRetries} for ${operationName} after ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      console.error(`❌ Attempt ${attempt + 1}/${maxRetries + 1} failed for ${operationName}:`, error);
+      
+      // Don't retry on certain errors
+      if (error.code === 'PGRST116' || // Row not found
+          error.code === '23505' ||    // Unique violation
+          error.code === '23503' ||    // Foreign key violation
+          error.message?.includes('JWT') || // Auth errors
+          error.message?.includes('permission')) { // Permission errors
+        console.error(`🚫 Non-retryable error for ${operationName}, aborting retries`);
+        throw error;
+      }
+      
+      if (attempt === maxRetries) {
+        console.error(`💥 All retry attempts exhausted for ${operationName}`);
+        throw error;
+      }
+    }
+  }
+  
+  throw lastError;
+};
+
+/**
+ * Complete assessment attempt without AI analysis (industrial-grade error handling)
+ * @param {string} attemptId - Assessment attempt ID
+ * @param {string} studentId - Student ID
+ * @param {string} streamId - Stream ID
+ * @param {string} gradeLevel - Grade level
+ * @param {object} sectionTimings - Time spent on each section
+ * @returns {Promise<object>} Result record
+ */
 export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, gradeLevel, sectionTimings) => {
   console.log('=== completeAttemptWithoutAI ===');
   console.log('Grade Level:', gradeLevel);
@@ -1671,41 +1799,80 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
   console.log('Stream ID:', streamId);
   console.log('Attempt ID:', attemptId);
 
+  // Validate required parameters
+  if (!attemptId) {
+    const error = new Error('Attempt ID is required');
+    error.code = 'VALIDATION_ERROR';
+    throw error;
+  }
+  if (!studentId) {
+    const error = new Error('Student ID is required');
+    error.code = 'VALIDATION_ERROR';
+    throw error;
+  }
+
   // 🔧 CRITICAL FIX: Get adaptive aptitude session ID from attempt's all_responses if it exists
   let adaptiveSessionId = null;
   try {
-    const { data: attemptData } = await supabase
-      .from('personal_assessment_attempts')
-      .select('all_responses')
-      .eq('id', attemptId)
-      .single();
-    
-    // Extract session ID from all_responses.adaptive_aptitude_results.sessionId
-    const adaptiveResults = attemptData?.all_responses?.adaptive_aptitude_results;
-    adaptiveSessionId = adaptiveResults?.sessionId || adaptiveResults?.session_id || null;
-    
-    if (adaptiveSessionId) {
-      console.log('✅ Found adaptive aptitude session ID:', adaptiveSessionId);
-    } else {
-      console.log('📊 No adaptive aptitude session found in attempt');
-    }
+    adaptiveSessionId = await retryWithBackoff(async () => {
+      const { data: attemptData, error } = await supabase
+        .from('personal_assessment_attempts')
+        .select('all_responses, adaptive_aptitude_session_id')
+        .eq('id', attemptId)
+        .single();
+      
+      if (error) throw error;
+      
+      // First check if it's already stored in the column
+      if (attemptData?.adaptive_aptitude_session_id) {
+        console.log('✅ Found adaptive session ID in column:', attemptData.adaptive_aptitude_session_id);
+        return attemptData.adaptive_aptitude_session_id;
+      }
+      
+      // Fallback: Extract from all_responses
+      const adaptiveResults = attemptData?.all_responses?.adaptive_aptitude_results;
+      const sessionId = adaptiveResults?.sessionId || adaptiveResults?.session_id || null;
+      
+      if (sessionId) {
+        console.log('✅ Found adaptive aptitude session ID in all_responses:', sessionId);
+      } else {
+        console.log('📊 No adaptive aptitude session found in attempt');
+      }
+      
+      return sessionId;
+    }, 2, 500, 'fetch adaptive session ID');
   } catch (err) {
-    console.warn('Could not fetch adaptive session ID:', err);
+    console.warn('⚠️ Could not fetch adaptive session ID (non-critical):', err.message);
+    // Non-critical error, continue without adaptive session ID
   }
 
-  // Update attempt status to completed
-  const { error: attemptError } = await supabase
-    .from('personal_assessment_attempts')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      section_timings: sectionTimings
-    })
-    .eq('id', attemptId);
+  // Update attempt status to completed with retry logic
+  try {
+    await retryWithBackoff(async () => {
+      const { error: attemptError } = await supabase
+        .from('personal_assessment_attempts')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          section_timings: sectionTimings
+        })
+        .eq('id', attemptId);
 
-  if (attemptError) {
-    console.error('Error updating attempt:', attemptError);
-    throw attemptError;
+      if (attemptError) {
+        console.error('❌ Error updating attempt status:', attemptError);
+        throw attemptError;
+      }
+      
+      console.log('✅ Attempt status updated to completed');
+    }, 3, 1000, 'update attempt status');
+  } catch (error) {
+    // Critical error - cannot proceed without marking attempt as completed
+    console.error('💥 CRITICAL: Failed to update attempt status after retries');
+    const enhancedError = new Error(`Failed to complete assessment: ${error.message}`);
+    enhancedError.code = 'ATTEMPT_UPDATE_FAILED';
+    enhancedError.originalError = error;
+    enhancedError.attemptId = attemptId;
+    throw enhancedError;
   }
 
   // Create a minimal result record WITHOUT AI analysis
@@ -1740,20 +1907,37 @@ export const completeAttemptWithoutAI = async (attemptId, studentId, streamId, g
   };
 
   console.log('📝 Inserting minimal result record (AI analysis will be generated on result page)');
-  console.log('   adaptive_aptitude_session_id:', adaptiveAptitudeSessionId);
+  console.log('   adaptive_aptitude_session_id:', adaptiveSessionId);
 
-  const { data: results, error: resultsError } = await supabase
-    .from('personal_assessment_results')
-    .upsert(dataToInsert, {
-      onConflict: 'attempt_id',
-      ignoreDuplicates: false
-    })
-    .select()
-    .single();
+  // Insert result with retry logic
+  let results;
+  try {
+    results = await retryWithBackoff(async () => {
+      const { data, error: resultsError } = await supabase
+        .from('personal_assessment_results')
+        .upsert(dataToInsert, {
+          onConflict: 'attempt_id',
+          ignoreDuplicates: false
+        })
+        .select()
+        .single();
 
-  if (resultsError) {
-    console.error('❌ Error upserting minimal result:', resultsError);
-    throw resultsError;
+      if (resultsError) {
+        console.error('❌ Error upserting minimal result:', resultsError);
+        throw resultsError;
+      }
+      
+      return data;
+    }, 3, 1000, 'insert result record');
+  } catch (error) {
+    // Critical error - result record creation failed
+    console.error('💥 CRITICAL: Failed to create result record after retries');
+    const enhancedError = new Error(`Failed to save assessment results: ${error.message}`);
+    enhancedError.code = 'RESULT_INSERT_FAILED';
+    enhancedError.originalError = error;
+    enhancedError.attemptId = attemptId;
+    enhancedError.dataToInsert = dataToInsert;
+    throw enhancedError;
   }
 
   console.log('✅ Minimal result saved successfully:', results.id);
