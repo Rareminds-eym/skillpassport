@@ -1,5 +1,5 @@
 /**
- * College (After 12th) Assessment Prompt Builder
+ * College Assessment Prompt Builder
  */
 
 import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
@@ -7,22 +7,18 @@ import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
 /**
  * Pre-process adaptive aptitude results into actionable insights
  */
-function processAdaptiveResults(results: AdaptiveAptitudeResults): {
-  section: string;
-  isHighAptitude: boolean;
-} {
+function processAdaptiveResults(results: AdaptiveAptitudeResults): string {
   const level = results.aptitudeLevel;
   const accuracy = results.overallAccuracy;
-  const isHighAptitude = level >= 4 || accuracy >= 75;
-  
+
   const levelLabels: Record<number, string> = {
     1: 'Emerging',
-    2: 'Developing', 
+    2: 'Developing',
     3: 'Capable',
     4: 'Strong',
     5: 'Exceptional'
   };
-  
+
   const subtags = results.accuracyBySubtag || {};
   const sortedSubtags = Object.entries(subtags)
     .map(([name, data]: [string, any]) => ({
@@ -30,12 +26,12 @@ function processAdaptiveResults(results: AdaptiveAptitudeResults): {
       accuracy: typeof data === 'number' ? data : data?.accuracy || 0
     }))
     .sort((a, b) => b.accuracy - a.accuracy);
-  
+
   const topStrengths = sortedSubtags
     .filter(s => s.accuracy >= 70)
     .slice(0, 3)
     .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
-  
+
   const weakAreas = sortedSubtags
     .filter(s => s.accuracy < 50)
     .slice(0, 2)
@@ -56,31 +52,15 @@ ${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No signifi
 
 **IMPORTANT**: Use these adaptive test results as ADDITIONAL evidence when generating career clusters.`;
 
-  return { section, isHighAptitude };
+  return section;
 }
 
-export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: number): string {
-  // Pre-process adaptive results for efficiency
-  const adaptiveData = assessmentData.adaptiveAptitudeResults 
-    ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
-    : null;
-  
-  const adaptiveSection = adaptiveData?.section || '';
-  
-  // Student context for program-specific recommendations
-  const studentContext = assessmentData.studentContext;
-  const hasStudentContext = studentContext && (studentContext.rawGrade || studentContext.programName || studentContext.degreeLevel);
-  
-  // Build student context section
-  const studentContextSection = hasStudentContext ? `
-## 🎓 STUDENT ACADEMIC CONTEXT (CRITICAL - READ CAREFULLY)
-
-**Current Academic Level**: ${studentContext.rawGrade || 'Not specified'}
-**Program/Course**: ${studentContext.programName || 'Not specified'}
-**Program Code**: ${studentContext.programCode || 'Not specified'}
-**Degree Level**: ${studentContext.degreeLevel || 'Not specified'}
-
-${studentContext.degreeLevel === 'postgraduate' ? `
+/**
+ * Build degree-level specific instructions
+ */
+function buildDegreeLevelInstructions(degreeLevel: string | undefined, programName: string | undefined): string {
+  if (degreeLevel === 'postgraduate') {
+    return `
 ### ⚠️ POSTGRADUATE STUDENT - SPECIAL INSTRUCTIONS ⚠️
 
 This student is pursuing a POSTGRADUATE degree (Master's/PG Diploma). Your recommendations MUST reflect this:
@@ -94,6 +74,130 @@ This student is pursuing a POSTGRADUATE degree (Master's/PG Diploma). Your recom
    - Senior (5+ years): ₹30-60 LPA
 4. **Specialized Skills**: Recommend advanced certifications and specializations
 5. **Industry-Specific Roles**: Match recommendations to their field of study
+
+**FILTERING RULES (STRICTLY ENFORCE):**
+- ❌ Remove any "Complete your Bachelor's degree" suggestions
+- ❌ Remove any UG program recommendations
+- ❌ Remove any entry-level roles meant for fresh graduates
+- ❌ Remove any basic certifications (recommend advanced ones only)
+- ✅ Include only roles that value PG qualifications
+- ✅ Include only advanced/specialized certifications
+- ✅ Adjust salary ranges to PG level
+`;
+  }
+
+  if (degreeLevel === 'undergraduate') {
+    return `
+### 📚 UNDERGRADUATE STUDENT INSTRUCTIONS
+
+This student is pursuing an UNDERGRADUATE degree (Bachelor's).
+
+**RECOMMENDATIONS SHOULD INCLUDE:**
+1. **Entry-Level Roles**: Focus on campus placements and fresher positions
+2. **Salary Expectations**: ₹3-8 LPA for entry-level
+3. **Foundational Skills**: Basic to intermediate certifications
+4. **Internship Opportunities**: Emphasize internships and training programs
+5. **Career Growth Path**: Show progression from entry to mid-level
+6. **Program Alignment**: ALL career clusters must be related to their ${programName || 'chosen'} program
+`;
+  }
+
+  if (degreeLevel === 'diploma') {
+    return `
+### 🔧 DIPLOMA STUDENT INSTRUCTIONS
+
+This student is pursuing a DIPLOMA program.
+
+**RECOMMENDATIONS SHOULD INCLUDE:**
+1. **Technical/Vocational Roles**: Focus on hands-on, skill-based positions
+2. **Salary Expectations**: ₹2-6 LPA for entry-level
+3. **Industry Certifications**: Practical, industry-recognized certifications
+4. **Skill Development**: Emphasize technical skills and on-the-job training
+5. **Career Pathways**: Show how to progress to higher qualifications if desired
+6. **Program Alignment**: ALL career clusters must be related to their ${programName || 'chosen'} program
+`;
+  }
+
+  return '';
+}
+
+/**
+ * Build program analysis instructions (dynamic, not hardcoded)
+ */
+function buildProgramAnalysisSection(): string {
+  return `
+## PROGRAM-TO-CAREER ANALYSIS INSTRUCTIONS
+
+**DO NOT rely on hardcoded mappings.** Instead, dynamically analyze the student's program:
+
+1. **Identify the Program Domain:**
+   - Parse the program name/code to identify the field (e.g., "M.Sc Data Science" → Data Science/Analytics)
+   - Recognize common abbreviations (B.Tech, M.Tech, BBA, MBA, B.Pharm, MBBS, LLB, etc.)
+   - Understand the specialization within the domain
+
+2. **Generate Career Recommendations Based on Program:**
+   - **Cluster 1 (High Fit)**: Core careers directly aligned with the program's primary focus
+   - **Cluster 2 (Medium Fit)**: Adjacent careers that leverage the program's skills in related domains
+   - **Cluster 3 (Explore)**: Interdisciplinary careers that still use the program's core competencies
+
+3. **Consider Degree Level for Seniority:**
+   - Diploma → Entry-level, technical/hands-on roles
+   - Undergraduate (B.Tech, BCA, B.Sc, etc.) → Entry to junior level positions
+   - Postgraduate (M.Tech, MBA, M.Sc, etc.) → Mid to senior level positions
+
+4. **Match Salary Ranges to Field Standards:**
+   - Research typical salary ranges for the specific field in India
+   - Adjust based on degree level and specialization
+
+5. **Recommend Relevant Certifications:**
+   - Identify industry-recognized certifications for the program field
+   - Match certification level to degree level (basic for UG, advanced for PG)
+
+**CRITICAL**: Career clusters must be derived from the actual program name provided, NOT from generic templates.
+`;
+}
+
+
+/**
+ * Build validation rules section
+ */
+function buildValidationRulesSection(): string {
+  return `
+## CRITICAL VALIDATION RULES
+
+**MANDATORY:**
+- ✅ Ensure ALL 3 career clusters are related to the student's program field
+- ✅ Match salary ranges to the field's industry standards
+- ✅ Recommend certifications relevant to the field
+- ✅ Consider degree level (UG = entry-level, PG = mid-senior level)
+
+**PROHIBITED:**
+- ❌ Recommend careers from completely unrelated fields
+- ❌ Ignore the program information and give generic recommendations
+- ❌ Recommend UG programs to PG students or vice versa
+`;
+}
+
+export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: number): string {
+  // Pre-process adaptive results for efficiency
+  const adaptiveSection = assessmentData.adaptiveAptitudeResults
+    ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
+    : '';
+
+  // Student context for program-specific recommendations
+  const studentContext = assessmentData.studentContext;
+  const hasStudentContext = studentContext && (studentContext.rawGrade || studentContext.programName || studentContext.degreeLevel);
+
+  // Build student context section
+  const studentContextSection = hasStudentContext ? `
+## 🎓 STUDENT ACADEMIC CONTEXT (CRITICAL - READ CAREFULLY)
+
+**Current Academic Level**: ${studentContext.rawGrade || 'Not specified'}
+**Program/Course**: ${studentContext.programName || 'Not specified'}
+**Program Code**: ${studentContext.programCode || 'Not specified'}
+**Degree Level**: ${studentContext.degreeLevel || 'Not specified'}
+
+${buildDegreeLevelInstructions(studentContext.degreeLevel ?? undefined, studentContext.programName ?? undefined)}
 
 **Program Field Alignment:**
 
@@ -109,130 +213,15 @@ You MUST analyze this program and provide career recommendations that are DIRECT
 
 2. **Generate Field-Aligned Career Clusters:**
    - **Cluster 1 (High Fit)**: Core careers directly related to the program
-   - **Cluster 2 (Medium Fit)**: Adjacent careers that leverage the program's skills
-   - **Cluster 3 (Explore)**: Interdisciplinary careers that combine the program with other interests
-
-3. **Common Program Mappings (USE AS REFERENCE, NOT EXHAUSTIVE):**
-
-   **Technology & IT Programs:**
-   - MCA, BCA, B.Tech/M.Tech CS/IT, Computer Science, Information Technology
-   - → Software Engineer, Data Scientist, AI/ML Engineer, Cloud Architect, Full Stack Developer, DevOps Engineer
-   - → Certifications: AWS, Azure, GCP, Kubernetes, Docker, Python, Java
-
-   **Engineering Programs:**
-   - B.Tech/M.Tech (Mechanical, Civil, Electrical, Electronics, etc.)
-   - → Design Engineer, Project Engineer, R&D Engineer, Quality Engineer, Technical Consultant
-   - → Certifications: AutoCAD, MATLAB, PMP, Six Sigma, Domain-specific tools
-
-   **Business & Management:**
-   - MBA, BBA, B.Com, M.Com, Management Studies
-   - → Product Manager, Business Analyst, Management Consultant, Financial Analyst, Marketing Manager
-   - → Certifications: PMP, Six Sigma, CFA, Digital Marketing, Agile/Scrum
-
-   **Healthcare & Medical:**
-   - MBBS, BDS, BAMS, BHMS, Nursing, Physiotherapy, Medical Lab Technology
-   - → Doctor, Dentist, Medical Officer, Healthcare Consultant, Clinical Researcher, Hospital Administrator
-   - → Certifications: Medical specializations, Healthcare Management, Clinical Research
-
-   **Pharmacy:**
-   - B.Pharm, M.Pharm, Pharm.D
-   - → Pharmacist, Clinical Pharmacist, Drug Safety Associate, Regulatory Affairs, Medical Writer, Pharmaceutical Sales
-   - → Certifications: Drug Regulatory Affairs, Clinical Research, Pharmacovigilance, Quality Assurance
-
-   **Life Sciences & Biotechnology:**
-   - B.Sc/M.Sc Biotechnology, Microbiology, Biochemistry, Genetics
-   - → Research Scientist, Biotech Analyst, Quality Control Analyst, Clinical Research Associate, Lab Technician
-   - → Certifications: Good Laboratory Practice (GLP), Clinical Research, Bioinformatics tools
-
-   **Pure Sciences:**
-   - B.Sc/M.Sc Physics, Chemistry, Mathematics, Statistics
-   - → Research Scientist, Data Analyst, Quality Analyst, Lab Technician, Academic Researcher, Science Educator
-   - → Certifications: Data Science, Statistical Analysis, Research Methodology, Lab certifications
-
-   **Commerce & Finance:**
-   - B.Com, M.Com, CA, CMA, CS
-   - → Chartered Accountant, Financial Analyst, Tax Consultant, Auditor, Investment Banker, Accountant
-   - → Certifications: CA, CMA, CFA, ACCA, Taxation, GST
-
-   **Arts & Humanities:**
-   - BA/MA English, History, Psychology, Sociology, Political Science
-   - → Content Writer, Journalist, Psychologist, Social Worker, HR Professional, Civil Services, Teacher
-   - → Certifications: Content Writing, Counseling, HR Management, Public Administration
-
-   **Law:**
-   - LLB, LLM, BA LLB
-   - → Lawyer, Legal Advisor, Corporate Counsel, Legal Analyst, Compliance Officer, Judge
-   - → Certifications: Specialized law courses, Corporate Law, IPR, Cyber Law
-
-   **Design & Creative:**
-   - B.Des, M.Des, Fashion Design, Graphic Design
-   - → UI/UX Designer, Graphic Designer, Fashion Designer, Product Designer, Creative Director
-   - → Certifications: Adobe Suite, Figma, Sketch, Design Thinking
-
-   **Agriculture & Food Science:**
-   - B.Sc/M.Sc Agriculture, Food Technology, Horticulture
-   - → Agricultural Officer, Food Technologist, Quality Assurance Manager, Agronomist, Research Scientist
-   - → Certifications: Food Safety, Organic Farming, Agricultural Extension
-
-   **Architecture & Planning:**
-   - B.Arch, M.Arch, Urban Planning
-   - → Architect, Urban Planner, Interior Designer, Landscape Architect, Project Manager
-   - → Certifications: AutoCAD, Revit, LEED, Project Management
-
-4. **If Program is NOT in the list above:**
-   - Analyze the program name to identify the field
-   - Research typical career paths for that program
-   - Generate relevant career clusters based on the field's industry demand
-   - Provide realistic salary ranges for that field in India
-
-5. **CRITICAL VALIDATION:**
-   - ✅ DO: Ensure ALL 3 career clusters are related to the student's program field
-   - ✅ DO: Match salary ranges to the field's industry standards
-   - ✅ DO: Recommend certifications relevant to the field
-   - ✅ DO: Consider degree level (UG = entry-level, PG = mid-senior level)
-   - ❌ DON'T: Recommend careers from completely unrelated fields
-   - ❌ DON'T: Ignore the program information and give generic recommendations
-   - ❌ DON'T: Recommend UG programs to PG students or vice versa
-
-**FILTERING RULES (STRICTLY ENFORCE):**
-- ❌ Remove any "Complete your Bachelor's degree" suggestions
-- ❌ Remove any UG program recommendations
-- ❌ Remove any entry-level roles meant for fresh graduates
-- ❌ Remove any basic certifications (recommend advanced ones only)
-- ✅ Include only roles that value PG qualifications
-- ✅ Include only advanced/specialized certifications
-- ✅ Adjust salary ranges to PG level
-
-` : ''}
-
-${studentContext.degreeLevel === 'undergraduate' ? `
-### 📚 UNDERGRADUATE STUDENT INSTRUCTIONS
-
-This student is pursuing an UNDERGRADUATE degree (Bachelor's).
-
-**RECOMMENDATIONS SHOULD INCLUDE:**
-1. **Entry-Level Roles**: Focus on campus placements and fresher positions
-2. **Salary Expectations**: ₹3-8 LPA for entry-level
-3. **Foundational Skills**: Basic to intermediate certifications
-4. **Internship Opportunities**: Emphasize internships and training programs
-5. **Career Growth Path**: Show progression from entry to mid-level
-
-` : ''}
-
-${studentContext.degreeLevel === 'diploma' ? `
-### 🔧 DIPLOMA STUDENT INSTRUCTIONS
-
-This student is pursuing a DIPLOMA program.
-
-**RECOMMENDATIONS SHOULD INCLUDE:**
-1. **Technical/Vocational Roles**: Focus on hands-on, skill-based positions
-2. **Salary Expectations**: ₹2-6 LPA for entry-level
-3. **Industry Certifications**: Practical, industry-recognized certifications
-4. **Skill Development**: Emphasize technical skills and on-the-job training
-5. **Career Pathways**: Show how to progress to higher qualifications if desired
-
-` : ''}
+   - **Cluster 2 (Medium Fit)**: Adjacent careers within the same domain that leverage the program's skills
+   - **Cluster 3 (Explore)**: Interdisciplinary careers that STILL USE the program's core skills but in different contexts
+   
+   ⚠️ **CRITICAL**: ALL THREE CLUSTERS must be relevant to the student's program field. Do NOT recommend careers from completely different domains.
 ` : '';
+
+  // Always include program analysis and validation for college students
+  const programAnalysisSection = buildProgramAnalysisSection();
+  const validationRulesSection = buildValidationRulesSection();
 
   return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
 
@@ -247,6 +236,8 @@ This analysis must be DETERMINISTIC and CONSISTENT. Given the same input data, y
 ## Student Grade Level: ${assessmentData.gradeLevel.toUpperCase()}
 ## Student Stream: ${assessmentData.stream.toUpperCase()}
 ${studentContextSection}
+${programAnalysisSection}
+${validationRulesSection}
 
 ## RIASEC Career Interest Responses (1-5 scale):
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
@@ -265,6 +256,19 @@ RIASEC SCORING RULES:
 4. The "code" string MUST be these 3 letters joined (e.g., if C=19, E=17, S=15, then code="CES")
 5. VERIFY: The first letter in topThree MUST have the highest score, second letter the second-highest, etc.
 6. DO NOT guess or assume - calculate from the actual responses above
+
+## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
+**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
+
+**MANDATORY for High Artistic (A) Students:**
+- **Music & Entertainment**: Music Producer, Sound Designer, Film Score Composer, Concert Manager, Audio Engineer
+- **Visual Arts**: Digital Artist, Animator, Art Director, Fashion Designer, NFT Creator, VFX Supervisor
+- **Performing Arts**: Actor, Director, Choreographer, Theatre Producer, Voice Actor, Performance Artist
+- **Media & Content**: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter, Documentary Filmmaker
+- **Design**: Graphic Designer, UX/UI Designer, Game Designer, Interior Designer, Brand Designer, Product Designer
+
+**DO NOT default to only Technology/Science/Business careers for Artistic students!**
+**The student's creative interests MUST be reflected in their career recommendations.**
 
 ## MULTI-APTITUDE BATTERY RESULTS:
 Pre-calculated Scores:
@@ -444,7 +448,14 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
         "fit": "High",
         "matchScore": 85,
         "description": "<2-3 sentences explaining WHY this fits based on assessment - REQUIRED>",
-        "evidence": {"interest": "<RIASEC evidence - REQUIRED>", "aptitude": "<aptitude evidence - REQUIRED>", "personality": "<personality evidence - REQUIRED>"},
+        "evidence": {
+          "interest": "<RIASEC evidence - REQUIRED>",
+          "aptitude": "<Aptitude evidence - REQUIRED>",
+          "personality": "<Big Five personality evidence - REQUIRED>",
+          "values": "<Work Values alignment - REQUIRED>",
+          "employability": "<Employability skills evidence - REQUIRED>",
+          "adaptiveAptitude": "<Adaptive test results evidence - if available>"
+        },
         "roles": {"entry": ["<entry role 1>", "<entry role 2>"], "mid": ["<mid role 1>", "<mid role 2>"]},
         "domains": ["<domain 1>", "<domain 2>"],
         "whyItFits": "<Specific connection to student's profile - REQUIRED>"
@@ -454,7 +465,14 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
         "fit": "Medium",
         "matchScore": 75,
         "description": "<2-3 sentences explaining fit - REQUIRED>",
-        "evidence": {"interest": "<RIASEC evidence - REQUIRED>", "aptitude": "<aptitude evidence - REQUIRED>", "personality": "<personality evidence - REQUIRED>"},
+        "evidence": {
+          "interest": "<RIASEC evidence - REQUIRED>",
+          "aptitude": "<Aptitude evidence - REQUIRED>",
+          "personality": "<Big Five personality evidence - REQUIRED>",
+          "values": "<Work Values alignment - REQUIRED>",
+          "employability": "<Employability skills evidence - REQUIRED>",
+          "adaptiveAptitude": "<Adaptive test results evidence - if available>"
+        },
         "roles": {"entry": ["<entry role 1>", "<entry role 2>"], "mid": ["<mid role 1>", "<mid role 2>"]},
         "domains": ["<domain 1>", "<domain 2>"],
         "whyItFits": "<Connection to student's profile - REQUIRED>"
@@ -464,7 +482,14 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
         "fit": "Explore",
         "matchScore": 65,
         "description": "<2-3 sentences explaining potential - REQUIRED>",
-        "evidence": {"interest": "<RIASEC evidence - REQUIRED>", "aptitude": "<aptitude evidence - REQUIRED>", "personality": "<personality evidence - REQUIRED>"},
+        "evidence": {
+          "interest": "<RIASEC evidence - REQUIRED>",
+          "aptitude": "<Aptitude evidence - REQUIRED>",
+          "personality": "<Big Five personality evidence - REQUIRED>",
+          "values": "<Work Values alignment - REQUIRED>",
+          "employability": "<Employability skills evidence - REQUIRED>",
+          "adaptiveAptitude": "<Adaptive test results evidence - if available>"
+        },
         "roles": {"entry": ["<entry role 1>", "<entry role 2>"], "mid": ["<mid role 1>", "<mid role 2>"]},
         "domains": ["<domain 1>", "<domain 2>"],
         "whyItFits": "<Why worth exploring - REQUIRED>"
@@ -482,20 +507,6 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
     "priorityB": [{"skill": "<skill>"}],
     "learningTracks": [{"track": "<track>", "suggestedIf": "<condition>", "topics": "<topics>"}],
     "recommendedTrack": "<track>"
-  },
-  "streamRecommendation": {
-    "isAfter10": false,
-    "recommendedStream": "N/A",
-    "streamFit": "N/A",
-    "confidenceScore": "N/A",
-    "reasoning": {"interests": "N/A", "aptitude": "N/A", "personality": "N/A"},
-    "scoreBasedAnalysis": {"riasecTop3": ["N/A"], "strongAptitudes": ["N/A"], "matchingPattern": "N/A"},
-    "alternativeStream": "N/A",
-    "alternativeReason": "N/A",
-    "subjectsToFocus": ["N/A"],
-    "careerPathsAfter12": ["N/A"],
-    "entranceExams": ["N/A"],
-    "collegeTypes": ["N/A"]
   },
   "roadmap": {
     "projects": [{"title": "<title>", "purpose": "<purpose>", "output": "<output>"}],
@@ -522,12 +533,11 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
    - Cluster 1: High fit (matchScore 80-95%)
    - Cluster 2: Medium fit (matchScore 70-85%)
    - Cluster 3: Explore fit (matchScore 60-75%)
-2. Each cluster MUST have: title, fit, matchScore, description, evidence (all 3 fields), roles (entry + mid), domains, whyItFits
+2. Each cluster MUST have: title, fit, matchScore, description, evidence (all 6 fields), roles (entry + mid), domains, whyItFits
 3. ALL arrays must have at least 2 items - NO empty arrays
 4. ALL career clusters must have roles.entry, roles.mid, and domains filled with real job titles
 5. Career clusters should be based on the student's program/degree field and assessment results
 6. Use EXACT scoring formulas provided - Be DETERMINISTIC (same input = same output)
 7. Provide SPECIFIC, ACTIONABLE career guidance based on the student's actual scores
-8. DO NOT truncate the response - complete ALL fields
-9. streamRecommendation is NOT applicable for college students - all fields should be "N/A" or false`;
+8. DO NOT truncate the response - complete ALL fields`;
 }
