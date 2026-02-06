@@ -436,6 +436,142 @@ async function analyzeAssessment(
       const result = repairAndParseJSON(content, true);
       
       // ============================================================================
+      // ADAPTIVE APTITUDE FIX: Override AI's zero scores with pre-calculated scores
+      // If adaptive aptitude results exist and AI returned zeros, use pre-calculated scores
+      // This fixes the issue where AI ignores pre-calculated scores in the prompt
+      // ============================================================================
+      console.log('[ASSESSMENT] 🔍 Checking for adaptive aptitude fix...');
+      console.log('[ASSESSMENT] 🔍 Has adaptiveAptitudeResults:', !!assessmentData.adaptiveAptitudeResults);
+      console.log('[ASSESSMENT] 🔍 Has result.aptitude:', !!result.aptitude);
+      console.log('[ASSESSMENT] 🔍 Has result.aptitude.scores:', !!result.aptitude?.scores);
+      
+      if (assessmentData.adaptiveAptitudeResults && result.aptitude && result.aptitude.scores) {
+        const adaptiveResults = assessmentData.adaptiveAptitudeResults;
+        const aiScores = result.aptitude.scores;
+        
+        console.log('[ASSESSMENT] 🔍 AI returned scores:', JSON.stringify(aiScores));
+        console.log('[ASSESSMENT] 🔍 Adaptive results:', JSON.stringify(adaptiveResults));
+        
+        // Check if AI returned all zeros (indicates it ignored pre-calculated scores)
+        const allZeros = Object.values(aiScores).every((score: any) => 
+          score && score.percentage === 0
+        );
+        
+        console.log('[ASSESSMENT] 🔍 All zeros check:', allZeros);
+        
+        if (allZeros) {
+          console.warn('[ASSESSMENT] ⚠️ AI returned all zero aptitude scores despite adaptive results existing');
+          console.log('[ASSESSMENT] 🔧 Applying backend fix: Converting adaptive results to standard format');
+          
+          // Convert adaptive results to standard format
+          // Handle both camelCase (from frontend) and snake_case (from database)
+          const accuracyBySubtag = (adaptiveResults as any).accuracyBySubtag || (adaptiveResults as any).accuracy_by_subtag || {};
+          
+          console.log('[ASSESSMENT] 🔍 accuracyBySubtag keys:', Object.keys(accuracyBySubtag));
+          console.log('[ASSESSMENT] 🔍 accuracyBySubtag data:', JSON.stringify(accuracyBySubtag));
+          
+          // Calculate converted scores
+          const verbal = accuracyBySubtag.verbal_reasoning?.accuracy || 0;
+          
+          // Numerical = average of numerical_reasoning and data_interpretation
+          const numericalTotal = (accuracyBySubtag.numerical_reasoning?.total || 0) + 
+                                 (accuracyBySubtag.data_interpretation?.total || 0);
+          const numericalCorrect = (accuracyBySubtag.numerical_reasoning?.correct || 0) + 
+                                   (accuracyBySubtag.data_interpretation?.correct || 0);
+          const numerical = numericalTotal > 0 ? (numericalCorrect / numericalTotal * 100) : 0;
+          
+          // Abstract = average of logical_reasoning and pattern_recognition
+          const abstractTotal = (accuracyBySubtag.logical_reasoning?.total || 0) + 
+                                (accuracyBySubtag.pattern_recognition?.total || 0);
+          const abstractCorrect = (accuracyBySubtag.logical_reasoning?.correct || 0) + 
+                                  (accuracyBySubtag.pattern_recognition?.correct || 0);
+          const abstract = abstractTotal > 0 ? (abstractCorrect / abstractTotal * 100) : 0;
+          
+          // Spatial = spatial_reasoning
+          const spatial = accuracyBySubtag.spatial_reasoning?.accuracy || 0;
+          
+          // Override AI's scores with converted scores
+          result.aptitude.scores = {
+            verbal: {
+              total: accuracyBySubtag.verbal_reasoning?.total || 0,
+              correct: accuracyBySubtag.verbal_reasoning?.correct || 0,
+              percentage: Math.round(verbal)
+            },
+            numerical: {
+              total: numericalTotal,
+              correct: numericalCorrect,
+              percentage: Math.round(numerical)
+            },
+            abstract: {
+              total: abstractTotal,
+              correct: abstractCorrect,
+              percentage: Math.round(abstract)
+            },
+            spatial: {
+              total: accuracyBySubtag.spatial_reasoning?.total || 0,
+              correct: accuracyBySubtag.spatial_reasoning?.correct || 0,
+              percentage: Math.round(spatial)
+            },
+            clerical: {
+              total: 0,
+              correct: 0,
+              percentage: 0
+            }
+          };
+          
+          // Calculate overall aptitude score
+          // Handle both camelCase and snake_case
+          const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
+          const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
+          result.aptitude.overall = totalQuestions > 0 ? 
+            Math.round((totalCorrect / totalQuestions) * 100) : 0;
+          
+          console.log('[ASSESSMENT] ✅ Backend fix applied successfully');
+          console.log('[ASSESSMENT] 📊 Converted scores:', {
+            verbal: Math.round(verbal),
+            numerical: Math.round(numerical),
+            abstract: Math.round(abstract),
+            spatial: Math.round(spatial),
+            overall: result.aptitude.overall
+          });
+        } else {
+          console.log('[ASSESSMENT] ✅ AI correctly used pre-calculated aptitude scores (not all zeros)');
+        }
+        
+        // ============================================================================
+        // ADAPTIVE APTITUDE OVERALL SCORE FIX
+        // Even if individual scores are correct, AI sometimes returns overall = 0
+        // Always set overall score from adaptive results when available
+        // Set both 'overall' and 'overallScore' for compatibility
+        // Check BOTH fields since AI might set one but not the other
+        // ============================================================================
+        const needsOverallFix = result.aptitude && (
+          !result.aptitude.overall || 
+          result.aptitude.overall === 0 ||
+          !result.aptitude.overallScore ||
+          result.aptitude.overallScore === 0
+        );
+        
+        if (needsOverallFix) {
+          const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
+          const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
+          const calculatedOverall = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+          
+          console.log('[ASSESSMENT] 🔧 Fixing overall aptitude score:');
+          console.log('[ASSESSMENT]    AI returned overall:', result.aptitude.overall);
+          console.log('[ASSESSMENT]    AI returned overallScore:', result.aptitude.overallScore);
+          console.log('[ASSESSMENT]    Calculated from adaptive:', calculatedOverall);
+          console.log('[ASSESSMENT]    Total questions:', totalQuestions, 'Total correct:', totalCorrect);
+          
+          // Set both fields for compatibility
+          result.aptitude.overall = calculatedOverall;
+          result.aptitude.overallScore = calculatedOverall;
+          console.log('[ASSESSMENT] ✅ Overall aptitude score fixed to:', calculatedOverall);
+          console.log('[ASSESSMENT] ✅ Both overall and overallScore now set to:', calculatedOverall);
+        }
+      }
+      
+      // ============================================================================
       // STRICT VALIDATION (Requirement 7.2, 7.3)
       // ============================================================================
       const validation = validateAssessmentStructure(result);

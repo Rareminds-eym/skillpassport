@@ -1080,11 +1080,82 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
 
   // Calculate aptitude scores - USE PRE-CALCULATED if available
   let aptitudeScores;
-  if (preCalculatedScores?.aptitude) {
+  
+  // ============================================================================
+  // 🔧 FIX: Convert adaptive aptitude results to standard aptitude scores format
+  // ============================================================================
+  console.log('📊 === APTITUDE SCORING DEBUG ===');
+  console.log('📊 adaptiveResults provided:', !!adaptiveResults);
+  console.log('📊 adaptiveResults.accuracy_by_subtag:', !!adaptiveResults?.accuracy_by_subtag);
+  console.log('📊 preCalculatedScores?.aptitude:', !!preCalculatedScores?.aptitude);
+  
+  if (adaptiveResults && adaptiveResults.accuracy_by_subtag) {
+    console.log('✅ Converting adaptive aptitude results to standard format');
+    console.log('📊 Adaptive results:', JSON.stringify(adaptiveResults.accuracy_by_subtag, null, 2));
+    
+    const subtags = adaptiveResults.accuracy_by_subtag;
+    
+    // Map adaptive subtags to standard aptitude categories
+    // Verbal: verbal_reasoning
+    const verbal = subtags.verbal_reasoning || { total: 0, correct: 0, accuracy: 0 };
+    
+    // Numerical: numerical_reasoning + data_interpretation
+    const numericalReasoning = subtags.numerical_reasoning || { total: 0, correct: 0, accuracy: 0 };
+    const dataInterpretation = subtags.data_interpretation || { total: 0, correct: 0, accuracy: 0 };
+    const numerical = {
+      total: numericalReasoning.total + dataInterpretation.total,
+      correct: numericalReasoning.correct + dataInterpretation.correct,
+      percentage: 0
+    };
+    if (numerical.total > 0) {
+      numerical.percentage = Math.round((numerical.correct / numerical.total) * 100);
+    }
+    
+    // Abstract: logical_reasoning + pattern_recognition
+    const logicalReasoning = subtags.logical_reasoning || { total: 0, correct: 0, accuracy: 0 };
+    const patternRecognition = subtags.pattern_recognition || { total: 0, correct: 0, accuracy: 0 };
+    const abstract = {
+      total: logicalReasoning.total + patternRecognition.total,
+      correct: logicalReasoning.correct + patternRecognition.correct,
+      percentage: 0
+    };
+    if (abstract.total > 0) {
+      abstract.percentage = Math.round((abstract.correct / abstract.total) * 100);
+    }
+    
+    // Spatial: spatial_reasoning
+    const spatial = subtags.spatial_reasoning || { total: 0, correct: 0, accuracy: 0 };
+    
+    // Clerical: not included in adaptive test
+    const clerical = { total: 0, correct: 0, percentage: 0 };
+    
+    aptitudeScores = {
+      verbal: {
+        correct: verbal.correct,
+        total: verbal.total,
+        percentage: Math.round(verbal.accuracy || 0)
+      },
+      numerical: numerical,
+      abstract: abstract,
+      spatial: {
+        correct: spatial.correct,
+        total: spatial.total,
+        percentage: Math.round(spatial.accuracy || 0)
+      },
+      clerical: clerical
+    };
+    
+    console.log('✅ Converted adaptive results to aptitude scores:', JSON.stringify(aptitudeScores, null, 2));
+  }
+  // Use pre-calculated scores if available
+  else if (preCalculatedScores?.aptitude) {
     console.log('✅ Using pre-calculated aptitude scores from attempt');
     aptitudeScores = preCalculatedScores.aptitude;
-  } else {
+  } 
+  // Fallback: calculate from questions
+  else {
     console.log('⚠️ Calculating aptitude scores from questions (fallback)');
+    console.log('⚠️ This means adaptive results were NOT provided!');
     
     // 🔧 Check if this is old Stream Based Aptitude format (aptitude_1 to aptitude_25)
     const hasOldStreamAptitude = Object.keys(answers).some(k => k.match(/^aptitude_\d+$/));

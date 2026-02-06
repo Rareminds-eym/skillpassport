@@ -18,7 +18,7 @@ import { formatStreamId } from '../../../utils/formatters';
 interface AssessmentResult {
   id: string;
   student_id: string;
-  stream_id: string;
+  stream_id: string | null;
   riasec_code: string | null;
   aptitude_overall: number | null;
   employability_readiness: string | null;

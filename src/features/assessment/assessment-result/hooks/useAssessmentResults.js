@@ -9,6 +9,7 @@ import { validateAptitudeScores } from '../../../../services/aptitudeScoreValida
 import { validateRiasecScores } from '../../../../services/riasecScoreValidator';
 import { normalizeAssessmentResults } from '../../../../utils/assessmentDataNormalizer';
 import { transformAssessmentResults } from '../../../../services/assessmentResultTransformer';
+import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '../../../../utils/studentType';
 import {
     riasecQuestions,
     bigFiveQuestions,
@@ -289,12 +290,12 @@ export const useAssessmentResults = () => {
 
         // Check if this looks like database format
         // Data can be in gemini_analysis/gemini_results field OR in individual columns
-        const isDatabaseFormat = resultsData.gemini_analysis || 
-                                resultsData.gemini_results ||
-                                resultsData.aptitude_scores || 
-                                resultsData.riasec_scores ||
-                                resultsData.top_interests ||
-                                resultsData.career_recommendations;
+        const isDatabaseFormat = resultsData.gemini_analysis ||
+            resultsData.gemini_results ||
+            resultsData.aptitude_scores ||
+            resultsData.riasec_scores ||
+            resultsData.top_interests ||
+            resultsData.career_recommendations;
 
         if (isDatabaseFormat) {
             console.log('🔄 Transforming database results to PDF format...');
@@ -352,7 +353,7 @@ export const useAssessmentResults = () => {
                     validatedResults.riasec,
                     rawAnswers
                 );
-                
+
                 if (correctedRiasec._corrected) {
                     console.log('✅ RIASEC scores corrected');
                     console.log('📊 Before:', validatedResults.riasec.scores);
@@ -367,13 +368,19 @@ export const useAssessmentResults = () => {
         }
 
         // Validate and correct aptitude scores if we have the necessary data
-        if (validatedResults.aptitude && rawAnswers && Object.keys(rawAnswers).length > 0) {
+        // 🔧 CRITICAL FIX: Skip aptitude validation if adaptive results exist
+        // For college students with adaptive aptitude, scores come from adaptive test, not MCQ questions
+        const hasAdaptiveResults = validatedResults.adaptiveAptitudeResults ||
+            validatedResults.adaptive_aptitude_results ||
+            rawAnswers?.adaptive_aptitude_session_id;
+
+        if (validatedResults.aptitude && rawAnswers && Object.keys(rawAnswers).length > 0 && !hasAdaptiveResults) {
             try {
                 // Fetch aptitude questions for this student
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     const aptitudeQuestions = await fetchAIAptitudeQuestions(user.id, Object.keys(rawAnswers));
-                    
+
                     if (aptitudeQuestions && aptitudeQuestions.length > 0) {
                         console.log('🔍 Validating aptitude scores with', aptitudeQuestions.length, 'questions');
                         const correctedAptitude = validateAptitudeScores(
@@ -381,7 +388,7 @@ export const useAssessmentResults = () => {
                             rawAnswers,
                             aptitudeQuestions
                         );
-                        
+
                         if (correctedAptitude._corrected) {
                             console.log('✅ Aptitude scores corrected');
                             validatedResults.aptitude = correctedAptitude;
@@ -392,6 +399,8 @@ export const useAssessmentResults = () => {
                 console.error('❌ Error validating aptitude scores:', error);
                 // Continue with original scores if validation fails
             }
+        } else if (hasAdaptiveResults) {
+            console.log('✅ Skipping aptitude validation - using adaptive aptitude results');
         }
 
         return validatedResults;
@@ -590,9 +599,9 @@ export const useAssessmentResults = () => {
                     const isSchoolGrade = !isNaN(gradeNum) && gradeNum >= 1 && gradeNum <= 12;
                     const isCollegeGrade = studentGrade.includes('Year') || studentGrade.includes('Semester');
 
-                    // Determine student type
-                    const isSchoolStudent = hasSchoolId || (isSchoolGrade && !hasCollegeId);
-                    const isCollegeStudent = hasCollegeId || (isCollegeGrade && !hasSchoolId);
+                    // Determine student type using centralized utility
+                    const isSchoolStudent = checkIsSchoolStudent(studentData);
+                    const isCollegeStudent = checkIsCollegeStudent(studentData);
 
                     if (isSchoolStudent) {
                         // School student - show only school name
@@ -666,6 +675,11 @@ export const useAssessmentResults = () => {
                     // NOTE: This is only used as a fallback. The assessment attempt's grade_level
                     // takes priority and is set in loadResults() after this runs.
                     let derivedGradeLevel = 'after12'; // default
+                    
+                    // Check if student is in college based on program degree level or college_id
+                    const hasCollegeProgram = studentData.programs?.degree_level && 
+                        ['undergraduate', 'postgraduate', 'diploma'].includes(studentData.programs.degree_level.toLowerCase());
+                    
                     if (studentData.school_id || studentData.schoolClassId) {
                         // School student - determine if middle or high school based on grade
                         if (!isNaN(gradeNum)) {
@@ -681,9 +695,9 @@ export const useAssessmentResults = () => {
                             // If grade is not a number, default to after12 for school students
                             derivedGradeLevel = 'after12';
                         }
-                    } else if (studentData.college_id) {
-                        // College student
-                        derivedGradeLevel = 'after12';
+                    } else if (studentData.college_id || hasCollegeProgram) {
+                        // College student - has college_id OR has a college-level program
+                        derivedGradeLevel = 'college';
                     }
 
                     // Update gradeLevel state - this is a fallback value
@@ -706,8 +720,34 @@ export const useAssessmentResults = () => {
                     } else if (derivedGradeLevel === 'higher_secondary') {
                         derivedStream = 'Higher Secondary (Grades 11-12)';
                     }
-                    // Check if student has a program (from programs table)
-                    else if (studentData.programs) {
+                    // For college students, show degree level instead of stream
+                    else if (derivedGradeLevel === 'college') {
+                        // Priority: program.name > program.code > course_name > branch_field
+                        programName = studentData.programs?.name || studentData.programs?.code || studentData.course_name || studentData.branch_field || '—';
+                        
+                        // Determine degree level from program or grade
+                        const degreeLevel = studentData.programs?.degree_level || null;
+                        const gradeStr = (studentData.grade || '').toLowerCase();
+                        
+                        if (degreeLevel === 'postgraduate' || gradeStr.includes('pg') || gradeStr.includes('postgraduate') || 
+                            gradeStr.includes('m.tech') || gradeStr.includes('mtech') || gradeStr.includes('mca') || 
+                            gradeStr.includes('mba') || gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
+                            derivedStream = 'Postgraduate';
+                        } else if (degreeLevel === 'undergraduate' || gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
+                            gradeStr.includes('b.tech') || gradeStr.includes('btech') || gradeStr.includes('bca') || 
+                            gradeStr.includes('b.sc') || gradeStr.includes('b.com') || gradeStr.includes('ba ') || gradeStr.includes('bba')) {
+                            derivedStream = 'Undergraduate';
+                        } else if (degreeLevel === 'diploma' || gradeStr.includes('diploma')) {
+                            derivedStream = 'Diploma';
+                        } else {
+                            derivedStream = 'College';
+                        }
+                        
+                        console.log('📚 College student - Level:', derivedStream, 'Program:', programName);
+                        // Skip further stream derivation for college students - we already have the degree level
+                    }
+                    // Check if student has a program (from programs table) - for non-college students ONLY
+                    else if (studentData.programs && derivedGradeLevel !== 'college') {
                         programName = studentData.programs.name || studentData.programs.code || '—';
                         const fieldText = programName.toLowerCase();
 
@@ -743,8 +783,9 @@ export const useAssessmentResults = () => {
 
                         console.log('📚 Derived stream from program:', derivedStream, 'from program:', programName);
                     }
-                    // Fallback: If we have branch_field or course_name, derive the stream
-                    else if (studentData.branch_field || studentData.course_name) {
+                    // Fallback: If we have course_name or branch_field, derive the stream
+                    else if (studentData.course_name || studentData.branch_field) {
+                        // Priority: course_name > branch_field (course_name is the primary field for custom programs)
                         programName = studentData.course_name || studentData.branch_field || '—';
                         const fieldText = programName.toLowerCase();
 
@@ -967,7 +1008,7 @@ export const useAssessmentResults = () => {
                 // If we found a result directly, use it
                 if (directResult) {
                     console.log('✅ Found result directly by attempt_id');
-                    
+
                     // ✅ NEW: Fetch adaptive aptitude results if session ID exists
                     let adaptiveAptitudeResults = null;
                     if (directResult.adaptive_aptitude_session_id) {
@@ -977,7 +1018,7 @@ export const useAssessmentResults = () => {
                             .select('*')
                             .eq('session_id', directResult.adaptive_aptitude_session_id)
                             .maybeSingle();
-                        
+
                         if (adaptiveData && !adaptiveError) {
                             console.log('✅ Found adaptive aptitude results');
                             adaptiveAptitudeResults = adaptiveData;
@@ -985,12 +1026,12 @@ export const useAssessmentResults = () => {
                             console.warn('⚠️ Error fetching adaptive results:', adaptiveError);
                         }
                     }
-                    
+
                     // ✅ NEW: Check if data is in individual columns instead of gemini_results
                     let geminiResults = directResult.gemini_results;
-                    
+
                     // If gemini_results is missing but we have individual score columns, reconstruct it
-                    if ((!geminiResults || Object.keys(geminiResults).length === 0) && 
+                    if ((!geminiResults || Object.keys(geminiResults).length === 0) &&
                         (directResult.riasec_scores || directResult.aptitude_scores)) {
                         console.log('🔧 Reconstructing results from individual database columns...');
                         geminiResults = {
@@ -1032,7 +1073,7 @@ export const useAssessmentResults = () => {
                             hasCareerFit: !!geminiResults.careerFit
                         });
                     }
-                    
+
                     // Check if AI analysis exists and is valid
                     if (geminiResults && typeof geminiResults === 'object' && Object.keys(geminiResults).length > 0) {
 
@@ -1048,26 +1089,26 @@ export const useAssessmentResults = () => {
                             console.log('⚠️ Result has gemini_results but RIASEC data is missing/invalid');
                             console.log('   RIASEC data:', geminiResults.riasec);
                             console.log('   Will regenerate AI analysis');
-                            
+
                             // Set grade level before falling through
                             if (directResult.grade_level) {
                                 setGradeLevel(directResult.grade_level);
                                 setGradeLevelFromAttempt(true);
                                 gradeLevelFromAttemptRef.current = true;
                             }
-                            
+
                             // Fall through to regenerate
                         } else {
                             // Valid AI analysis exists - use it
                             const validatedResults = await applyValidation(geminiResults, {});
-                            
+
                             console.log('🔍 DEBUG - Before normalization (direct lookup):', {
                                 hasRiasec: !!validatedResults.riasec,
                                 riasecScores: validatedResults.riasec?.scores,
                                 hasGeminiResults: !!validatedResults.gemini_results,
                                 originalScores: validatedResults.gemini_results?.riasec?._originalScores
                             });
-                            
+
                             // Normalize results to fix data inconsistencies
                             const normalizedResults = normalizeAssessmentResults(validatedResults);
                             console.log('🔧 Assessment results normalized (direct lookup):', {
@@ -1096,7 +1137,7 @@ export const useAssessmentResults = () => {
                         console.log('   gemini_results:', directResult.gemini_results);
                         console.log('   status:', directResult.status);
                         console.log('   grade_level:', directResult.grade_level);
-                        
+
                         // Set grade level
                         if (directResult.grade_level) {
                             console.log('✅ Setting grade level from result:', directResult.grade_level);
@@ -1180,7 +1221,7 @@ export const useAssessmentResults = () => {
                             // Valid AI analysis exists - use it
                             // Apply validation to correct RIASEC topThree and detect aptitude patterns
                             const validatedResults = await applyValidation(geminiResults, attempt.all_responses || {});
-                            
+
                             // DISABLED: Course generation during assessment
                             // Courses are now generated on-demand when user clicks a job role
                             // This improves assessment generation speed and reduces unnecessary API calls
@@ -1243,10 +1284,10 @@ export const useAssessmentResults = () => {
                                 setResults(validatedResults);
                             }
                             */
-                            
+
                             // Set results without course generation
                             console.log('📋 Loading assessment results (courses will be generated on-demand)');
-                            
+
                             // Normalize results to fix data inconsistencies
                             const normalizedResults = normalizeAssessmentResults(validatedResults);
                             console.log('🔧 Assessment results normalized (attempt lookup):', {
@@ -1424,7 +1465,7 @@ export const useAssessmentResults = () => {
                         console.log('Loaded results from database');
                         // Apply validation to correct RIASEC topThree and detect aptitude patterns
                         const validatedResults = await applyValidation(geminiResults);
-                        
+
                         // Normalize results to fix data inconsistencies
                         const normalizedResults = normalizeAssessmentResults(validatedResults);
                         console.log('🔧 Assessment results normalized (latest result):', {
@@ -1496,7 +1537,7 @@ export const useAssessmentResults = () => {
                 if (attempt?.all_responses && Object.keys(attempt.all_responses).length > 0) {
                     answersJson = JSON.stringify(attempt.all_responses);
                     console.log('✅ Loaded answers from database:', Object.keys(attempt.all_responses).length, 'answers');
-                    
+
                     // Also restore stream and grade level from attempt if not in localStorage
                     if (!stream && attempt.stream_id) {
                         stream = attempt.stream_id;
@@ -1557,7 +1598,7 @@ export const useAssessmentResults = () => {
 
             // Fetch the attempt with all responses
             const attempt = await assessmentService.getAttemptWithResults(attemptId);
-            
+
             if (!attempt) {
                 setError('Assessment attempt not found. Please retake the assessment.');
                 setRetrying(false);
@@ -1569,7 +1610,7 @@ export const useAssessmentResults = () => {
             // CRITICAL: Use grade level from attempt (source of truth), fallback to state, then default
             const storedGradeLevel = attempt.grade_level || gradeLevel || 'after12';
             const sectionTimings = attempt.section_timings || {};
-            
+
             console.log('📊 Retry Analysis Context:');
             console.log('   Grade Level (from attempt):', attempt.grade_level);
             console.log('   Grade Level (from state):', gradeLevel);
@@ -1700,16 +1741,42 @@ export const useAssessmentResults = () => {
             // CRITICAL FIX: Use studentContext from attempt if available (stored during submission)
             // This ensures career clusters are aligned with the student's program/course
             let studentContext = {};
-            
+
             if (attempt.student_context && Object.keys(attempt.student_context).length > 0) {
                 console.log('✅ Using student context from attempt (stored during submission)');
                 studentContext = attempt.student_context;
             } else {
                 console.log('⚠️ No student context in attempt, building from studentInfo...');
                 // Fallback: Build from studentInfo that was fetched earlier
+                // Try multiple sources for program name with correct priority
+                // Priority: courseName (from studentInfo) > branchField > fetch from DB
+                let programName = studentInfo.courseName || studentInfo.branchField || null;
+                
+                // If still no program name, try to fetch from student record
+                if (!programName && attempt.student_id) {
+                    try {
+                        const { data: studentData } = await supabase
+                            .from('students')
+                            .select('course_name, branch_field, program:program_id(name, code)')
+                            .eq('id', attempt.student_id)
+                            .maybeSingle();
+                        
+                        if (studentData) {
+                            // Priority: program.name > program.code > course_name > branch_field
+                            programName = studentData.program?.name || 
+                                         studentData.program?.code || 
+                                         studentData.course_name ||
+                                         studentData.branch_field;
+                            console.log('📚 Fetched program name from student record:', programName);
+                        }
+                    } catch (err) {
+                        console.warn('Could not fetch program name:', err);
+                    }
+                }
+                
                 studentContext = {
                     rawGrade: studentInfo.grade || storedGradeLevel,
-                    programName: studentInfo.courseName || null,
+                    programName: programName,
                     programCode: null,
                     degreeLevel: extractDegreeLevel(studentInfo.grade || storedGradeLevel)
                 };
@@ -1723,14 +1790,14 @@ export const useAssessmentResults = () => {
             if (answers.adaptive_aptitude_session_id) {
                 console.log('🔍 Fetching adaptive aptitude results for AI analysis...');
                 console.log('   Session ID:', answers.adaptive_aptitude_session_id);
-                
+
                 try {
                     const { data: adaptiveData, error: adaptiveError } = await supabase
                         .from('adaptive_aptitude_results')
                         .select('*')
                         .eq('session_id', answers.adaptive_aptitude_session_id)
                         .maybeSingle();
-                    
+
                     if (adaptiveData && !adaptiveError) {
                         console.log('✅ Found adaptive aptitude results:', {
                             level: adaptiveData.aptitude_level,
@@ -1754,9 +1821,13 @@ export const useAssessmentResults = () => {
             const preCalculatedScores = attempt.aptitude_scores ? {
                 aptitude: attempt.aptitude_scores
             } : null;
-            
+
             console.log('📊 Pre-calculated scores for regeneration:', preCalculatedScores);
-            
+
+            // 🔧 CRITICAL FIX: Pass adaptive results as 8th parameter
+            const adaptiveResultsForAI = answers.adaptive_aptitude_results || null;
+            console.log('📊 Adaptive results for AI:', adaptiveResultsForAI ? 'Available' : 'Not available');
+
             const geminiResults = await analyzeAssessmentWithGemini(
                 answers,
                 stream,
@@ -1764,18 +1835,19 @@ export const useAssessmentResults = () => {
                 {}, // Empty timings in retry
                 storedGradeLevel, // Pass grade level for proper scoring
                 preCalculatedScores, // Pass pre-calculated scores from attempt
-                studentContext // Pass student context for enhanced recommendations
+                studentContext, // Pass student context for enhanced recommendations
+                adaptiveResultsForAI // Pass adaptive results for aptitude scoring
             );
 
             if (!geminiResults) {
                 throw new Error('AI analysis returned no results');
             }
-            
+
             console.log('✅ AI analysis completed successfully');
             console.log('   Has RIASEC:', !!geminiResults.riasec);
             console.log('   Has aptitude:', !!geminiResults.aptitude);
             console.log('   Has careerFit:', !!geminiResults.careerFit);
-            
+
             // ============================================================================
             // CRITICAL DEBUG: Log AI response structure
             // ============================================================================
@@ -1927,10 +1999,10 @@ export const useAssessmentResults = () => {
 
         } catch (e) {
             console.error('Regeneration failed:', e);
-            
+
             // Provide user-friendly error message based on retry attempt count
             let errorMessage = e.message || 'Failed to regenerate report. Please try again.';
-            
+
             if (retryAttemptCount >= 2) {
                 // On 3rd attempt failure, suggest contacting support
                 errorMessage = 'Unable to generate your report after multiple attempts. Please contact support or try again later.';
@@ -1938,7 +2010,7 @@ export const useAssessmentResults = () => {
                 // On 2nd attempt failure, provide more context
                 errorMessage = `Analysis failed (Attempt ${retryAttemptCount + 1}/3). ${e.message || 'Please try again.'}`;
             }
-            
+
             setError(errorMessage);
         } finally {
             // Mark retry as attempted in sessionStorage AFTER the retry completes (success or failure)
@@ -1976,12 +2048,12 @@ export const useAssessmentResults = () => {
             console.log('   retryCompleted:', retryCompleted);
             console.log('   retryAttemptCount:', retryAttemptCount);
             console.log('   autoRetryInProgressRef.current:', autoRetryInProgressRef.current);
-            
+
             // Record start time for timing measurement
             const startTime = Date.now();
             setAutoRetryStartTime(startTime);
             console.log('⏱️ Auto-retry start time:', new Date(startTime).toISOString());
-            
+
             // Set flag to prevent concurrent attempts
             autoRetryInProgressRef.current = true;
             setAutoRetry(false); // Reset flag immediately to prevent loops
@@ -1993,12 +2065,12 @@ export const useAssessmentResults = () => {
                 handleRetry().finally(() => {
                     // Reset the in-progress flag after retry completes (success or failure)
                     autoRetryInProgressRef.current = false;
-                    
+
                     // Calculate and log timing
                     const endTime = Date.now();
                     const duration = (endTime - startTime) / 1000; // Convert to seconds
                     console.log('⏱️ Auto-retry completed in', duration.toFixed(2), 'seconds');
-                    
+
                     // Verify timing requirement (should trigger within 2 seconds)
                     if (duration > 2) {
                         console.warn('⚠️ Auto-retry took longer than 2 seconds:', duration.toFixed(2), 'seconds');
@@ -2048,20 +2120,20 @@ export const useAssessmentResults = () => {
         if (gradeLevel === 'middle' || gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
             // Basic interest exploration (mapped to RIASEC codes)
             if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('Interest Explorer');
-            
+
             // For high school and higher secondary, check adaptive aptitude results (not aptitude sampling)
             // Aptitude Sampling is just a self-assessment, real aptitude comes from adaptive test
             if ((gradeLevel === 'highschool' || gradeLevel === 'higher_secondary')) {
                 // Check if adaptive aptitude results exist
-                const hasAdaptiveResults = results.adaptiveAptitudeResults || 
-                                          results.adaptive_aptitude_results ||
-                                          (results.gemini_results && results.gemini_results.adaptiveAptitudeResults);
-                
+                const hasAdaptiveResults = results.adaptiveAptitudeResults ||
+                    results.adaptive_aptitude_results ||
+                    (results.gemini_results && results.gemini_results.adaptiveAptitudeResults);
+
                 if (!hasAdaptiveResults) {
                     missingFields.push('Adaptive Aptitude Test');
                 }
             }
-            
+
             return missingFields;
         }
 

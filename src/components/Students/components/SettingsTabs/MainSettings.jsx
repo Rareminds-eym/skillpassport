@@ -671,106 +671,46 @@ const MainSettings = () => {
     
     setIsSaving(true);
     try {
-      const additionalInfoFields = {
-        gapInStudies: profileData.gapInStudies,
-        gapYears: profileData.gapYears,
-        gapReason: profileData.gapReason,
-        workExperience: profileData.workExperience,
-        aadharNumber: profileData.aadharNumber,
-        backlogsHistory: profileData.backlogsHistory,
-        currentBacklogs: profileData.currentBacklogs,
-      };
+      // Merge custom institution fields into profileData before saving
+      const dataToSave = { ...profileData };
       
-      await updateProfile(additionalInfoFields);
-      toast({
-        title: "Success",
-        description: "Additional information updated successfully",
-      });
-      
-      window.dispatchEvent(new CustomEvent('student_settings_updated', {
-        detail: { type: 'profile_updated', data: additionalInfoFields }
-      }));
-      
-      try {
-        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-          await refreshRecentUpdates();
-        }
-      } catch (refreshError) {
-        console.warn('Could not refresh recent updates:', refreshError);
+      // Custom program name → branch field (for assessment tests)
+      if (showCustomProgram && customProgramName) {
+        dataToSave.branch = customProgramName;
+        dataToSave.programId = null; // Clear FK to use manual entry
       }
-    } catch (error) {
-      console.error('❌ Error updating additional info:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update additional information",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Institution Details Tab - save institution-related fields
-  const handleSaveInstitutionDetails = async () => {
-    setIsSaving(true);
-    try {
-      const institutionFields = {
-        universityId: profileData.universityId,
-        universityCollegeId: profileData.universityCollegeId,
-        schoolId: profileData.schoolId,
-        schoolClassId: profileData.schoolClassId,
-        collegeId: profileData.collegeId,
-        programId: profileData.programId,
-        programSectionId: profileData.programSectionId,
-        university: customUniversityName || profileData.university,
-        college: customCollegeName || profileData.college,
-        branch: customProgramName || profileData.branch,
-        section: customSemesterName || profileData.section,
-      };
       
-      await updateProfile(institutionFields);
-      toast({
-        title: "Success",
-        description: "Institution details updated successfully",
-      });
-      
-      window.dispatchEvent(new CustomEvent('student_settings_updated', {
-        detail: { type: 'profile_updated', data: institutionFields }
-      }));
-      
-      try {
-        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-          await refreshRecentUpdates();
-        }
-      } catch (refreshError) {
-        console.warn('Could not refresh recent updates:', refreshError);
+      // Custom college name → college field
+      if (showCustomCollege && customCollegeName) {
+        dataToSave.college = customCollegeName;
+        dataToSave.universityCollegeId = null;
       }
-    } catch (error) {
-      console.error('❌ Error updating institution details:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update institution details",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Academic Details Tab - save academic information
-  const handleSaveAcademicDetails = async () => {
-    setIsSaving(true);
-    try {
-      const academicFields = {
-        registrationNumber: profileData.registrationNumber,
-        enrollmentNumber: profileData.enrollmentNumber,
-        currentCgpa: profileData.currentCgpa,
-        grade: profileData.grade,
-        gradeStartDate: profileData.gradeStartDate,
-        semester: profileData.semester,
-      };
       
-      await updateProfile(academicFields);
+      // Custom university name → university field
+      if (showCustomUniversity && customUniversityName) {
+        dataToSave.university = customUniversityName;
+        dataToSave.universityId = null;
+      }
+      
+      // Custom school name → college field (school uses same field)
+      if (showCustomSchool && customSchoolName) {
+        dataToSave.college = customSchoolName;
+        dataToSave.schoolId = null;
+      }
+      
+      // Custom semester → section field
+      if (showCustomSemester && customSemesterName) {
+        dataToSave.section = customSemesterName;
+        dataToSave.programSectionId = null;
+      }
+      
+      // Custom school class → section field
+      if (showCustomSchoolClass && customSchoolClassName) {
+        dataToSave.section = customSchoolClassName;
+        dataToSave.schoolClassId = null;
+      }
+      
+      await updateProfile(dataToSave);
       toast({
         title: "Success",
         description: "Academic details updated successfully",

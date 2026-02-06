@@ -460,6 +460,7 @@ export const TEST_PHASES_ORDER: TestPhase[] = [
 export interface InitializeTestOptions {
   studentId: string;
   gradeLevel: GradeLevel;
+  studentCourse?: string | null;
 }
 
 /**
