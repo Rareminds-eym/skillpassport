@@ -170,7 +170,8 @@ async function generateQuestionsWithAI(
     subtags: Subtag[],
     difficulty: DifficultyLevel,
     count: number,
-    excludeTexts: Set<string>
+    excludeTexts: Set<string>,
+    studentCourse?: string | null
 ): Promise<Question[]> {
     console.log(`🎯 [Adaptive-Handler] Starting AI question generation`);
     console.log(`📋 [Adaptive-Handler] Parameters:`, {
@@ -191,18 +192,26 @@ async function generateQuestionsWithAI(
 
     console.log(`🔑 [Adaptive-Handler] OpenRouter API key found (length: ${openRouterKey.length})`);
 
-    const systemPrompt = buildSystemPrompt(gradeLevel);
+    const systemPrompt = buildSystemPrompt(gradeLevel, studentCourse);
     const excludeTextsArray = Array.from(excludeTexts);
     
     console.log(`📝 [Adaptive-Handler] System prompt length: ${systemPrompt.length} characters`);
     console.log(`🚫 [Adaptive-Handler] Excluding ${excludeTextsArray.length} previous questions`);
+    if (studentCourse) {
+        console.log(`🎓 [Adaptive-Handler] Generating course-specific questions for: ${studentCourse}`);
+    }
+
+    // Build course context for college students
+    const courseContext = studentCourse
+        ? `\n\n🎓 COURSE-SPECIFIC CONTEXT:\nThe student is studying ${studentCourse}. Frame questions using scenarios, examples, and contexts relevant to this field of study. Use terminology and situations that a ${studentCourse} student would encounter.`
+        : '';
 
     const userPrompt = `Generate EXACTLY ${count} unique aptitude questions.
       
 Requirements:
 - Difficulty Level: ${difficulty} (Scale 1-5)
 - Subtags to cover: ${subtags.join(', ')}
-- Ensure questions are evenly distributed among these subtags
+- Ensure questions are evenly distributed among these subtags${courseContext}
 - CRITICAL: Each question MUST have completely different text from all others
 - CRITICAL: Do NOT generate questions similar to these already used questions:
 ${excludeTextsArray.length > 0 ? excludeTextsArray.slice(0, 30).map((t, i) => `  ${i + 1}. "${t.substring(0, 150)}..."`).join('\n') : '  (No exclusions)'}
@@ -393,13 +402,15 @@ export async function generateDiagnosticScreenerQuestions(
     env: PagesEnv,
     gradeLevel: GradeLevel,
     excludeQuestionIds: string[] = [],
-    excludeQuestionTexts: string[] = []
+    excludeQuestionTexts: string[] = [],
+    studentCourse?: string | null
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Diagnostic-Handler] Starting diagnostic screener generation`);
     console.log(`📋 [Diagnostic-Handler] Parameters:`, {
         gradeLevel,
         excludeQuestionIds: excludeQuestionIds.length,
-        excludeQuestionTexts: excludeQuestionTexts.length
+        excludeQuestionTexts: excludeQuestionTexts.length,
+        studentCourse: studentCourse || 'not provided'
     });
 
     const count = 8;
@@ -422,7 +433,8 @@ export async function generateDiagnosticScreenerQuestions(
             subtags,
             difficulty,
             count,
-            new Set(excludeQuestionTexts)
+            new Set(excludeQuestionTexts),
+            studentCourse
         );
 
         // If we got fewer questions than requested due to filtering, try to generate more
@@ -447,7 +459,8 @@ export async function generateDiagnosticScreenerQuestions(
                     remainingSubtags,
                     difficulty,
                     remainingCount,
-                    updatedExcludeTexts
+                    updatedExcludeTexts,
+                    studentCourse
                 );
                 
                 questions = [...questions, ...additionalQuestions];
@@ -492,7 +505,8 @@ export async function generateAdaptiveCoreQuestions(
     startingDifficulty: DifficultyLevel,
     count: number = 10,
     excludeQuestionIds: string[] = [],
-    excludeQuestionTexts: string[] = []
+    excludeQuestionTexts: string[] = [],
+    studentCourse?: string | null
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Adaptive-Core-Handler] Starting adaptive core generation`);
     console.log(`📋 [Adaptive-Core-Handler] Parameters:`, {
@@ -500,7 +514,8 @@ export async function generateAdaptiveCoreQuestions(
         startingDifficulty,
         count,
         excludeQuestionIds: excludeQuestionIds.length,
-        excludeQuestionTexts: excludeQuestionTexts.length
+        excludeQuestionTexts: excludeQuestionTexts.length,
+        studentCourse: studentCourse || 'not provided'
     });
 
     const subtags = Array.from({ length: count }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
@@ -518,7 +533,8 @@ export async function generateAdaptiveCoreQuestions(
             subtags,
             startingDifficulty,
             count,
-            new Set(excludeQuestionTexts)
+            new Set(excludeQuestionTexts),
+            studentCourse
         );
 
         const reordered = reorderToPreventConsecutiveSubtags(questions, 2);
@@ -551,7 +567,8 @@ export async function generateStabilityConfirmationQuestions(
     provisionalBand: DifficultyLevel,
     count: number = 6,  // Default to 6 questions for stability confirmation
     excludeQuestionIds: string[] = [],
-    excludeQuestionTexts: string[] = []
+    excludeQuestionTexts: string[] = [],
+    studentCourse?: string | null
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Stability-Handler] Starting stability confirmation generation`);
     console.log(`📋 [Stability-Handler] Parameters:`, {
@@ -559,7 +576,8 @@ export async function generateStabilityConfirmationQuestions(
         provisionalBand,
         count,
         excludeQuestionIds: excludeQuestionIds.length,
-        excludeQuestionTexts: excludeQuestionTexts.length
+        excludeQuestionTexts: excludeQuestionTexts.length,
+        studentCourse: studentCourse || 'not provided'
     });
 
     const subtags = Array.from({ length: count }, (_, i) => ALL_SUBTAGS[i % ALL_SUBTAGS.length]);
@@ -577,7 +595,8 @@ export async function generateStabilityConfirmationQuestions(
             subtags,
             provisionalBand,
             count,
-            new Set(excludeQuestionTexts)
+            new Set(excludeQuestionTexts),
+            studentCourse
         );
 
         console.log(`📊 [Stability-Handler] After generateQuestionsWithAI: ${questions.length} questions`);
@@ -625,7 +644,8 @@ export async function generateStabilityConfirmationQuestions(
                     remainingSubtags,
                     retryDifficulty,
                     missing,
-                    updatedExcludeTexts
+                    updatedExcludeTexts,
+                    studentCourse
                 );
                 
                 if (additionalQuestions.length > 0) {
@@ -679,7 +699,8 @@ export async function generateSingleQuestion(
     difficulty: DifficultyLevel,
     subtag: Subtag,
     excludeQuestionIds: string[] = [],
-    excludeQuestionTexts: string[] = []
+    excludeQuestionTexts: string[] = [],
+    studentCourse?: string | null
 ): Promise<QuestionGenerationResult> {
     console.log(`🎯 [Single-Question-Handler] Starting single question generation`);
     console.log(`📋 [Single-Question-Handler] Parameters:`, {
@@ -688,7 +709,8 @@ export async function generateSingleQuestion(
         difficulty,
         subtag,
         excludeQuestionIds: excludeQuestionIds.length,
-        excludeQuestionTexts: excludeQuestionTexts.length
+        excludeQuestionTexts: excludeQuestionTexts.length,
+        studentCourse: studentCourse || 'not provided'
     });
 
     try {
@@ -700,7 +722,8 @@ export async function generateSingleQuestion(
             [subtag],
             difficulty,
             1,
-            new Set(excludeQuestionTexts)
+            new Set(excludeQuestionTexts),
+            studentCourse
         );
 
         const duration = Date.now() - startTime;

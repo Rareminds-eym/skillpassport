@@ -46,9 +46,9 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     const getGradeCourseField = () => {
         const level = gradeLevel?.toLowerCase();
 
-        // For college/university students, show course name instead of grade
+        // For college/university students, show "Program" instead of "Course"
         if (level === 'college' || level === 'university') {
-            return { label: 'Course', value: studentInfo.courseName || '—' };
+            return { label: 'Program', value: studentInfo.courseName || '—' };
         }
 
         // For after12 students, check if they have a course name (college) or grade (12th)
@@ -131,10 +131,20 @@ const ReportHeader = ({ studentInfo, gradeLevel }) => {
     const institutionLabel = getInstitutionLabel();
     const rollNumberLabel = getRollNumberLabel();
 
+    // Determine the stream/level label based on grade level
+    const getStreamLabel = () => {
+        const level = gradeLevel?.toLowerCase();
+        // For college students, show "Level" instead of "Programme/Stream"
+        if (level === 'college' || level === 'university') {
+            return 'Level';
+        }
+        return 'Programme/Stream';
+    };
+
     const infoItems = [
         { label: 'Student Name', value: studentInfo.name },
         { label: rollNumberLabel, value: studentInfo.regNo },
-        { label: 'Programme/Stream', value: formatStreamId(studentInfo.stream || studentInfo.branchField) || '—' },
+        { label: getStreamLabel(), value: formatStreamId(studentInfo.stream || studentInfo.branchField) || '—' },
         { label: gradeCourseField.label, value: gradeCourseField.value },
         { label: institutionLabel, value: (studentInfo.college && studentInfo.college !== '—') ? studentInfo.college : studentInfo.school, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },

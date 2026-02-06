@@ -715,7 +715,31 @@ export const useAssessmentResults = () => {
                     } else if (derivedGradeLevel === 'higher_secondary') {
                         derivedStream = 'Higher Secondary (Grades 11-12)';
                     }
-                    // Check if student has a program (from programs table)
+                    // For college students, show degree level instead of stream
+                    else if (derivedGradeLevel === 'college') {
+                        programName = studentData.programs?.name || studentData.programs?.code || studentData.course_name || studentData.branch_field || '—';
+                        
+                        // Determine degree level from program or grade
+                        const degreeLevel = studentData.programs?.degree_level || null;
+                        const gradeStr = (studentData.grade || '').toLowerCase();
+                        
+                        if (degreeLevel === 'postgraduate' || gradeStr.includes('pg') || gradeStr.includes('postgraduate') || 
+                            gradeStr.includes('m.tech') || gradeStr.includes('mtech') || gradeStr.includes('mca') || 
+                            gradeStr.includes('mba') || gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
+                            derivedStream = 'Postgraduate';
+                        } else if (degreeLevel === 'undergraduate' || gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
+                            gradeStr.includes('b.tech') || gradeStr.includes('btech') || gradeStr.includes('bca') || 
+                            gradeStr.includes('b.sc') || gradeStr.includes('b.com') || gradeStr.includes('ba ') || gradeStr.includes('bba')) {
+                            derivedStream = 'Undergraduate';
+                        } else if (degreeLevel === 'diploma' || gradeStr.includes('diploma')) {
+                            derivedStream = 'Diploma';
+                        } else {
+                            derivedStream = 'College';
+                        }
+                        
+                        console.log('📚 College student - Level:', derivedStream, 'Program:', programName);
+                    }
+                    // Check if student has a program (from programs table) - for non-college students
                     else if (studentData.programs) {
                         programName = studentData.programs.name || studentData.programs.code || '—';
                         const fieldText = programName.toLowerCase();

@@ -266,6 +266,7 @@ const AssessmentTest = () => {
     const adaptiveAptitude = useAdaptiveAptitude({
         studentId: studentId || '',
         gradeLevel: getAdaptiveGradeLevelValue(),
+        studentCourse: studentProgram || null, // Pass student's course for college students
         onTestComplete: (testResults) => {
             console.log('✅ Adaptive aptitude test completed:', testResults);
             // Store results in answers for final submission
@@ -706,12 +707,20 @@ const AssessmentTest = () => {
                 setAiQuestionsLoading(true);
                 try {
                     console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
-                    // Pass studentId and attemptId for save/resume functionality (optional)
+                    
+                    // For college students, pass their actual course for knowledge questions
+                    const studentCourse = (gradeLevel === 'college' && studentProgram) ? studentProgram : null;
+                    if (studentCourse) {
+                        console.log(`🎓 College student detected - using course: ${studentCourse} for knowledge questions`);
+                    }
+                    
+                    // Pass studentId, attemptId, and course for save/resume functionality
                     const questions = await loadCareerAssessmentQuestions(
                         studentStream,
                         gradeLevel,
                         studentId || null,
-                        currentAttempt?.id || null
+                        currentAttempt?.id || null,
+                        studentCourse // Pass course for college students
                     );
 
                     // Validate that we got questions
@@ -723,7 +732,8 @@ const AssessmentTest = () => {
                             studentStream,
                             gradeLevel,
                             studentId || null,
-                            currentAttempt?.id || null
+                            currentAttempt?.id || null,
+                            studentCourse // Pass course for college students
                         );
                         setAiQuestions(retryQuestions || { aptitude: null, knowledge: null });
                     } else {
@@ -743,7 +753,7 @@ const AssessmentTest = () => {
             }
         };
         loadAIQuestions();
-    }, [gradeLevel, studentStream, studentId, currentAttempt?.id]);
+    }, [gradeLevel, studentStream, studentId, currentAttempt?.id, studentProgram]);
 
     // Get questions for a section - from database or AI-powered questions
     const getQuestionsForSection = (sectionId) => {

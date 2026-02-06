@@ -165,6 +165,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           count: 1,
           excludeQuestionIds: allExcludeIds,
           excludeQuestionTexts: allExcludeTexts,
+          studentCourse: sessionData.student_course || null,
         }),
       });
 
@@ -417,6 +418,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           count: 10,
           excludeQuestionIds: existingQuestionIds,
           excludeQuestionTexts: existingQuestionTexts,
+          studentCourse: sessionData.student_course || null,
         }),
       });
 
@@ -440,6 +442,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           count: 6,  // 6 questions for stability confirmation phase
           excludeQuestionIds: existingQuestionIds,
           excludeQuestionTexts: existingQuestionTexts,
+          studentCourse: sessionData.student_course || null,
         }),
       });
 
