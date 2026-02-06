@@ -89,8 +89,10 @@ CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is 
 ⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
 - DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
 - DO NOT write "The graph shows..." or "Look at the diagram..." or "The image depicts..."
+- DO NOT use words like: mirror image, reflection, rotate, flip, given figure, shown below, observe
 - ALL information must be provided in TEXT FORM ONLY
 - NEVER assume visual elements exist - the system does not support images
+- For spatial reasoning: Describe transformations in WORDS ONLY (e.g., "If you rotate the letter 'N' 180 degrees, which letter does it look like?")
 
 ⚠️ CRITICAL: UNIQUE QUESTIONS AND OPTIONS REQUIRED ⚠️
 - Each question MUST be completely unique - no similar or repeated questions

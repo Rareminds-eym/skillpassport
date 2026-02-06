@@ -192,7 +192,15 @@ export async function handleStreamingAptitude(
                         }
                         
                         // Check for image references
-                        const imageKeywords = ['graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 'shown below', 'shown above', 'visual', 'illustration'];
+                        const imageKeywords = [
+                            'graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 
+                            'shown below', 'shown above', 'visual', 'illustration', 'drawing',
+                            'sketch', 'photo', 'photograph', 'display', 'depicts', 'shows',
+                            'given figure', 'following figure', 'above figure', 'below figure',
+                            'mirror image', 'reflection', 'rotate', 'flip', 'shape', 'pattern',
+                            'look at', 'observe', 'see the', 'view the', 'refer to',
+                            'as shown', 'as depicted', 'as illustrated'
+                        ];
                         if (imageKeywords.some(keyword => questionText.includes(keyword))) {
                             console.warn(`⚠️ Filtered question with image reference in streaming`);
                             filteredCount++;
