@@ -11,7 +11,7 @@
 - Proper meta tags and structured data
 - OpenAPI specification
 - AI plugin manifest
-- Search-optimized content 
+- Search-optimized content
 
 ❌ **What's Missing:**
 - Your site needs to be **publicly accessible** on the internet
