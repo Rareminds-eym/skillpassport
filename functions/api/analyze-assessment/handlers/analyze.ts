@@ -8,7 +8,8 @@ import type { AssessmentData, AnalysisResult } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { buildAnalysisPrompt, getSystemMessage } from '../prompts';
+import { getSystemMessage } from '../prompts';
+import { buildHighSchoolPrompt as buildCleanHighSchoolPrompt } from '../prompts/high-school-clean';
 import { 
   repairAndParseJSON, 
   AI_MODELS, 
@@ -372,101 +373,25 @@ async function analyzeAssessment(
 ): Promise<any> {
   const gradeLevel = assessmentData.gradeLevel || 'after12';
   
-  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS WITH VALIDATION FALLBACK ===`);
+  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS ===`);
   console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
   
   // ============================================================================
-  // STEP 1: Fetch real-time job market data (NEW)
+  // STEP 1: Build prompt WITHOUT pre-fetching job market data
+  // Let AI determine RIASEC first, then we can fetch targeted data if needed
   // ============================================================================
-  console.log('[ASSESSMENT] 📊 Fetching real-time Indian job market data...');
   
-  // Extract preliminary RIASEC to determine relevant categories
-  // Calculate RIASEC scores from answers to get the actual profile
-  let preliminaryRiasec = 'RIA'; // Default fallback
+  // Generate deterministic hash for consistent results
+  const seed = generateSeed(assessmentData);
   
-  if (assessmentData.riasecAnswers) {
-    // Count scores for each RIASEC type
-    const riasecScores: Record<string, number> = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
-    
-    Object.values(assessmentData.riasecAnswers).forEach((answer: any) => {
-      if (answer.categoryMapping && answer.answer) {
-        const answerStr = String(answer.answer);
-        const riasecType = answer.categoryMapping[answerStr];
-        if (riasecType && riasecScores[riasecType] !== undefined) {
-          riasecScores[riasecType] += 2; // Standard scoring
-        }
-      }
-    });
-    
-    // Get top 3 RIASEC types
-    const sortedTypes = Object.entries(riasecScores)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([type]) => type);
-    
-    preliminaryRiasec = sortedTypes.join('');
-    console.log('[ASSESSMENT] 📊 Calculated preliminary RIASEC:', preliminaryRiasec, 'from scores:', riasecScores);
-  }
+  // Use clean prompt (AI will determine RIASEC and recommend careers)
+  const basePrompt = buildCleanHighSchoolPrompt(assessmentData, seed);
   
-  const aptitudeLevel = assessmentData.adaptiveAptitudeResults?.aptitudeLevel || 3;
-  
-  const categories = extractCareerCategories(
-    preliminaryRiasec,
-    aptitudeLevel,
-    []
-  );
-  
-  console.log('[ASSESSMENT] 🎯 Identified relevant career categories:', categories.join(', '));
-  
-  // Fetch job market data for these categories
-  const jobMarketData = await fetchJobMarketData(env, categories);
-  const jobMarketSection = generateJobMarketSection(jobMarketData);
-  
-  // DEBUG: Log what was actually fetched
-  console.log('[ASSESSMENT] 🔍 DEBUG - Job market data keys:', Object.keys(jobMarketData));
-  console.log('[ASSESSMENT] 🔍 DEBUG - Job market section length:', jobMarketSection?.length || 0);
-  if (jobMarketSection) {
-    console.log('[ASSESSMENT] 🔍 DEBUG - First 500 chars of job market section:');
-    console.log(jobMarketSection.substring(0, 500));
-  }
-  
-  if (jobMarketSection) {
-    console.log('[ASSESSMENT] ✅ Successfully fetched real-time job market data');
-    console.log('[ASSESSMENT] 📊 Categories with data:', Object.keys(jobMarketData).join(', '));
-    console.log('[ASSESSMENT] 🔒 Using ONLY dynamic data (hardcoded examples will be excluded)');
-  } else {
-    console.log('[ASSESSMENT] ⚠️ Job market fetch failed - will use fallback hardcoded data');
-  }
-  
-  // ============================================================================
-  // STEP 2: Build prompt with dynamic job data
-  // CRITICAL: If we have dynamic data, we EXCLUDE hardcoded examples to force AI to use it
-  // ============================================================================
-  const basePrompt = buildAnalysisPrompt(assessmentData);
-  
-  // If we have dynamic data, inject it and add a strong instruction to use ONLY that data
-  let prompt: string;
-  if (jobMarketSection) {
-    // Add strong instruction to use ONLY dynamic data
-    const dynamicOnlyInstruction = `
-⚠️ ⚠️ ⚠️ CRITICAL INSTRUCTION ⚠️ ⚠️ ⚠️
-
-You MUST use ONLY the real-time job market data provided above.
-DO NOT use any hardcoded salary examples or career tracks.
-The data above is current 2026 Indian market data - use it exclusively.
-
-If you use hardcoded examples instead of the real-time data above, your response will be REJECTED.
-
-⚠️ ⚠️ ⚠️ END CRITICAL INSTRUCTION ⚠️ ⚠️ ⚠️
-`;
-    prompt = jobMarketSection + '\n\n' + dynamicOnlyInstruction + '\n\n' + basePrompt;
-  } else {
-    // No dynamic data available, use full prompt with hardcoded examples
-    prompt = basePrompt;
-  }
+  console.log('[ASSESSMENT] ✅ Using clean prompt - AI will determine RIASEC dynamically');
+  console.log('[ASSESSMENT] 📊 AI will analyze raw answers and calculate RIASEC scores');
+  console.log('[ASSESSMENT] 🎯 Career recommendations will be based on AI-calculated RIASEC');
   
   const systemMessage = getSystemMessage(gradeLevel);
-  const seed = generateSeed(assessmentData);
 
   console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
   console.log(`[ASSESSMENT] Available models: ${ASSESSMENT_MODELS.length}`);
@@ -495,7 +420,7 @@ If you use hardcoded examples instead of the real-time data above, your response
       // This ensures we can control validation-based fallback
       const content = await callOpenRouterWithRetry(openRouter, [
         { role: 'system', content: systemMessage },
-        { role: 'user', content: prompt }
+        { role: 'user', content: basePrompt }
       ], {
         models: [currentModel], // Single model - we handle fallback here
         maxRetries: ASSESSMENT_CONFIG.maxRetries,

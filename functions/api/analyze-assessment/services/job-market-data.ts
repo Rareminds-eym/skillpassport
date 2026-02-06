@@ -136,9 +136,11 @@ Return ONLY valid JSON in this exact format:
 
 /**
  * Generate dynamic job recommendations section for prompt
+ * Now includes RIASEC-specific guidance
  */
 export function generateJobMarketSection(
-  jobMarketData: Record<string, JobMarketData>
+  jobMarketData: Record<string, JobMarketData>,
+  riasecCode: string
 ): string {
   if (Object.keys(jobMarketData).length === 0) {
     return '';
@@ -162,10 +164,15 @@ ${rolesText}
 - **Market Demand**: ${data.roles.filter(r => r.demand === 'high').length} HIGH demand roles, avg ${Math.round(data.roles.reduce((sum, r) => sum + r.growthRate, 0) / data.roles.length)}% growth`;
   }).join('\n\n');
 
+  // Generate RIASEC-specific guidance dynamically
+  const riasecGuidance = generateRiasecGuidance(riasecCode);
+
   return `
 ## 🔥 REAL-TIME INDIAN JOB MARKET DATA (2026):
 
 ${sections}
+
+${riasecGuidance}
 
 **CRITICAL INSTRUCTIONS FOR AI:**
 1. ✅ Use ONLY the salary ranges and roles from the data above
@@ -176,11 +183,8 @@ ${sections}
 6. ✅ Consider growth rate when recommending career paths
 7. ✅ Copy the exact salary format: "₹X-YL entry, ₹X-YL mid, ₹X-YL senior"
 8. ✅ Include the "Why Better" market insights in your career cluster descriptions
-
-**EXAMPLE OF HOW TO USE THIS DATA:**
-If the student matches "Healthcare & Wellness Coordination", you should write:
-"Healthcare sector added 7.5M jobs (62% YoY growth). Entry-level roles growing 25% annually. Stable, recession-proof."
-Then list the roles with their exact salary ranges from above.
+9. ✅ The categories above were SPECIFICALLY SELECTED for this student's RIASEC profile (${riasecCode})
+10. ✅ Prioritize roles from the categories above - they are the best fit for this student
 
 DO NOT use the hardcoded examples below - they are FALLBACK ONLY if this real-time data is missing!
 
@@ -188,8 +192,54 @@ DO NOT use the hardcoded examples below - they are FALLBACK ONLY if this real-ti
 }
 
 /**
+ * Generate RIASEC-specific career guidance dynamically
+ * This replaces hardcoded profile checks with dynamic logic
+ */
+function generateRiasecGuidance(riasecCode: string): string {
+  const types = riasecCode.split('').slice(0, 3);
+  
+  // RIASEC type descriptions
+  const typeDescriptions: Record<string, string> = {
+    'R': 'hands-on work, building, fixing, outdoor activities',
+    'I': 'analysis, research, problem-solving, investigation',
+    'A': 'creativity, artistic expression, design, innovation',
+    'S': 'helping people, teaching, counseling, teamwork',
+    'E': 'leadership, persuasion, business, entrepreneurship',
+    'C': 'organization, data management, attention to detail, systems'
+  };
+
+  // Build dynamic guidance based on the actual RIASEC combination
+  const primaryType = types[0];
+  const secondaryType = types[1];
+  const tertiaryType = types[2];
+
+  const guidance = `
+**📊 CAREER MATCHING GUIDANCE FOR ${riasecCode} PROFILE:**
+
+Your RIASEC code is **${riasecCode}**, which means:
+- **Primary strength (${primaryType})**: ${typeDescriptions[primaryType]}
+- **Secondary strength (${secondaryType})**: ${typeDescriptions[secondaryType]}
+- **Supporting trait (${tertiaryType})**: ${typeDescriptions[tertiaryType]}
+
+**CAREER SELECTION STRATEGY:**
+The categories above were selected because they align with your ${riasecCode} profile.
+- Look for roles that combine ${typeDescriptions[primaryType]} with ${typeDescriptions[secondaryType]}
+- Your ${tertiaryType} trait (${typeDescriptions[tertiaryType]}) adds versatility to your career options
+- Prioritize careers where you can use ALL THREE strengths, not just one
+
+**AVOID:**
+- Careers that only use ONE of your RIASEC types (you'll be underutilized)
+- Roles that conflict with your profile (e.g., if you're low on 'R', avoid purely hands-on technical work)
+- Over-specializing in areas where you have no interest or aptitude
+`;
+
+  return guidance;
+}
+
+/**
  * Extract career categories from student profile
- * Now uses RIASEC profile to dynamically determine relevant categories
+ * Uses RIASEC profile to dynamically determine relevant categories
+ * Works for ALL RIASEC combinations, not just specific profiles
  */
 export function extractCareerCategories(
   riasecCode: string,
@@ -204,14 +254,14 @@ export function extractCareerCategories(
   console.log('[JOB MARKET] Analyzing RIASEC profile:', riasecCode);
   console.log('[JOB MARKET] Top 3 types:', riasecTypes.join(', '));
   
-  // RIASEC to Career Category Mapping
+  // RIASEC to Career Category Mapping (Balanced - no single type dominates)
   const riasecMapping: Record<string, string[]> = {
     'R': ['Engineering & Infrastructure', 'Agriculture & Food Tech', 'Healthcare & Life Sciences'],
-    'I': ['Technology & Digital Innovation', 'Research & Academia', 'Healthcare & Life Sciences'],
+    'I': ['Research & Academia', 'Healthcare & Life Sciences', 'Business, Finance & Consulting'],
     'A': ['Creative Industries & Media', 'Gaming & Esports', 'Performing Arts & Entertainment'],
-    'S': ['Healthcare & Wellness Coordination', 'Education & Training', 'Event & Experience Management'],
-    'E': ['Business, Finance & Consulting', 'Event & Experience Management', 'Sales & Account Management'],
-    'C': ['Business, Finance & Consulting', 'Technology & Digital Innovation', 'Engineering & Infrastructure']
+    'S': ['Healthcare & Wellness Coordination', 'Education & Training', 'Social Services & Counseling'],
+    'E': ['Business, Finance & Consulting', 'Sales & Account Management', 'Event & Experience Management'],
+    'C': ['Business, Finance & Consulting', 'Engineering & Infrastructure', 'Technology & Digital Innovation']
   };
   
   // Add categories based on RIASEC profile (prioritize top types)
@@ -228,11 +278,52 @@ export function extractCareerCategories(
     });
   });
   
-  // Special combinations for better matching
+  // Special combinations for better matching (DYNAMIC - works for all combinations)
   const combo = riasecTypes.join('');
   
-  // Artistic + Social combinations
-  if (combo.includes('A') && combo.includes('S')) {
+  // Investigative + Enterprising + Social (IES, ISE, EIS, ESI, SIE, SEI)
+  if (combo.includes('I') && combo.includes('E') && combo.includes('S')) {
+    console.log('[JOB MARKET] 🎯 I+E+S combination detected - prioritizing Business/Consulting/Healthcare');
+    if (!categories.includes('Business, Finance & Consulting')) {
+      categories.unshift('Business, Finance & Consulting');
+    }
+    if (!categories.includes('Healthcare & Wellness Coordination')) {
+      categories.splice(1, 0, 'Healthcare & Wellness Coordination');
+    }
+    if (!categories.includes('Education & Training')) {
+      categories.push('Education & Training');
+    }
+  }
+  // Investigative + Enterprising (IE, EI) - Business Analytics focus
+  else if (combo.includes('I') && combo.includes('E')) {
+    console.log('[JOB MARKET] 🎯 I+E combination detected - prioritizing Business/Analytics');
+    if (!categories.includes('Business, Finance & Consulting')) {
+      categories.unshift('Business, Finance & Consulting');
+    }
+  }
+  // Investigative + Social (IS, SI) - Healthcare/Research focus
+  else if (combo.includes('I') && combo.includes('S')) {
+    console.log('[JOB MARKET] 🎯 I+S combination detected - prioritizing Healthcare/Research');
+    if (!categories.includes('Healthcare & Life Sciences')) {
+      categories.unshift('Healthcare & Life Sciences');
+    }
+    if (!categories.includes('Research & Academia')) {
+      categories.push('Research & Academia');
+    }
+  }
+  // Investigative + Realistic (IR, RI) - STEM focus
+  else if (combo.includes('I') && combo.includes('R')) {
+    console.log('[JOB MARKET] 🎯 I+R combination detected - adding Technology/Engineering');
+    if (!categories.includes('Technology & Digital Innovation')) {
+      categories.push('Technology & Digital Innovation');
+    }
+    if (!categories.includes('Engineering & Infrastructure')) {
+      categories.unshift('Engineering & Infrastructure');
+    }
+  }
+  // Artistic + Social (AS, SA) - Creative/People focus
+  else if (combo.includes('A') && combo.includes('S')) {
+    console.log('[JOB MARKET] 🎯 A+S combination detected - prioritizing Creative/Event');
     if (!categories.includes('Event & Experience Management')) {
       categories.push('Event & Experience Management');
     }
@@ -240,24 +331,45 @@ export function extractCareerCategories(
       categories.push('Digital Content & Community Management');
     }
   }
-  
-  // Investigative + Realistic combinations (STEM)
-  if (combo.includes('I') && combo.includes('R')) {
-    if (!categories.includes('Technology & Digital Innovation')) {
-      categories.unshift('Technology & Digital Innovation'); // Add to front
+  // Artistic + Enterprising (AE, EA) - Creative Business focus
+  else if (combo.includes('A') && combo.includes('E')) {
+    console.log('[JOB MARKET] 🎯 A+E combination detected - prioritizing Creative Industries/Media');
+    if (!categories.includes('Creative Industries & Media')) {
+      categories.unshift('Creative Industries & Media');
+    }
+    if (!categories.includes('Event & Experience Management')) {
+      categories.push('Event & Experience Management');
     }
   }
-  
-  // Social + Enterprising combinations
-  if (combo.includes('S') && combo.includes('E')) {
+  // Social + Enterprising (SE, ES) - Sales/Management focus
+  else if (combo.includes('S') && combo.includes('E')) {
+    console.log('[JOB MARKET] 🎯 S+E combination detected - prioritizing Sales/Management');
     if (!categories.includes('Sales & Account Management')) {
       categories.push('Sales & Account Management');
     }
+    if (!categories.includes('Business, Finance & Consulting')) {
+      categories.unshift('Business, Finance & Consulting');
+    }
+  }
+  // Realistic + Conventional (RC, CR) - Technical/Engineering focus
+  else if (combo.includes('R') && combo.includes('C')) {
+    console.log('[JOB MARKET] 🎯 R+C combination detected - prioritizing Engineering/Technical');
+    if (!categories.includes('Engineering & Infrastructure')) {
+      categories.unshift('Engineering & Infrastructure');
+    }
+  }
+  // Enterprising + Conventional (EC, CE) - Business/Finance focus
+  else if (combo.includes('E') && combo.includes('C')) {
+    console.log('[JOB MARKET] 🎯 E+C combination detected - prioritizing Business/Finance');
+    if (!categories.includes('Business, Finance & Consulting')) {
+      categories.unshift('Business, Finance & Consulting');
+    }
   }
   
-  // Adjust based on aptitude level
+  // Adjust based on aptitude level (applies to all profiles)
   if (aptitudeLevel >= 4) {
     // High aptitude - add competitive/prestigious paths
+    console.log('[JOB MARKET] 🎯 High aptitude detected (level', aptitudeLevel, ') - adding competitive paths');
     if (!categories.includes('Law & Governance')) {
       categories.push('Law & Governance');
     }
