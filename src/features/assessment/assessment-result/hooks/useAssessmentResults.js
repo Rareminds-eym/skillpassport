@@ -675,6 +675,11 @@ export const useAssessmentResults = () => {
                     // NOTE: This is only used as a fallback. The assessment attempt's grade_level
                     // takes priority and is set in loadResults() after this runs.
                     let derivedGradeLevel = 'after12'; // default
+                    
+                    // Check if student is in college based on program degree level or college_id
+                    const hasCollegeProgram = studentData.programs?.degree_level && 
+                        ['undergraduate', 'postgraduate', 'diploma'].includes(studentData.programs.degree_level.toLowerCase());
+                    
                     if (studentData.school_id || studentData.schoolClassId) {
                         // School student - determine if middle or high school based on grade
                         if (!isNaN(gradeNum)) {
@@ -690,9 +695,9 @@ export const useAssessmentResults = () => {
                             // If grade is not a number, default to after12 for school students
                             derivedGradeLevel = 'after12';
                         }
-                    } else if (studentData.college_id) {
-                        // College student
-                        derivedGradeLevel = 'after12';
+                    } else if (studentData.college_id || hasCollegeProgram) {
+                        // College student - has college_id OR has a college-level program
+                        derivedGradeLevel = 'college';
                     }
 
                     // Update gradeLevel state - this is a fallback value
