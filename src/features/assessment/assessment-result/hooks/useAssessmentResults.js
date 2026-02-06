@@ -738,9 +738,10 @@ export const useAssessmentResults = () => {
                         }
                         
                         console.log('📚 College student - Level:', derivedStream, 'Program:', programName);
+                        // Skip further stream derivation for college students - we already have the degree level
                     }
-                    // Check if student has a program (from programs table) - for non-college students
-                    else if (studentData.programs) {
+                    // Check if student has a program (from programs table) - for non-college students ONLY
+                    else if (studentData.programs && derivedGradeLevel !== 'college') {
                         programName = studentData.programs.name || studentData.programs.code || '—';
                         const fieldText = programName.toLowerCase();
 
