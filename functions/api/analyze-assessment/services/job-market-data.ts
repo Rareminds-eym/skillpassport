@@ -97,19 +97,39 @@ Return ONLY valid JSON in this exact format:
       }
     );
 
+    console.log('[JOB MARKET] 🔍 DEBUG - AI response length:', content.length);
+    console.log('[JOB MARKET] 🔍 DEBUG - First 300 chars:', content.substring(0, 300));
+
     // Parse JSON response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('[JOB MARKET] No JSON found in response');
+      console.error('[JOB MARKET] ❌ No JSON found in response');
+      console.error('[JOB MARKET] Full response:', content);
       return {};
     }
 
     const data = JSON.parse(jsonMatch[0]);
-    console.log('[JOB MARKET] Successfully fetched data for', Object.keys(data).length, 'categories');
+    const categoryCount = Object.keys(data).length;
+    console.log('[JOB MARKET] ✅ Successfully fetched data for', categoryCount, 'categories');
+    
+    if (categoryCount === 0) {
+      console.error('[JOB MARKET] ⚠️ WARNING: Parsed data is empty!');
+    } else {
+      // Log first category as sample
+      const firstCategory = Object.keys(data)[0];
+      const firstData = data[firstCategory];
+      console.log('[JOB MARKET] 📊 Sample category:', firstCategory);
+      console.log('[JOB MARKET] 📊 Sample roles count:', firstData.roles?.length || 0);
+      if (firstData.roles && firstData.roles[0]) {
+        console.log('[JOB MARKET] 📊 Sample role:', firstData.roles[0].title, 
+          `₹${firstData.roles[0].salaryRange.entry.min}-${firstData.roles[0].salaryRange.entry.max}L`);
+      }
+    }
     
     return data;
   } catch (error) {
-    console.error('[JOB MARKET] Failed to fetch job market data:', error);
+    console.error('[JOB MARKET] ❌ Failed to fetch job market data:', error);
+    console.error('[JOB MARKET] Error details:', (error as Error).message);
     return {};
   }
 }
@@ -169,6 +189,7 @@ DO NOT use the hardcoded examples below - they are FALLBACK ONLY if this real-ti
 
 /**
  * Extract career categories from student profile
+ * Now uses RIASEC profile to dynamically determine relevant categories
  */
 export function extractCareerCategories(
   riasecCode: string,
@@ -176,38 +197,79 @@ export function extractCareerCategories(
   interests: string[]
 ): string[] {
   const categories: string[] = [];
-
-  // Technology (for I, R types with high aptitude)
-  if ((riasecCode.includes('I') || riasecCode.includes('R')) && aptitudeLevel >= 3) {
-    categories.push('Technology & Digital Innovation');
+  
+  // Parse RIASEC code (e.g., "ASR" -> ['A', 'S', 'R'])
+  const riasecTypes = riasecCode.split('').slice(0, 3);
+  
+  console.log('[JOB MARKET] Analyzing RIASEC profile:', riasecCode);
+  console.log('[JOB MARKET] Top 3 types:', riasecTypes.join(', '));
+  
+  // RIASEC to Career Category Mapping
+  const riasecMapping: Record<string, string[]> = {
+    'R': ['Engineering & Infrastructure', 'Agriculture & Food Tech', 'Healthcare & Life Sciences'],
+    'I': ['Technology & Digital Innovation', 'Research & Academia', 'Healthcare & Life Sciences'],
+    'A': ['Creative Industries & Media', 'Gaming & Esports', 'Performing Arts & Entertainment'],
+    'S': ['Healthcare & Wellness Coordination', 'Education & Training', 'Event & Experience Management'],
+    'E': ['Business, Finance & Consulting', 'Event & Experience Management', 'Sales & Account Management'],
+    'C': ['Business, Finance & Consulting', 'Technology & Digital Innovation', 'Engineering & Infrastructure']
+  };
+  
+  // Add categories based on RIASEC profile (prioritize top types)
+  riasecTypes.forEach((type, index) => {
+    const weight = 3 - index; // First type gets weight 3, second gets 2, third gets 1
+    const typeCategories = riasecMapping[type] || [];
+    
+    console.log(`[JOB MARKET] Type ${type} (weight ${weight}):`, typeCategories.join(', '));
+    
+    typeCategories.forEach(category => {
+      if (!categories.includes(category)) {
+        categories.push(category);
+      }
+    });
+  });
+  
+  // Special combinations for better matching
+  const combo = riasecTypes.join('');
+  
+  // Artistic + Social combinations
+  if (combo.includes('A') && combo.includes('S')) {
+    if (!categories.includes('Event & Experience Management')) {
+      categories.push('Event & Experience Management');
+    }
+    if (!categories.includes('Digital Content & Community Management')) {
+      categories.push('Digital Content & Community Management');
+    }
   }
-
-  // Business & Finance (for E, C types)
-  if (riasecCode.includes('E') || riasecCode.includes('C')) {
-    categories.push('Business, Finance & Consulting');
+  
+  // Investigative + Realistic combinations (STEM)
+  if (combo.includes('I') && combo.includes('R')) {
+    if (!categories.includes('Technology & Digital Innovation')) {
+      categories.unshift('Technology & Digital Innovation'); // Add to front
+    }
   }
-
-  // Healthcare (for S, I types)
-  if (riasecCode.includes('S') && riasecCode.includes('I')) {
-    categories.push('Healthcare & Life Sciences');
+  
+  // Social + Enterprising combinations
+  if (combo.includes('S') && combo.includes('E')) {
+    if (!categories.includes('Sales & Account Management')) {
+      categories.push('Sales & Account Management');
+    }
   }
-
-  // Creative (for A types)
-  if (riasecCode.includes('A')) {
-    categories.push('Creative Industries & Media');
+  
+  // Adjust based on aptitude level
+  if (aptitudeLevel >= 4) {
+    // High aptitude - add competitive/prestigious paths
+    if (!categories.includes('Law & Governance')) {
+      categories.push('Law & Governance');
+    }
+    if (!categories.includes('Civil Services & Government')) {
+      categories.push('Civil Services & Government');
+    }
   }
-
-  // Social Impact (for S types)
-  if (riasecCode.includes('S')) {
-    categories.push('Healthcare & Wellness Coordination');
-    categories.push('Event & Experience Management');
-  }
-
-  // Default to top 3 if none match
-  if (categories.length === 0) {
-    categories.push('Technology & Digital Innovation', 'Business, Finance & Consulting', 'Healthcare & Life Sciences');
-  }
-
-  // Limit to 5 categories to keep response focused
-  return categories.slice(0, 5);
+  
+  // Limit to top 5 categories to keep response focused
+  const finalCategories = categories.slice(0, 5);
+  
+  console.log('[JOB MARKET] Final categories selected:', finalCategories.join(', '));
+  
+  return finalCategories;
 }

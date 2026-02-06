@@ -103,20 +103,28 @@ export function buildHighSchoolPrompt(assessmentData: AssessmentData, answersHas
 If real-time Indian job market data is provided above (marked with "REAL-TIME INDIAN JOB MARKET DATA"), you MUST:
 1. ✅ Use ONLY the salary ranges from that data (NOT the hardcoded examples below)
 2. ✅ Use ONLY the job roles listed in that data
-3. ✅ Copy the "Why Better" descriptions exactly as provided
-4. ✅ Use the exact salary format: "₹X-YL entry, ₹X-YL mid, ₹X-YL senior"
-5. ✅ Prioritize HIGH demand roles over medium/low demand
-6. ✅ Consider growth rates when ranking career recommendations
-7. ✅ Match student's profile to roles with appropriate demand levels
+3. ✅ Use ONLY the career categories provided in the real-time data
+4. ✅ Copy the "Why Better" descriptions exactly as provided
+5. ✅ Use the exact salary format: "₹X-YL entry, ₹X-YL mid, ₹X-YL senior"
+6. ✅ Prioritize HIGH demand roles over medium/low demand
+7. ✅ Consider growth rates when ranking career recommendations
+8. ✅ Match student's RIASEC profile to the provided categories
+
+**DYNAMIC CATEGORY MATCHING:**
+The real-time data includes categories specifically selected for this student's RIASEC profile.
+- If student is "ASR" (Artistic, Social, Realistic), the data will include Creative Industries, Event Management, etc.
+- If student is "IRE" (Investigative, Realistic, Enterprising), the data will include Technology, Engineering, Business, etc.
+- Use the provided categories as your TRACK 1, TRACK 2, and TRACK 3 recommendations
+- DO NOT ignore the provided categories and use hardcoded examples instead
 
 **EXAMPLE:**
 If real-time data shows:
-"Healthcare & Wellness Coordination (BEST for S+I combinations, moderate aptitude)
-- Why Better: Healthcare sector added 7.5M jobs (62% YoY growth). Entry-level roles growing 25% annually. Stable, recession-proof.
+"Creative Industries & Media (BEST for A+S combinations)
+- Why Better: Orange economy creating 10-20M jobs by 2026. Remote work opportunities.
 - Hot Roles:
-  * Patient Care Coordinator (₹4-7L entry, ₹7-13L mid, ₹13-22L senior)"
+  * UX/UI Designer (₹5-15L entry, ₹15-45L mid, ₹45-100L senior)"
 
-You MUST use these exact values in your response, NOT the hardcoded examples below.
+You MUST use this as one of the career tracks, NOT the hardcoded examples below.
 
 If NO real-time data is provided, use the fallback career clusters below.
 
