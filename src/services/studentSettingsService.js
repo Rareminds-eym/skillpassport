@@ -340,6 +340,11 @@ export const updateStudentSettings = async (email, updates) => {
           value = null;
         }
 
+        // Handle aadharNumber - convert empty strings to null to satisfy DB constraint
+        if (key === 'aadharNumber' && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
         columnUpdates[fieldMapping[key]] = value;
         
         // IMPORTANT: When branch_field is updated, also update course_name
