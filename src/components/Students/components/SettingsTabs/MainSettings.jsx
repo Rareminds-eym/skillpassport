@@ -596,9 +596,60 @@ const MainSettings = () => {
     }
   };
 
-  const handleSaveProfile = async () => {
-    // Validate Aadhar number before saving
-    if (profileData.aadharNumber) {
+  // Tab-specific save handlers - only save relevant fields for each tab
+  
+  // Personal Info Tab - save basic personal information
+  const handleSavePersonalInfo = async () => {
+    setIsSaving(true);
+    try {
+      const personalInfoFields = {
+        name: profileData.name,
+        phone: profileData.phone,
+        alternatePhone: profileData.alternatePhone,
+        address: profileData.address,
+        location: profileData.location,
+        state: profileData.state,
+        country: profileData.country,
+        pincode: profileData.pincode,
+        dateOfBirth: profileData.dateOfBirth,
+        age: profileData.age,
+        gender: profileData.gender,
+        bloodGroup: profileData.bloodGroup,
+      };
+      
+      await updateProfile(personalInfoFields);
+      toast({
+        title: "Success",
+        description: "Personal information updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: personalInfoFields }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating personal info:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update personal information",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Additional Info Tab - save additional fields including Aadhar
+  const handleSaveAdditionalInfo = async () => {
+    // Validate Aadhar number before saving (only if it has a value and is not empty)
+    if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
       if (profileData.aadharNumber.length !== 12) {
         toast({
           title: "Validation Error",
@@ -620,14 +671,24 @@ const MainSettings = () => {
     
     setIsSaving(true);
     try {
-      await updateProfile(profileData);
+      const additionalInfoFields = {
+        gapInStudies: profileData.gapInStudies,
+        gapYears: profileData.gapYears,
+        gapReason: profileData.gapReason,
+        workExperience: profileData.workExperience,
+        aadharNumber: profileData.aadharNumber,
+        backlogsHistory: profileData.backlogsHistory,
+        currentBacklogs: profileData.currentBacklogs,
+      };
+      
+      await updateProfile(additionalInfoFields);
       toast({
         title: "Success",
-        description: "Profile updated successfully",
+        description: "Additional information updated successfully",
       });
       
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
-        detail: { type: 'profile_updated', data: profileData }
+        detail: { type: 'profile_updated', data: additionalInfoFields }
       }));
       
       try {
@@ -638,25 +699,182 @@ const MainSettings = () => {
         console.warn('Could not refresh recent updates:', refreshError);
       }
     } catch (error) {
-      console.error('❌ Error updating profile:', error);
-      
-      // Show specific error message if available
-      let errorMessage = "Failed to update profile";
-      
-      if (error.message) {
-        // Check for specific error types
-        if (error.message.includes('Aadhar') || error.message.includes('aadhar')) {
-          errorMessage = error.message;
-        } else if (error.message.includes('Invalid') || error.message.includes('required')) {
-          errorMessage = error.message;
-        } else {
-          errorMessage = `Failed to update profile: ${error.message}`;
-        }
-      }
-      
+      console.error('❌ Error updating additional info:', error);
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error.message || "Failed to update additional information",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Institution Details Tab - save institution-related fields
+  const handleSaveInstitutionDetails = async () => {
+    setIsSaving(true);
+    try {
+      const institutionFields = {
+        universityId: profileData.universityId,
+        universityCollegeId: profileData.universityCollegeId,
+        schoolId: profileData.schoolId,
+        schoolClassId: profileData.schoolClassId,
+        collegeId: profileData.collegeId,
+        programId: profileData.programId,
+        programSectionId: profileData.programSectionId,
+        university: customUniversityName || profileData.university,
+        college: customCollegeName || profileData.college,
+        branch: customProgramName || profileData.branch,
+        section: customSemesterName || profileData.section,
+      };
+      
+      await updateProfile(institutionFields);
+      toast({
+        title: "Success",
+        description: "Institution details updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: institutionFields }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating institution details:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update institution details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Academic Details Tab - save academic information
+  const handleSaveAcademicDetails = async () => {
+    setIsSaving(true);
+    try {
+      const academicFields = {
+        registrationNumber: profileData.registrationNumber,
+        enrollmentNumber: profileData.enrollmentNumber,
+        currentCgpa: profileData.currentCgpa,
+        grade: profileData.grade,
+        gradeStartDate: profileData.gradeStartDate,
+        semester: profileData.semester,
+      };
+      
+      await updateProfile(academicFields);
+      toast({
+        title: "Success",
+        description: "Academic details updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: academicFields }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating academic details:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update academic details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Guardian Info Tab - save guardian information
+  const handleSaveGuardianInfo = async () => {
+    setIsSaving(true);
+    try {
+      const guardianFields = {
+        guardianName: profileData.guardianName,
+        guardianPhone: profileData.guardianPhone,
+        guardianEmail: profileData.guardianEmail,
+        guardianRelation: profileData.guardianRelation,
+      };
+      
+      await updateProfile(guardianFields);
+      toast({
+        title: "Success",
+        description: "Guardian information updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: guardianFields }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating guardian info:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update guardian information",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Social Links Tab - save social media and bio
+  const handleSaveSocialLinks = async () => {
+    setIsSaving(true);
+    try {
+      const socialFields = {
+        bio: profileData.bio,
+        linkedIn: profileData.linkedIn,
+        github: profileData.github,
+        twitter: profileData.twitter,
+        facebook: profileData.facebook,
+        instagram: profileData.instagram,
+        portfolio: profileData.portfolio,
+      };
+      
+      await updateProfile(socialFields);
+      toast({
+        title: "Success",
+        description: "Social links updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: socialFields }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating social links:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update social links",
         variant: "destructive",
       });
     } finally {
@@ -1043,7 +1261,13 @@ const MainSettings = () => {
                 handleProfileChange={handleProfileChange}
                 handleInstitutionChange={handleInstitutionChange}
                 isSaving={isSaving}
-                handleSaveProfile={handleSaveProfile}
+                // Tab-specific save handlers
+                handleSavePersonalInfo={handleSavePersonalInfo}
+                handleSaveAdditionalInfo={handleSaveAdditionalInfo}
+                handleSaveInstitutionDetails={handleSaveInstitutionDetails}
+                handleSaveAcademicDetails={handleSaveAcademicDetails}
+                handleSaveGuardianInfo={handleSaveGuardianInfo}
+                handleSaveSocialLinks={handleSaveSocialLinks}
                 setShowResumeParser={setShowResumeParser}
                 schools={schools}
                 colleges={colleges}

@@ -5,6 +5,8 @@ import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
 import { supabase } from "@/lib/supabaseClient";
 import { AttendanceRecord, AttendanceSession, SubjectGroup, Student as AttendanceStudent } from "@/types/Attendance";
 import { Student as ProfileStudent } from "@/types/student";
+import { curriculumService } from "@/services/college/curriculumService";
+import toast from "react-hot-toast";
 import {
     ArrowDownTrayIcon,
     BellAlertIcon,
@@ -331,6 +333,12 @@ const AttendanceTracking: React.FC = () => {
     faculty: [] as any[],
     subjects: [] as any[],
   });
+
+  // Cascading dropdown states (similar to curriculum builder)
+  const [departmentsData, setDepartmentsData] = useState<any[]>([]);
+  const [programsData, setProgramsData] = useState<any[]>([]);
+  const [semestersData, setSemestersData] = useState<number[]>([]);
+  const [coursesData, setCoursesData] = useState<any[]>([]);
 
   const [filters, setFilters] = useState({
     departments: [] as string[],
@@ -691,6 +699,69 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
+  // Cascading dropdown load functions (similar to curriculum builder)
+  const loadDepartments = async () => {
+    try {
+      const result = await curriculumService.getDepartments();
+      if (result.success) {
+        setDepartmentsData(result.data || []);
+      } else {
+        toast.error('Failed to load departments');
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      toast.error('Failed to load departments');
+    }
+  };
+
+  const loadPrograms = async (departmentId: string) => {
+    try {
+      const result = await curriculumService.getPrograms(departmentId);
+      if (result.success) {
+        setProgramsData(result.data || []);
+      } else {
+        toast.error('Failed to load programs');
+        setProgramsData([]);
+      }
+    } catch (error) {
+      console.error('Error loading programs:', error);
+      toast.error('Failed to load programs');
+      setProgramsData([]);
+    }
+  };
+
+  const loadSemesters = async (programId: string) => {
+    try {
+      const result = await curriculumService.getSemesters(programId);
+      if (result.success) {
+        setSemestersData(result.data || []);
+      } else {
+        toast.error('Failed to load semesters');
+        setSemestersData([]);
+      }
+    } catch (error) {
+      console.error('Error loading semesters:', error);
+      toast.error('Failed to load semesters');
+      setSemestersData([]);
+    }
+  };
+
+  const loadCourses = async (programId: string, semester: number) => {
+    try {
+      const result = await curriculumService.getCourses(programId, semester);
+      if (result.success) {
+        setCoursesData(result.data || []);
+      } else {
+        toast.error('Failed to load courses');
+        setCoursesData([]);
+      }
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      toast.error('Failed to load courses');
+      setCoursesData([]);
+    }
+  };
+
   // useEffect hooks
   useEffect(() => {
     fetchSubjectGroups();
@@ -699,7 +770,36 @@ const AttendanceTracking: React.FC = () => {
   useEffect(() => {
     fetchAnalytics();
     fetchFilterOptions();
+    loadDepartments(); // Load departments on mount
   }, []);
+
+  // Cascading dropdown effects (similar to curriculum builder)
+  useEffect(() => {
+    if (sessionFormData.department) {
+      loadPrograms(sessionFormData.department);
+    } else {
+      setProgramsData([]);
+      setSessionFormData(prev => ({ ...prev, course: '' }));
+    }
+  }, [sessionFormData.department]);
+
+  useEffect(() => {
+    if (sessionFormData.course) {
+      loadSemesters(sessionFormData.course);
+    } else {
+      setSemestersData([]);
+      setSessionFormData(prev => ({ ...prev, semester: '' }));
+    }
+  }, [sessionFormData.course]);
+
+  useEffect(() => {
+    if (sessionFormData.course && sessionFormData.semester) {
+      loadCourses(sessionFormData.course, parseInt(sessionFormData.semester));
+    } else {
+      setCoursesData([]);
+      setSessionFormData(prev => ({ ...prev, subject: '' }));
+    }
+  }, [sessionFormData.course, sessionFormData.semester]);
 
   // Transform filter options for component use
   const departmentOptions = useMemo(() => {
@@ -1764,11 +1864,11 @@ const AttendanceTracking: React.FC = () => {
         onCreateAndStart={handleCreateAndStart}
         formData={sessionFormData}
         onFormChange={handleFormChange}
-        departments={departmentOptions}
-        courses={courseOptions}
-        semesters={semesterOptions}
+        departments={departmentsData.map(dept => ({ value: dept.id, label: dept.name }))}
+        courses={programsData.map(prog => ({ value: prog.id, label: prog.name }))}
+        semesters={semestersData.map(sem => ({ value: sem.toString(), label: `Semester ${sem}` }))}
         sections={sectionOptions}
-        subjects={subjectOptions}
+        subjects={coursesData.map(course => ({ value: course.id, label: `${course.course_code} - ${course.course_name}` }))}
         faculty={filterOptions.faculty}
         students={[]}
       />
