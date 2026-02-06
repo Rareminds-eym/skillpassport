@@ -176,8 +176,57 @@ export async function handleStreamingAptitude(
                         throw new Error(`Expected array of questions, got: ${typeof batchQuestions}`);
                     }
 
-                    // Send each question individually
+                    // STRICT validation: Filter invalid questions
+                    const validBatchQuestions: any[] = [];
+                    let filteredCount = 0;
+                    const seenTexts = new Set<string>();
+                    
                     for (const question of batchQuestions) {
+                        const questionText = question.question?.toLowerCase().trim() || question.text?.toLowerCase().trim() || '';
+                        
+                        // Check for duplicate question text
+                        if (!questionText || seenTexts.has(questionText)) {
+                            console.warn(`⚠️ Filtered duplicate question in streaming`);
+                            filteredCount++;
+                            continue;
+                        }
+                        
+                        // Check for image references
+                        const imageKeywords = ['graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 'shown below', 'shown above', 'visual', 'illustration'];
+                        if (imageKeywords.some(keyword => questionText.includes(keyword))) {
+                            console.warn(`⚠️ Filtered question with image reference in streaming`);
+                            filteredCount++;
+                            continue;
+                        }
+                        
+                        // Validate answer options are unique
+                        const options = question.options || {};
+                        const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+                        const uniqueOptions = new Set(optionValues);
+                        
+                        if (uniqueOptions.size < optionValues.length) {
+                            console.warn(`⚠️ Filtered question with duplicate options in streaming`);
+                            filteredCount++;
+                            continue;
+                        }
+                        
+                        // Validate all options are non-empty
+                        if (optionValues.some(v => !v || v.length === 0)) {
+                            console.warn(`⚠️ Filtered question with empty options in streaming`);
+                            filteredCount++;
+                            continue;
+                        }
+                        
+                        seenTexts.add(questionText);
+                        validBatchQuestions.push(question);
+                    }
+                    
+                    if (filteredCount > 0) {
+                        console.log(`🔍 Streaming validation: ${validBatchQuestions.length}/${batchQuestions.length} valid (filtered: ${filteredCount})`);
+                    }
+
+                    // Send each valid question individually
+                    for (const question of validBatchQuestions) {
                         const processedQuestion = {
                             id: generateUUID(),
                             ...question,

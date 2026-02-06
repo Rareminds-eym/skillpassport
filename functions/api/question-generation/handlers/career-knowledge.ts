@@ -63,10 +63,11 @@ IMPORTANT: Analyze the course name "${streamName}" and generate questions coveri
 Requirements:
 1. All questions must be MCQ with exactly 4 options
 2. Each question must have exactly ONE correct answer
-3. Difficulty distribution: 30% easy, 50% medium, 20% hard
-4. Test practical understanding and application, not just memorization
-5. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
-6. Questions should be appropriate for undergraduate/graduate level students
+3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
+4. Difficulty distribution: 30% easy, 50% medium, 20% hard
+5. Test practical understanding and application, not just memorization
+6. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
+7. Questions should be appropriate for undergraduate/graduate level students
 
 Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
 {"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`;
@@ -77,8 +78,9 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
 Requirements:
 1. All questions must be MCQ with exactly 4 options
 2. Each question must have exactly ONE correct answer
-3. Difficulty distribution: 30% easy, 50% medium, 20% hard
-4. Test practical understanding, not memorization
+3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
+4. Difficulty distribution: 30% easy, 50% medium, 20% hard
+5. Test practical understanding, not memorization
 
 Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
 {"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`;
@@ -112,9 +114,63 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
     }
 
     console.log(`✅ Generated ${allQuestions.length} total knowledge questions via AI`);
+    
+    // STRICT validation: Check for duplicate questions and validate answer options
+    const uniqueQuestions: any[] = [];
+    const seenTexts = new Set<string>();
+    let filteredCount = 0;
+    
+    for (const q of allQuestions) {
+        const normalizedText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
+        
+        // Check for duplicate question text
+        if (!normalizedText || seenTexts.has(normalizedText)) {
+            console.warn(`⚠️ Filtered duplicate question: "${normalizedText.substring(0, 50)}..."`);
+            filteredCount++;
+            continue;
+        }
+        
+        // Check for image references
+        const imageKeywords = ['graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 'shown below', 'shown above', 'visual', 'illustration'];
+        if (imageKeywords.some(keyword => normalizedText.includes(keyword))) {
+            console.warn(`⚠️ Filtered question with image reference: "${normalizedText.substring(0, 50)}..."`);
+            filteredCount++;
+            continue;
+        }
+        
+        // Validate answer options are unique
+        const options = q.options || {};
+        const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+        const uniqueOptions = new Set(optionValues);
+        
+        if (uniqueOptions.size < optionValues.length) {
+            console.warn(`⚠️ Filtered question with duplicate options: "${normalizedText.substring(0, 50)}..."`);
+            console.warn(`   Options: ${JSON.stringify(options)}`);
+            filteredCount++;
+            continue;
+        }
+        
+        // Validate all options are non-empty
+        if (optionValues.some(v => !v || v.length === 0)) {
+            console.warn(`⚠️ Filtered question with empty options: "${normalizedText.substring(0, 50)}..."`);
+            filteredCount++;
+            continue;
+        }
+        
+        seenTexts.add(normalizedText);
+        uniqueQuestions.push(q);
+    }
+    
+    console.log(`🔍 After validation: ${uniqueQuestions.length}/${allQuestions.length} valid questions (filtered: ${filteredCount})`);
+    
+    // If more than 20% were filtered, log warning
+    if (filteredCount > allQuestions.length * 0.2) {
+        console.warn(`⚠️ WARNING: ${filteredCount} questions filtered (${Math.round(filteredCount/allQuestions.length*100)}%) - AI quality may need improvement`);
+    }
+    
     console.log('🎓 ============================================');
 
-    const processedQuestions = allQuestions.map((q: any) => ({
+    const processedQuestions = uniqueQuestions.map((q: any) => ({
         id: generateUUID(),
         ...q,
         stream_id: streamId,

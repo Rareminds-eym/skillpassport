@@ -530,7 +530,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
 
 CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
 1. EXACTLY 3 CAREER CLUSTERS ARE MANDATORY - You MUST provide 3 different career clusters:
-   - Cluster 1: High fit (matchScore 80-95%)
+   - Cluster 1: High fit (matchScore 80-100%)
    - Cluster 2: Medium fit (matchScore 70-85%)
    - Cluster 3: Explore fit (matchScore 60-75%)
 2. Each cluster MUST have: title, fit, matchScore, description, evidence (all 6 fields), roles (entry + mid), domains, whyItFits

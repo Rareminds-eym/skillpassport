@@ -304,6 +304,29 @@ Return ONLY the JSON array, nothing else.`;
             return false;
         }
         
+        // Check for image references
+        const imageKeywords = ['graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 'shown below', 'shown above', 'visual', 'illustration'];
+        if (imageKeywords.some(keyword => questionText.includes(keyword))) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has image reference, filtering out: "${questionText.substring(0, 50)}..."`);
+            return false;
+        }
+        
+        // Validate answer options are unique
+        const options = q.options || {};
+        const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+        const uniqueOptions = new Set(optionValues);
+        
+        if (uniqueOptions.size < optionValues.length) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has duplicate options, filtering out`);
+            return false;
+        }
+        
+        // Validate all options are non-empty
+        if (optionValues.some(v => !v || v.length === 0)) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has empty options, filtering out`);
+            return false;
+        }
+        
         // Check if this question text is too similar to any excluded text
         for (const excludedText of excludeTexts) {
             const excluded = excludedText.toLowerCase().trim();

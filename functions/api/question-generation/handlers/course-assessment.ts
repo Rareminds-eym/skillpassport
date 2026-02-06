@@ -82,6 +82,49 @@ export async function generateAssessment(
 
     console.log(`✅ Generated ${questions.length} questions for ${courseName}`);
 
+    // STRICT validation: Filter out invalid questions
+    const validQuestions: any[] = [];
+    let filteredCount = 0;
+    
+    for (let idx = 0; idx < questions.length; idx++) {
+        const q = questions[idx];
+        const questionText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
+        
+        // Check for image references
+        const imageKeywords = ['graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 'shown below', 'shown above', 'visual', 'illustration'];
+        if (imageKeywords.some(keyword => questionText.includes(keyword))) {
+            console.warn(`⚠️ Question ${idx + 1} has image reference, filtering out`);
+            filteredCount++;
+            continue;
+        }
+        
+        // Validate options if MCQ
+        if (q.type === 'mcq' && q.options) {
+            const optionValues = Array.isArray(q.options) 
+                ? q.options.map((v: any) => String(v).toLowerCase().trim())
+                : Object.values(q.options).map((v: any) => String(v).toLowerCase().trim());
+            
+            const uniqueOptions = new Set(optionValues);
+            
+            if (uniqueOptions.size < optionValues.length) {
+                console.warn(`⚠️ Question ${idx + 1} has duplicate options, filtering out`);
+                filteredCount++;
+                continue;
+            }
+            
+            if (optionValues.some(v => !v || v.length === 0)) {
+                console.warn(`⚠️ Question ${idx + 1} has empty options, filtering out`);
+                filteredCount++;
+                continue;
+            }
+        }
+        
+        validQuestions.push(q);
+    }
+    
+    console.log(`🔍 After validation: ${validQuestions.length}/${questions.length} valid questions (filtered: ${filteredCount})`);
+    questions = validQuestions;
+
     // Validate and fix questions
     questions = questions.map((q: any, idx: number) => {
         // Add missing correct_answer (use first option as fallback)
