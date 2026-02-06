@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../../lib/supabaseClient';
 import { Student } from '../types';
+import { isSchoolStudent } from '../../../../utils/studentType';
 import {
   BriefcaseIcon,
   AcademicCapIcon,
@@ -164,7 +165,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       setAssignments(assignmentsData || []);
 
       // Fetch Attendance (for school students)
-      if (student.school_id) {
+      if (isSchoolStudent(student)) {
         const { data: attendanceData } = await supabase
           .from('attendance_records')
           .select('*')
@@ -332,8 +333,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
     present: attendance.filter(a => a.status === 'present').length,
     absent: attendance.filter(a => a.status === 'absent').length,
     late: attendance.filter(a => a.status === 'late').length,
-    percentage: attendance.length > 0 
-      ? Math.round((attendance.filter(a => a.status === 'present').length / attendance.length) * 100) 
+    percentage: attendance.length > 0
+      ? Math.round((attendance.filter(a => a.status === 'present').length / attendance.length) * 100)
       : 0
   };
 
@@ -376,11 +377,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
             <span className="font-medium text-gray-900">{student.contact_number || student.contactNumber || student.phone || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-gray-500 text-xs mb-1">{student.school_id ? 'School' : 'College'}</span>
+            <span className="text-gray-500 text-xs mb-1">{isSchoolStudent(student) ? 'School' : 'College'}</span>
             <span className="font-medium text-gray-900">{student.college_school_name || student.college || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
-            <span className="text-gray-500 text-xs mb-1">{student.school_id ? 'Grade' : 'Degree'}</span>
+            <span className="text-gray-500 text-xs mb-1">{isSchoolStudent(student) ? 'Grade' : 'Degree'}</span>
             <span className="font-medium text-gray-900">{student.grade || student.branch_field || 'N/A'}</span>
           </div>
           <div className="flex flex-col">
@@ -487,7 +488,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       )}
 
       {/* Attendance Summary (School Students) */}
-      {student.school_id && attendance.length > 0 && (
+      {isSchoolStudent(student) && attendance.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <SectionHeader icon={<CalendarIcon className="h-5 w-5" />} title="Attendance Summary" count={attendanceStats.total} />
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-4">
@@ -545,11 +546,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
             {skills.filter(s => s.enabled !== false).map((skill, idx) => (
               <span
                 key={skill.id || idx}
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
-                  skill.type === 'technical' 
-                    ? 'bg-blue-100 text-blue-800 border-blue-200' 
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${skill.type === 'technical'
+                    ? 'bg-blue-100 text-blue-800 border-blue-200'
                     : 'bg-purple-100 text-purple-800 border-purple-200'
-                }`}
+                  }`}
               >
                 {skill.name}
                 {skill.level && <span className="ml-1 text-xs opacity-75">({skill.level}/5)</span>}
@@ -590,7 +590,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                   <div className="font-medium text-gray-900">{exp.role}</div>
                   <div className="text-sm text-gray-600">{exp.organization}</div>
                   <div className="text-xs text-gray-500">
-                    {exp.start_date && new Date(exp.start_date).toLocaleDateString()} - 
+                    {exp.start_date && new Date(exp.start_date).toLocaleDateString()} -
                     {exp.end_date ? new Date(exp.end_date).toLocaleDateString() : 'Present'}
                     {exp.duration && ` (${exp.duration})`}
                   </div>
@@ -616,15 +616,15 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                   <div className="font-medium text-gray-900">{training.title}</div>
                   <div className="text-sm text-gray-600">{training.organization}</div>
                   <div className="text-xs text-gray-500">
-                    {training.start_date && new Date(training.start_date).toLocaleDateString()} - 
+                    {training.start_date && new Date(training.start_date).toLocaleDateString()} -
                     {training.end_date ? new Date(training.end_date).toLocaleDateString() : 'Ongoing'}
                   </div>
                   {training.total_modules > 0 && (
                     <div className="mt-1">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                          <div 
-                            className="bg-primary-600 h-1.5 rounded-full" 
+                          <div
+                            className="bg-primary-600 h-1.5 rounded-full"
                             style={{ width: `${(training.completed_modules / training.total_modules) * 100}%` }}
                           ></div>
                         </div>
@@ -765,7 +765,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                     <span className="ml-2">{intern.internship_type}</span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {intern.start_date && new Date(intern.start_date).toLocaleDateString()} - 
+                    {intern.start_date && new Date(intern.start_date).toLocaleDateString()} -
                     {intern.end_date ? new Date(intern.end_date).toLocaleDateString() : 'Present'}
                     {intern.duration && ` (${intern.duration})`}
                   </div>
@@ -907,13 +907,12 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                   <div className="font-medium text-gray-900">{pipeline.opportunity?.title || pipeline.candidate_name}</div>
                   <div className="text-sm text-gray-600">{pipeline.opportunity?.company_name}</div>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      pipeline.stage === 'hired' ? 'bg-green-100 text-green-800' :
-                      pipeline.stage === 'offer' ? 'bg-blue-100 text-blue-800' :
-                      pipeline.stage === 'interview' ? 'bg-purple-100 text-purple-800' :
-                      pipeline.stage === 'screening' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${pipeline.stage === 'hired' ? 'bg-green-100 text-green-800' :
+                        pipeline.stage === 'offer' ? 'bg-blue-100 text-blue-800' :
+                          pipeline.stage === 'interview' ? 'bg-purple-100 text-purple-800' :
+                            pipeline.stage === 'screening' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-gray-100 text-gray-800'
+                      }`}>
                       Stage: {pipeline.stage}
                     </span>
                     {pipeline.recruiter_rating && (
@@ -979,8 +978,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                    <div 
-                      className="bg-primary-600 h-1.5 rounded-full" 
+                    <div
+                      className="bg-primary-600 h-1.5 rounded-full"
                       style={{ width: `${progress.video_completed ? 100 : (progress.scroll_position_percent || 0)}%` }}
                     ></div>
                   </div>
@@ -1004,7 +1003,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                 <div>
                   <div className="font-medium text-gray-900 text-sm">{quiz.quiz?.title || 'Quiz'}</div>
                   <div className="text-xs text-gray-500">
-                    Score: {quiz.correct_answers || 0}/{quiz.total_questions || 0} 
+                    Score: {quiz.correct_answers || 0}/{quiz.total_questions || 0}
                     ({quiz.score_percentage || 0}%)
                   </div>
                 </div>
@@ -1284,17 +1283,16 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
             <div>
               <p className="text-sm font-medium text-gray-900">Application Submitted</p>
               <p className="text-xs text-gray-500">
-                {student.applied_date ? new Date(student.applied_date).toLocaleDateString() : 
-                 student.created_at ? new Date(student.created_at).toLocaleDateString() : 'N/A'}
+                {student.applied_date ? new Date(student.applied_date).toLocaleDateString() :
+                  student.created_at ? new Date(student.created_at).toLocaleDateString() : 'N/A'}
               </p>
             </div>
           </div>
           <div className="flex items-start">
             <div className="flex flex-col items-center mr-4">
-              <div className={`w-3 h-3 ${
-                student.approval_status === 'approved' || student.approval_status === 'verified' ? 'bg-green-600' : 
-                student.approval_status === 'rejected' ? 'bg-red-600' : 'bg-gray-300'
-              } rounded-full`}></div>
+              <div className={`w-3 h-3 ${student.approval_status === 'approved' || student.approval_status === 'verified' ? 'bg-green-600' :
+                  student.approval_status === 'rejected' ? 'bg-red-600' : 'bg-gray-300'
+                } rounded-full`}></div>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900">Application Decision</p>
@@ -1359,12 +1357,12 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
             <div className="text-xs text-gray-500">Unread Notifications</div>
           </div>
         </div>
-        {internships.length === 0 && placements.length === 0 && competitionResults.length === 0 && 
-         skillBadges.length === 0 && pipelineStatus.length === 0 && interviews.length === 0 && (
-          <p className="text-sm text-gray-500 italic mt-3 text-center">
-            No career data available yet. Data will appear here as the student progresses.
-          </p>
-        )}
+        {internships.length === 0 && placements.length === 0 && competitionResults.length === 0 &&
+          skillBadges.length === 0 && pipelineStatus.length === 0 && interviews.length === 0 && (
+            <p className="text-sm text-gray-500 italic mt-3 text-center">
+              No career data available yet. Data will appear here as the student progresses.
+            </p>
+          )}
       </div>
     </div>
   );

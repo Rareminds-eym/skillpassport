@@ -254,6 +254,54 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   },
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // M.SC / POSTGRADUATE SCIENCES (Masters)
+  // ═══════════════════════════════════════════════════════════════════════════
+  'msc_ds': {
+    name: 'M.Sc Data Science',
+    topics: ['Advanced Statistics', 'Machine Learning', 'Big Data Analytics', 'Deep Learning', 'Data Mining', 'Research Methodology']
+  },
+  'msc_cs': {
+    name: 'M.Sc Computer Science',
+    topics: ['Advanced Algorithms', 'Distributed Systems', 'Artificial Intelligence', 'Software Engineering', 'Database Systems', 'Research Methods']
+  },
+  'msc_physics': {
+    name: 'M.Sc Physics',
+    topics: ['Quantum Mechanics', 'Statistical Mechanics', 'Condensed Matter Physics', 'Particle Physics', 'Astrophysics', 'Research Methodology']
+  },
+  'msc_chemistry': {
+    name: 'M.Sc Chemistry',
+    topics: ['Advanced Organic Chemistry', 'Inorganic Chemistry', 'Physical Chemistry', 'Analytical Techniques', 'Spectroscopy', 'Research Methods']
+  },
+  'msc_maths': {
+    name: 'M.Sc Mathematics',
+    topics: ['Advanced Calculus', 'Topology', 'Functional Analysis', 'Number Theory', 'Differential Equations', 'Mathematical Modeling']
+  },
+  'msc_biology': {
+    name: 'M.Sc Biology',
+    topics: ['Molecular Biology', 'Cell Biology', 'Genetics', 'Biotechnology', 'Bioinformatics', 'Research Methodology']
+  },
+  'msc_biotech': {
+    name: 'M.Sc Biotechnology',
+    topics: ['Genetic Engineering', 'Molecular Biology', 'Bioinformatics', 'Immunology', 'Bioprocess Engineering', 'Research Methods']
+  },
+  'msc_it': {
+    name: 'M.Sc Information Technology',
+    topics: ['Advanced Networking', 'Cloud Computing', 'Cybersecurity', 'Software Architecture', 'Data Analytics', 'IT Management']
+  },
+  'msc_ai': {
+    name: 'M.Sc Artificial Intelligence',
+    topics: ['Machine Learning', 'Deep Learning', 'Natural Language Processing', 'Computer Vision', 'Neural Networks', 'AI Research']
+  },
+  'msc_stats': {
+    name: 'M.Sc Statistics',
+    topics: ['Advanced Statistics', 'Probability Theory', 'Statistical Modeling', 'Data Analysis', 'Econometrics', 'Research Methodology']
+  },
+  msc: {
+    name: 'M.Sc Sciences',
+    topics: ['Advanced Research Methods', 'Scientific Analysis', 'Data Interpretation', 'Laboratory Techniques', 'Critical Thinking', 'Research Methodology']
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // B.SC SPECIALIZATIONS (College/University)
   // ═══════════════════════════════════════════════════════════════════════════
   bsc: {
@@ -753,6 +801,59 @@ export function normalizeStreamId(programName) {
     'm.tech data science': 'mtech_ds',
     'mtech data science': 'mtech_ds',
     
+    // M.Sc variations -> short keys
+    'master of science in data science': 'msc_ds',
+    'master of science data science': 'msc_ds',
+    'm.sc data science': 'msc_ds',
+    'msc data science': 'msc_ds',
+    'm.sc ds': 'msc_ds',
+    'msc ds': 'msc_ds',
+    
+    'master of science in computer science': 'msc_cs',
+    'master of science computer science': 'msc_cs',
+    'm.sc computer science': 'msc_cs',
+    'msc computer science': 'msc_cs',
+    'm.sc cs': 'msc_cs',
+    'msc cs': 'msc_cs',
+    
+    'master of science in physics': 'msc_physics',
+    'm.sc physics': 'msc_physics',
+    'msc physics': 'msc_physics',
+    
+    'master of science in chemistry': 'msc_chemistry',
+    'm.sc chemistry': 'msc_chemistry',
+    'msc chemistry': 'msc_chemistry',
+    
+    'master of science in mathematics': 'msc_maths',
+    'm.sc mathematics': 'msc_maths',
+    'msc mathematics': 'msc_maths',
+    'm.sc maths': 'msc_maths',
+    'msc maths': 'msc_maths',
+    
+    'master of science in biology': 'msc_biology',
+    'm.sc biology': 'msc_biology',
+    'msc biology': 'msc_biology',
+    
+    'master of science in biotechnology': 'msc_biotech',
+    'm.sc biotechnology': 'msc_biotech',
+    'msc biotechnology': 'msc_biotech',
+    
+    'master of science in information technology': 'msc_it',
+    'm.sc information technology': 'msc_it',
+    'msc information technology': 'msc_it',
+    'm.sc it': 'msc_it',
+    'msc it': 'msc_it',
+    
+    'master of science in artificial intelligence': 'msc_ai',
+    'm.sc artificial intelligence': 'msc_ai',
+    'msc artificial intelligence': 'msc_ai',
+    'm.sc ai': 'msc_ai',
+    'msc ai': 'msc_ai',
+    
+    'master of science in statistics': 'msc_stats',
+    'm.sc statistics': 'msc_stats',
+    'msc statistics': 'msc_stats',
+    
     // B.Sc variations
     'b.sc physics': 'bsc_physics',
     'bsc physics': 'bsc_physics',
@@ -783,6 +884,9 @@ export function normalizeStreamId(programName) {
     'computer applications': 'bca',
     
     // B.Com variations
+    'b.com': 'bcom',
+    'bcom': 'bcom',
+    'bachelor of commerce': 'bcom',
     'b.com accounting': 'bcom_accounts',
     'bcom accounting': 'bcom_accounts',
     'b.com banking': 'bcom_banking',
@@ -1481,36 +1585,43 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
  * If studentId provided, saves questions for resume functionality
  */
 export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null, gradeLevel = null) {
-  // Normalize the stream ID to match our STREAM_KNOWLEDGE_PROMPTS keys
-  const normalizedStreamId = normalizeStreamId(streamId);
-  const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId];
+  // For college students, streamId is their actual course (e.g., "B.COM", "B.Tech CSE")
+  // For other students, normalize the stream ID to match STREAM_KNOWLEDGE_PROMPTS keys
+  const isCollegeStudent = gradeLevel === 'college';
   
-  if (!streamInfo) {
-    console.error('Unknown stream:', streamId, '(normalized:', normalizedStreamId, ') - using generic college stream');
-    // Use generic college stream as fallback
-    const fallbackInfo = STREAM_KNOWLEDGE_PROMPTS['college'];
-    if (!fallbackInfo) return null;
+  let effectiveStreamId, effectiveStreamName, effectiveTopics;
+  
+  if (isCollegeStudent) {
+    // For college students, use their course directly without normalization
+    effectiveStreamId = streamId;
+    effectiveStreamName = streamId; // Use course name as-is (e.g., "B.COM")
+    effectiveTopics = null; // Let AI determine topics dynamically based on course name
+    console.log(`🎓 College student - generating knowledge questions for course: ${streamId}`);
+  } else {
+    // For non-college students, use the hardcoded topic mappings
+    const normalizedStreamId = normalizeStreamId(streamId);
+    const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId];
+    
+    if (!streamInfo) {
+      console.error('Unknown stream:', streamId, '(normalized:', normalizedStreamId, ')');
+      return null;
+    }
+    
+    effectiveStreamId = normalizedStreamId;
+    effectiveStreamName = streamInfo.name;
+    effectiveTopics = streamInfo.topics;
+    console.log('🎯 Generating knowledge questions for:', effectiveStreamName, '(stream:', effectiveStreamId, ')');
+    console.log('📚 Stream topics:', effectiveTopics);
   }
-
-  const effectiveStreamInfo = streamInfo || STREAM_KNOWLEDGE_PROMPTS['college'];
-  const effectiveStreamId = streamInfo ? normalizedStreamId : 'college';
 
   // Check for saved questions first if studentId provided
   if (studentId) {
-    // Try with normalized stream ID first
-    let saved = await getSavedQuestionsForStudent(studentId, effectiveStreamId, 'knowledge');
-    // Also try with original stream ID in case it was saved that way
-    if (!saved && streamId !== effectiveStreamId) {
-      saved = await getSavedQuestionsForStudent(studentId, streamId, 'knowledge');
-    }
+    const saved = await getSavedQuestionsForStudent(studentId, effectiveStreamId, 'knowledge');
     if (saved) {
       console.log('✅ Using saved knowledge questions for student');
       return saved;
     }
   }
-
-  console.log('🎯 Generating fresh knowledge questions for:', effectiveStreamInfo.name, '(stream:', effectiveStreamId, ')');
-  console.log('📚 Stream topics:', effectiveStreamInfo.topics);
 
   // Use unified question generation API
   const { getPagesApiUrl } = await import('../utils/pagesUrl');
@@ -1526,12 +1637,13 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           streamId: effectiveStreamId,
-          streamName: effectiveStreamInfo.name,
-          topics: effectiveStreamInfo.topics,
+          streamName: effectiveStreamName,
+          topics: effectiveTopics, // null for college students - AI will determine
           questionCount,
           studentId,
           attemptId,
-          gradeLevel // Add grade level to API request
+          gradeLevel,
+          isCollegeStudent // Flag to tell backend to generate dynamically
         })
       });
 
@@ -1952,7 +2064,7 @@ export async function clearSavedQuestionsForStudent(studentId, streamId) {
  * - Otherwise generates fresh AI questions and saves them
  * - Falls back to hardcoded questions if AI fails or returns too few
  */
-export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studentId = null, attemptId = null) {
+export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studentId = null, attemptId = null, studentCourse = null) {
   const questions = {
     aptitude: null,
     knowledge: null
@@ -1965,6 +2077,11 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     // Normalize stream ID for college students
     const normalizedStreamId = normalizeStreamId(streamId);
     console.log(`📋 Normalized stream ID: ${normalizedStreamId}`);
+    
+    // For college students, use their actual course for knowledge questions
+    if (gradeLevel === 'college' && studentCourse) {
+      console.log(`🎓 College student - using course "${studentCourse}" for knowledge questions instead of stream`);
+    }
     
     // Generate/load aptitude questions first (will use saved if available)
     // Pass gradeLevel so API knows to use appropriate difficulty
@@ -1979,7 +2096,9 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Generate/load knowledge questions (will use saved if available)
-    const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId, gradeLevel);
+    // For college students, pass their course; for others, use normalized stream
+    const knowledgeStreamId = (gradeLevel === 'college' && studentCourse) ? studentCourse : normalizedStreamId;
+    const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, studentId, attemptId, gradeLevel);
     
     if (aiKnowledge && aiKnowledge.length > 0) {
       questions.knowledge = aiKnowledge;

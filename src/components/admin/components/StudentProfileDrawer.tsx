@@ -21,6 +21,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { ExternalLinkIcon, File } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { isCollegeStudent, isSchoolStudent } from '../../../utils/studentType';
 
 const Badge = ({ type }: { type: string }) => {
   const badgeConfig = {
@@ -619,7 +620,7 @@ const ApprovalModal = ({ isOpen, onClose, student, onApprove, onReject, loading 
               <p className="text-sm text-gray-600 mb-4">
                 Review and verify the enrollment status for <strong>{student.name}</strong>
               </p>
-              
+
               <div className="space-y-3">
                 <label className="flex items-center">
                   <input
@@ -635,7 +636,7 @@ const ApprovalModal = ({ isOpen, onClose, student, onApprove, onReject, loading 
                     Approve Enrollment
                   </span>
                 </label>
-                
+
                 <label className="flex items-center">
                   <input
                     type="radio"
@@ -678,13 +679,12 @@ const ApprovalModal = ({ isOpen, onClose, student, onApprove, onReject, loading 
             <button
               onClick={handleSubmit}
               disabled={loading || !action}
-              className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md disabled:opacity-50 ${
-                action === 'approve' 
-                  ? 'bg-green-600 hover:bg-green-700' 
-                  : action === 'reject'
+              className={`px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md disabled:opacity-50 ${action === 'approve'
+                ? 'bg-green-600 hover:bg-green-700'
+                : action === 'reject'
                   ? 'bg-red-600 hover:bg-red-700'
                   : 'bg-gray-400'
-              }`}
+                }`}
             >
               {loading ? 'Processing...' : action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Select Action'}
             </button>
@@ -723,7 +723,7 @@ const PromotionModal = ({ isOpen, onClose, student, onPromote, loading, currentS
                 </p>
               </div>
             </div>
-            
+
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -793,7 +793,7 @@ const GraduationModal = ({ isOpen, onClose, student, onGraduate, loading }) => {
                 </p>
               </div>
             </div>
-            
+
             <div className="bg-green-50 border border-green-200 rounded-md p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -833,10 +833,10 @@ const GraduationModal = ({ isOpen, onClose, student, onGraduate, loading }) => {
   );
 };
 
-const StudentProfileDrawer = ({ student, isOpen, onClose }: { 
-  student: any; 
-  isOpen: boolean; 
-  onClose: () => void; 
+const StudentProfileDrawer = ({ student, isOpen, onClose }: {
+  student: any;
+  isOpen: boolean;
+  onClose: () => void;
 }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
@@ -846,7 +846,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
   const [copied, setCopied] = useState(false);
   const [admissionNotes, setAdmissionNotes] = useState<Array<{ id: string; admin: string; date: string; note: string }>>([]);
   const [loadingNotes, setLoadingNotes] = useState(false);
-  
+
   // New state for student actions
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showPromotionModal, setShowPromotionModal] = useState(false);
@@ -884,14 +884,14 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     if ((student as any).college_id && (student as any).enrollmentDate) {
       const enrollmentDate = new Date((student as any).enrollmentDate);
       const currentDate = new Date();
-      const monthsDiff = (currentDate.getFullYear() - enrollmentDate.getFullYear()) * 12 + 
-                        (currentDate.getMonth() - enrollmentDate.getMonth());
-      
+      const monthsDiff = (currentDate.getFullYear() - enrollmentDate.getFullYear()) * 12 +
+        (currentDate.getMonth() - enrollmentDate.getMonth());
+
       // Assuming 6 months per semester
       const calculatedSemester = Math.floor(monthsDiff / 6) + 1;
       return Math.max(1, calculatedSemester);
     }
-    
+
     // For school students, use grade directly
     if (student.school_id && student.grade) {
       const gradeNum = parseInt(student.grade);
@@ -899,7 +899,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
         return gradeNum;
       }
     }
-    
+
     // Fallback to manual current_semester field or default
     return parseInt(student.current_semester) || 1;
   };
@@ -910,17 +910,17 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     if (student.school_id) {
       return 12;
     }
-    
+
     // For college students, determine based on degree type
-    const degreeType = student.branch_field?.toLowerCase() || 
-                      student.dept?.toLowerCase() || 
-                      student.profile?.education?.[0]?.degree?.toLowerCase() || '';
-    
+    const degreeType = student.branch_field?.toLowerCase() ||
+      student.dept?.toLowerCase() ||
+      student.profile?.education?.[0]?.degree?.toLowerCase() || '';
+
     if (degreeType.includes('phd') || degreeType.includes('doctorate')) return 8;
     if (degreeType.includes('master') || degreeType.includes('mtech') || degreeType.includes('mba')) return 4;
     if (degreeType.includes('bachelor') || degreeType.includes('btech') || degreeType.includes('be') || degreeType.includes('bsc') || degreeType.includes('ba')) return 8;
     if (degreeType.includes('diploma')) return 6;
-    
+
     return 8; // Default to 8 semesters for bachelor's degree
   };
 
@@ -933,19 +933,19 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
   const canGraduate = () => {
     const currentSem = getCurrentSemester();
     const totalSems = getTotalSemesters();
-    
+
     // Check if student is in good standing (only use approval_status)
     const isEligible = student.approval_status === 'approved' ||
-                      student.approval_status === 'verified';
-    
+      student.approval_status === 'verified';
+
     // Check if not already graduated (use metadata to track graduation)
     const notGraduated = !student.metadata?.graduation_date;
-    
+
     // Check if reached final semester OR expected graduation date has arrived
-    const readyToGraduate = currentSem >= totalSems || 
-                           ((student as any).expectedGraduationDate && 
-                            new Date() >= new Date((student as any).expectedGraduationDate));
-    
+    const readyToGraduate = currentSem >= totalSems ||
+      ((student as any).expectedGraduationDate &&
+        new Date() >= new Date((student as any).expectedGraduationDate));
+
     return readyToGraduate && isEligible && notGraduated;
   };
 
@@ -955,15 +955,15 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       console.log(`${action === 'approve' ? 'Approving' : 'Rejecting'} student:`, student.id, reason);
-      
+
       // In a real implementation, you would update the database here
       const updateData: any = {
         approval_status: action === 'approve' ? 'approved' : 'rejected',
         updated_at: new Date().toISOString()
       };
-      
+
       // If approving, also set enrollment status
       if (action === 'approve') {
         // Set enrollment date if not already set (using correct column name)
@@ -971,7 +971,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
           updateData.enrollmentDate = new Date().toISOString().split('T')[0];
         }
       }
-      
+
       // Add reason to metadata if provided
       if (reason) {
         updateData.metadata = {
@@ -980,18 +980,18 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
           approval_date: new Date().toISOString()
         };
       }
-      
+
       const { error } = await supabase.from('students').update(updateData).eq('id', student.id);
-      
+
       if (error) {
         throw error;
       }
-      
+
       setShowApprovalModal(false);
-      
+
       // Show success message
       toast.success(`Student ${action === 'approve' ? 'approved' : 'rejected'} successfully!`);
-      
+
       // Refresh the page or update local state
       window.location.reload();
     } catch (error) {
@@ -1008,12 +1008,12 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       setShowPromotionModal(false);
-      
+
       // Show success message
       toast.success('Student promoted successfully!');
-      
+
     } catch (error) {
       console.error('Error promoting student:', error);
       toast.error('Failed to promote student. Please try again.');
@@ -1028,9 +1028,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       console.log(`Marking student ${student.id} as graduated`);
-      
+
       // In a real implementation, you would update the database here
       const graduationDate = new Date().toISOString();
       const updateData: any = {
@@ -1043,28 +1043,28 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
           final_cgpa: student.current_cgpa || student.profile?.education?.[0]?.cgpa
         }
       };
-      
+
       // Set expected graduation date if not already set
       if (!(student as any).expectedGraduationDate) {
         updateData.expectedGraduationDate = graduationDate.split('T')[0];
       }
-      
+
       // For school students, mark as completed grade 12
       if (student.school_id) {
         updateData.grade = getTotalSemesters().toString();
       }
-      
+
       const { error } = await supabase.from('students').update(updateData).eq('id', student.id);
-      
+
       if (error) {
         throw error;
       }
-      
+
       setShowGraduationModal(false);
-      
+
       // Show success message
       toast.success('Student marked as graduated successfully!');
-      
+
       // Refresh the page or update local state
       window.location.reload();
     } catch (error) {
@@ -1111,7 +1111,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
 
                     <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {/* Show different fields based on student type */}
-                      {student.school_id ? (
+                      {isSchoolStudent(student) ? (
                         // School Student Fields
                         <>
                           <div>
@@ -1149,17 +1149,17 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         </>
                       )}
                     </div>
-                    
+
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">
-                          {student.school_id ? 'Admission Status:' : 'Enrollment Status:'}
+                          {isSchoolStudent(student) ? 'Admission Status:' : 'Enrollment Status:'}
                         </p>
                         <Badge type={student.admission_status || student.approval_status || 'pending'} />
                       </div>
-                      
+
                       {/* Academic Progress Indicator */}
-                      {!student.school_id && (
+                      {isCollegeStudent(student) && (
                         <div className="flex items-center gap-2">
                           <div className="text-xs text-gray-500">
                             Academic Progress:
@@ -1169,8 +1169,8 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                               Semester {getCurrentSemester()} of {getTotalSemesters()}
                             </div>
                             <div className="ml-2 w-12 bg-gray-200 rounded-full h-1.5">
-                              <div 
-                                className="bg-primary-600 h-1.5 rounded-full transition-all duration-300" 
+                              <div
+                                className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
                                 style={{ width: `${(getCurrentSemester() / getTotalSemesters()) * 100}%` }}
                               ></div>
                             </div>
@@ -1223,32 +1223,32 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       <span>{student.email || student.profile?.email || 'Not provided'}</span>
                     </div>
                   </div>
-                  
+
                   {/* Action Indicators */}
                   <div className="flex items-center space-x-2">
                     {(() => {
-                      const needsVerification = 
+                      const needsVerification =
                         student.approval_status === 'pending' ||
                         student.approval_status === null ||
                         student.approval_status === undefined ||
                         !student.approval_status;
-                      
-                      return needsVerification && !student.school_id;
+
+                      return needsVerification && isCollegeStudent(student);
                     })() && (
-                      <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-1 animate-pulse"></div>
-                        Verification Required
-                      </div>
-                    )}
-                    
-                    {canPromote() && !student.school_id && (
+                        <div className="flex items-center text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-1 animate-pulse"></div>
+                          Verification Required
+                        </div>
+                      )}
+
+                    {canPromote() && isCollegeStudent(student) && (
                       <div className="flex items-center text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
                         <ArrowUpIcon className="h-3 w-3 mr-1" />
                         Ready for Promotion
                       </div>
                     )}
-                    
-                    {canGraduate() && !student.school_id && (
+
+                    {canGraduate() && isCollegeStudent(student) && (
                       <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
                         <TrophyIcon className="h-3 w-3 mr-1" />
                         Ready to Graduate
@@ -1292,9 +1292,9 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                           <span className="text-gray-500 text-xs mb-1">Contact</span>
                           <span className="font-medium text-gray-900">{student.contact_number || student.contactNumber || student.phone || 'N/A'}</span>
                         </div>
-                        
+
                         {/* School-specific fields */}
-                        {student.school_id ? (
+                        {isSchoolStudent(student) ? (
                           <>
                             <div className="flex flex-col">
                               <span className="text-gray-500 text-xs mb-1">School</span>
@@ -1465,7 +1465,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Guardian Information for School Students */}
                     {student.school_id && (student.guardianName || student.guardianPhone || student.guardianEmail) && (
                       <div>
@@ -1498,7 +1498,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Address Information for School Students */}
                     {student.school_id && (student.address || student.city || student.state) && (
                       <div>
@@ -1576,7 +1576,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
 
                 {activeTab === 'academic' && (
                   <div className="p-6 space-y-6">
-                    {student.school_id ? (
+                    {isSchoolStudent(student) ? (
                       // School Student Academic Info
                       <div>
                         <h3 className="text-lg font-medium text-gray-900 mb-4">Academic Information</h3>
@@ -1626,14 +1626,13 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                             )}
                           </div>
                           <div className="mt-3">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                            }`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
                               {student.approval_status?.charAt(0).toUpperCase() + student.approval_status?.slice(1) || 'Pending'}
                             </span>
                           </div>
                         </div>
-                        
+
                         {/* Show subjects if available */}
                         {student.subjects && student.subjects.length > 0 && (
                           <div className="mt-6">
@@ -1705,14 +1704,13 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                             )}
                           </div>
                           <div className="mt-3">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                            }`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}>
                               {student.approval_status?.charAt(0).toUpperCase() + student.approval_status?.slice(1) || 'Pending'}
                             </span>
                           </div>
                         </div>
-                        
+
                         {/* Show detailed education if available */}
                         {student.profile?.education && student.profile.education.length > 0 && (
                           <div className="mt-6">
@@ -1923,29 +1921,29 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                         approval_status: student.approval_status,
                         name: student.name
                       });
-                      
+
                       // Show verify button if student needs verification and is not a school student
-                      const needsVerification = 
+                      const needsVerification =
                         student.approval_status === 'pending' ||
                         student.approval_status === null ||
                         student.approval_status === undefined ||
                         !student.approval_status;
-                      
-                      return needsVerification && !student.school_id;
+
+                      return needsVerification && isCollegeStudent(student);
                     })() && (
-                      <button
-                        onClick={() => setShowApprovalModal(true)}
-                        disabled={actionLoading}
-                        className="inline-flex items-center px-3 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
-                      >
-                        <CheckCircleIcon className="h-4 w-4 mr-2" />
-                        Verify
-                      </button>
-                    )}
+                        <button
+                          onClick={() => setShowApprovalModal(true)}
+                          disabled={actionLoading}
+                          className="inline-flex items-center px-3 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
+                        >
+                          <CheckCircleIcon className="h-4 w-4 mr-2" />
+                          Verify
+                        </button>
+                      )}
 
 
 
-                    {canPromote() && !student.school_id && (
+                    {canPromote() && isCollegeStudent(student) && (
                       <button
                         onClick={() => setShowPromotionModal(true)}
                         disabled={actionLoading}
@@ -1956,7 +1954,7 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </button>
                     )}
 
-                    {canGraduate() && !student.school_id  && (
+                    {canGraduate() && isCollegeStudent(student) && (
                       <button
                         onClick={() => setShowGraduationModal(true)}
                         disabled={actionLoading}
@@ -1967,15 +1965,15 @@ const StudentProfileDrawer = ({ student, isOpen, onClose }: {
                       </button>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     {/* Semester Status - Subtle Display - Only for College Students */}
-                    {!student.school_id && (
+                    {isCollegeStudent(student) && (
                       <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                         Sem {getCurrentSemester()}/{getTotalSemesters()}
                       </div>
                     )}
-                    
+
                     <div className="flex space-x-2">
                       <button
                         onClick={() => setShowMessageModal(true)}

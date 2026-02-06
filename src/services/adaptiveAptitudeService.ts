@@ -47,7 +47,7 @@ export async function initializeTest(
   options: AdaptiveAptitudeApiService.InitializeTestOptions
 ): Promise<AdaptiveAptitudeApiService.InitializeTestResult> {
   console.log('🚀 [AdaptiveAptitudeService] initializeTest (API wrapper):', options);
-  return AdaptiveAptitudeApiService.initializeTest(options.studentId, options.gradeLevel);
+  return AdaptiveAptitudeApiService.initializeTest(options.studentId, options.gradeLevel, options.studentCourse);
 }
 
 /**

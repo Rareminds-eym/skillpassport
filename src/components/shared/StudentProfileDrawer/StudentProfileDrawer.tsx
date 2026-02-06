@@ -12,6 +12,9 @@ import { Trophy, File } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate } from 'react-router-dom';
 
+// Centralized student type detection
+import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '../../../utils/studentType';
+
 // Types
 import { StudentProfileDrawerProps, TabConfig, ActionConfig } from './types';
 
@@ -147,9 +150,9 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
       baseTabs.push({ key: 'curriculum', label: 'Curriculum & Lessons' });
       baseTabs.push({ key: 'clubs', label: 'Clubs & Competitions' });
     }
-    
+
     // For college educators: show college-specific tabs
-    if (userRole === 'college_educator' || (userRole.includes('admin') && student.college_id && !student.school_id)) {
+    if (userRole === 'college_educator' || (userRole.includes('admin') && checkIsCollegeStudent(student))) {
       baseTabs.push({ key: 'clubs', label: 'Clubs & Activities' });
     }
 
@@ -164,7 +167,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
   const getActionsConfig = (): ActionConfig => {
     const isAdmin = userRole.includes('admin');
     const isEducator = userRole.includes('educator');
-    const isCollegeStudent = !student.school_id; // College students don't have school_id
+    const isCollegeStudent = checkIsCollegeStudent(student); // Use centralized utility
 
     return {
       showApproval: Boolean(isAdmin && needsVerification() && isCollegeStudent),
@@ -269,7 +272,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
 
                     <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {/* Show different fields based on student type */}
-                      {student.school_id ? (
+                      {checkIsSchoolStudent(student) ? (
                         // School Student Fields
                         <>
                           <div>
@@ -307,18 +310,18 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         </>
                       )}
                     </div>
-                    
+
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <p className="text-xs text-gray-500 uppercase tracking-wide">
-                          {student.school_id ? 'Admission Status:' : 'Enrollment Status:'}
+                          {checkIsSchoolStudent(student) ? 'Admission Status:' : 'Enrollment Status:'}
                         </p>
                         <Badge type={student.approval_status || 'pending'} />
-                        
+
                       </div>
-                      
+
                       {/* Academic Progress Indicator */}
-                      {!student.school_id && (
+                      {checkIsCollegeStudent(student) && (
                         <div className="flex items-center gap-2">
                           <div className="text-xs text-gray-500">
                             Academic Progress:
@@ -328,8 +331,8 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                               Semester {getCurrentSemester()} of {getTotalSemesters()}
                             </div>
                             <div className="ml-2 w-12 bg-gray-200 rounded-full h-1.5">
-                              <div 
-                                className="bg-primary-600 h-1.5 rounded-full transition-all duration-300" 
+                              <div
+                                className="bg-primary-600 h-1.5 rounded-full transition-all duration-300"
                                 style={{ width: `${(getCurrentSemester() / getTotalSemesters()) * 100}%` }}
                               ></div>
                             </div>
@@ -382,7 +385,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       <span>{student.email || student.profile?.email || 'Not provided'}</span>
                     </div>
                   </div>
-                  
+
                   {/* Action Indicators */}
                   <div className="flex items-center space-x-2">
                     {actions.showApproval && (
@@ -391,14 +394,14 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         Verification Required
                       </div>
                     )}
-                    
+
                     {actions.showPromotion && (
                       <div className="flex items-center text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
                         <ArrowUpIcon className="h-3 w-3 mr-1" />
                         Ready for Promotion
                       </div>
                     )}
-                    
+
                     {actions.showGraduation && (
                       <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
                         <Trophy className="h-3 w-3 mr-1" />
@@ -410,7 +413,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
               </div>
 
               {/* Tabs */}
-              <div 
+              <div
                 ref={tabsContainerRef}
                 className="border-b border-gray-200 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
               >
@@ -445,7 +448,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                         {userRole.includes('educator') ? 'Add Mentor Note' : 'Add Note'}
                       </button>
                     )}
-                    
+
                     <button
                       onClick={() => navigate('/digital-pp/homepage', { state: { candidate: student } })}
                       className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100"
@@ -488,15 +491,15 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                       </button>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center space-x-3">
                     {/* Semester Status - Only for College Students */}
-                    {!student.school_id && (
+                    {checkIsCollegeStudent(student) && (
                       <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                         Sem {getCurrentSemester()}/{getTotalSemesters()}
                       </div>
                     )}
-                    
+
                     <div className="flex space-x-2">
                       {actions.showMessage && (
                         <button
@@ -507,7 +510,7 @@ const StudentProfileDrawer: React.FC<StudentProfileDrawerProps> = ({
                           Message
                         </button>
                       )}
-                      
+
                       {actions.showExport && (
                         <button
                           onClick={() => setShowExportModal(true)}

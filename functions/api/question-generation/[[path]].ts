@@ -109,14 +109,21 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       try {
         const body = await request.json() as any;
         console.log('📥 Request body:', JSON.stringify(body, null, 2));
-        const { streamId, streamName, topics, questionCount = 20, studentId, attemptId, gradeLevel } = body;
+        const { streamId, streamName, topics, questionCount = 20, studentId, attemptId, gradeLevel, isCollegeStudent } = body;
 
-        if (!streamId || !streamName || !topics) {
-          console.error('❌ Missing required fields:', { streamId, streamName, topics });
-          return jsonResponse({ error: 'Stream ID, name, and topics are required' }, 400);
+        // For college students, topics can be null (AI will determine dynamically)
+        if (!streamId || !streamName) {
+          console.error('❌ Missing required fields:', { streamId, streamName });
+          return jsonResponse({ error: 'Stream ID and name are required' }, 400);
+        }
+        
+        // Topics are optional for college students
+        if (!isCollegeStudent && !topics) {
+          console.error('❌ Topics required for non-college students');
+          return jsonResponse({ error: 'Topics are required for non-college students' }, 400);
         }
 
-        const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId, gradeLevel);
+        const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId, gradeLevel, isCollegeStudent);
         console.log(`✅ Knowledge generation complete: ${result?.length || 0} questions`);
         // Wrap in {questions: [...]} format for frontend compatibility
         return jsonResponse({ questions: result });
@@ -148,8 +155,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/diagnostic' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, excludeQuestionIds, excludeQuestionTexts } = body;
-        const result = await generateDiagnosticScreenerQuestions(env, gradeLevel, excludeQuestionIds, excludeQuestionTexts);
+        const { gradeLevel, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
+        const result = await generateDiagnosticScreenerQuestions(env, gradeLevel, excludeQuestionIds, excludeQuestionTexts, studentCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Diagnostic generation error:', error);
@@ -160,8 +167,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/adaptive' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts } = body;
-        const result = await generateAdaptiveCoreQuestions(env, gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts);
+        const { gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
+        const result = await generateAdaptiveCoreQuestions(env, gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts, studentCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Adaptive generation error:', error);
@@ -172,8 +179,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/stability' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts } = body;
-        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts);
+        const { gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
+        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts, studentCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Stability generation error:', error);
@@ -184,8 +191,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/single' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts } = body;
-        const result = await generateSingleQuestion(env, gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts);
+        const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
+        const result = await generateSingleQuestion(env, gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, studentCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Single question generation error:', error);

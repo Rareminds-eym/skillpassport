@@ -109,7 +109,7 @@ interface AssessmentContextValue {
   resetFlow: () => void;
   
   // Database Actions
-  startAssessment: (streamId: string, gradeLevel: string) => Promise<any>;
+  startAssessment: (streamId: string | null, gradeLevel: string) => Promise<any>;
   saveResponse: (sectionName: string, questionId: string, value: any, isCorrect?: boolean | null) => Promise<any>;
   updateProgress: (sectionIndex: number, questionIndex: number, timings: Record<string, number>) => Promise<any>;
   checkInProgressAttempt: () => Promise<any>;
@@ -239,7 +239,7 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
   }, [flow.currentSection, flow.isCurrentQuestionAnswered, adaptiveAptitudeAnswer]);
   
   // Wrap database actions
-  const startAssessment = useCallback(async (streamId: string, gradeLevel: string) => {
+  const startAssessment = useCallback(async (streamId: string | null, gradeLevel: string) => {
     setUseDatabase(true);
     return dbStartAssessment(streamId, gradeLevel);
   }, [dbStartAssessment]);

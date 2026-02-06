@@ -699,7 +699,17 @@ VARIETY REQUIREMENTS FOR HIGHER SECONDARY / COLLEGE:
    SYSTEM PROMPT (PHASE + BATCH AWARE)
 ====================================================== */
 
-export function buildSystemPrompt(gradeLevel: GradeLevel, phase?: string): string {
+export function buildSystemPrompt(gradeLevel: GradeLevel, studentCourse?: string | null, phase?: string): string {
+  const courseContext = studentCourse ? `
+
+🎓 COURSE-SPECIFIC CONTEXT FOR ${studentCourse.toUpperCase()}:
+- The student is studying ${studentCourse}
+- Frame questions using scenarios, examples, and contexts relevant to this field
+- Use terminology and situations that a ${studentCourse} student would encounter
+- Questions should still test general aptitude, but contextualized to their field
+- Examples: If studying B.COM, use business/finance scenarios; if B.Tech CSE, use tech/programming contexts
+` : '';
+
   const phaseContext = phase ? `
 
 🔄 CURRENT TEST PHASE: ${phase.toUpperCase()}
@@ -717,7 +727,7 @@ ${phase === 'diagnostic' ? `- This is the DIAGNOSTIC SCREENER phase (8 questions
 - Focus on validating the adaptive core results
 - Questions should have high reliability for final scoring` : ''}` : '';
 
-  return `${GRADE_LEVEL_CONTEXT[gradeLevel]}${phaseContext}
+  return `${GRADE_LEVEL_CONTEXT[gradeLevel]}${courseContext}${phaseContext}
 
 You are an expert educational assessment designer creating multiple-choice aptitude test questions.
 

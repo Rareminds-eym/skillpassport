@@ -38,7 +38,7 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     // Parse request body
     const body = await request.json() as InitializeTestOptions;
-    const { studentId, gradeLevel } = body;
+    const { studentId, gradeLevel, studentCourse } = body;
 
     if (!studentId || !gradeLevel) {
       return jsonResponse(
@@ -46,6 +46,8 @@ export const initializeHandler: PagesFunction = async (context) => {
         400
       );
     }
+
+    console.log('📋 [InitializeHandler] Request:', { studentId, gradeLevel, studentCourse });
 
     // Validate gradeLevel
     const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
@@ -67,7 +69,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ gradeLevel }),
+      body: JSON.stringify({ gradeLevel, studentCourse }),
     });
 
     if (!questionGenResponse.ok) {
@@ -98,6 +100,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       .insert({
         student_id: studentId,
         grade_level: gradeLevel,
+        student_course: studentCourse || null,
         current_phase: 'diagnostic_screener',
         current_difficulty: 3, // Default starting difficulty
         difficulty_path: [],
