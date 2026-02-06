@@ -41,6 +41,30 @@ export const useEvents = (collegeId: string | null) => {
   // CRUD operations
   const saveEvent = async (data: Partial<CollegeEvent>, existingEvent?: CollegeEvent | null) => {
     try {
+      // Server-side validation for date and time
+      if (data.start_date || data.end_date) {
+        const now = new Date();
+        const currentDateTime = now.toISOString();
+        
+        // Check if start date is in the past (only for new events or when updating dates)
+        if (data.start_date && data.start_date < currentDateTime) {
+          toast.error("Start date and time cannot be in the past");
+          return false;
+        }
+        
+        // Check if end date is in the past
+        if (data.end_date && data.end_date < currentDateTime) {
+          toast.error("End date and time cannot be in the past");
+          return false;
+        }
+        
+        // Check if end date is after start date
+        if (data.start_date && data.end_date && data.end_date <= data.start_date) {
+          toast.error("End date must be after start date");
+          return false;
+        }
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       
       // Get college_id from organizations table if not already set

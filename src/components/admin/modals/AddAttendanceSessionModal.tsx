@@ -33,11 +33,65 @@ const AddAttendanceSessionModal = ({
   faculty: any[];
   students: Student[];
 }) => {
+  // Get current date and time for validation
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    return {
+      date: now.toISOString().split('T')[0], // YYYY-MM-DD format
+      time: now.toTimeString().slice(0, 5), // HH:MM format
+    };
+  };
+
+  const { date: currentDate, time: currentTime } = getCurrentDateTime();
+
+  // Validation functions
+  const isDateInPast = (selectedDate: string) => {
+    if (!selectedDate) return false;
+    return selectedDate < currentDate;
+  };
+
+  const isTimeInPast = (selectedDate: string, selectedTime: string) => {
+    if (!selectedDate || !selectedTime) return false;
+    if (selectedDate > currentDate) return false; // Future date is always valid
+    if (selectedDate < currentDate) return true; // Past date is always invalid
+    // Same date - check time
+    return selectedTime < currentTime;
+  };
+
+  const validateDateTime = () => {
+    const errors = [];
+    
+    if (isDateInPast(formData.date)) {
+      errors.push("Cannot schedule attendance for past dates");
+    }
+    
+    if (isTimeInPast(formData.date, formData.startTime)) {
+      errors.push("Cannot schedule attendance for past time");
+    }
+    
+    if (isTimeInPast(formData.date, formData.endTime)) {
+      errors.push("End time cannot be in the past");
+    }
+
+    if (formData.startTime && formData.endTime) {
+      const start = new Date(`2000-01-01T${formData.startTime}`);
+      const end = new Date(`2000-01-01T${formData.endTime}`);
+      if (end <= start) {
+        errors.push("End time must be after start time");
+      }
+    }
+    
+    return errors;
+  };
+
+  const validationErrors = validateDateTime();
+
   const calculateDuration = () => {
     if (formData.startTime && formData.endTime) {
       const start = new Date(`2000-01-01T${formData.startTime}`);
       const end = new Date(`2000-01-01T${formData.endTime}`);
       const diff = end.getTime() - start.getTime();
+      if (diff <= 0) return "Invalid duration";
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       return `${hours}h ${minutes}m`;
@@ -126,7 +180,8 @@ const AddAttendanceSessionModal = ({
                     <select
                       value={formData.course}
                       onChange={(e) => onFormChange("course", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!formData.department}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">Select Course</option>
                       {courses.map((course) => (
@@ -144,7 +199,8 @@ const AddAttendanceSessionModal = ({
                     <select
                       value={formData.semester}
                       onChange={(e) => onFormChange("semester", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!formData.course}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">Select Semester</option>
                       {semesters.map((sem) => (
@@ -180,7 +236,8 @@ const AddAttendanceSessionModal = ({
                     <select
                       value={formData.subject}
                       onChange={(e) => onFormChange("subject", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!formData.semester}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">Select Subject</option>
                       {subjects.map((subj) => (
@@ -224,9 +281,19 @@ const AddAttendanceSessionModal = ({
                     <input
                       type="date"
                       value={formData.date}
+                      min={currentDate} // Prevent selecting past dates
                       onChange={(e) => onFormChange("date", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                        isDateInPast(formData.date) 
+                          ? 'border-red-300 bg-red-50' 
+                          : 'border-gray-300'
+                      }`}
                     />
+                    {isDateInPast(formData.date) && (
+                      <p className="mt-1 text-sm text-red-600">
+                        Cannot schedule attendance for past dates
+                      </p>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -238,8 +305,17 @@ const AddAttendanceSessionModal = ({
                         type="time"
                         value={formData.startTime}
                         onChange={(e) => onFormChange("startTime", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                          isTimeInPast(formData.date, formData.startTime) 
+                            ? 'border-red-300 bg-red-50' 
+                            : 'border-gray-300'
+                        }`}
                       />
+                      {isTimeInPast(formData.date, formData.startTime) && (
+                        <p className="mt-1 text-sm text-red-600">
+                          Cannot schedule for past time
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -249,16 +325,62 @@ const AddAttendanceSessionModal = ({
                         type="time"
                         value={formData.endTime}
                         onChange={(e) => onFormChange("endTime", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+                          isTimeInPast(formData.date, formData.endTime) || 
+                          (formData.startTime && formData.endTime && formData.endTime <= formData.startTime)
+                            ? 'border-red-300 bg-red-50' 
+                            : 'border-gray-300'
+                        }`}
                       />
+                      {isTimeInPast(formData.date, formData.endTime) && (
+                        <p className="mt-1 text-sm text-red-600">
+                          End time cannot be in the past
+                        </p>
+                      )}
+                      {formData.startTime && formData.endTime && formData.endTime <= formData.startTime && (
+                        <p className="mt-1 text-sm text-red-600">
+                          End time must be after start time
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {formData.startTime && formData.endTime && (
-                    <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                      <p className="text-sm text-indigo-700">
+                    <div className={`p-3 rounded-lg border ${
+                      validationErrors.length > 0 
+                        ? 'bg-red-50 border-red-200' 
+                        : 'bg-indigo-50 border-indigo-200'
+                    }`}>
+                      <p className={`text-sm ${
+                        validationErrors.length > 0 ? 'text-red-700' : 'text-indigo-700'
+                      }`}>
                         <strong>Duration:</strong> {calculateDuration()}
                       </p>
+                    </div>
+                  )}
+
+                  {/* Validation Errors Display */}
+                  {validationErrors.length > 0 && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-start">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800">
+                            Please fix the following errors:
+                          </h3>
+                          <div className="mt-2 text-sm text-red-700">
+                            <ul className="list-disc pl-5 space-y-1">
+                              {validationErrors.map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -325,13 +447,23 @@ const AddAttendanceSessionModal = ({
                 </button>
                 <button
                   onClick={onCreateSession}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                  disabled={validationErrors.length > 0}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    validationErrors.length > 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
                 >
                   Create Session
                 </button>
                 <button
                   onClick={onCreateAndStart}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                  disabled={validationErrors.length > 0}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    validationErrors.length > 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
                 >
                   Create Session & Start Attendance
                 </button>

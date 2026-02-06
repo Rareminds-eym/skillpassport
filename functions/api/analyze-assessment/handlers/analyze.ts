@@ -8,7 +8,8 @@ import type { AssessmentData, AnalysisResult } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { buildAnalysisPrompt, getSystemMessage } from '../prompts';
+import { getSystemMessage } from '../prompts';
+import { buildHighSchoolPrompt as buildCleanHighSchoolPrompt } from '../prompts/high-school-clean';
 import { 
   repairAndParseJSON, 
   AI_MODELS, 
@@ -16,6 +17,11 @@ import {
   API_CONFIG,
   callOpenRouterWithRetry
 } from '../../shared/ai-config';
+import { 
+  fetchJobMarketData, 
+  generateJobMarketSection, 
+  extractCareerCategories 
+} from '../services/job-market-data';
 
 interface RequestBody {
   assessmentData: AssessmentData;
@@ -366,13 +372,28 @@ async function analyzeAssessment(
   assessmentData: AssessmentData
 ): Promise<any> {
   const gradeLevel = assessmentData.gradeLevel || 'after12';
-  const prompt = buildAnalysisPrompt(assessmentData);
-  const systemMessage = getSystemMessage(gradeLevel);
-  const seed = generateSeed(assessmentData);
-
-  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS WITH VALIDATION FALLBACK ===`);
-  console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
+  
+  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS ===`);
   console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
+  
+  // ============================================================================
+  // STEP 1: Build prompt WITHOUT pre-fetching job market data
+  // Let AI determine RIASEC first, then we can fetch targeted data if needed
+  // ============================================================================
+  
+  // Generate deterministic hash for consistent results
+  const seed = generateSeed(assessmentData);
+  
+  // Use clean prompt (AI will determine RIASEC and recommend careers)
+  const basePrompt = buildCleanHighSchoolPrompt(assessmentData, seed);
+  
+  console.log('[ASSESSMENT] ✅ Using clean prompt - AI will determine RIASEC dynamically');
+  console.log('[ASSESSMENT] 📊 AI will analyze raw answers and calculate RIASEC scores');
+  console.log('[ASSESSMENT] 🎯 Career recommendations will be based on AI-calculated RIASEC');
+  
+  const systemMessage = getSystemMessage(gradeLevel);
+
+  console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
   console.log(`[ASSESSMENT] Available models: ${ASSESSMENT_MODELS.length}`);
   console.log(`[ASSESSMENT] Models: ${ASSESSMENT_MODELS.join(', ')}`);
 
@@ -399,7 +420,7 @@ async function analyzeAssessment(
       // This ensures we can control validation-based fallback
       const content = await callOpenRouterWithRetry(openRouter, [
         { role: 'system', content: systemMessage },
-        { role: 'user', content: prompt }
+        { role: 'user', content: basePrompt }
       ], {
         models: [currentModel], // Single model - we handle fallback here
         maxRetries: ASSESSMENT_CONFIG.maxRetries,
