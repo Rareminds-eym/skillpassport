@@ -47,7 +47,23 @@ export const validateRiasecTopThree = (riasec, geminiResults = null) => {
     .sort(([, a], [, b]) => b - a)
     .map(([type]) => type);
 
-  const correctTopThree = sortedTypes.slice(0, 3);
+  // Handle edge case: if all scores are 0, return empty arrays
+  const hasAnyScore = Object.values(scores).some(score => score > 0);
+  if (!hasAnyScore) {
+    console.warn('⚠️ All RIASEC scores are 0 - returning empty topThree');
+    return {
+      ...riasec,
+      topThree: [],
+      code: '',
+      _wasCorrect: false,
+      _originalCode: riasec.code || '',
+      _allZeros: true
+    };
+  }
+
+  // Get top 3, but only include types with non-zero scores
+  const nonZeroTypes = sortedTypes.filter(type => scores[type] > 0);
+  const correctTopThree = nonZeroTypes.slice(0, 3);
   const correctCode = correctTopThree.join('');
 
   // Check if current topThree matches the correct order

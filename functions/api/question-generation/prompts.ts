@@ -217,6 +217,8 @@ CRITICAL REQUIREMENTS:
    - Next 5 questions: MEDIUM difficulty  
    - Last 5 questions: HARD difficulty
 
+⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY {{QUESTION_COUNT}} questions in your response.
+
 Difficulty Guidelines:
 - EASY (Q1-5): Fundamental concepts (45-60 seconds per question)
 - MEDIUM (Q6-10): Complex application, debugging (75-90 seconds per question)
