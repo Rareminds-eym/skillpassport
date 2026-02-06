@@ -194,7 +194,24 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     }
 
     // Check if phase is complete
-    const phaseComplete = newQuestionIndex >= currentPhaseQuestions.length;
+    let phaseComplete = false;
+    
+    if (currentPhase === 'diagnostic_screener') {
+      // Diagnostic: complete when all 8 questions answered
+      phaseComplete = newQuestionIndex >= DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions;
+    } else if (currentPhase === 'adaptive_core') {
+      // Adaptive core: complete when 36 questions answered (not based on array length)
+      const adaptiveCoreQuestionsAnswered = newQuestionsAnswered - DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions;
+      phaseComplete = adaptiveCoreQuestionsAnswered >= DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions;
+      console.log('🎯 [SubmitAnswerHandler] Adaptive core progress:', {
+        adaptiveCoreQuestionsAnswered,
+        maxQuestions: DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions,
+        phaseComplete
+      });
+    } else if (currentPhase === 'stability_confirmation') {
+      // Stability: complete when all 6 questions answered
+      phaseComplete = newQuestionIndex >= DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions;
+    }
 
     // Check stop conditions for adaptive core
     let stopCondition: StopConditionResult | null = null;
@@ -215,11 +232,12 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
         responses
       );
 
-      if (stopCondition.shouldStop) {
-        // Move to stability confirmation or complete test
-        if (phaseComplete) {
-          nextPhase = 'stability_confirmation';
-        }
+      // CRITICAL: Always complete exactly 36 adaptive core questions
+      // Only transition to stability after completing all 36 questions
+      const adaptiveCoreQuestionsAnswered = newQuestionsAnswered - DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions;
+      if (adaptiveCoreQuestionsAnswered >= DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions) {
+        nextPhase = 'stability_confirmation';
+        console.log('🎯 [SubmitAnswerHandler] Completed 36 adaptive core questions, transitioning to stability');
       }
     }
 
@@ -234,6 +252,12 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       console.log('🏁 [SubmitAnswerHandler] Max questions reached, marking test complete');
     } else if (currentPhase === 'stability_confirmation' && phaseComplete) {
       testComplete = true;
+    }
+    
+    // CRITICAL: If we're transitioning to next phase, test is NOT complete yet
+    if (nextPhase) {
+      testComplete = false;
+      console.log('🔄 [SubmitAnswerHandler] Phase transition pending, test NOT complete yet');
     }
 
     // Update session in database

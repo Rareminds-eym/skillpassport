@@ -98,7 +98,7 @@ ${resumeText.slice(0, 15000)}
       {
         models: [getModelForUseCase('resume_parsing')],
         maxRetries: 3,
-        maxTokens: 4096,
+        maxTokens: 2000,  // Reduced from 4096 to fit within credit limits
         temperature: 0.1
       }
     );

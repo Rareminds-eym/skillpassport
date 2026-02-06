@@ -91,8 +91,22 @@ const callOpenRouterAssessment = async (assessmentData) => {
     console.log(`📡 Response status: ${response.status}`);
 
     if (!response.ok) {
+      // ============================================================================
+      // ENHANCED ERROR LOGGING: Log API failure details (Requirement 4.3)
+      // ============================================================================
       const errorText = await response.text();
-      console.error('❌ API Error Response:', errorText);
+      console.error('❌ === API CALL FAILED ===');
+      console.error('❌ Status Code:', response.status);
+      console.error('❌ Status Text:', response.statusText);
+      console.error('❌ Error Response:', errorText);
+      console.error('❌ Request Summary:');
+      console.error('   - API URL:', API_URL);
+      console.error('   - Grade Level:', assessmentData.gradeLevel);
+      console.error('   - Stream:', assessmentData.stream);
+      console.error('   - RIASEC Answers Count:', Object.keys(assessmentData.riasecAnswers || {}).length);
+      console.error('   - Aptitude Scores:', JSON.stringify(assessmentData.aptitudeScores));
+      console.error('❌ === END API CALL FAILED ===');
+      
       let errorData;
       try {
         errorData = JSON.parse(errorText);
@@ -154,7 +168,20 @@ const callOpenRouterAssessment = async (assessmentData) => {
     
     return result.data;
   } catch (error) {
-    console.error('❌ Assessment API call failed:', error);
+    // ============================================================================
+    // ENHANCED ERROR LOGGING: Log complete error context (Requirement 4.3)
+    // ============================================================================
+    console.error('❌ === ASSESSMENT API CALL EXCEPTION ===');
+    console.error('❌ Error Message:', error.message);
+    console.error('❌ Error Stack:', error.stack);
+    console.error('❌ Request Context:');
+    console.error('   - Grade Level:', assessmentData.gradeLevel);
+    console.error('   - Stream:', assessmentData.stream);
+    console.error('   - RIASEC Answers:', Object.keys(assessmentData.riasecAnswers || {}).length);
+    console.error('   - BigFive Answers:', Object.keys(assessmentData.bigFiveAnswers || {}).length);
+    console.error('   - Aptitude Scores:', JSON.stringify(assessmentData.aptitudeScores));
+    console.error('❌ === END ASSESSMENT API CALL EXCEPTION ===');
+    
     updateProgress('error', error.message);
     throw error;
   }
@@ -339,11 +366,88 @@ const formatTimeForPrompt = (seconds) => {
 };
 
 /**
+ * GRADE LEVEL TO SECTION PREFIX MAPPING
+ * 
+ * This constant documents the complete mapping between grade levels and database section prefixes.
+ * Each grade level uses different assessment sections stored in personal_assessment_sections table.
+ * 
+ * Grade Level Categories:
+ * - Middle School (grades 6-8): Simplified assessment with age-appropriate sections
+ * - High School (grades 9-10): Simplified assessment with career exploration focus
+ * - Higher Secondary (grades 11-12): Comprehensive assessment with standard sections
+ * - After 10th/After 12th/College: Comprehensive assessment with standard sections
+ */
+const GRADE_LEVEL_MAPPINGS = {
+  'middle': {
+    riasec: 'middle_interest_explorer',      // Simplified interest assessment for middle school
+    bigfive: 'middle_strengths_character',   // Character strengths assessment
+    knowledge: 'middle_learning_preferences', // Learning style preferences
+    aptitude: 'middle_aptitude_sampling'     // Basic aptitude sampling (if exists)
+  },
+  'highschool': {
+    riasec: 'hs_interest_explorer',          // High school interest exploration
+    bigfive: 'hs_strengths_character',       // High school character assessment
+    aptitude: 'hs_aptitude_sampling',        // High school aptitude sampling
+    knowledge: 'hs_learning_preferences'     // High school learning preferences
+  },
+  'higher_secondary': {
+    // Higher secondary (grades 11-12) uses comprehensive sections with standard names
+    riasec: 'riasec',                        // Standard RIASEC interest inventory
+    bigfive: 'bigfive',                      // Standard Big Five personality
+    knowledge: 'knowledge',                  // Standard knowledge assessment
+    aptitude: 'aptitude',                    // Standard aptitude test
+    values: 'values',                        // Work values assessment
+    employability: 'employability'           // Employability skills
+  },
+  'after10': {
+    // After 10th uses comprehensive sections (same as higher_secondary)
+    riasec: 'riasec',
+    bigfive: 'bigfive',
+    knowledge: 'knowledge',
+    aptitude: 'aptitude',
+    values: 'values',
+    employability: 'employability'
+  },
+  'after12': {
+    // After 12th uses comprehensive sections (same as higher_secondary)
+    riasec: 'riasec',
+    bigfive: 'bigfive',
+    knowledge: 'knowledge',
+    aptitude: 'aptitude',
+    values: 'values',
+    employability: 'employability'
+  },
+  'college': {
+    // College uses comprehensive sections (same as higher_secondary)
+    riasec: 'riasec',
+    bigfive: 'bigfive',
+    knowledge: 'knowledge',
+    aptitude: 'aptitude',
+    values: 'values',
+    employability: 'employability'
+  }
+};
+
+/**
  * Get section prefix based on grade level
- * Maps to database section names in personal_assessment_sections table
+ * 
+ * Maps base section names to their database section prefixes according to grade level.
+ * This is critical for correct answer extraction from the database.
+ * 
+ * @param {string} baseSection - The base section name ('riasec', 'bigfive', 'aptitude', 'knowledge', 'values', 'employability')
+ * @param {string} gradeLevel - The student's grade level ('middle', 'highschool', 'higher_secondary', 'after10', 'after12', 'college')
+ * @returns {string} The database section prefix to use for answer extraction
+ * 
+ * Examples:
+ * - getSectionPrefix('riasec', 'middle') → 'middle_interest_explorer'
+ * - getSectionPrefix('riasec', 'highschool') → 'hs_interest_explorer'
+ * - getSectionPrefix('riasec', 'higher_secondary') → 'riasec' (no prefix)
+ * - getSectionPrefix('riasec', 'college') → 'riasec' (no prefix)
+ * 
  * Exported for testing
  */
 export const getSectionPrefix = (baseSection, gradeLevel) => {
+  // Middle school (grades 6-8) uses simplified sections with 'middle_' prefix
   if (gradeLevel === 'middle') {
     const middleSchoolMap = {
       'riasec': 'middle_interest_explorer',
@@ -351,8 +455,10 @@ export const getSectionPrefix = (baseSection, gradeLevel) => {
       'knowledge': 'middle_learning_preferences'
     };
     return middleSchoolMap[baseSection] || baseSection;
-  } else if (gradeLevel === 'highschool') {
-    // NOTE: higher_secondary removed from here - it uses comprehensive sections with 'riasec', 'bigfive', etc.
+  } 
+  
+  // High school (grades 9-10) uses simplified sections with 'hs_' prefix
+  else if (gradeLevel === 'highschool') {
     const highSchoolMap = {
       'riasec': 'hs_interest_explorer',
       'bigfive': 'hs_strengths_character',
@@ -361,6 +467,17 @@ export const getSectionPrefix = (baseSection, gradeLevel) => {
     };
     return highSchoolMap[baseSection] || baseSection;
   }
+  
+  // Higher secondary (grades 11-12) uses comprehensive sections with standard names (no prefix)
+  // This is the FIX for the bug: explicitly handle 'higher_secondary' to return base section
+  else if (gradeLevel === 'higher_secondary') {
+    // No prefix mapping - use standard section names
+    // 'riasec' → 'riasec', 'bigfive' → 'bigfive', 'aptitude' → 'aptitude', etc.
+    return baseSection;
+  }
+  
+  // After10, after12, college use comprehensive sections with standard names (no prefix)
+  // Default case: return base section without modification
   return baseSection;
 };
 
@@ -409,7 +526,7 @@ const calculateAptitudeScore = (answers) => {
  * @param {string} studentContext.programCode - Program code if available
  * @param {string} studentContext.degreeLevel - Extracted degree level (undergraduate/postgraduate/diploma)
  */
-const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, studentContext = {}) => {
+const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = {}, gradeLevel = 'after12', preCalculatedScores = null, studentContext = {}, adaptiveResults = null) => {
   const { 
     riasecQuestions, 
     aptitudeQuestions, 
@@ -968,13 +1085,117 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     aptitudeScores = preCalculatedScores.aptitude;
   } else {
     console.log('⚠️ Calculating aptitude scores from questions (fallback)');
-    aptitudeScores = {
-      verbal: calculateAptitudeScore(aptitudeAnswers.verbal),
-      numerical: calculateAptitudeScore(aptitudeAnswers.numerical),
-      abstract: calculateAptitudeScore(aptitudeAnswers.abstract),
-      spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
-      clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
+    
+    // 🔧 Check if this is old Stream Based Aptitude format (aptitude_1 to aptitude_25)
+    const hasOldStreamAptitude = Object.keys(answers).some(k => k.match(/^aptitude_\d+$/));
+    
+    if (hasOldStreamAptitude && aptitudeAnswers.verbal.length === 0) {
+      console.log('🔧 Detected old Stream Based Aptitude format - scoring from responses...');
+      aptitudeScores = scoreOldStreamAptitude(answers);
+      console.log('✅ Stream Based Aptitude scores calculated:', aptitudeScores);
+    } else {
+      aptitudeScores = {
+        verbal: calculateAptitudeScore(aptitudeAnswers.verbal),
+        numerical: calculateAptitudeScore(aptitudeAnswers.numerical),
+        abstract: calculateAptitudeScore(aptitudeAnswers.abstract),
+        spatial: calculateAptitudeScore(aptitudeAnswers.spatial),
+        clerical: calculateAptitudeScore(aptitudeAnswers.clerical)
+      };
+    }
+  }
+  
+  /**
+   * Score old Stream Based Aptitude questions (aptitude_1 to aptitude_25)
+   * These were hardcoded questions used before adaptive aptitude
+   */
+  function scoreOldStreamAptitude(responses) {
+    const CORRECT_ANSWERS = {
+      'aptitude_1': 'Clockwise',
+      'aptitude_2': '0.1',
+      'aptitude_3': 'Cannot be determined',
+      'aptitude_4': '1',
+      'aptitude_5': '100 RPM',
+      'aptitude_6': 'They prioritize speed over accuracy.',
+      'aptitude_7': 'Different',
+      'aptitude_8': 'Different',
+      'aptitude_9': 'Same',
+      'aptitude_10': 'Different',
+      'aptitude_11': 'Same',
+      'aptitude_12': 'Same',
+      'aptitude_13': 'Different',
+      'aptitude_14': 'Same',
+      'aptitude_15': 'Different',
+      'aptitude_16': 'Same',
+      'aptitude_17': 'Same',
+      'aptitude_18': 'Different',
+      'aptitude_19': 'Same',
+      'aptitude_20': 'Same',
+      'aptitude_21': 'Different',
+      'aptitude_22': 'Different',
+      'aptitude_23': 'Same',
+      'aptitude_24': 'Same',
+      'aptitude_25': 'Same'
     };
+    
+    const CATEGORIES = {
+      'aptitude_1': 'spatial',
+      'aptitude_2': 'numerical',
+      'aptitude_3': 'abstract',
+      'aptitude_4': 'numerical',
+      'aptitude_5': 'numerical',
+      'aptitude_6': 'verbal',
+      'aptitude_7': 'clerical',
+      'aptitude_8': 'clerical',
+      'aptitude_9': 'clerical',
+      'aptitude_10': 'clerical',
+      'aptitude_11': 'clerical',
+      'aptitude_12': 'clerical',
+      'aptitude_13': 'clerical',
+      'aptitude_14': 'clerical',
+      'aptitude_15': 'clerical',
+      'aptitude_16': 'clerical',
+      'aptitude_17': 'clerical',
+      'aptitude_18': 'clerical',
+      'aptitude_19': 'clerical',
+      'aptitude_20': 'clerical',
+      'aptitude_21': 'clerical',
+      'aptitude_22': 'clerical',
+      'aptitude_23': 'clerical',
+      'aptitude_24': 'clerical',
+      'aptitude_25': 'clerical'
+    };
+    
+    const scores = {
+      verbal: { correct: 0, total: 0, percentage: 0 },
+      numerical: { correct: 0, total: 0, percentage: 0 },
+      abstract: { correct: 0, total: 0, percentage: 0 },
+      spatial: { correct: 0, total: 0, percentage: 0 },
+      clerical: { correct: 0, total: 0, percentage: 0 }
+    };
+    
+    for (let i = 1; i <= 25; i++) {
+      const key = `aptitude_${i}`;
+      const studentAnswer = responses[key];
+      const correctAnswer = CORRECT_ANSWERS[key];
+      const category = CATEGORIES[key];
+      
+      if (!studentAnswer || !category) continue;
+      
+      scores[category].total++;
+      
+      const isCorrect = studentAnswer.toString().toLowerCase().trim() === 
+                       correctAnswer.toLowerCase().trim();
+      
+      if (isCorrect) scores[category].correct++;
+    }
+    
+    Object.keys(scores).forEach(cat => {
+      if (scores[cat].total > 0) {
+        scores[cat].percentage = Math.round((scores[cat].correct / scores[cat].total) * 100);
+      }
+    });
+    
+    return scores;
   }
   
   // Log calculated scores
@@ -1228,7 +1449,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     totalAptitudeQuestions,
     sectionTimings: timingData,
     ruleBasedStreamHint, // Add rule-based hint for After 10th students
-    adaptiveAptitudeResults: answers.adaptive_aptitude_results || null,
+    adaptiveAptitudeResults: adaptiveResults, // Use passed adaptive results instead of extracting from answers
     // Add student context for AI prompt enhancement
     studentContext: {
       rawGrade: studentContext.rawGrade || null,
@@ -1261,10 +1482,43 @@ export const analyzeAssessmentWithOpenRouter = async (
   sectionTimings = {}, 
   gradeLevel = 'after12',
   preCalculatedScores = null,
-  studentContext = {}
+  studentContext = {},
+  adaptiveResults = null
 ) => {
+  // ============================================================================
+  // ENHANCED LOGGING: Log AI analysis start with key context (Requirement 4.1)
+  // ============================================================================
+  console.log('=== analyzeAssessmentWithGemini START ===');
   console.log('🤖 Starting assessment analysis...');
-  console.log(`📊 Grade: ${gradeLevel}, Stream: ${stream}`);
+  console.log('📊 Grade Level:', gradeLevel);
+  console.log('📊 Stream:', stream);
+  
+  // Get student ID from auth for logging
+  let studentId = 'unknown';
+  let streamId = stream;
+  try {
+    const { supabase } = await import('../lib/supabaseClient');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      studentId = user.id;
+      // Get student record to find student_id
+      const { data: student } = await supabase
+        .from('students')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      if (student) {
+        studentId = student.id;
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Could not fetch student ID for logging:', error.message);
+  }
+  
+  console.log('📊 Student ID:', studentId);
+  console.log('📊 Stream ID:', streamId);
+  console.log('📊 Adaptive Results:', adaptiveResults ? 'Available' : 'Not available');
+  
   if (studentContext.rawGrade) {
     console.log(`📚 Student Context: ${studentContext.rawGrade}${studentContext.programName ? ` (${studentContext.programName})` : ''}`);
   }
@@ -1273,7 +1527,16 @@ export const analyzeAssessmentWithOpenRouter = async (
   
   try {
     // Prepare the assessment data (includes rule-based stream hint for after10 and student context)
-    const assessmentData = prepareAssessmentData(answers, stream, questionBanks, sectionTimings, gradeLevel, preCalculatedScores, studentContext);
+    const assessmentData = prepareAssessmentData(
+      answers, 
+      stream, 
+      questionBanks, 
+      sectionTimings, 
+      gradeLevel, 
+      preCalculatedScores, 
+      studentContext,
+      adaptiveResults
+    );
 
     // Call the Cloudflare Worker (handles prompt building and AI call)
     let parsedResults = await callOpenRouterAssessment(assessmentData);

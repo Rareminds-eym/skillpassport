@@ -19,6 +19,40 @@ export const transformAptitudeScores = (dbAptitude) => {
     return null;
   }
 
+  // Check if data is already in the correct format (test-based scores)
+  // Format: { verbal: { total: 1, correct: 1, percentage: 100 }, ... }
+  const hasTestBasedFormat = Object.keys(dbAptitude).some(key => 
+    ['verbal', 'numerical', 'abstract', 'spatial', 'clerical'].includes(key.toLowerCase())
+  );
+
+  if (hasTestBasedFormat) {
+    console.log('✅ Aptitude data already in test-based format, using directly');
+    
+    // Calculate top strengths
+    const topStrengths = Object.entries(dbAptitude)
+      .filter(([_, scores]) => scores && typeof scores === 'object' && scores.percentage > 0)
+      .sort((a, b) => (b[1].percentage || 0) - (a[1].percentage || 0))
+      .slice(0, 3)
+      .map(([testType]) => {
+        // Capitalize first letter
+        return testType.charAt(0).toUpperCase() + testType.slice(1);
+      });
+
+    // Calculate overall score
+    const validScores = Object.values(dbAptitude)
+      .filter(scores => scores && typeof scores === 'object' && scores.percentage > 0);
+    const overallScore = validScores.length > 0
+      ? Math.round(validScores.reduce((sum, s) => sum + (s.percentage || 0), 0) / validScores.length)
+      : null;
+
+    return {
+      scores: dbAptitude,
+      topStrengths,
+      overallScore
+    };
+  }
+
+  // Legacy format: task-based scores (Analytical, Creative, etc.)
   // Mapping between task types (DB) and test types (PDF)
   const taskToTestMapping = {
     'Analytical': 'numerical',

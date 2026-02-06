@@ -752,10 +752,22 @@ const AttendancePolicyMaster = () => {
         </div>
 
         {/* Main Content */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden relative">
+          {/* Add Policy Button - Positioned in top right of card */}
+          <div className="absolute top-4 right-4 z-10">
+            <button 
+              onClick={() => setShowAttendanceModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+            >
+              <PlusCircleIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Policy</span>
+              <span className="sm:hidden">Add</span>
+            </button>
+          </div>
+
           <div className="p-4 sm:p-6 lg:p-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
-              <div className="flex-1">
+              <div className="flex-1 pr-32"> {/* Add right padding to avoid overlap with button */}
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Attendance Policy Settings</h2>
                 <p className="text-sm sm:text-base text-gray-600 max-w-2xl">Course-level attendance with minimum % per course, lab/practical separate thresholds</p>
                 
@@ -797,14 +809,6 @@ const AttendancePolicyMaster = () => {
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={() => setShowAttendanceModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
-              >
-                <PlusCircleIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Policy</span>
-                <span className="sm:hidden">Add</span>
-              </button>
             </div>
 
             <div className="grid gap-4 sm:gap-6">

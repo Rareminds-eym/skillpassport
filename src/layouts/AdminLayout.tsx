@@ -29,7 +29,7 @@ const AdminLayout = () => {
             </div>
 
             {/* ===== Sidebar + Main Content ===== */}
-            <div className="flex flex-1 pt-16 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden">
                 {/* Desktop Sidebar */}
                 <div className="hidden md:flex md:flex-col md:w-64 bg-white border-r fixed top-16 bottom-0 left-0 z-20">
                     <Sidebar

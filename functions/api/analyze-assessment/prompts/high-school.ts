@@ -99,6 +99,39 @@ export function buildHighSchoolPrompt(assessmentData: AssessmentData, answersHas
 
   return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
 
+## 🔥 CRITICAL: USE REAL-TIME JOB MARKET DATA
+If real-time Indian job market data is provided above (marked with "REAL-TIME INDIAN JOB MARKET DATA"), you MUST:
+1. ✅ Use ONLY the salary ranges from that data (NOT the hardcoded examples below)
+2. ✅ Use ONLY the job roles listed in that data
+3. ✅ Use ONLY the career categories provided in the real-time data
+4. ✅ Copy the "Why Better" descriptions exactly as provided
+5. ✅ Use the exact salary format: "₹X-YL entry, ₹X-YL mid, ₹X-YL senior"
+6. ✅ Prioritize HIGH demand roles over medium/low demand
+7. ✅ Consider growth rates when ranking career recommendations
+8. ✅ Match student's RIASEC profile to the provided categories
+
+**DYNAMIC CATEGORY MATCHING:**
+The real-time data includes categories specifically selected for this student's RIASEC profile.
+- If student is "ASR" (Artistic, Social, Realistic), the data will include Creative Industries, Event Management, etc.
+- If student is "IRE" (Investigative, Realistic, Enterprising), the data will include Technology, Engineering, Business, etc.
+- Use the provided categories as your TRACK 1, TRACK 2, and TRACK 3 recommendations
+- DO NOT ignore the provided categories and use hardcoded examples instead
+
+**EXAMPLE:**
+If real-time data shows:
+"Creative Industries & Media (BEST for A+S combinations)
+- Why Better: Orange economy creating 10-20M jobs by 2026. Remote work opportunities.
+- Hot Roles:
+  * UX/UI Designer (₹5-15L entry, ₹15-45L mid, ₹45-100L senior)"
+
+You MUST use this as one of the career tracks, NOT the hardcoded examples below.
+
+If NO real-time data is provided, use the fallback career clusters below.
+
+---
+
+## FALLBACK CAREER CLUSTERS (Use ONLY if no real-time data above):
+
 ## CRITICAL: This must be DETERMINISTIC - same input = same output always
 Session ID: ${answersHash}
 
@@ -172,15 +205,30 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
 **IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure for HIGH SCHOOL (9-10):
 
+**CRITICAL DATABASE COMPATIBILITY REQUIREMENTS:**
+1. riasec.code MUST be a 3-letter string (e.g., "RES"), NOT an array
+2. aptitude.scores MUST exist with standard categories (verbal, numerical, abstract, spatial, clerical)
+3. aptitude.overallScore MUST be a number (0-100)
+4. bigFive MUST be a flat object with O, C, E, A, N keys (NO nested "scores" wrapper)
+
 {
   "riasec": {
-    "topThree": ["Top 3 RIASEC codes"],
+    "code": "ABC",
     "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "maxScore": 20,
-    "interpretation": "2-3 sentences about what their interests mean for stream selection and career paths"
+    "interpretation": "2-3 sentences about what their interests mean for stream selection and career paths",
+    "topThree": ["Top 3 RIASEC codes (for reference only)"]
   },
   "aptitude": {
+    "scores": {
+      "verbal": { "correct": 0, "total": 0, "percentage": 0 },
+      "numerical": { "correct": 0, "total": 0, "percentage": 0 },
+      "abstract": { "correct": 0, "total": 0, "percentage": 0 },
+      "spatial": { "correct": 0, "total": 0, "percentage": 0 },
+      "clerical": { "correct": 0, "total": 0, "percentage": 0 }
+    },
+    "overallScore": 0,
     "selfAssessment": {
       "Analytical": {"ease": 0, "enjoyment": 0, "average": 0},
       "Creative": {"ease": 0, "enjoyment": 0, "average": 0},
@@ -195,7 +243,6 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       "pattern_recognition": {"accuracy": 0}
     },
     "topStrengths": ["2-3 strengths combining self-assessment AND adaptive test results"],
-    "overallScore": 0,
     "cognitiveProfile": "How they think and solve problems based on both assessments",
     "adaptiveLevel": 0,
     "adaptiveConfidence": "high/medium/low"
@@ -297,19 +344,19 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "Career title 1", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 2", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 3", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 4", "salary": {"min": 4, "max": 10}}
+        {"name": "Career title 1 (e.g., Software Developer)", "salary": {"min": 5, "max": 12}},
+        {"name": "Career title 2 (e.g., Graphic Designer)", "salary": {"min": 4, "max": 10}},
+        {"name": "Career title 3 (e.g., Marketing Manager)", "salary": {"min": 6, "max": 15}},
+        {"name": "Career title 4 (e.g., Teacher)", "salary": {"min": 3, "max": 8}}
       ],
       "mediumFit": [
-        {"name": "Career title 1", "salary": {"min": 3, "max": 8}},
-        {"name": "Career title 2", "salary": {"min": 3, "max": 8}},
-        {"name": "Career title 3", "salary": {"min": 3, "max": 8}}
+        {"name": "Career title 1 (e.g., Content Writer)", "salary": {"min": 3, "max": 7}},
+        {"name": "Career title 2 (e.g., Sales Executive)", "salary": {"min": 4, "max": 10}},
+        {"name": "Career title 3 (e.g., HR Manager)", "salary": {"min": 5, "max": 12}}
       ],
       "exploreLater": [
-        {"name": "Career title 1", "salary": {"min": 3, "max": 7}},
-        {"name": "Career title 2", "salary": {"min": 3, "max": 7}}
+        {"name": "Career title 1 (e.g., Social Worker)", "salary": {"min": 3, "max": 6}},
+        {"name": "Career title 2 (e.g., Photographer)", "salary": {"min": 3, "max": 8}}
       ]
     }
   },
@@ -428,101 +475,244 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
   "overallSummary": "3-4 sentences: Acknowledge their readiness level, affirm their direction, highlight unique strengths, and provide clear encouragement for next steps"
 }
 
-**JOB ROLE GUIDELINES FOR HIGH SCHOOL (Gen Z Focus - 2030+ Workforce):**
+**CAREER CLUSTER GUIDELINES FOR HIGH SCHOOL (Market-Aligned 2025-2030):**
 
-**FUTURISTIC & EMERGING CAREERS (Prioritize these):**
-- AI/ML Engineer, Prompt Engineer, AI Ethics Officer, Robotics Engineer, Computer Vision Specialist
-- Metaverse Developer, VR/AR Designer, Digital Twin Engineer, Extended Reality Architect
-- Space Tech: Satellite Engineer, Space Tourism Manager, Asteroid Mining Specialist, Mars Habitat Designer
-- Autonomous Systems: Self-Driving Car Engineer, Drone Fleet Manager, Smart City Planner
-- Biotech: Gene Therapy Researcher, Synthetic Biologist, Longevity Scientist, Personalized Medicine Specialist
-- Climate Tech: Carbon Capture Engineer, Renewable Energy Consultant, Sustainability Analyst
-- Web3/Blockchain: Smart Contract Developer, DeFi Analyst, Tokenomics Designer
-- Cybersecurity: Ethical Hacker, Security Architect, Digital Forensics Expert, Zero Trust Specialist
-- Quantum Computing: Quantum Software Developer, Quantum Cryptographer
-- Creator Economy: Professional Content Creator, Influencer Marketing Director, Community Manager
+**CRITICAL: Career clusters MUST be personalized based on student's RIASEC + Aptitude + Personality profile.**
 
-**HIGH-PAYING TRADITIONAL CAREERS (For studious/high-aptitude students):**
-- Government Services: IAS Officer (₹56K-2.5L/month + perks), IPS Officer, IFS Diplomat, IRS Officer
-- Defence: Army/Navy/Air Force Officer, DRDO Scientist, ISRO Scientist, Intelligence Officer (RAW/IB)
-- Judiciary: High Court Judge, Supreme Court Advocate, Corporate Lawyer, Legal Counsel
-- Medical Elite: Surgeon (₹15-50L/year), Cardiologist, Neurologist, Oncologist, Medical Researcher
-- Engineering Elite: IIT Professor, Senior Scientist, Nuclear Engineer, Aerospace Engineer at HAL/ISRO
-- Finance Elite: Investment Banker (₹20-80L/year), Hedge Fund Manager, Chartered Accountant, Actuary
-- Management: IIM Graduate roles, Management Consultant (McKinsey/BCG), Strategy Director
-- Research: PhD at top universities, Research Fellow, Think Tank Analyst, Policy Advisor
+**TRACK 1 (HIGH FIT) - Top Career Clusters by Market Demand & Student Profile:**
 
-**🎨 CREATIVE + SOCIAL CAREERS (For students high in Artistic 'A' + Social 'S' RIASEC):**
+**🚀 TECHNOLOGY & DIGITAL INNOVATION** (For I+R+E types, high numerical/logical aptitude)
+- **Hot Roles**: AI/ML Engineer (₹8-25L entry, ₹25-80L mid), Full Stack Developer (₹6-18L entry, ₹18-50L mid), Data Scientist (₹7-20L entry, ₹20-60L mid), Cloud Architect (₹10-25L entry, ₹25-70L mid), Cybersecurity Analyst (₹6-15L entry, ₹15-45L mid)
+- **Education Path**: BTech CS/IT from Tier 1-2 colleges, Online certifications (AWS, Google Cloud, Azure), Bootcamps (Scaler, Masai School), Self-taught + portfolio
+- **Market Reality**: 70% of tech jobs don't require IIT degree. Portfolio + skills > college brand. Remote work = global salaries (₹30-80L for 3-5 years exp)
+- **Growth Sectors**: AI/ML (40% YoY growth), Cloud Computing (35% growth), Cybersecurity (30% growth), DevOps (28% growth)
 
-MUSIC & ENTERTAINMENT INDUSTRY:
-- Music Producer (₹5-50L/year), Sound Designer, Audio Engineer, DJ/Electronic Music Artist
-- Spotify/Apple Music Curator, Music Licensing Manager, Concert Tour Manager, Artist Manager
-- Film Score Composer, Jingle Writer for Ads, Podcast Sound Designer, Foley Artist
-- K-Pop/Bollywood Choreographer, Music Video Director, Live Event Producer
-- AI Music Creator, Virtual Concert Designer, Hologram Performance Director
-- Music Therapist, Sound Healing Practitioner, Music Education Director
+**💼 BUSINESS, FINANCE & CONSULTING** (For E+C+I types, high numerical/analytical aptitude)
+- **Best for profiles combining**: Analysis (I) + Leadership (E) + Organization (C), or Analysis (I) + Leadership (E) + People Skills (S)
+- **Hot Roles**: 
+  * Business Analyst (₹6-15L entry, ₹15-40L mid, ₹40-80L senior) - Great for I+E combinations
+  * Management Consultant (₹8-20L entry, ₹20-60L mid, ₹60-150L senior) - Great for I+E+S combinations
+  * Product Manager (₹10-25L entry, ₹25-80L mid, ₹80-200L senior) - Great for I+E combinations
+  * HR Analytics Manager (₹7-18L entry, ₹18-45L mid, ₹45-100L senior) - Great for I+E+S combinations
+  * Market Research Director (₹8-20L entry, ₹20-55L mid, ₹55-120L senior) - Great for I+E combinations
+  * Financial Analyst (₹5-12L entry, ₹12-35L mid, ₹35-80L senior) - Great for I+C combinations
+  * Investment Banking Analyst (₹10-25L entry, ₹25-1Cr mid) - Great for I+E+C combinations
+- **Education Path**: BCom/BBA + MBA from Tier 1 B-schools (IIM, ISB, XLRI), CA (5 years), CFA (3-4 years), Economics/Finance degree, Data Analytics certifications
+- **Market Reality**: MBA from top 20 B-schools = ₹20-35L starting. CA = stable ₹8-15L start, ₹30-80L after 8-10 years. Consulting = high stress, high reward. Business Analytics = fastest growing (35% YoY)
+- **Growth Sectors**: Fintech (45% growth), Management Consulting (25% growth), Investment Banking (20% growth), Private Equity (30% growth), Business Analytics (35% growth)
 
-ART & VISUAL MEDIA:
-- Art Gallery Curator (₹4-15L/year), Museum Experience Designer, Art Auction Specialist (Christie's/Sotheby's)
-- Digital Artist, NFT Creator, AI Art Director, Generative Art Designer
-- Animation Director (₹8-40L/year), Pixar/DreamWorks Animator, Anime Creator, VFX Supervisor
-- Fashion Designer (₹5-30L/year), Costume Designer for Films, Sustainable Fashion Innovator
-- Art Therapist, Creative Director at Ad Agencies, Brand Visual Strategist
-- Art Restoration Specialist, Cultural Heritage Consultant, Art Investment Advisor
+**🏥 HEALTHCARE & LIFE SCIENCES** (For I+S types, high verbal/analytical aptitude, PCB stream)
+- **Hot Roles**: Doctor/MBBS (₹6-15L entry, ₹15-80L mid), Dentist (₹5-12L entry, ₹12-50L mid), Pharmacist (₹3-8L entry, ₹8-25L mid), Biotech Researcher (₹4-10L entry, ₹10-35L mid), Medical Device Engineer (₹5-12L entry, ₹12-40L mid)
+- **Education Path**: NEET → MBBS (5.5 years) → MD/MS (3 years), BDS (5 years), BPharm (4 years) → MPharm (2 years), BTech Biomedical
+- **Market Reality**: MBBS = 10-year commitment (5.5 + 3 + 1 internship). Private practice = ₹50L-2Cr after 10-15 years. Government jobs = stable ₹10-25L
+- **Growth Sectors**: Telemedicine (50% growth), Medical Devices (35% growth), Biotechnology (30% growth), Healthcare IT (40% growth)
 
-ENTERTAINMENT & MEDIA:
-- Film Director, Cinematographer (₹10-80L/year), Documentary Filmmaker, OTT Content Creator
-- YouTuber (₹2L-2Cr/year), Instagram Creator, TikTok Influencer, Podcast Host
-- Screenwriter (₹5-50L/year), Dialogue Writer, Story Artist, Narrative Designer for Games
-- Talent Manager, Celebrity Stylist, Entertainment Lawyer, Casting Director
-- Virtual Influencer Creator, Metaverse Event Planner, Digital Experience Designer
-- Film Critic, Entertainment Journalist, Red Carpet Correspondent
+**🎨 CREATIVE INDUSTRIES & MEDIA** (For A+E types, high creative/verbal aptitude)
+- **Hot Roles**: UX/UI Designer (₹5-15L entry, ₹15-45L mid), Content Creator/YouTuber (₹2-10L entry, ₹10L-2Cr mid), Graphic Designer (₹3-8L entry, ₹8-25L mid), Video Editor (₹4-10L entry, ₹10-35L mid), Digital Marketing Manager (₹5-12L entry, ₹12-40L mid)
+- **Education Path**: BDes from NID/NIFT/Srishti, Mass Comm/Journalism, Self-taught + portfolio (most important), Online courses (Coursera, Udemy)
+- **Market Reality**: Portfolio > degree. Freelancing = ₹50K-5L/month. Agency jobs = stable but lower pay. In-house at tech companies = best pay (₹15-50L)
+- **Growth Sectors**: OTT Content (60% growth), Digital Marketing (45% growth), Gaming (40% growth), Animation/VFX (35% growth)
 
-SOCIAL + CREATIVE HYBRID:
-- Community Manager for Gaming/Music Brands (₹6-20L/year), Fan Experience Designer
-- Social Media Strategist for Artists, Influencer Marketing Director
-- Event Designer (₹4-25L/year), Destination Wedding Planner, Festival Curator
-- Creative Therapist, Drama Therapist, Expressive Arts Therapist
-- Cultural Ambassador, Arts Education Director, Creative Writing Coach
-- Brand Storyteller, Content Strategist, User Experience Designer
+**⚖️ LAW & GOVERNANCE** (For I+E+S types, high verbal/logical aptitude)
+- **Hot Roles**: Corporate Lawyer (₹6-18L entry, ₹18-80L mid), Legal Consultant (₹5-15L entry, ₹15-50L mid), Compliance Officer (₹5-12L entry, ₹12-35L mid), Patent Attorney (₹6-15L entry, ₹15-45L mid)
+- **Education Path**: CLAT → 5-year BA LLB from NLU, 3-year LLB after graduation, LLM for specialization
+- **Market Reality**: Top law firms (AZB, Cyril Amarchand) = ₹15-25L start. Tier 2 firms = ₹8-15L. Corporate in-house = ₹10-30L after 5 years
+- **Growth Sectors**: Corporate Law (25% growth), IP/Patent Law (35% growth), Cyber Law (40% growth), Legal Tech (50% growth)
 
-**PROFESSIONAL CAREER PATHS BY STREAM:**
+**🏛️ CIVIL SERVICES & GOVERNMENT** (For high aptitude students, I+S+C types, disciplined personality)
+- **Hot Roles**: IAS Officer (₹56K-2.5L/month + perks), IPS Officer (₹56K-2L/month + perks), IFS Diplomat (₹56K-2L/month + perks), IRS Officer (₹56K-2L/month + perks), Defence Officer (₹56K-2L/month + perks)
+- **Education Path**: Any graduation + UPSC CSE (2-3 years prep), NDA for defence (after 12th), State PSC exams
+- **Market Reality**: UPSC success rate = 0.1% (1000 selected from 10L candidates). Requires 2-3 years dedicated preparation. Lifetime job security + prestige
+- **Growth Sectors**: Administrative Services (stable), Defence (growing), Foreign Service (competitive), Revenue Services (stable)
 
-**SCIENCE STREAM (PCM/PCB):**
-- Engineering: Software Engineer, AI/ML Engineer, Data Scientist, Robotics Engineer, Aerospace Engineer
-- Medical: Doctor (MBBS), Surgeon, Dentist, Pharmacist, Medical Researcher
-- Research: ISRO Scientist, DRDO Scientist, Biotechnologist, Quantum Researcher
-- Technology: Cloud Architect, Cybersecurity Specialist, Blockchain Developer
+**TRACK 2 (MEDIUM FIT) - Emerging & Specialized Career Clusters:**
 
-**COMMERCE STREAM:**
-- Finance: Chartered Accountant, CFA, Investment Banker, Financial Analyst, Actuary
-- Business: Management Consultant, Business Analyst, Product Manager, Startup Founder
-- Banking: Bank Manager, Credit Analyst, Risk Manager, Fintech Specialist
+**🔬 RESEARCH & ACADEMIA** (For I+C types, very high analytical aptitude, patient personality)
+- **Hot Roles**: Research Scientist (₹5-12L entry, ₹12-40L mid), PhD Scholar (₹31K-35K/month stipend), Professor (₹6-15L entry, ₹15-50L mid), Data Analyst (₹4-10L entry, ₹10-30L mid)
+- **Education Path**: BSc → MSc → PhD (8-10 years total), BTech → MTech → PhD, Research fellowships (CSIR, UGC, DBT)
+- **Market Reality**: Long education path (8-10 years). Academic jobs = stable but lower pay. Industry research (Google, Microsoft Research) = ₹15-60L
+- **Growth Sectors**: AI Research (50% growth), Biotech Research (35% growth), Climate Science (40% growth), Quantum Computing (60% growth)
 
-**ARTS/HUMANITIES STREAM:**
-- Law: Corporate Lawyer, Civil Rights Lawyer, Legal Tech Specialist, International Law Expert
-- Civil Services: IAS, IFS, IPS through UPSC
-- Media: Digital Journalist, Documentary Filmmaker, Podcast Producer, Content Strategist
-- Psychology: Clinical Psychologist, UX Researcher, Organizational Psychologist
-- Creative Arts: Film Director, Music Producer, Fashion Designer, Art Gallery Curator
+**🏗️ ENGINEERING & INFRASTRUCTURE** (For R+I types, high spatial/numerical aptitude, PCM stream)
+- **Hot Roles**: Civil Engineer (₹3-8L entry, ₹8-25L mid), Mechanical Engineer (₹4-10L entry, ₹10-30L mid), Electrical Engineer (₹4-10L entry, ₹10-35L mid), Aerospace Engineer (₹6-15L entry, ₹15-50L mid)
+- **Education Path**: BTech from Tier 1-2 colleges, Diploma (3 years) + BTech lateral entry, MTech for specialization
+- **Market Reality**: Core engineering = lower pay than software (₹3-8L start). PSUs (ONGC, NTPC, BHEL) = stable ₹8-15L. Private = project-based
+- **Growth Sectors**: Renewable Energy (40% growth), Smart Cities (30% growth), Aerospace (25% growth), Robotics (35% growth)
 
-**GUIDELINES:**
-- Suggest FUTURISTIC roles that will dominate 2030-2040 job market
-- For HIGH APTITUDE students (level 4-5): Include competitive exam pathways (UPSC, JEE Advanced, NEET, CLAT, CAT, GATE)
-- For CREATIVE + SOCIAL students (high A + S in RIASEC): Prioritize Music, Entertainment, Art, Media careers
-- Include DIVERSE options: Tech, Government, Defence, Healthcare, Finance, Research, Creative, Entertainment
-- Show EDUCATION PATH for each career (specific degrees, entrance exams, portfolio requirements)
-- PERSONALIZE based on RIASEC interests AND adaptive aptitude results
-- Salary ranges should reflect 2025-2030 projections in India
-- For studious students: Emphasize careers requiring dedication, discipline, and competitive preparation
-- For creative students: Emphasize portfolio-building, internships, and industry connections
+**🎓 EDUCATION & TRAINING** (For S+I types, high verbal aptitude, patient personality)
+- **Hot Roles**: Teacher (₹3-8L entry, ₹8-20L mid), Corporate Trainer (₹5-12L entry, ₹12-35L mid), EdTech Content Creator (₹4-10L entry, ₹10-30L mid), Curriculum Designer (₹5-12L entry, ₹12-30L mid)
+- **Education Path**: BEd (2 years after graduation), MEd, Subject degree + teaching certification, Online course creation
+- **Market Reality**: Government school teacher = ₹3-8L (stable, pension). Private school = ₹3-6L. EdTech = ₹8-25L (Byju's, Unacademy). Freelance tutoring = ₹50K-3L/month
+- **Growth Sectors**: EdTech (55% growth), Online Tutoring (45% growth), Corporate Training (30% growth), Skill Development (40% growth)
+
+**🌍 SOCIAL IMPACT & NGO** (For S+A types, high empathy, mission-driven personality)
+- **Hot Roles**: Social Worker (₹3-7L entry, ₹7-18L mid), NGO Program Manager (₹4-10L entry, ₹10-25L mid), CSR Manager (₹6-15L entry, ₹15-40L mid), Development Consultant (₹5-12L entry, ₹12-35L mid)
+- **Education Path**: BA/BSW in Social Work, MA in Development Studies, MBA with CSR specialization
+- **Market Reality**: NGO sector = lower pay but high satisfaction. Corporate CSR roles = better pay (₹10-30L). International NGOs (UN, WHO) = ₹15-50L
+- **Growth Sectors**: CSR (35% growth), Social Entrepreneurship (40% growth), Impact Investing (45% growth), Sustainability Consulting (50% growth)
+
+**TRACK 3 (EXPLORE) - Niche & Unconventional Career Clusters:**
+
+**🎮 GAMING & ESPORTS** (For A+R types, high pattern recognition, tech-savvy)
+- **Hot Roles**: Game Developer (₹4-12L entry, ₹12-40L mid), Game Designer (₹4-10L entry, ₹10-35L mid), Professional Gamer (₹2-10L entry, ₹10L-2Cr mid), Esports Manager (₹3-8L entry, ₹8-25L mid)
+- **Education Path**: BTech CS + game dev courses, BDes in Game Design, Self-taught + portfolio, Online courses (Unity, Unreal Engine)
+- **Market Reality**: Indian gaming industry = ₹135B (2024), growing 30% YoY. Mobile gaming = biggest opportunity. Esports = high risk, high reward
+- **Growth Sectors**: Mobile Gaming (40% growth), Esports (50% growth), Game Streaming (45% growth), VR/AR Gaming (60% growth)
+
+**🌱 AGRICULTURE & FOOD TECH** (For R+I types, high numerical aptitude, rural background advantage)
+- **Hot Roles**: Agricultural Scientist (₹4-10L entry, ₹10-30L mid), Food Technologist (₹3-8L entry, ₹8-25L mid), Agri-Business Manager (₹5-12L entry, ₹12-35L mid), Precision Farming Specialist (₹4-10L entry, ₹10-30L mid)
+- **Education Path**: BSc Agriculture, BTech Food Technology, MBA Agribusiness, Online courses in AgriTech
+- **Market Reality**: Traditional agriculture = lower pay. AgriTech startups (Ninjacart, DeHaat) = ₹8-25L. Food processing = stable ₹5-15L
+- **Growth Sectors**: AgriTech (45% growth), Food Processing (30% growth), Organic Farming (40% growth), Precision Agriculture (50% growth)
+
+**✈️ HOSPITALITY & TOURISM** (For E+S types, high social aptitude, extroverted personality)
+- **Hot Roles**: Hotel Manager (₹4-10L entry, ₹10-30L mid), Event Manager (₹3-8L entry, ₹8-25L mid), Travel Consultant (₹3-7L entry, ₹7-20L mid), Chef (₹3-8L entry, ₹8-30L mid)
+- **Education Path**: BHM (Hotel Management), Culinary Arts degree, Event Management certification, Tourism Management degree
+- **Market Reality**: Hospitality = long hours, moderate pay. 5-star hotels = ₹5-15L. Own restaurant/hotel = ₹10L-1Cr (high risk). Travel industry recovering post-COVID
+- **Growth Sectors**: Luxury Tourism (35% growth), Event Management (30% growth), Culinary Arts (25% growth), Eco-Tourism (40% growth)
+
+**🎭 PERFORMING ARTS & ENTERTAINMENT** (For A+E types, very high creative aptitude, risk-tolerant)
+- **Hot Roles**: Actor (₹2-10L entry, ₹10L-10Cr mid), Musician (₹2-8L entry, ₹8L-5Cr mid), Dancer/Choreographer (₹2-6L entry, ₹6-50L mid), Theatre Director (₹3-8L entry, ₹8-30L mid)
+- **Education Path**: NSD (National School of Drama), Film schools (FTII, Whistling Woods), Music conservatories, Self-taught + auditions
+- **Market Reality**: Extremely competitive. 95% struggle initially (₹10K-50K/month). Top 5% earn ₹50L-10Cr. Side hustles essential. OTT = more opportunities
+- **Growth Sectors**: OTT Content (60% growth), Music Streaming (40% growth), Live Events (35% growth post-COVID), Digital Theatre (45% growth)
+
+**GUIDELINES FOR CAREER CLUSTER SELECTION:**
+1. **TRACK 1 (High Fit)**: Choose clusters where student's RIASEC top 3 + aptitude strengths + personality traits align strongly. Match score 75-95.
+2. **TRACK 2 (Medium Fit)**: Choose clusters where 2 out of 3 factors align (interests OR aptitude OR personality). Match score 60-75.
+3. **TRACK 3 (Explore)**: Choose clusters that could become high fit with skill development, or represent growth areas. Match score 50-65.
+4. **Salary Ranges**: All figures are realistic for India (2025-2030). Entry = 0-3 years, Mid = 3-8 years experience.
+5. **Education Paths**: Include specific colleges, entrance exams, and alternative paths (self-taught, bootcamps, online).
+6. **Market Reality**: Be honest about competition, work-life balance, job security, and growth potential.
+7. **For HIGH APTITUDE students (level 4-5)**: Prioritize Track 1 clusters with competitive exam pathways (UPSC, JEE, NEET, CLAT, CAT).
+8. **For CREATIVE students (high A in RIASEC)**: MUST include at least one cluster from Creative Industries, Media, Gaming, or Performing Arts.
+9. **For SOCIAL students (high S in RIASEC)**: Prioritize Healthcare, Education, Social Impact, or roles with high human interaction.
+10. **Personalization is KEY**: Don't just copy-paste. Explain WHY each cluster fits THIS specific student's profile.
 
 CRITICAL: You MUST provide exactly 3 career clusters with ALL fields filled including evidence, roles, and domains!
+
+**⚠️ IMPROVED 3RD TRACK CAREER RECOMMENDATIONS (CRITICAL UPDATE 2026):**
+
+**FOR STUDENTS WITH 'S' (SOCIAL) IN TOP 3 RIASEC TYPES:**
+
+The 3rd career track (Explore fit, 60-70% match) should prioritize ASPIRATIONAL careers that combine social impact with strong earning potential. **DO NOT default to NGO/Social Work unless student has very low aptitude (<30% accuracy) or explicitly expresses NGO interest.**
+
+**TIER 1 - EVENT & EXPERIENCE MANAGEMENT** (BEST for A+S or E+S combinations, low-moderate aptitude)
+- **Why Better**: India's experience economy booming (₹10,000+ crore wedding industry, 15-20% YoY growth). Entrepreneurial potential. Low cognitive demand, high people skills.
+- **Hot Roles**: 
+  * Wedding Planner (₹4-7L entry + ₹50K-2L per event, ₹10-25L mid, ₹25L-1Cr senior/own business)
+  * Event Coordinator (₹4-8L entry, ₹8-15L mid, ₹15-30L senior)
+  * Hospitality Manager (₹4-7L entry, ₹7-14L mid, ₹14-25L senior)
+  * Experience Designer (₹5-9L entry, ₹9-18L mid, ₹18-35L senior)
+  * Guest Relations Manager (₹4-8L entry, ₹8-16L mid, ₹16-28L senior)
+- **Education Path**: Hotel Management diploma/degree, Event Management certification, or start with internships (no degree required for entrepreneurial path)
+- **Market Reality**: Wedding packages ₹2L-5L+. Corporate events ₹5L-50L. Own event company after 5-7 years = ₹20L-1Cr revenue
+- **Evidence Template**: "Your creativity and people skills make you perfect for creating memorable experiences. India's events industry is booming with strong entrepreneurial potential."
+
+**TIER 2 - HEALTHCARE & WELLNESS COORDINATION** (BEST for S+I combinations, moderate aptitude)
+- **Why Better**: Healthcare sector added 7.5M jobs (62% YoY growth). Entry-level roles growing 25% annually. Stable, recession-proof.
+- **Hot Roles**:
+  * Patient Care Coordinator (₹4-7L entry, ₹7-13L mid, ₹13-22L senior)
+  * Healthcare Customer Support (₹3.5-6L entry, ₹6-11L mid, ₹11-18L senior)
+  * Medical Representative (₹4-8L entry + incentives, ₹8-18L mid, ₹18-35L senior)
+  * Wellness Program Coordinator (₹4-7L entry, ₹7-14L mid, ₹14-25L senior)
+  * Clinical Assistant (₹3-5L entry, ₹5-10L mid, ₹10-18L senior)
+  * Health Coach (₹4-7L entry, ₹7-15L mid, ₹15-28L senior)
+- **Education Path**: Healthcare administration diploma, Medical representative training, Wellness coaching certification, or entry-level hospital roles
+- **Market Reality**: Telemedicine creating 8,000+ opportunities. Healthcare IT roles ₹8-25L. Hospital administration ₹10-30L after 5-8 years
+- **Evidence Template**: "Your empathy and desire to help others align perfectly with healthcare coordination roles. The sector is experiencing explosive growth with strong career progression."
+
+**TIER 3 - DIGITAL CONTENT & COMMUNITY MANAGEMENT** (BEST for A+S combinations, creative aptitude)
+- **Why Better**: Orange economy creating 10-20M jobs by 2026. Remote work opportunities. Creative expression + audience engagement.
+- **Hot Roles**:
+  * Social Media Manager (₹3-6L entry, ₹6-13L mid, ₹13-25L senior)
+  * Community Manager (₹4-7L entry, ₹7-15L mid, ₹15-30L senior)
+  * Content Coordinator (₹3-6L entry, ₹6-12L mid, ₹12-22L senior)
+  * Customer Success Manager (₹4-8L entry, ₹8-16L mid, ₹16-32L senior)
+  * Brand Ambassador (₹3-6L entry, ₹6-12L mid, ₹12-25L senior)
+  * Content Creator (₹3-8L entry + brand deals, ₹8-20L mid, ₹20L-1Cr senior/influencer)
+- **Education Path**: Digital marketing certification, Content creation courses, Social media management training, or build portfolio through personal projects
+- **Market Reality**: Remote work = global opportunities. Freelancing ₹50K-5L/month. Agency jobs stable. In-house at tech companies = ₹15-50L
+- **Evidence Template**: "Your creativity and social skills are perfect for building online communities and creating engaging content in India's booming digital economy."
+
+**TIER 4 - SALES & ACCOUNT MANAGEMENT** (BEST for E+S combinations, extroverted personality)
+- **Why Better**: Every company needs sales. High earning potential with commissions. Clear progression path.
+- **Hot Roles**:
+  * Account Executive (₹4-8L entry + commission, ₹8-18L mid, ₹18-40L senior)
+  * Customer Success Manager (₹4-8L entry, ₹8-16L mid, ₹16-35L senior)
+  * Business Development Associate (₹4-9L entry + incentives, ₹9-20L mid, ₹20-50L senior)
+  * Sales Coordinator (₹3-6L entry, ₹6-13L mid, ₹13-25L senior)
+  * Relationship Manager (₹4-8L entry, ₹8-18L mid, ₹18-40L senior)
+- **Education Path**: Any degree + sales training, MBA for faster growth, or start in entry-level sales roles
+- **Market Reality**: Top performers earn 2-3x base salary with commissions. B2B SaaS sales = ₹15-50L after 3-5 years. Enterprise sales = ₹30-80L
+- **Evidence Template**: "Your social skills and persuasive abilities make you well-suited for client-facing roles with unlimited earning potential through performance."
+
+**TIER 5 - SOCIAL IMPACT & NGO** (ONLY USE IF: aptitude <30% accuracy OR student explicitly mentions NGO interest OR all other options exhausted)
+- **When to Use**: Student has very low aptitude (Level 1, <30% accuracy) AND strong social mission AND limited career options
+- **Hot Roles**:
+  * NGO Program Manager (₹4-10L entry, ₹10-20L mid, ₹20-35L senior)
+  * Social Worker (₹3-6L entry, ₹6-12L mid, ₹12-20L senior)
+  * CSR Manager (₹6-15L entry, ₹15-30L mid, ₹30-50L senior)
+  * Development Consultant (₹5-12L entry, ₹12-25L mid, ₹25-45L senior)
+  * Community Development Officer (₹4-8L entry, ₹8-16L mid, ₹16-28L senior)
+- **Education Path**: BA/BSW in Social Work, MA in Development Studies, MBA with CSR specialization
+- **Market Reality**: NGO sector = lower pay but high satisfaction. Corporate CSR roles = better pay (₹10-30L). International NGOs (UN, WHO) = ₹15-50L
+- **Evidence Template**: "Your empathy and desire to make a difference align with social impact roles. Consider corporate CSR positions for better earning potential while maintaining social mission."
+
+**SELECTION ALGORITHM FOR 3RD TRACK (SOCIAL STUDENTS):**
+
+\`\`\`
+IF student has 'S' in top 3 RIASEC:
+  IF aptitude_level >= 2 OR accuracy >= 30%:
+    IF 'A' also in top 3:
+      RECOMMEND: Event & Experience Management (TIER 1) OR Digital Content (TIER 3)
+    ELSE IF 'I' also in top 3:
+      RECOMMEND: Healthcare Coordination (TIER 2)
+    ELSE IF 'E' also in top 3:
+      RECOMMEND: Sales & Account Management (TIER 4) OR Event Management (TIER 1)
+    ELSE:
+      RECOMMEND: Healthcare Coordination (TIER 2) as default
+  ELSE IF aptitude_level == 1 AND accuracy < 30%:
+    RECOMMEND: Event Management (TIER 1) OR Social Impact (TIER 5)
+  END IF
+END IF
+\`\`\`
+
+**MATCH SCORE GUIDELINES FOR 3RD TRACK:**
+- Event & Experience: 68-72% (best for AIS + low aptitude)
+- Healthcare Coordination: 65-70% (growing sector, stable)
+- Digital Content: 64-68% (modern career, creative)
+- Sales & Account: 63-67% (high earning potential)
+- Social Impact/NGO: 60-65% (only if necessary)
+
+**CRITICAL RULES:**
+1. **DO NOT suggest NGO/Social Work as default 3rd track for all Social students**
+2. **Prioritize careers with earning potential >₹4L entry, >₹10L mid, >₹20L senior**
+3. **Consider aptitude level**: Low aptitude = Event Management, Healthcare Support. Moderate aptitude = Healthcare Coordination, Digital Content
+4. **Combine RIASEC types**: AIS = Event/Digital, SIE = Healthcare/Sales, ASE = Event/Sales
+5. **Provide specific salary ranges** based on market research (India 2025-2026)
+6. **Include entrepreneurial paths** where applicable (Event Management, Content Creation)
 
 **⚠️ FINAL CHECK - ARTISTIC CAREER REQUIREMENT:**
 Before returning your response, verify:
 1. What is the student's 'A' (Artistic) RIASEC score?
 2. Is 'A' in their top 3 RIASEC types?
 3. If YES → At least ONE career cluster MUST be from Music/Art/Entertainment/Design/Media
-4. If you only suggest Tech/Science/Business careers for an Artistic student, YOUR RESPONSE IS WRONG!`;
+4. If you only suggest Tech/Science/Business careers for an Artistic student, YOUR RESPONSE IS WRONG!
+
+**⚠️ FINAL CHECK - RIASEC PROFILE ALIGNMENT:**
+Before returning your response, verify:
+1. What is the student's RIASEC code (top 3 types)?
+2. Do your recommended career tracks align with their RIASEC combination?
+3. Are you using ALL THREE of their top RIASEC types, not just one?
+4. If real-time job market data was provided above, did you use ONLY those categories and roles?
+5. Did you avoid stereotyping (e.g., all 'I' types → Technology, all 'S' types → NGO)?
+
+**⚠️ FINAL CHECK - SOCIAL CAREER IMPROVEMENT:**
+Before returning your response, verify:
+1. What is the student's 'S' (Social) RIASEC score?
+2. Is 'S' in their top 3 RIASEC types?
+3. What is their aptitude level and accuracy?
+4. If S in top 3 AND aptitude >= 30% → 3rd track should be Event/Healthcare/Digital (NOT NGO)
+5. If you suggest NGO/Social Work for a student with decent aptitude, YOUR RESPONSE NEEDS IMPROVEMENT!`;
 }

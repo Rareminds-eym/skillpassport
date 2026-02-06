@@ -4,6 +4,7 @@ import { BuildingOfficeIcon, ChartBarIcon, ChartPieIcon, ClipboardDocumentCheckI
 import { CalendarIcon, CheckCircleIcon, ClockIcon, ShieldCheckIcon, SparklesIcon, XCircleIcon } from 'lucide-react';
 import React, { useState } from 'react'
 import ReactApexChart from 'react-apexcharts';
+import toast from 'react-hot-toast';
 
 // SubjectGroup interface
 interface SubjectGroup {
@@ -169,23 +170,58 @@ const AttendanceDetailsModal = ({
 
     // Local export function for modal
     const exportToCSV = (data: any[], filename: string) => {
-        if (data.length === 0) return;
+        console.log('Export CSV called with:', { dataLength: data.length, filename, sampleData: data[0] });
+        
+        if (data.length === 0) {
+            toast.error('No data available to export');
+            return;
+        }
 
-        const headers = Object.keys(data[0]);
-        const csvContent = [
-            headers.join(','),
-            ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
-        ].join('\n');
+        try {
+            const headers = Object.keys(data[0]);
+            const csvContent = [
+                headers.join(','),
+                ...data.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+            ].join('\n');
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+            // Add BOM for proper Excel encoding
+            const BOM = '\uFEFF';
+            const csvWithBOM = BOM + csvContent;
+
+            const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
+            
+            // Try multiple download methods for better browser compatibility
+            if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+                // For IE/Edge
+                window.navigator.msSaveOrOpenBlob(blob, filename);
+            } else {
+                // For modern browsers
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                
+                link.setAttribute('href', url);
+                link.setAttribute('download', filename);
+                link.style.visibility = 'hidden';
+                link.style.position = 'absolute';
+                link.style.left = '-9999px';
+                
+                document.body.appendChild(link);
+                
+                // Force click
+                link.click();
+                
+                // Cleanup
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            }
+            
+            console.log('CSV export completed successfully');
+        } catch (error) {
+            console.error('CSV export failed:', error);
+            toast.error('Failed to export CSV file');
+        }
     };
 
     if (!isOpen || !subjectGroup) return null;
@@ -786,55 +822,103 @@ const AttendanceDetailsModal = ({
                             >
                                 Close
                             </button>
+                            
                             <button
                                 onClick={() => {
-                                    if (activeTab === "today") {
-                                        // Export selected session data
-                                        onExportSession(session, todaysRecords);
-                                    } else if (activeTab === "monthly") {
-                                        // Export monthly summary for selected month
-                                        const monthlyStudents = students.filter(
-                                            (student) =>
-                                                student.department === subjectGroup.department &&
-                                                student.course === subjectGroup.course &&
-                                                student.semester === subjectGroup.semester &&
-                                                student.section === subjectGroup.section
-                                        );
-
-                                        const monthlyExportData = monthlyStudents.map(student => {
-                                            const studentRecords = allRecords.filter(r =>
-                                                r.studentId === student.id &&
-                                                r.subject === subjectGroup.subject &&
-                                                r.date.startsWith(selectedMonth)
+                                    try {
+                                        if (activeTab === "today") {
+                                            // Export selected session data
+                                            console.log('Exporting session data:', { session, todaysRecords });
+                                            onExportSession(session, todaysRecords);
+                                            toast.success('Session attendance exported successfully!');
+                                        } else if (activeTab === "monthly") {
+                                            // Export monthly summary for selected month
+                                            const monthlyStudents = students.filter(
+                                                (student) =>
+                                                    student.department === subjectGroup.department &&
+                                                    student.course === subjectGroup.course &&
+                                                    student.semester === subjectGroup.semester &&
+                                                    student.section === subjectGroup.section
                                             );
-                                            const stats = {
-                                                present: studentRecords.filter((r) => r.status === "present").length,
-                                                absent: studentRecords.filter((r) => r.status === "absent").length,
-                                                late: studentRecords.filter((r) => r.status === "late").length,
-                                                excused: studentRecords.filter((r) => r.status === "excused").length,
-                                                total: studentRecords.length,
-                                                percentage: studentRecords.length > 0 ? ((studentRecords.filter((r) => r.status === "present" || r.status === "late" || r.status === "excused").length / studentRecords.length) * 100).toFixed(1) : "0",
-                                            };
 
-                                            return {
-                                                'Roll Number': student.rollNumber,
-                                                'Student Name': student.name,
-                                                'Present': stats.present,
-                                                'Absent': stats.absent,
-                                                'Late': stats.late,
-                                                'Excused': stats.excused,
-                                                'Total Days': stats.total,
-                                                'Attendance Percentage': `${stats.percentage}%`,
-                                                'Month': new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-                                            };
-                                        });
+                                            console.log('Monthly export - students found:', monthlyStudents.length);
+                                            console.log('Selected month:', selectedMonth);
+                                            console.log('All records for subject:', allRecords.filter(r => r.subject === subjectGroup.subject).length);
 
-                                        const filename = `${subjectGroup.subject}_${selectedMonth.replace('-', '_')}_monthly_summary.csv`;
-                                        exportToCSV(monthlyExportData, filename);
-                                    } else {
-                                        // Export all sessions for the subject
-                                        const subjectRecords = allRecords.filter(r => r.subject === subjectGroup.subject);
-                                        onExportSession(session, subjectRecords);
+                                            if (monthlyStudents.length === 0) {
+                                                toast.error('No students found for this class');
+                                                return;
+                                            }
+
+                                            const monthlyExportData = monthlyStudents.map(student => {
+                                                const studentRecords = allRecords.filter(r =>
+                                                    r.studentId === student.id &&
+                                                    r.subject === subjectGroup.subject &&
+                                                    r.date.startsWith(selectedMonth)
+                                                );
+                                                
+                                                console.log(`Student ${student.name} records for ${selectedMonth}:`, studentRecords.length);
+                                                
+                                                const stats = {
+                                                    present: studentRecords.filter((r) => r.status === "present").length,
+                                                    absent: studentRecords.filter((r) => r.status === "absent").length,
+                                                    late: studentRecords.filter((r) => r.status === "late").length,
+                                                    excused: studentRecords.filter((r) => r.status === "excused").length,
+                                                    total: studentRecords.length,
+                                                    percentage: studentRecords.length > 0 ? ((studentRecords.filter((r) => r.status === "present" || r.status === "late" || r.status === "excused").length / studentRecords.length) * 100).toFixed(1) : "0",
+                                                };
+
+                                                return {
+                                                    'Roll Number': student.rollNumber || 'N/A',
+                                                    'Student Name': student.name || 'N/A',
+                                                    'Present': stats.present,
+                                                    'Absent': stats.absent,
+                                                    'Late': stats.late,
+                                                    'Excused': stats.excused,
+                                                    'Total Days': stats.total,
+                                                    'Attendance Percentage': `${stats.percentage}%`,
+                                                    'Month': new Date(selectedMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+                                                };
+                                            });
+
+                                            console.log('Monthly export data prepared:', monthlyExportData);
+
+                                            // Create export data even if no attendance records exist
+                                            if (monthlyExportData.length > 0) {
+                                                const filename = `${subjectGroup.subject}_${selectedMonth.replace('-', '_')}_monthly_summary.csv`;
+                                                exportToCSV(monthlyExportData, filename);
+                                                toast.success(`Monthly attendance report exported successfully!`);
+                                            } else {
+                                                toast.error('No data available for the selected month');
+                                            }
+                                        } else {
+                                            // Export all sessions for the subject
+                                            const subjectRecords = allRecords.filter(r => r.subject === subjectGroup.subject);
+                                            console.log('Exporting all records for subject:', subjectRecords.length);
+                                            
+                                            if (subjectRecords.length === 0) {
+                                                toast.error('No attendance records found for this subject');
+                                                return;
+                                            }
+                                            
+                                            const exportData = subjectRecords.map(record => ({
+                                                'Date': formatDate(record.date),
+                                                'Roll Number': record.rollNumber,
+                                                'Student Name': record.studentName,
+                                                'Status': record.status,
+                                                'Time In': record.timeIn || '',
+                                                'Time Out': record.timeOut || '',
+                                                'Remarks': record.remarks || '',
+                                                'Subject': record.subject,
+                                                'Faculty': record.facultyName,
+                                            }));
+                                            const filename = `${subjectGroup.subject}_complete_history.csv`;
+                                            exportToCSV(exportData, filename);
+                                            toast.success(`Complete attendance history exported successfully!`);
+                                        }
+                                    } catch (error) {
+                                        console.error('Export failed:', error);
+                                        toast.error('Failed to export data. Please try again.');
                                     }
                                 }}
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"

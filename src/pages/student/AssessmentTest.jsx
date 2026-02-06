@@ -2256,21 +2256,37 @@ const AssessmentTest = () => {
         if (currentSection?.isAdaptive) {
             return adaptiveAptitudeAnswer !== null;
         }
+        
+        // Check if questionId is valid
+        if (!questionId || questionId.includes('undefined')) {
+            return false;
+        }
+        
         const answer = answers[questionId];
-        if (!answer) return false;
+        
+        // No answer selected
+        if (answer === null || answer === undefined || answer === '') {
+            return false;
+        }
+        
         // For SJT questions, both best and worst must be selected
         if (currentQuestion?.partType === 'sjt') {
             return answer.best && answer.worst;
         }
+        
         // For multiselect questions, check if required number of selections made
         if (currentQuestion?.type === 'multiselect') {
             return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
         }
+        
         // For text questions, check if there's some content (at least 10 characters for meaningful response)
         if (currentQuestion?.type === 'text') {
             return typeof answer === 'string' && answer.trim().length >= 10;
         }
-        return true;
+        
+        // For MCQ and other question types, ensure answer is not empty
+        // This handles aptitude and knowledge sections
+        return answer !== null && answer !== undefined && answer !== '';
     })();
 
     // formatTime and formatElapsedTime are now imported from centralized utilities

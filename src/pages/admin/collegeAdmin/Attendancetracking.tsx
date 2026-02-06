@@ -3,7 +3,10 @@ import AddAttendanceSessionModal from "@/components/admin/modals/AddAttendanceSe
 import AttendanceDetailsModal from "@/components/admin/modals/AttendanceDetailsModal";
 import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
 import { supabase } from "@/lib/supabaseClient";
-import { AttendanceRecord, AttendanceSession, Student, SubjectGroup } from "@/types/Attendance";
+import { AttendanceRecord, AttendanceSession, SubjectGroup, Student as AttendanceStudent } from "@/types/Attendance";
+import { Student as ProfileStudent } from "@/types/student";
+import { curriculumService } from "@/services/college/curriculumService";
+import toast from "react-hot-toast";
 import {
     ArrowDownTrayIcon,
     BellAlertIcon,
@@ -284,7 +287,7 @@ const AttendanceTracking: React.FC = () => {
   const [selectedSubjectGroup, setSelectedSubjectGroup] =
     useState<SubjectGroup | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<AttendanceStudent | null>(null);
   const [showStudentHistoryModal, setShowStudentHistoryModal] = useState(false);
   const [dateRange, setDateRange] = useState({
     from: "",
@@ -309,7 +312,6 @@ const AttendanceTracking: React.FC = () => {
   // Dynamic data states
   const [subjectGroups, setSubjectGroups] = useState<SubjectGroup[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState({
@@ -331,6 +333,12 @@ const AttendanceTracking: React.FC = () => {
     faculty: [] as any[],
     subjects: [] as any[],
   });
+
+  // Cascading dropdown states (similar to curriculum builder)
+  const [departmentsData, setDepartmentsData] = useState<any[]>([]);
+  const [programsData, setProgramsData] = useState<any[]>([]);
+  const [semestersData, setSemestersData] = useState<number[]>([]);
+  const [coursesData, setCoursesData] = useState<any[]>([]);
 
   const [filters, setFilters] = useState({
     departments: [] as string[],
@@ -587,7 +595,7 @@ const AttendanceTracking: React.FC = () => {
           ? `${f.first_name} ${f.last_name}` 
           : f.email;
         
-        const collegeName = f.colleges?.name || 'Unknown College';
+        const collegeName = f.collegeId || 'Unknown College';
         
         console.log(`Faculty: ${displayName} belongs to college: ${collegeName} (ID: ${f.collegeId})`);
         
@@ -691,6 +699,69 @@ const AttendanceTracking: React.FC = () => {
     }
   };
 
+  // Cascading dropdown load functions (similar to curriculum builder)
+  const loadDepartments = async () => {
+    try {
+      const result = await curriculumService.getDepartments();
+      if (result.success) {
+        setDepartmentsData(result.data || []);
+      } else {
+        toast.error('Failed to load departments');
+      }
+    } catch (error) {
+      console.error('Error loading departments:', error);
+      toast.error('Failed to load departments');
+    }
+  };
+
+  const loadPrograms = async (departmentId: string) => {
+    try {
+      const result = await curriculumService.getPrograms(departmentId);
+      if (result.success) {
+        setProgramsData(result.data || []);
+      } else {
+        toast.error('Failed to load programs');
+        setProgramsData([]);
+      }
+    } catch (error) {
+      console.error('Error loading programs:', error);
+      toast.error('Failed to load programs');
+      setProgramsData([]);
+    }
+  };
+
+  const loadSemesters = async (programId: string) => {
+    try {
+      const result = await curriculumService.getSemesters(programId);
+      if (result.success) {
+        setSemestersData(result.data || []);
+      } else {
+        toast.error('Failed to load semesters');
+        setSemestersData([]);
+      }
+    } catch (error) {
+      console.error('Error loading semesters:', error);
+      toast.error('Failed to load semesters');
+      setSemestersData([]);
+    }
+  };
+
+  const loadCourses = async (programId: string, semester: number) => {
+    try {
+      const result = await curriculumService.getCourses(programId, semester);
+      if (result.success) {
+        setCoursesData(result.data || []);
+      } else {
+        toast.error('Failed to load courses');
+        setCoursesData([]);
+      }
+    } catch (error) {
+      console.error('Error loading courses:', error);
+      toast.error('Failed to load courses');
+      setCoursesData([]);
+    }
+  };
+
   // useEffect hooks
   useEffect(() => {
     fetchSubjectGroups();
@@ -699,7 +770,36 @@ const AttendanceTracking: React.FC = () => {
   useEffect(() => {
     fetchAnalytics();
     fetchFilterOptions();
+    loadDepartments(); // Load departments on mount
   }, []);
+
+  // Cascading dropdown effects (similar to curriculum builder)
+  useEffect(() => {
+    if (sessionFormData.department) {
+      loadPrograms(sessionFormData.department);
+    } else {
+      setProgramsData([]);
+      setSessionFormData(prev => ({ ...prev, course: '' }));
+    }
+  }, [sessionFormData.department]);
+
+  useEffect(() => {
+    if (sessionFormData.course) {
+      loadSemesters(sessionFormData.course);
+    } else {
+      setSemestersData([]);
+      setSessionFormData(prev => ({ ...prev, semester: '' }));
+    }
+  }, [sessionFormData.course]);
+
+  useEffect(() => {
+    if (sessionFormData.course && sessionFormData.semester) {
+      loadCourses(sessionFormData.course, parseInt(sessionFormData.semester));
+    } else {
+      setCoursesData([]);
+      setSessionFormData(prev => ({ ...prev, subject: '' }));
+    }
+  }, [sessionFormData.course, sessionFormData.semester]);
 
   // Transform filter options for component use
   const departmentOptions = useMemo(() => {
@@ -906,16 +1006,10 @@ const AttendanceTracking: React.FC = () => {
     exportToCSV(exportData, `${session.subject}_${formatDate(session.date).replace(/\//g, '-')}_attendance.csv`);
   };
 
-  const handleExportMonthly = (session: AttendanceSession, students: Student[], allRecords: AttendanceRecord[]) => {
-    const classStudents = students.filter(
-      (student) =>
-        student.department === session.department &&
-        student.course === session.course &&
-        student.semester === session.semester &&
-        student.section === session.section
-    );
-
-    const exportData = classStudents.map(student => {
+  const handleExportMonthly = (session: AttendanceSession, students: ProfileStudent[], allRecords: AttendanceRecord[]) => {
+    // Since ProfileStudent doesn't have the same structure as AttendanceStudent,
+    // we'll create a simplified export with available data
+    const exportData = students.map(student => {
       const studentRecords = allRecords.filter(r => r.studentId === student.id && r.subject === session.subject);
       const stats = {
         present: studentRecords.filter((r) => r.status === "present").length,
@@ -927,7 +1021,7 @@ const AttendanceTracking: React.FC = () => {
       };
 
       return {
-        'Roll Number': student.rollNumber,
+        'Student ID': student.id,
         'Student Name': student.name,
         'Present': stats.present,
         'Absent': stats.absent,
@@ -941,7 +1035,7 @@ const AttendanceTracking: React.FC = () => {
     exportToCSV(exportData, `${session.subject}_monthly_summary.csv`);
   };
 
-  const handleExportStudentHistory = (student: Student, session: AttendanceSession, allRecords: AttendanceRecord[]) => {
+  const handleExportStudentHistory = (student: AttendanceStudent, session: AttendanceSession, allRecords: AttendanceRecord[]) => {
     const studentHistory = allRecords.filter((record) => record.studentId === student.id && record.subject === session.subject);
 
     const exportData = studentHistory.map(record => ({
@@ -954,7 +1048,7 @@ const AttendanceTracking: React.FC = () => {
       'Faculty': record.facultyName,
     }));
 
-    exportToCSV(exportData, `${student.name}_${student.rollNumber}_attendance_history.csv`);
+    exportToCSV(exportData, `${student.name}_${student.id}_attendance_history.csv`);
   };
 
   // Add session handlers
@@ -990,67 +1084,79 @@ const AttendanceTracking: React.FC = () => {
       return;
     }
 
+    // Date and time validation
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+    
+    // Check if date is in the past
+    if (sessionFormData.date < currentDate) {
+      alert("Cannot schedule attendance for past dates.");
+      return;
+    }
+    
+    // Check if time is in the past (for today's date)
+    if (sessionFormData.date === currentDate) {
+      if (sessionFormData.startTime < currentTime) {
+        alert("Cannot schedule attendance for past time.");
+        return;
+      }
+      if (sessionFormData.endTime < currentTime) {
+        alert("End time cannot be in the past.");
+        return;
+      }
+    }
+    
+    // Check if end time is after start time
+    if (sessionFormData.startTime && sessionFormData.endTime) {
+      const start = new Date(`2000-01-01T${sessionFormData.startTime}`);
+      const end = new Date(`2000-01-01T${sessionFormData.endTime}`);
+      if (end <= start) {
+        alert("End time must be after start time.");
+        return;
+      }
+    }
+
     try {
-      // Get current user and their college_id
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         alert("Please log in to create a session.");
         return;
       }
 
-      // Get college_id from user profile or session
-      let collegeId = null;
-      
-      // Option 1: Try to get from user metadata
-      if (user.user_metadata?.college_id) {
-        collegeId = user.user_metadata.college_id;
-      } else {
-        // Option 2: Get from users table or profile
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('college_id')
-          .eq('id', user.id)
-          .single();
-        
-        collegeId = userProfile?.college_id;
-      }
+      // ✅ CORRECT: Get college_id from the FACULTY MEMBER using faculty_id
+      const { data: facultyData, error: facultyError } = await supabase
+        .from('college_lecturers')
+        .select('collegeId, first_name, last_name')
+        .eq('id', sessionFormData.faculty)  // Use faculty_id from form
+        .single();
 
-      // If still no college_id, try to get the first college from organizations (fallback)
-      if (!collegeId) {
-        const { data: colleges } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'college')
-          .limit(1);
-        
-        collegeId = colleges?.[0]?.id;
-      }
-
-      if (!collegeId) {
-        alert("Unable to determine college. Please contact administrator.");
+      if (facultyError || !facultyData) {
+        console.error('Faculty lookup error:', facultyError);
+        alert("Unable to find faculty member. Please try again.");
         return;
       }
 
-      // Get faculty details from the selected faculty ID
-      const selectedFaculty = filterOptions.faculty.find(f => f.value === sessionFormData.faculty);
-      const facultyName = selectedFaculty?.label || sessionFormData.faculty;
+      const collegeId = facultyData.collegeId;  // ✅ Faculty's college_id
+      const facultyName = `${facultyData.first_name} ${facultyData.last_name}`;
 
-      console.log('Creating session with:', {
+      console.log('Creating session with CORRECT logic:', {
         facultyId: sessionFormData.faculty,
         facultyName: facultyName,
-        collegeId: collegeId,
-        selectedFaculty: selectedFaculty
+        collegeId: collegeId,  // ✅ This is now the faculty's college_id
+        createdBy: user.id     // ✅ Admin who created it
       });
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('college_attendance_sessions')
         .insert({
           date: sessionFormData.date,
           start_time: sessionFormData.startTime,
           end_time: sessionFormData.endTime,
           subject_name: sessionFormData.subject,
-          faculty_id: sessionFormData.faculty, // Now this is a proper UUID
-          faculty_name: facultyName, // Use the formatted faculty name
+          faculty_id: sessionFormData.faculty, // Faculty member's ID
+          faculty_name: facultyName, // Faculty member's actual name from database
           department_name: sessionFormData.department,
           program_name: sessionFormData.course,
           semester: parseInt(sessionFormData.semester),
@@ -1058,8 +1164,8 @@ const AttendanceTracking: React.FC = () => {
           room_number: sessionFormData.roomNumber,
           remarks: sessionFormData.remarks,
           status: 'scheduled',
-          college_id: collegeId, // Add the college_id
-          created_by: user.id, // Add the user who created it
+          college_id: collegeId, // ✅ Faculty member's college_id (not admin's)
+          created_by: user.id, // Admin who created the session
         })
         .select()
         .single();
@@ -1099,6 +1205,39 @@ const AttendanceTracking: React.FC = () => {
         !sessionFormData.date || !sessionFormData.startTime || !sessionFormData.endTime) {
       alert("Please fill in all required fields.");
       return;
+    }
+
+    // Date and time validation
+    const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+    const currentTime = now.toTimeString().slice(0, 5);
+    
+    // Check if date is in the past
+    if (sessionFormData.date < currentDate) {
+      alert("Cannot schedule attendance for past dates.");
+      return;
+    }
+    
+    // Check if time is in the past (for today's date)
+    if (sessionFormData.date === currentDate) {
+      if (sessionFormData.startTime < currentTime) {
+        alert("Cannot schedule attendance for past time.");
+        return;
+      }
+      if (sessionFormData.endTime < currentTime) {
+        alert("End time cannot be in the past.");
+        return;
+      }
+    }
+    
+    // Check if end time is after start time
+    if (sessionFormData.startTime && sessionFormData.endTime) {
+      const start = new Date(`2000-01-01T${sessionFormData.startTime}`);
+      const end = new Date(`2000-01-01T${sessionFormData.endTime}`);
+      if (end <= start) {
+        alert("End time must be after start time.");
+        return;
+      }
     }
 
     try {
@@ -1543,7 +1682,7 @@ const AttendanceTracking: React.FC = () => {
               </div>
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {paginatedSubjectGroups.map((subjectGroup, index) => (
+                {paginatedSubjectGroups.map((subjectGroup) => (
                   <EnhancedSubjectCard
                     key={`${subjectGroup.subject}-${subjectGroup.department}-${subjectGroup.course}-${subjectGroup.semester}-${subjectGroup.section}`}
                     subjectGroup={subjectGroup}
@@ -1686,10 +1825,21 @@ const AttendanceTracking: React.FC = () => {
         records={attendanceRecords.filter(
           (r) => r.subject === selectedSubjectGroup?.subject
         )}
-        students={students}
+        students={[]}
         allRecords={attendanceRecords}
         onViewStudentHistory={(student) => {
-          setSelectedStudent(student);
+          // Convert ProfileStudent to AttendanceStudent
+          const attendanceStudent: AttendanceStudent = {
+            id: student.id,
+            rollNumber: student.registration_number || student.id,
+            name: student.name || 'Unknown',
+            department: student.branch_field || 'Unknown',
+            course: student.branch_field || 'Unknown',
+            semester: student.semester || 1,
+            section: student.section || 'A',
+            email: student.email,
+          };
+          setSelectedStudent(attendanceStudent);
           setShowStudentHistoryModal(true);
         }}
         onExportSession={handleExportSession}
@@ -1714,13 +1864,13 @@ const AttendanceTracking: React.FC = () => {
         onCreateAndStart={handleCreateAndStart}
         formData={sessionFormData}
         onFormChange={handleFormChange}
-        departments={departmentOptions}
-        courses={courseOptions}
-        semesters={semesterOptions}
+        departments={departmentsData.map(dept => ({ value: dept.id, label: dept.name }))}
+        courses={programsData.map(prog => ({ value: prog.id, label: prog.name }))}
+        semesters={semestersData.map(sem => ({ value: sem.toString(), label: `Semester ${sem}` }))}
         sections={sectionOptions}
-        subjects={subjectOptions}
+        subjects={coursesData.map(course => ({ value: course.id, label: `${course.course_code} - ${course.course_name}` }))}
         faculty={filterOptions.faculty}
-        students={students}
+        students={[]}
       />
     </div>
   );

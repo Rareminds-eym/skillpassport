@@ -14,6 +14,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import toast from 'react-hot-toast';
+import { supabase } from '../../../../lib/supabaseClient';
+import { opportunitiesService } from '../../../../services/opportunitiesService';
 import { 
   placementAnalyticsService, 
   PlacementRecord, 
@@ -50,7 +52,7 @@ const PlacementAnalytics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load data from database
+  // Load data from database using the same service as main placement stats
   const loadData = async (showRefreshLoader = false) => {
     try {
       if (showRefreshLoader) {
@@ -59,32 +61,213 @@ const PlacementAnalytics: React.FC = () => {
         setLoading(true);
       }
 
-      const filters = {
-        department: selectedAnalyticsDepartment || undefined,
-        year: selectedAnalyticsYear,
-        employmentType: selectedAnalyticsType
-      };
+      // Use the same service as main placement stats for consistency
+      const stats = await opportunitiesService.getPlacementStats();
+      
+      // Get recent placements using the same logic
+      const { data: recentPlacementsData, error: recentError } = await supabase
+        .from('applied_jobs')
+        .select(`
+          id,
+          application_status,
+          applied_at,
+          students!fk_applied_jobs_student (
+            name,
+            student_id,
+            branch_field,
+            course_name
+          ),
+          opportunities!fk_applied_jobs_opportunity (
+            title,
+            company_name,
+            employment_type,
+            location,
+            salary_range_min,
+            salary_range_max
+          )
+        `)
+        .eq('application_status', 'accepted')
+        .order('applied_at', { ascending: false })
+        .limit(10);
 
-      // Load all data in parallel
-      const [
-        records,
-        analytics,
-        stats,
-        distribution,
-        recent
-      ] = await Promise.all([
-        placementAnalyticsService.getPlacementRecords(filters),
-        placementAnalyticsService.getDepartmentAnalytics(filters),
-        placementAnalyticsService.getPlacementStats(filters),
-        placementAnalyticsService.getCTCDistribution(filters),
-        placementAnalyticsService.getRecentPlacements(5)
-      ]);
+      if (recentError) {
+        console.error('Error fetching recent placements:', recentError);
+      }
 
-      setPlacementRecords(records);
-      setDepartmentAnalytics(analytics);
-      setPlacementStats(stats);
-      setCTCDistribution(distribution);
-      setRecentPlacements(recent);
+      // Transform recent placements data
+      const transformedRecentPlacements = (recentPlacementsData || []).map(record => ({
+        id: record.id.toString(),
+        student_name: record.students?.name || 'Unknown Student',
+        student_id: record.students?.student_id || '',
+        company_name: record.opportunities?.company_name || '',
+        job_title: record.opportunities?.title || '',
+        department: record.students?.branch_field || record.students?.course_name || '',
+        employment_type: record.opportunities?.employment_type as 'Full-time' | 'Internship',
+        salary_offered: record.opportunities?.salary_range_max || record.opportunities?.salary_range_min || 0,
+        placement_date: record.applied_at,
+        status: record.application_status as any,
+        location: record.opportunities?.location || ''
+      }));
+
+      // Get all students by department for department analytics
+      const { data: allStudentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('branch_field, course_name, id');
+
+      if (studentsError) {
+        console.error('Error fetching students:', studentsError);
+      }
+
+      // Get all placements for department analytics
+      const { data: allPlacementsData, error: placementsError } = await supabase
+        .from('applied_jobs')
+        .select(`
+          id,
+          student_id,
+          students!fk_applied_jobs_student (
+            branch_field,
+            course_name
+          ),
+          opportunities!fk_applied_jobs_opportunity (
+            employment_type,
+            salary_range_min,
+            salary_range_max
+          )
+        `)
+        .eq('application_status', 'accepted');
+
+      if (placementsError) {
+        console.error('Error fetching all placements:', placementsError);
+      }
+
+      // Calculate department-wise analytics
+      const departmentStats: { [key: string]: any } = {};
+      
+      // Count total students by department
+      (allStudentsData || []).forEach(student => {
+        const dept = student.branch_field || student.course_name || 'Unknown';
+        if (!departmentStats[dept]) {
+          departmentStats[dept] = {
+            department: dept,
+            total_students: 0,
+            placed_students: 0,
+            placements: [],
+            full_time: 0,
+            internships: 0
+          };
+        }
+        departmentStats[dept].total_students++;
+      });
+
+      // Count placements by department (count unique students, not total offers)
+      const uniqueStudentsByDept: { [key: string]: Set<number> } = {};
+      
+      (allPlacementsData || []).forEach(placement => {
+        const dept = placement.students?.branch_field || placement.students?.course_name || 'Unknown';
+        if (departmentStats[dept]) {
+          // Use Set to track unique student IDs
+          if (!uniqueStudentsByDept[dept]) {
+            uniqueStudentsByDept[dept] = new Set();
+          }
+          uniqueStudentsByDept[dept].add(placement.student_id);
+          
+          // Still track all placements for salary calculations
+          departmentStats[dept].placements.push(placement);
+          
+          if (placement.opportunities?.employment_type === 'Full-time') {
+            departmentStats[dept].full_time++;
+          } else if (placement.opportunities?.employment_type === 'Internship') {
+            departmentStats[dept].internships++;
+          }
+        }
+      });
+
+      // Update placed_students count with unique students
+      Object.keys(departmentStats).forEach(dept => {
+        departmentStats[dept].placed_students = uniqueStudentsByDept[dept]?.size || 0;
+      });
+
+      // Calculate analytics for each department
+      const departmentAnalytics = Object.values(departmentStats).map((dept: any) => {
+        const salaries = dept.placements
+          .map((p: any) => p.opportunities?.salary_range_max || p.opportunities?.salary_range_min || 0)
+          .filter((salary: number) => salary > 0)
+          .sort((a: number, b: number) => a - b);
+
+        const avgCtc = salaries.length > 0 
+          ? salaries.reduce((sum: number, salary: number) => sum + salary, 0) / salaries.length 
+          : 0;
+
+        const medianCtc = salaries.length > 0 
+          ? salaries.length % 2 === 0
+            ? (salaries[salaries.length / 2 - 1] + salaries[salaries.length / 2]) / 2
+            : salaries[Math.floor(salaries.length / 2)]
+          : 0;
+
+        const highestCtc = salaries.length > 0 ? Math.max(...salaries) : 0;
+
+        return {
+          department: dept.department,
+          total_students: dept.total_students,
+          placed_students: dept.placed_students, // This is now unique students
+          placement_rate: dept.total_students > 0 ? (dept.placed_students / dept.total_students) * 100 : 0,
+          avg_ctc: avgCtc,
+          median_ctc: medianCtc,
+          highest_ctc: highestCtc,
+          total_offers: dept.placements.length, // Total offers (can be > placed_students)
+          internships: dept.internships,
+          full_time: dept.full_time,
+        };
+      }).sort((a, b) => b.placed_students - a.placed_students);
+
+      // Set the stats using the same data source
+      setPlacementStats({
+        totalPlacements: stats.studentsPlaced,
+        totalApplications: 0, // We'll calculate this separately if needed
+        avgCTC: stats.avgCTC,
+        medianCTC: stats.medianCTC,
+        highestCTC: stats.highestCTC,
+        totalInternships: transformedRecentPlacements.filter(p => p.employment_type === 'Internship').length,
+        totalFullTime: transformedRecentPlacements.filter(p => p.employment_type === 'Full-time').length,
+        placementRate: stats.placementRate
+      });
+
+      // Set recent placements
+      setRecentPlacements(transformedRecentPlacements);
+
+      // Set department analytics
+      setDepartmentAnalytics(departmentAnalytics);
+
+      // Calculate CTC distribution
+      const fullTimePlacements = transformedRecentPlacements.filter(p => p.employment_type === 'Full-time');
+      const internships = transformedRecentPlacements.filter(p => p.employment_type === 'Internship');
+      const totalPlacements = transformedRecentPlacements.length;
+
+      const above10L = fullTimePlacements.filter(p => p.salary_offered >= 1000000).length;
+      const between5L10L = fullTimePlacements.filter(p => p.salary_offered >= 500000 && p.salary_offered < 1000000).length;
+      const below5L = fullTimePlacements.filter(p => p.salary_offered > 0 && p.salary_offered < 500000).length;
+
+      setCTCDistribution({
+        above10L: {
+          count: above10L,
+          percentage: totalPlacements > 0 ? (above10L / totalPlacements) * 100 : 0
+        },
+        between5L10L: {
+          count: between5L10L,
+          percentage: totalPlacements > 0 ? (between5L10L / totalPlacements) * 100 : 0
+        },
+        below5L: {
+          count: below5L,
+          percentage: totalPlacements > 0 ? (below5L / totalPlacements) * 100 : 0
+        },
+        internships: {
+          count: internships.length,
+          percentage: totalPlacements > 0 ? (internships.length / totalPlacements) * 100 : 0
+        }
+      });
+
+      // Set placement records
+      setPlacementRecords(transformedRecentPlacements);
 
     } catch (error) {
       console.error('Error loading placement data:', error);

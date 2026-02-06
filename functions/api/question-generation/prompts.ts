@@ -31,8 +31,20 @@ Subject-wise Question Guidelines:
 3. ENGLISH (10 questions):
    - Grammar: tenses, articles, prepositions
    - Vocabulary: synonyms, antonyms, word meanings
-   - Comprehension: passage understanding
    - Sentence correction and completion
+   - Reading comprehension: If including passage-based questions, you MUST include the complete passage text within the question itself
+   
+   CRITICAL FOR GRAMMAR QUESTIONS:
+   - For "identify the error" questions: Provide 4 DIFFERENT sentences as options, and ask which one is incorrect
+   - For "correct the sentence" questions: Provide 1 incorrect sentence in the question, and 4 different corrected versions as options
+   - DO NOT include the sentence to identify in the question AND repeat it in the options
+   - Example GOOD format: "Which sentence is grammatically incorrect?" with 4 different sentences as options
+   - Example BAD format: "Identify the incorrect sentence: 'He don't like football'" with the same sentence repeated in options
+   
+   CRITICAL FOR COMPREHENSION QUESTIONS: 
+   - Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT HERE]\n\nQuestion: [Your question about the passage]"
+   - The passage must be included in the "question" field
+   - DO NOT reference external passages or say "Passage here" - include the actual passage text
 
 4. SOCIAL STUDIES (10 questions):
    - History: Indian history, world history, freedom struggle
@@ -72,8 +84,12 @@ IMPORTANT:
 
 export const APTITUDE_PROMPT = `You are an expert psychometric assessment creator. Generate aptitude test questions for {{STREAM_NAME}} stream career assessment.
 
+CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is a strict requirement.
+
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
+
+VERIFICATION: After generating, count your questions. You must have EXACTLY {{QUESTION_COUNT}} questions total.
 
 CRITICAL REQUIREMENT - 100% STREAM-RELATED QUESTIONS:
 This is for {{STREAM_NAME}} students. ALL questions MUST use {{STREAM_NAME}}-specific context, terminology, scenarios, and examples.
@@ -91,6 +107,18 @@ Question Requirements:
    - Example: "Compare these two strings: ENG-789-SYS — ENG-789-SYS" or "Compare these two strings: AB7K9 — AB7K9"
    - Each clerical question must show two complete strings that are either identical or have subtle differences
    - Always start with "Compare these two strings:" followed by the two strings separated by " — " (space-em dash-space)
+7. For Verbal Reasoning with Reading Comprehension:
+   - CRITICAL: If you include passage-based questions, you MUST include the complete passage text within the question field
+   - Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT HERE]\n\nQuestion: [Your question about the passage]"
+   - DO NOT say "Read the passage and answer the question: Passage here." - include the actual passage
+   - DO NOT reference external passages - the passage must be self-contained in the question text
+   - Alternatively, focus on vocabulary, analogies, and logic-based verbal questions instead of comprehension
+8. For Grammar and Sentence Correction Questions:
+   - For "identify the error" questions: Provide 4 DIFFERENT sentences as options, ask which one is incorrect
+   - For "correct the sentence" questions: Provide 1 incorrect sentence in the question, and 4 different corrected versions as options
+   - DO NOT include the sentence to identify in the question AND repeat it in the options
+   - Example GOOD: "Which sentence is grammatically incorrect?" with 4 different sentences as options (A: "He don't like football", B: "She doesn't like football", C: "They don't like football", D: "I don't like football")
+   - Example BAD: "Identify the incorrect sentence: 'He don't like football'" with the same sentence repeated in options
 
 Output Format - Respond with ONLY valid JSON:
 {

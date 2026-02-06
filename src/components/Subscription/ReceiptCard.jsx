@@ -106,7 +106,7 @@ function ReceiptCard({ totalAmount, transactionDetails, children }) {
           right: 0;
           height: 20px;
           background: 
-            radial-gradient(circle at 15px 20px, #FFFFFF 15px, transparent 15px) repeat-x;
+            radial-gradient(circle 15px at 15px 20px, #FFFFFF 15px, transparent 15px) repeat-x;
           background-size: 30px 20px;
           background-position: 0 0;
           z-index: 2;

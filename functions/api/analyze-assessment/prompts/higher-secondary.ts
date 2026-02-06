@@ -11,15 +11,81 @@
  * 4. Employability Skills
  * 5. Aptitude (Multi-domain cognitive abilities)
  * 6. Knowledge (Stream-specific subject knowledge)
+ * 7. Adaptive Aptitude (Intelligent adaptive test results)
  */
 
-import type { AssessmentData } from '../types';
+import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
+
+/**
+ * Pre-process adaptive aptitude results into actionable insights
+ */
+function processAdaptiveResults(results: AdaptiveAptitudeResults): {
+  section: string;
+  isHighAptitude: boolean;
+} {
+  const level = results.aptitudeLevel;
+  const accuracy = results.overallAccuracy;
+  const isHighAptitude = level >= 4 || accuracy >= 75;
+  
+  const levelLabels: Record<number, string> = {
+    1: 'Emerging',
+    2: 'Developing', 
+    3: 'Capable',
+    4: 'Strong',
+    5: 'Exceptional'
+  };
+  
+  const subtags = results.accuracyBySubtag || {};
+  const sortedSubtags = Object.entries(subtags)
+    .map(([name, data]: [string, any]) => ({
+      name: name.replace(/_/g, ' '),
+      accuracy: typeof data === 'number' ? data : data?.accuracy || 0
+    }))
+    .sort((a, b) => b.accuracy - a.accuracy);
+  
+  const topStrengths = sortedSubtags
+    .filter(s => s.accuracy >= 70)
+    .slice(0, 3)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+  
+  const weakAreas = sortedSubtags
+    .filter(s => s.accuracy < 50)
+    .slice(0, 2)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+
+  const section = `
+## ═══════════════════════════════════════════════════════════════════════════
+## SECTION 7: ADAPTIVE APTITUDE TEST RESULTS
+## ═══════════════════════════════════════════════════════════════════════════
+
+- **Aptitude Level**: ${level}/5 (${levelLabels[level] || 'Unknown'})
+- **Overall Accuracy**: ${Math.round(accuracy)}%
+- **Confidence**: ${results.confidenceTag}
+- **Performance Trend**: ${results.pathClassification}
+
+**COGNITIVE STRENGTHS**:
+${topStrengths.length > 0 ? topStrengths.map(s => `- ${s}`).join('\n') : '- No standout strengths identified'}
+
+**AREAS FOR GROWTH**:
+${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No significant weak areas'}
+
+**IMPORTANT**: Use these adaptive test results as ADDITIONAL evidence when generating career clusters. The adaptive test provides a more accurate measure of cognitive abilities than self-assessment.`;
+
+  return { section, isHighAptitude };
+}
 
 export function buildHigherSecondaryPrompt(assessmentData: AssessmentData, answersHash: number): string {
   // Extract student context for stream-specific guidance
   const studentContext = assessmentData.studentContext;
   const selectedStream = studentContext?.selectedStream || assessmentData.stream;
   const selectedCategory = studentContext?.selectedCategory;
+  
+  // Pre-process adaptive results for efficiency
+  const adaptiveData = assessmentData.adaptiveAptitudeResults 
+    ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
+    : null;
+  
+  const adaptiveSection = adaptiveData?.section || '';
   
   // Determine stream category from stream ID if not explicitly provided
   const getStreamCategory = (stream: string): string | null => {
@@ -128,8 +194,9 @@ This student completed a comprehensive assessment with 6 sections. You MUST use 
 4. **Work Values** (Motivators) - Ensures career aligns with what drives them
 5. **Employability** (Job Readiness) - Assesses current skill level and readiness
 6. **Knowledge** (Stream Expertise) - Validates academic preparation in their chosen stream
+7. **Adaptive Aptitude** (Intelligent Test) - Provides accurate cognitive ability measurement
 
-**Each career cluster MUST include evidence from ALL 6 sections in the evidence field.**
+**Each career cluster MUST include evidence from ALL 7 sections in the evidence field.**
 
 ## RIASEC Career Interest Responses (1-5 scale):
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
@@ -223,6 +290,8 @@ ${JSON.stringify(assessmentData.employabilityAnswers, null, 2)}
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 Total Questions: ${assessmentData.totalKnowledgeQuestions || 20}
 
+${adaptiveSection}
+
 ## CAREER CLUSTER GENERATION REQUIREMENTS
 
 For higher secondary students, career clusters MUST:
@@ -244,7 +313,8 @@ Each career cluster MUST include:
   "personality": "<Big Five traits that align with success in this field>",
   "values": "<How their work values align with this career (e.g., helping others, creativity, financial security)>",
   "employability": "<Current skill level and readiness for this path>",
-  "knowledge": "<How their stream knowledge (${assessmentData.stream}) prepares them for this career>"
+  "knowledge": "<How their stream knowledge (${assessmentData.stream}) prepares them for this career>",
+  "adaptiveAptitude": "<How their adaptive test results (aptitude level, accuracy, cognitive strengths) validate this career choice>"
 }
 \`\`\`
 
@@ -289,6 +359,26 @@ Each career cluster MUST include:
 - Creative Arts (Writer, Designer, Artist, Filmmaker)
 - Education & Teaching (Teacher, Professor, Education Consultant)
 - Law & Humanities (Lawyer, Legal Researcher, Human Rights Advocate)
+
+## ⚠️ CRITICAL: COMPLETE RESPONSE REQUIRED
+
+You MUST include ALL sections in your response. DO NOT truncate or skip any sections.
+
+**MANDATORY SECTIONS (ALL REQUIRED):**
+1. ✅ profileSnapshot
+2. ✅ riasec
+3. ✅ aptitude
+4. ✅ bigFive
+5. ✅ workValues
+6. ✅ employability (REQUIRED - DO NOT SKIP)
+7. ✅ knowledge (REQUIRED - DO NOT SKIP)
+8. ✅ careerFit (with 3 clusters, each with evidence from ALL 6 sections)
+9. ✅ skillGap (REQUIRED - DO NOT SKIP)
+10. ✅ roadmap (REQUIRED - DO NOT SKIP)
+11. ✅ finalNote (REQUIRED - DO NOT SKIP)
+12. ✅ overallSummary
+
+**If you skip employability, knowledge, skillGap, roadmap, or finalNote, your response is INCOMPLETE and INVALID!**
 
 ## OUTPUT FORMAT
 
@@ -393,7 +483,8 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
           "personality": "<Big Five evidence - REQUIRED>",
           "values": "<Work Values evidence - REQUIRED>",
           "employability": "<Employability evidence - REQUIRED>",
-          "knowledge": "<Knowledge/Stream evidence - REQUIRED>"
+          "knowledge": "<Knowledge/Stream evidence - REQUIRED>",
+          "adaptiveAptitude": "<Adaptive test evidence - REQUIRED>"
         },
         "roles": {
           "entry": ["<Entry role 1>", "<Entry role 2>", "<Entry role 3>"],
@@ -409,14 +500,15 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
         "title": "<Career Cluster 2>",
         "fit": "Medium",
         "matchScore": 75,
-        "description": "<Explanation based on all 6 sections>",
+        "description": "<Explanation based on all 7 sections>",
         "evidence": {
           "interest": "<RIASEC evidence>",
           "aptitude": "<Aptitude evidence>",
           "personality": "<Personality evidence>",
           "values": "<Values evidence>",
           "employability": "<Employability evidence>",
-          "knowledge": "<Knowledge evidence>"
+          "knowledge": "<Knowledge evidence>",
+          "adaptiveAptitude": "<Adaptive test evidence>"
         },
         "roles": {
           "entry": ["<Entry role 1>", "<Entry role 2>"],
@@ -439,7 +531,8 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
           "personality": "<Personality evidence>",
           "values": "<Values evidence>",
           "employability": "<Employability evidence>",
-          "knowledge": "<Knowledge evidence>"
+          "knowledge": "<Knowledge evidence>",
+          "adaptiveAptitude": "<Adaptive test evidence>"
         },
         "roles": {
           "entry": ["<Entry role 1>", "<Entry role 2>"],
@@ -454,17 +547,17 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "<Career 1>", "salary": {"min": 4, "max": 12}},
-        {"name": "<Career 2>", "salary": {"min": 4, "max": 10}},
-        {"name": "<Career 3>", "salary": {"min": 3, "max": 8}}
+        {"name": "<Career 1 - e.g., Software Engineer>", "salary": {"min": 6, "max": 15}},
+        {"name": "<Career 2 - e.g., Data Scientist>", "salary": {"min": 7, "max": 18}},
+        {"name": "<Career 3 - e.g., Product Manager>", "salary": {"min": 8, "max": 20}}
       ],
       "mediumFit": [
-        {"name": "<Career 1>", "salary": {"min": 3, "max": 8}},
-        {"name": "<Career 2>", "salary": {"min": 3, "max": 7}}
+        {"name": "<Career 1 - e.g., Business Analyst>", "salary": {"min": 5, "max": 12}},
+        {"name": "<Career 2 - e.g., UX Designer>", "salary": {"min": 4, "max": 10}}
       ],
       "exploreLater": [
-        {"name": "<Career 1>", "salary": {"min": 3, "max": 7}},
-        {"name": "<Career 2>", "salary": {"min": 2, "max": 6}}
+        {"name": "<Career 1 - e.g., Content Writer>", "salary": {"min": 3, "max": 8}},
+        {"name": "<Career 2 - e.g., Teacher>", "salary": {"min": 3, "max": 10}}
       ]
     }
   },
@@ -537,16 +630,20 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
 
 Before returning your response, verify:
 
-1. ✅ Each career cluster has evidence from ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
-2. ✅ Career clusters align with the student's stream (${assessmentData.stream})
-3. ✅ Entrance exams and college majors are specified for each cluster
-4. ✅ Knowledge scores are referenced in the evidence
-5. ✅ Work values are mentioned in the evidence
-6. ✅ Employability skills are referenced in the evidence
-7. ✅ All 3 career clusters are provided with complete information
-8. ✅ Salary ranges are realistic for India (2025-2030)
-9. ✅ Preparation guidance is specific to 11th/12th grade students
-10. ✅ The response is personalized based on THEIR specific scores, not generic
+1. ✅ **employability section is included** (skillScores, strengthAreas, developmentAreas, overallReadiness, recommendation)
+2. ✅ **knowledge section is included** (score, correctCount, strongTopics, weakTopics, streamAlignment, recommendation)
+3. ✅ **skillGap section is included** (currentStrengths, priorityA, priorityB, learningTracks, recommendedTrack)
+4. ✅ **roadmap section is included** (immediate, shortTerm, projects)
+5. ✅ **finalNote section is included** (advantage, growthFocus, collegeGuidance, entranceExamStrategy)
+6. ✅ Each career cluster has evidence from ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
+7. ✅ Career clusters align with the student's stream (${assessmentData.stream})
+8. ✅ Entrance exams and college majors are specified for each cluster
+9. ✅ All 3 career clusters are provided with complete information
+10. ✅ Salary ranges are realistic for India (2025-2030)
+11. ✅ Preparation guidance is specific to 11th/12th grade students
+12. ✅ The response is personalized based on THEIR specific scores, not generic
 
-If any of these are missing, YOUR RESPONSE IS INCOMPLETE!`;
+**CRITICAL: If employability, knowledge, skillGap, roadmap, or finalNote sections are missing, YOUR RESPONSE IS INCOMPLETE AND INVALID!**
+
+**DO NOT TRUNCATE THE RESPONSE - Complete all sections before ending the JSON object!**`;
 }

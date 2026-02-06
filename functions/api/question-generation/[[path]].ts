@@ -10,9 +10,9 @@
  * - POST /career-assessment/generate-aptitude - Generate 50 aptitude questions
  * - POST /career-assessment/generate-knowledge - Generate 20 knowledge questions
  * - POST /generate - Generate course-specific assessment questions
- * - POST /generate/diagnostic - Generate 6 diagnostic screener questions
- * - POST /generate/adaptive - Generate 8-11 adaptive core questions
- * - POST /generate/stability - Generate 4-6 stability confirmation questions
+ * - POST /generate/diagnostic - Generate 8 diagnostic screener questions
+ * - POST /generate/adaptive - Generate adaptive core questions (dynamic count)
+ * - POST /generate/stability - Generate 6 stability confirmation questions
  * - POST /generate/single - Generate a single adaptive question
  */
 
@@ -70,16 +70,23 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
 
     // Career Assessment Endpoints
     if (path === '/career-assessment/generate-aptitude' && request.method === 'POST') {
+      console.log('🧠 ============================================');
+      console.log('🧠 ENDPOINT HIT: /career-assessment/generate-aptitude');
+      console.log('🧠 ============================================');
       try {
         const body = await request.json() as any;
+        console.log('📥 Request body:', JSON.stringify(body, null, 2));
         const { streamId, questionsPerCategory = 5, studentId, attemptId, gradeLevel } = body;
 
         if (!streamId) {
+          console.error('❌ Missing streamId in request');
           return jsonResponse({ error: 'Stream ID is required' }, 400);
         }
 
         const result = await generateAptitudeQuestions(env, streamId, questionsPerCategory, studentId, attemptId, gradeLevel);
-        return jsonResponse(result);
+        console.log(`✅ Aptitude generation complete: ${result?.length || 0} questions`);
+        // Wrap in {questions: [...]} format for frontend compatibility
+        return jsonResponse({ questions: result });
       } catch (error: any) {
         console.error('❌ Aptitude generation error:', error);
         return jsonResponse({ error: error.message || 'Failed to generate aptitude questions' }, 500);
@@ -96,16 +103,23 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     }
 
     if (path === '/career-assessment/generate-knowledge' && request.method === 'POST') {
+      console.log('🎓 ============================================');
+      console.log('🎓 ENDPOINT HIT: /career-assessment/generate-knowledge');
+      console.log('🎓 ============================================');
       try {
         const body = await request.json() as any;
+        console.log('📥 Request body:', JSON.stringify(body, null, 2));
         const { streamId, streamName, topics, questionCount = 20, studentId, attemptId, gradeLevel } = body;
 
         if (!streamId || !streamName || !topics) {
+          console.error('❌ Missing required fields:', { streamId, streamName, topics });
           return jsonResponse({ error: 'Stream ID, name, and topics are required' }, 400);
         }
 
         const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId, gradeLevel);
-        return jsonResponse(result);
+        console.log(`✅ Knowledge generation complete: ${result?.length || 0} questions`);
+        // Wrap in {questions: [...]} format for frontend compatibility
+        return jsonResponse({ questions: result });
       } catch (error: any) {
         console.error('❌ Knowledge generation error:', error);
         return jsonResponse({ error: error.message || 'Failed to generate knowledge questions' }, 500);

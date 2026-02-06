@@ -29,6 +29,7 @@ import Pagination from "../Pagination";
 import { FileTextIcon } from "lucide-react";
 import { uploadFile, validateFile, deleteFile, getDocumentUrl } from "../../../services/fileUploadService";
 import type { CollegeLessonPlan } from "../../../services/college/lessonPlanService";
+import toast from 'react-hot-toast';
 
 /* ==============================
    TYPES & INTERFACES (College-adapted)
@@ -1173,7 +1174,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
         });
 
         if (!validation.valid) {
-          alert(`${file.name}: ${validation.error}`);
+          toast.error(`${file.name}: ${validation.error}`);
           continue;
         }
 
@@ -1199,7 +1200,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
 
     } catch (error) {
       console.error('File preparation error:', error);
-      alert('Error preparing files. Please try again.');
+      toast.error('Error preparing files. Please try again.');
     } finally {
       setUploadingFiles(false);
       e.target.value = ""; // Reset input
@@ -1438,7 +1439,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
       setShowEditor(false);
     } catch (error: any) {
       console.error("Error saving lesson plan:", error);
-      alert("Error: " + (error.message || "Failed to save lesson plan"));
+      toast.error("Error: " + (error.message || "Failed to save lesson plan"));
     } finally {
       setSubmitting(false);
     }

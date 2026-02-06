@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { FeatureGate } from '../../../components/Subscription/FeatureGate';
 import { useCurriculum } from '../../../hooks/useCurriculum';
 import * as curriculumService from '../../../services/curriculumService';
@@ -84,7 +85,7 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error loading configuration:', error);
-      alert('Failed to load configuration data. Please check the console for details.');
+      toast.error('Failed to load configuration data. Please check the console for details.');
     }
   };
 
@@ -133,8 +134,9 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
           durationUnit: chapter.durationUnit,
         });
       }
+      toast.success('Chapter saved successfully');
     } catch (error: any) {
-      alert('Error saving chapter: ' + error.message);
+      toast.error('Error saving chapter: ' + error.message);
       throw error;
     }
   };
@@ -144,8 +146,9 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
     
     try {
       await deleteChapter(id);
+      toast.success('Chapter deleted successfully');
     } catch (error: any) {
-      alert('Error deleting chapter: ' + error.message);
+      toast.error('Error deleting chapter: ' + error.message);
       throw error;
     }
   };
@@ -169,8 +172,9 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
           assessmentMappings: outcome.assessmentMappings,
         });
       }
+      toast.success('Learning outcome saved successfully');
     } catch (error: any) {
-      alert('Error saving learning outcome: ' + error.message);
+      toast.error('Error saving learning outcome: ' + error.message);
       throw error;
     }
   };
@@ -180,8 +184,9 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
     
     try {
       await deleteLearningOutcome(id);
+      toast.success('Learning outcome deleted successfully');
     } catch (error: any) {
-      alert('Error deleting outcome: ' + error.message);
+      toast.error('Error deleting outcome: ' + error.message);
       throw error;
     }
   };

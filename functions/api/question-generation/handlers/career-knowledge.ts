@@ -1,5 +1,5 @@
 
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { PagesEnv } from '../../../../src/functions-lib/types';
 import {
     callOpenRouterWithRetry,
@@ -21,7 +21,18 @@ export async function generateKnowledgeQuestions(
     attemptId?: string,
     gradeLevel?: string
 ) {
-    const supabase = createSupabaseClient(env);
+    console.log('🎓 ============================================');
+    console.log('🎓 KNOWLEDGE QUESTION GENERATION STARTED');
+    console.log('🎓 ============================================');
+    console.log(`📋 Stream ID: ${streamId}`);
+    console.log(`📋 Stream Name: ${streamName}`);
+    console.log(`📋 Topics: ${Array.isArray(topics) ? topics.join(', ') : topics}`);
+    console.log(`📋 Question Count: ${questionCount}`);
+    console.log(`📋 Grade Level: ${gradeLevel || 'not specified'}`);
+    console.log(`📋 Student ID: ${studentId || 'not specified'}`);
+    console.log(`📋 Attempt ID: ${attemptId || 'not specified'}`);
+    
+    const supabase = createSupabaseAdminClient(env);
 
     console.log(`📝 Generating fresh knowledge questions in 2 batches for: ${streamName} (topics: ${Array.isArray(topics) ? topics.join(', ') : topics})`);
 
@@ -53,12 +64,16 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
         const systemPrompt = `You are an expert educational assessment creator. Generate EXACTLY ${totalQuestions} knowledge-based questions about ${streamName}. Generate ONLY valid JSON with no markdown.`;
 
         // Use OpenRouter with automatic retry and fallback
-        console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry for ${totalQuestions} ${streamName} questions`);
+        // Calculate token limit: ~150 tokens per question + 500 buffer
+        const estimatedTokens = totalQuestions * 150 + 500;
+        console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry for ${totalQuestions} ${streamName} questions (maxTokens: ${estimatedTokens})`);
 
         const jsonText = await callOpenRouterWithRetry(openRouterKey, [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
-        ]);
+        ], {
+            maxTokens: estimatedTokens
+        });
 
         const parsed = repairAndParseJSON(jsonText);
         const batchQuestions = parsed.questions || parsed;
@@ -72,6 +87,7 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
     }
 
     console.log(`✅ Generated ${allQuestions.length} total knowledge questions via AI`);
+    console.log('🎓 ============================================');
 
     const processedQuestions = allQuestions.map((q: any) => ({
         id: generateUUID(),
