@@ -16,6 +16,11 @@ import {
   API_CONFIG,
   callOpenRouterWithRetry
 } from '../../shared/ai-config';
+import { 
+  fetchJobMarketData, 
+  generateJobMarketSection, 
+  extractCareerCategories 
+} from '../services/job-market-data';
 
 interface RequestBody {
   assessmentData: AssessmentData;
@@ -366,13 +371,104 @@ async function analyzeAssessment(
   assessmentData: AssessmentData
 ): Promise<any> {
   const gradeLevel = assessmentData.gradeLevel || 'after12';
-  const prompt = buildAnalysisPrompt(assessmentData);
+  
+  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS WITH VALIDATION FALLBACK ===`);
+  console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
+  
+  // ============================================================================
+  // STEP 1: Fetch real-time job market data (NEW)
+  // ============================================================================
+  console.log('[ASSESSMENT] 📊 Fetching real-time Indian job market data...');
+  
+  // Extract preliminary RIASEC to determine relevant categories
+  // Calculate RIASEC scores from answers to get the actual profile
+  let preliminaryRiasec = 'RIA'; // Default fallback
+  
+  if (assessmentData.riasecAnswers) {
+    // Count scores for each RIASEC type
+    const riasecScores: Record<string, number> = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+    
+    Object.values(assessmentData.riasecAnswers).forEach((answer: any) => {
+      if (answer.categoryMapping && answer.answer) {
+        const answerStr = String(answer.answer);
+        const riasecType = answer.categoryMapping[answerStr];
+        if (riasecType && riasecScores[riasecType] !== undefined) {
+          riasecScores[riasecType] += 2; // Standard scoring
+        }
+      }
+    });
+    
+    // Get top 3 RIASEC types
+    const sortedTypes = Object.entries(riasecScores)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([type]) => type);
+    
+    preliminaryRiasec = sortedTypes.join('');
+    console.log('[ASSESSMENT] 📊 Calculated preliminary RIASEC:', preliminaryRiasec, 'from scores:', riasecScores);
+  }
+  
+  const aptitudeLevel = assessmentData.adaptiveAptitudeResults?.aptitudeLevel || 3;
+  
+  const categories = extractCareerCategories(
+    preliminaryRiasec,
+    aptitudeLevel,
+    []
+  );
+  
+  console.log('[ASSESSMENT] 🎯 Identified relevant career categories:', categories.join(', '));
+  
+  // Fetch job market data for these categories
+  const jobMarketData = await fetchJobMarketData(env, categories);
+  const jobMarketSection = generateJobMarketSection(jobMarketData);
+  
+  // DEBUG: Log what was actually fetched
+  console.log('[ASSESSMENT] 🔍 DEBUG - Job market data keys:', Object.keys(jobMarketData));
+  console.log('[ASSESSMENT] 🔍 DEBUG - Job market section length:', jobMarketSection?.length || 0);
+  if (jobMarketSection) {
+    console.log('[ASSESSMENT] 🔍 DEBUG - First 500 chars of job market section:');
+    console.log(jobMarketSection.substring(0, 500));
+  }
+  
+  if (jobMarketSection) {
+    console.log('[ASSESSMENT] ✅ Successfully fetched real-time job market data');
+    console.log('[ASSESSMENT] 📊 Categories with data:', Object.keys(jobMarketData).join(', '));
+    console.log('[ASSESSMENT] 🔒 Using ONLY dynamic data (hardcoded examples will be excluded)');
+  } else {
+    console.log('[ASSESSMENT] ⚠️ Job market fetch failed - will use fallback hardcoded data');
+  }
+  
+  // ============================================================================
+  // STEP 2: Build prompt with dynamic job data
+  // CRITICAL: If we have dynamic data, we EXCLUDE hardcoded examples to force AI to use it
+  // ============================================================================
+  const basePrompt = buildAnalysisPrompt(assessmentData);
+  
+  // If we have dynamic data, inject it and add a strong instruction to use ONLY that data
+  let prompt: string;
+  if (jobMarketSection) {
+    // Add strong instruction to use ONLY dynamic data
+    const dynamicOnlyInstruction = `
+⚠️ ⚠️ ⚠️ CRITICAL INSTRUCTION ⚠️ ⚠️ ⚠️
+
+You MUST use ONLY the real-time job market data provided above.
+DO NOT use any hardcoded salary examples or career tracks.
+The data above is current 2026 Indian market data - use it exclusively.
+
+If you use hardcoded examples instead of the real-time data above, your response will be REJECTED.
+
+⚠️ ⚠️ ⚠️ END CRITICAL INSTRUCTION ⚠️ ⚠️ ⚠️
+`;
+    prompt = jobMarketSection + '\n\n' + dynamicOnlyInstruction + '\n\n' + basePrompt;
+  } else {
+    // No dynamic data available, use full prompt with hardcoded examples
+    prompt = basePrompt;
+  }
+  
   const systemMessage = getSystemMessage(gradeLevel);
   const seed = generateSeed(assessmentData);
 
-  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS WITH VALIDATION FALLBACK ===`);
   console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
-  console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
   console.log(`[ASSESSMENT] Available models: ${ASSESSMENT_MODELS.length}`);
   console.log(`[ASSESSMENT] Models: ${ASSESSMENT_MODELS.join(', ')}`);
 
