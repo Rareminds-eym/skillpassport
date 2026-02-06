@@ -722,6 +722,7 @@ export const useAssessmentResults = () => {
                     }
                     // For college students, show degree level instead of stream
                     else if (derivedGradeLevel === 'college') {
+                        // Priority: program.name > program.code > course_name > branch_field
                         programName = studentData.programs?.name || studentData.programs?.code || studentData.course_name || studentData.branch_field || '—';
                         
                         // Determine degree level from program or grade
@@ -782,8 +783,9 @@ export const useAssessmentResults = () => {
 
                         console.log('📚 Derived stream from program:', derivedStream, 'from program:', programName);
                     }
-                    // Fallback: If we have branch_field or course_name, derive the stream
-                    else if (studentData.branch_field || studentData.course_name) {
+                    // Fallback: If we have course_name or branch_field, derive the stream
+                    else if (studentData.course_name || studentData.branch_field) {
+                        // Priority: course_name > branch_field (course_name is the primary field for custom programs)
                         programName = studentData.course_name || studentData.branch_field || '—';
                         const fieldText = programName.toLowerCase();
 
@@ -1746,9 +1748,35 @@ export const useAssessmentResults = () => {
             } else {
                 console.log('⚠️ No student context in attempt, building from studentInfo...');
                 // Fallback: Build from studentInfo that was fetched earlier
+                // Try multiple sources for program name with correct priority
+                // Priority: courseName (from studentInfo) > branchField > fetch from DB
+                let programName = studentInfo.courseName || studentInfo.branchField || null;
+                
+                // If still no program name, try to fetch from student record
+                if (!programName && attempt.student_id) {
+                    try {
+                        const { data: studentData } = await supabase
+                            .from('students')
+                            .select('course_name, branch_field, program:program_id(name, code)')
+                            .eq('id', attempt.student_id)
+                            .maybeSingle();
+                        
+                        if (studentData) {
+                            // Priority: program.name > program.code > course_name > branch_field
+                            programName = studentData.program?.name || 
+                                         studentData.program?.code || 
+                                         studentData.course_name ||
+                                         studentData.branch_field;
+                            console.log('📚 Fetched program name from student record:', programName);
+                        }
+                    } catch (err) {
+                        console.warn('Could not fetch program name:', err);
+                    }
+                }
+                
                 studentContext = {
                     rawGrade: studentInfo.grade || storedGradeLevel,
-                    programName: studentInfo.courseName || null,
+                    programName: programName,
                     programCode: null,
                     degreeLevel: extractDegreeLevel(studentInfo.grade || storedGradeLevel)
                 };

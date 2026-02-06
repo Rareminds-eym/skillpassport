@@ -620,7 +620,46 @@ const MainSettings = () => {
     
     setIsSaving(true);
     try {
-      await updateProfile(profileData);
+      // Merge custom institution fields into profileData before saving
+      const dataToSave = { ...profileData };
+      
+      // Custom program name → branch field (for assessment tests)
+      if (showCustomProgram && customProgramName) {
+        dataToSave.branch = customProgramName;
+        dataToSave.programId = null; // Clear FK to use manual entry
+      }
+      
+      // Custom college name → college field
+      if (showCustomCollege && customCollegeName) {
+        dataToSave.college = customCollegeName;
+        dataToSave.universityCollegeId = null;
+      }
+      
+      // Custom university name → university field
+      if (showCustomUniversity && customUniversityName) {
+        dataToSave.university = customUniversityName;
+        dataToSave.universityId = null;
+      }
+      
+      // Custom school name → college field (school uses same field)
+      if (showCustomSchool && customSchoolName) {
+        dataToSave.college = customSchoolName;
+        dataToSave.schoolId = null;
+      }
+      
+      // Custom semester → section field
+      if (showCustomSemester && customSemesterName) {
+        dataToSave.section = customSemesterName;
+        dataToSave.programSectionId = null;
+      }
+      
+      // Custom school class → section field
+      if (showCustomSchoolClass && customSchoolClassName) {
+        dataToSave.section = customSchoolClassName;
+        dataToSave.schoolClassId = null;
+      }
+      
+      await updateProfile(dataToSave);
       toast({
         title: "Success",
         description: "Profile updated successfully",
