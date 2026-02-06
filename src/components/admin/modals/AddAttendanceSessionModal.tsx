@@ -434,11 +434,18 @@ const AddAttendanceSessionModal = ({
 
           {/* Summary & Actions */}
           <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                <strong>Summary:</strong> {formData.subject} - {formData.faculty} • {formData.course} Sem {formData.semester} ({formData.section}) • {calculateDuration()}
+            <div className="flex flex-col gap-3">
+              {/* Summary Text */}
+              <div className="text-sm text-gray-600 break-words">
+                <strong>Summary:</strong>{' '}
+                {subjects.find(s => s.value === formData.subject)?.label || formData.subject} - {' '}
+                {faculty.find(f => f.value === formData.faculty)?.label || formData.faculty} • {' '}
+                {courses.find(c => c.value === formData.course)?.label || formData.course} Sem {formData.semester} ({formData.section}) • {' '}
+                {calculateDuration()}
               </div>
-              <div className="flex gap-3">
+              
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-end">
                 <button
                   onClick={onClose}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
@@ -459,7 +466,7 @@ const AddAttendanceSessionModal = ({
                 <button
                   onClick={onCreateAndStart}
                   disabled={validationErrors.length > 0}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     validationErrors.length > 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-green-600 text-white hover:bg-green-700'
