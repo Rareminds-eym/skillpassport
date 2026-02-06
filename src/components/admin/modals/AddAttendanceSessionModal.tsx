@@ -180,7 +180,8 @@ const AddAttendanceSessionModal = ({
                     <select
                       value={formData.course}
                       onChange={(e) => onFormChange("course", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!formData.department}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">Select Course</option>
                       {courses.map((course) => (
@@ -198,7 +199,8 @@ const AddAttendanceSessionModal = ({
                     <select
                       value={formData.semester}
                       onChange={(e) => onFormChange("semester", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!formData.course}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">Select Semester</option>
                       {semesters.map((sem) => (
@@ -234,7 +236,8 @@ const AddAttendanceSessionModal = ({
                     <select
                       value={formData.subject}
                       onChange={(e) => onFormChange("subject", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      disabled={!formData.semester}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value="">Select Subject</option>
                       {subjects.map((subj) => (

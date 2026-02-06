@@ -28,6 +28,10 @@ interface DashboardStats {
   totalFaculty: number;
   totalDepartments: number;
   placementRate: number;
+  studentsChange: number;
+  facultyChange: number;
+  departmentsChange: number;
+  placementRateChange: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -40,6 +44,10 @@ const Dashboard: React.FC = () => {
     totalFaculty: 0,
     totalDepartments: 0,
     placementRate: 0,
+    studentsChange: 0,
+    facultyChange: 0,
+    departmentsChange: 0,
+    placementRateChange: 0,
   });
 
   // Fetch real data from database
@@ -64,23 +72,63 @@ const Dashboard: React.FC = () => {
           return;
         }
 
-        // Fetch students count
+        // Calculate date ranges for comparison
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+        // Fetch current students count
         const { count: studentsCount } = await supabase
           .from('students')
           .select('*', { count: 'exact', head: true })
           .eq('college_id', collegeId);
 
-        // Fetch faculty count from college_lecturers
+        // Fetch students count from 30 days ago
+        const { count: studentsCountPrevious } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true })
+          .eq('college_id', collegeId)
+          .lte('created_at', thirtyDaysAgo.toISOString());
+
+        // Calculate students change percentage
+        const studentsChange = studentsCountPrevious && studentsCountPrevious > 0
+          ? Math.round(((studentsCount || 0) - studentsCountPrevious) / studentsCountPrevious * 100)
+          : 0;
+
+        // Fetch current faculty count from college_lecturers
         const { count: facultyCount } = await supabase
           .from('college_lecturers')
           .select('*', { count: 'exact', head: true })
           .eq('collegeId', collegeId);
 
-        // Fetch departments count
+        // Fetch faculty count from 30 days ago
+        const { count: facultyCountPrevious } = await supabase
+          .from('college_lecturers')
+          .select('*', { count: 'exact', head: true })
+          .eq('collegeId', collegeId)
+          .lte('created_at', thirtyDaysAgo.toISOString());
+
+        // Calculate faculty change percentage
+        const facultyChange = facultyCountPrevious && facultyCountPrevious > 0
+          ? Math.round(((facultyCount || 0) - facultyCountPrevious) / facultyCountPrevious * 100)
+          : 0;
+
+        // Fetch current departments count
         const { count: departmentsCount } = await supabase
           .from('departments')
           .select('*', { count: 'exact', head: true })
           .eq('college_id', collegeId);
+
+        // Fetch departments count from 30 days ago
+        const { count: departmentsCountPrevious } = await supabase
+          .from('departments')
+          .select('*', { count: 'exact', head: true })
+          .eq('college_id', collegeId)
+          .lte('created_at', thirtyDaysAgo.toISOString());
+
+        // Calculate departments change percentage
+        const departmentsChange = departmentsCountPrevious && departmentsCountPrevious > 0
+          ? Math.round(((departmentsCount || 0) - departmentsCountPrevious) / departmentsCountPrevious * 100)
+          : 0;
 
         // Calculate placement rate using the same logic as placement management
         // Filter by students from this college
@@ -92,8 +140,10 @@ const Dashboard: React.FC = () => {
         const studentIds = collegeStudents?.map(s => s.id) || [];
         
         let totalPlaced = 0;
+        let totalPlacedPrevious = 0;
+        
         if (studentIds.length > 0) {
-          // Count unique students placed (not total offers)
+          // Count unique students placed (not total offers) - current
           const { data: placedStudents } = await supabase
             .from('applied_jobs')
             .select('student_id')
@@ -102,10 +152,30 @@ const Dashboard: React.FC = () => {
           
           const uniqueStudentIds = new Set(placedStudents?.map(p => p.student_id) || []);
           totalPlaced = uniqueStudentIds.size;
+
+          // Count unique students placed 30 days ago
+          const { data: placedStudentsPrevious } = await supabase
+            .from('applied_jobs')
+            .select('student_id')
+            .eq('application_status', 'accepted')
+            .in('student_id', studentIds)
+            .lte('updated_at', thirtyDaysAgo.toISOString());
+          
+          const uniqueStudentIdsPrevious = new Set(placedStudentsPrevious?.map(p => p.student_id) || []);
+          totalPlacedPrevious = uniqueStudentIdsPrevious.size;
         }
 
         const placementRate = studentsCount && studentsCount > 0 
           ? Math.round(((totalPlaced || 0) / studentsCount) * 100 * 10) / 10 // Round to 1 decimal place
+          : 0;
+
+        const placementRatePrevious = studentsCountPrevious && studentsCountPrevious > 0
+          ? Math.round(((totalPlacedPrevious || 0) / studentsCountPrevious) * 100 * 10) / 10
+          : 0;
+
+        // Calculate placement rate change (absolute difference, not percentage)
+        const placementRateChange = placementRatePrevious > 0
+          ? Math.round((placementRate - placementRatePrevious) * 10) / 10
           : 0;
 
         setStats({
@@ -113,6 +183,10 @@ const Dashboard: React.FC = () => {
           totalFaculty: facultyCount || 0,
           totalDepartments: departmentsCount || 0,
           placementRate: placementRate,
+          studentsChange: studentsChange,
+          facultyChange: facultyChange,
+          departmentsChange: departmentsChange,
+          placementRateChange: placementRateChange,
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -129,7 +203,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Total Students",
       value: loading ? "..." : stats.totalStudents.toLocaleString(),
-      change: 0,
+      change: stats.studentsChange,
       changeLabel: "enrolled",
       icon: <Users className="h-6 w-6" />,
       color: "blue" as const,
@@ -137,7 +211,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Total Faculty",
       value: loading ? "..." : stats.totalFaculty.toLocaleString(),
-      change: 0,
+      change: stats.facultyChange,
       changeLabel: "active members",
       icon: <Award className="h-6 w-6" />,
       color: "purple" as const,
@@ -145,7 +219,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Departments",
       value: loading ? "..." : stats.totalDepartments.toLocaleString(),
-      change: 0,
+      change: stats.departmentsChange,
       changeLabel: "across programs",
       icon: <Building2 className="h-6 w-6" />,
       color: "green" as const,
@@ -153,7 +227,7 @@ const Dashboard: React.FC = () => {
     {
       title: "Placement Rate",
       value: loading ? "..." : `${stats.placementRate}%`,
-      change: 0,
+      change: stats.placementRateChange,
       changeLabel: "this academic year",
       icon: <Briefcase className="h-6 w-6" />,
       color: "yellow" as const,
