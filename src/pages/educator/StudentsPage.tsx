@@ -110,6 +110,10 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
   onToggleSelect?: (studentId: string) => void;
   educatorType?: 'school' | 'college' | null;
 }) => {
+  // Determine what to show based on student type
+  const displayInfo = student.school_id 
+    ? `${student.school_class_name || 'N/A'} • Grade ${student.school_class_grade || student.grade || 'N/A'} • Section ${student.school_class_section || student.section || 'N/A'}`
+    : student.dept;
 
   return (
     <div 
@@ -150,7 +154,7 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
         <div className="flex items-start justify-between mb-3 pr-8">
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-gray-900 truncate">{student.name}</h3>
-            <p className="text-sm text-gray-500 truncate">{student.dept}</p>
+            <p className="text-sm text-gray-500 truncate">{displayInfo}</p>
             <p className="text-xs text-gray-400 truncate">{student.college} • {student.location}</p>
           </div>
           <div className="flex flex-col items-end ml-3 flex-shrink-0">
@@ -761,7 +765,13 @@ const StudentsPage = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedStudents.map((student) => (
+                    {paginatedStudents.map((student) => {
+                      // Determine what to show based on student type
+                      const displayInfo = student.school_id 
+                        ? `${student.school_class_name || 'N/A'} • Grade ${student.school_class_grade || student.grade || 'N/A'} • Section ${student.school_class_section || student.section || 'N/A'}`
+                        : student.dept;
+                      
+                      return (
                       <tr key={student.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -770,7 +780,7 @@ const StudentsPage = () => {
                                 {student.name}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {student.dept}
+                                {displayInfo}
                               </div>
                               <BadgeComponent badges={student.badges} />
                             </div>
@@ -843,7 +853,7 @@ const StudentsPage = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>

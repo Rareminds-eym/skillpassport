@@ -3,16 +3,21 @@ import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight,
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { useAuth } from '../../context/AuthContext';
 
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
   const { student, isLoading } = usePortfolio();
+  const { role } = useAuth();
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Check if user is admin
+  const isAdminViewing = role && (role.includes('admin') || role === 'admin');
 
   // Function to get appropriate icon for hobby
   const getHobbyIcon = (hobby: string) => {
@@ -589,6 +594,18 @@ const PassportPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
+      {/* Back Button - Only show for admins */}
+      {isAdminViewing && (
+        <div className="fixed top-4 left-4 z-50">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-all duration-200 backdrop-blur-sm bg-opacity-90"
+          >
+            <span className="text-sm font-medium">Back</span>
+          </button>
+        </div>
+      )}
+
       {/* Passport Book */}
       <div className="flex items-center justify-center min-h-screen py-8 px-4 md:px-8">
         <div 

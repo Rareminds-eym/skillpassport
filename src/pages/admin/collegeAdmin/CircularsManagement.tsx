@@ -108,6 +108,13 @@ const CircularsManagement: React.FC = () => {
     loadCirculars();
   }, [searchTerm, filterStatus, filterPriority]);
 
+  // Real-time validation when form data changes
+  useEffect(() => {
+    if (showCreateModal && (formData.title || formData.content || formData.publish_date || formData.expire_date)) {
+      validateForm();
+    }
+  }, [formData.title, formData.content, formData.publish_date, formData.expire_date, showCreateModal]);
+
   // Load circulars from database
   const loadCirculars = async () => {
     setLoading(true);
@@ -158,8 +165,21 @@ const CircularsManagement: React.FC = () => {
       errors.publish_date = "Publish date is required";
     }
     
-    if (formData.expire_date && new Date(formData.expire_date) < new Date(formData.publish_date)) {
-      errors.expire_date = "Expiry date must be after publish date";
+    // Date validation - prevent past dates
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    if (formData.publish_date && formData.publish_date < currentDate) {
+      errors.publish_date = "Publish date cannot be in the past";
+    }
+    
+    if (formData.expire_date) {
+      if (formData.expire_date < currentDate) {
+        errors.expire_date = "Expiry date cannot be in the past";
+      }
+      
+      if (formData.publish_date && formData.expire_date <= formData.publish_date) {
+        errors.expire_date = "Expiry date must be after publish date";
+      }
     }
     
     setFormErrors(errors);
@@ -900,9 +920,10 @@ const CircularsManagement: React.FC = () => {
                   <input
                     type="date"
                     value={formData.publish_date}
+                    min={new Date().toISOString().split('T')[0]} // Prevent selecting past dates
                     onChange={(e) => setFormData({...formData, publish_date: e.target.value})}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      formErrors.publish_date ? "border-red-300" : "border-gray-300"
+                      formErrors.publish_date ? "border-red-300 bg-red-50" : "border-gray-300"
                     }`}
                   />
                   {formErrors.publish_date && (
@@ -916,16 +937,45 @@ const CircularsManagement: React.FC = () => {
                   <input
                     type="date"
                     value={formData.expire_date}
+                    min={formData.publish_date || new Date().toISOString().split('T')[0]} // Min is publish date or current date
                     onChange={(e) => setFormData({...formData, expire_date: e.target.value})}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      formErrors.expire_date ? "border-red-300" : "border-gray-300"
+                      formErrors.expire_date ? "border-red-300 bg-red-50" : "border-gray-300"
                     }`}
                   />
                   {formErrors.expire_date && (
                     <p className="text-red-600 text-sm mt-1">{formErrors.expire_date}</p>
                   )}
+                  <p className="text-xs text-gray-500 mt-1">
+                    Optional. Leave empty for no expiry date.
+                  </p>
                 </div>
               </div>
+
+              {/* Validation Errors Display */}
+              {Object.keys(formErrors).length > 0 && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="text-sm font-medium text-red-800">
+                        Please fix the following errors:
+                      </h3>
+                      <div className="mt-2 text-sm text-red-700">
+                        <ul className="list-disc pl-5 space-y-1">
+                          {Object.entries(formErrors).map(([field, error]) => (
+                            <li key={field}>{error}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Attachment Section */}
               <div>
@@ -1117,8 +1167,12 @@ const CircularsManagement: React.FC = () => {
               </button>
               <button
                 onClick={handleCreateCircular}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={loading || uploadingFile}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  loading || uploadingFile || Object.keys(formErrors).length > 0
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+                disabled={loading || uploadingFile || Object.keys(formErrors).length > 0}
               >
                 {loading ? (
                   <>

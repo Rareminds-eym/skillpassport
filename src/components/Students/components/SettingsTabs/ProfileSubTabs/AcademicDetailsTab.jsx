@@ -9,7 +9,9 @@ const AcademicDetailsTab = ({
   educationData, 
   setShowEducationModal,
   onToggleEducationEnabled,
-  onDeleteEducation
+  onDeleteEducation,
+  handleSaveProfile,
+  isSaving, 
 }) => {
   return (
     <div>
@@ -278,6 +280,28 @@ const AcademicDetailsTab = ({
               ))}
           </div>
         )}
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
+        <Button
+          onClick={handleSaveProfile}
+          disabled={isSaving}
+          className={`
+            inline-flex items-center gap-2
+            bg-blue-600 hover:bg-blue-700 active:bg-blue-800
+            text-white font-medium
+            px-6 py-2.5 rounded-lg
+            shadow-[0_2px_6px_rgba(0,0,0,0.05)]
+            hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]
+            active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]
+            transition-all duration-200 ease-in-out
+            disabled:opacity-60 disabled:cursor-not-allowed
+          `}
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   );
