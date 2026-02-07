@@ -179,8 +179,8 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
     console.log('🎓 ============================================');
 
     const processedQuestions = uniqueQuestions.map((q: any) => ({
-        id: generateUUID(),
         ...q,
+        id: generateUUID(), // Override any existing id from AI
         stream_id: streamId,
         stream_name: streamName,
         created_at: new Date().toISOString()
