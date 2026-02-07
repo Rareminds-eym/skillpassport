@@ -82,10 +82,10 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         }
 
         // Extract recommendations from assessment results
-        const skillGap = result.skill_gap || {};
-        const careerFit = result.career_fit || {};
-        const roadmap = result.roadmap || {};
-        const geminiResults = result.gemini_results || {};
+        const skillGap = result.skill_gap || null;
+        const careerFit = result.career_fit || null;
+        const roadmap = result.roadmap || null;
+        const geminiResults = result.gemini_results || null;
 
         // Build comprehensive recommendations
         const processedRecommendations = {
@@ -102,8 +102,8 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
           },
           
           // Career clusters (High fit careers)
-          careerClusters: careerFit.clusters?.filter(c => c.fit === 'High') || 
-                         geminiResults.careerFit?.clusters?.filter(c => c.fit === 'High') || [],
+          careerClusters: careerFit?.clusters?.filter(c => c.fit === 'High') || 
+                         geminiResults?.careerFit?.clusters?.filter(c => c.fit === 'High') || [],
           
           // Priority skills to develop
           prioritySkills: [
