@@ -133,6 +133,7 @@ interface StudentRow {
   resumeUrl?: string
   profile_picture?: string
   profilePicture?: string
+  dateOfBirth?: string
   contactNumber?: string
   created_at?: string
   createdAt?: string
@@ -141,6 +142,7 @@ interface StudentRow {
   imported_at?: string
   school_id?: string
   college_id?: string
+  school_class_id?: string
   schools?: {
     id: string
     name: string
@@ -155,6 +157,19 @@ interface StudentRow {
     city?: string
     state?: string
     country?: string
+  }[]
+  school_classes?: {
+    id: string
+    name: string
+    grade: string
+    section: string
+    academic_year: string
+  } | {
+    id: string
+    name: string
+    grade: string
+    section: string
+    academic_year: string
   }[]
   colleges?: {
     id: string
@@ -266,6 +281,9 @@ export interface UICandidate {
   college_id?: string
   college_school_name?: string // Original field
   school_name?: string // Proper school name from join
+  school_class_name?: string // School class name
+  school_class_grade?: string // School class grade
+  school_class_section?: string // School class section
   approval_status?: string // Add this field
   hobbies?: string[]
   languages?: string[]
@@ -288,6 +306,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
   // Get school name from joined data or fallback to college_school_name
   const schoolData = Array.isArray(row.schools) ? row.schools[0] : row.schools
   const collegeData = Array.isArray(row.colleges) ? row.colleges[0] : row.colleges
+  const schoolClassData = Array.isArray(row.school_classes) ? row.school_classes[0] : row.school_classes
   const schoolName = schoolData?.name || row.college_school_name
   const collegeName = collegeData?.name || row.college_school_name || row.university
 
@@ -341,7 +360,7 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     age: row.age,
     gender: row.gender,
     bloodGroup: row.bloodGroup,
-    date_of_birth: row.date_of_birth,
+    date_of_birth: row.date_of_birth || row.dateOfBirth,
     bio: row.bio,
     address: row.address,
     city: row.city,
@@ -377,6 +396,9 @@ function mapToUICandidate(row: StudentRow): UICandidate {
     college_id: row.college_id,
     college_school_name: row.college_school_name, // Keep original field
     school_name: schoolName, // Add proper school name
+    school_class_name: schoolClassData?.name, // Add school class name
+    school_class_grade: schoolClassData?.grade, // Add school class grade
+    school_class_section: schoolClassData?.section, // Add school class section
     approval_status: row.approval_status, // Add this field
     hobbies: row.hobbies,
     languages: row.languages,
@@ -476,6 +498,7 @@ export function useStudents(options?: UseStudentsOptions) {
           resumeUrl,
           profilePicture,
           contactNumber,
+          dateOfBirth,
           created_at,
           createdAt,
           updated_at,
@@ -483,6 +506,7 @@ export function useStudents(options?: UseStudentsOptions) {
           imported_at,
           school_id,
           college_id,
+          school_class_id,
           grade,
           section,
           roll_number,
@@ -502,6 +526,13 @@ export function useStudents(options?: UseStudentsOptions) {
           quota,
           metadata,
           notification_settings,
+          school_classes:school_class_id(
+            id,
+            name,
+            grade,
+            section,
+            academic_year
+          ),
           skills!skills_student_id_fkey(
             id,
             name,
