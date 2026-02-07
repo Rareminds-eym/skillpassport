@@ -16,6 +16,10 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useStudentSettings } from "../../../../hooks/useStudentSettings";
 import { useStudentDataByEmail } from "../../../../hooks/useStudentDataByEmail";
 import { useStudentCertificates } from "../../../../hooks/useStudentCertificates";
+import { useStudentProjects } from "../../../../hooks/useStudentProjects";
+import { useStudentExperience } from "../../../../hooks/useStudentExperience";
+import { useStudentEducation } from "../../../../hooks/useStudentEducation";
+import { useStudentTechnicalSkills, useStudentSoftSkills } from "../../../../hooks/useStudentSkills";
 import { useInstitutions } from "../../../../hooks/useInstitutions";
 import { SubscriptionSettingsSection } from "../../../Subscription/SubscriptionSettingsSection";
 import { 
@@ -78,6 +82,46 @@ const MainSettings = () => {
     refresh: refreshCertificates
   } = useStudentCertificates(studentId, !!studentId);
 
+  // Fetch projects from dedicated table
+  const {
+    projects: tableProjects,
+    loading: projectsLoading,
+    error: projectsError,
+    refresh: refreshProjects
+  } = useStudentProjects(studentId, !!studentId);
+
+  // Fetch experience from dedicated table
+  const {
+    experience: tableExperience,
+    loading: experienceLoading,
+    error: experienceError,
+    refresh: refreshExperience
+  } = useStudentExperience(studentId, !!studentId);
+
+  // Fetch education from dedicated table
+  const {
+    education: tableEducation,
+    loading: educationTableLoading,
+    error: educationTableError,
+    refresh: refreshEducation
+  } = useStudentEducation(studentId, !!studentId);
+
+  // Fetch technical skills from dedicated table
+  const {
+    skills: tableTechnicalSkills,
+    loading: technicalSkillsLoading,
+    error: technicalSkillsError,
+    refresh: refreshTechnicalSkills
+  } = useStudentTechnicalSkills(studentId, !!studentId);
+
+  // Fetch soft skills from dedicated table
+  const {
+    skills: tableSoftSkills,
+    loading: softSkillsLoading,
+    error: softSkillsError,
+    refresh: refreshSoftSkills
+  } = useStudentSoftSkills(studentId, !!studentId);
+
   // Setup message notifications with hot-toast
   useStudentMessageNotifications({
     studentId,
@@ -114,18 +158,37 @@ const MainSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
-  // Education management state - now using real data
-  const educationData = studentDataWithEducation?.education || [];
+  // Education management state - now using real data from dedicated table
+  const educationData = Array.isArray(tableEducation) && tableEducation.length > 0 
+    ? tableEducation 
+    : studentDataWithEducation?.education || [];
+  
+  // Debug: Log education data source
+  console.log('🔍 MainSettings - Education data source:', {
+    tableEducationLength: tableEducation?.length || 0,
+    tableEducation: tableEducation,
+    fallbackLength: (studentDataWithEducation?.education || []).length,
+    usingTableData: Array.isArray(tableEducation) && tableEducation.length > 0,
+    finalEducationData: educationData
+  });
+  
   const [showEducationModal, setShowEducationModal] = useState(false);
 
   // Profile sections data - now using real data from studentDataWithEducation
-  const softSkillsData = studentDataWithEducation?.softSkills || [];
+  const softSkillsData = Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0 
+    ? tableSoftSkills 
+    : studentDataWithEducation?.softSkills || [];
   const [showSoftSkillsModal, setShowSoftSkillsModal] = useState(false);
   
-  const technicalSkillsData = studentDataWithEducation?.technicalSkills || [];
+  const technicalSkillsData = Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0 
+    ? tableTechnicalSkills 
+    : studentDataWithEducation?.technicalSkills || [];
   const [showTechnicalSkillsModal, setShowTechnicalSkillsModal] = useState(false);
   
-  const experienceData = studentDataWithEducation?.experience || [];
+  // Use experience from dedicated table, fallback to profile data
+  const experienceData = Array.isArray(tableExperience) && tableExperience.length > 0 
+    ? tableExperience 
+    : studentDataWithEducation?.experience || [];
   const [showExperienceModal, setShowExperienceModal] = useState(false);
   
   // Use certificates from dedicated table, fallback to profile data
@@ -134,7 +197,10 @@ const MainSettings = () => {
     : studentDataWithEducation?.certificates || [];
   const [showCertificatesModal, setShowCertificatesModal] = useState(false);
   
-  const projectsData = studentDataWithEducation?.projects || [];
+  // Use projects from dedicated table, fallback to profile data
+  const projectsData = Array.isArray(tableProjects) && tableProjects.length > 0 
+    ? tableProjects 
+    : studentDataWithEducation?.projects || [];
   const [showProjectsModal, setShowProjectsModal] = useState(false);
 
   // Resume parser state
@@ -403,17 +469,31 @@ const MainSettings = () => {
 
   // Education management functions
   const handleEducationSave = async (educationList) => {
-    setIsSaving(true);
-
-    const result = await safeSave(
-      () => updateEducation(educationList),
-      {
-        section: 'academic',
-        action: 'update_education',
-        data: educationList,
-        toast,
-        onSuccess: () => {
-          setShowEducationModal(false);
+    try {
+      setIsSaving(true);
+      
+      console.log('💾 MainSettings: Saving education list:', educationList);
+      
+      const result = await updateEducation(educationList);
+      
+      console.log('✅ MainSettings: Education save result:', result);
+      
+      if (result.success) {
+        // Refresh education data from table to get updated versioning fields
+        if (refreshEducation && typeof refreshEducation === 'function') {
+          console.log('🔄 MainSettings: Refreshing education data...');
+          await refreshEducation();
+          console.log('✅ MainSettings: Education data refreshed');
+        }
+        
+        setShowEducationModal(false);
+        
+        toast({
+          title: "Success",
+          description: "Education updated successfully",
+        });
+        
+        try {
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
             refreshRecentUpdates().catch(err => 
               console.warn('Could not refresh recent updates:', err)
@@ -429,18 +509,25 @@ const MainSettings = () => {
 
   // Soft Skills management functions
   const handleSoftSkillsSave = async (skillsList) => {
-    setIsSaving(true);
-
-    const result = await safeSave(
-      () => updateSoftSkills(skillsList),
-      {
-        section: 'skills',
-        action: 'update_soft_skills',
-        data: skillsList,
-        toast,
-        onSuccess: () => {
-          setShowSoftSkillsModal(false);
-        },
+    try {
+      setIsSaving(true);
+      
+      const result = await updateSoftSkills(skillsList);
+      
+      if (result.success) {
+        setShowSoftSkillsModal(false);
+        
+        // Refresh soft skills data from table to get updated versioning fields
+        if (refreshSoftSkills && typeof refreshSoftSkills === 'function') {
+          await refreshSoftSkills();
+        }
+        
+        toast({
+          title: "Success",
+          description: "Soft skills updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update soft skills');
       }
     );
 
@@ -450,23 +537,34 @@ const MainSettings = () => {
 
   // Technical Skills management functions
   const handleTechnicalSkillsSave = async (skillsList) => {
-    setIsSaving(true);
-    
-    const skillsWithType = skillsList.map(skill => ({
-      ...skill,
-      type: "technical"
-    }));
-
-    const result = await safeSave(
-      () => updateSkills(skillsWithType),
-      {
-        section: 'skills',
-        action: 'update_technical_skills',
-        data: skillsWithType,
-        toast,
-        onSuccess: () => {
-          setShowTechnicalSkillsModal(false);
-        },
+    try {
+      setIsSaving(true);
+      
+      // Ensure all skills have type: "technical" when coming from Technical Skills (matching Dashboard)
+      const skillsWithType = skillsList.map(skill => ({
+        ...skill,
+        type: "technical" // Force technical type for skills from Technical Skills
+      }));
+      
+      console.log('🔧 Settings: Technical skills data being saved:', skillsWithType);
+      
+      // Use updateSkills (same as Dashboard) instead of updateTechnicalSkills
+      const result = await updateSkills(skillsWithType);
+      
+      if (result.success) {
+        setShowTechnicalSkillsModal(false);
+        
+        // Refresh technical skills data from table to get updated versioning fields
+        if (refreshTechnicalSkills && typeof refreshTechnicalSkills === 'function') {
+          await refreshTechnicalSkills();
+        }
+        
+        toast({
+          title: "Success",
+          description: "Technical skills updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update technical skills');
       }
     );
 
@@ -476,18 +574,31 @@ const MainSettings = () => {
 
   // Experience management functions
   const handleExperienceSave = async (experienceList) => {
-    setIsSaving(true);
-
-    const result = await safeSave(
-      () => updateExperience(experienceList),
-      {
-        section: 'experience',
-        action: 'update_experience',
-        data: experienceList,
-        toast,
-        onSuccess: () => {
-          setShowExperienceModal(false);
-        },
+    try {
+      setIsSaving(true);
+      
+      console.log('💾 MainSettings: Saving experience list:', experienceList);
+      
+      const result = await updateExperience(experienceList);
+      
+      console.log('✅ MainSettings: Experience save result:', result);
+      
+      if (result.success) {
+        // Refresh experience from table
+        if (refreshExperience) {
+          console.log('🔄 MainSettings: Refreshing experience data...');
+          await refreshExperience();
+          console.log('✅ MainSettings: Experience data refreshed');
+        }
+        
+        setShowExperienceModal(false);
+        
+        toast({
+          title: "Success",
+          description: "Experience updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update experience');
       }
     );
 
@@ -521,23 +632,192 @@ const MainSettings = () => {
 
   // Projects management functions
   const handleProjectsSave = async (projectsList) => {
-    setIsSaving(true);
-
-    const result = await safeSave(
-      () => updateProjects(projectsList),
-      {
-        section: 'projects',
-        action: 'update_projects',
-        data: projectsList,
-        toast,
-        onSuccess: () => {
-          setShowProjectsModal(false);
-        },
+    try {
+      setIsSaving(true);
+      
+      const result = await updateProjects(projectsList);
+      
+      if (result.success) {
+        setShowProjectsModal(false);
+        
+        // Refresh projects from table
+        if (refreshProjects) {
+          refreshProjects();
+        }
+        
+        toast({
+          title: "Success",
+          description: "Projects updated successfully",
+        });
+      } else {
+        throw new Error(result.error || 'Failed to update projects');
       }
     );
 
     setIsSaving(false);
     return result;
+  };
+
+  // Technical Skills toggle enabled handler
+  const handleToggleTechnicalSkillEnabled = async (index) => {
+    const skill = tableTechnicalSkills[index];
+    if (!skill) return;
+    
+    const newState = !skill.enabled;
+    
+    // Don't allow hiding/showing items that are pending verification or approval
+    if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
+      toast({ 
+        title: "Cannot Hide/Show", 
+        description: "You cannot hide or show skills that are pending verification or approval.",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
+    try {
+      // Import supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('skills')
+        .update({ enabled: newState })
+        .eq('id', skill.id);
+      
+      if (error) throw error;
+      
+      // Refresh technical skills to get updated data
+      if (refreshTechnicalSkills) {
+        await refreshTechnicalSkills();
+      }
+      
+      toast({ 
+        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+        description: `Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error toggling technical skill visibility:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to update visibility. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // Soft Skills toggle enabled handler
+  const handleToggleSoftSkillEnabled = async (index) => {
+    const skill = tableSoftSkills[index];
+    if (!skill) return;
+    
+    const newState = !skill.enabled;
+    
+    // Don't allow hiding/showing items that are pending verification or approval
+    if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
+      toast({ 
+        title: "Cannot Hide/Show", 
+        description: "You cannot hide or show skills that are pending verification or approval.",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
+    try {
+      // Import supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('skills')
+        .update({ enabled: newState })
+        .eq('id', skill.id);
+      
+      if (error) throw error;
+      
+      // Refresh soft skills to get updated data
+      if (refreshSoftSkills) {
+        await refreshSoftSkills();
+      }
+      
+      toast({ 
+        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+        description: `Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error toggling soft skill visibility:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to update visibility. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // General profile save handler - validates and saves all profile data
+  const handleSaveProfile = async () => {
+    // Validate Aadhar number before saving (only if it has a value and is not empty)
+    if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
+      if (profileData.aadharNumber.length !== 12) {
+        toast({
+          title: "Validation Error",
+          description: "Aadhar number must be exactly 12 digits",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) {
+        toast({
+          title: "Validation Error",
+          description: "Aadhar number cannot start with 0 or 1",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile(profileData);
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: profileData }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Tab-specific save handlers - only save relevant fields for each tab
@@ -772,6 +1052,118 @@ const MainSettings = () => {
 
     setIsSaving(false);
     return result;
+  };
+
+  // Institution Details Tab - save institution-related fields
+  const handleSaveInstitutionDetails = async () => {
+    setIsSaving(true);
+    try {
+      const dataToSave = { ...profileData };
+      
+      // Custom program name → branch field (for assessment tests)
+      if (showCustomProgram && customProgramName) {
+        dataToSave.branch = customProgramName;
+        dataToSave.programId = null;
+      }
+      
+      // Custom college name → college field
+      if (showCustomCollege && customCollegeName) {
+        dataToSave.college = customCollegeName;
+        dataToSave.universityCollegeId = null;
+      }
+      
+      // Custom university name → university field
+      if (showCustomUniversity && customUniversityName) {
+        dataToSave.university = customUniversityName;
+        dataToSave.universityId = null;
+      }
+      
+      // Custom school name → college field (school uses same field)
+      if (showCustomSchool && customSchoolName) {
+        dataToSave.college = customSchoolName;
+        dataToSave.schoolId = null;
+      }
+      
+      // Custom semester → section field
+      if (showCustomSemester && customSemesterName) {
+        dataToSave.section = customSemesterName;
+        dataToSave.programSectionId = null;
+      }
+      
+      // Custom school class → section field
+      if (showCustomSchoolClass && customSchoolClassName) {
+        dataToSave.section = customSchoolClassName;
+        dataToSave.schoolClassId = null;
+      }
+      
+      await updateProfile(dataToSave);
+      toast({
+        title: "Success",
+        description: "Institution details updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: dataToSave }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating institution details:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update institution details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Academic Details Tab - save academic-related fields
+  const handleSaveAcademicDetails = async () => {
+    setIsSaving(true);
+    try {
+      const academicFields = {
+        rollNumber: profileData.rollNumber,
+        registrationNumber: profileData.registrationNumber,
+        yearOfStudy: profileData.yearOfStudy,
+        cgpa: profileData.cgpa,
+        percentage: profileData.percentage,
+      };
+      
+      await updateProfile(academicFields);
+      toast({
+        title: "Success",
+        description: "Academic details updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: academicFields }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating academic details:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update academic details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Guardian Info Tab - save guardian information
@@ -1261,6 +1653,9 @@ const MainSettings = () => {
                 projectsData={projectsData}
                 setShowProjectsModal={setShowProjectsModal}
                 studentData={studentData}
+                // Toggle handlers for skills
+                onToggleTechnicalSkillEnabled={handleToggleTechnicalSkillEnabled}
+                onToggleSoftSkillEnabled={handleToggleSoftSkillEnabled}
               />
             )}
 
@@ -1301,79 +1696,79 @@ const MainSettings = () => {
             )}
           </div>
         </div>
+
+        {/* Education Edit Modal */}
+        {showEducationModal && (
+          <EducationEditModal
+            isOpen={showEducationModal}
+            onClose={() => setShowEducationModal(false)}
+            data={educationData}
+            onSave={handleEducationSave}
+          />
+        )}
+
+        {/* Soft Skills Edit Modal */}
+        {showSoftSkillsModal && (
+          <SoftSkillsEditModal
+            isOpen={showSoftSkillsModal}
+            onClose={() => setShowSoftSkillsModal(false)}
+            data={softSkillsData}
+            onSave={handleSoftSkillsSave}
+          />
+        )}
+
+        {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
+        {showTechnicalSkillsModal && (
+          <SkillsEditModal
+            isOpen={showTechnicalSkillsModal}
+            onClose={() => setShowTechnicalSkillsModal(false)}
+            data={technicalSkillsData || []}
+            onSave={handleTechnicalSkillsSave}
+            title="Skills"
+          />
+        )}
+
+        {/* Experience Edit Modal */}
+        {showExperienceModal && (
+          <ExperienceEditModal
+            isOpen={showExperienceModal}
+            onClose={() => setShowExperienceModal(false)}
+            data={experienceData}
+            onSave={handleExperienceSave}
+          />
+        )}
+
+        {/* Certificates Edit Modal */}
+        {showCertificatesModal && (
+          <CertificatesEditModal
+            isOpen={showCertificatesModal}
+            onClose={() => setShowCertificatesModal(false)}
+            data={certificatesData}
+            onSave={handleCertificatesSave}
+          />
+        )}
+
+        {/* Projects Edit Modal */}
+        {showProjectsModal && (
+          <ProjectsEditModal
+            isOpen={showProjectsModal}
+            onClose={() => setShowProjectsModal(false)}
+            data={projectsData}
+            onSave={handleProjectsSave}
+          />
+        )}
+
+        {/* Resume Parser Modal */}
+        {showResumeParser && (
+          <ResumeParser
+            onDataExtracted={handleResumeDataExtracted}
+            onClose={() => setShowResumeParser(false)}
+            userEmail={userEmail}
+            studentData={studentData}
+            user={user}
+          />
+        )}
       </div>
-
-      {/* Education Edit Modal */}
-      {showEducationModal && (
-        <EducationEditModal
-          isOpen={showEducationModal}
-          onClose={() => setShowEducationModal(false)}
-          data={educationData}
-          onSave={handleEducationSave}
-        />
-      )}
-
-      {/* Soft Skills Edit Modal */}
-      {showSoftSkillsModal && (
-        <SoftSkillsEditModal
-          isOpen={showSoftSkillsModal}
-          onClose={() => setShowSoftSkillsModal(false)}
-          data={softSkillsData}
-          onSave={handleSoftSkillsSave}
-        />
-      )}
-
-      {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
-      {showTechnicalSkillsModal && (
-        <SkillsEditModal
-          isOpen={showTechnicalSkillsModal}
-          onClose={() => setShowTechnicalSkillsModal(false)}
-          data={technicalSkillsData || []}
-          onSave={handleTechnicalSkillsSave}
-          title="Skills"
-        />
-      )}
-
-      {/* Experience Edit Modal */}
-      {showExperienceModal && (
-        <ExperienceEditModal
-          isOpen={showExperienceModal}
-          onClose={() => setShowExperienceModal(false)}
-          data={experienceData}
-          onSave={handleExperienceSave}
-        />
-      )}
-
-      {/* Certificates Edit Modal */}
-      {showCertificatesModal && (
-        <CertificatesEditModal
-          isOpen={showCertificatesModal}
-          onClose={() => setShowCertificatesModal(false)}
-          data={certificatesData}
-          onSave={handleCertificatesSave}
-        />
-      )}
-
-      {/* Projects Edit Modal */}
-      {showProjectsModal && (
-        <ProjectsEditModal
-          isOpen={showProjectsModal}
-          onClose={() => setShowProjectsModal(false)}
-          data={projectsData}
-          onSave={handleProjectsSave}
-        />
-      )}
-
-      {/* Resume Parser Modal */}
-      {showResumeParser && (
-        <ResumeParser
-          onDataExtracted={handleResumeDataExtracted}
-          onClose={() => setShowResumeParser(false)}
-          userEmail={userEmail}
-          studentData={studentData}
-          user={user}
-        />
-      )}
     </div>
   );
 };

@@ -78,6 +78,9 @@ const ProfileTab = ({
   setShowProjectsModal,
   // Student data
   studentData,
+  // Toggle handlers for skills
+  onToggleTechnicalSkillEnabled,
+  onToggleSoftSkillEnabled,
 }) => {
   const [profileActiveTab, setProfileActiveTab] = useState("personal");
   const [showLeftIndicator, setShowLeftIndicator] = useState(false);
@@ -223,6 +226,8 @@ const ProfileTab = ({
             setShowSoftSkillsModal={setShowSoftSkillsModal}
             technicalSkillsData={technicalSkillsData}
             setShowTechnicalSkillsModal={setShowTechnicalSkillsModal}
+            onToggleTechnicalSkillEnabled={onToggleTechnicalSkillEnabled}
+            onToggleSoftSkillEnabled={onToggleSoftSkillEnabled}
           />
         );
       case "experience":

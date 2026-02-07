@@ -63,21 +63,73 @@ const UnifiedProfileEditModal = ({
     itemTitle: ''
   });
 
+  // Track if modal was just opened to prevent reloading data while user is editing
+  const [modalJustOpened, setModalJustOpened] = useState(false);
+  
   useEffect(() => {
+    if (isOpen) {
+      setModalJustOpened(true);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    console.log(`🔍 UnifiedProfileEditModal [${type}] - useEffect triggered:`, {
+      modalJustOpened,
+      hasData: !!data,
+      dataLength: Array.isArray(data) ? data.length : 'not array'
+    });
+    
+    // Only load data when modal first opens, not when data changes while editing
+    if (!modalJustOpened) return;
+    
     if (data) {
       const normalizedData = Array.isArray(data) ? data : [data];
       
+      console.log(`🔍 UnifiedProfileEditModal [${type}] - Processing data:`, {
+        dataCount: normalizedData.length,
+        data: normalizedData,
+        configFields: config.fields.map(f => f.name)
+      });
+      
       // VERSIONING FIX: Process items to show pending edits in the list
       const processedItems = normalizedData.map(item => {
+        console.log(`🔍 UnifiedProfileEditModal [${type}] - Checking item:`, {
+          id: item.id,
+          title: config.getDisplayTitle(item),
+          has_pending_edit: item.has_pending_edit,
+          pending_edit_data: item.pending_edit_data,
+          verified_data: item.verified_data,
+          approval_status: item.approval_status
+        });
+        
         // If there's a pending edit, merge it with the item for display in edit modal
         if (item.has_pending_edit && item.pending_edit_data) {
+          console.log(`🔄 UnifiedProfileEditModal [${type}] - Item with pending edit:`, {
+            id: item.id,
+            has_pending_edit: item.has_pending_edit,
+            pending_edit_data: item.pending_edit_data,
+            verified_data: item.verified_data
+          });
+          
+          // CRITICAL: Only merge valid fields from pending_edit_data to avoid old fields like org_name
+          const validFieldNames = config.fields.map(f => f.name);
+          const cleanPendingData = {};
+          
+          Object.keys(item.pending_edit_data).forEach(key => {
+            if (validFieldNames.includes(key)) {
+              cleanPendingData[key] = item.pending_edit_data[key];
+            }
+          });
+          
+          console.log(`✅ UnifiedProfileEditModal [${type}] - Setting _hasPendingEdit=true for item:`, item.id);
+          
           return {
             ...item,
             // Show pending edit data in the edit list (not on dashboard)
             _hasPendingEdit: true,
             _verifiedData: item.verified_data,
-            // Merge pending edit data for editing
-            ...item.pending_edit_data,
+            // Merge ONLY valid fields from pending edit data
+            ...cleanPendingData,
             // Keep original id and metadata
             id: item.id,
             student_id: item.student_id,
@@ -95,9 +147,14 @@ const UnifiedProfileEditModal = ({
         const item = processedItems[0];
         const editData = { ...config.getDefaultValues() };
         
-        // Copy all fields from the item, including id
+        // IMPORTANT: Only copy fields that are defined in the config to avoid old/invalid fields
+        const validFieldNames = config.fields.map(f => f.name);
+        const metadataFields = ['id', 'student_id', 'created_at', 'updated_at', 'approval_status', 'enabled', 'verified', 'has_pending_edit', 'verified_data', 'pending_edit_data'];
+        const allowedFields = [...validFieldNames, ...metadataFields];
+        
+        // Copy only valid fields from the item
         Object.keys(item).forEach(key => {
-          if (item[key] !== undefined) {
+          if (item[key] !== undefined && allowedFields.includes(key)) {
             if (key === 'skills') {
               // Handle skills - support both array and string formats
               let skillsArray = [];
@@ -126,14 +183,19 @@ const UnifiedProfileEditModal = ({
           }
         });
         
+        console.log('🔧 UnifiedProfileEditModal: Loading initial data for editing:', editData);
         setFormData(editData);
         setEditingIndex(0);
         setIsFormOpen(true);
       }
+      
+      // Reset the flag after loading data
+      setModalJustOpened(false);
     } else {
       setItems([]);
+      setModalJustOpened(false);
     }
-  }, [data, isOpen, singleEditMode, config]);
+  }, [modalJustOpened, data, singleEditMode, config]);
 
   if (!config) {
     console.error(`Unknown profile type: ${type}`);
@@ -144,6 +206,8 @@ const UnifiedProfileEditModal = ({
 
   const handleInputChange = (field) => (e) => {
     const value = e.target.value;
+    
+    console.log(`🔧 UnifiedProfileEditModal: Input changed - field: ${field}, value: ${value}`);
     
     // Additional validation for date fields
     if (e.target.type === 'date' && value) {
@@ -194,7 +258,11 @@ const UnifiedProfileEditModal = ({
       }
     }
     
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      console.log(`🔧 UnifiedProfileEditModal: Updated formData:`, updated);
+      return updated;
+    });
   };
 
   const resetForm = () => {
@@ -287,9 +355,14 @@ const UnifiedProfileEditModal = ({
     
     const editData = { ...config.getDefaultValues() };
     
-    // Copy all fields from the item, including id and other metadata
+    // IMPORTANT: Only copy fields that are defined in the config to avoid old/invalid fields
+    const validFieldNames = config.fields.map(f => f.name);
+    const metadataFields = ['id', 'student_id', 'created_at', 'updated_at', 'approval_status', 'enabled', 'verified', 'has_pending_edit', 'verified_data', 'pending_edit_data'];
+    const allowedFields = [...validFieldNames, ...metadataFields];
+    
+    // Copy only valid fields from the item
     Object.keys(item).forEach(key => {
-      if (item[key] !== undefined) {
+      if (item[key] !== undefined && allowedFields.includes(key)) {
         editData[key] = Array.isArray(item[key]) 
           ? item[key].join(", ") 
           : item[key];
@@ -443,6 +516,10 @@ const UnifiedProfileEditModal = ({
       // AUTO-SAVE: Save to database immediately to prevent data loss on Cancel
       try {
         await onSave(updatedItems);
+        // Trigger parent refresh if available
+        if (typeof onSave === 'function' && onSave.refresh) {
+          await onSave.refresh();
+        }
         toast({ 
           title: "Saved!", 
           description: `${config.title} updated successfully.`,
@@ -474,6 +551,10 @@ const UnifiedProfileEditModal = ({
       // AUTO-SAVE: Save new items immediately too
       try {
         await onSave(updatedItems);
+        // Trigger parent refresh if available
+        if (typeof onSave === 'function' && onSave.refresh) {
+          await onSave.refresh();
+        }
         toast({ 
           title: "Saved!", 
           description: `${config.title} added successfully.`,
@@ -493,12 +574,14 @@ const UnifiedProfileEditModal = ({
     resetForm();
   };
 
-  // Direct save for singleEditMode - saves immediately to database
   const saveAndClose = async () => {
     if (!validateForm()) return;
 
     setIsSaving(true);
     const processedData = processFormData();
+    
+    console.log('🔧 UnifiedProfileEditModal saveAndClose: formData before processing:', formData);
+    console.log('🔧 UnifiedProfileEditModal saveAndClose: processedData after processing:', processedData);
 
     try {
       // Get the existing item to preserve its id and other fields
@@ -513,12 +596,26 @@ const UnifiedProfileEditModal = ({
         id: itemId, // Explicitly ensure id is set
         updated_at: new Date().toISOString() 
       };
+      
+      console.log('🔧 UnifiedProfileEditModal saveAndClose: existingItem:', existingItem);
+      console.log('🔧 UnifiedProfileEditModal saveAndClose: updatedItem being saved:', updatedItem);
+      console.log('🔧 UnifiedProfileEditModal saveAndClose: ID check:', {
+        existingItemId: existingItem.id,
+        formDataId: formData.id,
+        processedDataId: processedData.id,
+        finalId: itemId
+      });
 
       if (!updatedItem.id) {
         console.error('❌ CRITICAL: No ID found for item!');
         console.error('❌ existingItem:', existingItem);
         console.error('❌ formData:', formData);
         console.error('❌ processedData:', processedData);
+        toast({
+          title: "Error",
+          description: "Cannot save: Missing item ID. Please try again.",
+          variant: "destructive"
+        });
         return;
       }
 
@@ -562,6 +659,10 @@ const UnifiedProfileEditModal = ({
     // Auto-save to database
     try {
       await onSave(updatedItems);
+      // Trigger parent refresh if available
+      if (typeof onSave === 'function' && onSave.refresh) {
+        await onSave.refresh();
+      }
       toast({ 
         title: "Deleted!", 
         description: `${config.title} has been deleted successfully.`,
@@ -582,11 +683,11 @@ const UnifiedProfileEditModal = ({
     const newState = !item.enabled;
     const itemTitle = config.getDisplayTitle(item);
     
-    // Don't allow hiding/showing certificates that are pending verification or approval
+    // Don't allow hiding/showing items that are pending verification or approval
     if (item.approval_status === 'pending' || item._hasPendingEdit) {
       toast({ 
         title: "Cannot Hide/Show", 
-        description: "You cannot hide or show certificates that are pending verification or approval.",
+        description: `You cannot hide or show ${config.title.toLowerCase()} that are pending verification or approval.`,
         variant: "destructive",
         duration: 4000,
       });
@@ -618,15 +719,23 @@ const UnifiedProfileEditModal = ({
     setItems(updatedItems);
     
     // For hide/show, we need to update the database directly without triggering versioning
-    // We'll update just the enabled field for this specific certificate
+    // We'll update just the enabled field for this specific item
     try {
+      // Get table name from config (defaults to 'certificates' for backward compatibility)
+      const tableName = config.tableName || 'certificates';
+      
       // Update only the enabled field directly in database
       const { error } = await supabase
-        .from('certificates')
+        .from(tableName)
         .update({ enabled: newState })
         .eq('id', item.id);
       
       if (error) throw error;
+      
+      // Trigger parent refresh if available
+      if (typeof onSave === 'function' && onSave.refresh) {
+        await onSave.refresh();
+      }
       
       toast({ 
         title: newState ? "Visibility Enabled" : "Visibility Disabled", 
@@ -1108,6 +1217,12 @@ const UnifiedProfileEditModal = ({
               <strong>Note:</strong> Your changes are saved but pending approval. The dashboard shows the verified version until approved.
             </div>
           )}
+          {/* Debug logging for note visibility */}
+          {console.log(`🔍 Note visibility check for ${config.getDisplayTitle(item)}:`, {
+            _hasPendingEdit: item._hasPendingEdit,
+            _hasLocalChanges: item._hasLocalChanges,
+            shouldShowNote: item._hasPendingEdit && !item._hasLocalChanges
+          })}
           {item.duration && <p className="text-xs text-gray-500 mt-1"><Calendar className="w-3 h-3 inline mr-1" />{item.duration}</p>}
 
           {/* Description */}
