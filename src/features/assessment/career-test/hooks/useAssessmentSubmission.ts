@@ -535,27 +535,189 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       // Save completion to database
       if (attemptId && userId) {
         try {
-          console.log('💾 Saving assessment completion to database...');
-
-          const dbResults = await assessmentService.completeAttemptWithoutAI(
+          console.log('🚀 [UNIFIED LOADER] Starting AI analysis during submission...');
+          console.log('🚀 [UNIFIED LOADER] This will show ONE loader for the entire process');
+          
+          // ============================================================================
+          // STAGE 1: PREPARING (0-10%)
+          // ============================================================================
+          console.log('📊 [Stage 1/6] Preparing your responses...');
+          window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
+          
+          // Fetch adaptive aptitude results if available
+          let adaptiveResults = null;
+          if (currentAttempt?.adaptive_aptitude_session_id) {
+            console.log('🔍 [Preparing] Fetching adaptive aptitude results...');
+            console.log('🔍 [Preparing] Session ID:', currentAttempt.adaptive_aptitude_session_id);
+            
+            try {
+              const { data: adaptiveData, error: adaptiveError } = await supabase
+                .from('adaptive_aptitude_results')
+                .select('*')
+                .eq('session_id', currentAttempt.adaptive_aptitude_session_id)
+                .maybeSingle();
+              
+              if (!adaptiveError && adaptiveData) {
+                adaptiveResults = adaptiveData;
+                console.log('✅ [Preparing] Adaptive results fetched:', {
+                  level: adaptiveData.aptitude_level,
+                  accuracy: adaptiveData.overall_accuracy,
+                  totalQuestions: adaptiveData.total_questions,
+                  totalCorrect: adaptiveData.total_correct
+                });
+              } else {
+                console.warn('⚠️ [Preparing] No adaptive results found:', adaptiveError?.message);
+              }
+            } catch (adaptiveErr) {
+              console.error('❌ [Preparing] Error fetching adaptive results:', adaptiveErr);
+            }
+          } else {
+            console.log('ℹ️ [Preparing] No adaptive session ID found in attempt');
+          }
+          
+          // Merge answers with adaptive results for AI analysis
+          const answersWithAdaptive = { ...answers };
+          console.log('📦 [Preparing] Prepared answers:', {
+            totalAnswers: Object.keys(answersWithAdaptive).length,
+            hasAdaptiveResults: !!adaptiveResults
+          });
+          
+          // Small delay to show preparing stage
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // ============================================================================
+          // STAGE 2: SENDING (10-20%)
+          // ============================================================================
+          console.log('📊 [Stage 2/6] Connecting to AI engine...');
+          window.setAnalysisProgress?.('sending', 'Sending your responses to AI...');
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // ============================================================================
+          // STAGE 3: AI ANALYZING (20-70%) - THE MAIN EVENT
+          // ============================================================================
+          console.log('📊 [Stage 3/6] AI Analysis starting...');
+          console.log('⏱️ [AI Analysis] Starting timer...');
+          window.setAnalysisProgress?.('analyzing', 'AI is analyzing your assessment...');
+          
+          const aiStartTime = Date.now();
+          let geminiResults = null;
+          
+          try {
+            console.log('🤖 [AI Analysis] Calling analyzeAssessmentWithGemini...');
+            console.log('🤖 [AI Analysis] Parameters:', {
+              hasAnswers: !!answersWithAdaptive,
+              answerCount: Object.keys(answersWithAdaptive).length,
+              stream: studentStream,
+              gradeLevel: gradeLevel || 'after12',
+              hasQuestionBanks: !!(riasecQuestions && bigFiveQuestions),
+              hasTimings: !!finalTimings,
+              hasAdaptiveResults: !!adaptiveResults,
+              adaptiveSessionId: currentAttempt?.adaptive_aptitude_session_id
+            });
+            
+            // Call AI analysis with all data
+            geminiResults = await analyzeAssessmentWithGemini(
+              answersWithAdaptive,
+              studentStream,
+              {
+                riasecQuestions,
+                aptitudeQuestions: [], // Adaptive aptitude is separate
+                bigFiveQuestions,
+                workValuesQuestions,
+                employabilityQuestions,
+                streamKnowledgeQuestions
+              },
+              finalTimings,
+              gradeLevel || 'after12',
+              null, // preCalculatedScores
+              studentContext,
+              adaptiveResults
+            );
+            
+            const aiDuration = ((Date.now() - aiStartTime) / 1000).toFixed(1);
+            console.log(`✅ [AI Analysis] Completed successfully in ${aiDuration}s`);
+            console.log('✅ [AI Analysis] Results received:', {
+              hasRiasec: !!geminiResults?.riasec,
+              hasCareerFit: !!geminiResults?.careerFit,
+              hasRoadmap: !!geminiResults?.roadmap,
+              resultKeys: geminiResults ? Object.keys(geminiResults) : []
+            });
+            
+          } catch (aiError: any) {
+            console.error('❌ [AI Analysis] Failed:', aiError);
+            console.error('❌ [AI Analysis] Error details:', {
+              message: aiError.message,
+              code: aiError.code,
+              stack: aiError.stack
+            });
+            
+            // Show error in analyzing screen
+            window.setAnalysisProgress?.('error', `AI analysis failed: ${aiError.message}`);
+            
+            throw new Error(`AI analysis failed: ${aiError.message}`);
+          }
+          
+          // ============================================================================
+          // STAGE 4: PROCESSING (70-85%)
+          // ============================================================================
+          console.log('📊 [Stage 4/6] Processing results...');
+          window.setAnalysisProgress?.('processing', 'Generating career matches...');
+          
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // ============================================================================
+          // STAGE 5: SAVING (85-95%)
+          // ============================================================================
+          console.log('📊 [Stage 5/6] Saving to database...');
+          window.setAnalysisProgress?.('saving', 'Saving your personalized report...');
+          
+          console.log('💾 [Database] Calling completeAttempt WITH AI results...');
+          
+          const dbResults = await assessmentService.completeAttempt(
             attemptId,
             userId,
             studentStream,
             gradeLevel || 'after12',
+            geminiResults, // ← AI results included!
             finalTimings
           );
 
-          console.log('✅ Assessment saved successfully:', dbResults.id);
+          console.log('✅ [Database] Assessment saved successfully:', dbResults.id);
+          console.log('✅ [Database] AI results are now in database');
+          
+          // ============================================================================
+          // STAGE 6: COMPLETE (95-100%)
+          // ============================================================================
+          console.log('📊 [Stage 6/6] Complete!');
+          window.setAnalysisProgress?.('complete', 'Analysis complete!');
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          console.log('🎉 [UNIFIED LOADER] All stages complete!');
+          console.log('🎉 [UNIFIED LOADER] Total time:', ((Date.now() - aiStartTime) / 1000).toFixed(1) + 's');
+          console.log('🎉 [UNIFIED LOADER] Redirecting to results page...');
+          console.log('🎉 [UNIFIED LOADER] Results will display IMMEDIATELY (no additional loading)');
 
           // Navigate with attemptId
           navigate(`/student/assessment/result?attemptId=${attemptId}`);
         } catch (dbErr: any) {
-          console.error('❌ Failed to save to database:', dbErr);
+          console.error('❌ [UNIFIED LOADER] Failed:', dbErr);
+          console.error('❌ [UNIFIED LOADER] Error details:', {
+            message: dbErr.message,
+            code: dbErr.code,
+            stage: 'submission'
+          });
+          
+          // Show error in analyzing screen
+          window.setAnalysisProgress?.('error', dbErr.message || 'Submission failed');
           
           // Provide user-friendly error messages
           let errorMessage = 'Failed to save assessment results. ';
           
-          if (dbErr.code === 'VALIDATION_ERROR') {
+          if (dbErr.message?.includes('AI analysis failed')) {
+            errorMessage = 'AI analysis encountered an error. ';
+          } else if (dbErr.code === 'VALIDATION_ERROR') {
             errorMessage += 'Invalid data detected. Please contact support.';
           } else if (dbErr.code === 'ATTEMPT_UPDATE_FAILED') {
             errorMessage += 'Could not mark assessment as complete. Your answers are saved, but you may need to resubmit.';
@@ -569,7 +731,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           
           // If we have an attemptId, try to navigate anyway (data might be partially saved)
           if (attemptId) {
-            console.log('⚠️ Attempting to navigate to results despite error...');
+            console.log('⚠️ [UNIFIED LOADER] Attempting to navigate to results despite error...');
             const shouldNavigate = confirm(
               `${errorMessage}\n\nYour answers may be saved. Would you like to try viewing your results?`
             );
