@@ -1760,12 +1760,14 @@ const AssessmentTestPage: React.FC = () => {
         }
         // Handle rating scale questions (1-5)
         else if (section.responseScale) {
-          // Use 4 instead of 3 to generate higher scores
-          flow.setAnswer(questionId, 4);
+          // Random rating between 1-5 for realistic test data
+          flow.setAnswer(questionId, Math.floor(Math.random() * 5) + 1);
         }
         // Handle multiple choice questions
         else if (question.options?.length > 0) {
-          flow.setAnswer(questionId, question.correct || question.options[0]);
+          // Random option selection
+          const randomIndex = Math.floor(Math.random() * question.options.length);
+          flow.setAnswer(questionId, question.options[randomIndex]);
         }
       });
     });
@@ -1804,12 +1806,14 @@ const AssessmentTestPage: React.FC = () => {
         }
         // Handle rating scale questions (1-5)
         else if (section.responseScale) {
-          // Use 4 instead of 3 to generate higher scores
-          flow.setAnswer(questionId, 4);
+          // Random rating between 1-5 for realistic test data
+          flow.setAnswer(questionId, Math.floor(Math.random() * 5) + 1);
         }
         // Handle multiple choice questions
         else if (question.options?.length > 0) {
-          flow.setAnswer(questionId, question.correct || question.options[0]);
+          // Random option selection
+          const randomIndex = Math.floor(Math.random() * question.options.length);
+          flow.setAnswer(questionId, question.options[randomIndex]);
         }
       });
     });

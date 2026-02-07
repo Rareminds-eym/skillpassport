@@ -253,8 +253,8 @@ const AssessmentDetailModal = ({
   if (!isOpen || !result) return null;
 
   const gemini = result.gemini_results || {};
-  const careerFit = result.career_fit || gemini.careerFit || {};
-  const skillGap = result.skill_gap || gemini.skillGap || {};
+  const careerFit = result.career_fit || gemini.careerFit || null;
+  const skillGap = result.skill_gap || gemini.skillGap || null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">

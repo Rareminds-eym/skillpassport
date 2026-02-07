@@ -10,6 +10,7 @@ import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
 import { getSystemMessage } from '../prompts';
 import { buildHighSchoolPrompt as buildCleanHighSchoolPrompt } from '../prompts/high-school-clean';
+import { buildCollegePrompt } from '../prompts/college';
 import { 
   repairAndParseJSON, 
   AI_MODELS, 
@@ -384,23 +385,33 @@ async function analyzeAssessment(
   // Generate deterministic hash for consistent results
   const seed = generateSeed(assessmentData);
   
-  // Use clean prompt (AI will determine RIASEC and recommend careers)
-  const basePrompt = buildCleanHighSchoolPrompt(assessmentData, seed);
+  // Choose the appropriate prompt based on grade level
+  const isCollegeStudent = gradeLevel === 'college' || gradeLevel === 'higher_secondary';
+  const basePrompt = isCollegeStudent 
+    ? buildCollegePrompt(assessmentData, seed)
+    : buildCleanHighSchoolPrompt(assessmentData, seed);
   
-  console.log('[ASSESSMENT] ✅ Using clean prompt - AI will determine RIASEC dynamically');
+  console.log(`[ASSESSMENT] ✅ Using ${isCollegeStudent ? 'COLLEGE' : 'HIGH SCHOOL'} prompt`);
   console.log('[ASSESSMENT] 📊 AI will analyze raw answers and calculate RIASEC scores');
   console.log('[ASSESSMENT] 🎯 Career recommendations will be based on AI-calculated RIASEC');
+  console.log('[ASSESSMENT] 📏 Prompt length:', basePrompt.length, 'characters');
   
   const systemMessage = getSystemMessage(gradeLevel);
+  console.log('[ASSESSMENT] 📏 System message length:', systemMessage.length, 'characters');
 
   console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
   console.log(`[ASSESSMENT] Available models: ${ASSESSMENT_MODELS.length}`);
   console.log(`[ASSESSMENT] Models: ${ASSESSMENT_MODELS.join(', ')}`);
 
+  console.log('[ASSESSMENT] === CHECKING API KEYS ===');
   const { openRouter } = getAPIKeys(env);
   if (!openRouter) {
+    console.error('[ASSESSMENT] ❌ CRITICAL: OpenRouter API key not configured');
+    console.error('[ASSESSMENT] ❌ env.OPENROUTER_API_KEY exists:', !!env.OPENROUTER_API_KEY);
+    console.error('[ASSESSMENT] ❌ env.OPENROUTER_API_KEY length:', env.OPENROUTER_API_KEY?.length || 0);
     throw new Error('OpenRouter API key not configured');
   }
+  console.log('[ASSESSMENT] ✅ OpenRouter API key found, length:', openRouter.length);
 
   // ============================================================================
   // VALIDATION-BASED MODEL FALLBACK (Requirement 7.4)
@@ -413,9 +424,15 @@ async function analyzeAssessment(
   for (let modelIndex = 0; modelIndex < ASSESSMENT_MODELS.length; modelIndex++) {
     const currentModel = ASSESSMENT_MODELS[modelIndex];
     
-    console.log(`\n[ASSESSMENT] 🎯 Trying model ${modelIndex + 1}/${ASSESSMENT_MODELS.length}: ${currentModel}`);
+    console.log(`\n[ASSESSMENT] 🎯 === TRYING MODEL ${modelIndex + 1}/${ASSESSMENT_MODELS.length} ===`);
+    console.log(`[ASSESSMENT] 🎯 Model: ${currentModel}`);
     
     try {
+      console.log(`[ASSESSMENT] 📡 Calling OpenRouter API...`);
+      console.log(`[ASSESSMENT] 📡 Temperature: ${ASSESSMENT_CONFIG.temperature}`);
+      console.log(`[ASSESSMENT] 📡 Max Tokens: ${ASSESSMENT_CONFIG.maxTokens}`);
+      console.log(`[ASSESSMENT] 📡 Max Retries: ${ASSESSMENT_CONFIG.maxRetries}`);
+      
       // Call OpenRouter with ONLY the current model (no fallback at API level)
       // This ensures we can control validation-based fallback
       const content = await callOpenRouterWithRetry(openRouter, [
@@ -432,8 +449,11 @@ async function analyzeAssessment(
       console.log(`[ASSESSMENT] 📄 Response length: ${content.length} characters`);
       console.log(`[ASSESSMENT] 📄 First 300 chars: ${content.substring(0, 300)}`);
       
+      console.log(`[ASSESSMENT] 🔍 Parsing JSON response...`);
       // Parse the JSON response using shared utility (prefer object for assessments)
       const result = repairAndParseJSON(content, true);
+      console.log(`[ASSESSMENT] ✅ JSON parsed successfully`);
+      console.log(`[ASSESSMENT] 📊 Result keys:`, Object.keys(result).join(', '));
       
       // ============================================================================
       // ADAPTIVE APTITUDE FIX: Override AI's zero scores with pre-calculated scores
@@ -689,8 +709,13 @@ export async function handleAnalyzeAssessment(
   request: Request,
   env: PagesEnv
 ): Promise<Response> {
+  console.log('[ASSESSMENT-API] === REQUEST RECEIVED ===');
+  console.log('[ASSESSMENT-API] Method:', request.method);
+  console.log('[ASSESSMENT-API] URL:', request.url);
+  
   // Only allow POST
   if (request.method !== 'POST') {
+    console.error('[ASSESSMENT-API] ❌ Method not allowed:', request.method);
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
@@ -699,59 +724,98 @@ export async function handleAnalyzeAssessment(
     env.VITE_SUPABASE_URL?.includes('localhost') || 
     request.headers.get('X-Dev-Mode') === 'true';
 
+  console.log('[ASSESSMENT-API] Development mode:', isDevelopment);
+
   let studentId: string;
 
   // Authentication
   if (isDevelopment) {
     studentId = 'test-student-' + Date.now();
-    console.log('[DEV MODE] Bypassing authentication, using test student ID:', studentId);
+    console.log('[ASSESSMENT-API] [DEV MODE] Bypassing authentication, using test student ID:', studentId);
   } else {
+    console.log('[ASSESSMENT-API] Authenticating user...');
     const auth = await authenticateUser(request, env as unknown as Record<string, string>);
     if (!auth) {
+      console.error('[ASSESSMENT-API] ❌ Authentication failed');
       return jsonResponse({ error: 'Authentication required' }, 401);
     }
     studentId = auth.user.id;
+    console.log('[ASSESSMENT-API] ✅ Authenticated student:', studentId);
   }
 
   // Rate limiting
+  console.log('[ASSESSMENT-API] Checking rate limit for student:', studentId);
   if (!checkRateLimit(studentId)) {
+    console.error('[ASSESSMENT-API] ❌ Rate limit exceeded for student:', studentId);
     return jsonResponse({ 
       error: 'Rate limit exceeded. Please try again in a minute.' 
     }, 429);
   }
+  console.log('[ASSESSMENT-API] ✅ Rate limit check passed');
 
   // Parse request body
   let body: RequestBody;
   try {
+    console.log('[ASSESSMENT-API] Parsing request body...');
     body = await request.json() as RequestBody;
-  } catch {
+    console.log('[ASSESSMENT-API] ✅ Request body parsed successfully');
+  } catch (error) {
+    console.error('[ASSESSMENT-API] ❌ Failed to parse request body:', error);
     return jsonResponse({ error: 'Invalid JSON in request body' }, 400);
   }
 
   const { assessmentData } = body;
 
   if (!assessmentData) {
+    console.error('[ASSESSMENT-API] ❌ assessmentData is missing from request body');
     return jsonResponse({ error: 'assessmentData is required' }, 400);
   }
 
-  console.log(`[ASSESSMENT] Analyzing for student ${studentId}`);
-  console.log(`[ASSESSMENT] Stream: ${assessmentData.stream}, Grade: ${assessmentData.gradeLevel}`);
+  console.log('[ASSESSMENT-API] === ASSESSMENT DATA RECEIVED ===');
+  console.log('[ASSESSMENT-API] Student ID:', studentId);
+  console.log('[ASSESSMENT-API] Stream:', assessmentData.stream);
+  console.log('[ASSESSMENT-API] Grade Level:', assessmentData.gradeLevel);
+  console.log('[ASSESSMENT-API] Has Student Context:', !!assessmentData.studentContext);
+  if (assessmentData.studentContext) {
+    console.log('[ASSESSMENT-API] Student Context:', {
+      rawGrade: assessmentData.studentContext.rawGrade,
+      programName: assessmentData.studentContext.programName,
+      programCode: assessmentData.studentContext.programCode,
+      degreeLevel: assessmentData.studentContext.degreeLevel
+    });
+  }
+  console.log('[ASSESSMENT-API] Has Adaptive Results:', !!assessmentData.adaptiveAptitudeResults);
+
+  // Check environment variables
+  console.log('[ASSESSMENT-API] === ENVIRONMENT CHECK ===');
+  console.log('[ASSESSMENT-API] OPENROUTER_API_KEY exists:', !!env.OPENROUTER_API_KEY);
+  console.log('[ASSESSMENT-API] OPENROUTER_API_KEY length:', env.OPENROUTER_API_KEY?.length || 0);
+  console.log('[ASSESSMENT-API] GEMINI_API_KEY exists:', !!env.GEMINI_API_KEY);
+  console.log('[ASSESSMENT-API] CLAUDE_API_KEY exists:', !!env.CLAUDE_API_KEY);
 
   try {
+    console.log('[ASSESSMENT-API] === STARTING AI ANALYSIS ===');
     // Analyze with AI
     const results = await analyzeAssessment(env, assessmentData);
 
-    console.log(`[ASSESSMENT] Successfully analyzed for student ${studentId}`);
+    console.log('[ASSESSMENT-API] === AI ANALYSIS COMPLETED ===');
+    console.log('[ASSESSMENT-API] ✅ Successfully analyzed for student:', studentId);
+    console.log('[ASSESSMENT-API] Results has careerFit:', !!results?.careerFit);
+    console.log('[ASSESSMENT-API] Results has riasec:', !!results?.riasec);
     
     const response: AnalysisResult = {
       success: true,
       data: results
     };
 
+    console.log('[ASSESSMENT-API] === RETURNING SUCCESS RESPONSE ===');
     return jsonResponse(response);
 
   } catch (error) {
-    console.error('[ASSESSMENT] Analysis failed:', error);
+    console.error('[ASSESSMENT-API] === AI ANALYSIS FAILED ===');
+    console.error('[ASSESSMENT-API] ❌ Error type:', error?.constructor?.name);
+    console.error('[ASSESSMENT-API] ❌ Error message:', (error as Error).message);
+    console.error('[ASSESSMENT-API] ❌ Error stack:', (error as Error).stack);
     
     const response: AnalysisResult = {
       success: false,
@@ -759,6 +823,7 @@ export async function handleAnalyzeAssessment(
       details: (error as Error).message
     };
 
+    console.log('[ASSESSMENT-API] === RETURNING ERROR RESPONSE ===');
     return jsonResponse(response, 500);
   }
 }

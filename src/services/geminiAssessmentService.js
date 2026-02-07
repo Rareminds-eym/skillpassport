@@ -53,26 +53,37 @@ const updateProgress = (stage, message) => {
  * @returns {Promise<Object>} - The analyzed results from AI
  */
 const callOpenRouterAssessment = async (assessmentData) => {
+  console.log('[FRONTEND] === CALLING ANALYZE-ASSESSMENT API ===');
+  console.log('[FRONTEND] Assessment data:', {
+    gradeLevel: assessmentData.gradeLevel,
+    stream: assessmentData.stream,
+    hasStudentContext: !!assessmentData.studentContext,
+    studentContext: assessmentData.studentContext,
+    hasAdaptiveResults: !!assessmentData.adaptiveAptitudeResults,
+    riasecAnswersCount: Object.keys(assessmentData.riasecAnswers || {}).length,
+    aptitudeScores: assessmentData.aptitudeScores
+  });
+
   const { getPagesApiUrl } = await import('../utils/pagesUrl');
   const API_URL = getPagesApiUrl('analyze-assessment');
+  console.log('[FRONTEND] API URL:', API_URL);
 
   // Get auth token
   updateProgress('sending', 'Authenticating...');
+  console.log('[FRONTEND] Getting auth session...');
   const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
   const token = session?.access_token;
 
   if (!token) {
+    console.error('[FRONTEND] ❌ No auth token found');
     updateProgress('error', 'Authentication required');
     throw new Error('Authentication required for assessment analysis');
   }
+  console.log('[FRONTEND] ✅ Auth token obtained, length:', token.length);
 
-  console.log('🤖 Sending assessment data to backend for analysis...');
-  console.log(`📊 Grade Level: ${assessmentData.gradeLevel}, Stream: ${assessmentData.stream}`);
-  console.log(`🔗 API URL: ${API_URL}`);
-  console.log(`📝 Assessment data keys:`, Object.keys(assessmentData));
-  console.log(`🎯 STREAM CONTEXT: Student is in ${assessmentData.stream} stream, AI should recommend careers from this stream`);
-  console.log(`📋 RIASEC Answers Count:`, Object.keys(assessmentData.riasecAnswers || {}).length);
-  console.log(`📋 Aptitude Scores:`, assessmentData.aptitudeScores);
+  console.log('[FRONTEND] 🤖 Sending assessment data to backend for analysis...');
+  console.log('[FRONTEND] 📊 Grade Level:', assessmentData.gradeLevel, 'Stream:', assessmentData.stream);
+  console.log('[FRONTEND] 🎯 STREAM CONTEXT: Student is in', assessmentData.stream, 'stream, AI should recommend careers from this stream');
 
   updateProgress('analyzing', 'AI is processing your responses...');
 
@@ -81,6 +92,10 @@ const callOpenRouterAssessment = async (assessmentData) => {
     // This bypasses Cloudflare edge cache to get the latest deployed version
     const cacheBuster = Date.now();
     const apiUrl = `${API_URL}?v=${cacheBuster}`;
+    console.log('[FRONTEND] 📤 Making POST request to:', apiUrl);
+    
+    const requestBody = { assessmentData };
+    console.log('[FRONTEND] 📦 Request body size:', JSON.stringify(requestBody).length, 'bytes');
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -88,16 +103,20 @@ const callOpenRouterAssessment = async (assessmentData) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ assessmentData })
+      body: JSON.stringify(requestBody)
     });
 
-    console.log(`📡 Response status: ${response.status}`);
+    console.log('[FRONTEND] 📡 Response received');
+    console.log('[FRONTEND] 📊 Response status:', response.status, response.statusText);
+    console.log('[FRONTEND] 📊 Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       // ============================================================================
       // ENHANCED ERROR LOGGING: Log API failure details (Requirement 4.3)
       // ============================================================================
+      console.error('[FRONTEND] ❌ API request failed');
       const errorText = await response.text();
+      console.error('[FRONTEND] ❌ Error response:', errorText);
       console.error('❌ === API CALL FAILED ===');
       console.error('❌ Status Code:', response.status);
       console.error('❌ Status Text:', response.statusText);

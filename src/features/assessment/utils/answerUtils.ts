@@ -109,11 +109,12 @@ export const autoFillAnswers = (
           };
         }
       } else if (section.responseScale) {
-        // Likert scale - pick middle value (3)
-        filledAnswers[questionId] = 3;
+        // Likert scale - pick random value (1-5)
+        filledAnswers[questionId] = Math.floor(Math.random() * 5) + 1;
       } else if (question.options && question.options.length > 0) {
-        // MCQ - pick first option (or correct if available)
-        filledAnswers[questionId] = question.correct || question.options[0];
+        // MCQ - pick random option
+        const randomIndex = Math.floor(Math.random() * question.options.length);
+        filledAnswers[questionId] = question.options[randomIndex];
       }
     });
   });
