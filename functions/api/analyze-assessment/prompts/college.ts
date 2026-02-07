@@ -216,7 +216,12 @@ You MUST analyze this program and provide career recommendations that are DIRECT
    - **Cluster 2 (Medium Fit)**: Adjacent careers within the same domain that leverage the program's skills
    - **Cluster 3 (Explore)**: Interdisciplinary careers that STILL USE the program's core skills but in different contexts
    
-   ⚠️ **CRITICAL**: ALL THREE CLUSTERS must be relevant to the student's program field. Do NOT recommend careers from completely different domains.
+   ⚠️ **CRITICAL NAMING RULES**:
+   - ALL THREE CLUSTERS must be relevant to the student's program field. Do NOT recommend careers from completely different domains.
+   - **Career cluster TITLES should PREFER entry-level role names** (e.g., "Software Developer", "Data Analyst", "Marketing Associate")
+   - Generic cluster names (e.g., "Technology & Innovation", "Business & Management") are acceptable when multiple related roles fit together
+   - DO NOT use senior role names like "Senior Engineer" or "Manager" in the title
+   - The title should represent roles that a fresh graduate or early-career professional can pursue
 ` : '';
 
   // Always include program analysis and validation for college students
@@ -444,7 +449,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
   "careerFit": {
     "clusters": [
       {
-        "title": "<Career Cluster 1 - REQUIRED>",
+        "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Software Developer', 'Data Analyst', 'Technology & Innovation' - REQUIRED>",
         "fit": "High",
         "matchScore": 85,
         "description": "<2-3 sentences explaining WHY this fits based on assessment - REQUIRED>",
@@ -461,7 +466,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
         "whyItFits": "<Specific connection to student's profile - REQUIRED>"
       },
       {
-        "title": "<Career Cluster 2 - REQUIRED>",
+        "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Business Analyst', 'UI/UX Designer', 'Business & Management' - REQUIRED>",
         "fit": "Medium",
         "matchScore": 75,
         "description": "<2-3 sentences explaining fit - REQUIRED>",
@@ -478,7 +483,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
         "whyItFits": "<Connection to student's profile - REQUIRED>"
       },
       {
-        "title": "<Career Cluster 3 - REQUIRED>",
+        "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Quality Analyst', 'Research Assistant', 'Creative Industries' - REQUIRED>",
         "fit": "Explore",
         "matchScore": 65,
         "description": "<2-3 sentences explaining potential - REQUIRED>",
@@ -533,11 +538,16 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
    - Cluster 1: High fit (matchScore 80-100%)
    - Cluster 2: Medium fit (matchScore 70-85%)
    - Cluster 3: Explore fit (matchScore 60-75%)
-2. Each cluster MUST have: title, fit, matchScore, description, evidence (all 6 fields), roles (entry + mid), domains, whyItFits
-3. ALL arrays must have at least 2 items - NO empty arrays
-4. ALL career clusters must have roles.entry, roles.mid, and domains filled with real job titles
-5. Career clusters should be based on the student's program/degree field and assessment results
-6. Use EXACT scoring formulas provided - Be DETERMINISTIC (same input = same output)
-7. Provide SPECIFIC, ACTIONABLE career guidance based on the student's actual scores
-8. DO NOT truncate the response - complete ALL fields`;
+2. **CLUSTER TITLE SHOULD PREFER ENTRY-LEVEL JOB ROLE NAMES**:
+   - ✅ PREFERRED: "Software Developer", "Data Analyst", "Marketing Associate", "Business Analyst", "UI/UX Designer"
+   - ✅ ACCEPTABLE: "Technology & Innovation", "Business & Management", "Creative Industries" (when multiple related roles fit)
+   - ❌ WRONG: "Senior Engineer", "Manager", "Director", "VP" (senior-level titles)
+   - The title should represent roles accessible to fresh graduates or early-career professionals
+3. Each cluster MUST have: title, fit, matchScore, description, evidence (all 6 fields), roles (entry + mid), domains, whyItFits
+4. ALL arrays must have at least 2 items - NO empty arrays
+5. ALL career clusters must have roles.entry, roles.mid, and domains filled with real job titles
+6. Career clusters should be based on the student's program/degree field and assessment results
+7. Use EXACT scoring formulas provided - Be DETERMINISTIC (same input = same output)
+8. Provide SPECIFIC, ACTIONABLE career guidance based on the student's actual scores
+9. DO NOT truncate the response - complete ALL fields`;
 }
