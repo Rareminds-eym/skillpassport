@@ -2315,59 +2315,7 @@ const StudentDashboard = () => {
               <Briefcase className="w-4 h-4 text-blue-600" />
               <span className="text-sm text-gray-700 font-medium">{displayData.type}</span>
             </div>
-          ) : (
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-              {userData.experience
-                .filter(exp =>
-                  exp.enabled !== false &&
-                  (exp.approval_status === "verified" || exp.approval_status === "approved")
-                )
-                .sort((a, b) => {
-                  // Sort by end date/year in descending order (most recent first)
-                  // Try multiple date field formats
-                  const getEndDate = (exp) => {
-                    if (exp.endDate) return new Date(exp.endDate);
-                    if (exp.end_date) return new Date(exp.end_date);
-                    if (exp.endYear) return new Date(exp.endYear, 11, 31); // December 31st of end year
-                    if (exp.year) return new Date(exp.year, 11, 31);
-                    // If no end date, use start date
-                    if (exp.startDate) return new Date(exp.startDate);
-                    if (exp.start_date) return new Date(exp.start_date);
-                    if (exp.startYear) return new Date(exp.startYear, 0, 1); // January 1st of start year
-                    return new Date(0); // Default to epoch if no date found
-                  };
-
-                  const dateA = getEndDate(a);
-                  const dateB = getEndDate(b);
-                  return dateB - dateA; // Descending order (most recent first)
-                })
-                .map((exp, idx) => (
-                  <div
-                    key={exp.id || `exp-${idx}`}
-                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                  >
-                    {/* Title + Status Badge */}
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-base font-bold text-gray-900">
-                          {exp.role || "Experience Role"}
-                        </h4>
-                        {/* Present Badge for ongoing experiences */}
-                        {(!exp.end_date && !exp.endDate) && (
-                          <Badge className="!bg-gradient-to-r !from-blue-100 !to-blue-200 !text-blue-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm">
-                            Present
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
-                          <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            Verified
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
+          )}
 
           {/* Icon + Location */}
           {(displayData.organization || displayData.company || displayData.location) && (
