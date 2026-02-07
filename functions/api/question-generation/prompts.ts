@@ -86,6 +86,21 @@ export const APTITUDE_PROMPT = `You are an expert psychometric assessment creato
 
 CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is a strict requirement.
 
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
+- DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
+- DO NOT write "The graph shows..." or "Look at the diagram..." or "The image depicts..."
+- DO NOT use words like: mirror image, reflection, rotate, flip, given figure, shown below, observe
+- ALL information must be provided in TEXT FORM ONLY
+- NEVER assume visual elements exist - the system does not support images
+- For spatial reasoning: Describe transformations in WORDS ONLY (e.g., "If you rotate the letter 'N' 180 degrees, which letter does it look like?")
+
+⚠️ CRITICAL: UNIQUE QUESTIONS AND OPTIONS REQUIRED ⚠️
+- Each question MUST be completely unique - no similar or repeated questions
+- Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)
+- NO duplicate options within a question (e.g., don't use "10" for both A and C)
+- All options must be non-empty and meaningful
+- Correct answer must be clearly distinguishable from wrong answers
+
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
 
@@ -100,8 +115,9 @@ Question Requirements:
 1. All questions must be MCQ with exactly 4 options (except Clerical which has 2 options: "Same" or "Different")
 2. Each question must have exactly ONE correct answer
 3. Mix difficulty levels: 40% easy, 40% medium, 20% hard
-4. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
-5. NO generic questions - every question must have {{STREAM_NAME}} context
+4. Each question must have exactly 4 unique options (A, B, C, D) - NO DUPLICATE OPTIONS ALLOWED
+5. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
+6. NO generic questions - every question must have {{STREAM_NAME}} context
 6. For Clerical Speed & Accuracy: Generate string comparison questions using {{STREAM_NAME}}-specific codes/IDs like "{{CLERICAL_EXAMPLE}}"
    - CRITICAL: The question text format must be: "Compare these two strings: STRING1 — STRING2"
    - Example: "Compare these two strings: ENG-789-SYS — ENG-789-SYS" or "Compare these two strings: AB7K9 — AB7K9"
@@ -152,6 +168,17 @@ IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 
 export const KNOWLEDGE_PROMPT = `You are an expert assessment creator for {{STREAM_NAME}} education.
 
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
+- DO NOT reference any visual elements (graphs, charts, tables, diagrams, images)
+- ALL information must be provided in TEXT FORM ONLY
+- NEVER assume visual elements exist
+
+⚠️ CRITICAL: UNIQUE QUESTIONS AND OPTIONS REQUIRED ⚠️
+- Each question MUST be completely unique - no similar or repeated questions
+- Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)
+- NO duplicate options within a question
+- All options must be non-empty and meaningful
+
 Generate {{QUESTION_COUNT}} knowledge assessment questions covering these topics:
 {{TOPICS}}
 
@@ -189,6 +216,8 @@ CRITICAL REQUIREMENTS:
    - First 5 questions: EASY difficulty
    - Next 5 questions: MEDIUM difficulty  
    - Last 5 questions: HARD difficulty
+
+⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY {{QUESTION_COUNT}} questions in your response.
 
 Difficulty Guidelines:
 - EASY (Q1-5): Fundamental concepts (45-60 seconds per question)

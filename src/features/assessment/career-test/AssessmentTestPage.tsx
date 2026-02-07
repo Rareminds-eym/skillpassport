@@ -274,10 +274,7 @@ const AssessmentTestPage: React.FC = () => {
   // Flow state machine
   const flow = useAssessmentFlow({
     sections,
-    onSectionComplete: (sectionId, timeSpent) => {
-
-
-
+    onSectionComplete: async (sectionId, timeSpent) => {
       // Update section timings in state so it shows on the complete screen
       const updatedTimings = {
         ...flow.sectionTimings,
@@ -285,14 +282,19 @@ const AssessmentTestPage: React.FC = () => {
       };
       flow.setSectionTimings(updatedTimings);
 
-
       if (useDatabase && currentAttempt?.id) {
         // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
-
-        dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
+        const progressResult = await dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
+        
+        // BLOCKING: Show error if section completion save failed
+        if (!progressResult.success) {
+          const errorMsg = progressResult.userMessage || 'Failed to save section completion';
+          alert(`❌ Save Failed\n\n${errorMsg}\n\nYour section completion was not saved. Please try again or check your internet connection.`);
+          throw new Error(errorMsg);
+        }
       }
     },
-    onAnswerChange: (questionId, answer) => {
+    onAnswerChange: async (questionId, answer) => {
       // Save to database if database mode is enabled and we have an active attempt
       if (useDatabase && currentAttempt?.id) {
         const [sectionId, qId] = questionId.split('_');
@@ -302,7 +304,16 @@ const AssessmentTestPage: React.FC = () => {
 
         if (isUUID) {
           // UUID questions (AI-generated) go to personal_assessment_responses table
-          dbSaveResponse(sectionId, qId, answer);
+          const saveResult = await dbSaveResponse(sectionId, qId, answer);
+          
+          // BLOCKING: Show error and prevent continuing if save failed
+          if (!saveResult.success) {
+            const errorMsg = saveResult.userMessage || 'Failed to save answer';
+            alert(`❌ Save Failed\n\n${errorMsg}\n\nYour answer was not saved. Please try again or check your internet connection.`);
+            // Revert the answer in UI since save failed
+            flow.setAnswer(questionId, flow.answers[questionId] || null);
+            throw new Error(errorMsg);
+          }
         }
         // Note: Non-UUID questions (RIASEC, BigFive, etc.) are saved via all_responses
         // in the updateProgress call below
@@ -313,7 +324,14 @@ const AssessmentTestPage: React.FC = () => {
 
         // Update progress (current position) after every answer
         // Also save all responses to the all_responses column
-        dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers);
+        const progressResult = await dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers);
+        
+        // BLOCKING: Show error and prevent continuing if progress update failed
+        if (!progressResult.success) {
+          const errorMsg = progressResult.userMessage || 'Failed to save progress';
+          alert(`❌ Save Failed\n\n${errorMsg}\n\nYour progress was not saved. Please try again or check your internet connection.`);
+          throw new Error(errorMsg);
+        }
       }
     }
   });
@@ -332,7 +350,8 @@ const AssessmentTestPage: React.FC = () => {
     gradeLevel: flow.gradeLevel,
     studentStream: flow.studentStream,
     studentId: studentId || null,
-    attemptId: currentAttempt?.id || null
+    attemptId: currentAttempt?.id || null,
+    studentProgram: studentProgram || null
   });
 
   // Adaptive Aptitude Hook
@@ -340,51 +359,49 @@ const AssessmentTestPage: React.FC = () => {
   // is created before sections are built
   const isAdaptiveLastSectionRef = React.useRef(false);
 
-  console.log('🎯 [AssessmentTestPage] Initializing useAdaptiveAptitude hook with:', {
-    studentId: studentId || '',
-    gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    attemptId: currentAttempt?.id,
-    hasAttemptId: !!currentAttempt?.id,
-    attemptIdType: typeof currentAttempt?.id
-  });
+  // Memoize callbacks to prevent infinite re-render loop
+  // These callbacks were causing the hook to re-initialize on every render
+  const handleAdaptiveTestComplete = useCallback(async (testResults: any) => {
+    console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
+    flow.setAnswer('adaptive_aptitude_results', testResults);
+    flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
+    
+    // Link the adaptive session to the assessment attempt
+    // NOTE: This is now also done in startTest, but keeping it here as a backup
+    if (testResults.sessionId && currentAttempt?.id) {
+      console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
+        sessionId: testResults.sessionId,
+        attemptId: currentAttempt.id
+      });
+      await assessmentService.updateAttemptAdaptiveSession(
+        currentAttempt.id,
+        testResults.sessionId
+      );
+      console.log('✅ [AssessmentTestPage] Backup linking complete');
+    } else {
+      console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
+        hasSessionId: !!testResults.sessionId,
+        hasAttemptId: !!currentAttempt?.id
+      });
+    }
+    
+    // Always call completeSection to show the section complete screen
+    // The auto-submit useEffect will handle submission if it's the last section
+    flow.completeSection();
+  }, [flow, currentAttempt?.id]);
+
+  const handleAdaptiveTestError = useCallback((err: any) => {
+    console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
+    flow.setError(`Adaptive test error: ${err}`);
+  }, [flow]);
 
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
     attemptId: currentAttempt?.id, // Pass attemptId to link session immediately
-    onTestComplete: async (testResults) => {
-      console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
-      flow.setAnswer('adaptive_aptitude_results', testResults);
-      flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
-      
-      // Link the adaptive session to the assessment attempt
-      // NOTE: This is now also done in startTest, but keeping it here as a backup
-      if (adaptiveAptitude.session?.id && currentAttempt?.id) {
-        console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
-          sessionId: adaptiveAptitude.session.id,
-          attemptId: currentAttempt.id
-        });
-        await assessmentService.updateAttemptAdaptiveSession(
-          currentAttempt.id,
-          adaptiveAptitude.session.id
-        );
-        console.log('✅ [AssessmentTestPage] Backup linking complete');
-      } else {
-        console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
-          hasSession: !!adaptiveAptitude.session?.id,
-          hasAttemptId: !!currentAttempt?.id
-        });
-      }
-      
-      // Always call completeSection to show the section complete screen
-      // The auto-submit useEffect will handle submission if it's the last section
-      flow.completeSection();
-
-    },
-    onError: (err) => {
-      console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
-      flow.setError(`Adaptive test error: ${err}`);
-    },
+    studentCourse: studentProgram || null, // Pass student's course for college students
+    onTestComplete: handleAdaptiveTestComplete,
+    onError: handleAdaptiveTestError,
   });
 
   // Track adaptive loading time for better UX
@@ -917,14 +934,13 @@ const AssessmentTestPage: React.FC = () => {
 
       flow.setCurrentScreen('section_intro');
     } else if (level === 'college') {
-      // College students (UG/PG) skip category selection - use their program directly
+      // College students (UG/PG) skip category selection - use 'college' stream
+      // The 'college' stream exists in personal_assessment_streams table
       setAssessmentStarted(true);
 
-      // Normalize the program name to fit database constraints (max 20 chars)
-      const normalizedStreamId = normalizeStreamId(studentProgram || 'college');
-
-
-      flow.setStudentStream(normalizedStreamId);
+      // Always use 'college' stream for college students
+      // This is a general stream that works for all college programs
+      flow.setStudentStream('college');
 
       // DON'T create attempt here - wait until user clicks "Start Section"
       // This prevents orphan attempts when user just browses
@@ -1041,14 +1057,35 @@ const AssessmentTestPage: React.FC = () => {
     // FIX 1: Resume adaptive aptitude session if exists
     if (pendingAttempt.adaptive_aptitude_session_id) {
       console.log('🔄 [ADAPTIVE RESUME] Found adaptive session ID, attempting to resume:', pendingAttempt.adaptive_aptitude_session_id);
-      try {
-        await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
-        console.log('✅ [ADAPTIVE RESUME] Session resumed successfully');
-      } catch (err) {
-        console.error('❌ [ADAPTIVE RESUME] Failed to resume adaptive session:', err);
-        // Show error to user but allow them to continue
-        flow.setError('Could not resume adaptive test session. The section will restart from the beginning.');
-        // Continue with regular resume - adaptive section will restart if needed
+      
+      // Check if the adaptive session is already completed
+      const { data: adaptiveSession } = await supabase
+        .from('adaptive_aptitude_sessions')
+        .select('status, questions_answered')
+        .eq('id', pendingAttempt.adaptive_aptitude_session_id)
+        .single();
+      
+      if (adaptiveSession?.status === 'completed') {
+        console.log('✅ [ADAPTIVE RESUME] Adaptive session already completed, skipping resume');
+        console.log('✅ [ADAPTIVE RESUME] Will show section complete screen');
+        // Don't try to resume - the section is already complete
+        // Check if we're currently on the adaptive section
+        const adaptiveSectionIndex = sections.findIndex(s => s.isAdaptive);
+        if (sectionIndex === adaptiveSectionIndex) {
+          console.log('✅ [ADAPTIVE RESUME] Currently on adaptive section, showing section complete');
+          flow.setShowSectionComplete(true);
+        }
+      } else {
+        // Session is in progress, try to resume it
+        try {
+          await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
+          console.log('✅ [ADAPTIVE RESUME] Session resumed successfully');
+        } catch (err) {
+          console.error('❌ [ADAPTIVE RESUME] Failed to resume adaptive session:', err);
+          // Show error to user but allow them to continue
+          flow.setError('Could not resume adaptive test session. The section will restart from the beginning.');
+          // Continue with regular resume - adaptive section will restart if needed
+        }
       }
     } else {
       console.log('ℹ️ [ADAPTIVE RESUME] No adaptive session ID found - user may not have started adaptive section yet');
@@ -1108,12 +1145,27 @@ const AssessmentTestPage: React.FC = () => {
           flow.setShowSectionIntro(true);
           flow.setCurrentScreen('section_intro');
         } else {
-          console.log('✅ [ADAPTIVE RESUME] Adaptive session exists, resuming to assessment screen');
-          // Adaptive session was already resumed above
-          // Just set to question 0 and let adaptive hook take over
-          flow.setCurrentQuestionIndex(0);
-          flow.setShowSectionIntro(false);
-          flow.setCurrentScreen('assessment');
+          // Check if the adaptive session is completed
+          const { data: adaptiveSession } = await supabase
+            .from('adaptive_aptitude_sessions')
+            .select('status')
+            .eq('id', pendingAttempt.adaptive_aptitude_session_id)
+            .single();
+          
+          if (adaptiveSession?.status === 'completed') {
+            console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
+            flow.setCurrentQuestionIndex(0);
+            flow.setShowSectionIntro(false);
+            flow.setShowSectionComplete(true);
+            flow.setCurrentScreen('section_complete');
+          } else {
+            console.log('✅ [ADAPTIVE RESUME] Adaptive session exists and in progress, resuming to assessment screen');
+            // Adaptive session was already resumed above
+            // Just set to question 0 and let adaptive hook take over
+            flow.setCurrentQuestionIndex(0);
+            flow.setShowSectionIntro(false);
+            flow.setCurrentScreen('assessment');
+          }
         }
 
       } else {
@@ -1234,26 +1286,24 @@ const AssessmentTestPage: React.FC = () => {
         setUseDatabase(true);
 
         // Determine the appropriate stream ID based on grade level
+        // Use the stream that was set during grade selection
         let streamId = flow.studentStream;
-        if (!streamId) {
-          // Fallback based on grade level if stream wasn't set
-          switch (flow.gradeLevel) {
-            case 'middle':
-              streamId = 'middle_school';
-              break;
-            case 'highschool':
-              streamId = 'high_school';
-              break;
-            default:
-              streamId = 'general';
-          }
+        
+        // Fallback: If no stream selected, use 'college' for college students
+        // Note: College students have gradeLevel='after12' but isCollegeStudent=true
+        if (!streamId && isCollegeStudent) {
+          streamId = 'college';
         }
+        // For after12, after10, middle, highschool: streamId should already be set
 
         console.log('🎯 [AssessmentTestPage] Creating attempt:', { 
           streamId, 
           gradeLevel: flow.gradeLevel, 
           studentRecordId,
-          currentSectionIndex: flow.currentSectionIndex 
+          currentSectionIndex: flow.currentSectionIndex,
+          note: streamId === 'college' ? 'Using college stream (program-based)' : 
+                streamId ? 'Using selected stream' : 
+                'No stream (will be null)'
         });
         
         await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
@@ -1359,7 +1409,7 @@ const AssessmentTestPage: React.FC = () => {
     // CRITICAL: Block navigation if database is required but we can't save
     if (useDatabase && !currentAttempt?.id) {
       console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
-      showToastError('Assessment session not found. Please refresh the page and try again.');
+      showBlockingError('Assessment session not found. Please refresh the page and try again.');
       return;
     }
 
@@ -1420,7 +1470,7 @@ const AssessmentTestPage: React.FC = () => {
           if (!saveResult?.success) {
             console.error('❌ [SAVE BLOCK] Critical save failed - Navigation BLOCKED');
             console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-            showToastError('Failed to save your progress. Please check your internet connection and try again.');
+            showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
             return; // BLOCK NAVIGATION - critical save failed
           }
 
@@ -1443,7 +1493,7 @@ const AssessmentTestPage: React.FC = () => {
             if (!saveResult?.success) {
               console.error('❌ [SAVE BLOCK] Checkpoint save failed - Navigation BLOCKED');
               console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-              showToastError('Failed to save your progress. Please check your internet connection and try again.');
+              showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
               return; // BLOCK NAVIGATION - checkpoint save failed
             }
 
@@ -1462,7 +1512,7 @@ const AssessmentTestPage: React.FC = () => {
             if (!saveResult?.success) {
               console.error('❌ [SAVE BLOCK] Light save failed - Navigation BLOCKED');
               console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-              showToastError('Failed to save your progress. Please check your internet connection and try again.');
+              showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
               return; // BLOCK NAVIGATION - light save failed
             }
 
@@ -1490,13 +1540,13 @@ const AssessmentTestPage: React.FC = () => {
 
       // Provide user-friendly error messages based on error type
       if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
-        showToastError('Network connection lost. Please check your internet connection and try again.');
+        showBlockingError('Network connection lost. Please check your internet connection and try again.');
       } else if (error?.message?.includes('timeout')) {
-        showToastError('Request timed out. Please try again.');
+        showBlockingError('Request timed out. Please try again.');
       } else if (error?.message?.includes('session')) {
-        showToastError('Your session has expired. Please refresh the page and try again.');
+        showBlockingError('Your session has expired. Please refresh the page and try again.');
       } else {
-        showToastError('An unexpected error occurred. Please try again or refresh the page.');
+        showBlockingError('An unexpected error occurred. Please try again or refresh the page.');
       }
 
       // Don't navigate on error
@@ -1590,7 +1640,7 @@ const AssessmentTestPage: React.FC = () => {
       if (useDatabase && !currentAttempt?.id) {
         console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
         console.error('❌ [SAVE BLOCK] Section navigation BLOCKED - database enabled but no attempt');
-        showToastError('Assessment session not found. Please refresh the page and try again.');
+        showBlockingError('Assessment session not found. Please refresh the page and try again.');
         return; // BLOCK NAVIGATION - cannot save at all
       }
 
@@ -1630,7 +1680,7 @@ const AssessmentTestPage: React.FC = () => {
           if (!saveResult?.success) {
             console.error('❌ [SAVE BLOCK] Section save failed - Navigation BLOCKED');
             console.error('❌ [SAVE BLOCK] Save result:', saveResult);
-            showToastError('Failed to save your progress. Please check your internet connection and try again.');
+            showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
             return; // BLOCK NAVIGATION - critical save failed
           }
 
@@ -1641,13 +1691,13 @@ const AssessmentTestPage: React.FC = () => {
 
           // Provide user-friendly error messages based on error type
           if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
-            showToastError('Network connection lost. Please check your internet connection and try again.');
+            showBlockingError('Network connection lost. Please check your internet connection and try again.');
           } else if (error?.message?.includes('timeout')) {
-            showToastError('Request timed out. Please try again.');
+            showBlockingError('Request timed out. Please try again.');
           } else if (error?.message?.includes('session')) {
-            showToastError('Your session has expired. Please refresh the page and try again.');
+            showBlockingError('Your session has expired. Please refresh the page and try again.');
           } else {
-            showToastError('An unexpected error occurred. Please try again or refresh the page.');
+            showBlockingError('An unexpected error occurred. Please try again or refresh the page.');
           }
 
           return; // BLOCK NAVIGATION - critical save error
@@ -1682,14 +1732,10 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [sections, flow]);
 
-  // Toast error helper function
-  const showToastError = useCallback((message: string) => {
-    console.log('🚨 [TOAST ERROR] Showing user-friendly error:', message);
-    setToastError(message);
-    // Auto-hide after 5 seconds
-    setTimeout(() => {
-      setToastError(null);
-    }, 5000);
+  // Blocking error helper function - shows alert and blocks user
+  const showBlockingError = useCallback((message: string) => {
+    console.log('🚨 [BLOCKING ERROR] Showing blocking error:', message);
+    alert(`❌ Save Failed\n\n${message}\n\nPlease try again or check your internet connection.`);
   }, []);
 
   // Test mode functions
@@ -2071,7 +2117,11 @@ const AssessmentTestPage: React.FC = () => {
                 setUseDatabase(true);
 
                 try {
-                  await dbStartAssessment(flow.studentStream || 'general', flow.gradeLevel || 'after12');
+                  // Only use 'college' stream for actual college students
+                  const streamId = flow.studentStream || 
+                    (flow.gradeLevel === 'college' ? 'college' : null);
+                  
+                  await dbStartAssessment(streamId, flow.gradeLevel || 'after12');
 
                   // Wait a bit for the attempt to be created
                   await new Promise(resolve => setTimeout(resolve, 500));
@@ -2174,7 +2224,7 @@ const AssessmentTestPage: React.FC = () => {
           )}
           
           {/* Adaptive Section Loading - Show loading when adaptive test is initializing */}
-          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && (adaptiveAptitude.loading || !adaptiveAptitude.currentQuestion) && !adaptiveAptitude.error && (
+          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && (adaptiveAptitude.loading || !adaptiveAptitude.currentQuestion) && !adaptiveAptitude.error && !adaptiveAptitude.isTestComplete && (
             <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
               <div className="text-center max-w-md px-4">
                 <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />

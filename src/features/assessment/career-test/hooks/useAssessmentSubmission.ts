@@ -425,9 +425,11 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
               return null;
             };
 
-            const programName = student.branch_field ||
-              (student.programs as any)?.name ||
-              student.course_name;
+            // Priority: program.name > program.code > course_name > branch_field
+            const programName = (student.programs as any)?.name ||
+              (student.programs as any)?.code ||
+              student.course_name ||
+              student.branch_field;
             const programCode = (student.programs as any)?.code || null;
             const degreeLevel = extractDegreeLevel(
               student.grade,
@@ -533,7 +535,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       // Save completion to database
       if (attemptId && userId) {
         try {
-
+          console.log('💾 Saving assessment completion to database...');
 
           const dbResults = await assessmentService.completeAttemptWithoutAI(
             attemptId,
@@ -543,25 +545,54 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             finalTimings
           );
 
-
+          console.log('✅ Assessment saved successfully:', dbResults.id);
 
           // Navigate with attemptId
           navigate(`/student/assessment/result?attemptId=${attemptId}`);
         } catch (dbErr: any) {
           console.error('❌ Failed to save to database:', dbErr);
-          // Navigate to results with attemptId (database has real-time saved data)
+          
+          // Provide user-friendly error messages
+          let errorMessage = 'Failed to save assessment results. ';
+          
+          if (dbErr.code === 'VALIDATION_ERROR') {
+            errorMessage += 'Invalid data detected. Please contact support.';
+          } else if (dbErr.code === 'ATTEMPT_UPDATE_FAILED') {
+            errorMessage += 'Could not mark assessment as complete. Your answers are saved, but you may need to resubmit.';
+          } else if (dbErr.code === 'RESULT_INSERT_FAILED') {
+            errorMessage += 'Could not create result record. Your answers are saved. Please try viewing results again.';
+          } else if (dbErr.message?.includes('network') || dbErr.message?.includes('fetch')) {
+            errorMessage += 'Network error. Please check your connection and try again.';
+          } else {
+            errorMessage += 'Please try again or contact support if the issue persists.';
+          }
+          
+          // If we have an attemptId, try to navigate anyway (data might be partially saved)
           if (attemptId) {
-            navigate(`/student/assessment/result?attemptId=${attemptId}`);
+            console.log('⚠️ Attempting to navigate to results despite error...');
+            const shouldNavigate = confirm(
+              `${errorMessage}\n\nYour answers may be saved. Would you like to try viewing your results?`
+            );
+            
+            if (shouldNavigate) {
+              navigate(`/student/assessment/result?attemptId=${attemptId}`);
+            } else {
+              setError(errorMessage);
+              setIsSubmitting(false);
+            }
           } else {
             // No attemptId - show error and stay on assessment page
-            alert('Failed to save assessment. Please try again.');
+            alert(errorMessage);
+            setError(errorMessage);
             setIsSubmitting(false);
             return;
           }
         }
       } else {
-        console.log('❌ No attemptId available - cannot navigate to results');
-        alert('Assessment data not found. Please try again.');
+        console.log('❌ No attemptId or userId available - cannot save results');
+        const errorMessage = 'Assessment data not found. Please ensure you started the assessment properly.';
+        alert(errorMessage);
+        setError(errorMessage);
         setIsSubmitting(false);
         return;
       }

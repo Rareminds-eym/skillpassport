@@ -268,6 +268,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const universityName = e.target.value;
                   setCustomUniversityName(universityName);
+                  // Also update profileData.university for immediate sync
+                  handleInstitutionChange('university', universityName);
                 }}
                 placeholder="Enter your university name"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -277,6 +279,7 @@ const InstitutionDetailsTab = ({
                 onClick={() => {
                   setShowCustomUniversity(false);
                   setCustomUniversityName('');
+                  handleInstitutionChange('university', '');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
@@ -329,6 +332,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const collegeName = e.target.value;
                   setCustomCollegeName(collegeName);
+                  // Also update profileData.college for immediate sync
+                  handleInstitutionChange('college', collegeName);
                 }}
                 placeholder="Enter your college name"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -338,6 +343,7 @@ const InstitutionDetailsTab = ({
                 onClick={() => {
                   setShowCustomCollege(false);
                   setCustomCollegeName('');
+                  handleInstitutionChange('college', '');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
@@ -388,6 +394,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const programName = e.target.value;
                   setCustomProgramName(programName);
+                  // Also update profileData.branch for immediate sync
+                  handleInstitutionChange('branch', programName);
                 }}
                 placeholder="Enter program name (e.g., B.Tech Computer Science)"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -397,6 +405,7 @@ const InstitutionDetailsTab = ({
                 onClick={() => {
                   setShowCustomProgram(false);
                   setCustomProgramName('');
+                  handleInstitutionChange('branch', '');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
@@ -449,6 +458,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const semesterText = e.target.value;
                   setCustomSemesterName(semesterText);
+                  // Also update profileData.section for immediate sync
+                  handleInstitutionChange('section', semesterText);
                 }}
                 placeholder="Enter semester/section (e.g., Semester 3, 5th Sem)"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -458,6 +469,7 @@ const InstitutionDetailsTab = ({
                 onClick={() => {
                   setShowCustomSemester(false);
                   setCustomSemesterName('');
+                  handleInstitutionChange('section', '');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >

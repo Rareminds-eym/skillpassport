@@ -136,8 +136,16 @@ export async function generateAptitudeQuestions(
         }
 
         const systemPrompt = isAfter10
-            ? `You are an expert educational assessment creator for 10th grade students. Generate EXACTLY ${batchTotal} questions total covering school subjects. Generate ONLY valid JSON.`
-            : `You are an expert psychometric assessment creator. Generate EXACTLY ${batchTotal} questions total. Generate ONLY valid JSON.`;
+            ? `You are an expert educational assessment creator for 10th grade students. 
+
+🎯 CRITICAL: You MUST generate EXACTLY ${batchTotal} questions total covering school subjects. This is a strict requirement.
+
+Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONLY valid JSON with no markdown.`
+            : `You are an expert psychometric assessment creator. 
+
+🎯 CRITICAL: You MUST generate EXACTLY ${batchTotal} questions total. This is a strict requirement.
+
+Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONLY valid JSON with no markdown.`;
 
         // Use OpenRouter with automatic retry and fallback
         // Calculate token limit: ~150 tokens per question + 500 buffer
@@ -163,11 +171,76 @@ export async function generateAptitudeQuestions(
     }
 
     console.log(`✅ Generated ${allGeneratedQuestions.length} total questions via AI`);
+    
+    // STRICT validation: Check for duplicate questions and validate answer options
+    const uniqueQuestions: any[] = [];
+    const seenTexts = new Set<string>();
+    let filteredCount = 0;
+    
+    for (const q of allGeneratedQuestions) {
+        const normalizedText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
+        
+        // Check for duplicate question text
+        if (!normalizedText || seenTexts.has(normalizedText)) {
+            console.warn(`⚠️ Filtered duplicate question: "${normalizedText.substring(0, 50)}..."`);
+            filteredCount++;
+            continue;
+        }
+        
+        // Check for image references
+        const imageKeywords = [
+            'graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 
+            'shown below', 'shown above', 'visual', 'illustration', 'drawing',
+            'sketch', 'photo', 'photograph', 'display', 'depicts', 'shows',
+            'given figure', 'following figure', 'above figure', 'below figure',
+            'mirror image', 'reflection', 'rotate', 'flip', 'shape', 'pattern',
+            'look at', 'observe', 'see the', 'view the', 'refer to',
+            'as shown', 'as depicted', 'as illustrated'
+        ];
+        if (imageKeywords.some(keyword => normalizedText.includes(keyword))) {
+            console.warn(`⚠️ Filtered question with image reference: "${normalizedText.substring(0, 50)}..."`);
+            filteredCount++;
+            continue;
+        }
+        
+        // Validate answer options are unique
+        const options = q.options || {};
+        const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+        const uniqueOptions = new Set(optionValues);
+        
+        if (uniqueOptions.size < optionValues.length) {
+            console.warn(`⚠️ Filtered question with duplicate options: "${normalizedText.substring(0, 50)}..."`);
+            console.warn(`   Options: ${JSON.stringify(options)}`);
+            filteredCount++;
+            continue;
+        }
+        
+        // Validate all options are non-empty
+        if (optionValues.some(v => !v || v.length === 0)) {
+            console.warn(`⚠️ Filtered question with empty options: "${normalizedText.substring(0, 50)}..."`);
+            filteredCount++;
+            continue;
+        }
+        
+        seenTexts.add(normalizedText);
+        uniqueQuestions.push(q);
+    }
+    
+    console.log(`🔍 After validation: ${uniqueQuestions.length}/${allGeneratedQuestions.length} valid questions (filtered: ${filteredCount})`);
+    
+    // If more than 20% were filtered, log warning
+    if (filteredCount > allGeneratedQuestions.length * 0.2) {
+        console.warn(`⚠️ WARNING: ${filteredCount} questions filtered (${Math.round(filteredCount/allGeneratedQuestions.length*100)}%) - AI quality may need improvement`);
+    }
+    
     console.log('🧠 ============================================');
 
-    const processedQuestions = allGeneratedQuestions.map((q: any) => ({
-        id: generateUUID(),
+    // Use sequential numeric IDs for consistency with answer storage
+    // Format: 1, 2, 3, ... (not UUIDs) so answers can be matched
+    const processedQuestions = uniqueQuestions.map((q: any, index: number) => ({
         ...q,
+        id: index + 1, // Sequential numeric ID
+        uuid: generateUUID(), // Keep UUID for database uniqueness
         stream_id: streamId,
         grade_level: gradeLevel || 'general',
         created_at: new Date().toISOString()
