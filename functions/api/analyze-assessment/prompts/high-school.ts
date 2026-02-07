@@ -240,6 +240,7 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       "logical_reasoning": {"accuracy": 0},
       "verbal_reasoning": {"accuracy": 0},
       "spatial_reasoning": {"accuracy": 0},
+      "data_interpretation": {"accuracy": 0},
       "pattern_recognition": {"accuracy": 0}
     },
     "topStrengths": ["2-3 strengths combining self-assessment AND adaptive test results"],

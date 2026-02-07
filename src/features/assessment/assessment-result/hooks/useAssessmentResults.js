@@ -1059,6 +1059,11 @@ export const useAssessmentResults = () => {
                             // Fall through to regenerate
                         } else {
                             // Valid AI analysis exists - use it
+                            console.log('✅ [UNIFIED LOADER] AI analysis found in database!');
+                            console.log('✅ [UNIFIED LOADER] Results will display IMMEDIATELY');
+                            console.log('✅ [UNIFIED LOADER] No additional AI analysis needed');
+                            console.log('✅ [UNIFIED LOADER] Result ID:', directResult.id);
+                            
                             const validatedResults = await applyValidation(geminiResults, {});
                             
                             console.log('🔍 DEBUG - Before normalization (direct lookup):', {
@@ -1084,6 +1089,7 @@ export const useAssessmentResults = () => {
                             }
 
                             loadedAttemptIdRef.current = attemptId;
+                            console.log('✅ [UNIFIED LOADER] Results loaded successfully - hiding loader');
                             setLoading(false);
                             return;
                         }
@@ -1096,6 +1102,14 @@ export const useAssessmentResults = () => {
                         console.log('   gemini_results:', directResult.gemini_results);
                         console.log('   status:', directResult.status);
                         console.log('   grade_level:', directResult.grade_level);
+                        
+                        console.log('⚠️ [UNIFIED LOADER] AI analysis missing from database!');
+                        console.log('⚠️ [UNIFIED LOADER] This should NOT happen with the new flow');
+                        console.log('⚠️ [UNIFIED LOADER] AI analysis should have been done during submission');
+                        console.log('⚠️ [UNIFIED LOADER] Possible causes:');
+                        console.log('   1. Old assessment (before unified loader implementation)');
+                        console.log('   2. AI analysis failed during submission');
+                        console.log('   3. Database save failed partially');
                         
                         // Set grade level
                         if (directResult.grade_level) {
@@ -1119,7 +1133,7 @@ export const useAssessmentResults = () => {
                         }
 
                         // Trigger auto-retry
-                        console.log('🚀 Triggering auto-retry mechanism');
+                        console.log('🚀 Triggering auto-retry mechanism (fallback for old assessments)');
                         console.log('   Setting autoRetry flag to TRUE');
                         console.log('   Grade level will be passed to AI:', directResult.grade_level || gradeLevel);
                         setAutoRetry(true);

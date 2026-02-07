@@ -680,6 +680,20 @@ export async function handleAnalyzeAssessment(
     // Analyze with AI
     const results = await analyzeAssessment(env, assessmentData);
 
+    // ============================================================================
+    // PRESERVE ADAPTIVE APTITUDE RESULTS
+    // Add adaptive results to the response so they're saved in the database
+    // ============================================================================
+    if (assessmentData.adaptiveAptitudeResults) {
+      console.log('[ASSESSMENT] ✅ Including adaptive aptitude results in response');
+      console.log('[ASSESSMENT] Adaptive level:', assessmentData.adaptiveAptitudeResults.aptitudeLevel);
+      console.log('[ASSESSMENT] Adaptive accuracy:', assessmentData.adaptiveAptitudeResults.overallAccuracy);
+      
+      results.adaptiveAptitudeResults = assessmentData.adaptiveAptitudeResults;
+    } else {
+      console.log('[ASSESSMENT] ℹ️ No adaptive aptitude results to include');
+    }
+
     console.log(`[ASSESSMENT] Successfully analyzed for student ${studentId}`);
     
     const response: AnalysisResult = {

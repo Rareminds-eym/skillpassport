@@ -410,14 +410,40 @@ export function useAdaptiveAptitude(
 
       // Check if test is complete
       if (answerResult.testComplete) {
-        console.log('🏁 [useAdaptiveAptitude] Test complete, fetching results...');
-        // Complete the test and get results
-        const testResults = await AdaptiveAptitudeService.completeTest(session.id);
-        setResults(testResults);
-        setIsTestComplete(true);
-        setCurrentQuestion(null);
-        setQuestionStartTime(null);
-        onTestComplete?.(testResults);
+        console.log('🏁 [useAdaptiveAptitude] Test complete, calling completeTest API...');
+        console.log('🏁 [useAdaptiveAptitude] Session ID:', session.id);
+        
+        try {
+          // Complete the test and get results
+          const testResults = await AdaptiveAptitudeService.completeTest(session.id);
+          console.log('✅ [useAdaptiveAptitude] completeTest API succeeded');
+          console.log('✅ [useAdaptiveAptitude] Results:', {
+            id: testResults.id,
+            sessionId: testResults.sessionId,
+            aptitudeLevel: testResults.aptitudeLevel,
+            totalQuestions: testResults.totalQuestions,
+            totalCorrect: testResults.totalCorrect,
+          });
+          
+          setResults(testResults);
+          setIsTestComplete(true);
+          setCurrentQuestion(null);
+          setQuestionStartTime(null);
+          onTestComplete?.(testResults);
+        } catch (completeError) {
+          console.error('❌ [useAdaptiveAptitude] completeTest API FAILED:', completeError);
+          console.error('❌ [useAdaptiveAptitude] This means results were NOT saved to adaptive_aptitude_results table');
+          console.error('❌ [useAdaptiveAptitude] Error details:', {
+            message: completeError instanceof Error ? completeError.message : 'Unknown error',
+            stack: completeError instanceof Error ? completeError.stack : undefined,
+          });
+          
+          // Still mark test as complete in UI, but show error
+          setIsTestComplete(true);
+          setCurrentQuestion(null);
+          setQuestionStartTime(null);
+          handleError(completeError, 'Failed to save test results');
+        }
       } else {
         console.log('📋 [useAdaptiveAptitude] Getting next question...');
         // Get next question
