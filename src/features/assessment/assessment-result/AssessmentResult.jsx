@@ -966,6 +966,9 @@ const AssessmentResult = () => {
 
     // Loading state
     if (loading) {
+        console.log('📄 [AssessmentResult] LOADER 3 DISPLAYED - loading=true');
+        console.log('📄 [AssessmentResult] retrying:', retrying);
+        console.log('📄 [AssessmentResult] retryAttemptCount:', retryAttemptCount);
         return <LoadingState isAutoRetry={retrying} retryAttemptCount={retryAttemptCount} />;
     }
 

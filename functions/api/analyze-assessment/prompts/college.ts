@@ -67,22 +67,23 @@ This student is pursuing a POSTGRADUATE degree (Master's/PG Diploma). Your recom
 
 **MANDATORY REQUIREMENTS:**
 1. **NO Undergraduate Programs**: Do NOT recommend Bachelor's degrees (B.Tech, BCA, B.Sc, etc.)
-2. **Advanced Roles Only**: Focus on mid-level to senior positions, not entry-level
-3. **Higher Salary Expectations**: 
-   - Entry (0-2 years): ₹6-15 LPA
-   - Mid-level (3-5 years): ₹15-30 LPA
-   - Senior (5+ years): ₹30-60 LPA
-4. **Specialized Skills**: Recommend advanced certifications and specializations
+2. **Entry-Level Roles for Fresh PG Graduates**: Focus on roles accessible to fresh Master's graduates (Junior Scientist, Research Associate, Analyst, etc.)
+3. **Salary Expectations**: Research actual market rates for the specific role and field (varies by industry, location, and specialization)
+4. **Specialized Skills**: Recommend certifications relevant to their Master's specialization
 5. **Industry-Specific Roles**: Match recommendations to their field of study
+
+**CAREER TITLE RULES FOR POSTGRADUATE:**
+- ✅ CORRECT: "Research Scientist", "Data Scientist", "Business Analyst", "Product Manager", "Research Associate"
+- ✅ CORRECT: Entry-level roles that typically require/prefer Master's degree
+- ❌ WRONG: "Senior Scientist", "Lead Engineer", "Director", "VP" (these require 5+ years experience)
+- ❌ WRONG: "Junior Developer", "Trainee" (these are for Bachelor's graduates)
 
 **FILTERING RULES (STRICTLY ENFORCE):**
 - ❌ Remove any "Complete your Bachelor's degree" suggestions
 - ❌ Remove any UG program recommendations
-- ❌ Remove any entry-level roles meant for fresh graduates
-- ❌ Remove any basic certifications (recommend advanced ones only)
-- ✅ Include only roles that value PG qualifications
-- ✅ Include only advanced/specialized certifications
-- ✅ Adjust salary ranges to PG level
+- ✅ Include roles that value/require PG qualifications
+- ✅ Include specialized certifications relevant to Master's level
+- ✅ Adjust salary ranges to fresh PG graduate level
 `;
   }
 
@@ -94,7 +95,7 @@ This student is pursuing an UNDERGRADUATE degree (Bachelor's).
 
 **RECOMMENDATIONS SHOULD INCLUDE:**
 1. **Entry-Level Roles**: Focus on campus placements and fresher positions
-2. **Salary Expectations**: ₹3-8 LPA for entry-level
+2. **Salary Expectations**: Research actual market rates for the specific role, field, and location (varies significantly)
 3. **Foundational Skills**: Basic to intermediate certifications
 4. **Internship Opportunities**: Emphasize internships and training programs
 5. **Career Growth Path**: Show progression from entry to mid-level
@@ -110,7 +111,7 @@ This student is pursuing a DIPLOMA program.
 
 **RECOMMENDATIONS SHOULD INCLUDE:**
 1. **Technical/Vocational Roles**: Focus on hands-on, skill-based positions
-2. **Salary Expectations**: ₹2-6 LPA for entry-level
+2. **Salary Expectations**: Research actual market rates for the specific role and industry (varies by skill level)
 3. **Industry Certifications**: Practical, industry-recognized certifications
 4. **Skill Development**: Emphasize technical skills and on-the-job training
 5. **Career Pathways**: Show how to progress to higher qualifications if desired
@@ -188,6 +189,15 @@ export function buildCollegePrompt(assessmentData: AssessmentData, answersHash: 
   const studentContext = assessmentData.studentContext;
   const hasStudentContext = studentContext && (studentContext.rawGrade || studentContext.programName || studentContext.degreeLevel);
 
+  // 🔍 DEBUG: Log student context
+  console.log('[COLLEGE-PROMPT] === STUDENT CONTEXT DEBUG ===');
+  console.log('[COLLEGE-PROMPT] Has studentContext:', !!studentContext);
+  console.log('[COLLEGE-PROMPT] rawGrade:', studentContext?.rawGrade);
+  console.log('[COLLEGE-PROMPT] programName:', studentContext?.programName);
+  console.log('[COLLEGE-PROMPT] programCode:', studentContext?.programCode);
+  console.log('[COLLEGE-PROMPT] degreeLevel:', studentContext?.degreeLevel);
+  console.log('[COLLEGE-PROMPT] hasStudentContext:', hasStudentContext);
+
   // Build student context section
   const studentContextSection = hasStudentContext ? `
 ## 🎓 STUDENT ACADEMIC CONTEXT (CRITICAL - READ CAREFULLY)
@@ -201,32 +211,77 @@ ${buildDegreeLevelInstructions(studentContext.degreeLevel ?? undefined, studentC
 
 **Program Field Alignment:**
 
-⚠️ CRITICAL: The student is studying **${studentContext.programName || 'their chosen program'}**. 
-You MUST analyze this program and provide career recommendations that are DIRECTLY ALIGNED with this field of study.
+🚨🚨🚨 CRITICAL - PROGRAM ALIGNMENT IS ABSOLUTELY MANDATORY 🚨🚨🚨
 
-**MANDATORY INSTRUCTIONS FOR PROGRAM-SPECIFIC RECOMMENDATIONS:**
+The student is studying **${studentContext.programName || 'their chosen program'}**. 
 
-1. **Analyze the Program Field:**
-   - Identify the domain: Technology/IT, Engineering, Business/Management, Healthcare/Medical, Science, Pharmacy, Arts/Humanities, Law, etc.
-   - Understand the specialization within that domain
-   - Consider the degree level (UG/PG/Diploma) for role seniority
+**YOU MUST GENERATE CAREER RECOMMENDATIONS THAT ARE 100% ALIGNED WITH THIS PROGRAM.**
 
-2. **Generate Field-Aligned Career Clusters:**
-   - **Cluster 1 (High Fit)**: Core careers directly related to the program
-   - **Cluster 2 (Medium Fit)**: Adjacent careers within the same domain that leverage the program's skills
-   - **Cluster 3 (Explore)**: Interdisciplinary careers that STILL USE the program's core skills but in different contexts
+**IF YOU IGNORE THE PROGRAM AND RECOMMEND UNRELATED CAREERS, YOUR RESPONSE WILL BE REJECTED.**
+
+**EXAMPLES OF CORRECT PROGRAM-TO-CAREER MAPPING:**
+
+- **"Bsc Physics"** → Physics Research Scientist, Data Scientist (Physics/Analytics), Aerospace Engineer, Quantum Computing Researcher, Scientific Instrumentation Engineer, Materials Scientist, Astrophysicist, Nuclear Physicist
+- **"Bsc Chemistry"** → Chemical Research Scientist, Pharmaceutical R&D Scientist, Quality Control Chemist, Materials Scientist, Forensic Scientist, Analytical Chemist, Biochemist
+- **"BCA" / "B.Tech CS"** → Software Developer, Data Analyst, Web Developer, Mobile App Developer, Cloud Engineer, DevOps Engineer, Full Stack Developer
+- **"BBA" / "MBA"** → Business Analyst, Marketing Manager, HR Manager, Operations Manager, Product Manager, Strategy Consultant, Financial Analyst
+- **"B.Pharm"** → Pharmacist, Drug Safety Associate, Regulatory Affairs Specialist, Clinical Research Associate, Medical Representative, Pharmaceutical Analyst
+- **"BA Psychology"** → Clinical Psychologist, HR Specialist, Counselor, UX Researcher, Organizational Behavior Analyst, Mental Health Counselor
+- **"LLB"** → Corporate Lawyer, Legal Consultant, Compliance Officer, Patent Attorney, Legal Advisor, Contract Specialist
+
+**MANDATORY STEP-BY-STEP PROCESS (FOLLOW EXACTLY):**
+
+**STEP 1: IDENTIFY THE PROGRAM FIELD**
+   - Extract the EXACT field from "${studentContext.programName || 'the program'}"
+   - Is it Physics? Chemistry? Computer Science? Business? Engineering? Medicine? Law?
+   - Write down the field: _________________
+
+**STEP 2: LIST CAREERS IN THAT FIELD**
+   - List 15-20 careers that are DIRECTLY related to this field
+   - These careers should be what graduates of this program typically pursue
+   - DO NOT list careers from other fields
+
+**STEP 3: CREATE 3 CAREER CLUSTERS FROM YOUR LIST**
+   - **Cluster 1 (High Fit)**: Top 3-5 careers from your list that are CORE to the field
+   - **Cluster 2 (Medium Fit)**: 3-5 careers from your list that are ADJACENT to the field
+   - **Cluster 3 (Explore)**: 3-5 careers from your list that are INTERDISCIPLINARY but still use field skills
+
+**STEP 4: FINAL VALIDATION (MANDATORY)**
+   Before returning your response, answer these questions:
    
-   ⚠️ **CRITICAL NAMING RULES**:
-   - ALL THREE CLUSTERS must be relevant to the student's program field. Do NOT recommend careers from completely different domains.
-   - **Career cluster TITLES should PREFER entry-level role names** (e.g., "Software Developer", "Data Analyst", "Marketing Associate")
-   - Generic cluster names (e.g., "Technology & Innovation", "Business & Management") are acceptable when multiple related roles fit together
-   - DO NOT use senior role names like "Senior Engineer" or "Manager" in the title
-   - The title should represent roles that a fresh graduate or early-career professional can pursue
+   ✅ Question 1: Are ALL 3 career clusters related to "${studentContext.programName || 'the program'}"?
+      - If NO → GO BACK TO STEP 2 and start over
+   
+   ✅ Question 2: Would a graduate of "${studentContext.programName || 'the program'}" realistically pursue these careers?
+      - If NO → GO BACK TO STEP 2 and start over
+   
+   ✅ Question 3: Did you avoid generic careers (Creative Arts, Social Work, NGO, Teaching) unless the program is specifically in those fields?
+      - If NO → GO BACK TO STEP 2 and start over
+   
+   ❌ WRONG EXAMPLES (DO NOT DO THIS):
+      - "Bsc Physics" student → Creative Arts (85%), Education (75%), Media (65%) ← COMPLETELY WRONG
+      - "B.Tech CS" student → Social Work (80%), NGO Management (70%), Teaching (65%) ← COMPLETELY WRONG
+      - "BBA" student → Physics Research (85%), Chemical Engineering (75%), Medical Research (65%) ← COMPLETELY WRONG
+
+**NAMING RULES FOR CAREER CLUSTER TITLES:**
+   - ✅ PREFERRED: Entry-level role names (e.g., "Data Scientist", "Research Scientist", "Software Developer")
+   - ✅ ACCEPTABLE: Generic cluster names when multiple related roles fit (e.g., "Technology & Innovation", "Scientific Research")
+   - ❌ WRONG: Senior role names (e.g., "Senior Engineer", "Manager", "Director")
+   - The title should represent roles accessible to fresh graduates or early-career professionals
 ` : '';
 
   // Always include program analysis and validation for college students
   const programAnalysisSection = buildProgramAnalysisSection();
   const validationRulesSection = buildValidationRulesSection();
+
+  // 🔍 DEBUG: Log if student context section was included
+  console.log('[COLLEGE-PROMPT] === PROMPT ASSEMBLY DEBUG ===');
+  console.log('[COLLEGE-PROMPT] Student context section included:', !!studentContextSection);
+  if (studentContextSection) {
+    console.log('[COLLEGE-PROMPT] Student context section length:', studentContextSection.length);
+    console.log('[COLLEGE-PROMPT] Program name in prompt:', studentContext?.programName);
+  }
+  console.log('[COLLEGE-PROMPT] === END PROMPT ASSEMBLY ===');
 
   return `You are a career counselor and psychometric assessment expert. Analyze the following student assessment data and provide comprehensive results.
 
@@ -451,7 +506,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
       {
         "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Software Developer', 'Data Analyst', 'Technology & Innovation' - REQUIRED>",
         "fit": "High",
-        "matchScore": 85,
+        "matchScore": "<CALCULATE DYNAMICALLY 80-100 based on RIASEC + aptitude + program fit - DO NOT USE 85>",
         "description": "<2-3 sentences explaining WHY this fits based on assessment - REQUIRED>",
         "evidence": {
           "interest": "<RIASEC evidence - REQUIRED>",
@@ -468,7 +523,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
       {
         "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Business Analyst', 'UI/UX Designer', 'Business & Management' - REQUIRED>",
         "fit": "Medium",
-        "matchScore": 75,
+        "matchScore": "<CALCULATE DYNAMICALLY 70-85 based on fit - DO NOT USE 75>",
         "description": "<2-3 sentences explaining fit - REQUIRED>",
         "evidence": {
           "interest": "<RIASEC evidence - REQUIRED>",
@@ -485,7 +540,7 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
       {
         "title": "<ENTRY-LEVEL ROLE OR CAREER CLUSTER - e.g., 'Quality Analyst', 'Research Assistant', 'Creative Industries' - REQUIRED>",
         "fit": "Explore",
-        "matchScore": 65,
+        "matchScore": "<CALCULATE DYNAMICALLY 60-75 based on fit - DO NOT USE 65>",
         "description": "<2-3 sentences explaining potential - REQUIRED>",
         "evidence": {
           "interest": "<RIASEC evidence - REQUIRED>",
@@ -501,9 +556,19 @@ Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra
       }
     ],
     "specificOptions": {
-      "highFit": [{"name": "<role 1>", "salary": {"min": 4, "max": 12}}, {"name": "<role 2>", "salary": {"min": 4, "max": 10}}, {"name": "<role 3>", "salary": {"min": 3, "max": 8}}],
-      "mediumFit": [{"name": "<role 1>", "salary": {"min": 3, "max": 8}}, {"name": "<role 2>", "salary": {"min": 3, "max": 7}}],
-      "exploreLater": [{"name": "<role 1>", "salary": {"min": 3, "max": 7}}, {"name": "<role 2>", "salary": {"min": 2, "max": 6}}]
+      "highFit": [
+        {"name": "<role 1>", "salary": {"min": "<calculate based on role/field/location>", "max": "<calculate based on role/field/location>"}}, 
+        {"name": "<role 2>", "salary": {"min": "<calculate>", "max": "<calculate>"}}, 
+        {"name": "<role 3>", "salary": {"min": "<calculate>", "max": "<calculate>"}}
+      ],
+      "mediumFit": [
+        {"name": "<role 1>", "salary": {"min": "<calculate>", "max": "<calculate>"}}, 
+        {"name": "<role 2>", "salary": {"min": "<calculate>", "max": "<calculate>"}}
+      ],
+      "exploreLater": [
+        {"name": "<role 1>", "salary": {"min": "<calculate>", "max": "<calculate>"}}, 
+        {"name": "<role 2>", "salary": {"min": "<calculate>", "max": "<calculate>"}}
+      ]
     }
   },
   "skillGap": {
@@ -538,11 +603,27 @@ CRITICAL REQUIREMENTS - YOU MUST FOLLOW ALL:
    - Cluster 1: High fit (matchScore 80-100%)
    - Cluster 2: Medium fit (matchScore 70-85%)
    - Cluster 3: Explore fit (matchScore 60-75%)
-2. **CLUSTER TITLE SHOULD PREFER ENTRY-LEVEL JOB ROLE NAMES**:
-   - ✅ PREFERRED: "Software Developer", "Data Analyst", "Marketing Associate", "Business Analyst", "UI/UX Designer"
-   - ✅ ACCEPTABLE: "Technology & Innovation", "Business & Management", "Creative Industries" (when multiple related roles fit)
-   - ❌ WRONG: "Senior Engineer", "Manager", "Director", "VP" (senior-level titles)
-   - The title should represent roles accessible to fresh graduates or early-career professionals
+
+**MATCH SCORE CALCULATION (MANDATORY - DO NOT USE FIXED VALUES):**
+Calculate matchScore dynamically based on:
+- RIASEC alignment with career (40% weight): How well top 3 RIASEC codes match career requirements
+- Aptitude fit (30% weight): Cognitive strengths alignment with career demands
+- Program relevance (30% weight): How directly the career relates to their program/degree
+
+Example calculation:
+- Physics student with high I+R scores → Physics Research = 90% (high RIASEC match + high program relevance)
+- Physics student with high I+R scores → Data Science = 78% (good RIASEC match + medium program relevance)
+- Physics student with high A scores → Creative Arts = 68% (RIASEC match but low program relevance)
+
+**YOU MUST CALCULATE UNIQUE SCORES - DO NOT USE 85, 75, 65 FOR EVERY ASSESSMENT**
+
+2. **CLUSTER TITLE MUST USE ENTRY-LEVEL JOB ROLE NAMES (NOT SENIOR TITLES)**:
+   - ✅ CORRECT: "Research Scientist", "Data Scientist", "Software Developer", "Business Analyst", "Product Manager"
+   - ✅ CORRECT: "Research Associate", "Data Analyst", "Marketing Associate", "UI/UX Designer"
+   - ✅ ACCEPTABLE: "Technology & Innovation", "Scientific Research" (when multiple related entry roles fit)
+   - ❌ WRONG: "Senior Engineer", "Lead Developer", "Manager", "Director", "VP", "Chief" (require 5+ years experience)
+   - ❌ WRONG: "Head of", "Principal", "Architect" (senior-level titles)
+   - The title should represent roles accessible to fresh graduates or early-career professionals (0-2 years experience)
 3. Each cluster MUST have: title, fit, matchScore, description, evidence (all 6 fields), roles (entry + mid), domains, whyItFits
 4. ALL arrays must have at least 2 items - NO empty arrays
 5. ALL career clusters must have roles.entry, roles.mid, and domains filled with real job titles

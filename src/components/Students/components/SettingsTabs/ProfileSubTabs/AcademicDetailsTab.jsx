@@ -2,6 +2,8 @@ import React from "react";
 import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle, Clock } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
+import { useFormValidation } from "../../../../../hooks/useFormValidation";
+import FormField from "../FormField";
 
 const AcademicDetailsTab = ({ 
   profileData, 
@@ -13,6 +15,22 @@ const AcademicDetailsTab = ({
   handleSaveProfile,
   isSaving, 
 }) => {
+  const { validateSingleField, touchField, getFieldError } = useFormValidation();
+
+  const handleFieldChange = (field, value) => {
+    handleProfileChange(field, value);
+    if (field === 'currentCgpa') {
+      validateSingleField('cgpa', value);
+    }
+  };
+
+  const handleFieldBlur = (field, value) => {
+    touchField(field);
+    if (field === 'currentCgpa') {
+      validateSingleField('cgpa', value);
+    }
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -53,23 +71,19 @@ const AcademicDetailsTab = ({
         </div>
 
         {/* Current CGPA */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Current CGPA <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            max="10"
-            value={profileData.currentCgpa}
-            onChange={(e) =>
-              handleProfileChange("currentCgpa", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            placeholder="Enter current CGPA"
-          />
-        </div>
+        <FormField
+          label="Current CGPA"
+          name="currentCgpa"
+          type="number"
+          value={profileData.currentCgpa}
+          onChange={handleFieldChange}
+          onBlur={handleFieldBlur}
+          error={getFieldError('cgpa')}
+          placeholder="Enter current CGPA (0-10)"
+          required
+          helpText="CGPA must be between 0 and 10"
+          inputClassName="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
 
         {/* Grade */}
         <div className="space-y-2">

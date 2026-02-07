@@ -200,6 +200,7 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       "logical_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their problem-solving ability based on test results"},
       "verbal_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their language and word skills based on test results"},
       "spatial_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their visual thinking based on test results"},
+      "data_interpretation": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their ability to analyze and understand data based on test results"},
       "pattern_recognition": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their pattern-finding ability based on test results"}
     },
     "topStrengths": ["MUST BE REAL STRENGTHS - List 2-3 cognitive strengths from their adaptive test results (e.g., 'Strong numerical reasoning (85%)', 'Excellent pattern recognition (92%)')"],

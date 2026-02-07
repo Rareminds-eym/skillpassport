@@ -102,12 +102,29 @@ WRONG FORMAT (DO NOT USE):
 
 Return ONLY the JSON object (starting with {), nothing else. ENSURE "overallSummary" is included at the end!`;
 
+  const collegeStudentProgramValidation = `
+
+🚨 CRITICAL FOR COLLEGE STUDENTS: PROGRAM ALIGNMENT IS MANDATORY 🚨
+
+If the student provides their program/degree information (e.g., "Bsc Physics", "B.Tech CS", "MBA"), you MUST:
+1. Identify the program field (Physics, Computer Science, Business, etc.)
+2. Generate ALL 3 career clusters from careers related to that field ONLY
+3. DO NOT recommend careers from unrelated fields (e.g., Creative Arts for Physics students)
+4. Validate your response before returning: Are all 3 clusters related to the student's program?
+
+If you ignore the program and recommend unrelated careers, your response will be REJECTED and you will be asked to try again.`;
+
   if (gradeLevel === 'middle') {
     return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
   }
 
   if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary' || gradeLevel === 'after10') {
     return `${baseMessage} You are speaking to high school students (grades 9-12). Provide guidance on college majors and career paths. Be aspirational but realistic.${requirements}`;
+  }
+
+  // College students - add program validation
+  if (gradeLevel === 'college') {
+    return `${baseMessage}${collegeStudentProgramValidation}${requirements}`;
   }
 
   return `${baseMessage}${requirements}`;
