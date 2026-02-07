@@ -27,6 +27,7 @@ import {
 export interface InitializeTestOptions {
   studentId: string;
   gradeLevel: GradeLevel;
+  studentCourse?: string | null;
 }
 
 /**
@@ -153,13 +154,14 @@ async function apiRequest<T>(
  */
 export async function initializeTest(
   studentId: string,
-  gradeLevel: GradeLevel
+  gradeLevel: GradeLevel,
+  studentCourse?: string | null
 ): Promise<InitializeTestResult> {
-  console.log('🚀 [AdaptiveAptitudeApiService] initializeTest:', { studentId, gradeLevel });
+  console.log('🚀 [AdaptiveAptitudeApiService] initializeTest:', { studentId, gradeLevel, studentCourse });
   
   const result = await apiRequest<InitializeTestResult>('/initialize', {
     method: 'POST',
-    body: JSON.stringify({ studentId, gradeLevel }),
+    body: JSON.stringify({ studentId, gradeLevel, studentCourse }),
   });
   
   console.log('✅ [AdaptiveAptitudeApiService] Test initialized:', {
@@ -364,7 +366,7 @@ export async function abandonSession(sessionId: string): Promise<void> {
  */
 export class AdaptiveAptitudeApiService {
   static async initializeTest(options: InitializeTestOptions): Promise<InitializeTestResult> {
-    return initializeTest(options.studentId, options.gradeLevel);
+    return initializeTest(options.studentId, options.gradeLevel, options.studentCourse);
   }
 
   static async getNextQuestion(sessionId: string): Promise<NextQuestionResult> {

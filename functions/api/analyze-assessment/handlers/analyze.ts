@@ -8,7 +8,8 @@ import type { AssessmentData, AnalysisResult } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { buildAnalysisPrompt, getSystemMessage } from '../prompts';
+import { getSystemMessage } from '../prompts';
+import { buildHighSchoolPrompt as buildCleanHighSchoolPrompt } from '../prompts/high-school-clean';
 import { 
   repairAndParseJSON, 
   AI_MODELS, 
@@ -372,101 +373,25 @@ async function analyzeAssessment(
 ): Promise<any> {
   const gradeLevel = assessmentData.gradeLevel || 'after12';
   
-  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS WITH VALIDATION FALLBACK ===`);
+  console.log(`[ASSESSMENT] === STARTING AI ANALYSIS ===`);
   console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
   
   // ============================================================================
-  // STEP 1: Fetch real-time job market data (NEW)
+  // STEP 1: Build prompt WITHOUT pre-fetching job market data
+  // Let AI determine RIASEC first, then we can fetch targeted data if needed
   // ============================================================================
-  console.log('[ASSESSMENT] 📊 Fetching real-time Indian job market data...');
   
-  // Extract preliminary RIASEC to determine relevant categories
-  // Calculate RIASEC scores from answers to get the actual profile
-  let preliminaryRiasec = 'RIA'; // Default fallback
+  // Generate deterministic hash for consistent results
+  const seed = generateSeed(assessmentData);
   
-  if (assessmentData.riasecAnswers) {
-    // Count scores for each RIASEC type
-    const riasecScores: Record<string, number> = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
-    
-    Object.values(assessmentData.riasecAnswers).forEach((answer: any) => {
-      if (answer.categoryMapping && answer.answer) {
-        const answerStr = String(answer.answer);
-        const riasecType = answer.categoryMapping[answerStr];
-        if (riasecType && riasecScores[riasecType] !== undefined) {
-          riasecScores[riasecType] += 2; // Standard scoring
-        }
-      }
-    });
-    
-    // Get top 3 RIASEC types
-    const sortedTypes = Object.entries(riasecScores)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([type]) => type);
-    
-    preliminaryRiasec = sortedTypes.join('');
-    console.log('[ASSESSMENT] 📊 Calculated preliminary RIASEC:', preliminaryRiasec, 'from scores:', riasecScores);
-  }
+  // Use clean prompt (AI will determine RIASEC and recommend careers)
+  const basePrompt = buildCleanHighSchoolPrompt(assessmentData, seed);
   
-  const aptitudeLevel = assessmentData.adaptiveAptitudeResults?.aptitudeLevel || 3;
-  
-  const categories = extractCareerCategories(
-    preliminaryRiasec,
-    aptitudeLevel,
-    []
-  );
-  
-  console.log('[ASSESSMENT] 🎯 Identified relevant career categories:', categories.join(', '));
-  
-  // Fetch job market data for these categories
-  const jobMarketData = await fetchJobMarketData(env, categories);
-  const jobMarketSection = generateJobMarketSection(jobMarketData);
-  
-  // DEBUG: Log what was actually fetched
-  console.log('[ASSESSMENT] 🔍 DEBUG - Job market data keys:', Object.keys(jobMarketData));
-  console.log('[ASSESSMENT] 🔍 DEBUG - Job market section length:', jobMarketSection?.length || 0);
-  if (jobMarketSection) {
-    console.log('[ASSESSMENT] 🔍 DEBUG - First 500 chars of job market section:');
-    console.log(jobMarketSection.substring(0, 500));
-  }
-  
-  if (jobMarketSection) {
-    console.log('[ASSESSMENT] ✅ Successfully fetched real-time job market data');
-    console.log('[ASSESSMENT] 📊 Categories with data:', Object.keys(jobMarketData).join(', '));
-    console.log('[ASSESSMENT] 🔒 Using ONLY dynamic data (hardcoded examples will be excluded)');
-  } else {
-    console.log('[ASSESSMENT] ⚠️ Job market fetch failed - will use fallback hardcoded data');
-  }
-  
-  // ============================================================================
-  // STEP 2: Build prompt with dynamic job data
-  // CRITICAL: If we have dynamic data, we EXCLUDE hardcoded examples to force AI to use it
-  // ============================================================================
-  const basePrompt = buildAnalysisPrompt(assessmentData);
-  
-  // If we have dynamic data, inject it and add a strong instruction to use ONLY that data
-  let prompt: string;
-  if (jobMarketSection) {
-    // Add strong instruction to use ONLY dynamic data
-    const dynamicOnlyInstruction = `
-⚠️ ⚠️ ⚠️ CRITICAL INSTRUCTION ⚠️ ⚠️ ⚠️
-
-You MUST use ONLY the real-time job market data provided above.
-DO NOT use any hardcoded salary examples or career tracks.
-The data above is current 2026 Indian market data - use it exclusively.
-
-If you use hardcoded examples instead of the real-time data above, your response will be REJECTED.
-
-⚠️ ⚠️ ⚠️ END CRITICAL INSTRUCTION ⚠️ ⚠️ ⚠️
-`;
-    prompt = jobMarketSection + '\n\n' + dynamicOnlyInstruction + '\n\n' + basePrompt;
-  } else {
-    // No dynamic data available, use full prompt with hardcoded examples
-    prompt = basePrompt;
-  }
+  console.log('[ASSESSMENT] ✅ Using clean prompt - AI will determine RIASEC dynamically');
+  console.log('[ASSESSMENT] 📊 AI will analyze raw answers and calculate RIASEC scores');
+  console.log('[ASSESSMENT] 🎯 Career recommendations will be based on AI-calculated RIASEC');
   
   const systemMessage = getSystemMessage(gradeLevel);
-  const seed = generateSeed(assessmentData);
 
   console.log(`[ASSESSMENT] Using deterministic seed: ${seed} for consistent results`);
   console.log(`[ASSESSMENT] Available models: ${ASSESSMENT_MODELS.length}`);
@@ -495,7 +420,7 @@ If you use hardcoded examples instead of the real-time data above, your response
       // This ensures we can control validation-based fallback
       const content = await callOpenRouterWithRetry(openRouter, [
         { role: 'system', content: systemMessage },
-        { role: 'user', content: prompt }
+        { role: 'user', content: basePrompt }
       ], {
         models: [currentModel], // Single model - we handle fallback here
         maxRetries: ASSESSMENT_CONFIG.maxRetries,
@@ -509,6 +434,142 @@ If you use hardcoded examples instead of the real-time data above, your response
       
       // Parse the JSON response using shared utility (prefer object for assessments)
       const result = repairAndParseJSON(content, true);
+      
+      // ============================================================================
+      // ADAPTIVE APTITUDE FIX: Override AI's zero scores with pre-calculated scores
+      // If adaptive aptitude results exist and AI returned zeros, use pre-calculated scores
+      // This fixes the issue where AI ignores pre-calculated scores in the prompt
+      // ============================================================================
+      console.log('[ASSESSMENT] 🔍 Checking for adaptive aptitude fix...');
+      console.log('[ASSESSMENT] 🔍 Has adaptiveAptitudeResults:', !!assessmentData.adaptiveAptitudeResults);
+      console.log('[ASSESSMENT] 🔍 Has result.aptitude:', !!result.aptitude);
+      console.log('[ASSESSMENT] 🔍 Has result.aptitude.scores:', !!result.aptitude?.scores);
+      
+      if (assessmentData.adaptiveAptitudeResults && result.aptitude && result.aptitude.scores) {
+        const adaptiveResults = assessmentData.adaptiveAptitudeResults;
+        const aiScores = result.aptitude.scores;
+        
+        console.log('[ASSESSMENT] 🔍 AI returned scores:', JSON.stringify(aiScores));
+        console.log('[ASSESSMENT] 🔍 Adaptive results:', JSON.stringify(adaptiveResults));
+        
+        // Check if AI returned all zeros (indicates it ignored pre-calculated scores)
+        const allZeros = Object.values(aiScores).every((score: any) => 
+          score && score.percentage === 0
+        );
+        
+        console.log('[ASSESSMENT] 🔍 All zeros check:', allZeros);
+        
+        if (allZeros) {
+          console.warn('[ASSESSMENT] ⚠️ AI returned all zero aptitude scores despite adaptive results existing');
+          console.log('[ASSESSMENT] 🔧 Applying backend fix: Converting adaptive results to standard format');
+          
+          // Convert adaptive results to standard format
+          // Handle both camelCase (from frontend) and snake_case (from database)
+          const accuracyBySubtag = (adaptiveResults as any).accuracyBySubtag || (adaptiveResults as any).accuracy_by_subtag || {};
+          
+          console.log('[ASSESSMENT] 🔍 accuracyBySubtag keys:', Object.keys(accuracyBySubtag));
+          console.log('[ASSESSMENT] 🔍 accuracyBySubtag data:', JSON.stringify(accuracyBySubtag));
+          
+          // Calculate converted scores
+          const verbal = accuracyBySubtag.verbal_reasoning?.accuracy || 0;
+          
+          // Numerical = average of numerical_reasoning and data_interpretation
+          const numericalTotal = (accuracyBySubtag.numerical_reasoning?.total || 0) + 
+                                 (accuracyBySubtag.data_interpretation?.total || 0);
+          const numericalCorrect = (accuracyBySubtag.numerical_reasoning?.correct || 0) + 
+                                   (accuracyBySubtag.data_interpretation?.correct || 0);
+          const numerical = numericalTotal > 0 ? (numericalCorrect / numericalTotal * 100) : 0;
+          
+          // Abstract = average of logical_reasoning and pattern_recognition
+          const abstractTotal = (accuracyBySubtag.logical_reasoning?.total || 0) + 
+                                (accuracyBySubtag.pattern_recognition?.total || 0);
+          const abstractCorrect = (accuracyBySubtag.logical_reasoning?.correct || 0) + 
+                                  (accuracyBySubtag.pattern_recognition?.correct || 0);
+          const abstract = abstractTotal > 0 ? (abstractCorrect / abstractTotal * 100) : 0;
+          
+          // Spatial = spatial_reasoning
+          const spatial = accuracyBySubtag.spatial_reasoning?.accuracy || 0;
+          
+          // Override AI's scores with converted scores
+          result.aptitude.scores = {
+            verbal: {
+              total: accuracyBySubtag.verbal_reasoning?.total || 0,
+              correct: accuracyBySubtag.verbal_reasoning?.correct || 0,
+              percentage: Math.round(verbal)
+            },
+            numerical: {
+              total: numericalTotal,
+              correct: numericalCorrect,
+              percentage: Math.round(numerical)
+            },
+            abstract: {
+              total: abstractTotal,
+              correct: abstractCorrect,
+              percentage: Math.round(abstract)
+            },
+            spatial: {
+              total: accuracyBySubtag.spatial_reasoning?.total || 0,
+              correct: accuracyBySubtag.spatial_reasoning?.correct || 0,
+              percentage: Math.round(spatial)
+            },
+            clerical: {
+              total: 0,
+              correct: 0,
+              percentage: 0
+            }
+          };
+          
+          // Calculate overall aptitude score
+          // Handle both camelCase and snake_case
+          const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
+          const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
+          result.aptitude.overall = totalQuestions > 0 ? 
+            Math.round((totalCorrect / totalQuestions) * 100) : 0;
+          
+          console.log('[ASSESSMENT] ✅ Backend fix applied successfully');
+          console.log('[ASSESSMENT] 📊 Converted scores:', {
+            verbal: Math.round(verbal),
+            numerical: Math.round(numerical),
+            abstract: Math.round(abstract),
+            spatial: Math.round(spatial),
+            overall: result.aptitude.overall
+          });
+        } else {
+          console.log('[ASSESSMENT] ✅ AI correctly used pre-calculated aptitude scores (not all zeros)');
+        }
+        
+        // ============================================================================
+        // ADAPTIVE APTITUDE OVERALL SCORE FIX
+        // Even if individual scores are correct, AI sometimes returns overall = 0
+        // Always set overall score from adaptive results when available
+        // Set both 'overall' and 'overallScore' for compatibility
+        // Check BOTH fields since AI might set one but not the other
+        // ============================================================================
+        const needsOverallFix = result.aptitude && (
+          !result.aptitude.overall || 
+          result.aptitude.overall === 0 ||
+          !result.aptitude.overallScore ||
+          result.aptitude.overallScore === 0
+        );
+        
+        if (needsOverallFix) {
+          const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
+          const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
+          const calculatedOverall = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+          
+          console.log('[ASSESSMENT] 🔧 Fixing overall aptitude score:');
+          console.log('[ASSESSMENT]    AI returned overall:', result.aptitude.overall);
+          console.log('[ASSESSMENT]    AI returned overallScore:', result.aptitude.overallScore);
+          console.log('[ASSESSMENT]    Calculated from adaptive:', calculatedOverall);
+          console.log('[ASSESSMENT]    Total questions:', totalQuestions, 'Total correct:', totalCorrect);
+          
+          // Set both fields for compatibility
+          result.aptitude.overall = calculatedOverall;
+          result.aptitude.overallScore = calculatedOverall;
+          console.log('[ASSESSMENT] ✅ Overall aptitude score fixed to:', calculatedOverall);
+          console.log('[ASSESSMENT] ✅ Both overall and overallScore now set to:', calculatedOverall);
+        }
+      }
       
       // ============================================================================
       // STRICT VALIDATION (Requirement 7.2, 7.3)

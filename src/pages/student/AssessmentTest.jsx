@@ -64,6 +64,9 @@ import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
 
 import { supabase } from '../../lib/supabaseClient';
 
+// Import centralized student type detection
+import { isCollegeStudent as checkIsCollegeStudent } from '../../utils/studentType';
+
 // Import centralized assessment utilities and components
 import {
     getGradeLevelFromGrade,
@@ -204,8 +207,8 @@ const AssessmentTest = () => {
                     // Save student ID for AI question saving
                     setStudentId(student.id);
 
-                    // Check if student is a college student (has university_college_id but no school_id)
-                    const isCollege = student.university_college_id && !student.school_id;
+                    // Check if student is a college student (using centralized utility)
+                    const isCollege = checkIsCollegeStudent(student);
                     console.log('Is college student:', isCollege);
                     setIsCollegeStudent(isCollege);
 
@@ -263,6 +266,7 @@ const AssessmentTest = () => {
     const adaptiveAptitude = useAdaptiveAptitude({
         studentId: studentId || '',
         gradeLevel: getAdaptiveGradeLevelValue(),
+        studentCourse: studentProgram || null, // Pass student's course for college students
         onTestComplete: (testResults) => {
             console.log('✅ Adaptive aptitude test completed:', testResults);
             // Store results in answers for final submission
@@ -699,18 +703,26 @@ const AssessmentTest = () => {
                     attemptId: currentAttempt?.id || 'NOT SET',
                     aiQuestionsLoading
                 });
-                
+
                 setAiQuestionsLoading(true);
                 try {
                     console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
-                    // Pass studentId and attemptId for save/resume functionality (optional)
+                    
+                    // For college students, pass their actual course for knowledge questions
+                    const studentCourse = (gradeLevel === 'college' && studentProgram) ? studentProgram : null;
+                    if (studentCourse) {
+                        console.log(`🎓 College student detected - using course: ${studentCourse} for knowledge questions`);
+                    }
+                    
+                    // Pass studentId, attemptId, and course for save/resume functionality
                     const questions = await loadCareerAssessmentQuestions(
                         studentStream,
                         gradeLevel,
                         studentId || null,
-                        currentAttempt?.id || null
+                        currentAttempt?.id || null,
+                        studentCourse // Pass course for college students
                     );
-                    
+
                     // Validate that we got questions
                     if (!questions || (!questions.aptitude && !questions.knowledge)) {
                         console.warn('⚠️ No AI questions returned, retrying in 2 seconds...');
@@ -720,13 +732,14 @@ const AssessmentTest = () => {
                             studentStream,
                             gradeLevel,
                             studentId || null,
-                            currentAttempt?.id || null
+                            currentAttempt?.id || null,
+                            studentCourse // Pass course for college students
                         );
                         setAiQuestions(retryQuestions || { aptitude: null, knowledge: null });
                     } else {
                         setAiQuestions(questions);
                     }
-                    
+
                     console.log('✅ AI questions loaded:', {
                         aptitude: questions?.aptitude?.length || 0,
                         knowledge: questions?.knowledge?.length || 0
@@ -740,7 +753,7 @@ const AssessmentTest = () => {
             }
         };
         loadAIQuestions();
-    }, [gradeLevel, studentStream, studentId, currentAttempt?.id]);
+    }, [gradeLevel, studentStream, studentId, currentAttempt?.id, studentProgram]);
 
     // Get questions for a section - from database or AI-powered questions
     const getQuestionsForSection = (sectionId) => {
@@ -1356,7 +1369,7 @@ const AssessmentTest = () => {
         // For middle school, high school, skip stream selection and go directly to assessment
         if (level === 'middle') {
             setAssessmentStarted(true);
-            const streamId = 'middle_school'; // Use a generic stream for middle school
+            const streamId = null; // No stream for middle school
             setStudentStream(streamId);
 
             // Load questions and create attempt for middle school
@@ -1377,7 +1390,7 @@ const AssessmentTest = () => {
             setShowSectionIntro(true);
         } else if (level === 'highschool') {
             setAssessmentStarted(true);
-            const streamId = 'high_school'; // Use a generic stream for high school
+            const streamId = null; // No stream for high school
             setStudentStream(streamId);
 
             // Load questions and create attempt for high school
@@ -1400,7 +1413,7 @@ const AssessmentTest = () => {
             // For after 10th (11th grade), skip category selection - go directly to assessment
             // The AI will recommend the best stream based on assessment results
             setAssessmentStarted(true);
-            const streamId = 'general';
+            const streamId = null; // No stream yet - student is deciding
             setStudentStream(streamId);
 
             // Load questions and create attempt
@@ -1425,13 +1438,12 @@ const AssessmentTest = () => {
             console.log('📚 Higher Secondary student - showing category selection for stream');
             setShowCategorySelection(true);
         } else if (level === 'college') {
-            // For college students (UG/PG), skip category selection - go directly to assessment using their program
+            // For college students (UG/PG), use 'college' stream for program-based assessment
             setAssessmentStarted(true);
 
-            // Use student's program as the stream, normalize it to match STREAM_KNOWLEDGE_PROMPTS
-            // Pass the original program name to normalizeStreamId (it handles the conversion)
-            const streamId = normalizeStreamId(studentProgram || 'college');
-            console.log(`🎓 College student stream: ${studentProgram} -> normalized: ${streamId}`);
+            // Use 'college' stream for college students (program-based assessment)
+            const streamId = 'college';
+            console.log(`🎓 College student - using 'college' stream for program-based assessment`);
             setStudentStream(streamId);
 
             // Load questions and create attempt for college
@@ -1472,7 +1484,7 @@ const AssessmentTest = () => {
             // Use category as the stream
             const streamId = categoryId;
             setStudentStream(streamId);
-            
+
             console.log(`✅ ${effectiveGradeLevel} student selected stream: ${categoryId}`);
 
             // Load questions from database
@@ -1940,23 +1952,23 @@ const AssessmentTest = () => {
             // For AI assessments (after10, after12, college, higher_secondary), questions are generated
             // and stored in database. We need to fetch them to score answers correctly.
             const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(gradeLevel);
-            
+
             if (isAIAssessment && user) {
                 try {
                     const answerKeys = Object.keys(answersWithAdaptive);
-                    
+
                     // Fetch AI aptitude questions if needed
                     const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
                     if (aptitudeAnswerKeys.length > 0) {
                         console.log('📡 Fetching AI aptitude questions from database...');
-                        
+
                         // Get student record ID
                         const { data: student } = await supabase
                             .from('students')
                             .select('id')
                             .eq('user_id', user.id)
                             .maybeSingle();
-                        
+
                         if (student) {
                             const { data: questionSets } = await supabase
                                 .from('career_assessment_ai_questions')
@@ -1966,7 +1978,7 @@ const AssessmentTest = () => {
                                 .order('created_at', { ascending: false })
                                 .limit(1)
                                 .maybeSingle();
-                            
+
                             if (questionSets?.questions) {
                                 questionBanks.aptitudeQuestions = questionSets.questions.map(q => ({
                                     ...q,
@@ -1978,19 +1990,19 @@ const AssessmentTest = () => {
                             }
                         }
                     }
-                    
+
                     // Fetch AI knowledge questions if needed
                     const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
                     if (knowledgeAnswerKeys.length > 0) {
                         console.log('📡 Fetching AI knowledge questions from database...');
-                        
+
                         // Get student record ID
                         const { data: student } = await supabase
                             .from('students')
                             .select('id')
                             .eq('user_id', user.id)
                             .maybeSingle();
-                        
+
                         if (student) {
                             const { data: questionSets } = await supabase
                                 .from('career_assessment_ai_questions')
@@ -2000,7 +2012,7 @@ const AssessmentTest = () => {
                                 .order('created_at', { ascending: false })
                                 .limit(1)
                                 .maybeSingle();
-                            
+
                             if (questionSets?.questions) {
                                 const aiKnowledgeQuestions = questionSets.questions.map(q => ({
                                     ...q,
@@ -2037,6 +2049,10 @@ const AssessmentTest = () => {
 
             console.log('📚 Student Context for AI:', studentContext);
 
+            // 🔧 CRITICAL FIX: Extract adaptive results to pass as parameter
+            const adaptiveResultsForAI = answers.adaptive_aptitude_results || null;
+            console.log('📊 Adaptive results for AI:', adaptiveResultsForAI ? 'Available' : 'Not available');
+
             // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
                 answersWithAdaptive,
@@ -2045,7 +2061,8 @@ const AssessmentTest = () => {
                 finalTimings, // Pass section timings to Gemini
                 gradeLevel, // Pass grade level for proper scoring
                 null, // preCalculatedScores (not available here)
-                studentContext // Pass student context for enhanced recommendations
+                studentContext, // Pass student context for enhanced recommendations
+                adaptiveResultsForAI // Pass adaptive results for aptitude scoring
             );
 
             if (geminiResults) {
@@ -2256,12 +2273,12 @@ const AssessmentTest = () => {
         if (currentSection?.isAdaptive) {
             return adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
         }
-        
+
         // Check if questionId is valid
         if (!questionId || questionId.includes('undefined')) {
             return false;
         }
-        
+
         const answer = answers[questionId];
         
         // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
@@ -2275,22 +2292,22 @@ const AssessmentTest = () => {
         if (answer === null || answer === undefined || answer === '') {
             return false;
         }
-        
+
         // For SJT questions, both best and worst must be selected
         if (currentQuestion?.partType === 'sjt') {
             return answer.best && answer.worst;
         }
-        
+
         // For multiselect questions, check if required number of selections made
         if (currentQuestion?.type === 'multiselect') {
             return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
         }
-        
+
         // For text questions, check if there's some content (at least 10 characters for meaningful response)
         if (currentQuestion?.type === 'text') {
             return typeof answer === 'string' && answer.trim().length >= 10;
         }
-        
+
         // For MCQ and other question types, ensure answer is not empty
         return answer !== null && answer !== undefined && answer !== '';
     })();

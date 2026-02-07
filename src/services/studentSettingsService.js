@@ -264,6 +264,7 @@ export const updateStudentSettings = async (email, updates) => {
       bloodGroup: 'bloodGroup',
       university: 'university',
       branch: 'branch_field',
+      program: 'branch_field', // Custom program name also maps to branch_field
       college: 'college_school_name',
       registrationNumber: 'registration_number',
       enrollmentNumber: 'enrollmentNumber',
@@ -340,12 +341,17 @@ export const updateStudentSettings = async (email, updates) => {
           value = null;
         }
 
+        // Handle aadharNumber - convert empty strings to null to satisfy DB constraint
+        if (key === 'aadharNumber' && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
         columnUpdates[fieldMapping[key]] = value;
         
         // IMPORTANT: When branch_field is updated, also update course_name
         // This ensures consistency between settings page and assessment test page
         // Also clear program_id to prevent FK override
-        if (key === 'branch' && value) {
+        if ((key === 'branch' || key === 'program') && value) {
           columnUpdates.course_name = value;
           // If manually setting branch (not via program_id dropdown), clear program_id
           // This prevents the FK relationship from overriding the manual entry
@@ -450,6 +456,7 @@ export const updateStudentSettings = async (email, updates) => {
 
     // Perform the update on students table (only if there are column updates)
     if (Object.keys(columnUpdates).length > 1) { // More than just updated_at
+      console.log('💾 Updating students table with:', columnUpdates);
       const { data, error } = await supabase
         .from('students')
         .update(columnUpdates)
@@ -461,6 +468,9 @@ export const updateStudentSettings = async (email, updates) => {
         console.error('❌ Error updating student settings:', error);
         return { success: false, error: error.message };
       }
+      console.log('✅ Students table updated successfully');
+    } else {
+      console.log('⚠️ No column updates to save (only timestamp)');
     }
 
     // Return fresh data

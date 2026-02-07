@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight, Code, Coffee, Dumbbell, Gamepad2, Globe, Mountain, Music, Palette, Plane, Shield, Star, Target, Users, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { usePortfolio } from '../../context/PortfolioContext';
 
 const PassportPage: React.FC = () => {
@@ -589,6 +590,17 @@ const PassportPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
+      {/* Back Button */}
+      <div className="fixed top-4 left-4 z-50">
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-all duration-200 backdrop-blur-sm bg-opacity-90"
+        >
+          
+          <span className="text-sm font-medium">Back</span>
+        </button>
+      </div>
+
       {/* Passport Book */}
       <div className="flex items-center justify-center min-h-screen py-8 px-4 md:px-8">
         <div 

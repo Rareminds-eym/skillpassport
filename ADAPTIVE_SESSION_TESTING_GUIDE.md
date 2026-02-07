@@ -19,7 +19,7 @@ This guide covers testing for the Adaptive Aptitude Session API migration from d
 
 ---
 
-## Prerequisites
+## Prerequisites 
 
 ### 1. Environment Setup
 

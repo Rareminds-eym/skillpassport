@@ -489,10 +489,18 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 - **Growth Sectors**: AI/ML (40% YoY growth), Cloud Computing (35% growth), Cybersecurity (30% growth), DevOps (28% growth)
 
 **💼 BUSINESS, FINANCE & CONSULTING** (For E+C+I types, high numerical/analytical aptitude)
-- **Hot Roles**: Product Manager (₹10-25L entry, ₹25-80L mid), Business Analyst (₹6-15L entry, ₹15-40L mid), Financial Analyst (₹5-12L entry, ₹12-35L mid), Management Consultant (₹8-20L entry, ₹20-60L mid), Investment Banking Analyst (₹10-25L entry, ₹25-1Cr mid)
-- **Education Path**: BCom/BBA + MBA from Tier 1 B-schools (IIM, ISB, XLRI), CA (5 years), CFA (3-4 years), Economics/Finance degree
-- **Market Reality**: MBA from top 20 B-schools = ₹20-35L starting. CA = stable ₹8-15L start, ₹30-80L after 8-10 years. Consulting = high stress, high reward
-- **Growth Sectors**: Fintech (45% growth), Management Consulting (25% growth), Investment Banking (20% growth), Private Equity (30% growth)
+- **Best for profiles combining**: Analysis (I) + Leadership (E) + Organization (C), or Analysis (I) + Leadership (E) + People Skills (S)
+- **Hot Roles**: 
+  * Business Analyst (₹6-15L entry, ₹15-40L mid, ₹40-80L senior) - Great for I+E combinations
+  * Management Consultant (₹8-20L entry, ₹20-60L mid, ₹60-150L senior) - Great for I+E+S combinations
+  * Product Manager (₹10-25L entry, ₹25-80L mid, ₹80-200L senior) - Great for I+E combinations
+  * HR Analytics Manager (₹7-18L entry, ₹18-45L mid, ₹45-100L senior) - Great for I+E+S combinations
+  * Market Research Director (₹8-20L entry, ₹20-55L mid, ₹55-120L senior) - Great for I+E combinations
+  * Financial Analyst (₹5-12L entry, ₹12-35L mid, ₹35-80L senior) - Great for I+C combinations
+  * Investment Banking Analyst (₹10-25L entry, ₹25-1Cr mid) - Great for I+E+C combinations
+- **Education Path**: BCom/BBA + MBA from Tier 1 B-schools (IIM, ISB, XLRI), CA (5 years), CFA (3-4 years), Economics/Finance degree, Data Analytics certifications
+- **Market Reality**: MBA from top 20 B-schools = ₹20-35L starting. CA = stable ₹8-15L start, ₹30-80L after 8-10 years. Consulting = high stress, high reward. Business Analytics = fastest growing (35% YoY)
+- **Growth Sectors**: Fintech (45% growth), Management Consulting (25% growth), Investment Banking (20% growth), Private Equity (30% growth), Business Analytics (35% growth)
 
 **🏥 HEALTHCARE & LIFE SCIENCES** (For I+S types, high verbal/analytical aptitude, PCB stream)
 - **Hot Roles**: Doctor/MBBS (₹6-15L entry, ₹15-80L mid), Dentist (₹5-12L entry, ₹12-50L mid), Pharmacist (₹3-8L entry, ₹8-25L mid), Biotech Researcher (₹4-10L entry, ₹10-35L mid), Medical Device Engineer (₹5-12L entry, ₹12-40L mid)
@@ -692,6 +700,14 @@ Before returning your response, verify:
 2. Is 'A' in their top 3 RIASEC types?
 3. If YES → At least ONE career cluster MUST be from Music/Art/Entertainment/Design/Media
 4. If you only suggest Tech/Science/Business careers for an Artistic student, YOUR RESPONSE IS WRONG!
+
+**⚠️ FINAL CHECK - RIASEC PROFILE ALIGNMENT:**
+Before returning your response, verify:
+1. What is the student's RIASEC code (top 3 types)?
+2. Do your recommended career tracks align with their RIASEC combination?
+3. Are you using ALL THREE of their top RIASEC types, not just one?
+4. If real-time job market data was provided above, did you use ONLY those categories and roles?
+5. Did you avoid stereotyping (e.g., all 'I' types → Technology, all 'S' types → NGO)?
 
 **⚠️ FINAL CHECK - SOCIAL CAREER IMPROVEMENT:**
 Before returning your response, verify:

@@ -1,7 +1,26 @@
 import React from "react";
-import { Shield } from "lucide-react";
+import { Shield, Save } from "lucide-react";
+import { Button } from "../../ui/button";
+import { useFormValidation } from "../../../../../hooks/useFormValidation";
+import FormField from "../FormField";
 
-const GuardianInfoTab = ({ profileData, handleProfileChange }) => {
+const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+  const { validateSingleField, touchField, getFieldError } = useFormValidation();
+
+  const handleFieldChange = (field, value) => {
+    handleProfileChange(field, value);
+    if (field === 'guardianEmail') {
+      validateSingleField('email', value);
+    }
+  };
+
+  const handleFieldBlur = (field, value) => {
+    touchField(field);
+    if (field === 'guardianEmail') {
+      validateSingleField('email', value);
+    }
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -64,20 +83,38 @@ const GuardianInfoTab = ({ profileData, handleProfileChange }) => {
         </div>
 
         {/* Guardian Email */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Guardian Email
-          </label>
-          <input
-            type="email"
-            value={profileData.guardianEmail}
-            onChange={(e) =>
-              handleProfileChange("guardianEmail", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            placeholder="Enter guardian email"
-          />
-        </div>
+        <FormField
+          label="Guardian Email"
+          name="guardianEmail"
+          type="email"
+          value={profileData.guardianEmail}
+          onChange={(name, value) => handleFieldChange(name, value)}
+          onBlur={handleFieldBlur}
+          error={getFieldError('email')}
+          placeholder="Enter guardian email"
+        />
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
+        <Button
+          onClick={handleSaveProfile}
+          disabled={isSaving}
+          className={`
+            inline-flex items-center gap-2
+            bg-blue-600 hover:bg-blue-700 active:bg-blue-800
+            text-white font-medium
+            px-6 py-2.5 rounded-lg
+            shadow-[0_2px_6px_rgba(0,0,0,0.05)]
+            hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]
+            active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]
+            transition-all duration-200 ease-in-out
+            disabled:opacity-60 disabled:cursor-not-allowed
+          `}
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   );

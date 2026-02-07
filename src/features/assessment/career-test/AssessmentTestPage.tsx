@@ -350,7 +350,8 @@ const AssessmentTestPage: React.FC = () => {
     gradeLevel: flow.gradeLevel,
     studentStream: flow.studentStream,
     studentId: studentId || null,
-    attemptId: currentAttempt?.id || null
+    attemptId: currentAttempt?.id || null,
+    studentProgram: studentProgram || null
   });
 
   // Adaptive Aptitude Hook
@@ -358,51 +359,49 @@ const AssessmentTestPage: React.FC = () => {
   // is created before sections are built
   const isAdaptiveLastSectionRef = React.useRef(false);
 
-  console.log('🎯 [AssessmentTestPage] Initializing useAdaptiveAptitude hook with:', {
-    studentId: studentId || '',
-    gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
-    attemptId: currentAttempt?.id,
-    hasAttemptId: !!currentAttempt?.id,
-    attemptIdType: typeof currentAttempt?.id
-  });
+  // Memoize callbacks to prevent infinite re-render loop
+  // These callbacks were causing the hook to re-initialize on every render
+  const handleAdaptiveTestComplete = useCallback(async (testResults: any) => {
+    console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
+    flow.setAnswer('adaptive_aptitude_results', testResults);
+    flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
+    
+    // Link the adaptive session to the assessment attempt
+    // NOTE: This is now also done in startTest, but keeping it here as a backup
+    if (testResults.sessionId && currentAttempt?.id) {
+      console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
+        sessionId: testResults.sessionId,
+        attemptId: currentAttempt.id
+      });
+      await assessmentService.updateAttemptAdaptiveSession(
+        currentAttempt.id,
+        testResults.sessionId
+      );
+      console.log('✅ [AssessmentTestPage] Backup linking complete');
+    } else {
+      console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
+        hasSessionId: !!testResults.sessionId,
+        hasAttemptId: !!currentAttempt?.id
+      });
+    }
+    
+    // Always call completeSection to show the section complete screen
+    // The auto-submit useEffect will handle submission if it's the last section
+    flow.completeSection();
+  }, [flow, currentAttempt?.id]);
+
+  const handleAdaptiveTestError = useCallback((err: any) => {
+    console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
+    flow.setError(`Adaptive test error: ${err}`);
+  }, [flow]);
 
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
     attemptId: currentAttempt?.id, // Pass attemptId to link session immediately
-    onTestComplete: async (testResults) => {
-      console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
-      flow.setAnswer('adaptive_aptitude_results', testResults);
-      flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
-      
-      // Link the adaptive session to the assessment attempt
-      // NOTE: This is now also done in startTest, but keeping it here as a backup
-      if (adaptiveAptitude.session?.id && currentAttempt?.id) {
-        console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
-          sessionId: adaptiveAptitude.session.id,
-          attemptId: currentAttempt.id
-        });
-        await assessmentService.updateAttemptAdaptiveSession(
-          currentAttempt.id,
-          adaptiveAptitude.session.id
-        );
-        console.log('✅ [AssessmentTestPage] Backup linking complete');
-      } else {
-        console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
-          hasSession: !!adaptiveAptitude.session?.id,
-          hasAttemptId: !!currentAttempt?.id
-        });
-      }
-      
-      // Always call completeSection to show the section complete screen
-      // The auto-submit useEffect will handle submission if it's the last section
-      flow.completeSection();
-
-    },
-    onError: (err) => {
-      console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
-      flow.setError(`Adaptive test error: ${err}`);
-    },
+    studentCourse: studentProgram || null, // Pass student's course for college students
+    onTestComplete: handleAdaptiveTestComplete,
+    onError: handleAdaptiveTestError,
   });
 
   // Track adaptive loading time for better UX
@@ -935,14 +934,13 @@ const AssessmentTestPage: React.FC = () => {
 
       flow.setCurrentScreen('section_intro');
     } else if (level === 'college') {
-      // College students (UG/PG) skip category selection - use their program directly
+      // College students (UG/PG) skip category selection - use 'college' stream
+      // The 'college' stream exists in personal_assessment_streams table
       setAssessmentStarted(true);
 
-      // Normalize the program name to fit database constraints (max 20 chars)
-      const normalizedStreamId = normalizeStreamId(studentProgram || 'college');
-
-
-      flow.setStudentStream(normalizedStreamId);
+      // Always use 'college' stream for college students
+      // This is a general stream that works for all college programs
+      flow.setStudentStream('college');
 
       // DON'T create attempt here - wait until user clicks "Start Section"
       // This prevents orphan attempts when user just browses
@@ -1288,26 +1286,24 @@ const AssessmentTestPage: React.FC = () => {
         setUseDatabase(true);
 
         // Determine the appropriate stream ID based on grade level
+        // Use the stream that was set during grade selection
         let streamId = flow.studentStream;
-        if (!streamId) {
-          // Fallback based on grade level if stream wasn't set
-          switch (flow.gradeLevel) {
-            case 'middle':
-              streamId = 'middle_school';
-              break;
-            case 'highschool':
-              streamId = 'high_school';
-              break;
-            default:
-              streamId = 'general';
-          }
+        
+        // Fallback: If no stream selected, use 'college' for college students
+        // Note: College students have gradeLevel='after12' but isCollegeStudent=true
+        if (!streamId && isCollegeStudent) {
+          streamId = 'college';
         }
+        // For after12, after10, middle, highschool: streamId should already be set
 
         console.log('🎯 [AssessmentTestPage] Creating attempt:', { 
           streamId, 
           gradeLevel: flow.gradeLevel, 
           studentRecordId,
-          currentSectionIndex: flow.currentSectionIndex 
+          currentSectionIndex: flow.currentSectionIndex,
+          note: streamId === 'college' ? 'Using college stream (program-based)' : 
+                streamId ? 'Using selected stream' : 
+                'No stream (will be null)'
         });
         
         await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
@@ -2124,7 +2120,11 @@ const AssessmentTestPage: React.FC = () => {
                 setUseDatabase(true);
 
                 try {
-                  await dbStartAssessment(flow.studentStream || 'general', flow.gradeLevel || 'after12');
+                  // Only use 'college' stream for actual college students
+                  const streamId = flow.studentStream || 
+                    (flow.gradeLevel === 'college' ? 'college' : null);
+                  
+                  await dbStartAssessment(streamId, flow.gradeLevel || 'after12');
 
                   // Wait a bit for the attempt to be created
                   await new Promise(resolve => setTimeout(resolve, 500));

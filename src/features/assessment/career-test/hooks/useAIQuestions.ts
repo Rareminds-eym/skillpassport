@@ -46,6 +46,7 @@ interface UseAIQuestionsOptions {
   studentStream: string | null;
   studentId: string | null;
   attemptId: string | null;
+  studentProgram: string | null;
 }
 
 interface UseAIQuestionsResult {
@@ -82,7 +83,8 @@ export const useAIQuestions = ({
   gradeLevel,
   studentStream,
   studentId,
-  attemptId
+  attemptId,
+  studentProgram
 }: UseAIQuestionsOptions): UseAIQuestionsResult => {
   const [aiQuestions, setAiQuestions] = useState<AIQuestionsState>({
     aptitude: null,
@@ -193,7 +195,8 @@ export const useAIQuestions = ({
         effectiveStream,
         gradeLevel,
         studentId || null,
-        attemptId || null
+        attemptId || null,
+        studentProgram || null
       );
 
       // Clear aptitude progress interval
@@ -285,7 +288,7 @@ export const useAIQuestions = ({
       setLoading(false);
       isLoadingRef.current = false;
     }
-  }, [gradeLevel, studentStream, studentId, attemptId]);
+  }, [gradeLevel, studentStream, studentId, attemptId, studentProgram]);
 
   useEffect(() => {
     loadQuestions();

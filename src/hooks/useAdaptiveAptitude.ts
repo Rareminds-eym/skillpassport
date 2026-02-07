@@ -58,6 +58,8 @@ export interface UseAdaptiveAptitudeOptions {
   gradeLevel: GradeLevel;
   /** Assessment attempt ID to link the adaptive session to */
   attemptId?: string;
+  /** Student's course/program (for college students) */
+  studentCourse?: string | null;
   /** Callback when test completes */
   onTestComplete?: (results: TestResults) => void;
   /** Callback when an error occurs */
@@ -177,7 +179,7 @@ function calculateProgress(
 export function useAdaptiveAptitude(
   options: UseAdaptiveAptitudeOptions
 ): UseAdaptiveAptitudeReturn {
-  const { studentId, gradeLevel, attemptId, onTestComplete, onError } = options;
+  const { studentId, gradeLevel, attemptId, studentCourse, onTestComplete, onError } = options;
 
   // ==========================================================================
   // STATE
@@ -275,6 +277,7 @@ export function useAdaptiveAptitude(
       const initResult: InitializeTestResult = await AdaptiveAptitudeService.initializeTest({
         studentId,
         gradeLevel,
+        studentCourse,
       });
       console.log('✅ [useAdaptiveAptitude] Step 1 Complete: initializeTest result:', {
         sessionId: initResult.session.id,

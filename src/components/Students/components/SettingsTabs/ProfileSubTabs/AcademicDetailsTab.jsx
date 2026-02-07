@@ -1,14 +1,34 @@
 import React from "react";
-import { Briefcase, GraduationCap, Plus, Edit } from "lucide-react";
+import { Briefcase, GraduationCap, Plus, Edit, Save } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
+import { useFormValidation } from "../../../../../hooks/useFormValidation";
+import FormField from "../FormField";
 
 const AcademicDetailsTab = ({ 
   profileData, 
   handleProfileChange, 
   educationData, 
-  setShowEducationModal 
+  setShowEducationModal,
+  handleSaveProfile,
+  isSaving, 
 }) => {
+  const { validateSingleField, touchField, getFieldError } = useFormValidation();
+
+  const handleFieldChange = (field, value) => {
+    handleProfileChange(field, value);
+    if (field === 'currentCgpa') {
+      validateSingleField('cgpa', value);
+    }
+  };
+
+  const handleFieldBlur = (field, value) => {
+    touchField(field);
+    if (field === 'currentCgpa') {
+      validateSingleField('cgpa', value);
+    }
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -49,23 +69,19 @@ const AcademicDetailsTab = ({
         </div>
 
         {/* Current CGPA */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Current CGPA <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            max="10"
-            value={profileData.currentCgpa}
-            onChange={(e) =>
-              handleProfileChange("currentCgpa", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            placeholder="Enter current CGPA"
-          />
-        </div>
+        <FormField
+          label="Current CGPA"
+          name="currentCgpa"
+          type="number"
+          value={profileData.currentCgpa}
+          onChange={handleFieldChange}
+          onBlur={handleFieldBlur}
+          error={getFieldError('cgpa')}
+          placeholder="Enter current CGPA (0-10)"
+          required
+          helpText="CGPA must be between 0 and 10"
+          inputClassName="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
 
         {/* Grade */}
         <div className="space-y-2">
@@ -202,6 +218,28 @@ const AcademicDetailsTab = ({
               ))}
           </div>
         )}
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
+        <Button
+          onClick={handleSaveProfile}
+          disabled={isSaving}
+          className={`
+            inline-flex items-center gap-2
+            bg-blue-600 hover:bg-blue-700 active:bg-blue-800
+            text-white font-medium
+            px-6 py-2.5 rounded-lg
+            shadow-[0_2px_6px_rgba(0,0,0,0.05)]
+            hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]
+            active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]
+            transition-all duration-200 ease-in-out
+            disabled:opacity-60 disabled:cursor-not-allowed
+          `}
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   );

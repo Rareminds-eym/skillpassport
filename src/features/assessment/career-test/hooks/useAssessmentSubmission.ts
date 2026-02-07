@@ -425,9 +425,11 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
               return null;
             };
 
-            const programName = student.branch_field ||
-              (student.programs as any)?.name ||
-              student.course_name;
+            // Priority: program.name > program.code > course_name > branch_field
+            const programName = (student.programs as any)?.name ||
+              (student.programs as any)?.code ||
+              student.course_name ||
+              student.branch_field;
             const programCode = (student.programs as any)?.code || null;
             const degreeLevel = extractDegreeLevel(
               student.grade,
