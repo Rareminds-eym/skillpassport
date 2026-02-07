@@ -33,21 +33,23 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
       
-      {/* Back Button - Fixed at top */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="fixed top-6 left-6 z-50"
-      >
-        <button
-          onClick={handleGoBack}
-          className="inline-flex items-center px-4 py-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-all group"
+      {/* Back Button - Fixed at top - Only show for admins */}
+      {isAdminViewing && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed top-6 left-6 z-50"
         >
-          <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-          <span className="font-medium">Back</span>
-        </button>
-      </motion.div>
+          <button
+            onClick={handleGoBack}
+            className="inline-flex items-center px-4 py-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm text-gray-700 dark:text-gray-200 rounded-full shadow-lg hover:shadow-xl border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-all group"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            <span className="font-medium">Back</span>
+          </button>
+        </motion.div>
+      )}
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 px-6 min-h-[90vh] flex items-center justify-center overflow-hidden">

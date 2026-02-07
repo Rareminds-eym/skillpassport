@@ -76,23 +76,39 @@ const CertificatesTab = ({
             .filter(cert => cert.enabled !== false) // Only show enabled certificates
             .sort((a, b) => {
               // Sort by issue date, most recent first
-              const dateA = new Date(a.issueDate || 0);
-              const dateB = new Date(b.issueDate || 0);
+              const dateA = new Date(a.issueDate || a.issuedOn || 0);
+              const dateB = new Date(b.issueDate || b.issuedOn || 0);
               return dateB - dateA;
             })
             .map((certificate, idx) => {
-              const status = getCertificateStatus(certificate.expiryDate);
+              // VERSIONING: If there's a pending edit, display verified_data
+              const displayCert = certificate.has_pending_edit && certificate.verified_data
+                ? {
+                    ...certificate,
+                    title: certificate.verified_data.title || certificate.title,
+                    issuer: certificate.verified_data.issuer || certificate.issuer,
+                    issuedOn: certificate.verified_data.issued_on || certificate.issuedOn,
+                    expiryDate: certificate.verified_data.expiry_date || certificate.expiryDate,
+                    level: certificate.verified_data.level || certificate.level,
+                    description: certificate.verified_data.description || certificate.description,
+                    credentialId: certificate.verified_data.credential_id || certificate.credentialId,
+                    link: certificate.verified_data.link || certificate.link,
+                    category: certificate.verified_data.category || certificate.category,
+                  }
+                : certificate;
+              
+              const status = getCertificateStatus(displayCert.expiryDate);
               
               return (
                 <div
-                  key={certificate.id || `cert-${idx}`}
+                  key={displayCert.id || `cert-${idx}`}
                   className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <h4 className="text-base font-bold text-gray-900">
-                          {certificate.title || certificate.name || certificate.certificateName || certificate.certificate_name || "Certificate"}
+                          {displayCert.title || displayCert.name || displayCert.certificateName || displayCert.certificate_name || "Certificate"}
                         </h4>
                         <Button
                           variant="ghost"
@@ -107,37 +123,38 @@ const CertificatesTab = ({
                       <div className="flex items-center gap-2 mb-2">
                         <Shield className="w-4 h-4 text-blue-600" />
                         <p className="text-sm text-blue-600 font-medium">
-                          {certificate.issuer || certificate.organization || certificate.institution || certificate.issuedBy || "Organization"}
+                          {displayCert.issuer || displayCert.organization || displayCert.institution || displayCert.issuedBy || "Organization"}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                        {certificate.issuedOn && (
+                        {displayCert.issuedOn && (
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            <span>Issued: {formatDate(certificate.issuedOn)}</span>
+                            <span>Issued: {formatDate(displayCert.issuedOn)}</span>
                           </div>
                         )}
                         
-                        {certificate.expiryDate && (
+                        {displayCert.expiryDate && (
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            <span>Expires: {formatDate(certificate.expiryDate)}</span>
+                            <span>Expires: {formatDate(displayCert.expiryDate)}</span>
                           </div>
                         )}
                       </div>
 
                       <div className="flex items-center gap-3 mb-3">
-                        {/* Approval Status Badge - Only show if explicitly verified/approved */}
-                        {certificate.approval_status && (certificate.approval_status === 'verified' || certificate.approval_status === 'approved') && (
+                        {/* Approval Status Badge - Show "Verified" for old data when there's a pending edit */}
+                        {((displayCert.approval_status === 'verified' || displayCert.approval_status === 'approved') || 
+                          (certificate.has_pending_edit && certificate.verified_data)) && (
                           <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium border border-green-200">
                             <CheckCircle className="w-3 h-3" />
                             <span>Verified</span>
                           </div>
                         )}
                         
-                        {/* Pending Verification Badge */}
-                        {(!certificate.approval_status || certificate.approval_status === 'pending') && (
+                        {/* Pending Verification Badge - Only for brand new submissions */}
+                        {displayCert.approval_status === 'pending' && !certificate.verified_data && (
                           <div className="flex items-center gap-2 px-3 py-1 bg-amber-100 text-amber-700 hover:bg-amber-100 rounded-full text-xs font-medium border border-amber-200">
                             <Clock className="w-3 h-3" />
                             <span>Pending Verification</span>
@@ -151,37 +168,37 @@ const CertificatesTab = ({
                           </Badge>
                         )}
                         
-                        {certificate.category && (
+                        {displayCert.category && (
                           <Badge variant="secondary" className="text-xs px-2 py-1">
-                            {certificate.category}
+                            {displayCert.category}
                           </Badge>
                         )}
                         
-                        {certificate.level && (
+                        {displayCert.level && (
                           <Badge variant="outline" className="text-xs px-2 py-1">
-                            {certificate.level}
+                            {displayCert.level}
                           </Badge>
                         )}
                       </div>
 
-                      {certificate.credentialId && (
+                      {displayCert.credentialId && (
                         <p className="text-xs text-gray-500 mb-2">
-                          <span className="font-medium">Credential ID:</span> {certificate.credentialId}
+                          <span className="font-medium">Credential ID:</span> {displayCert.credentialId}
                         </p>
                       )}
 
-                      {certificate.description && (
+                      {displayCert.description && (
                         <p className="text-sm text-gray-600 leading-relaxed mb-3">
-                          {certificate.description}
+                          {displayCert.description}
                         </p>
                       )}
 
-                      {certificate.link && (
+                      {displayCert.link && (
                         <div className="flex items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(certificate.link, '_blank')}
+                            onClick={() => window.open(displayCert.link, '_blank')}
                             className="text-xs px-3 py-1 h-7 flex items-center gap-1"
                           >
                             <ExternalLink className="w-3 h-3" />
