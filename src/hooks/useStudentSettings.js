@@ -39,22 +39,19 @@ export const useStudentSettings = (email) => {
 
   // Update profile data
   const updateProfile = async (updates) => {
-    try {
-      const result = await updateStudentSettings(email, updates);
-      
-      if (result.success) {
-        // Only update studentData if we're NOT updating notification or privacy settings
-        // This prevents the state from being overwritten while user is toggling settings
-        if (!updates.notificationSettings && !updates.privacySettings) {
-          setStudentData(result.data);
-        }
-        return { success: true, data: result.data };
-      } else {
-        throw new Error(result.error);
+    const result = await updateStudentSettings(email, updates);
+    
+    if (result.success) {
+      // Only update studentData if we're NOT updating notification or privacy settings
+      // This prevents the state from being overwritten while user is toggling settings
+      if (!updates.notificationSettings && !updates.privacySettings) {
+        setStudentData(result.data);
       }
-    } catch (err) {
-      console.error('❌ Error updating profile:', err);
-      throw err;
+      return result;
+    } else {
+      // Return the error result instead of throwing
+      // This allows safeSave to properly handle the error
+      return result;
     }
   };
 

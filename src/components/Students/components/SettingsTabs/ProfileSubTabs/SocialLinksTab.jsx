@@ -1,8 +1,27 @@
 import React from "react";
 import { Globe, Save } from "lucide-react";
 import { Button } from "../../ui/button";
+import { useFormValidation } from "../../../../../hooks/useFormValidation";
+import FormField from "../FormField";
 
 const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+  const { validateSingleField, touchField, getFieldError } = useFormValidation();
+
+  const handleFieldChange = (field, value) => {
+    handleProfileChange(field, value);
+    // Validate URL fields
+    if (['linkedIn', 'github', 'portfolio', 'twitter', 'facebook', 'instagram'].includes(field)) {
+      validateSingleField('url', value);
+    }
+  };
+
+  const handleFieldBlur = (field, value) => {
+    touchField(field);
+    if (['linkedIn', 'github', 'portfolio', 'twitter', 'facebook', 'instagram'].includes(field)) {
+      validateSingleField('url', value);
+    }
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -66,20 +85,17 @@ const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, i
               placeholder: "https://instagram.com/yourusername",
             },
           ].map((field) => (
-            <div key={field.key} className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">
-                {field.label}
-              </label>
-              <input
-                type="url"
-                value={profileData[field.key]}
-                onChange={(e) =>
-                  handleProfileChange(field.key, e.target.value)
-                }
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                placeholder={field.placeholder}
-              />
-            </div>
+            <FormField
+              key={field.key}
+              label={field.label}
+              name={field.key}
+              type="url"
+              value={profileData[field.key]}
+              onChange={handleFieldChange}
+              onBlur={handleFieldBlur}
+              error={getFieldError(field.key)}
+              placeholder={field.placeholder}
+            />
           ))}
         </div>
       </div>
