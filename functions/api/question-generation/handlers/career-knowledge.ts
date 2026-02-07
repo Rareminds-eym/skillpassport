@@ -36,9 +36,6 @@ export async function generateKnowledgeQuestions(
     
     const supabase = createSupabaseAdminClient(env);
 
-    console.log(`📝 Generating fresh knowledge questions in 2 batches for: ${streamName}`);
-
-
     const { openRouter: openRouterKey } = getAPIKeys(env);
 
     if (!openRouterKey) {
@@ -47,16 +44,24 @@ export async function generateKnowledgeQuestions(
 
     const allQuestions: any[] = [];
 
-    // Split into 2 batches for stability
-    for (let batchNum = 1; batchNum <= 2; batchNum++) {
-        const count = Math.floor(questionCount / 2);
-        const totalQuestions = batchNum === 2 ? questionCount - count : count;
+    // For college students with 20 questions, use single batch for better consistency
+    // For larger counts, split into batches
+    const useSingleBatch = isCollegeStudent && questionCount <= 20;
+    const batchCount = useSingleBatch ? 1 : 2;
+
+    console.log(`📝 Generating fresh knowledge questions in ${batchCount} batch${batchCount > 1 ? 'es' : ''} for: ${streamName}`);
+
+    for (let batchNum = 1; batchNum <= batchCount; batchNum++) {
+        const count = Math.floor(questionCount / batchCount);
+        const totalQuestions = batchNum === batchCount ? questionCount - (count * (batchCount - 1)) : count;
 
         let prompt: string;
         
         if (isCollegeStudent && !topics) {
             // For college students without predefined topics, let AI determine topics dynamically
-            prompt = `Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a college student studying ${streamName}.
+            prompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${totalQuestions} questions. Count them before responding.
+
+Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a college student studying ${streamName}.
 
 IMPORTANT: Analyze the course name "${streamName}" and generate questions covering the core subjects and topics typically taught in this program.
 
@@ -69,11 +74,17 @@ Requirements:
 6. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
 7. Questions should be appropriate for undergraduate/graduate level students
 
+⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY ${totalQuestions} questions in your response.
+
 Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
-{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`;
+{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}
+
+REMINDER: Generate EXACTLY ${totalQuestions} questions. No more, no less.`;
         } else {
             // For non-college students or when topics are provided, use the existing approach
-            prompt = `Generate EXACTLY ${totalQuestions} multiple-choice questions about ${streamName}.
+            prompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${totalQuestions} questions. Count them before responding.
+
+Generate EXACTLY ${totalQuestions} multiple-choice questions about ${streamName}.
 
 Requirements:
 1. All questions must be MCQ with exactly 4 options
@@ -82,18 +93,32 @@ Requirements:
 4. Difficulty distribution: 30% easy, 50% medium, 20% hard
 5. Test practical understanding, not memorization
 
+⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY ${totalQuestions} questions in your response.
+
 Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
-{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`;
+{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}
+
+REMINDER: Generate EXACTLY ${totalQuestions} questions. No more, no less.`;
         }
 
         const systemPrompt = isCollegeStudent 
-            ? `You are an expert educational assessment creator for college/university students. Analyze the course name and generate EXACTLY ${totalQuestions} knowledge-based questions covering core topics of that program. Generate ONLY valid JSON with no markdown.`
-            : `You are an expert educational assessment creator. Generate EXACTLY ${totalQuestions} knowledge-based questions about ${streamName}. Generate ONLY valid JSON with no markdown.`;
+            ? `You are an expert educational assessment creator for college/university students. 
+
+🎯 CRITICAL: You MUST generate EXACTLY ${totalQuestions} knowledge-based questions. This is a strict requirement.
+
+Analyze the course name and generate questions covering core topics of that program. 
+
+Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate ONLY valid JSON with no markdown.`
+            : `You are an expert educational assessment creator. 
+
+🎯 CRITICAL: You MUST generate EXACTLY ${totalQuestions} knowledge-based questions about ${streamName}. This is a strict requirement.
+
+Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate ONLY valid JSON with no markdown.`;
 
         // Use OpenRouter with automatic retry and fallback
         // Calculate token limit: ~150 tokens per question + 500 buffer
         const estimatedTokens = totalQuestions * 150 + 500;
-        console.log(`🔑 Batch ${batchNum}: Using OpenRouter with retry for ${totalQuestions} ${streamName} questions (maxTokens: ${estimatedTokens})`);
+        console.log(`🔑 Batch ${batchNum}/${batchCount}: Using OpenRouter with retry for ${totalQuestions} ${streamName} questions (maxTokens: ${estimatedTokens})`);
 
         const jsonText = await callOpenRouterWithRetry(openRouterKey, [
             { role: 'system', content: systemPrompt },
@@ -110,7 +135,7 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
         }
 
         allQuestions.push(...batchQuestions);
-        console.log(`✅ Batch ${batchNum}/${2} complete: ${batchQuestions.length} questions`);
+        console.log(`✅ Batch ${batchNum}/${batchCount} complete: ${batchQuestions.length} questions`);
     }
 
     console.log(`✅ Generated ${allQuestions.length} total knowledge questions via AI`);
@@ -178,9 +203,12 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
     
     console.log('🎓 ============================================');
 
-    const processedQuestions = uniqueQuestions.map((q: any) => ({
-        id: generateUUID(),
+    // Use sequential numeric IDs for consistency with answer storage
+    // Format: 1, 2, 3, ... (not UUIDs) so answers can be matched
+    const processedQuestions = uniqueQuestions.map((q: any, index: number) => ({
         ...q,
+        id: index + 1, // Sequential numeric ID
+        uuid: generateUUID(), // Keep UUID for database uniqueness
         stream_id: streamId,
         stream_name: streamName,
         created_at: new Date().toISOString()
