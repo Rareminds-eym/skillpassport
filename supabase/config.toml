@@ -123,37 +123,12 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-[storage.s3_protocol]
-enabled = true
-
-# [storage.image_transformation]
-# enabled = true
-
-[storage.analytics]
-# Store analytical data in S3 for running ETL jobs over Iceberg Catalog (hosted only).
-enabled = false
-
-max_namespaces = 5
-max_tables = 10
-max_catalogs = 2
-
-# [storage.analytics.buckets.my-warehouse]
-
-[storage.vector]
-# Store vector embeddings in S3 for large and durable datasets (hosted only).
-enabled = false
-
-max_buckets = 10
-max_indexes = 5
-
-# [storage.vector.buckets.documents-openai]
-
 [auth]
 enabled = true
 
-site_url = "http://127.0.0.1:3000"
+site_url = "http://127.0.0.1:8788"
 
-additional_redirect_urls = ["http://127.0.0.1:3000/**", "http://localhost:3000/**"]
+additional_redirect_urls = ["http://127.0.0.1:8788/**", "http://127.0.0.1:3000/**", "http://localhost:3000/**", "http://localhost:8788/**"]
 
 jwt_expiry = 3600
 
@@ -252,7 +227,6 @@ secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 redirect_uri = ""
 url = ""
 skip_nonce_check = false
-email_optional = false
 
 [auth.web3.solana]
 enabled = false
