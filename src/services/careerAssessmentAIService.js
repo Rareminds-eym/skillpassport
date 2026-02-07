@@ -1683,10 +1683,20 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
       const validation = validateQuestionBatch(data.questions, 'knowledge', questionCount);
       
       // Filter out invalid questions - only use valid ones
-      const validQuestions = validation.valid;
+      let validQuestions = validation.valid;
       
       if (validation.invalid.length > 0) {
         console.warn(`⚠️ Filtered out ${validation.invalid.length} invalid knowledge questions`);
+      }
+      
+      // Remove duplicates based on question text (same logic as aptitude questions)
+      const beforeDuplicateRemoval = validQuestions.length;
+      validQuestions = validQuestions.filter((q, index, self) =>
+        index === self.findIndex((t) => (t.text || t.question) === (q.text || q.question))
+      );
+      
+      if (beforeDuplicateRemoval > validQuestions.length) {
+        console.warn(`⚠️ Removed ${beforeDuplicateRemoval - validQuestions.length} duplicate knowledge questions`);
       }
       
       // STRICT: Must have EXACTLY the expected count
@@ -1704,7 +1714,7 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
         }
       }
       
-      console.log(`✅ Validation passed: Exactly ${questionCount} valid knowledge questions`);
+      console.log(`✅ Validation passed: Exactly ${questionCount} valid unique knowledge questions`);
       
       // If API returned questions but didn't save them, save from frontend as fallback
       if (validQuestions.length > 0 && studentId && !data.cached) {
