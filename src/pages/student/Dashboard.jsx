@@ -13,8 +13,10 @@ import {
     ClipboardList,
     Clock,
     Cpu,
+    Edit,
     ExternalLink,
     Eye,
+    EyeOff,
     FileText,
     Github,
     GraduationCap,
@@ -34,7 +36,7 @@ import {
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from "motion/react";
 import React, { useEffect, useMemo, useState } from "react";
-import { Toaster } from "react-hot-toast";
+import toast, { Toaster } from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
@@ -76,6 +78,9 @@ import { useOpportunities } from "../../hooks/useOpportunities";
 import { useStudentAchievements } from "../../hooks/useStudentAchievements";
 import { useStudentCertificates } from "../../hooks/useStudentCertificates";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentEducation } from "../../hooks/useStudentEducation";
+import { useStudentExperience } from "../../hooks/useStudentExperience";
+import { useStudentTechnicalSkills, useStudentSoftSkills } from "../../hooks/useStudentSkills";
 import { useStudentLearning } from "../../hooks/useStudentLearning";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
@@ -204,6 +209,60 @@ const StudentDashboard = () => {
     refresh: refreshProjects
   } = useStudentProjects(studentId, !!studentId && !isViewingOthersProfile);
 
+  // Debug: Log projects data
+  useEffect(() => {
+    console.log('🔍 Dashboard - tableProjects updated:', {
+      count: tableProjects?.length || 0,
+      projects: tableProjects,
+      loading: projectsLoading,
+      error: projectsError,
+      studentId
+    });
+  }, [tableProjects, projectsLoading, projectsError, studentId]);
+
+  // Fetch experience from dedicated table
+  const {
+    experience: tableExperience,
+    loading: experienceLoading,
+    error: experienceError,
+    refresh: refreshExperience
+  } = useStudentExperience(studentId, !!studentId && !isViewingOthersProfile);
+
+  // Fetch education from dedicated table
+  const {
+    education: tableEducation,
+    loading: educationLoading,
+    error: educationError,
+    refresh: refreshEducation
+  } = useStudentEducation(studentId, !!studentId && !isViewingOthersProfile);
+
+  // Debug: Log education data
+  useEffect(() => {
+    console.log('🔍 Dashboard - tableEducation updated:', {
+      count: tableEducation?.length || 0,
+      education: tableEducation,
+      loading: educationLoading,
+      error: educationError,
+      studentId
+    });
+  }, [tableEducation, educationLoading, educationError, studentId]);
+
+  // Fetch technical skills from dedicated table
+  const {
+    skills: tableTechnicalSkills,
+    loading: technicalSkillsLoading,
+    error: technicalSkillsError,
+    refresh: refreshTechnicalSkills
+  } = useStudentTechnicalSkills(studentId, !!studentId && !isViewingOthersProfile);
+
+  // Fetch soft skills from dedicated table
+  const {
+    skills: tableSoftSkills,
+    loading: softSkillsLoading,
+    error: softSkillsError,
+    refresh: refreshSoftSkills
+  } = useStudentSoftSkills(studentId, !!studentId && !isViewingOthersProfile);
+
   // Setup message notifications with hot-toast
   useStudentMessageNotifications({
     studentId,
@@ -277,26 +336,295 @@ const StudentDashboard = () => {
       ? tableProjects
       : userData.projects;
     if (!Array.isArray(projectsData)) return [];
+    
+    console.log('🔍 Dashboard - Raw projects data:', projectsData);
+    
     return projectsData
+      .map((project) => {
+        // VERSIONING: If there's a pending edit, use verified_data for dashboard display
+        if (project.has_pending_edit && project.verified_data) {
+          console.log('🔄 Dashboard - Project with pending edit:', {
+            id: project.id,
+            currentTitle: project.title,
+            verifiedTitle: project.verified_data.title,
+            approval_status: project.approval_status,
+            has_pending_edit: project.has_pending_edit
+          });
+          
+          return {
+            ...project,
+            // Use verified_data for display (old approved version)
+            title: project.verified_data.title,
+            description: project.verified_data.description,
+            role: project.verified_data.role,
+            startDate: project.verified_data.startDate || project.verified_data.start_date,
+            endDate: project.verified_data.endDate || project.verified_data.end_date,
+            duration: project.verified_data.duration,
+            organization: project.verified_data.organization,
+            technologies: project.verified_data.technologies || project.verified_data.tech_stack,
+            techStack: project.verified_data.tech_stack || project.verified_data.technologies,
+            demoUrl: project.verified_data.demoUrl || project.verified_data.demo_link,
+            githubUrl: project.verified_data.githubUrl || project.verified_data.github_link,
+            certificateUrl: project.verified_data.certificateUrl,
+            videoUrl: project.verified_data.videoUrl,
+            pptUrl: project.verified_data.pptUrl,
+            // IMPORTANT: Use main enabled field, NOT verified_data.enabled
+            // enabled is a visibility toggle, not part of versioning
+            enabled: project.enabled !== false,
+            // Keep the original approval_status for filtering
+            approval_status: project.approval_status,
+            has_pending_edit: project.has_pending_edit,
+            verified_data: project.verified_data
+          };
+        }
+        return project;
+      })
       .filter((project) => project && project.enabled !== false)
+      .filter((project) => {
+        // Show project if:
+        // 1. It's approved or verified, OR
+        // 2. It has pending edits (has_pending_edit=true) with verified_data (was previously verified)
+        const shouldShow = (
+          project.approval_status === 'approved' || 
+          project.approval_status === 'verified' ||
+          (project.has_pending_edit && project.verified_data)
+        );
+        return shouldShow;
+      });
+  }, [tableProjects, userData.projects]);
+
+  // Memoize education with versioning logic
+  const enabledEducation = useMemo(() => {
+    // Prioritize table data over profile data
+    const educationData = Array.isArray(tableEducation) && tableEducation.length > 0
+      ? tableEducation
+      : userData.education;
+    if (!Array.isArray(educationData)) return [];
+    
+    console.log('🔍 Dashboard - Raw education data:', educationData);
+    
+    return educationData
+      .map((education) => {
+        // VERSIONING: If there's a pending edit, use verified_data for dashboard display
+        if (education.has_pending_edit && education.verified_data) {
+          console.log('🔄 Dashboard - Education with pending edit:', {
+            id: education.id,
+            currentDegree: education.degree,
+            verifiedDegree: education.verified_data.degree,
+            approval_status: education.approval_status,
+            has_pending_edit: education.has_pending_edit
+          });
+          
+          return {
+            ...education,
+            // Use verified_data for display (old approved version)
+            degree: education.verified_data.degree,
+            department: education.verified_data.department,
+            university: education.verified_data.university,
+            institution: education.verified_data.university, // Alias
+            yearOfPassing: education.verified_data.yearOfPassing || education.verified_data.year_of_passing,
+            year_of_passing: education.verified_data.year_of_passing || education.verified_data.yearOfPassing,
+            cgpa: education.verified_data.cgpa,
+            level: education.verified_data.level,
+            status: education.verified_data.status,
+            // IMPORTANT: Use main enabled field, NOT verified_data.enabled
+            // enabled is a visibility toggle, not part of versioning
+            enabled: education.enabled !== false,
+            // Keep the original approval_status for filtering
+            approval_status: education.approval_status,
+            has_pending_edit: education.has_pending_edit,
+            verified_data: education.verified_data
+          };
+        }
+        return education;
+      })
+      .filter((education) => education && education.enabled !== false)
+      .filter((education) => {
+        // Show education if:
+        // 1. It's approved or verified, OR
+        // 2. It has pending edits (has_pending_edit=true) with verified_data (was previously verified)
+        const shouldShow = (
+          education.approval_status === 'approved' || 
+          education.approval_status === 'verified' ||
+          (education.has_pending_edit && education.verified_data)
+        );
+        return shouldShow;
+      })
       .sort((a, b) => {
-        // Sort by end date or completion date in descending order (most recent first)
-        const getDate = (project) => {
-          if (project.endDate) return new Date(project.endDate);
-          if (project.end_date) return new Date(project.end_date);
-          if (project.completedDate) return new Date(project.completedDate);
-          if (project.completed_date) return new Date(project.completed_date);
-          if (project.startDate) return new Date(project.startDate);
-          if (project.start_date) return new Date(project.start_date);
-          if (project.year) return new Date(project.year, 11, 31);
-          return new Date(0); // Default to epoch if no date found
+        const yearA = parseInt(a.yearOfPassing || a.year || a.endYear || 0);
+        const yearB = parseInt(b.yearOfPassing || b.year || b.endYear || 0);
+        return yearB - yearA; // Descending order
+      });
+  }, [tableEducation, userData.education]);
+
+  // Memoize technical skills with versioning logic
+  const enabledTechnicalSkills = useMemo(() => {
+    const skillsData = Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0
+      ? tableTechnicalSkills
+      : userData.technicalSkills;
+    
+    console.log('🔍 Dashboard - Technical Skills Data:', {
+      tableTechnicalSkills,
+      userData_technicalSkills: userData.technicalSkills,
+      usingTableData: Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0
+    });
+    
+    if (!Array.isArray(skillsData)) return [];
+    
+    const processed = skillsData
+      .map((skill) => {
+        console.log('🔍 Dashboard - Processing skill:', {
+          name: skill.name,
+          approval_status: skill.approval_status,
+          has_pending_edit: skill.has_pending_edit,
+          _hasPendingEdit: skill._hasPendingEdit,
+          enabled: skill.enabled
+        });
+        
+        // VERSIONING: If there's a pending edit, use verified_data for dashboard display
+        if (skill.has_pending_edit && skill.verified_data) {
+          return {
+            ...skill,
+            name: skill.verified_data.name,
+            level: skill.verified_data.level,
+            description: skill.verified_data.description,
+            enabled: skill.enabled !== false,
+            approval_status: skill.approval_status,
+            has_pending_edit: skill.has_pending_edit,
+            verified_data: skill.verified_data
+          };
+        }
+        return skill;
+      })
+      .filter((skill) => skill && skill.enabled !== false)
+      .filter((skill) => {
+        const shouldShow = (
+          skill.approval_status === 'approved' || 
+          skill.approval_status === 'verified' ||
+          (skill.has_pending_edit && skill.verified_data)
+        );
+        console.log('🔍 Dashboard - Should show skill?', {
+          name: skill.name,
+          approval_status: skill.approval_status,
+          shouldShow
+        });
+        return shouldShow;
+      });
+    
+    console.log('🔍 Dashboard - Final enabled technical skills:', processed);
+    return processed;
+  }, [tableTechnicalSkills, userData.technicalSkills]);
+
+  // Memoize soft skills with versioning logic
+  const enabledSoftSkills = useMemo(() => {
+    const skillsData = Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0
+      ? tableSoftSkills
+      : userData.softSkills;
+    if (!Array.isArray(skillsData)) return [];
+    
+    return skillsData
+      .map((skill) => {
+        // VERSIONING: If there's a pending edit, use verified_data for dashboard display
+        if (skill.has_pending_edit && skill.verified_data) {
+          return {
+            ...skill,
+            name: skill.verified_data.name,
+            level: skill.verified_data.level,
+            description: skill.verified_data.description,
+            enabled: skill.enabled !== false,
+            approval_status: skill.approval_status,
+            has_pending_edit: skill.has_pending_edit,
+            verified_data: skill.verified_data
+          };
+        }
+        return skill;
+      })
+      .filter((skill) => skill && skill.enabled !== false)
+      .filter((skill) => {
+        const shouldShow = (
+          skill.approval_status === 'approved' || 
+          skill.approval_status === 'verified' ||
+          (skill.has_pending_edit && skill.verified_data)
+        );
+        return shouldShow;
+      });
+  }, [tableSoftSkills, userData.softSkills]);
+
+  const enabledExperience = useMemo(() => {
+    // Prioritize table data over profile data
+    const experienceData = Array.isArray(tableExperience) && tableExperience.length > 0
+      ? tableExperience
+      : userData.experience;
+    if (!Array.isArray(experienceData)) return [];
+    
+    // Apply versioning logic: show verified data on dashboard when there's a pending edit
+    return experienceData
+      .map((exp) => {
+        // VERSIONING: If there's a pending edit, use verified_data for dashboard display
+        if (exp.has_pending_edit && exp.verified_data) {
+          console.log('🔄 Dashboard - Experience with pending edit:', {
+            id: exp.id,
+            currentRole: exp.role,
+            verifiedRole: exp.verified_data.role,
+            approval_status: exp.approval_status,
+            has_pending_edit: exp.has_pending_edit
+          });
+          
+          return {
+            ...exp,
+            // Override with verified data for display
+            role: exp.verified_data.role || exp.role,
+            organization: exp.verified_data.organization || exp.organization,
+            start_date: exp.verified_data.start_date || exp.start_date,
+            end_date: exp.verified_data.end_date || exp.end_date,
+            duration: exp.verified_data.duration || exp.duration,
+            description: exp.verified_data.description || exp.description,
+            // Keep these for the card to show pending status
+            approval_status: exp.approval_status,
+            has_pending_edit: exp.has_pending_edit,
+            verified_data: exp.verified_data,
+            pending_edit_data: exp.pending_edit_data,
+            // IMPORTANT: Use main enabled field, NOT verified_data.enabled
+            enabled: exp.enabled !== false
+          };
+        }
+        return exp;
+      })
+      .filter((exp) => exp && exp.enabled !== false)
+      .filter((exp) => {
+        // Show experience if:
+        // 1. It's approved or verified, OR
+        // 2. It has pending edits (to show the verified data with pending badge)
+        const shouldShow = (
+          exp.approval_status === 'approved' || 
+          exp.approval_status === 'verified' ||
+          (exp.has_pending_edit && exp.verified_data)
+        );
+        
+        console.log('🔍 Dashboard - Should show experience?', {
+          role: exp.role,
+          approval_status: exp.approval_status,
+          has_pending_edit: exp.has_pending_edit,
+          shouldShow
+        });
+        
+        return shouldShow;
+      })
+      .sort((a, b) => {
+        // Sort by end date in descending order (most recent first)
+        const getDate = (exp) => {
+          if (exp.endDate) return new Date(exp.endDate);
+          if (exp.end_date) return new Date(exp.end_date);
+          if (exp.startDate) return new Date(exp.startDate);
+          if (exp.start_date) return new Date(exp.start_date);
+          return new Date(0);
         };
         
         const dateA = getDate(a);
         const dateB = getDate(b);
-        return dateB - dateA; // Descending order (most recent first)
+        return dateB - dateA;
       });
-  }, [tableProjects, userData.projects]);
+  }, [tableExperience, userData.experience]);
 
   const enabledCertificates = useMemo(() => {
     // Prioritize table data over profile data
@@ -495,9 +823,11 @@ const StudentDashboard = () => {
           : Array.isArray(studentData.training)
             ? studentData.training
             : [],
-        experience: Array.isArray(studentData.experience)
-          ? studentData.experience
-          : [],
+        experience: Array.isArray(tableExperience) && tableExperience.length > 0
+          ? tableExperience
+          : Array.isArray(studentData.experience)
+            ? studentData.experience
+            : [],
         technicalSkills: Array.isArray(studentData.technicalSkills)
           ? studentData.technicalSkills
           : [],
@@ -520,7 +850,7 @@ const StudentDashboard = () => {
               : [],
       });
     }
-  }, [studentData, tableTraining, tableCertificates, tableProjects]);
+  }, [studentData, tableTraining, tableCertificates, tableProjects, tableExperience]);
 
   // Save handler with DB update logic (like ProfileEditSection)
   const handleSave = async (section, data) => {
@@ -582,6 +912,14 @@ const StudentDashboard = () => {
             refreshCertificates();
           } else if (section === 'projects') {
             refreshProjects();
+          } else if (section === 'experience') {
+            refreshExperience();
+          } else if (section === 'education') {
+            refreshEducation();
+          } else if (section === 'skills' || section === 'technicalSkills') {
+            refreshTechnicalSkills();
+          } else if (section === 'softSkills') {
+            refreshSoftSkills();
           }
 
           // Refresh Recent Updates to show the new activity
@@ -590,6 +928,141 @@ const StudentDashboard = () => {
       } catch (err) {
         console.error("Error saving:", err);
       }
+    }
+  };
+
+  // Create refresh-enabled save handlers for each section
+  const createSaveHandler = (section, refreshFn) => {
+    const handler = async (data) => {
+      await handleSave(section, data);
+    };
+    // Attach refresh function so modal can call it
+    handler.refresh = refreshFn;
+    return handler;
+  };
+
+  // Technical Skills toggle enabled handler
+  const handleToggleTechnicalSkillEnabled = async (skillId) => {
+    console.log('🔧 Dashboard - Toggle technical skill called:', skillId);
+    console.log('🔧 Dashboard - All technical skills:', tableTechnicalSkills);
+    
+    const skill = tableTechnicalSkills.find(s => s.id === skillId);
+    console.log('🔧 Dashboard - Found skill:', skill);
+    
+    if (!skill) {
+      console.error('🔧 Dashboard - Skill not found!');
+      return;
+    }
+    
+    const newState = !skill.enabled;
+    console.log('🔧 Dashboard - Toggling from', skill.enabled, 'to', newState);
+    
+    // Don't allow hiding/showing items that are pending verification or approval
+    if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
+      console.log('🔧 Dashboard - Skill is pending, cannot toggle');
+      toast({ 
+        title: "Cannot Hide/Show", 
+        description: "You cannot hide or show skills that are pending verification or approval.",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
+    try {
+      console.log('🔧 Dashboard - Updating database...');
+      // Import supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('skills')
+        .update({ enabled: newState })
+        .eq('id', skillId);
+      
+      if (error) {
+        console.error('🔧 Dashboard - Database error:', error);
+        throw error;
+      }
+      
+      console.log('🔧 Dashboard - Database updated successfully');
+      
+      // Refresh technical skills to get updated data
+      if (refreshTechnicalSkills) {
+        console.log('🔧 Dashboard - Refreshing skills...');
+        await refreshTechnicalSkills();
+      }
+      
+      toast({ 
+        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+        description: `Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('🔧 Dashboard - Error toggling technical skill visibility:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to update visibility. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // Soft Skills toggle enabled handler
+  const handleToggleSoftSkillEnabled = async (skillId) => {
+    const skill = tableSoftSkills.find(s => s.id === skillId);
+    if (!skill) return;
+    
+    const newState = !skill.enabled;
+    
+    // Don't allow hiding/showing items that are pending verification or approval
+    if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
+      toast({ 
+        title: "Cannot Hide/Show", 
+        description: "You cannot hide or show skills that are pending verification or approval.",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
+    try {
+      // Import supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('skills')
+        .update({ enabled: newState })
+        .eq('id', skillId);
+      
+      if (error) throw error;
+      
+      // Refresh soft skills to get updated data
+      if (refreshSoftSkills) {
+        await refreshSoftSkills();
+      }
+      
+      toast({ 
+        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+        description: `Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error toggling soft skill visibility:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to update visibility. Please try again.", 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -1153,9 +1626,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="p-8">
-          {userData.technicalSkills.filter(
-            (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
-          ).length === 0 ? (
+          {enabledTechnicalSkills.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-900 text-base leading-normal font-medium">
                 No technical skills added yet
@@ -1163,9 +1634,7 @@ const StudentDashboard = () => {
             </div>
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-              {userData.technicalSkills
-                .filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified'))
-                .map((skill, idx) => (
+              {enabledTechnicalSkills.map((skill, idx) => (
                   <div
                     key={skill.id || `tech-skill-${idx}`}
                     className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
@@ -1194,8 +1663,37 @@ const StudentDashboard = () => {
                     )}
 
                     {/* Star Rating */}
-                    <div className="flex gap-0.5">
+                    <div className="flex gap-0.5 mb-3">
                       {renderStars(skill.level)}
+                    </div>
+
+                    {/* Edit Button + Eye Icon */}
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveModal("skills")}
+                        className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      
+                      {/* Eye icon - only show for verified/approved skills */}
+                      {(skill.approval_status === 'verified' || skill.approval_status === 'approved') && !skill._hasPendingEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleTechnicalSkillEnabled(skill.id)}
+                          className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          title={skill.enabled !== false ? "Hide from profile" : "Show on profile"}
+                        >
+                          {skill.enabled !== false ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1334,11 +1832,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="p-8">
-          {userData.education.filter(
-            (education) =>
-              education.enabled !== false &&
-              (education.approval_status === "verified" || education.approval_status === "approved")
-          ).length === 0 ? (
+          {enabledEducation.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-900 text-base leading-normal font-medium">
                 No education added yet
@@ -1346,18 +1840,7 @@ const StudentDashboard = () => {
             </div>
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-              {userData.education
-                .filter((education) =>
-                  education.enabled !== false &&
-                  (education.approval_status === "verified" || education.approval_status === "approved")
-                )
-                .sort((a, b) => {
-                  // Sort by year in descending order (most recent first)
-                  const yearA = parseInt(a.yearOfPassing || a.year || a.endYear || 0);
-                  const yearB = parseInt(b.yearOfPassing || b.year || b.endYear || 0);
-                  return yearB - yearA; // Descending order
-                })
-                .map((education, idx) => (
+              {enabledEducation.map((education, idx) => (
                   <div
                     key={education.id || `edu-${idx}`}
                     className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
@@ -1775,10 +2258,7 @@ const StudentDashboard = () => {
       </div>
     </CardHeader>
         <CardContent className="p-8">
-  {userData.experience?.filter(exp =>
-    exp.enabled !== false &&
-    (exp.approval_status === "verified" || exp.approval_status === "approved")
-  ).length === 0 ? (
+  {enabledExperience.length === 0 ? (
     <div className="text-center py-8">
       <p className="text-gray-900 text-base leading-normal font-medium">
         No experience added yet
@@ -1786,31 +2266,14 @@ const StudentDashboard = () => {
     </div>
   ) : (
     <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-      {userData.experience
-        .filter(exp =>
-          exp.enabled !== false &&
-          (exp.approval_status === "verified" || exp.approval_status === "approved")
-        )
-        .sort((a, b) => {
-          // Sort by end date/year in descending order (most recent first)
-          // Try multiple date field formats
-          const getEndDate = (exp) => {
-            if (exp.endDate) return new Date(exp.endDate);
-            if (exp.end_date) return new Date(exp.end_date);
-            if (exp.endYear) return new Date(exp.endYear, 11, 31); // December 31st of end year
-            if (exp.year) return new Date(exp.year, 11, 31);
-            // If no end date, use start date
-            if (exp.startDate) return new Date(exp.startDate);
-            if (exp.start_date) return new Date(exp.start_date);
-            if (exp.startYear) return new Date(exp.startYear, 0, 1); // January 1st of start year
-            return new Date(0); // Default to epoch if no date found
-          };
-          
-          const dateA = getEndDate(a);
-          const dateB = getEndDate(b);
-          return dateB - dateA; // Descending order (most recent first)
-        })
-        .map((exp, idx) => (
+      {enabledExperience.map((exp, idx) => {
+        // VERSIONING FIX: Show verified_data if there's a pending edit, otherwise show current data
+        // Dashboard should always show the VERIFIED version, not the pending changes
+        const displayData = exp.has_pending_edit && exp.verified_data 
+          ? { ...exp, ...exp.verified_data }
+          : exp;
+        
+        return (
           <div
           key={exp.id || `exp-${idx}`}
           className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
@@ -1819,64 +2282,74 @@ const StudentDashboard = () => {
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex items-center gap-2">
               <h4 className="text-base font-bold text-gray-900">
-                {exp.role || "Experience Role"}
+                {displayData.role || "Experience Role"}
               </h4>
-              {/* Present Badge for ongoing experiences */}
-              {(!exp.end_date && !exp.endDate) && (
-                <Badge className="!bg-gradient-to-r !from-blue-100 !to-blue-200 !text-blue-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm">
-                  Present
+              {/* Verified Badge - show if:
+                  1. Status is approved/verified, OR
+                  2. Has pending edit with verified_data (showing old verified data) */}
+              {((exp.approval_status === "verified" || exp.approval_status === "approved") || 
+                (exp.has_pending_edit && exp.verified_data)) && (
+                <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  Verified
                 </Badge>
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              {(exp.approval_status === "verified" || exp.approval_status === "approved") && (
-                <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1.5">
-                  <CheckCircle className="w-3.5 h-3.5" />
-                  Verified
+              {/* Pending Approval Badge - only for brand new submissions (no verified_data) */}
+              {exp.approval_status === 'pending' && !exp.verified_data && (
+                <Badge className="!bg-gradient-to-r !from-yellow-100 !to-amber-100 !text-yellow-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  Pending Approval
+                </Badge>
+              )}
+              {/* Present Badge for ongoing experiences */}
+              {(!displayData.end_date && !displayData.endDate) && (
+                <Badge className="!bg-gradient-to-r !from-blue-100 !to-blue-200 !text-blue-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm">
+                  Present
                 </Badge>
               )}
             </div>
           </div>
 
           {/* Type */}
-          {exp.type && (
+          {displayData.type && (
             <div className="flex items-center gap-2 mb-3">
               <Briefcase className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-gray-700 font-medium">{exp.type}</span>
+              <span className="text-sm text-gray-700 font-medium">{displayData.type}</span>
             </div>
           )}
 
           {/* Icon + Location */}
-          {(exp.organization || exp.company || exp.location) && (
+          {(displayData.organization || displayData.company || displayData.location) && (
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="w-4 h-4 text-blue-600" />
               <span className="text-sm text-blue-600 font-medium">
-                {exp.organization || exp.company || "Organization"}
-                {exp.location && `, ${exp.location}`}
+                {displayData.organization || displayData.company || "Organization"}
+                {displayData.location && `, ${displayData.location}`}
               </span>
             </div>
           )}
 
           {/* Date */}
-          {(exp.duration || exp.period || exp.start_date || exp.startDate) && (
+          {(displayData.duration || displayData.period || displayData.start_date || displayData.startDate) && (
             <div className="flex items-center gap-2 mb-3">
               <Calendar className="w-4 h-4 text-gray-600" />
               <span className="text-sm text-gray-600 font-medium">
-                {calculateDuration(exp.start_date || exp.startDate, exp.end_date || exp.endDate) || exp.duration || exp.period}
+                {calculateDuration(displayData.start_date || displayData.startDate, displayData.end_date || displayData.endDate) || displayData.duration || displayData.period}
               </span>
             </div>
           )}
 
           {/* Description */}
-          {exp.description && (
+          {displayData.description && (
             <div className="mt-3">
               <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
-                {exp.description}
+                {displayData.description}
               </p>
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   )}
 </CardContent>
@@ -1910,9 +2383,7 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="p-8">
-          {userData.softSkills.filter(
-            (skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified')
-          ).length === 0 ? (
+          {enabledSoftSkills.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-900 text-base leading-normal font-medium">
                 No soft skills added yet
@@ -1920,9 +2391,7 @@ const StudentDashboard = () => {
             </div>
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-              {userData.softSkills
-                .filter((skill) => skill.enabled !== false && (skill.approval_status === 'approved' || skill.approval_status === 'verified'))
-                .map((skill, idx) => (
+              {enabledSoftSkills.map((skill, idx) => (
                   <div
                     key={skill.id || `soft-skill-${idx}`}
                     className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
@@ -1951,8 +2420,37 @@ const StudentDashboard = () => {
                     )}
 
                     {/* Star Rating */}
-                    <div className="flex gap-0.5">
+                    <div className="flex gap-0.5 mb-3">
                       {renderStars(skill.level)}
+                    </div>
+
+                    {/* Edit Button + Eye Icon */}
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveModal("softSkills")}
+                        className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      
+                      {/* Eye icon - only show for verified/approved skills */}
+                      {(skill.approval_status === 'verified' || skill.approval_status === 'approved') && !skill._hasPendingEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleSoftSkillEnabled(skill.id)}
+                          className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          title={skill.enabled !== false ? "Hide from profile" : "Show on profile"}
+                        >
+                          {skill.enabled !== false ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -2389,8 +2887,8 @@ const StudentDashboard = () => {
         <EducationEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.education}
-          onSave={(data) => handleSave("education", data)}
+          data={Array.isArray(tableEducation) && tableEducation.length > 0 ? tableEducation : userData.education}
+          onSave={createSaveHandler("education", refreshEducation)}
         />
       )}
 
@@ -2399,7 +2897,7 @@ const StudentDashboard = () => {
           isOpen
           onClose={() => setActiveModal(null)}
           data={userData.training}
-          onSave={(data) => handleSave("training", data)}
+          onSave={createSaveHandler("training", refreshTraining)}
         />
       )}
 
@@ -2407,8 +2905,8 @@ const StudentDashboard = () => {
         <ExperienceEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.experience}
-          onSave={(data) => handleSave("experience", data)}
+          data={Array.isArray(tableExperience) && tableExperience.length > 0 ? tableExperience : userData.experience}
+          onSave={createSaveHandler("experience", refreshExperience)}
         />
       )}
 
@@ -2416,8 +2914,8 @@ const StudentDashboard = () => {
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.softSkills}
-          onSave={(data) => handleSave("softSkills", data)}
+          data={Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0 ? tableSoftSkills : userData.softSkills}
+          onSave={createSaveHandler("softSkills", refreshSoftSkills)}
           title="Soft Skills"
         />
       )}
@@ -2426,8 +2924,8 @@ const StudentDashboard = () => {
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.technicalSkills || []}
-          onSave={(data) => handleSave("skills", data)}
+          data={Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0 ? tableTechnicalSkills : userData.technicalSkills || []}
+          onSave={createSaveHandler("skills", refreshTechnicalSkills)}
           title="Skills"
         />
       )}
@@ -2436,8 +2934,8 @@ const StudentDashboard = () => {
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.technicalSkills}
-          onSave={(data) => handleSave("technicalSkills", data)}
+          data={Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0 ? tableTechnicalSkills : userData.technicalSkills}
+          onSave={createSaveHandler("technicalSkills", refreshTechnicalSkills)}
           title="Technical Skills"
         />
       )}
@@ -2446,8 +2944,8 @@ const StudentDashboard = () => {
         <ProjectsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.projects}
-          onSave={(data) => handleSave("projects", data)}
+          data={Array.isArray(tableProjects) && tableProjects.length > 0 ? tableProjects : userData.projects}
+          onSave={createSaveHandler("projects", refreshProjects)}
         />
       )}
 
@@ -2455,8 +2953,8 @@ const StudentDashboard = () => {
         <CertificatesEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={userData.certificates}
-          onSave={(data) => handleSave("certificates", data)}
+          data={Array.isArray(tableCertificates) && tableCertificates.length > 0 ? tableCertificates : userData.certificates}
+          onSave={createSaveHandler("certificates", refreshCertificates)}
         />
       )}
       </div>

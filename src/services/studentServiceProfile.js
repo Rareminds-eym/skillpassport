@@ -265,31 +265,49 @@ const softSkills = tableSkills
 
 //   // Format education from education table
 const tableEducation = Array.isArray(data?.education) ? data.education : [];
-const formattedEducation = tableEducation.map((edu) => ({
-  id: edu.id,
-  level: edu.level || "Bachelor's",
-  degree: edu.degree || "",
-  department: edu.department || "",
-  university: edu.university || "",
-  yearOfPassing: edu.year_of_passing || "",
-  cgpa: edu.cgpa || "",
-  status: edu.status || "ongoing",
-  approval_status: edu.approval_status || "pending",
-  verified: edu.approval_status === "approved",
-  processing: edu.approval_status !== "approved",
-  enabled: edu.enabled !== undefined ? edu.enabled : true, // Use actual enabled column
-  createdAt: edu.created_at,
-  updatedAt: edu.updated_at,
-}));
+const formattedEducation = tableEducation.map((edu) => {
+  // VERSIONING: If there's a pending edit, use verified_data for display
+  console.log('🔍 Education versioning check:', {
+    degree: edu.degree,
+    has_pending_edit: edu.has_pending_edit,
+    has_verified_data: !!edu.verified_data,
+    verified_degree: edu.verified_data?.degree,
+    current_approval: edu.approval_status
+  });
+  
+  const displayData = (edu.has_pending_edit && edu.verified_data) 
+    ? edu.verified_data 
+    : edu;
+  
+  return {
+    id: edu.id,
+    level: displayData.level || "Bachelor's",
+    degree: displayData.degree || "",
+    department: displayData.department || "",
+    university: displayData.university || "",
+    yearOfPassing: displayData.year_of_passing || "",
+    cgpa: displayData.cgpa || "",
+    status: displayData.status || "ongoing",
+    approval_status: edu.approval_status || "pending",
+    verified: edu.approval_status === "approved" || edu.approval_status === "verified",
+    processing: edu.has_pending_edit || (edu.approval_status !== "approved" && edu.approval_status !== "verified"),
+    enabled: displayData.enabled !== undefined ? displayData.enabled : true,
+    has_pending_edit: edu.has_pending_edit || false,
+    createdAt: edu.created_at,
+    updatedAt: edu.updated_at,
+  };
+});
 
 
 const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
 
-// Filter to only approved/verified trainings first
+// VERSIONING: Show all trainings (approved, verified, AND pending edits)
+// Dashboard will show verified data for items with pending edits
 const approvedTrainings = tableTrainings.filter(
   (train) => train.approval_status === 'approved' || 
              train.approval_status === 'verified' ||
-             train.approval_status === 'pending'  // Show pending too
+             train.approval_status === 'pending' ||
+             train.has_pending_edit === true  // Include items with pending edits
 );
 
 // Fetch all training IDs (only from approved trainings)
@@ -319,6 +337,19 @@ if (trainingIds.length > 0) {
 }
 
 const formattedTrainings = approvedTrainings.map((train) => {
+  // VERSIONING: If there's a pending edit, use verified_data for display
+  console.log('🔍 Training versioning check:', {
+    title: train.title,
+    has_pending_edit: train.has_pending_edit,
+    has_verified_data: !!train.verified_data,
+    verified_title: train.verified_data?.title,
+    current_approval: train.approval_status
+  });
+  
+  const displayData = (train.has_pending_edit && train.verified_data) 
+    ? train.verified_data 
+    : train;
+  
   // Find certificate for this specific training
   const cert = trainingCertificates.find(c => c.training_id === train.id);
   
@@ -329,22 +360,22 @@ const formattedTrainings = approvedTrainings.map((train) => {
 
   return {
     id: train.id,
-    title: train.title || "",
-    course: train.title || "",
-    organization: train.organization || "",
-    provider: train.organization || "",
-    start_date: train.start_date,
-    end_date: train.end_date,
-    startDate: train.start_date,
-    endDate: train.end_date,
-    duration: train.duration || "",
-    description: train.description || "",
+    title: displayData.title || "",
+    course: displayData.title || "",
+    organization: displayData.organization || "",
+    provider: displayData.organization || "",
+    start_date: displayData.start_date,
+    end_date: displayData.end_date,
+    startDate: displayData.start_date,
+    endDate: displayData.end_date,
+    duration: displayData.duration || "",
+    description: displayData.description || "",
     
     // From trainings table
-    status: train.status || "ongoing",
-    completedModules: train.completed_modules || 0,
-    totalModules: train.total_modules || 0,
-    hoursSpent: train.hours_spent || 0,
+    status: displayData.status || "ongoing",
+    completedModules: displayData.completed_modules || 0,
+    totalModules: displayData.total_modules || 0,
+    hoursSpent: displayData.hours_spent || 0,
     
     // IMPORTANT: Include course_id and source for internal/external detection
     course_id: train.course_id || null,
@@ -357,9 +388,10 @@ const formattedTrainings = approvedTrainings.map((train) => {
     skills: skills,
     
     approval_status: train.approval_status,
-    verified: true, // Already filtered, so all are verified
-    processing: false, // Already filtered, so won't be pending
-    enabled: true, // Already filtered, so all are enabled
+    verified: train.approval_status === 'approved' || train.approval_status === 'verified',
+    processing: train.has_pending_edit || train.approval_status === 'pending',
+    enabled: displayData.enabled !== undefined ? displayData.enabled : true,
+    has_pending_edit: train.has_pending_edit || false,
     createdAt: train.created_at,
     updatedAt: train.updated_at,
   };
@@ -424,21 +456,37 @@ const formattedTrainings = approvedTrainings.map((train) => {
     
 const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
 const formattedExperience = tableExperience
-  .map((exp) => ({
-    id: exp.id,
-    organization: exp.organization || "",
-    role: exp.role || "",
-    start_date: exp.start_date,
-    end_date: exp.end_date,
-    duration: exp.duration || "",
-    description: exp.description || "",
-    verified: exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
-    approval_status: exp.approval_status || "pending",
-    processing: exp.approval_status === 'pending',
-    enabled: exp.enabled !== undefined ? exp.enabled : true,
-    createdAt: exp.created_at,
-    updatedAt: exp.updated_at,
-  }));
+  .map((exp) => {
+    // VERSIONING: If there's a pending edit, use verified_data for display
+    console.log('🔍 Experience versioning check:', {
+      role: exp.role,
+      has_pending_edit: exp.has_pending_edit,
+      has_verified_data: !!exp.verified_data,
+      verified_role: exp.verified_data?.role,
+      current_approval: exp.approval_status
+    });
+    
+    const displayData = (exp.has_pending_edit && exp.verified_data) 
+      ? exp.verified_data 
+      : exp;
+    
+    return {
+      id: exp.id,
+      organization: displayData.organization || "",
+      role: displayData.role || "",
+      start_date: displayData.start_date,
+      end_date: displayData.end_date,
+      duration: displayData.duration || "",
+      description: displayData.description || "",
+      verified: displayData.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
+      approval_status: exp.approval_status || "pending",
+      processing: exp.has_pending_edit || exp.approval_status === 'pending',
+      enabled: displayData.enabled !== undefined ? displayData.enabled : true,
+      has_pending_edit: exp.has_pending_edit || false,
+      createdAt: exp.created_at,
+      updatedAt: exp.updated_at,
+    };
+  });
 
     // Merge: database fields + profile fields + passport fields
     const mergedData = {
@@ -759,30 +807,39 @@ export const getStudentById = async (studentId) => {
 
     // Format education from education table
     const tableEducation = Array.isArray(data?.education) ? data.education : [];
-    const formattedEducation = tableEducation.map((edu) => ({
-      id: edu.id,
-      level: edu.level || "Bachelor's",
-      degree: edu.degree || "",
-      department: edu.department || "",
-      university: edu.university || "",
-      yearOfPassing: edu.year_of_passing || "",
-      cgpa: edu.cgpa || "",
-      status: edu.status || "ongoing",
-      approval_status: edu.approval_status || "pending",
-      verified: edu.approval_status === "approved",
-      processing: edu.approval_status !== "approved",
-      enabled: edu.enabled !== undefined ? edu.enabled : true,
-      createdAt: edu.created_at,
-      updatedAt: edu.updated_at,
-    }));
+    const formattedEducation = tableEducation.map((edu) => {
+      // VERSIONING: If there's a pending edit, use verified_data for display
+      const displayData = (edu.has_pending_edit && edu.verified_data) 
+        ? edu.verified_data 
+        : edu;
+      
+      return {
+        id: edu.id,
+        level: displayData.level || "Bachelor's",
+        degree: displayData.degree || "",
+        department: displayData.department || "",
+        university: displayData.university || "",
+        yearOfPassing: displayData.year_of_passing || "",
+        cgpa: displayData.cgpa || "",
+        status: displayData.status || "ongoing",
+        approval_status: edu.approval_status || "pending",
+        verified: edu.approval_status === "approved" || edu.approval_status === "verified",
+        processing: edu.has_pending_edit || (edu.approval_status !== "approved" && edu.approval_status !== "verified"),
+        enabled: displayData.enabled !== undefined ? displayData.enabled : true,
+        has_pending_edit: edu.has_pending_edit || false,
+        createdAt: edu.created_at,
+        updatedAt: edu.updated_at,
+      };
+    });
 
     const tableTrainings = Array.isArray(data?.trainings) ? data.trainings : [];
 
-    // Filter to only approved/verified trainings first
+    // VERSIONING: Show all trainings (approved, verified, AND pending edits)
     const approvedTrainings = tableTrainings.filter(
       (train) => train.approval_status === 'approved' || 
                  train.approval_status === 'verified' ||
-                 train.approval_status === 'pending'
+                 train.approval_status === 'pending' ||
+                 train.has_pending_edit === true
     );
 
     // Fetch all training IDs (only from approved trainings)
@@ -812,6 +869,11 @@ export const getStudentById = async (studentId) => {
     }
 
     const formattedTrainings = approvedTrainings.map((train) => {
+      // VERSIONING: If there's a pending edit, use verified_data for display
+      const displayData = (train.has_pending_edit && train.verified_data) 
+        ? train.verified_data 
+        : train;
+      
       // Find certificate for this specific training
       const cert = trainingCertificates.find(c => c.training_id === train.id);
       
@@ -822,22 +884,22 @@ export const getStudentById = async (studentId) => {
 
       return {
         id: train.id,
-        title: train.title || "",
-        course: train.title || "",
-        organization: train.organization || "",
-        provider: train.organization || "",
-        start_date: train.start_date,
-        end_date: train.end_date,
-        startDate: train.start_date,
-        endDate: train.end_date,
-        duration: train.duration || "",
-        description: train.description || "",
+        title: displayData.title || "",
+        course: displayData.title || "",
+        organization: displayData.organization || "",
+        provider: displayData.organization || "",
+        start_date: displayData.start_date,
+        end_date: displayData.end_date,
+        startDate: displayData.start_date,
+        endDate: displayData.end_date,
+        duration: displayData.duration || "",
+        description: displayData.description || "",
         
         // From trainings table
-        status: train.status || "ongoing",
-        completedModules: train.completed_modules || 0,
-        totalModules: train.total_modules || 0,
-        hoursSpent: train.hours_spent || 0,
+        status: displayData.status || "ongoing",
+        completedModules: displayData.completed_modules || 0,
+        totalModules: displayData.total_modules || 0,
+        hoursSpent: displayData.hours_spent || 0,
         
         // IMPORTANT: Include course_id and source for internal/external detection
         course_id: train.course_id || null,
@@ -850,9 +912,10 @@ export const getStudentById = async (studentId) => {
         skills: skills,
         
         approval_status: train.approval_status,
-        verified: true, // Already filtered, so all are verified
-        processing: false, // Already filtered, so won't be pending
-        enabled: true, // Already filtered, so all are enabled
+        verified: train.approval_status === 'approved' || train.approval_status === 'verified',
+        processing: train.has_pending_edit || train.approval_status === 'pending',
+        enabled: displayData.enabled !== undefined ? displayData.enabled : true,
+        has_pending_edit: train.has_pending_edit || false,
         createdAt: train.created_at,
         updatedAt: train.updated_at,
       };
@@ -908,21 +971,29 @@ export const getStudentById = async (studentId) => {
 
     const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
     const formattedExperience = tableExperience
-      .map((exp) => ({
-        id: exp.id,
-        organization: exp.organization || "",
-        role: exp.role || "",
-        start_date: exp.start_date,
-        end_date: exp.end_date,
-        duration: exp.duration || "",
-        description: exp.description || "",
-        verified: exp.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
-        approval_status: exp.approval_status || "pending",
-        processing: exp.approval_status === 'pending',
-        enabled: exp.enabled !== undefined ? exp.enabled : true,
-        createdAt: exp.created_at,
-        updatedAt: exp.updated_at,
-      }));
+      .map((exp) => {
+        // VERSIONING: If there's a pending edit, use verified_data for display
+        const displayData = (exp.has_pending_edit && exp.verified_data) 
+          ? exp.verified_data 
+          : exp;
+        
+        return {
+          id: exp.id,
+          organization: displayData.organization || "",
+          role: displayData.role || "",
+          start_date: displayData.start_date,
+          end_date: displayData.end_date,
+          duration: displayData.duration || "",
+          description: displayData.description || "",
+          verified: displayData.verified || exp.approval_status === 'approved' || exp.approval_status === 'verified',
+          approval_status: exp.approval_status || "pending",
+          processing: exp.has_pending_edit || exp.approval_status === 'pending',
+          enabled: displayData.enabled !== undefined ? displayData.enabled : true,
+          has_pending_edit: exp.has_pending_edit || false,
+          createdAt: exp.created_at,
+          updatedAt: exp.updated_at,
+        };
+      });
 
     // Merge: database fields + profile fields + passport fields
     const mergedData = {
@@ -1607,7 +1678,7 @@ export async function updateEducationByEmail(email, educationData = []) {
     // Get existing education records
     const { data: existingEducation, error: existingError } = await supabase
       .from('education')
-      .select('id')
+      .select('*')
       .eq('student_id', studentId);
 
     if (existingError) {
@@ -1647,6 +1718,71 @@ export async function updateEducationByEmail(email, educationData = []) {
         } else {
           record.id = generateUuid();
         }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingEducation || []).find(e => e.id === record.id);
+        
+        // Case 1: Education already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          // Keep the original verified_data, update only pending_edit_data
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = { ...record };
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved education - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          // Check if data actually changed (normalize null/undefined/empty for comparison)
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          
+          const hasChanges = 
+            normalize(record.degree) !== normalize(existingRecord.degree) ||
+            normalize(record.department) !== normalize(existingRecord.department) ||
+            normalize(record.university) !== normalize(existingRecord.university) ||
+            normalize(record.year_of_passing) !== normalize(existingRecord.year_of_passing) ||
+            normalize(record.cgpa) !== normalize(existingRecord.cgpa) ||
+            normalize(record.level) !== normalize(existingRecord.level) ||
+            normalize(record.status) !== normalize(existingRecord.status) ||
+            record.enabled !== existingRecord.enabled;
+          
+          console.log(`🔍 Versioning check for education "${record.degree}":`, {
+            hasChanges,
+            existingApprovalStatus: existingRecord.approval_status,
+            recordDegree: normalize(record.degree),
+            existingDegree: normalize(existingRecord.degree)
+          });
+          
+          if (hasChanges) {
+            // Data changed - create versioning
+            const verifiedData = {
+              degree: existingRecord.degree,
+              department: existingRecord.department,
+              university: existingRecord.university,
+              yearOfPassing: existingRecord.year_of_passing,
+              year_of_passing: existingRecord.year_of_passing, // Include both formats
+              cgpa: existingRecord.cgpa,
+              level: existingRecord.level,
+              status: existingRecord.status,
+              approval_status: existingRecord.approval_status,
+              enabled: existingRecord.enabled
+            };
+            
+            // Store verified data and mark as having pending edit
+            record.verified_data = verifiedData;
+            record.pending_edit_data = { ...record };
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for education "${record.degree}" - changes detected`);
+          } else {
+            // No changes - keep as verified
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status; // Keep existing status
+            console.log(`✅ No changes for education "${record.degree}" - keeping approval_status: ${existingRecord.approval_status}`);
+          }
+        }
+        // Case 3: New education or unverified education - no versioning needed
 
         return record;
       });
@@ -1772,10 +1908,10 @@ export async function updateTrainingByEmail(email, trainingData = []) {
 
     console.log('🔧 Training - Student type:', studentRecord.student_type, '→ Approval authority:', approvalAuthority);
 
-    // Get existing training records
+    // Get existing training records - fetch full records for versioning check
     const { data: existingTrainings, error: existingError } = await supabase
       .from('trainings')
-      .select('id, approval_status')
+      .select('*')
       .eq('student_id', studentId);
 
     if (existingError) {
@@ -1817,20 +1953,90 @@ export async function updateTrainingByEmail(email, trainingData = []) {
         const rawId = typeof train.id === 'string' ? train.id.trim() : null;
         if (rawId && rawId.length === 36) {
           record.id = rawId;
-          
-          // 🔥 CRITICAL FIX: Preserve existing approval_status for updates
-          const existingTraining = existingTrainings?.find(t => t.id === rawId);
-          if (existingTraining) {
-            // Keep the existing approval status (could be 'approved', 'pending', or 'rejected')
-            record.approval_status = existingTraining.approval_status;
-          } else {
-            // New training (somehow has ID but not in DB)
-            record.approval_status = 'pending';
-          }
         } else {
           // Brand new training without ID
           record.id = generateUuid();
           record.approval_status = 'pending'; // New trainings start as pending
+        }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingTrainings || []).find(e => e.id === record.id);
+        
+        // Case 1: Training already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          // Keep the original verified_data, update only pending_edit_data
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = { ...record };
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved training - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          // Check if data actually changed (normalize null/undefined/empty for comparison)
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          
+          const hasChanges = 
+            normalize(record.title) !== normalize(existingRecord.title) ||
+            normalize(record.organization) !== normalize(existingRecord.organization) ||
+            normalize(record.start_date) !== normalize(existingRecord.start_date) ||
+            normalize(record.end_date) !== normalize(existingRecord.end_date) ||
+            normalize(record.duration) !== normalize(existingRecord.duration) ||
+            normalize(record.description) !== normalize(existingRecord.description) ||
+            normalize(record.status) !== normalize(existingRecord.status) ||
+            record.completed_modules !== existingRecord.completed_modules ||
+            record.total_modules !== existingRecord.total_modules ||
+            record.hours_spent !== existingRecord.hours_spent;
+          
+          console.log(`🔍 Versioning check for training "${record.title}":`, {
+            hasChanges,
+            existingApprovalStatus: existingRecord.approval_status,
+            recordTitle: normalize(record.title),
+            existingTitle: normalize(existingRecord.title),
+            titlesMatch: normalize(record.title) === normalize(existingRecord.title)
+          });
+          
+          if (hasChanges) {
+            // Data changed - create versioning
+            const verifiedData = {
+              title: existingRecord.title,
+              organization: existingRecord.organization,
+              start_date: existingRecord.start_date,
+              end_date: existingRecord.end_date,
+              duration: existingRecord.duration,
+              description: existingRecord.description,
+              status: existingRecord.status,
+              completed_modules: existingRecord.completed_modules,
+              total_modules: existingRecord.total_modules,
+              hours_spent: existingRecord.hours_spent,
+              approval_status: existingRecord.approval_status
+            };
+            
+            // Store verified data and mark as having pending edit
+            record.verified_data = verifiedData;
+            record.pending_edit_data = { ...record };
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for training "${record.title}" - changes detected`);
+          } else {
+            // No changes - keep as verified
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status; // Keep existing status
+            console.log(`✅ No changes for training "${record.title}" - keeping approval_status: ${existingRecord.approval_status}`);
+          }
+        }
+        // Case 3: New training or unverified training - no versioning needed
+        else {
+          record.verified_data = null;
+          record.pending_edit_data = null;
+          record.has_pending_edit = false;
+          // Set approval_status for existing records that aren't verified/approved
+          if (existingRecord) {
+            record.approval_status = existingRecord.approval_status;
+          } else {
+            record.approval_status = 'pending';
+          }
         }
 
         // Store certificateUrl and skills for later use
@@ -2306,7 +2512,7 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
     // Get existing experience records
     const { data: existingExperience, error: existingError } = await supabase
       .from('experience')
-      .select('id')
+      .select('*')
       .eq('student_id', studentId);
 
     if (existingError) {
@@ -2315,10 +2521,69 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
 
     const nowIso = new Date().toISOString();
 
+    // CRITICAL: Clean incoming data to remove old/invalid field names
+    console.log('🔍 RAW incoming experienceData:', JSON.stringify(experienceData, null, 2));
+    
+    // Check for org_name in incoming data
+    const hasOrgName = (experienceData || []).some(exp => 
+      exp.org_name || 
+      (exp.verified_data && exp.verified_data.org_name) ||
+      (exp.pending_edit_data && exp.pending_edit_data.org_name)
+    );
+    
+    if (hasOrgName) {
+      console.error('🚨 FOUND org_name in incoming data!');
+      (experienceData || []).forEach((exp, index) => {
+        if (exp.org_name) {
+          console.error(`  Record ${index}: has org_name = "${exp.org_name}"`);
+        }
+        if (exp.verified_data && exp.verified_data.org_name) {
+          console.error(`  Record ${index}: verified_data has org_name = "${exp.verified_data.org_name}"`);
+        }
+        if (exp.pending_edit_data && exp.pending_edit_data.org_name) {
+          console.error(`  Record ${index}: pending_edit_data has org_name = "${exp.pending_edit_data.org_name}"`);
+        }
+      });
+    }
+    
+    const cleanedExperienceData = (experienceData || []).map(exp => {
+      // Only keep valid fields
+      const validFields = {
+        id: exp.id,
+        role: exp.role,
+        organization: exp.organization,
+        start_date: exp.start_date,
+        end_date: exp.end_date,
+        duration: exp.duration,
+        description: exp.description,
+        verified: exp.verified,
+        approval_status: exp.approval_status,
+        enabled: exp.enabled,
+        has_pending_edit: exp.has_pending_edit,
+        verified_data: exp.verified_data,
+        pending_edit_data: exp.pending_edit_data
+      };
+      
+      // Remove undefined values
+      Object.keys(validFields).forEach(key => {
+        if (validFields[key] === undefined) {
+          delete validFields[key];
+        }
+      });
+      
+      console.log('🧹 Cleaned single experience:', JSON.stringify(validFields, null, 2));
+      
+      return validFields;
+    });
+
+    console.log('🧹 All cleaned experience data:', JSON.stringify(cleanedExperienceData, null, 2));
+
     // Format experience data for database
-    const formatted = (experienceData || [])
+    const formatted = cleanedExperienceData
       .filter((exp) => exp && typeof exp.role === 'string' && exp.role.trim().length > 0)
       .map((exp) => {
+        // IMPORTANT: Only include valid database columns to avoid "column does not exist" errors
+        // Filter out any old/invalid fields like org_name, company, etc.
         const record = {
           student_id: studentId,
           organization: exp.organization?.trim() || null,
@@ -2341,6 +2606,71 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
         } else {
           record.id = generateUuid();
         }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingExperience || []).find(e => e.id === record.id);
+        
+        // Helper to create clean data object with only user-facing fields
+        const createCleanData = (data) => ({
+          role: data.role,
+          organization: data.organization,
+          start_date: data.start_date,
+          end_date: data.end_date,
+          duration: data.duration,
+          description: data.description,
+          enabled: data.enabled
+        });
+        
+        // Case 1: Experience already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          // Keep the original verified_data, update only pending_edit_data
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = createCleanData(record);
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved experience - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          // Check if data actually changed (normalize null/undefined/empty for comparison)
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          
+          const hasChanges = 
+            normalize(record.role) !== normalize(existingRecord.role) ||
+            normalize(record.organization) !== normalize(existingRecord.organization) ||
+            normalize(record.start_date) !== normalize(existingRecord.start_date) ||
+            normalize(record.end_date) !== normalize(existingRecord.end_date) ||
+            normalize(record.description) !== normalize(existingRecord.description) ||
+            record.enabled !== existingRecord.enabled;
+          
+          console.log(`🔍 Versioning check for experience "${record.role}":`, {
+            hasChanges,
+            existingApprovalStatus: existingRecord.approval_status,
+            recordRole: normalize(record.role),
+            existingRole: normalize(existingRecord.role),
+            rolesMatch: normalize(record.role) === normalize(existingRecord.role)
+          });
+          
+          if (hasChanges) {
+            // Data changed - create versioning
+            // IMPORTANT: Only store user-facing fields
+            const verifiedData = createCleanData(existingRecord);
+            
+            // Store verified data and mark as having pending edit
+            record.verified_data = verifiedData;
+            record.pending_edit_data = createCleanData(record);
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for experience "${record.role}" - changes detected`);
+          } else {
+            // No changes - keep as verified
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status; // Keep existing status
+            console.log(`✅ No changes for experience "${record.role}" - keeping approval_status: ${existingRecord.approval_status}`);
+          }
+        }
+        // Case 3: New experience or unverified experience - no versioning needed
 
         return record;
       });
@@ -2365,13 +2695,130 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
 
     // Upsert experience records
     if (formatted.length > 0) {
-      const { error: upsertError } = await supabase
-        .from('experience')
-        .upsert(formatted, { onConflict: 'id' });
+      // CRITICAL FIX: Clean JSONB fields to remove old/invalid field names
+      const cleanedFormatted = formatted.map(record => {
+        const cleaned = { ...record };
+        
+        // Clean verified_data JSONB - remove invalid fields
+        if (cleaned.verified_data && typeof cleaned.verified_data === 'object') {
+          const validFields = ['role', 'organization', 'start_date', 'end_date', 'duration', 'description', 'enabled'];
+          const cleanedVerifiedData = {};
+          validFields.forEach(field => {
+            if (cleaned.verified_data[field] !== undefined) {
+              cleanedVerifiedData[field] = cleaned.verified_data[field];
+            }
+          });
+          cleaned.verified_data = Object.keys(cleanedVerifiedData).length > 0 ? cleanedVerifiedData : null;
+          
+          // Log if we removed org_name
+          if (record.verified_data && record.verified_data.org_name) {
+            console.warn(`⚠️ Removed org_name from verified_data for experience: ${record.role}`);
+          }
+        }
+        
+        // Clean pending_edit_data JSONB - remove invalid fields
+        if (cleaned.pending_edit_data && typeof cleaned.pending_edit_data === 'object') {
+          const validFields = ['role', 'organization', 'start_date', 'end_date', 'duration', 'description', 'enabled'];
+          const cleanedPendingData = {};
+          validFields.forEach(field => {
+            if (cleaned.pending_edit_data[field] !== undefined) {
+              cleanedPendingData[field] = cleaned.pending_edit_data[field];
+            }
+          });
+          cleaned.pending_edit_data = Object.keys(cleanedPendingData).length > 0 ? cleanedPendingData : null;
+          
+          // Log if we removed org_name
+          if (record.pending_edit_data && record.pending_edit_data.org_name) {
+            console.warn(`⚠️ Removed org_name from pending_edit_data for experience: ${record.role}`);
+          }
+        }
+        
+        return cleaned;
+      });
+      
+      console.log('🧹 Cleaned experience data before upsert:', JSON.stringify(cleanedFormatted, null, 2));
+      
+      // WORKAROUND: Explicitly specify only valid columns for upsert
+      // This prevents Supabase from trying to infer columns from data
+      const validColumns = [
+        'id', 'student_id', 'organization', 'role', 'start_date', 'end_date',
+        'duration', 'description', 'verified', 'approval_status', 'approval_authority',
+        'enabled', 'updated_at', 'verified_data', 'pending_edit_data', 'has_pending_edit'
+      ];
+      
+      // Strip any fields not in validColumns
+      const strictlyCleanedData = cleanedFormatted.map(record => {
+        const cleaned = {};
+        validColumns.forEach(col => {
+          if (record[col] !== undefined) {
+            cleaned[col] = record[col];
+          }
+        });
+        return cleaned;
+      });
+      
+      console.log('🔒 Strictly cleaned data (only valid columns):', JSON.stringify(strictlyCleanedData, null, 2));
+      
+      // CRITICAL DEBUG: Check each record for any org_name references
+      strictlyCleanedData.forEach((record, index) => {
+        console.log(`\n🔍 Record ${index} (${record.role}):`);
+        console.log(`  - Has verified_data:`, !!record.verified_data);
+        console.log(`  - Has pending_edit_data:`, !!record.pending_edit_data);
+        
+        if (record.verified_data) {
+          console.log(`  - verified_data keys:`, Object.keys(record.verified_data));
+          if (record.verified_data.org_name) {
+            console.error(`  ❌ FOUND org_name in verified_data!`);
+          }
+        }
+        
+        if (record.pending_edit_data) {
+          console.log(`  - pending_edit_data keys:`, Object.keys(record.pending_edit_data));
+          if (record.pending_edit_data.org_name) {
+            console.error(`  ❌ FOUND org_name in pending_edit_data!`);
+          }
+        }
+        
+        // Check if any top-level key is org_name
+        if (record.org_name) {
+          console.error(`  ❌ FOUND org_name at top level!`);
+        }
+      });
+      
+      // NUCLEAR OPTION: Update records one by one instead of bulk upsert
+      // This avoids whatever Supabase PostgREST bug is causing the org_name error
+      console.log('\n🔄 Updating records individually to avoid bulk upsert bug...');
+      
+      const updatePromises = strictlyCleanedData.map(async (record) => {
+        const { data, error} = await supabase
+          .from('experience')
+          .upsert(record, { 
+            onConflict: 'id',
+            // Explicitly tell PostgREST to only use these columns
+            // This prevents it from trying to expand JSONB fields into columns
+            ignoreDuplicates: false
+          })
+          .select(); // Force a select to ensure clean response
+        
+        if (error) {
+          console.error(`❌ Error updating record ${record.id}:`, error);
+          throw error;
+        }
+        
+        console.log(`✅ Updated record ${record.id} (${record.role})`);
+        return data;
+      });
+      
+      const upsertData = await Promise.all(updatePromises);
+      const upsertError = null;
 
       if (upsertError) {
+        console.error('❌ Upsert error:', upsertError);
+        console.error('❌ Data that caused error:', JSON.stringify(cleanedFormatted, null, 2));
         return { success: false, error: upsertError.message };
       }
+      
+      console.log('✅ Upsert successful:', upsertData);
     } else if ((existingExperience || []).length > 0) {
       // Delete all if no experience data provided
       const { error: deleteAllError } = await supabase
@@ -2452,10 +2899,10 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
     // Use user_id as student_id (as per foreign key constraint)
     const studentId = studentRecord.user_id;
 
-    // Get existing technical skills
+    // Get existing technical skills (fetch full records for versioning)
     const { data: existingSkills, error: existingError } = await supabase
       .from('skills')
-      .select('id')
+      .select('*')
       .eq('student_id', studentId)
       .is('training_id', null) 
       .eq('type', 'technical');
@@ -2488,6 +2935,80 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
           record.id = rawId;
         } else {
           record.id = generateUuid();
+        }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingSkills || []).find(s => s.id === record.id);
+        
+        console.log('🔍 Technical Skill Versioning Check:', {
+          skillName: record.name,
+          hasExistingRecord: !!existingRecord,
+          existingApprovalStatus: existingRecord?.approval_status,
+          existingHasPendingEdit: existingRecord?.has_pending_edit,
+          newData: {
+            name: record.name,
+            level: record.level,
+            description: record.description,
+            enabled: record.enabled
+          },
+          existingData: existingRecord ? {
+            name: existingRecord.name,
+            level: existingRecord.level,
+            description: existingRecord.description,
+            enabled: existingRecord.enabled
+          } : null
+        });
+        
+        // Case 1: Skill already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          console.log('📝 Case 1: Skill already has pending edits');
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = { ...record };
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved skill - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          console.log('📝 Case 2: First edit of verified/approved skill');
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          
+          const hasChanges = 
+            normalize(record.name) !== normalize(existingRecord.name) ||
+            normalize(record.level) !== normalize(existingRecord.level) ||
+            normalize(record.description) !== normalize(existingRecord.description) ||
+            record.enabled !== existingRecord.enabled;
+          
+          console.log('🔍 Change detection:', {
+            nameChanged: normalize(record.name) !== normalize(existingRecord.name),
+            levelChanged: normalize(record.level) !== normalize(existingRecord.level),
+            descriptionChanged: normalize(record.description) !== normalize(existingRecord.description),
+            enabledChanged: record.enabled !== existingRecord.enabled,
+            hasChanges
+          });
+          
+          if (hasChanges) {
+            const verifiedData = {
+              name: existingRecord.name,
+              level: existingRecord.level,
+              description: existingRecord.description,
+              enabled: existingRecord.enabled,
+              approval_status: existingRecord.approval_status
+            };
+            
+            record.verified_data = verifiedData;
+            record.pending_edit_data = { ...record };
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for technical skill "${record.name}" - changes detected`);
+          } else {
+            console.log(`ℹ️ No changes detected for technical skill "${record.name}" - keeping approval_status`);
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status;
+          }
+        } else {
+          console.log('📝 Case 3: New skill or not verified yet');
         }
 
         return record;
@@ -2604,10 +3125,10 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
     // Use user_id as student_id (as per foreign key constraint)
     const studentId = studentRecord.user_id;
 
-    // Get existing soft skills
+    // Get existing soft skills (fetch full records for versioning)
     const { data: existingSkills, error: existingError } = await supabase
       .from('skills')
-      .select('id')
+      .select('*')
       .eq('student_id', studentId)
       .is('training_id', null) 
       .eq('type', 'soft');
@@ -2640,6 +3161,48 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
           record.id = rawId;
         } else {
           record.id = generateUuid();
+        }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingSkills || []).find(s => s.id === record.id);
+        
+        // Case 1: Skill already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = { ...record };
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved skill - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          
+          const hasChanges = 
+            normalize(record.name) !== normalize(existingRecord.name) ||
+            normalize(record.level) !== normalize(existingRecord.level) ||
+            normalize(record.description) !== normalize(existingRecord.description) ||
+            record.enabled !== existingRecord.enabled;
+          
+          if (hasChanges) {
+            const verifiedData = {
+              name: existingRecord.name,
+              level: existingRecord.level,
+              description: existingRecord.description,
+              enabled: existingRecord.enabled,
+              approval_status: existingRecord.approval_status
+            };
+            
+            record.verified_data = verifiedData;
+            record.pending_edit_data = { ...record };
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for soft skill "${record.name}" - changes detected`);
+          } else {
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status;
+          }
         }
 
         return record;
@@ -2758,10 +3321,10 @@ export async function updateSkillsByEmail(email, skillsData = []) {
     // Use user_id as student_id (as per foreign key constraint)
     const studentId = studentRecord.user_id;
 
-    // Get existing skills (both technical and soft)
+    // Get existing skills (both technical and soft) - fetch full records for versioning check
     const { data: existingSkills, error: existingError } = await supabase
       .from('skills')
-      .select('id')
+      .select('*')
       .eq('student_id', studentId)
       .is('training_id', null);
 
@@ -2797,6 +3360,73 @@ export async function updateSkillsByEmail(email, skillsData = []) {
           record.id = rawId;
         } else {
           record.id = generateUuid();
+        }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingSkills || []).find(e => e.id === record.id);
+        
+        // Case 1: Skill already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          // Keep the original verified_data, update only pending_edit_data
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = { ...record };
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved skill - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          // Check if data actually changed (normalize null/undefined/empty for comparison)
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          
+          const hasChanges = 
+            normalize(record.name) !== normalize(existingRecord.name) ||
+            normalize(record.type) !== normalize(existingRecord.type) ||
+            record.level !== existingRecord.level ||
+            normalize(record.proficiency_level) !== normalize(existingRecord.proficiency_level) ||
+            normalize(record.description) !== normalize(existingRecord.description) ||
+            record.enabled !== existingRecord.enabled;
+          
+          console.log(`🔍 Versioning check for skill "${record.name}":`, {
+            hasChanges,
+            existingApprovalStatus: existingRecord.approval_status,
+            recordName: normalize(record.name),
+            existingName: normalize(existingRecord.name),
+            namesMatch: normalize(record.name) === normalize(existingRecord.name)
+          });
+          
+          if (hasChanges) {
+            // Data changed - create versioning
+            const verifiedData = {
+              name: existingRecord.name,
+              type: existingRecord.type,
+              level: existingRecord.level,
+              proficiency_level: existingRecord.proficiency_level,
+              description: existingRecord.description,
+              verified: existingRecord.verified,
+              enabled: existingRecord.enabled,
+              approval_status: existingRecord.approval_status
+            };
+            
+            // Store verified data and mark as having pending edit
+            record.verified_data = verifiedData;
+            record.pending_edit_data = { ...record };
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for skill "${record.name}" - changes detected`);
+          } else {
+            // No changes - keep as verified
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status; // Keep existing status
+            console.log(`✅ No changes for skill "${record.name}" - keeping approval_status: ${existingRecord.approval_status}`);
+          }
+        }
+        // Case 3: New skill or unverified skill - no versioning needed
+        else {
+          record.verified_data = null;
+          record.pending_edit_data = null;
+          record.has_pending_edit = false;
         }
 
         return record;
@@ -2925,7 +3555,7 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
     // Get existing projects
     const { data: existingProjects, error: existingError } = await supabase
       .from('projects')
-      .select('id')
+      .select('*')
       .eq('student_id', studentId);
 
     if (existingError) {
@@ -2982,6 +3612,97 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
         } else {
           record.id = generateUuid();
         }
+
+        // VERSIONING LOGIC: Check if this is an edit of verified data
+        const existingRecord = (existingProjects || []).find(e => e.id === record.id);
+        
+        // Case 1: Project already has pending edits - preserve original verified_data
+        if (existingRecord && existingRecord.has_pending_edit === true) {
+          // Keep the original verified_data, update only pending_edit_data
+          record.verified_data = existingRecord.verified_data;
+          record.pending_edit_data = { ...record };
+          record.has_pending_edit = true;
+          record.approval_status = 'pending';
+        }
+        // Case 2: First edit of verified/approved project - create versioning
+        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
+          // Check if data actually changed (normalize null/undefined/empty for comparison)
+          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
+          const normalizeArray = (arr) => {
+            if (!arr || !Array.isArray(arr) || arr.length === 0) return null;
+            return arr.sort().join(',');
+          };
+          
+          const hasChanges = 
+            normalize(record.title) !== normalize(existingRecord.title) ||
+            normalize(record.description) !== normalize(existingRecord.description) ||
+            normalize(record.role) !== normalize(existingRecord.role) ||
+            normalize(record.status) !== normalize(existingRecord.status) ||
+            normalize(record.start_date) !== normalize(existingRecord.start_date) ||
+            normalize(record.end_date) !== normalize(existingRecord.end_date) ||
+            normalize(record.organization) !== normalize(existingRecord.organization) ||
+            normalizeArray(record.tech_stack) !== normalizeArray(existingRecord.tech_stack) ||
+            normalize(record.demo_link) !== normalize(existingRecord.demo_link) ||
+            normalize(record.github_link) !== normalize(existingRecord.github_link) ||
+            normalize(record.certificate_url) !== normalize(existingRecord.certificate_url) ||
+            normalize(record.video_url) !== normalize(existingRecord.video_url) ||
+            normalize(record.ppt_url) !== normalize(existingRecord.ppt_url) ||
+            record.enabled !== existingRecord.enabled;
+          
+          console.log(`🔍 Versioning check for project "${record.title}":`, {
+            hasChanges,
+            existingApprovalStatus: existingRecord.approval_status,
+            recordTitle: normalize(record.title),
+            existingTitle: normalize(existingRecord.title),
+            titlesMatch: normalize(record.title) === normalize(existingRecord.title)
+          });
+          
+          if (hasChanges) {
+            // Data changed - create versioning
+            // IMPORTANT: Only store user-facing fields, NOT embedding
+            const verifiedData = {
+              title: existingRecord.title,
+              description: existingRecord.description,
+              role: existingRecord.role,
+              status: existingRecord.status,
+              start_date: existingRecord.start_date,
+              startDate: existingRecord.start_date, // Include both formats
+              end_date: existingRecord.end_date,
+              endDate: existingRecord.end_date, // Include both formats
+              duration: existingRecord.duration,
+              organization: existingRecord.organization,
+              tech_stack: existingRecord.tech_stack,
+              technologies: existingRecord.tech_stack, // Include both formats
+              demo_link: existingRecord.demo_link,
+              demoUrl: existingRecord.demo_link, // Include both formats
+              github_link: existingRecord.github_link,
+              githubUrl: existingRecord.github_link, // Include both formats
+              certificate_url: existingRecord.certificate_url,
+              certificateUrl: existingRecord.certificate_url, // Include both formats
+              video_url: existingRecord.video_url,
+              videoUrl: existingRecord.video_url, // Include both formats
+              ppt_url: existingRecord.ppt_url,
+              pptUrl: existingRecord.ppt_url, // Include both formats
+              approval_status: existingRecord.approval_status,
+              enabled: existingRecord.enabled
+            };
+            
+            // Store verified data and mark as having pending edit
+            record.verified_data = verifiedData;
+            record.pending_edit_data = { ...record };
+            record.has_pending_edit = true;
+            record.approval_status = 'pending';
+            console.log(`✅ Created versioning for project "${record.title}" - changes detected`);
+          } else {
+            // No changes - keep as verified
+            record.verified_data = null;
+            record.pending_edit_data = null;
+            record.has_pending_edit = false;
+            record.approval_status = existingRecord.approval_status; // Keep existing status
+            console.log(`✅ No changes for project "${record.title}" - keeping approval_status: ${existingRecord.approval_status}`);
+          }
+        }
+        // Case 3: New project or unverified project - no versioning needed
 
         return record;
       });

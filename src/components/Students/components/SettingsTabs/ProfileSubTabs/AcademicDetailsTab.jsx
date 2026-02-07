@@ -1,5 +1,5 @@
 import React from "react";
-import { Briefcase, GraduationCap, Plus, Edit } from "lucide-react";
+import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle, Clock } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 
@@ -7,7 +7,9 @@ const AcademicDetailsTab = ({
   profileData, 
   handleProfileChange, 
   educationData, 
-  setShowEducationModal 
+  setShowEducationModal,
+  onToggleEducationEnabled,
+  onDeleteEducation
 }) => {
   return (
     <div>
@@ -143,6 +145,25 @@ const AcademicDetailsTab = ({
         ) : (
           <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
             {educationData
+              .filter(edu => edu.enabled !== false) // Only show enabled education
+              .map((education) => {
+                // VERSIONING: If there's a pending edit, show verified_data in Settings
+                let displayData = education;
+                if (education.has_pending_edit && education.verified_data) {
+                  displayData = {
+                    ...education,
+                    degree: education.verified_data.degree,
+                    department: education.verified_data.department,
+                    university: education.verified_data.university,
+                    institution: education.verified_data.university,
+                    yearOfPassing: education.verified_data.yearOfPassing || education.verified_data.year_of_passing,
+                    cgpa: education.verified_data.cgpa,
+                    level: education.verified_data.level,
+                    status: education.verified_data.status,
+                  };
+                }
+                return displayData;
+              })
               .sort((a, b) => {
                 const yearA = parseInt(a.yearOfPassing) || 0;
                 const yearB = parseInt(b.yearOfPassing) || 0;
@@ -155,18 +176,73 @@ const AcademicDetailsTab = ({
                 >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h4 className="text-base font-bold text-gray-900">
                           {education.degree || "N/A"}
                         </h4>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowEducationModal(true)}
-                          className="p-1 h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
+                        
+                        {/* Verified Badge */}
+                        {(education.approval_status === "verified" || education.approval_status === "approved") && !education._hasPendingEdit && (
+                          <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Verified
+                          </Badge>
+                        )}
+
+                        {/* Pending Verification Badge - Show when has_pending_edit is true */}
+                        {education._hasPendingEdit && (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Pending Verification
+                          </Badge>
+                        )}
+
+                        {/* Pending Verification Badge - Show for new pending records */}
+                        {(!education.approval_status || education.approval_status === 'pending') && !education._hasPendingEdit && (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Pending Verification
+                          </Badge>
+                        )}
+                        
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowEducationModal(true)}
+                            className="p-1 h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </Button>
+                          
+                          {/* Eye icon - only show for verified/approved education */}
+                          {(education.approval_status === 'verified' || education.approval_status === 'approved') && !education._hasPendingEdit && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => onToggleEducationEnabled && onToggleEducationEnabled(idx)}
+                              className="p-1 h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                              title={education.enabled ? "Hide from profile" : "Show on profile"}
+                            >
+                              {education.enabled !== false ? (
+                                <Eye className="w-3 h-3" />
+                              ) : (
+                                <EyeOff className="w-3 h-3" />
+                              )}
+                            </Button>
+                          )}
+                          
+                          {/* Delete button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onDeleteEducation && onDeleteEducation(idx)}
+                            className="p-1 h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                            title="Delete education"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                       
                       <p className="text-sm text-gray-600 font-medium mb-1">

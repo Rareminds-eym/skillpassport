@@ -1,11 +1,12 @@
 import React from "react";
-import { Code, Plus, Edit, Star, Zap, Eye } from "lucide-react";
+import { Code, Plus, Edit, Star, Zap, Eye, EyeOff, CheckCircle, Clock } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 
 const TechnicalSkillsTab = ({ 
   technicalSkillsData, 
-  setShowTechnicalSkillsModal 
+  setShowTechnicalSkillsModal,
+  onToggleTechnicalSkillEnabled
 }) => {
 
   // Helper function to get skill level text (matching Dashboard exactly)
@@ -58,11 +59,24 @@ const TechnicalSkillsTab = ({
   };
 
   // Show all skills in Settings (including pending), but indicate their status
-  const filteredSkills = (technicalSkillsData || []).filter(
-    (skill) => skill.enabled !== false
-  );
+  // VERSIONING: Apply versioning logic to show verified_data when pending
+  const processedSkills = (technicalSkillsData || [])
+    .map((skill) => {
+      // If there's a pending edit, show verified_data in Settings
+      if (skill.has_pending_edit && skill.verified_data) {
+        return {
+          ...skill,
+          name: skill.verified_data.name,
+          level: skill.verified_data.level,
+          description: skill.verified_data.description,
+          category: skill.verified_data.category,
+        };
+      }
+      return skill;
+    })
+    .filter((skill) => skill.enabled !== false);
 
-  const groupedSkills = filteredSkills.reduce((acc, skill) => {
+  const groupedSkills = processedSkills.reduce((acc, skill) => {
     const category = skill.category || 'Other';
     if (!acc[category]) acc[category] = [];
     acc[category].push(skill);
@@ -94,7 +108,7 @@ const TechnicalSkillsTab = ({
         </div>
       </div>
 
-      {filteredSkills.length === 0 ? (
+      {processedSkills.length === 0 ? (
         <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
           <Code className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-600 text-base font-medium">
@@ -106,19 +120,38 @@ const TechnicalSkillsTab = ({
         </div>
       ) : (
         <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-          {filteredSkills.map((skill, idx) => (
+          {processedSkills.map((skill, idx) => (
             <div
               key={skill.id || `tech-skill-${idx}`}
               className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
             >
-              {/* Skill Name + Level Badge (matching Dashboard exactly) */}
+              {/* Skill Name + Level Badge + Status Badges */}
               <div className="flex items-center justify-between gap-3 mb-3">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h4 className="text-base font-bold text-gray-900">
                     {skill.name}
                   </h4>
-                  {skill.approval_status === 'pending' && (
-                    <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-xs">
+                  
+                  {/* Verified Badge */}
+                  {(skill.approval_status === "verified" || skill.approval_status === "approved") && !skill._hasPendingEdit && (
+                    <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      Verified
+                    </Badge>
+                  )}
+
+                  {/* Pending Verification Badge - Show when has_pending_edit is true */}
+                  {skill._hasPendingEdit && (
+                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Pending Verification
+                    </Badge>
+                  )}
+
+                  {/* Pending Verification Badge - Show for new pending records */}
+                  {(!skill.approval_status || skill.approval_status === 'pending') && !skill._hasPendingEdit && (
+                    <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
                       Pending Verification
                     </Badge>
                   )}
@@ -153,8 +186,8 @@ const TechnicalSkillsTab = ({
                 </p>
               )}
 
-              {/* Edit Button */}
-              <div className="flex justify-end mt-3">
+              {/* Edit Button + Eye Icon */}
+              <div className="flex justify-end gap-1 mt-3">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -163,6 +196,23 @@ const TechnicalSkillsTab = ({
                 >
                   <Edit className="w-4 h-4" />
                 </Button>
+                
+                {/* Eye icon - only show for verified/approved skills */}
+                {(skill.approval_status === 'verified' || skill.approval_status === 'approved') && !skill._hasPendingEdit && onToggleTechnicalSkillEnabled && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onToggleTechnicalSkillEnabled(idx)}
+                    className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                    title={skill.enabled ? "Hide from profile" : "Show on profile"}
+                  >
+                    {skill.enabled !== false ? (
+                      <Eye className="w-4 h-4" />
+                    ) : (
+                      <EyeOff className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
               </div>
             </div>
           ))}
