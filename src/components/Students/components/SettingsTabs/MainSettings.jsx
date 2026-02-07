@@ -807,9 +807,60 @@ const MainSettings = () => {
     }
   };
 
+  // General profile save handler - validates and saves all profile data
   const handleSaveProfile = async () => {
-    // Validate Aadhar number before saving
-    if (profileData.aadharNumber) {
+    // Validate Aadhar number before saving (only if it has a value and is not empty)
+    if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
+      if (profileData.aadharNumber.length !== 12) {
+        toast({
+          title: "Validation Error",
+          description: "Aadhar number must be exactly 12 digits",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) {
+        toast({
+          title: "Validation Error",
+          description: "Aadhar number cannot start with 0 or 1",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile(profileData);
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: profileData }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating profile:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Tab-specific save handlers - only save relevant fields for each tab
   
   // Personal Info Tab - save basic personal information
@@ -1572,79 +1623,79 @@ const MainSettings = () => {
             )}
           </div>
         </div>
+
+        {/* Education Edit Modal */}
+        {showEducationModal && (
+          <EducationEditModal
+            isOpen={showEducationModal}
+            onClose={() => setShowEducationModal(false)}
+            data={educationData}
+            onSave={handleEducationSave}
+          />
+        )}
+
+        {/* Soft Skills Edit Modal */}
+        {showSoftSkillsModal && (
+          <SoftSkillsEditModal
+            isOpen={showSoftSkillsModal}
+            onClose={() => setShowSoftSkillsModal(false)}
+            data={softSkillsData}
+            onSave={handleSoftSkillsSave}
+          />
+        )}
+
+        {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
+        {showTechnicalSkillsModal && (
+          <SkillsEditModal
+            isOpen={showTechnicalSkillsModal}
+            onClose={() => setShowTechnicalSkillsModal(false)}
+            data={technicalSkillsData || []}
+            onSave={handleTechnicalSkillsSave}
+            title="Skills"
+          />
+        )}
+
+        {/* Experience Edit Modal */}
+        {showExperienceModal && (
+          <ExperienceEditModal
+            isOpen={showExperienceModal}
+            onClose={() => setShowExperienceModal(false)}
+            data={experienceData}
+            onSave={handleExperienceSave}
+          />
+        )}
+
+        {/* Certificates Edit Modal */}
+        {showCertificatesModal && (
+          <CertificatesEditModal
+            isOpen={showCertificatesModal}
+            onClose={() => setShowCertificatesModal(false)}
+            data={certificatesData}
+            onSave={handleCertificatesSave}
+          />
+        )}
+
+        {/* Projects Edit Modal */}
+        {showProjectsModal && (
+          <ProjectsEditModal
+            isOpen={showProjectsModal}
+            onClose={() => setShowProjectsModal(false)}
+            data={projectsData}
+            onSave={handleProjectsSave}
+          />
+        )}
+
+        {/* Resume Parser Modal */}
+        {showResumeParser && (
+          <ResumeParser
+            onDataExtracted={handleResumeDataExtracted}
+            onClose={() => setShowResumeParser(false)}
+            userEmail={userEmail}
+            studentData={studentData}
+            user={user}
+          />
+        )}
       </div>
-
-      {/* Education Edit Modal */}
-      {showEducationModal && (
-        <EducationEditModal
-          isOpen={showEducationModal}
-          onClose={() => setShowEducationModal(false)}
-          data={educationData}
-          onSave={handleEducationSave}
-        />
-      )}
-
-      {/* Soft Skills Edit Modal */}
-      {showSoftSkillsModal && (
-        <SoftSkillsEditModal
-          isOpen={showSoftSkillsModal}
-          onClose={() => setShowSoftSkillsModal(false)}
-          data={softSkillsData}
-          onSave={handleSoftSkillsSave}
-        />
-      )}
-
-      {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
-      {showTechnicalSkillsModal && (
-        <SkillsEditModal
-          isOpen={showTechnicalSkillsModal}
-          onClose={() => setShowTechnicalSkillsModal(false)}
-          data={technicalSkillsData || []}
-          onSave={handleTechnicalSkillsSave}
-          title="Skills"
-        />
-      )}
-
-      {/* Experience Edit Modal */}
-      {showExperienceModal && (
-        <ExperienceEditModal
-          isOpen={showExperienceModal}
-          onClose={() => setShowExperienceModal(false)}
-          data={experienceData}
-          onSave={handleExperienceSave}
-        />
-      )}
-
-      {/* Certificates Edit Modal */}
-      {showCertificatesModal && (
-        <CertificatesEditModal
-          isOpen={showCertificatesModal}
-          onClose={() => setShowCertificatesModal(false)}
-          data={certificatesData}
-          onSave={handleCertificatesSave}
-        />
-      )}
-
-      {/* Projects Edit Modal */}
-      {showProjectsModal && (
-        <ProjectsEditModal
-          isOpen={showProjectsModal}
-          onClose={() => setShowProjectsModal(false)}
-          data={projectsData}
-          onSave={handleProjectsSave}
-        />
-      )}
-
-      {/* Resume Parser Modal */}
-      {showResumeParser && (
-        <ResumeParser
-          onDataExtracted={handleResumeDataExtracted}
-          onClose={() => setShowResumeParser(false)}
-          userEmail={userEmail}
-          studentData={studentData}
-          user={user}
-        />
-      )}
     </div>
   );
 };
