@@ -1,5 +1,5 @@
 import React from "react";
-import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle, Clock } from "lucide-react";
+import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle, Clock, Save } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 import { useFormValidation } from "../../../../../hooks/useFormValidation";

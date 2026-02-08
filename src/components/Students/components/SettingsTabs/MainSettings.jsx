@@ -493,25 +493,29 @@ const MainSettings = () => {
           description: "Education updated successfully",
         });
         
-        // Refresh recent updates (non-blocking)
-        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-          refreshRecentUpdates().catch(err => 
-            console.warn('Could not refresh recent updates:', err)
-          );
+        try {
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        } catch (refreshError) {
+          console.warn('Could not refresh recent updates:', refreshError);
         }
+      } else {
+        throw new Error(result.error || 'Failed to update education');
       }
     } catch (error) {
-      console.error('❌ MainSettings: Error saving education:', error);
+      console.error('❌ Error saving education:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update education",
+        description: error.message || "Failed to save education",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
-    
-    return result;
   };
 
   // Soft Skills management functions
@@ -537,17 +541,16 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update soft skills');
       }
     } catch (error) {
-      console.error('Error saving soft skills:', error);
+      console.error('❌ Error saving soft skills:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update soft skills",
+        description: error.message || "Failed to save soft skills",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
-    
-    return result;
   };
 
   // Technical Skills management functions
@@ -582,17 +585,16 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update technical skills');
       }
     } catch (error) {
-      console.error('Error saving technical skills:', error);
+      console.error('❌ Error saving technical skills:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update technical skills",
+        description: error.message || "Failed to save technical skills",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
-    
-    return result;
   };
 
   // Experience management functions
@@ -624,17 +626,16 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update experience');
       }
     } catch (error) {
-      console.error('Error saving experience:', error);
+      console.error('❌ Error saving experience:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update experience",
+        description: error.message || "Failed to save experience",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
-    
-    return result;
   };
 
   // Certificates management functions
@@ -684,17 +685,16 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update projects');
       }
     } catch (error) {
-      console.error('Error saving projects:', error);
+      console.error('❌ Error saving projects:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update projects",
+        description: error.message || "Failed to save projects",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
-    
-    return result;
   };
 
   // Technical Skills toggle enabled handler
@@ -969,10 +969,10 @@ const MainSettings = () => {
     return result;
   };
 
-
-  // Institution Details Tab - save institution-related fields
+  // Institution Details Tab - save institution information
   const handleSaveInstitutionDetails = async () => {
     setIsSaving(true);
+    
     try {
       const dataToSave = { ...profileData };
       
@@ -1046,11 +1046,11 @@ const MainSettings = () => {
     setIsSaving(true);
     try {
       const academicFields = {
-        rollNumber: profileData.rollNumber,
         registrationNumber: profileData.registrationNumber,
-        yearOfStudy: profileData.yearOfStudy,
-        cgpa: profileData.cgpa,
-        percentage: profileData.percentage,
+        enrollmentNumber: profileData.enrollmentNumber,
+        currentCgpa: profileData.currentCgpa,
+        grade: profileData.grade,
+        gradeStartDate: profileData.gradeStartDate,
       };
       
       await updateProfile(academicFields);
