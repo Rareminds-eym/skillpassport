@@ -61,9 +61,27 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
   // Helper to safely count questions from different data structures
   const getQuestionCount = (data: any, key: string): number => {
     if (!data) return 0;
+    
+    // Try nested structure first (e.g., riasecAnswers: {...})
     const answers = data[key];
-    if (!answers) return 0;
-    if (typeof answers === 'object') return Object.keys(answers).length;
+    if (answers && typeof answers === 'object') {
+      return Object.keys(answers).length;
+    }
+    
+    // Try flat structure with prefixes (e.g., hs_interest_explorer_hs1, hs_interest_explorer_hs2)
+    const prefixMap: Record<string, string> = {
+      'riasecAnswers': 'interest_explorer',
+      'bigFiveAnswers': 'strengths_character',
+      'knowledgeAnswers': 'learning_preferences',
+      'aptitudeAnswers': 'aptitude_sampling'
+    };
+    
+    const prefix = prefixMap[key];
+    if (prefix && typeof data === 'object') {
+      const matchingKeys = Object.keys(data).filter(k => k.includes(prefix));
+      return matchingKeys.length;
+    }
+    
     return 0;
   };
 
@@ -81,7 +99,8 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
   // Get adaptive session ID from multiple possible locations
   const adaptiveSessionId = attemptData?.adaptive_aptitude_session_id || 
                             resultData?.adaptive_aptitude_session_id ||
-                            adaptiveResults?.sessionId;
+                            adaptiveResults?.sessionId ||
+                            actualAssessmentData?.adaptive_aptitude_session_id;
 
   console.log('🔍 Debug Panel Data Sources:', {
     hasAssessmentData: !!assessmentData,
@@ -90,6 +109,7 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
     attemptAllResponses: !!attemptData?.all_responses,
     resultAllResponses: !!resultData?.all_responses,
     actualDataUsed: actualAssessmentData ? 'found' : 'missing',
+    actualDataKeys: actualAssessmentData ? Object.keys(actualAssessmentData).slice(0, 10) : [],
     riasecCount,
     bigFiveCount,
     knowledgeCount,
@@ -339,8 +359,8 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                     <p className={aptitudeCount > 0 ? 'text-green-700' : 'text-red-700'}>
                       {aptitudeCount > 0 ? '✅' : '❌'} Aptitude sampling collected ({aptitudeCount} questions)
                     </p>
-                    <p className={adaptiveResults ? 'text-green-700' : 'text-red-700'}>
-                      {adaptiveResults ? '✅' : '❌'} Adaptive test completed
+                    <p className={(adaptiveResults || resultData?.adaptive_aptitude_results || resultData?._rawDatabaseFields?.adaptive_aptitude_session_id || attemptData?.adaptive_aptitude_session_id) ? 'text-green-700' : 'text-red-700'}>
+                      {(adaptiveResults || resultData?.adaptive_aptitude_results || resultData?._rawDatabaseFields?.adaptive_aptitude_session_id || attemptData?.adaptive_aptitude_session_id) ? '✅' : '❌'} Adaptive test completed
                     </p>
                     <p className={studentContext?.rawGrade || studentContext?.grade ? 'text-green-700' : 'text-red-700'}>
                       {studentContext?.rawGrade || studentContext?.grade ? '✅' : '❌'} Student grade context provided ({studentContext?.rawGrade || studentContext?.grade || 'missing'})
@@ -348,8 +368,8 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                     <p className={aiResponse ? 'text-green-700' : 'text-red-700'}>
                       {aiResponse ? '✅' : '❌'} AI analysis completed
                     </p>
-                    <p className={resultData?.career_fit ? 'text-green-700' : 'text-red-700'}>
-                      {resultData?.career_fit ? '✅' : '❌'} Career recommendations generated
+                    <p className={(resultData?.career_fit || aiResponse?.careerFit) ? 'text-green-700' : 'text-red-700'}>
+                      {(resultData?.career_fit || aiResponse?.careerFit) ? '✅' : '❌'} Career recommendations generated
                     </p>
                   </div>
                 </div>
@@ -411,55 +431,84 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                     📊 personal_assessment_results
                     <span className="text-xs text-gray-500">(Stored results)</span>
                   </h4>
-                  {resultData ? (
+                  {/* ✅ CRITICAL FIX: Use _rawDatabaseFields instead of resultData directly */}
+                  {(resultData?._rawDatabaseFields || resultData) ? (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="bg-blue-50 p-2 rounded">
-                          <span className="font-semibold">id:</span> {resultData.id}
-                        </div>
-                        <div className="bg-blue-50 p-2 rounded">
-                          <span className="font-semibold">attempt_id:</span> {resultData.attempt_id}
-                        </div>
-                        <div className="bg-green-50 p-2 rounded">
-                          <span className="font-semibold">grade_level:</span> <span className="text-green-700 font-bold">{resultData.grade_level}</span>
-                        </div>
-                        <div className="bg-green-50 p-2 rounded">
-                          <span className="font-semibold">stream_id:</span> {resultData.stream_id}
-                        </div>
-                        <div className="bg-purple-50 p-2 rounded col-span-2">
-                          <span className="font-semibold">adaptive_aptitude_session_id:</span> {resultData.adaptive_aptitude_session_id || 'null'}
-                        </div>
-                        <div className="bg-indigo-50 p-2 rounded">
-                          <span className="font-semibold">riasec_code:</span> {resultData.riasec_code || 'null'}
-                        </div>
-                        <div className="bg-indigo-50 p-2 rounded">
-                          <span className="font-semibold">aptitude_overall:</span> {resultData.aptitude_overall || 'null'}
-                        </div>
-                        <div className="bg-pink-50 p-2 rounded">
-                          <span className="font-semibold">gemini_results:</span> {resultData.gemini_results ? '✅ Present' : '❌ Missing'}
-                        </div>
-                        <div className="bg-pink-50 p-2 rounded">
-                          <span className="font-semibold">career_fit:</span> {resultData.career_fit ? '✅ Present' : '❌ Missing'}
-                        </div>
-                      </div>
-                      
-                      {/* Field Usage Analysis */}
-                      <div className="bg-amber-50 border border-amber-200 rounded p-3">
-                        <p className="font-semibold text-sm mb-2">📈 Field Usage Analysis:</p>
-                        <div className="space-y-1 text-xs">
-                          <p>✅ <span className="font-semibold">riasec_scores:</span> {resultData.riasec_scores ? 'Populated' : 'Empty'}</p>
-                          <p>✅ <span className="font-semibold">aptitude_scores:</span> {resultData.aptitude_scores ? 'Populated' : 'Empty'}</p>
-                          <p>✅ <span className="font-semibold">bigfive_scores:</span> {resultData.bigfive_scores ? 'Populated' : 'Empty'}</p>
-                          <p>✅ <span className="font-semibold">career_fit:</span> {resultData.career_fit ? 'Populated' : 'Empty'}</p>
-                          <p>✅ <span className="font-semibold">roadmap:</span> {resultData.roadmap ? 'Populated' : 'Empty'}</p>
-                          <p>✅ <span className="font-semibold">gemini_results:</span> {resultData.gemini_results ? 'Populated (AI response)' : 'Empty'}</p>
-                        </div>
-                      </div>
-
-                      <details className="bg-gray-50 rounded p-2">
-                        <summary className="cursor-pointer text-xs font-semibold">View all result fields</summary>
-                        <pre className="text-xs mt-2 overflow-x-auto">{JSON.stringify(resultData, null, 2)}</pre>
-                      </details>
+                      {(() => {
+                        // Use raw database fields if available, otherwise fall back to resultData
+                        const dbFields = resultData?._rawDatabaseFields || resultData;
+                        return (
+                          <>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div className="bg-blue-50 p-2 rounded">
+                                <span className="font-semibold">id:</span> {dbFields.id || 'N/A'}
+                              </div>
+                              <div className="bg-blue-50 p-2 rounded">
+                                <span className="font-semibold">attempt_id:</span> {dbFields.attempt_id || 'N/A'}
+                              </div>
+                              <div className="bg-green-50 p-2 rounded">
+                                <span className="font-semibold">grade_level:</span> <span className="text-green-700 font-bold">{dbFields.grade_level || 'N/A'}</span>
+                              </div>
+                              <div className="bg-green-50 p-2 rounded">
+                                <span className="font-semibold">stream_id:</span> {dbFields.stream_id || 'N/A'}
+                              </div>
+                              <div className="bg-purple-50 p-2 rounded col-span-2">
+                                <span className="font-semibold">adaptive_aptitude_session_id:</span> {dbFields.adaptive_aptitude_session_id || 'null'}
+                              </div>
+                              <div className="bg-indigo-50 p-2 rounded">
+                                <span className="font-semibold">riasec_code:</span> {dbFields.riasec_code || 'null'}
+                              </div>
+                              <div className="bg-indigo-50 p-2 rounded">
+                                <span className="font-semibold">aptitude_overall:</span> {dbFields.aptitude_overall || 'null'}
+                              </div>
+                              <div className="bg-pink-50 p-2 rounded">
+                                <span className="font-semibold">gemini_results:</span> {dbFields.gemini_results ? '✅ Present' : '❌ Missing'}
+                              </div>
+                              <div className="bg-pink-50 p-2 rounded">
+                                <span className="font-semibold">career_fit:</span> {dbFields.career_fit ? '✅ Present' : '❌ Missing'}
+                              </div>
+                            </div>
+                            
+                            {/* Field Usage Analysis */}
+                            <div className="bg-amber-50 border border-amber-200 rounded p-3">
+                              <p className="font-semibold text-sm mb-2">📈 Field Usage Analysis:</p>
+                              <div className="space-y-1 text-xs">
+                                <p className={dbFields.riasec_scores ? 'text-green-700' : 'text-red-700'}>
+                                  {dbFields.riasec_scores ? '✅' : '❌'} <span className="font-semibold">riasec_scores:</span> {dbFields.riasec_scores ? 'Populated' : 'Empty'}
+                                </p>
+                                <p className={dbFields.aptitude_scores ? 'text-green-700' : 'text-red-700'}>
+                                  {dbFields.aptitude_scores ? '✅' : '❌'} <span className="font-semibold">aptitude_scores:</span> {dbFields.aptitude_scores ? 'Populated' : 'Empty'}
+                                </p>
+                                <p className={dbFields.bigfive_scores ? 'text-green-700' : 'text-red-700'}>
+                                  {dbFields.bigfive_scores ? '✅' : '❌'} <span className="font-semibold">bigfive_scores:</span> {dbFields.bigfive_scores ? 'Populated' : 'Empty'}
+                                </p>
+                                <p className={dbFields.career_fit ? 'text-green-700' : 'text-red-700'}>
+                                  {dbFields.career_fit ? '✅' : '❌'} <span className="font-semibold">career_fit:</span> {dbFields.career_fit ? 'Populated' : 'Empty'}
+                                </p>
+                                <p className={dbFields.roadmap ? 'text-green-700' : 'text-red-700'}>
+                                  {dbFields.roadmap ? '✅' : '❌'} <span className="font-semibold">roadmap:</span> {dbFields.roadmap ? 'Populated' : 'Empty'}
+                                </p>
+                                <p className={dbFields.gemini_results ? 'text-green-700' : 'text-red-700'}>
+                                  {dbFields.gemini_results ? '✅' : '❌'} <span className="font-semibold">gemini_results:</span> {dbFields.gemini_results ? 'Populated (AI response)' : 'Empty'}
+                                </p>
+                              </div>
+                              
+                              {/* Warning if gemini_results is empty */}
+                              {!dbFields.gemini_results && (
+                                <div className="mt-2 bg-red-100 border border-red-300 rounded p-2 text-xs">
+                                  <p className="font-semibold text-red-800">⚠️ gemini_results is empty!</p>
+                                  <p className="text-red-700 mt-1">This means AI analysis never ran or failed. Individual columns may also be empty.</p>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <details className="bg-gray-50 rounded p-2">
+                              <summary className="cursor-pointer text-xs font-semibold">View all result fields (raw database)</summary>
+                              <pre className="text-xs mt-2 overflow-x-auto">{JSON.stringify(dbFields, null, 2)}</pre>
+                            </details>
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <p className="text-gray-500 text-sm">No result data available</p>
@@ -533,18 +582,36 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
 
             {activeTab === 'input' && (
               <div className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Assessment Answers</h4>
-                  <div className="bg-gray-50 rounded p-3 text-xs font-mono overflow-x-auto">
-                    <pre>{JSON.stringify(assessmentData, null, 2)}</pre>
-                  </div>
-                </div>
-                {timings && (
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Response Timings</h4>
-                    <div className="bg-gray-50 rounded p-3 text-xs font-mono overflow-x-auto">
-                      <pre>{JSON.stringify(timings, null, 2)}</pre>
+                {actualAssessmentData ? (
+                  <>
+                    <div>
+                      <h4 className="font-semibold text-gray-900 mb-2">Assessment Answers</h4>
+                      <div className="bg-gray-50 rounded p-3 text-xs font-mono overflow-x-auto">
+                        <pre>{JSON.stringify(actualAssessmentData, null, 2)}</pre>
+                      </div>
                     </div>
+                    {timings && (
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Response Timings</h4>
+                        <div className="bg-gray-50 rounded p-3 text-xs font-mono overflow-x-auto">
+                          <pre>{JSON.stringify(timings, null, 2)}</pre>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+                    <p className="font-semibold text-yellow-900 mb-2">⚠️ No Assessment Data Found</p>
+                    <p className="text-sm text-yellow-800 mb-2">Checked these locations:</p>
+                    <ul className="list-disc ml-4 text-xs text-yellow-800 space-y-1">
+                      <li>assessmentData prop: {assessmentData ? '✅ Found' : '❌ Not found'}</li>
+                      <li>attemptData.all_responses: {attemptData?.all_responses ? '✅ Found' : '❌ Not found'}</li>
+                      <li>resultData.all_responses: {resultData?.all_responses ? '✅ Found' : '❌ Not found'}</li>
+                      <li>resultData.raw_answers: {resultData?.raw_answers ? '✅ Found' : '❌ Not found'}</li>
+                    </ul>
+                    <p className="text-sm text-yellow-800 mt-2">
+                      Check browser console for "🔍 Debug Panel Data Sources:" log
+                    </p>
                   </div>
                 )}
               </div>
@@ -654,7 +721,10 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                         <p className="text-sm">
                           <span className="font-semibold">Career Tracks:</span>{' '}
                           <span className="text-green-700">
-                            {aiResponse.careerFit?.tracks?.length || 0} tracks
+                            {aiResponse.careerFit?.tracks?.length || 
+                             aiResponse.career_fit?.tracks?.length || 
+                             aiResponse.careerFit?.clusters?.length ||
+                             aiResponse.career_fit?.clusters?.length || 0} tracks
                           </span>
                         </p>
                         <p className="text-sm">
