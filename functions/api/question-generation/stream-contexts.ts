@@ -8,9 +8,29 @@ export const STREAM_CONTEXTS: Record<string, {
     context: string;
     clericalExample: string;
 }> = {
-    // --- After 10th Streams ---
+    // --- After 10th Streams (Specific) ---
+    'science_pcm': {
+        name: 'Science (PCM - Physics, Chemistry, Maths)',
+        context: 'Focus on ADVANCED mathematical reasoning (algebra, trigonometry, calculus concepts), physics problem-solving (mechanics, electricity, optics), chemical equations and reactions, engineering concepts, spatial reasoning, and quantitative analysis. Questions should be at 11th-12th grade JEE preparation level. NO biology questions - this is for engineering/technical streams. Difficulty: 30% medium, 50% hard, 20% very hard.',
+        clericalExample: 'PCM-892-ENG'
+    },
+    'science_pcb': {
+        name: 'Science (PCB - Physics, Chemistry, Biology)',
+        context: 'Focus on biological systems (cell biology, genetics, human anatomy, physiology), medical terminology, organic chemistry in life sciences, physics applications in medicine, diagnostic reasoning, and healthcare scenarios. Questions should be at 11th-12th grade NEET preparation level. NO advanced mathematics beyond basic calculations - this is for medical/life sciences streams. Difficulty: 30% medium, 50% hard, 20% very hard.',
+        clericalExample: 'PCB-345-MED'
+    },
+    'science_pcmb': {
+        name: 'Science (PCMB - All Sciences)',
+        context: 'Focus on comprehensive scientific reasoning covering physics, chemistry, mathematics, and biology. Balance questions across all four subjects for students keeping both engineering and medical options open.',
+        clericalExample: 'PCMB-678-SCI'
+    },
+    'science_pcms': {
+        name: 'Science (PCMS - Physics, Chemistry, Maths, Computer Science)',
+        context: 'Focus on mathematical reasoning, physics, chemistry, computational thinking, algorithmic logic, and programming concepts. NO biology questions - this is for engineering/IT streams.',
+        clericalExample: 'PCMS-567-IT'
+    },
     'science': {
-        name: 'Science (PCM/PCB)',
+        name: 'Science (General)',
         context: 'Focus on analytical thinking, problem-solving, scientific method, and logical deduction relevant to engineering, medicine, and research.',
         clericalExample: 'SCI-892-LAB'
     },
