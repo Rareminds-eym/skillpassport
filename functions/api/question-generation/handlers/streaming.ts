@@ -141,7 +141,12 @@ export async function handleStreamingAptitude(
                         // Determine stream context
                         let contextKey = streamId;
                         if (!STREAM_CONTEXTS[contextKey]) {
-                            if (streamId.includes('btech') || streamId.includes('engineering')) contextKey = 'engineering';
+                            // Check for specific science streams first
+                            if (streamId.includes('pcm') && streamId.includes('pcb')) contextKey = 'science_pcmb';
+                            else if (streamId.includes('pcms')) contextKey = 'science_pcms';
+                            else if (streamId.includes('pcm')) contextKey = 'science_pcm';
+                            else if (streamId.includes('pcb')) contextKey = 'science_pcb';
+                            else if (streamId.includes('btech') || streamId.includes('engineering')) contextKey = 'engineering';
                             else if (streamId.includes('mbbs') || streamId.includes('medical')) contextKey = 'medical';
                             else if (streamId.includes('bba') || streamId.includes('mba') || streamId.includes('management')) contextKey = 'management';
                             else if (streamId.includes('bca') || streamId.includes('mca') || streamId.includes('cs') || streamId.includes('it')) contextKey = 'it_software';
