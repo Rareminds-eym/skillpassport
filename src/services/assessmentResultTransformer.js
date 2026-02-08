@@ -129,19 +129,28 @@ export const transformGeminiAnalysis = (geminiAnalysis) => {
                         null;
 
   // Transform career recommendations to careerFit format
-  const careerFit = geminiAnalysis.career_recommendations ? {
-    clusters: geminiAnalysis.career_recommendations.map((rec, index) => ({
-      title: rec.title || rec.name || 'Career Path',
-      matchScore: rec.match_score || rec.matchScore || 80,
-      description: rec.reasoning || rec.description || '',
-      roles: rec.roles || [],
-      skills: rec.skills || rec.required_skills || [],
-      salary: rec.salary || null,
-      growthPotential: rec.growth_potential || rec.growthPotential || 'Medium',
-      education: rec.education || rec.required_education || null,
-      index
-    }))
-  } : null;
+  // ✅ Handle both formats: career_recommendations (old) and careerFit.clusters (new)
+  let careerFit = null;
+  
+  if (geminiAnalysis.careerFit && geminiAnalysis.careerFit.clusters) {
+    // New format: careerFit.clusters already exists
+    careerFit = geminiAnalysis.careerFit;
+  } else if (geminiAnalysis.career_recommendations) {
+    // Old format: transform career_recommendations to careerFit
+    careerFit = {
+      clusters: geminiAnalysis.career_recommendations.map((rec, index) => ({
+        title: rec.title || rec.name || 'Career Path',
+        matchScore: rec.match_score || rec.matchScore || 80,
+        description: rec.reasoning || rec.description || '',
+        roles: rec.roles || [],
+        skills: rec.skills || rec.required_skills || [],
+        salary: rec.salary || null,
+        growthPotential: rec.growth_potential || rec.growthPotential || 'Medium',
+        education: rec.education || rec.required_education || null,
+        index
+      }))
+    };
+  }
 
   // Transform skill development to skillGap format
   const skillGap = geminiAnalysis.skill_development ? {

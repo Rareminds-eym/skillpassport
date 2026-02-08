@@ -1161,14 +1161,45 @@ export const useAssessmentResults = () => {
                             // Normalize results to fix data inconsistencies
                             const normalizedResults = normalizeAssessmentResults(validatedResults);
                             
-                            // Add attempt data for debug panel
+                            // Add attempt data and adaptive results for debug panel
                             normalizedResults.attempt_data = attemptData;
+                            if (adaptiveAptitudeResults) {
+                                normalizedResults.adaptive_aptitude_results = adaptiveAptitudeResults;
+                            }
+                            
+                            // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
+                            // These fields are needed to show what's actually stored in the database
+                            normalizedResults._rawDatabaseFields = {
+                                id: directResult.id,
+                                attempt_id: directResult.attempt_id,
+                                student_id: directResult.student_id,
+                                stream_id: directResult.stream_id,
+                                grade_level: directResult.grade_level,
+                                riasec_scores: directResult.riasec_scores,
+                                riasec_code: directResult.riasec_code,
+                                aptitude_scores: directResult.aptitude_scores,
+                                aptitude_overall: directResult.aptitude_overall,
+                                bigfive_scores: directResult.bigfive_scores,
+                                work_values_scores: directResult.work_values_scores,
+                                employability_scores: directResult.employability_scores,
+                                knowledge_score: directResult.knowledge_score,
+                                career_fit: directResult.career_fit,
+                                skill_gap: directResult.skill_gap,
+                                roadmap: directResult.roadmap,
+                                gemini_results: directResult.gemini_results,
+                                adaptive_aptitude_session_id: directResult.adaptive_aptitude_session_id,
+                                status: directResult.status,
+                                created_at: directResult.created_at,
+                                updated_at: directResult.updated_at
+                            };
                             
                             console.log('🔧 Assessment results normalized (direct lookup):', {
                                 before: validatedResults.riasec?.scores,
                                 after: normalizedResults.riasec?.scores,
                                 hasAttemptData: !!attemptData,
-                                hasAllResponses: !!attemptData?.all_responses
+                                hasAllResponses: !!attemptData?.all_responses,
+                                hasAdaptiveResults: !!adaptiveAptitudeResults,
+                                hasRawDatabaseFields: !!normalizedResults._rawDatabaseFields
                             });
                             setResults(normalizedResults);
 
@@ -1354,9 +1385,37 @@ export const useAssessmentResults = () => {
 
                             // Normalize results to fix data inconsistencies
                             const normalizedResults = normalizeAssessmentResults(validatedResults);
+                            
+                            // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
+                            // These fields are needed to show what's actually stored in the database
+                            normalizedResults._rawDatabaseFields = {
+                                id: result.id,
+                                attempt_id: result.attempt_id,
+                                student_id: result.student_id,
+                                stream_id: result.stream_id,
+                                grade_level: result.grade_level,
+                                riasec_scores: result.riasec_scores,
+                                riasec_code: result.riasec_code,
+                                aptitude_scores: result.aptitude_scores,
+                                aptitude_overall: result.aptitude_overall,
+                                bigfive_scores: result.bigfive_scores,
+                                work_values_scores: result.work_values_scores,
+                                employability_scores: result.employability_scores,
+                                knowledge_score: result.knowledge_score,
+                                career_fit: result.career_fit,
+                                skill_gap: result.skill_gap,
+                                roadmap: result.roadmap,
+                                gemini_results: result.gemini_results,
+                                adaptive_aptitude_session_id: result.adaptive_aptitude_session_id,
+                                status: result.status,
+                                created_at: result.created_at,
+                                updated_at: result.updated_at
+                            };
+                            
                             console.log('🔧 Assessment results normalized (attempt lookup):', {
                                 before: validatedResults.riasec?.scores,
-                                after: normalizedResults.riasec?.scores
+                                after: normalizedResults.riasec?.scores,
+                                hasRawDbFields: !!normalizedResults._rawDatabaseFields
                             });
                             setResults(normalizedResults);
 
@@ -1532,9 +1591,37 @@ export const useAssessmentResults = () => {
 
                         // Normalize results to fix data inconsistencies
                         const normalizedResults = normalizeAssessmentResults(validatedResults);
+                        
+                        // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
+                        // These fields are needed to show what's actually stored in the database
+                        normalizedResults._rawDatabaseFields = {
+                            id: latestResult.id,
+                            attempt_id: latestResult.attempt_id,
+                            student_id: latestResult.student_id,
+                            stream_id: latestResult.stream_id,
+                            grade_level: latestResult.grade_level,
+                            riasec_scores: latestResult.riasec_scores,
+                            riasec_code: latestResult.riasec_code,
+                            aptitude_scores: latestResult.aptitude_scores,
+                            aptitude_overall: latestResult.aptitude_overall,
+                            bigfive_scores: latestResult.bigfive_scores,
+                            work_values_scores: latestResult.work_values_scores,
+                            employability_scores: latestResult.employability_scores,
+                            knowledge_score: latestResult.knowledge_score,
+                            career_fit: latestResult.career_fit,
+                            skill_gap: latestResult.skill_gap,
+                            roadmap: latestResult.roadmap,
+                            gemini_results: latestResult.gemini_results,
+                            adaptive_aptitude_session_id: latestResult.adaptive_aptitude_session_id,
+                            status: latestResult.status,
+                            created_at: latestResult.created_at,
+                            updated_at: latestResult.updated_at
+                        };
+                        
                         console.log('🔧 Assessment results normalized (latest result):', {
                             before: validatedResults.riasec?.scores,
-                            after: normalizedResults.riasec?.scores
+                            after: normalizedResults.riasec?.scores,
+                            hasRawDbFields: !!normalizedResults._rawDatabaseFields
                         });
                         setResults(normalizedResults);
 
@@ -2042,9 +2129,24 @@ export const useAssessmentResults = () => {
             // Update state with new results
             // Normalize results to fix data inconsistencies
             const normalizedResults = normalizeAssessmentResults(validatedResults);
+            
+            // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
+            // Note: In retry, we don't have the full database record, so we'll use what we have
+            normalizedResults._rawDatabaseFields = {
+                gemini_results: validatedResults.gemini_results || validatedResults,
+                riasec_scores: validatedResults.riasec_scores,
+                riasec_code: validatedResults.riasec?.code,
+                aptitude_scores: validatedResults.aptitude_scores,
+                bigfive_scores: validatedResults.bigfive_scores,
+                career_fit: validatedResults.career_fit || validatedResults.careerFit,
+                roadmap: validatedResults.roadmap,
+                // Other fields may not be available in retry context
+            };
+            
             console.log('🔧 Assessment results normalized (retry):', {
                 before: validatedResults.riasec?.scores,
-                after: normalizedResults.riasec?.scores
+                after: normalizedResults.riasec?.scores,
+                hasRawDbFields: !!normalizedResults._rawDatabaseFields
             });
             setResults(normalizedResults);
             setError(null); // Clear error only on success
