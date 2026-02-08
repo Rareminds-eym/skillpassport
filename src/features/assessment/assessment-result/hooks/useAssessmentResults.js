@@ -1020,6 +1020,19 @@ export const useAssessmentResults = () => {
                 if (directResult) {
                     console.log('✅ Found result directly by attempt_id');
 
+                    // ✅ Fetch the attempt data to get all_responses
+                    let attemptData = null;
+                    const { data: fetchedAttempt, error: attemptError } = await supabase
+                        .from('personal_assessment_attempts')
+                        .select('*')
+                        .eq('id', attemptId)
+                        .maybeSingle();
+
+                    if (fetchedAttempt && !attemptError) {
+                        console.log('✅ Found attempt data with all_responses');
+                        attemptData = fetchedAttempt;
+                    }
+
                     // ✅ NEW: Fetch adaptive aptitude results if session ID exists
                     let adaptiveAptitudeResults = null;
                     if (directResult.adaptive_aptitude_session_id) {
@@ -1147,9 +1160,15 @@ export const useAssessmentResults = () => {
 
                             // Normalize results to fix data inconsistencies
                             const normalizedResults = normalizeAssessmentResults(validatedResults);
+                            
+                            // Add attempt data for debug panel
+                            normalizedResults.attempt_data = attemptData;
+                            
                             console.log('🔧 Assessment results normalized (direct lookup):', {
                                 before: validatedResults.riasec?.scores,
-                                after: normalizedResults.riasec?.scores
+                                after: normalizedResults.riasec?.scores,
+                                hasAttemptData: !!attemptData,
+                                hasAllResponses: !!attemptData?.all_responses
                             });
                             setResults(normalizedResults);
 
@@ -2211,6 +2230,9 @@ export const useAssessmentResults = () => {
         validationWarnings, // Export validation warnings for display
         handleRetry,
         validateResults,
-        navigate
+        navigate,
+        // Debug data - full database records
+        attemptData: results?.attempt_data || null,
+        resultData: results // The full result record
     }), [results, loading, error, retrying, retryAttemptCount, gradeLevel, monthsInGrade, studentInfo, studentAcademicData, validationWarnings, handleRetry, validateResults, navigate]);
 };

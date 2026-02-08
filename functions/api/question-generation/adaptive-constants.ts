@@ -46,45 +46,204 @@ export const DIFFICULTY_DESCRIPTIONS: Record<DifficultyLevel, string> = {
 export const GRADE_LEVEL_CONTEXT: Record<GradeLevel, string> = {
   middle_school: `You are creating aptitude test questions for MIDDLE SCHOOL students (grades 6-8, ages 11-14).
 
+⚠️ CRITICAL: This is for younger students (ages 11-14). Keep questions simple and age-appropriate.`,
+
+  high_school: `You are creating aptitude test questions for HIGH SCHOOL students (grades 9-10, ages 14-16).
+
 ⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
 - DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
-- DO NOT write "The bar graph below shows..." or "The table shows..." or "Which shape..." or "The image shows..."
+- DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
 - ALL information must be provided in TEXT FORM ONLY
-- For data interpretation: Provide data as text (e.g., "In a survey, 30 students chose Basketball, 15 chose Tennis, 25 chose Soccer, and 20 chose Swimming. How many more students chose Basketball than Tennis?")
-- For spatial reasoning: Describe transformations in words (e.g., "If you rotate the letter 'N' 180 degrees, which letter does it look like?")
-- For pattern recognition: Describe sequences in text (e.g., "In the sequence 2, 4, 6, 8, what comes next?")
+- For data interpretation: Provide ALL data as text (e.g., "A shop's sales were: Monday: $500, Tuesday: $650, Wednesday: $800")
+- For spatial reasoning: Describe transformations in words (e.g., "If you rotate a triangle 90 degrees clockwise, what shape does it form?")
+- For pattern recognition: Describe sequences in text (e.g., "In the sequence 2, 4, 8, 16, what is the next number?")
 - NEVER assume visual elements exist - the system does not support images
 - Focus on verbal, numerical, and logical reasoning that can be expressed purely in text
 
-🎯 COGNITIVE EXPECTATIONS FOR MIDDLE SCHOOL (Grades 6-8):
-- Concrete operational thinking with emerging abstract reasoning
-- Can handle 2-3 step problems with guidance
+🎯 COGNITIVE EXPECTATIONS FOR GRADES 9-10 (Ages 14-16):
+- Transitioning from concrete to abstract thinking
+- Can handle 2-4 step problems with some guidance
 - Developing pattern recognition and logical deduction skills
 - Building foundation for higher-order thinking
-- Vocabulary: 5,000-10,000 words (everyday language)
+- Vocabulary: 8,000-12,000 words (everyday + some academic terms)
 
-📚 CAREER CONTEXT - AFTER 10TH DECISION AWARENESS:
-- Students at this level are exploring interests and strengths
-- Questions should help identify natural aptitudes for future stream selection (Science/Commerce/Arts)
-- Focus on discovering innate abilities rather than learned knowledge
-- Build awareness of diverse career paths and skill requirements
-- Questions should reveal strengths in: analytical thinking, creative reasoning, verbal skills, numerical ability, spatial awareness
+📚 CAREER CONTEXT - STREAM SELECTION AWARENESS:
+- Students are exploring interests before choosing Science/Commerce/Arts stream
+- Questions should help identify natural aptitudes for stream selection
+- Focus on discovering abilities: analytical thinking, creative reasoning, verbal skills, numerical ability
+- Build awareness of different career paths and skill requirements
+- Questions should reveal strengths to guide "After 10th" stream selection decisions
 
-🎓 DIFFICULTY DISCIPLINE (Relative to Grade 6-8):
-- Level 1: Basic arithmetic, simple analogies, obvious patterns (accessible to all)
-- Level 2: Multi-step calculations, common word relationships, straightforward logic
+🎓 DIFFICULTY DISCIPLINE (Relative to Grade 9-10):
+- Level 1: Basic concepts, simple calculations, obvious patterns (accessible to all)
+- Level 2: Multi-step problems, common relationships, straightforward logic
 - Level 3: Moderate problem-solving, inference, pattern analysis (grade-appropriate challenge)
 - Level 4: Complex reasoning, abstract thinking, multi-variable problems (above-average)
 - Level 5: Advanced concepts, sophisticated logic, creative problem-solving (top-tier for grade)
 
-CRITICAL GUIDELINES FOR MIDDLE SCHOOL:
-- Use simple, everyday vocabulary that 11-14 year olds understand
+CRITICAL GUIDELINES FOR GRADES 9-10:
+- Use vocabulary appropriate for 14-16 year olds (not too simple, not too advanced)
 - Questions should be challenging but NOT frustrating
-- Use relatable scenarios: school life, sports, games, family, friends, hobbies, animals, nature, simple shopping
-- AVOID: complex technical terms, abstract business concepts, advanced math beyond basic algebra
-- Keep question text SHORT and CLEAR (max 2-3 sentences)
-- Use concrete examples, not abstract concepts
-- Numbers should be manageable: avoid decimals beyond 2 places, keep calculations mental-math friendly
+- Use relatable scenarios: school life, sports, technology, social situations, simple real-world problems
+- AVOID: highly technical terms, complex business concepts, advanced mathematics beyond basic algebra
+- Keep question text CLEAR and CONCISE (2-4 sentences max)
+- Use concrete examples with some abstract elements
+- Numbers should be manageable: basic algebra, simple equations, mental-math friendly
+
+📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (Grades 9-10 Level - Use Diverse Topics):
+
+**Arithmetic & Number System:**
+- Integers, fractions, decimals (all operations)
+- LCM & HCF (finding and applications)
+- Divisibility rules and remainders
+- Percentage (increase/decrease, applications)
+- Ratio and proportion (direct, inverse)
+- Profit, loss, discount (basic commercial math)
+- Simple and compound interest (basic formulas)
+
+**Basic Algebra:**
+- Linear equations (one variable)
+- Simple simultaneous equations (two variables)
+- Basic algebraic expressions and simplification
+- Simple identities: (a+b)², (a-b)², a²-b²
+- Word problems leading to equations
+
+**Time, Speed & Distance:**
+- Average speed calculations
+- Basic train problems (length, crossing)
+- Simple relative motion
+- Time-work problems (basic efficiency)
+
+**Data Interpretation (Text-Based):**
+- Mean, median, mode (ungrouped data described in text)
+- Simple data analysis from text descriptions
+- Basic probability (coins, dice, cards)
+- Percentage calculations from data
+
+**Geometry (Text-Based):**
+- Basic properties of triangles, quadrilaterals
+- Perimeter and area (simple shapes described in words)
+- Volume and surface area (basic 3D shapes in text)
+- Pythagoras theorem applications
+
+**VARIETY REQUIREMENT:** Rotate through these topics to ensure diverse question types. Don't use the same topic more than twice in a row.
+
+🧠 LOGICAL REASONING CONCEPTS (Grades 9-10 Level - Text-Based):
+
+**Basic Logic:**
+- Simple syllogisms (All A are B, Some B are C)
+- Conditional statements (If-then)
+- Basic deductive reasoning
+- Simple analogies and relationships
+
+**Pattern Recognition:**
+- Number series (arithmetic, geometric, simple patterns)
+- Letter series and basic coding
+- Analogies (A:B::C:? with clear relationships)
+- Classification (odd one out)
+
+**Critical Thinking:**
+- Drawing simple conclusions
+- Identifying assumptions
+- Cause and effect relationships
+- Basic argument evaluation
+
+**VARIETY REQUIREMENT:** Mix different types of logical reasoning. Alternate between deductive, pattern-based, and analytical reasoning.
+
+📚 VERBAL REASONING CONCEPTS (Grades 9-10 Level):
+
+**Vocabulary & Relationships:**
+- Synonyms and antonyms (grade-appropriate vocabulary)
+- Analogies (clear relationships: part-whole, cause-effect, etc.)
+- Word associations
+- Contextual vocabulary
+
+**Reading & Comprehension:**
+- Main idea identification
+- Simple inference
+- Fact vs opinion
+- Supporting details
+
+**VARIETY REQUIREMENT:** Mix vocabulary, analogies, and comprehension-based questions.
+
+🔄 SUBTAG ROTATION ENFORCEMENT:
+- NEVER use the same subtag consecutively
+- Distribute subtags evenly across the question set
+- Each subtag must appear at least once in every 6-question block
+- Rotate through: numerical_reasoning → logical_reasoning → verbal_reasoning → spatial_reasoning → data_interpretation → pattern_recognition
+
+🚫 REPETITION PREVENTION:
+- NEVER reuse similar scenarios
+- NEVER reuse similar numerical patterns
+- NEVER reuse similar logical structures
+- Change contexts completely between questions
+- Vary numerical values by at least 50%
+- Use different measurement units and subjects
+
+VARIETY REQUIREMENTS FOR GRADES 9-10:
+- Use DIVERSE scenarios: school, technology, sports, nature, social situations, simple real-world problems
+- Use DIVERSE math topics: rotate through arithmetic, algebra, geometry, data interpretation, time-speed-distance
+- Vary the subjects: different objects, people, situations, locations
+- Change numerical values significantly between questions
+- Use different measurement units and contexts
+- Create original contexts - avoid repeating similar situations
+
+📊 ANALYTICS-SAFE DIFFICULTY PATHS:
+- Questions must have clear, unambiguous correct answers
+- Difficulty progression should be measurable and consistent
+- Each question must reliably discriminate between ability levels
+- Avoid trick questions or ambiguous wording
+- Ensure distractors are plausible but clearly incorrect
+
+🎯 STREAM RECOMMENDATION READINESS:
+- Questions should reveal aptitude patterns for Science/Commerce/Arts streams
+- Numerical + Data Interpretation → Science/Commerce indicators
+- Verbal + Logical → Arts/Humanities indicators
+- Spatial + Pattern Recognition → Design/Engineering indicators
+- Results should guide stream selection after 10th grade`,
+
+  higher_secondary: `You are creating aptitude test questions for HIGHER SECONDARY students (grades 11-12, ages 16-18).
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
+- DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
+- DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
+- ALL information must be provided in TEXT FORM ONLY
+- For data interpretation: Provide ALL data as text (e.g., "A company's sales were: Q1: $50,000, Q2: $65,000, Q3: $80,000, Q4: $72,000")
+- For spatial reasoning: Describe transformations in words (e.g., "If you rotate a square 45 degrees clockwise, what shape does it appear to form?")
+- For pattern recognition: Describe sequences in text (e.g., "In the sequence 3, 6, 12, 24, what is the next number?")
+- NEVER assume visual elements exist - the system does not support images
+- Focus on verbal, numerical, and logical reasoning that can be expressed purely in text
+
+🎯 COGNITIVE EXPECTATIONS FOR HIGHER SECONDARY (Grades 11-12):
+- Formal operational thinking with advanced abstract reasoning capabilities
+- Can handle 3-5 step problems independently
+- Strong pattern recognition and logical deduction skills
+- Developing critical thinking and analytical abilities
+- Vocabulary: 12,000-20,000 words (academic + technical terms)
+
+📚 CAREER CONTEXT - COMPETITIVE EXAM & COLLEGE PREPARATION:
+- Students have chosen streams (Science/Commerce/Arts) and are preparing for college entrance
+- Questions should validate stream choices and identify specific career aptitudes
+- Focus on specialized abilities: engineering, medicine, business, law, design, research
+- Build awareness of college majors and professional career paths
+- Questions should reveal strengths in: quantitative reasoning, analytical thinking, verbal comprehension, problem-solving, data analysis
+- Help students prepare for competitive exams (JEE, NEET, CA, CLAT, SAT, etc.)
+
+🎓 DIFFICULTY DISCIPLINE (Relative to Grades 11-12):
+- Level 1: Basic algebra, simple syllogisms, common analogies (foundation level)
+- Level 2: Multi-step equations, conditional logic, vocabulary in context
+- Level 3: Complex problem-solving, inference, statistical thinking (grade-appropriate challenge)
+- Level 4: Advanced reasoning, abstract concepts, multi-variable analysis (above-average)
+- Level 5: Sophisticated logic, creative problem-solving, competitive exam level (top-tier for grade)
+
+CRITICAL GUIDELINES FOR HIGHER SECONDARY:
+- Use sophisticated vocabulary and concepts appropriate for 16-18 year olds preparing for college
+- Questions can involve complex multi-step reasoning (3-5 steps)
+- Use scenarios relevant to college-bound students: academics, career planning, technology, current affairs, research
+- Include advanced abstract thinking challenges
+- Reference real-world applications and career contexts
+- Questions should prepare students for competitive entrance exams
+- Keep questions text-based - describe all information verbally
 
 📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (Use Diverse Topics):
 
@@ -176,204 +335,127 @@ VARIETY REQUIREMENTS FOR MIDDLE SCHOOL:
 - Balanced performance → Flexible stream options
 - Results should guide "After 10th" stream selection decisions`,
 
-  high_school: `You are creating aptitude test questions for HIGH SCHOOL students (grades 9-12, ages 14-18).
+  high_school: `You are creating aptitude test questions for HIGH SCHOOL students (grades 9-10, ages 14-16).
 
 ⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
 - DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
 - DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
 - ALL information must be provided in TEXT FORM ONLY
-- For data interpretation: Provide ALL data as text (e.g., "A company's sales were: Q1: $50,000, Q2: $65,000, Q3: $80,000, Q4: $72,000")
-- For spatial reasoning: Describe transformations in words (e.g., "If you rotate a square 45 degrees clockwise, what shape does it appear to form?")
-- For pattern recognition: Describe sequences in text (e.g., "In the sequence 3, 6, 12, 24, what is the next number?")
+- For data interpretation: Provide ALL data as text (e.g., "A shop's monthly sales were: Jan: $5,000, Feb: $6,500, Mar: $8,000")
+- For spatial reasoning: Describe transformations in words (e.g., "If you rotate a triangle 90 degrees clockwise, what shape does it form?")
+- For pattern recognition: Describe sequences in text (e.g., "In the sequence 2, 4, 8, 16, what is the next number?")
 - NEVER assume visual elements exist - the system does not support images
 - Focus on verbal, numerical, and logical reasoning that can be expressed purely in text
 
-🎯 COGNITIVE EXPECTATIONS FOR HIGH SCHOOL (Grades 9-12):
-- Formal operational thinking with abstract reasoning capabilities
-- Can handle 3-5 step problems independently
-- Strong pattern recognition and logical deduction skills
-- Developing critical thinking and analytical abilities
-- Vocabulary: 10,000-20,000 words (academic + technical terms)
+🎯 COGNITIVE EXPECTATIONS FOR GRADES 9-10 (Ages 14-16):
+- Transitioning from concrete to abstract thinking
+- Can handle 2-4 step problems with moderate guidance
+- Developing pattern recognition and logical deduction skills
+- Building foundation for higher-order thinking
+- Vocabulary: 8,000-12,000 words (everyday + some academic terms)
 
-📚 CAREER CONTEXT - AFTER 10TH & AFTER 12TH DECISION AWARENESS:
-- Students are actively choosing streams (Science/Commerce/Arts) or have already chosen
-- Questions should validate stream choices and identify specific career aptitudes
-- Focus on specialized abilities: engineering, medicine, business, law, design, research
-- Build awareness of college majors and professional career paths
-- Questions should reveal strengths in: quantitative reasoning, analytical thinking, verbal comprehension, problem-solving, data analysis
-- Help students prepare for competitive exams (JEE, NEET, CA, CLAT, etc.)
+📚 CAREER CONTEXT - STREAM SELECTION AWARENESS:
+- Students are exploring interests before choosing Science/Commerce/Arts stream after 10th
+- Questions should help identify natural aptitudes for stream selection
+- Focus on discovering abilities: analytical thinking, creative reasoning, verbal skills, numerical ability
+- Build awareness of different career paths and skill requirements
+- Questions should reveal strengths to guide "After 10th" stream selection decisions
+- NOT preparing for competitive exams yet - focus on aptitude discovery
 
-🎓 DIFFICULTY DISCIPLINE (Relative to Grade 9-12):
-- Level 1: Basic algebra, simple syllogisms, common analogies (foundation level)
-- Level 2: Multi-step equations, conditional logic, vocabulary in context
-- Level 3: Complex problem-solving, inference, statistical thinking (grade-appropriate challenge)
-- Level 4: Advanced reasoning, abstract concepts, multi-variable analysis (above-average)
-- Level 5: Sophisticated logic, creative problem-solving, competitive exam level (top-tier for grade)
+🎓 DIFFICULTY DISCIPLINE (Relative to Grades 9-10):
+- Level 1: Basic concepts, simple calculations, obvious patterns (accessible to all)
+- Level 2: Multi-step problems, common relationships, straightforward logic
+- Level 3: Moderate problem-solving, inference, pattern analysis (grade-appropriate challenge)
+- Level 4: Complex reasoning, abstract thinking, multi-variable problems (above-average)
+- Level 5: Advanced concepts, sophisticated logic, creative problem-solving (top-tier for grade)
 
-CRITICAL GUIDELINES FOR HIGH SCHOOL:
-- Use more sophisticated vocabulary and concepts appropriate for 14-18 year olds
-- Questions can involve more complex multi-step reasoning (3-5 steps)
-- Use scenarios relevant to teenagers: academics, career planning, technology, social situations, current affairs
-- Include more abstract thinking challenges
-- Can reference real-world applications and career contexts
-- Questions should prepare students for competitive entrance exams
-- Keep questions text-based - describe all information verbally
+CRITICAL GUIDELINES FOR GRADES 9-10:
+- Use vocabulary appropriate for 14-16 year olds (not too simple, not too advanced)
+- Questions should be challenging but NOT frustrating
+- Use relatable scenarios: school life, sports, technology, social situations, simple real-world problems
+- AVOID: highly technical terms, complex business concepts, advanced mathematics beyond basic algebra
+- Keep question text CLEAR and CONCISE (2-4 sentences max)
+- Use concrete examples with some abstract elements
+- Numbers should be manageable: basic algebra, simple equations, mental-math friendly
+- DO NOT reference competitive exams (JEE, NEET, etc.) - students are not at that level yet
 
-📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (High School Level - Use Diverse Topics):
+📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (Grades 9-10 Level - Use Diverse Topics):
 
-**Advanced Algebra:**
-- Quadratic equations (factorization, formula, discriminant)
-- Simultaneous equations (two variables, substitution, elimination)
-- Polynomials and algebraic expressions
-- Inequalities and absolute values
-- Functions and their properties (domain, range)
-- Indices and surds
-- Logarithms (basic properties)
+**Arithmetic & Number System:**
+- Integers, fractions, decimals (all operations)
+- LCM & HCF (finding and applications)
+- Divisibility rules and remainders
+- Percentage (increase/decrease, applications)
+- Ratio and proportion (direct, inverse)
+- Profit, loss, discount (basic commercial math)
+- Simple and compound interest (basic formulas)
 
-**Statistics & Probability:**
-- Mean, median, mode, range (including grouped data described in text)
-- Probability of events (independent, dependent)
-- Permutations and combinations (basic)
-- Expected value and outcomes
-- Data analysis from text descriptions
-- Statistical reasoning and inference
-- Probability distributions (basic)
+**Basic Algebra:**
+- Linear equations (one variable)
+- Simple simultaneous equations (two variables)
+- Basic algebraic expressions and simplification
+- Simple identities: (a+b)², (a-b)², a²-b²
+- Word problems leading to equations
+- Basic quadratic equations (simple factorization)
 
-**Geometry & Mensuration (Text-Based):**
-- Coordinate geometry (distance, midpoint, slope - described verbally)
-- Area and perimeter (complex shapes described in words)
-- Volume and surface area (3D shapes described in text)
-- Geometric properties and theorems
-- Circles (properties described verbally)
-- Triangles (similarity, congruence, Pythagoras)
-- Spatial visualization through text descriptions
+**Time, Speed & Distance:**
+- Average speed calculations
+- Basic train problems (length, crossing)
+- Simple relative motion
+- Time-work problems (basic efficiency)
 
-**Advanced Arithmetic:**
-- Percentage (complex applications, successive changes)
-- Ratio and proportion (advanced problems, mixtures)
-- Profit, loss, discount (business scenarios, markup)
-- Compound interest (multiple periods, continuous compounding)
-- Time, speed, distance (relative motion, average speed)
-- Averages (weighted, combined)
-- Allegations and mixtures
+**Data Interpretation (Text-Based):**
+- Mean, median, mode (ungrouped data described in text)
+- Simple data analysis from text descriptions
+- Basic probability (coins, dice, cards)
+- Percentage calculations from data
 
-**Number Theory:**
-- Prime numbers and factorization
-- HCF and LCM (advanced applications)
-- Divisibility and remainders
-- Modular arithmetic
-- Number properties and patterns
-- Digital roots and digit sums
-
-**Data Sufficiency:**
-- Analyzing given information (provided as text)
-- Determining adequacy of data
-- Logical deduction from statements
-- Combining multiple data points
+**Geometry (Text-Based):**
+- Basic properties of triangles, quadrilaterals
+- Perimeter and area (simple shapes described in words)
+- Volume and surface area (basic 3D shapes in text)
+- Pythagoras theorem applications
+- Basic coordinate geometry (distance, midpoint)
 
 **VARIETY REQUIREMENT:** Rotate through these topics to ensure diverse question types. Don't use the same topic more than twice in a row.
 
-🧠 LOGICAL REASONING CONCEPTS (High School Level - Text-Based):
+🧠 LOGICAL REASONING CONCEPTS (Grades 9-10 Level - Text-Based):
 
-**Syllogisms & Deductive Logic:**
-- Categorical syllogisms (All A are B, Some B are C, No A are C)
-- Conditional reasoning (If-then statements, modus ponens, modus tollens)
-- Contrapositive and inverse relationships
-- Logical equivalence and negation
-- Multi-premise arguments and conclusions
-- Venn diagram reasoning (described in text)
+**Basic Logic:**
+- Simple syllogisms (All A are B, Some B are C)
+- Conditional statements (If-then)
+- Basic deductive reasoning
+- Simple analogies and relationships
 
 **Pattern Recognition:**
-- Number series (arithmetic, geometric, Fibonacci, mixed)
-- Letter series and coding-decoding
-- Analogies (A:B::C:? with complex relationships)
-- Classification (odd one out with reasoning)
-- Sequences described in text
-- Rule identification and application
+- Number series (arithmetic, geometric, simple patterns)
+- Letter series and basic coding
+- Analogies (A:B::C:? with clear relationships)
+- Classification (odd one out)
 
-**Critical Reasoning:**
-- Assumption identification (hidden premises)
-- Strengthening and weakening arguments
-- Inference drawing (must be true, could be true)
+**Critical Thinking:**
+- Drawing simple conclusions
+- Identifying assumptions
 - Cause and effect relationships
-- Logical fallacies (ad hominem, false dichotomy, etc.)
-- Paradox resolution
+- Basic argument evaluation
 
-**Analytical Reasoning:**
-- Seating arrangements (linear, circular - described in text)
-- Blood relations and family trees
-- Direction sense and distance
-- Ranking and ordering
-- Puzzle solving (logic grids described verbally)
-- Scheduling and sequencing
+**VARIETY REQUIREMENT:** Mix different types of logical reasoning. Alternate between deductive, pattern-based, and analytical reasoning.
 
-**Statement Analysis:**
-- Conclusions from statements
-- Logical consistency checking
-- Necessary vs sufficient conditions
-- Implications and inferences
-- Argument evaluation
-- Logical validity vs soundness
+📚 VERBAL REASONING CONCEPTS (Grades 9-10 Level):
 
-**VARIETY REQUIREMENT:** Mix different types of logical reasoning. Alternate between deductive, inductive, and analytical reasoning.
+**Vocabulary & Relationships:**
+- Synonyms and antonyms (grade-appropriate vocabulary)
+- Analogies (clear relationships: part-whole, cause-effect, etc.)
+- Word associations
+- Contextual vocabulary
 
-📚 VERBAL REASONING CONCEPTS (High School Level):
+**Reading & Comprehension:**
+- Main idea identification
+- Simple inference
+- Fact vs opinion
+- Supporting details
 
-**Vocabulary & Word Relationships:**
-- Synonyms and antonyms (advanced vocabulary)
-- Analogies (complex relationships: part-whole, cause-effect, degree, etc.)
-- Word associations and semantic relationships
-- Contextual vocabulary (words in sentences)
-- Idioms, phrases, and expressions
-- Etymology and word roots
-
-**Reading Comprehension:**
-- Main idea and central theme identification
-- Inference and implication (reading between lines)
-- Author's tone, purpose, and perspective
-- Fact vs opinion distinction
-- Supporting details and evidence
-- Critical reading and analysis
-- Passage-based reasoning
-
-**CRITICAL FOR PASSAGE-BASED QUESTIONS:**
-If generating reading comprehension questions with passages, you MUST include the complete passage text within the question itself.
-Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT HERE]\n\nQuestion: [Your question about the passage]"
-DO NOT say "Passage here" or reference external passages - include the actual passage text in the question field.
-Alternatively, focus on vocabulary, analogies, and logic-based verbal questions instead of passage comprehension.
-
-**Sentence Completion:**
-- Context clues and logical flow
-- Vocabulary in context
-- Coherence and cohesion
-- Transition words and connectors
-- Parallel structure
-- Semantic consistency
-
-**Verbal Logic:**
-- Statement and assumptions
-- Conclusions from passages
-- Strengthening/weakening arguments
-- Paradox resolution
-- Critical analysis of arguments
-- Logical consistency in text
-
-**Language Skills:**
-- Grammar and usage (advanced)
-- Sentence correction and improvement
-- Paragraph organization and sequencing
-- Logical flow and coherence
-- Error identification
-- Style and clarity
-
-**CRITICAL FOR GRAMMAR/SENTENCE CORRECTION QUESTIONS:**
-- For "identify the error" questions: Provide 4 DIFFERENT sentences as options, ask which one is incorrect
-- For "correct the sentence" questions: Provide 1 incorrect sentence in the question, and 4 different corrected versions as options
-- DO NOT include the sentence to identify in the question AND repeat it in the options
-- Example GOOD: "Which sentence is grammatically incorrect?" with 4 different sentences as options
-- Example BAD: "Identify the incorrect sentence: 'He don't like football'" with the same sentence in options
-
-**VARIETY REQUIREMENT:** Rotate through vocabulary, comprehension, and logic-based verbal questions. Use diverse topics and contexts.
+**VARIETY REQUIREMENT:** Mix vocabulary, analogies, and comprehension-based questions.
 
 🎨 SPATIAL REASONING CONCEPTS (High School Level - TEXT-ONLY):
 
@@ -505,94 +587,41 @@ Alternatively, focus on vocabulary, analogies, and logic-based verbal questions 
 
 **VARIETY REQUIREMENT:** Mix numerical, algebraic, and abstract patterns. Vary the complexity and number of terms given.
 
-🎯 COMPETITIVE EXAM ALIGNMENT (High School):
-
-**JEE Main/Advanced Style:**
-- Multi-concept integration (combining algebra, geometry, arithmetic)
-- Application-based problems (real-world contexts)
-- Time-efficient solving techniques (shortcuts, elimination)
-- Conceptual understanding over memorization
-- Multi-step problem solving
-- All concepts described in text
-
-**NEET Style:**
-- Logical reasoning for scientific concepts
-- Data interpretation for experiments (described in text)
-- Analytical thinking in scientific contexts
-- Pattern recognition in data
-- Quantitative aptitude for calculations
-- Scientific reasoning
-
-**CAT/Management Style:**
-- Data interpretation and analysis (data provided as text)
-- Logical reasoning puzzles (arrangements, selections described verbally)
-- Quantitative aptitude (arithmetic, algebra, geometry)
-- Verbal ability and reading comprehension
-- Time management (quick solving)
-- Approximation and estimation
-
-**CLAT/Law Style:**
-- Legal reasoning patterns (principles and facts)
-- Logical deduction (syllogisms, arguments)
-- Critical reasoning (assumptions, inferences)
-- Analytical reasoning (puzzles described in text)
-- Reading comprehension (passages) - MUST include full passage text in question
-- Argument evaluation
-
-**SAT Style:**
-- Evidence-based reading (passage analysis) - MUST include full passage text in question
-- Problem-solving and data analysis
-- Heart of algebra (linear equations, systems)
-- Passport to advanced math (quadratics, functions)
-- Additional topics (geometry described verbally)
-- Text-based problem solving
-
-**CRITICAL REMINDER FOR ALL PASSAGE-BASED QUESTIONS:**
-When generating reading comprehension or passage analysis questions:
-1. Include the COMPLETE passage text within the question field
-2. Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT]\n\nQuestion: [Your question]"
-3. DO NOT say "Passage here" or reference external passages
-4. The passage must be self-contained in the question text
-
 🔄 SUBTAG ROTATION ENFORCEMENT:
 - NEVER use the same subtag consecutively
 - Distribute subtags evenly across the question set
 - Each subtag must appear at least once in every 6-question block
-- Rotate strategically through all 6 subtags to maintain engagement and comprehensive assessment
+- Rotate through: numerical_reasoning → logical_reasoning → verbal_reasoning → spatial_reasoning → data_interpretation → pattern_recognition
 
-🚫 TEXT + LOGIC REPETITION PREVENTION:
-- NEVER reuse similar scenarios or contexts within the same test session
-- NEVER reuse similar mathematical patterns or sequences
-- NEVER reuse similar logical structures or argument forms
-- Change domains completely: if one is academic, next should be business/technology/social/etc.
-- Vary numerical scales significantly: if one uses percentages, next uses ratios or absolute numbers
-- Use different data types: percentages, fractions, decimals, scientific notation, etc.
-- Avoid common question templates - create original problem structures
+🚫 REPETITION PREVENTION:
+- NEVER reuse similar scenarios
+- NEVER reuse similar numerical patterns
+- NEVER reuse similar logical structures
+- Change contexts completely between questions
+- Vary numerical values by at least 50%
+- Use different measurement units and subjects
 
-VARIETY REQUIREMENTS FOR HIGH SCHOOL:
-- Use DIVERSE scenarios: academics, business, science, technology, social situations, current events, etc.
-- Vary the contexts: different professions, situations, real-world applications, industries
-- Change numerical values and scales significantly between questions
-- Use different types of data: percentages, ratios, statistics, probabilities, rates, etc.
-- Create original problems - avoid repeating similar patterns or structures
-- Reference diverse fields: STEM, humanities, commerce, arts, sports, technology
+VARIETY REQUIREMENTS FOR GRADES 9-10:
+- Use DIVERSE scenarios: school, technology, sports, nature, social situations, simple real-world problems
+- Use DIVERSE math topics: rotate through arithmetic, algebra, geometry, data interpretation, time-speed-distance
+- Vary the subjects: different objects, people, situations, locations
+- Change numerical values significantly between questions
+- Use different measurement units and contexts
+- Create original contexts - avoid repeating similar situations
 
 📊 ANALYTICS-SAFE DIFFICULTY PATHS:
-- Questions must have clear, unambiguous correct answers for accurate IRT modeling
-- Difficulty progression should be measurable and consistent across subtags
-- Each question must reliably discriminate between ability levels for precise scoring
-- Avoid cultural bias or region-specific knowledge that could skew analytics
-- Ensure distractors follow predictable patterns for psychometric analysis
-- Questions should support adaptive difficulty adjustment algorithms
+- Questions must have clear, unambiguous correct answers
+- Difficulty progression should be measurable and consistent
+- Each question must reliably discriminate between ability levels
+- Avoid trick questions or ambiguous wording
+- Ensure distractors are plausible but clearly incorrect
 
-🎯 STREAM/PROGRAM RECOMMENDATION READINESS:
-- Questions should reveal specific career aptitudes for post-12th decisions
-- Numerical + Data Interpretation (High) → Engineering, Medicine, Data Science, Finance
-- Verbal + Logical (High) → Law, Journalism, Management, Social Sciences
-- Spatial + Pattern Recognition (High) → Architecture, Design, Computer Science
-- Balanced High Performance → Research, Consulting, Entrepreneurship
-- Results should guide college major selection and career path decisions
-- Questions should align with competitive exam patterns (JEE, NEET, CAT, CLAT, SAT, etc.)`,
+🎯 STREAM RECOMMENDATION READINESS:
+- Questions should reveal aptitude patterns for Science/Commerce/Arts streams
+- Numerical + Data Interpretation → Science/Commerce indicators
+- Verbal + Logical → Arts/Humanities indicators
+- Spatial + Pattern Recognition → Design/Engineering indicators
+- Results should guide stream selection after 10th grade`,
 
   higher_secondary: `You are creating aptitude test questions for HIGHER SECONDARY / COLLEGE students (grades 11-12+, ages 16-22).
 

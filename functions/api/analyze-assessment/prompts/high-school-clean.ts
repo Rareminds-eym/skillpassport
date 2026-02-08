@@ -71,7 +71,15 @@ export function buildHighSchoolPrompt(assessmentData: AssessmentData, answersHas
     ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
     : '';
 
-  return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
+  // Extract actual grade from student context
+  const studentGrade = assessmentData.studentContext?.rawGrade || assessmentData.studentContext?.grade;
+  const gradeInfo = studentGrade ? ` The student is currently in grade ${studentGrade}.` : '';
+
+  return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.${gradeInfo}
+
+**IMPORTANT - AGE-APPROPRIATE GUIDANCE:**
+- For grades 9-10: Focus on stream selection (Science/Commerce/Arts), foundational skills, and exploration. Avoid specific college programs.
+- For grades 11-12: Include specific college programs, entrance exams (JEE, NEET, CLAT), and detailed career paths.
 
 ## 🔥 CRITICAL: USE REAL-TIME JOB MARKET DATA
 
@@ -98,6 +106,7 @@ export function buildHighSchoolPrompt(assessmentData: AssessmentData, answersHas
 ## STUDENT ASSESSMENT DATA
 
 ### Session ID: ${answersHash}
+${studentGrade ? `### Student Grade: ${studentGrade}` : ''}
 
 ### Interest Explorer (RIASEC):
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
