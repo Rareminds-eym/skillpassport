@@ -232,6 +232,7 @@ const AssessmentTestPage: React.FC = () => {
   const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
   const shouldShowAllOptions = window.location.hostname === 'skillpassport.pages.dev';
   const shouldFilterByGrade = window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' || "dev.skillpassport.pages.dev"
     window.location.hostname === 'skilldevelopment.rareminds.in';
 
   // Student grade info
