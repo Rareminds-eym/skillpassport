@@ -165,11 +165,8 @@ const AssessmentTest = () => {
     // Fetch student's grade from database (either from student.grade or from school_classes.grade)
     useEffect(() => {
         const fetchStudentGrade = async () => {
-            console.log('Fetching student grade for user:', user?.id, user?.email);
-            console.log('shouldFilterByGrade:', shouldFilterByGrade);
 
             if (!user?.id) {
-                console.log('No user id, skipping grade fetch');
                 setLoadingStudentGrade(false);
                 return;
             }
@@ -182,7 +179,6 @@ const AssessmentTest = () => {
                     .eq('user_id', user.id)
                     .maybeSingle();
 
-                console.log('Student by user_id:', student, error);
 
                 // If not found by user_id, try by email
                 if (!student && user.email) {
@@ -193,13 +189,10 @@ const AssessmentTest = () => {
                         .maybeSingle();
                     student = result.data;
                     error = result.error;
-                    console.log('Student by email:', student, error);
                 }
 
                 if (error) {
-                    console.error('Error fetching student grade:', error);
                 } else if (student) {
-                    console.log('Student grade data found:', student);
 
                     // Store complete profile data for missing field analysis
                     setProfileData(student);
@@ -209,14 +202,12 @@ const AssessmentTest = () => {
 
                     // Check if student is a college student (using centralized utility)
                     const isCollege = checkIsCollegeStudent(student);
-                    console.log('Is college student:', isCollege);
                     setIsCollegeStudent(isCollege);
 
                     // Set program name if available (BBA, BCA, BSC, etc.)
                     // Priority: program.name > program.code > course_name
                     const programName = student.program?.name || student.program?.code || student.course_name;
                     if (programName) {
-                        console.log('Student program:', programName);
                         setStudentProgram(programName);
                     }
 
@@ -225,7 +216,6 @@ const AssessmentTest = () => {
                         setGradeStartDate(student.grade_start_date);
                         const months = calculateMonthsInGrade(student.grade_start_date);
                         setMonthsInGrade(months);
-                        console.log('Grade start date:', student.grade_start_date, 'Months in grade:', months);
                     } else if (student.school_classes?.academic_year) {
                         // Fallback: estimate from academic year (e.g., "2024-2025" -> started June 2024)
                         const academicYear = student.school_classes.academic_year;
@@ -236,21 +226,17 @@ const AssessmentTest = () => {
                             const estimatedStartDate = `${startYear}-06-01`;
                             const months = calculateMonthsInGrade(estimatedStartDate);
                             setMonthsInGrade(months);
-                            console.log('Estimated from academic year:', academicYear, 'Months in grade:', months);
                         }
                     }
 
                     // Use student.grade first, if not available use grade from school_classes
                     const effectiveGrade = student.grade || student.school_classes?.grade;
-                    console.log('Effective grade:', effectiveGrade);
 
                     setStudentGrade(effectiveGrade);
                     setStudentSchoolClassId(student.school_class_id);
                 } else {
-                    console.log('No student found for this user');
                 }
             } catch (err) {
-                console.error('Error fetching student grade:', err);
             } finally {
                 setLoadingStudentGrade(false);
             }
@@ -268,7 +254,6 @@ const AssessmentTest = () => {
         gradeLevel: getAdaptiveGradeLevelValue(),
         studentCourse: studentProgram || null, // Pass student's course for college students
         onTestComplete: (testResults) => {
-            console.log('✅ Adaptive aptitude test completed:', testResults);
             // Store results in answers for final submission
             setAnswers(prev => ({
                 ...prev,
@@ -278,7 +263,6 @@ const AssessmentTest = () => {
             setShowSectionComplete(true);
         },
         onError: (err) => {
-            console.error('❌ Adaptive aptitude test error:', err);
             setError(`Adaptive test error: ${err}`);
         },
     });
@@ -289,9 +273,7 @@ const AssessmentTest = () => {
             if (adaptiveAptitude.session?.id && currentAttempt?.id) {
                 try {
                     await assessmentService.updateAttemptAdaptiveSession(currentAttempt.id, adaptiveAptitude.session.id);
-                    console.log('✅ Linked adaptive session to assessment attempt:', adaptiveAptitude.session.id);
                 } catch (linkErr) {
-                    console.warn('Could not link adaptive session to attempt:', linkErr.message);
                 }
             }
         };
@@ -301,7 +283,6 @@ const AssessmentTest = () => {
     // Debug: Track when adaptive question changes
     useEffect(() => {
         if (adaptiveAptitude.currentQuestion) {
-            console.log('🔄 [AssessmentTest] Adaptive question changed:', {
                 questionId: adaptiveAptitude.currentQuestion.id,
                 questionText: adaptiveAptitude.currentQuestion.text?.substring(0, 50),
                 questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
@@ -342,7 +323,6 @@ const AssessmentTest = () => {
         });
 
         setAnswers(filledAnswers);
-        console.log('Test Mode: Auto-filled', Object.keys(filledAnswers).length, 'answers');
     };
 
     // Skip to Aptitude section (section 5) - fills first 4 sections and jumps to aptitude
@@ -381,7 +361,6 @@ const AssessmentTest = () => {
             setShowSectionIntro(true);
             setShowSectionComplete(false);
         }
-        console.log('Test Mode: Skipped to Aptitude section, filled', Object.keys(filledAnswers).length, 'answers');
     };
 
     // Skip to Knowledge section (section 6) - fills first 5 sections and jumps to knowledge
@@ -420,7 +399,6 @@ const AssessmentTest = () => {
             setShowSectionIntro(true);
             setShowSectionComplete(false);
         }
-        console.log('Test Mode: Skipped to Knowledge section, filled', Object.keys(filledAnswers).length, 'answers');
     };
 
     // Skip to last section for quick testing
@@ -440,7 +418,6 @@ const AssessmentTest = () => {
         setQuestionsError(null);
         try {
             const allQuestions = await assessmentService.fetchAllQuestions(streamId, gradeLevel);
-            console.log('Questions loaded from database:', allQuestions);
 
             // Check if any questions were loaded
             const totalQuestions = Object.values(allQuestions || {}).reduce(
@@ -452,21 +429,18 @@ const AssessmentTest = () => {
             const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel);
 
             if (totalQuestions === 0 && !usesAIQuestions) {
-                console.warn(`No questions found for grade level: ${gradeLevel}`);
                 setQuestionsError(`No assessment questions available for this grade level (${gradeLevel}). Please contact support or try a different grade level.`);
                 setUseDatabase(false);
                 return null;
             }
 
             if (totalQuestions === 0 && usesAIQuestions) {
-                console.log(`Grade level ${gradeLevel} uses AI-powered personalized questions`);
             }
 
             setDbQuestions(allQuestions);
             setUseDatabase(totalQuestions > 0);
             return allQuestions;
         } catch (err) {
-            console.error('Failed to load questions from database:', err);
             // For AI-powered grade levels, don't show error - they can proceed
             const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel);
             if (!usesAIQuestions) {
@@ -516,7 +490,6 @@ const AssessmentTest = () => {
 
                     const existingAttempt = await checkInProgressAttempt();
                     if (existingAttempt) {
-                        console.log('Found in-progress attempt:', existingAttempt);
 
                         // Check if user has actually answered any questions
                         const answeredCount = Object.keys(existingAttempt.restoredResponses || {}).length;
@@ -531,11 +504,9 @@ const AssessmentTest = () => {
                             setShowStreamSelection(false);
                         } else {
                             // No real progress - abandon the empty attempt and start fresh
-                            console.log('Empty attempt found, abandoning and starting fresh');
                             try {
                                 await assessmentService.abandonAttempt(existingAttempt.id);
                             } catch (err) {
-                                console.error('Error abandoning empty attempt:', err);
                             }
                             setShowGradeSelection(true);
                         }
@@ -548,10 +519,8 @@ const AssessmentTest = () => {
                     setShowGradeSelection(true);
                 } else {
                     // User logged in but no student record found yet, wait
-                    console.log('Waiting for student record to load...');
                 }
             } catch (err) {
-                console.error('Error checking for existing attempt:', err);
                 setShowGradeSelection(true);
             } finally {
                 setCheckingExistingAttempt(false);
@@ -584,7 +553,6 @@ const AssessmentTest = () => {
 
             // Restore previous answers
             if (pendingAttempt.restoredResponses) {
-                console.log('Restoring answers:', Object.keys(pendingAttempt.restoredResponses).length, 'answers');
                 setAnswers(pendingAttempt.restoredResponses);
             }
 
@@ -592,7 +560,6 @@ const AssessmentTest = () => {
             const sectionIdx = pendingAttempt.current_section_index ?? 0;
             const questionIdx = pendingAttempt.current_question_index ?? 0;
 
-            console.log('Resuming at section:', sectionIdx, 'question:', questionIdx);
 
             setCurrentSectionIndex(sectionIdx);
             setCurrentQuestionIndex(questionIdx);
@@ -602,16 +569,13 @@ const AssessmentTest = () => {
 
             // Check if there's an adaptive aptitude session to resume
             if (pendingAttempt.adaptive_aptitude_session_id) {
-                console.log('🔄 Found linked adaptive aptitude session:', pendingAttempt.adaptive_aptitude_session_id);
                 try {
                     await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
-                    console.log('✅ Adaptive aptitude session resumed');
                     adaptiveSessionResumed = true;
                     // Reset the per-question timer for resumed adaptive test
                     setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
                     setAdaptiveQuestionStartTime(Date.now());
                 } catch (adaptiveErr) {
-                    console.warn('Could not resume adaptive session:', adaptiveErr.message);
                     // Continue anyway - the adaptive section will start fresh if needed
                 }
             }
@@ -624,7 +588,6 @@ const AssessmentTest = () => {
             } else {
                 // Show section intro for adaptive section that couldn't be resumed
                 // This allows the user to start the adaptive test fresh
-                console.log('📋 Showing section intro for adaptive section (session not resumed)');
                 setShowSectionIntro(true);
             }
             setShowSectionComplete(false);
@@ -635,17 +598,14 @@ const AssessmentTest = () => {
 
             // Restore timer for timed sections (aptitude, knowledge)
             if (pendingAttempt.timer_remaining !== null && pendingAttempt.timer_remaining !== undefined) {
-                console.log('Restoring timer:', pendingAttempt.timer_remaining, 'seconds remaining');
                 setTimeRemaining(pendingAttempt.timer_remaining);
             }
 
             // Restore elapsed time for non-timed sections
             if (pendingAttempt.elapsed_time !== null && pendingAttempt.elapsed_time !== undefined) {
-                console.log('Restoring elapsed time:', pendingAttempt.elapsed_time, 'seconds');
                 setElapsedTime(pendingAttempt.elapsed_time);
             }
         } catch (err) {
-            console.error('Error resuming assessment:', err);
             setShowStreamSelection(true);
         } finally {
             setQuestionsLoading(false);
@@ -658,7 +618,6 @@ const AssessmentTest = () => {
             try {
                 await assessmentService.abandonAttempt(pendingAttempt.id);
             } catch (err) {
-                console.error('Error abandoning attempt:', err);
             }
         }
         setPendingAttempt(null);
@@ -696,7 +655,6 @@ const AssessmentTest = () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
             // Support 'after10', 'higher_secondary', 'after12' and 'college' grade levels
             if ((gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
-                console.log('🔄 loadAIQuestions effect triggered:', {
                     gradeLevel,
                     studentStream,
                     studentId: studentId || 'NOT SET',
@@ -706,12 +664,10 @@ const AssessmentTest = () => {
 
                 setAiQuestionsLoading(true);
                 try {
-                    console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, studentStream, 'studentId:', studentId || 'not set yet');
                     
                     // For college students, pass their actual course for knowledge questions
                     const studentCourse = (gradeLevel === 'college' && studentProgram) ? studentProgram : null;
                     if (studentCourse) {
-                        console.log(`🎓 College student detected - using course: ${studentCourse} for knowledge questions`);
                     }
                     
                     // Pass studentId, attemptId, and course for save/resume functionality
@@ -725,7 +681,6 @@ const AssessmentTest = () => {
 
                     // Validate that we got questions
                     if (!questions || (!questions.aptitude && !questions.knowledge)) {
-                        console.warn('⚠️ No AI questions returned, retrying in 2 seconds...');
                         // Retry once after a delay
                         await new Promise(resolve => setTimeout(resolve, 2000));
                         const retryQuestions = await loadCareerAssessmentQuestions(
@@ -740,12 +695,10 @@ const AssessmentTest = () => {
                         setAiQuestions(questions);
                     }
 
-                    console.log('✅ AI questions loaded:', {
                         aptitude: questions?.aptitude?.length || 0,
                         knowledge: questions?.knowledge?.length || 0
                     });
                 } catch (error) {
-                    console.error('❌ Failed to load AI questions:', error);
                     // Set empty state so UI doesn't hang
                     setAiQuestions({ aptitude: [], knowledge: [] });
                 }
@@ -768,30 +721,23 @@ const AssessmentTest = () => {
         if (gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') {
             if (sectionId === 'aptitude') {
                 if (aiQuestionsLoading) {
-                    console.log('⏳ AI aptitude questions still loading...');
                     return []; // Return empty while loading
                 }
                 if (aiQuestions.aptitude?.length > 0) {
-                    console.log('✅ Using AI-generated aptitude questions:', aiQuestions.aptitude.length);
                     return aiQuestions.aptitude.map(normalizeAIQuestion);
                 }
-                console.log('⚠️ No AI aptitude questions available yet');
                 return []; // Wait for AI questions
             }
             if (sectionId === 'knowledge') {
                 if (aiQuestionsLoading) {
-                    console.log('⏳ AI knowledge questions still loading...');
                     return []; // Return empty while loading
                 }
                 if (aiQuestions.knowledge?.length > 0) {
-                    console.log('✅ Using AI-generated knowledge questions:', aiQuestions.knowledge.length);
                     return aiQuestions.knowledge.map(normalizeAIQuestion);
                 }
                 // If knowledge is explicitly an empty array (failed to load), show error
                 if (Array.isArray(aiQuestions.knowledge) && aiQuestions.knowledge.length === 0) {
-                    console.error('❌ Knowledge questions failed to load');
                 }
-                console.log('⚠️ No AI knowledge questions available yet');
                 return []; // Wait for AI questions
             }
         }
@@ -1305,7 +1251,6 @@ const AssessmentTest = () => {
     // Handle adaptive timer expiry - auto-submit or skip
     useEffect(() => {
         if (currentSection?.isAdaptive && adaptiveQuestionTimer === 0 && adaptiveAptitude.currentQuestion && !adaptiveAptitude.submitting) {
-            console.log('⏰ [AssessmentTest] Adaptive timer expired, auto-submitting...');
 
             // If student selected an answer, submit it
             // If no answer selected, submit a random answer (or skip)
@@ -1324,7 +1269,6 @@ const AssessmentTest = () => {
                         setShowSectionComplete(true);
                     }
                 } catch (err) {
-                    console.error('Error auto-submitting on timer expiry:', err);
                 }
             })();
         }
@@ -1335,10 +1279,8 @@ const AssessmentTest = () => {
         if (useDatabase && currentAttempt?.id && !showSectionIntro && !showSectionComplete) {
             const saveProgress = setInterval(() => {
                 if (currentSection?.isTimed && timeRemaining !== null) {
-                    console.log('Auto-saving timer:', timeRemaining);
                     updateProgress(currentSectionIndex, currentQuestionIndex, sectionTimings, timeRemaining, null);
                 } else if (!currentSection?.isTimed && elapsedTime > 0) {
-                    console.log('Auto-saving elapsed time:', elapsedTime);
                     updateProgress(currentSectionIndex, currentQuestionIndex, sectionTimings, null, elapsedTime);
                 }
             }, 30000); // Save every 30 seconds
@@ -1353,7 +1295,6 @@ const AssessmentTest = () => {
             if (useDatabase && currentAttempt?.id) {
                 const timerToSave = currentSection?.isTimed ? timeRemaining : null;
                 const elapsedToSave = !currentSection?.isTimed ? elapsedTime : null;
-                console.log('Saving progress on page unload - timer:', timerToSave, 'elapsed:', elapsedToSave);
             }
         };
 
@@ -1377,14 +1318,11 @@ const AssessmentTest = () => {
 
             if (studentRecordId) {
                 try {
-                    console.log('Creating assessment attempt with studentRecordId:', studentRecordId);
                     await startAssessment(streamId, 'middle');
                     setUseDatabase(true);
                 } catch (err) {
-                    console.log('Could not create database attempt:', err.message);
                 }
             } else {
-                console.log('No studentRecordId available, skipping database attempt creation');
             }
 
             setShowSectionIntro(true);
@@ -1398,14 +1336,11 @@ const AssessmentTest = () => {
 
             if (studentRecordId) {
                 try {
-                    console.log('Creating assessment attempt with studentRecordId:', studentRecordId);
                     await startAssessment(streamId, 'highschool');
                     setUseDatabase(true);
                 } catch (err) {
-                    console.log('Could not create database attempt:', err.message);
                 }
             } else {
-                console.log('No studentRecordId available, skipping database attempt creation');
             }
 
             setShowSectionIntro(true);
@@ -1421,21 +1356,17 @@ const AssessmentTest = () => {
 
             if (studentRecordId) {
                 try {
-                    console.log('Creating assessment attempt for after10 with studentRecordId:', studentRecordId);
                     await startAssessment(streamId, level);
                     setUseDatabase(true);
                 } catch (err) {
-                    console.log('Could not create database attempt:', err.message);
                 }
             } else {
-                console.log('No studentRecordId available, skipping database attempt creation');
             }
 
             setShowSectionIntro(true);
         } else if (level === 'higher_secondary') {
             // For higher secondary (11th/12th), students have already chosen their stream
             // Show category selection (Science/Commerce/Arts) to get their stream
-            console.log('📚 Higher Secondary student - showing category selection for stream');
             setShowCategorySelection(true);
         } else if (level === 'college') {
             // For college students (UG/PG), use 'college' stream for program-based assessment
@@ -1443,7 +1374,6 @@ const AssessmentTest = () => {
 
             // Use 'college' stream for college students (program-based assessment)
             const streamId = 'college';
-            console.log(`🎓 College student - using 'college' stream for program-based assessment`);
             setStudentStream(streamId);
 
             // Load questions and create attempt for college
@@ -1454,7 +1384,6 @@ const AssessmentTest = () => {
                     await startAssessment(streamId, 'college');
                     setUseDatabase(true);
                 } catch (err) {
-                    console.log('Could not create database attempt:', err.message);
                 }
             }
 
@@ -1474,7 +1403,6 @@ const AssessmentTest = () => {
 
         // Determine the effective grade level for database
         const effectiveGradeLevel = gradeLevel || 'after12';
-        console.log('📚 handleCategorySelect - gradeLevel:', gradeLevel, 'effectiveGradeLevel:', effectiveGradeLevel, 'categoryId:', categoryId);
 
         // For after12 and higher_secondary students: Skip program selection, go directly to assessment
         if (effectiveGradeLevel === 'after12' || effectiveGradeLevel === 'higher_secondary') {
@@ -1485,7 +1413,6 @@ const AssessmentTest = () => {
             const streamId = categoryId;
             setStudentStream(streamId);
 
-            console.log(`✅ ${effectiveGradeLevel} student selected stream: ${categoryId}`);
 
             // Load questions from database
             await loadQuestionsFromDatabase(streamId, effectiveGradeLevel);
@@ -1497,9 +1424,7 @@ const AssessmentTest = () => {
                 try {
                     await startAssessment(streamId, effectiveGradeLevel);
                     setUseDatabase(true);
-                    console.log('Assessment attempt created in database for category:', categoryId, 'gradeLevel:', effectiveGradeLevel);
                 } catch (err) {
-                    console.log('Could not create database attempt, using localStorage mode:', err.message);
                 }
             }
         } else {
@@ -1525,9 +1450,7 @@ const AssessmentTest = () => {
             try {
                 await startAssessment(streamId, gradeLevel || 'after12');
                 setUseDatabase(true);
-                console.log('Assessment attempt created in database');
             } catch (err) {
-                console.log('Could not create database attempt, using localStorage mode:', err.message);
                 // Still use database for questions even if attempt creation fails
             }
         }
@@ -1537,7 +1460,6 @@ const AssessmentTest = () => {
         // Check if this is the adaptive aptitude section
         if (currentSection?.isAdaptive) {
             // Initialize the adaptive aptitude test inline
-            console.log('🚀 Starting adaptive aptitude section inline');
             try {
                 // Check for existing session first
                 const hasExisting = await adaptiveAptitude.checkAndResumeSession();
@@ -1551,7 +1473,6 @@ const AssessmentTest = () => {
                 // Reset the per-question timer
                 setAdaptiveQuestionTimer(ADAPTIVE_QUESTION_TIME_LIMIT);
             } catch (err) {
-                console.error('Failed to start adaptive test:', err);
                 setError(`Failed to start adaptive test: ${err.message}`);
             }
             setShowSectionIntro(false);
@@ -1600,7 +1521,6 @@ const AssessmentTest = () => {
         // Handle adaptive aptitude section differently
         if (currentSection?.isAdaptive) {
             if (adaptiveAptitudeAnswer && adaptiveAptitude.currentQuestion) {
-                console.log('🎯 [AssessmentTest] Submitting adaptive answer:', {
                     answer: adaptiveAptitudeAnswer,
                     questionId: adaptiveAptitude.currentQuestion?.id,
                     questionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
@@ -1613,7 +1533,6 @@ const AssessmentTest = () => {
                     // Submit the answer to the adaptive engine (only pass the answer, hook handles timing)
                     const result = await adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer);
 
-                    console.log('✅ [AssessmentTest] Answer submitted, result:', {
                         isCorrect: result?.isCorrect,
                         testComplete: result?.testComplete,
                         phaseComplete: result?.phaseComplete,
@@ -1621,7 +1540,6 @@ const AssessmentTest = () => {
                     });
 
                     // Log the updated state after submission
-                    console.log('📊 [AssessmentTest] State after submission:', {
                         newQuestionId: adaptiveAptitude.currentQuestion?.id,
                         newQuestionText: adaptiveAptitude.currentQuestion?.text?.substring(0, 50),
                         newQuestionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
@@ -1637,15 +1555,12 @@ const AssessmentTest = () => {
 
                     // Check if test is complete (check the result, not the state which may not have updated yet)
                     if (result?.testComplete) {
-                        console.log('🏁 [AssessmentTest] Adaptive test complete!');
                         setShowSectionComplete(true);
                     }
                 } catch (err) {
-                    console.error('❌ [AssessmentTest] Error submitting adaptive answer:', err);
                     setError(`Failed to submit answer: ${err.message}`);
                 }
             } else {
-                console.warn('⚠️ [AssessmentTest] Cannot submit - no answer or question:', {
                     hasAnswer: !!adaptiveAptitudeAnswer,
                     hasQuestion: !!adaptiveAptitude.currentQuestion,
                 });
@@ -1672,11 +1587,9 @@ const AssessmentTest = () => {
                     );
 
                     if (!result?.success) {
-                        console.error('Failed to save progress:', result?.error);
                         // Still proceed but log the error
                     }
                 } catch (err) {
-                    console.error('Error saving progress:', err);
                 } finally {
                     setIsSaving(false);
                 }
@@ -1719,7 +1632,6 @@ const AssessmentTest = () => {
             const bigFive = analysisResults?.bigFive || {};
             // Big Five scores are 0-5 scale
 
-            console.log('📊 Generating recommendations with:', {
                 riasecScores,
                 riasecTopThree,
                 aptitudeScores,
@@ -1855,11 +1767,9 @@ const AssessmentTest = () => {
                 .sort((a, b) => b.matchScore - a.matchScore)
                 .slice(0, 5);
 
-            console.log('✅ Top recommendations:', topRecommendations);
             return topRecommendations;
 
         } catch (error) {
-            console.error('Error generating course recommendations:', error);
             return [];
         }
     };
@@ -1960,7 +1870,6 @@ const AssessmentTest = () => {
                     // Fetch AI aptitude questions if needed
                     const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
                     if (aptitudeAnswerKeys.length > 0) {
-                        console.log('📡 Fetching AI aptitude questions from database...');
 
                         // Get student record ID
                         const { data: student } = await supabase
@@ -1986,7 +1895,6 @@ const AssessmentTest = () => {
                                     correctAnswer: q.correct_answer,
                                     subtype: q.subtype || q.category || 'verbal'
                                 }));
-                                console.log(`✅ Loaded ${questionBanks.aptitudeQuestions.length} AI aptitude questions`);
                             }
                         }
                     }
@@ -1994,7 +1902,6 @@ const AssessmentTest = () => {
                     // Fetch AI knowledge questions if needed
                     const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
                     if (knowledgeAnswerKeys.length > 0) {
-                        console.log('📡 Fetching AI knowledge questions from database...');
 
                         // Get student record ID
                         const { data: student } = await supabase
@@ -2020,12 +1927,10 @@ const AssessmentTest = () => {
                                     correctAnswer: q.correct_answer
                                 }));
                                 questionBanks.streamKnowledgeQuestions = { [studentStream]: aiKnowledgeQuestions };
-                                console.log(`✅ Loaded ${aiKnowledgeQuestions.length} AI knowledge questions`);
                             }
                         }
                     }
                 } catch (fetchErr) {
-                    console.warn('Could not fetch AI questions:', fetchErr.message);
                     // Continue with questions from sections (fallback)
                 }
             }
@@ -2034,7 +1939,6 @@ const AssessmentTest = () => {
             // Include adaptive aptitude results in the answers if available (for high school)
             const answersWithAdaptive = { ...answers };
             if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
-                console.log('📊 Including adaptive aptitude results in analysis:', answers.adaptive_aptitude_results);
                 // The adaptive_aptitude_results contains detailed aptitude breakdown
                 // This will be used by the AI to enhance career recommendations
             }
@@ -2047,11 +1951,9 @@ const AssessmentTest = () => {
                 degreeLevel: null // Will be extracted from rawGrade in service
             };
 
-            console.log('📚 Student Context for AI:', studentContext);
 
             // 🔧 CRITICAL FIX: Extract adaptive results to pass as parameter
             const adaptiveResultsForAI = answers.adaptive_aptitude_results || null;
-            console.log('📊 Adaptive results for AI:', adaptiveResultsForAI ? 'Available' : 'Not available');
 
             // Analyze with Gemini AI - this is required, no fallback
             const geminiResults = await analyzeAssessmentWithGemini(
@@ -2069,7 +1971,6 @@ const AssessmentTest = () => {
                 // Enhance results with adaptive aptitude data for high school students
                 if (gradeLevel === 'highschool' && answers.adaptive_aptitude_results) {
                     const adaptiveResults = answers.adaptive_aptitude_results;
-                    console.log('🎯 Enhancing results with adaptive aptitude data');
 
                     // Add adaptive aptitude insights to the results
                     geminiResults.adaptiveAptitude = {
@@ -2108,41 +2009,30 @@ const AssessmentTest = () => {
                         }
                     }
 
-                    console.log('✅ Adaptive aptitude data integrated into results');
                 }
 
                 // Add course recommendations for after12 students
                 if (gradeLevel === 'after12') {
                     geminiResults.courseRecommendations = generateCourseRecommendations(geminiResults);
-                    console.log('✅ Course recommendations generated:', geminiResults.courseRecommendations);
                 }
 
                 // Save AI-analyzed results to localStorage (backward compatibility)
                 localStorage.setItem('assessment_gemini_results', JSON.stringify(geminiResults));
-                console.log('Gemini analysis complete:', geminiResults);
 
                 // ===========================================
                 // STEP-BY-STEP SUBMISSION WITH VALIDATION
                 // ===========================================
-                console.log('');
-                console.log('🚀 ========== SUBMISSION FLOW START ==========');
 
                 let submissionSuccess = true;
                 let submissionError = null;
                 let finalAttemptId = null;
 
                 // STEP 1: Get or lookup attempt ID
-                console.log('📋 STEP 1: Getting attempt ID');
-                console.log('   currentAttempt?.id:', currentAttempt?.id);
-                console.log('   studentRecordId:', studentRecordId);
-                console.log('   user?.id:', user?.id);
 
                 let attemptId = currentAttempt?.id;
 
                 if (!attemptId && (studentRecordId || user?.id)) {
-                    console.log('   ⏳ No currentAttempt, fetching latest attempt from database...');
                     const lookupStudentId = studentRecordId || user.id;
-                    console.log('   📝 Looking up with student_id:', lookupStudentId);
 
                     try {
                         const { data: latestAttempt, error: lookupError } = await supabase
@@ -2155,26 +2045,20 @@ const AssessmentTest = () => {
                             .single();
 
                         if (lookupError) {
-                            console.log('   ⚠️ Lookup query error:', lookupError.message);
                         }
 
                         if (latestAttempt) {
                             attemptId = latestAttempt.id;
-                            console.log('   ✅ STEP 1 SUCCESS: Found attempt:', attemptId);
                         } else {
-                            console.log('   ❌ STEP 1 FAILED: No in-progress attempt found');
                             submissionSuccess = false;
                             submissionError = 'No assessment attempt found. Please start a new assessment.';
                         }
                     } catch (fetchErr) {
-                        console.log('   ❌ STEP 1 FAILED:', fetchErr.message);
                         submissionSuccess = false;
                         submissionError = 'Failed to find assessment attempt: ' + fetchErr.message;
                     }
                 } else if (attemptId) {
-                    console.log('   ✅ STEP 1 SUCCESS: Using existing attempt:', attemptId);
                 } else {
-                    console.log('   ❌ STEP 1 FAILED: No valid student ID available');
                     submissionSuccess = false;
                     submissionError = 'No student record found. Please log in again.';
                 }
@@ -2183,21 +2067,14 @@ const AssessmentTest = () => {
 
                 // STEP 2: Save results to database (only if Step 1 succeeded)
                 if (submissionSuccess && attemptId) {
-                    console.log('');
-                    console.log('📋 STEP 2: Saving results to database');
-                    console.log('   attemptId:', attemptId);
 
                     try {
                         let dbResults = null;
 
                         if (currentAttempt?.id) {
-                            console.log('   ⏳ Saving via completeAssessment hook...');
                             dbResults = await completeAssessment(geminiResults, finalTimings);
-                            console.log('   ✅ STEP 2 SUCCESS: Saved via hook:', dbResults?.id || 'OK');
                         } else {
                             const studentIdForDb = studentRecordId || user.id;
-                            console.log('   ⏳ Saving via direct API call...');
-                            console.log('   📝 studentIdForDb:', studentIdForDb);
 
                             dbResults = await assessmentService.completeAttempt(
                                 attemptId,
@@ -2207,7 +2084,6 @@ const AssessmentTest = () => {
                                 geminiResults,
                                 finalTimings
                             );
-                            console.log('   ✅ STEP 2 SUCCESS: Saved directly:', dbResults?.id || 'OK');
                         }
 
                         if (!dbResults) {
@@ -2215,8 +2091,6 @@ const AssessmentTest = () => {
                         }
 
                     } catch (dbErr) {
-                        console.error('   ❌ STEP 2 FAILED:', dbErr);
-                        console.error('   Error details:', {
                             message: dbErr.message,
                             code: dbErr.code,
                             details: dbErr.details,
@@ -2228,21 +2102,10 @@ const AssessmentTest = () => {
                 }
 
                 // STEP 3: Navigate to results page (only if all steps succeeded)
-                console.log('');
-                console.log('📋 STEP 3: Navigation decision');
-                console.log('   submissionSuccess:', submissionSuccess);
-                console.log('   finalAttemptId:', finalAttemptId);
-                console.log('   submissionError:', submissionError);
 
                 if (submissionSuccess && finalAttemptId) {
-                    console.log('   ✅ STEP 3: ALL STEPS SUCCESSFUL - Navigating to results page');
-                    console.log('🎉 ========== SUBMISSION FLOW COMPLETE ==========');
-                    console.log('');
                     navigate(`/student/assessment/result?attemptId=${finalAttemptId}`);
                 } else {
-                    console.log('   ❌ STEP 3: SUBMISSION FAILED - Showing error to user');
-                    console.log('❌ ========== SUBMISSION FLOW FAILED ==========');
-                    console.log('');
                     setIsSubmitting(false);
                     setError(submissionError || 'Assessment submission failed. Please try again.');
                     // Do NOT navigate - stay on page and show error
@@ -2252,8 +2115,6 @@ const AssessmentTest = () => {
                 throw new Error('AI analysis returned no results. Please check your API key configuration.');
             }
         } catch (err) {
-            console.error('❌ Error submitting assessment:', err);
-            console.log('❌ ========== SUBMISSION FLOW ERROR ==========');
             setIsSubmitting(false);
             setError(err.message || 'Failed to analyze assessment with AI. Please try again.');
         }
@@ -2271,7 +2132,7 @@ const AssessmentTest = () => {
     const isCurrentAnswered = (() => {
         // For adaptive sections, check if an answer is selected
         if (currentSection?.isAdaptive) {
-            return adaptiveAptitudeAnswer !== null;
+            return adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
         }
 
         // Check if questionId is valid
@@ -2280,8 +2141,15 @@ const AssessmentTest = () => {
         }
 
         const answer = answers[questionId];
-
-        // No answer selected
+        
+        // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
+        // CRITICAL: Check this BEFORE the general empty check to ensure strict validation
+        if (currentSection?.isAptitude || currentSection?.isKnowledge) {
+            // Answer must be a non-empty string (option value)
+            return typeof answer === 'string' && answer.trim().length > 0;
+        }
+        
+        // No answer selected for other question types
         if (answer === null || answer === undefined || answer === '') {
             return false;
         }
@@ -2302,7 +2170,6 @@ const AssessmentTest = () => {
         }
 
         // For MCQ and other question types, ensure answer is not empty
-        // This handles aptitude and knowledge sections
         return answer !== null && answer !== undefined && answer !== '';
     })();
 

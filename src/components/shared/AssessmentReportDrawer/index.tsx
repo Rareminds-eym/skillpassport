@@ -230,7 +230,17 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
 
     // Process passed data instead of fetching from database
     useEffect(() => {
-        if (!isOpen) return;
+        console.log('🎨 [AssessmentReportDrawer] useEffect triggered');
+        console.log('🎨 [AssessmentReportDrawer] isOpen:', isOpen);
+        console.log('🎨 [AssessmentReportDrawer] assessmentResult?.id:', assessmentResult?.id);
+        
+        if (!isOpen) {
+            console.log('🎨 [AssessmentReportDrawer] Drawer is closed, skipping processing');
+            return;
+        }
+        
+        console.log('🎨 [AssessmentReportDrawer] Starting data processing...');
+        console.log('🎨 [AssessmentReportDrawer] Setting loading to false');
         
         // Clear any previous errors when drawer opens
         setError(null);
@@ -455,6 +465,14 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
         }
 
         setLoading(false);
+        console.log('🎨 [AssessmentReportDrawer] Data processing complete, loading set to FALSE');
+        console.log('🎨 [AssessmentReportDrawer] Final state:', {
+            loading: false,
+            error,
+            careerTracksCount: careerTracks.length,
+            hasStudentInfo: !!studentInfo,
+            hasAssessmentData: !!assessmentData
+        });
     }, [isOpen, assessmentResult?.id, student?.id, student?.user_id]); // Only depend on essential IDs
 
     // Handle opening career track modal
@@ -888,8 +906,20 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
 
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto bg-gray-50 assessment-drawer-scrollbar" style={{ minHeight: '400px', maxHeight: 'calc(100vh - 120px)' }}>
+                        {(() => {
+                            console.log('🎨 [AssessmentReportDrawer] Render check - LOADER 2 STATUS');
+                            console.log('🎨 [AssessmentReportDrawer] loading:', loading);
+                            console.log('🎨 [AssessmentReportDrawer] recommendationsLoading:', recommendationsLoading);
+                            console.log('🎨 [AssessmentReportDrawer] error:', error);
+                            console.log('🎨 [AssessmentReportDrawer] careerTracks:', careerTracks?.length || 0);
+                            return null;
+                        })()}
                         {loading || recommendationsLoading ? (
                             <div className="flex items-center justify-center py-20">
+                                {(() => {
+                                    console.log('🎨 [AssessmentReportDrawer] LOADER 2 DISPLAYED - Generating report...');
+                                    return null;
+                                })()}
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                                 <span className="ml-4 text-gray-600 text-lg">Generating your report...</span>
                             </div>

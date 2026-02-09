@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Brain,
   TrendingUp,
+  Info,
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
@@ -647,24 +648,63 @@ const AdaptiveAptitudeTest = () => {
         </AnimatePresence>
 
         {/* Submit Button */}
-        <div className="flex justify-end">
-          <Button
-            onClick={handleSubmitAnswer}
-            disabled={!selectedAnswer || submitting}
-            className="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Submitting...
-              </>
-            ) : (
-              <>
-                Submit Answer
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </>
-            )}
-          </Button>
+        <div className="flex flex-col gap-3">
+          {/* Info message about no going back in adaptive test */}
+          <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 px-4 py-3 rounded-lg border border-amber-200">
+            <Info className="w-5 h-5 shrink-0 mt-0.5" />
+            <span>You cannot return to previous questions in this adaptive section, as each question is tailored to your performance.</span>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSubmitAnswer}
+              disabled={!selectedAnswer || submitting}
+              className="px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {(() => {
+                // Current question number (1-based)
+                const currentQuestionNumber = progress ? progress.questionsAnswered + 1 : 1;
+                const totalQuestions = progress?.estimatedTotalQuestions || 50;
+                const isLastQuestion = currentQuestionNumber === totalQuestions;
+                
+                // Debug logging
+                console.log('🔘 [AdaptiveTest] Button Logic:', {
+                  currentQuestionNumber,
+                  totalQuestions,
+                  questionsAnswered: progress?.questionsAnswered,
+                  isLastQuestion,
+                  submitting
+                });
+
+                if (submitting) {
+                  return (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  );
+                }
+                
+                if (isLastQuestion) {
+                  console.log('✅ [AdaptiveTest] Showing "Complete Section" (last question)');
+                  return (
+                    <>
+                      Complete Section
+                      <ChevronRight className="w-5 h-5 ml-2" />
+                    </>
+                  );
+                }
+                
+                console.log('➡️ [AdaptiveTest] Showing "Next"');
+                return (
+                  <>
+                    Next
+                    <ChevronRight className="w-5 h-5 ml-2" />
+                  </>
+                );
+              })()}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -232,6 +232,24 @@ export const useCollegeAdminMessages = ({
       messageText, 
       subject 
     }) => {
+      // Check if this exact message was just sent (within last 1 second)
+      const recentMessages = queryClient.getQueryData(['college-admin-messages', conversationId]) || [];
+      const isDuplicate = recentMessages.some(msg => {
+        const timeDiff = Date.now() - new Date(msg.created_at).getTime();
+        return msg.message_text === messageText && 
+               msg.sender_id === senderId && 
+               timeDiff < 1000; // Within 1 second
+      });
+      
+      if (isDuplicate) {
+        console.log('⚠️ Duplicate message detected, skipping send');
+        // Return the existing message instead of throwing error
+        return recentMessages.find(msg => 
+          msg.message_text === messageText && 
+          msg.sender_id === senderId
+        );
+      }
+      
       return await MessageService.sendMessage(
         conversationId,
         senderId,

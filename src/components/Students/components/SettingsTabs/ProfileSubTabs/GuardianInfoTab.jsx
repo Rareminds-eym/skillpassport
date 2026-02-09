@@ -1,8 +1,26 @@
 import React from "react";
 import { Shield, Save } from "lucide-react";
 import { Button } from "../../ui/button";
+import { useFormValidation } from "../../../../../hooks/useFormValidation";
+import FormField from "../FormField";
 
 const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+  const { validateSingleField, touchField, getFieldError } = useFormValidation();
+
+  const handleFieldChange = (field, value) => {
+    handleProfileChange(field, value);
+    if (field === 'guardianEmail') {
+      validateSingleField('email', value);
+    }
+  };
+
+  const handleFieldBlur = (field, value) => {
+    touchField(field);
+    if (field === 'guardianEmail') {
+      validateSingleField('email', value);
+    }
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -65,20 +83,16 @@ const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
         </div>
 
         {/* Guardian Email */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Guardian Email
-          </label>
-          <input
-            type="email"
-            value={profileData.guardianEmail}
-            onChange={(e) =>
-              handleProfileChange("guardianEmail", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            placeholder="Enter guardian email"
-          />
-        </div>
+        <FormField
+          label="Guardian Email"
+          name="guardianEmail"
+          type="email"
+          value={profileData.guardianEmail}
+          onChange={(name, value) => handleFieldChange(name, value)}
+          onBlur={handleFieldBlur}
+          error={getFieldError('email')}
+          placeholder="Enter guardian email"
+        />
       </div>
 
       {/* Save Button */}

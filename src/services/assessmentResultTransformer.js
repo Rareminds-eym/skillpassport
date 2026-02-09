@@ -192,128 +192,6 @@ export const transformGeminiAnalysis = (geminiAnalysis) => {
 };
 
 /**
- * Enrich career recommendations with additional data
- * Database: ["Software Engineer", "Data Scientist"]
- * PDF: [{title, matchScore, roles, skills, salary, ...}]
- */
-export const enrichCareerRecommendations = (simpleArray, riasecScores = {}) => {
-  if (!Array.isArray(simpleArray) || simpleArray.length === 0) {
-    return [];
-  }
-
-  // Career database with roles, skills, and salary info
-  const CAREER_DATABASE = {
-    'Software Engineer': {
-      roles: ['Backend Developer', 'Frontend Developer', 'Full Stack Developer', 'DevOps Engineer'],
-      skills: ['JavaScript', 'Python', 'React', 'Node.js', 'Git', 'SQL'],
-      salary: { min: 8, max: 25, currency: 'LPA' },
-      growthPotential: 'Excellent',
-      education: 'Bachelor\'s in Computer Science or related field',
-      riasecMatch: ['I', 'R', 'C']
-    },
-    'Data Scientist': {
-      roles: ['Data Analyst', 'ML Engineer', 'Business Intelligence Analyst', 'Research Scientist'],
-      skills: ['Python', 'R', 'SQL', 'Machine Learning', 'Statistics', 'Data Visualization'],
-      salary: { min: 10, max: 30, currency: 'LPA' },
-      growthPotential: 'Excellent',
-      education: 'Bachelor\'s/Master\'s in Data Science, Statistics, or Computer Science',
-      riasecMatch: ['I', 'C', 'R']
-    },
-    'UX Designer': {
-      roles: ['UI Designer', 'Product Designer', 'Interaction Designer', 'UX Researcher'],
-      skills: ['Figma', 'Adobe XD', 'User Research', 'Prototyping', 'Wireframing', 'Design Thinking'],
-      salary: { min: 6, max: 20, currency: 'LPA' },
-      growthPotential: 'High',
-      education: 'Bachelor\'s in Design, HCI, or related field',
-      riasecMatch: ['A', 'I', 'E']
-    },
-    'Marketing Manager': {
-      roles: ['Digital Marketing Manager', 'Brand Manager', 'Content Strategist', 'SEO Specialist'],
-      skills: ['Digital Marketing', 'SEO', 'Content Strategy', 'Analytics', 'Social Media', 'Communication'],
-      salary: { min: 7, max: 22, currency: 'LPA' },
-      growthPotential: 'High',
-      education: 'Bachelor\'s in Marketing, Business, or Communications',
-      riasecMatch: ['E', 'A', 'S']
-    },
-    'Financial Analyst': {
-      roles: ['Investment Analyst', 'Risk Analyst', 'Budget Analyst', 'Portfolio Manager'],
-      skills: ['Financial Modeling', 'Excel', 'SQL', 'Data Analysis', 'Accounting', 'Economics'],
-      salary: { min: 8, max: 25, currency: 'LPA' },
-      growthPotential: 'High',
-      education: 'Bachelor\'s in Finance, Economics, or Accounting',
-      riasecMatch: ['C', 'E', 'I']
-    },
-    'Teacher': {
-      roles: ['School Teacher', 'College Professor', 'Curriculum Developer', 'Education Consultant'],
-      skills: ['Communication', 'Curriculum Design', 'Classroom Management', 'Subject Expertise', 'Patience'],
-      salary: { min: 4, max: 15, currency: 'LPA' },
-      growthPotential: 'Medium',
-      education: 'Bachelor\'s in Education or subject-specific degree with B.Ed',
-      riasecMatch: ['S', 'A', 'I']
-    },
-    'Mechanical Engineer': {
-      roles: ['Design Engineer', 'Manufacturing Engineer', 'Quality Engineer', 'Project Engineer'],
-      skills: ['CAD', 'SolidWorks', 'Manufacturing', 'Thermodynamics', 'Materials Science', 'Problem Solving'],
-      salary: { min: 6, max: 18, currency: 'LPA' },
-      growthPotential: 'High',
-      education: 'Bachelor\'s in Mechanical Engineering',
-      riasecMatch: ['R', 'I', 'C']
-    },
-    'Nurse': {
-      roles: ['Registered Nurse', 'Clinical Nurse', 'Nurse Practitioner', 'Nursing Supervisor'],
-      skills: ['Patient Care', 'Medical Knowledge', 'Communication', 'Empathy', 'Critical Thinking'],
-      salary: { min: 3, max: 12, currency: 'LPA' },
-      growthPotential: 'Medium',
-      education: 'Bachelor\'s in Nursing (B.Sc Nursing)',
-      riasecMatch: ['S', 'I', 'R']
-    }
-  };
-
-  // Calculate match score based on RIASEC alignment
-  const calculateMatchScore = (careerRiasec, studentRiasec) => {
-    if (!careerRiasec || !studentRiasec || Object.keys(studentRiasec).length === 0) {
-      return 80; // Default score
-    }
-
-    let matchScore = 0;
-    careerRiasec.forEach((code, index) => {
-      const studentScore = studentRiasec[code] || 0;
-      const weight = 3 - index; // First match gets weight 3, second gets 2, third gets 1
-      matchScore += studentScore * weight;
-    });
-
-    // Normalize to 0-100 scale
-    const maxPossible = 20 * 6; // Assuming max score of 20 per RIASEC code
-    return Math.min(100, Math.round((matchScore / maxPossible) * 100) + 50);
-  };
-
-  return simpleArray.map((title, index) => {
-    const careerData = CAREER_DATABASE[title] || {
-      roles: [],
-      skills: [],
-      salary: null,
-      growthPotential: 'Medium',
-      education: 'Relevant degree required',
-      riasecMatch: []
-    };
-
-    const matchScore = calculateMatchScore(careerData.riasecMatch, riasecScores);
-
-    return {
-      title,
-      matchScore: matchScore - (index * 5), // Slight decrease for lower ranked careers
-      description: `${title} role aligns with your interests and skills.`,
-      roles: careerData.roles,
-      skills: careerData.skills,
-      salary: careerData.salary,
-      growthPotential: careerData.growthPotential,
-      education: careerData.education,
-      index
-    };
-  });
-};
-
-/**
  * Transform enriched degree programs
  * Uses new degree_programs column if available, otherwise enriches from career_fit
  */
@@ -560,21 +438,12 @@ export const transformAssessmentResults = (dbResults) => {
                dbResults.employability_score >= 60 ? 'Medium' : 'Developing'
       } : null,
 
-      // AI Analysis fields - may be null if not generated yet
+      // AI Analysis fields - MUST be null if not generated yet
+      // DO NOT generate fallback data - this causes incorrect recommendations
       overallSummary: null,
       careerFit: null,
       skillGap: null,
       roadmap: null,
-
-      // Enrich career recommendations if available
-      ...(dbResults.career_recommendations && dbResults.career_recommendations.length > 0 ? {
-        careerFit: {
-          clusters: enrichCareerRecommendations(
-            dbResults.career_recommendations,
-            dbResults.riasec_scores
-          )
-        }
-      } : {}),
 
       // Additional fields
       learningStyles: dbResults.learning_styles || [],
@@ -607,11 +476,8 @@ export const transformAssessmentResults = (dbResults) => {
   // Transform aptitude scores
   const aptitudeTransformed = transformAptitudeScores(dbResults.aptitude_scores);
 
-  // Enrich career recommendations
-  const enrichedCareers = enrichCareerRecommendations(
-    dbResults.career_recommendations,
-    dbResults.riasec_scores
-  );
+  // ✅ REMOVED: enrichCareerRecommendations - no fallback career generation
+  // Career recommendations MUST come from Gemini AI analysis only
 
   // Build transformed result object with ALL database columns
   const transformed = {
@@ -676,8 +542,9 @@ export const transformAssessmentResults = (dbResults) => {
     geminiResults: dbResults.gemini_results || null,
 
     // ===== CAREER FIT =====
-    careerFit: dbResults.career_fit || geminiTransformed.careerFit || 
-               (enrichedCareers.length > 0 ? { clusters: enrichedCareers } : null),
+    // ✅ CRITICAL: Only use AI-generated career fit, NO fallback generation
+    // If gemini_results is null, careerFit MUST be null to trigger error state
+    careerFit: dbResults.career_fit || geminiTransformed.careerFit || null,
 
     // ===== SKILL GAP =====
     skillGap: dbResults.skill_gap || geminiTransformed.skillGap,
@@ -803,7 +670,6 @@ export default {
   transformAssessmentResults,
   transformAptitudeScores,
   transformGeminiAnalysis,
-  enrichCareerRecommendations,
   validateTransformedResults,
   transformDegreePrograms,
   transformSkillGapEnriched,

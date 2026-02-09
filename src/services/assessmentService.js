@@ -354,35 +354,46 @@ export const saveAllResponses = async (attemptId, allResponses) => {
  */
 export const updateAttemptAdaptiveSession = async (attemptId, adaptiveSessionId) => {
   try {
-    console.log('🔗 [updateAttemptAdaptiveSession] Linking session to attempt:', {
+    console.log('🔗 [updateAttemptAdaptiveSession] Linking session to attempt via API:', {
       attemptId,
       adaptiveSessionId,
       timestamp: new Date().toISOString()
     });
 
-    const { data, error } = await supabase
-      .from('personal_assessment_attempts')
-      .update({
-        adaptive_aptitude_session_id: adaptiveSessionId,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', attemptId)
-      .select()
-      .single();
+    // Get auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
 
-    if (error) {
-      // Log but don't throw - this is a non-critical operation
-      console.warn('⚠️ [updateAttemptAdaptiveSession] Could not update adaptive session ID:', error.message);
-      console.warn('⚠️ [updateAttemptAdaptiveSession] Error details:', error);
+    if (!token) {
+      console.warn('⚠️ [updateAttemptAdaptiveSession] No auth token available');
       return null;
     }
 
+    // Call the API endpoint to link session (uses admin client to bypass RLS)
+    const response = await fetch('/api/adaptive-session/link-to-attempt', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        attemptId,
+        sessionId: adaptiveSessionId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.warn('⚠️ [updateAttemptAdaptiveSession] API call failed:', errorData);
+      return null;
+    }
+
+    const result = await response.json();
     console.log('✅ [updateAttemptAdaptiveSession] Successfully linked session to attempt');
-    console.log('✅ [updateAttemptAdaptiveSession] Updated attempt data:', data);
-    return data;
+    console.log('✅ [updateAttemptAdaptiveSession] Result:', result);
+    return result.attempt;
   } catch (err) {
-    // Catch any unexpected errors - column might not exist yet
-    console.warn('⚠️ [updateAttemptAdaptiveSession] Error updating adaptive session ID:', err.message);
+    console.warn('⚠️ [updateAttemptAdaptiveSession] Error calling API:', err.message);
     console.warn('⚠️ [updateAttemptAdaptiveSession] Error details:', err);
     return null;
   }
@@ -593,8 +604,38 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   }
 
   const adaptiveAptitudeSessionId = attemptData?.adaptive_aptitude_session_id || null;
-  console.log('📊 [completeAttempt] Adaptive Session ID:', adaptiveAptitudeSessionId);
-  console.log('📊 [completeAttempt] Will be included in dataToInsert:', !!adaptiveAptitudeSessionId);
+  console.log('📊 [completeAttempt] Adaptive Session ID from attempt:', adaptiveAptitudeSessionId);
+  
+  // CRITICAL FIX: Verify that adaptive results exist before using the session ID
+  // The foreign key constraint requires that adaptive_aptitude_results.session_id exists
+  let validatedAdaptiveSessionId = null;
+  
+  if (adaptiveAptitudeSessionId) {
+    console.log('🔍 [completeAttempt] Verifying adaptive results exist for session:', adaptiveAptitudeSessionId);
+    
+    const { data: adaptiveResults, error: adaptiveError } = await supabase
+      .from('adaptive_aptitude_results')
+      .select('session_id')
+      .eq('session_id', adaptiveAptitudeSessionId)
+      .maybeSingle();
+    
+    if (adaptiveError) {
+      console.error('❌ [completeAttempt] Error checking adaptive results:', adaptiveError);
+      console.error('❌ [completeAttempt] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
+    } else if (adaptiveResults) {
+      console.log('✅ [completeAttempt] Adaptive results exist - safe to save session ID');
+      validatedAdaptiveSessionId = adaptiveAptitudeSessionId;
+    } else {
+      console.warn('⚠️ [completeAttempt] Adaptive session ID exists in attempt, but NO results found in adaptive_aptitude_results table');
+      console.warn('⚠️ [completeAttempt] This means the adaptive test was started but not completed');
+      console.warn('⚠️ [completeAttempt] Will NOT save adaptive_aptitude_session_id to avoid foreign key constraint error');
+    }
+  } else {
+    console.log('ℹ️ [completeAttempt] No adaptive session ID - student did not take adaptive test');
+  }
+  
+  console.log('📊 [completeAttempt] Validated Adaptive Session ID:', validatedAdaptiveSessionId);
+  console.log('📊 [completeAttempt] Will be included in dataToInsert:', !!validatedAdaptiveSessionId);
 
   // Debug: Log the actual data being extracted
   console.log('🔍 Extracting data from geminiResults:');
@@ -787,40 +828,17 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   }
   console.log('📝 === END EXTRACTED SCORES ===');
 
-  // 🔧 Get adaptive aptitude session ID from attempt's all_responses if it exists
-  let adaptiveSessionId = null;
-  try {
-    const { data: attemptData } = await supabase
-      .from('personal_assessment_attempts')
-      .select('all_responses')
-      .eq('id', attemptId)
-      .single();
-    
-    // Extract session ID from all_responses.adaptive_aptitude_results.sessionId
-    const adaptiveResults = attemptData?.all_responses?.adaptive_aptitude_results;
-    adaptiveSessionId = adaptiveResults?.sessionId || adaptiveResults?.session_id || null;
-    
-    if (adaptiveSessionId) {
-      console.log('📊 Found adaptive aptitude session ID:', adaptiveSessionId);
-    } else {
-      console.log('📊 No adaptive aptitude session found in attempt');
-    }
-  } catch (err) {
-    console.warn('Could not fetch adaptive session ID:', err);
-  }
-
   const dataToInsert = {
     attempt_id: attemptId,
     student_id: studentId,
     grade_level: gradeLevel,
     stream_id: streamId,
     status: 'completed',
-    adaptive_aptitude_session_id: adaptiveAptitudeSessionId,
+    adaptive_aptitude_session_id: validatedAdaptiveSessionId, // Only save if verified to exist
     riasec_scores: riasecScores,
     riasec_code: riasecCode,
     aptitude_scores: aptitudeScores,
     aptitude_overall: aptitudeOverall,
-    adaptive_aptitude_session_id: adaptiveSessionId, // 🔧 CRITICAL FIX: Link adaptive session
     bigfive_scores: bigfiveScores,
     work_values_scores: workValuesScores,
     employability_scores: employabilityScores,
