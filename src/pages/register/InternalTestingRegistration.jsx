@@ -40,12 +40,6 @@ const validateForm = (form) => {
   if (!form.phone?.trim() || !phoneRegex.test(form.phone.replace(/\D/g, ''))) {
     errors.phone = 'Please enter a valid 10-digit phone number';
   }
-  if (!form.institutionType?.trim()) {
-    errors.institutionType = 'Please select institution type';
-  }
-  if (!form.grade?.trim()) {
-    errors.grade = 'Please select your grade';
-  }
   if (!form.password?.trim() || form.password.length < 6) {
     errors.password = 'Password must be at least 6 characters';
   }
@@ -182,9 +176,8 @@ export default function InternalTestingRegistration() {
     name: '', 
     email: '', 
     phone: '', 
-    institutionType: '', // 'school' or 'college'
-    grade: '', 
-    password: '' 
+    password: '',
+    institutionType: 'school' // Default to school
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -192,25 +185,8 @@ export default function InternalTestingRegistration() {
   const [registrationError, setRegistrationError] = useState(null);
   const [redirecting, setRedirecting] = useState(false);
 
-  const schoolGrades = ['Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
-  const collegeYears = ['Year 1', 'Year 2', 'Year 3', 'Year 4', 'Year 5'];
-  
-  // Get grades based on institution type
-  const availableGrades = form.institutionType === 'school' ? schoolGrades : 
-                          form.institutionType === 'college' ? collegeYears : [];
-
   const updateField = useCallback((field, value) => {
-    setForm(prev => {
-      const updated = { ...prev, [field]: value };
-      
-      // Reset grade when institution type changes
-      if (field === 'institutionType') {
-        updated.grade = '';
-      }
-      
-      return updated;
-    });
-    
+    setForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
     setRegistrationError(null);
   }, [errors]);
@@ -256,7 +232,6 @@ export default function InternalTestingRegistration() {
         contact_number: form.phone.replace(/\D/g, ''),
         school_id: isCollege ? null : 'internal-testing-school',
         university_college_id: isCollege ? 'internal-testing-college' : null,
-        grade: form.grade,
         institution: 'Rareminds',
         institution_type: form.institutionType, // Store institution type
         approval_status: 'approved',
@@ -459,10 +434,6 @@ export default function InternalTestingRegistration() {
                     <span className="text-sm sm:text-base text-gray-600 font-medium">Email</span>
                     <span className="text-sm sm:text-base text-gray-900 font-bold break-words">{form.email}</span>
                   </div>
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 py-3 sm:py-4 border-b-2 border-gray-100">
-                    <span className="text-sm sm:text-base text-gray-600 font-medium">Grade</span>
-                    <span className="text-sm sm:text-base text-gray-900 font-bold">{form.grade}</span>
-                  </div>
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-4 py-3 sm:py-4">
                     <span className="text-sm sm:text-base text-gray-600 font-medium">Institution</span>
                     <span className="text-sm sm:text-base text-gray-900 font-bold break-words">{form.institution}</span>
@@ -556,26 +527,6 @@ export default function InternalTestingRegistration() {
                 placeholder="10-digit mobile number"
                 error={errors.phone}
               />
-
-              <SelectField
-                label="Institution Type"
-                icon={GraduationCap}
-                value={form.institutionType}
-                onChange={(e) => updateField('institutionType', e.target.value)}
-                options={['school', 'college']}
-                error={errors.institutionType}
-              />
-
-              {form.institutionType && (
-                <SelectField
-                  label={form.institutionType === 'school' ? 'Grade' : 'Year'}
-                  icon={GraduationCap}
-                  value={form.grade}
-                  onChange={(e) => updateField('grade', e.target.value)}
-                  options={availableGrades}
-                  error={errors.grade}
-                />
-              )}
 
               <InputField
                 label="Password"
