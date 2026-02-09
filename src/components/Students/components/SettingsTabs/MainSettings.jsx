@@ -499,12 +499,23 @@ const MainSettings = () => {
               console.warn('Could not refresh recent updates:', err)
             );
           }
-        },
+        } catch (refreshError) {
+          console.warn('Could not refresh recent updates:', refreshError);
+        }
+      } else {
+        throw new Error(result.error || 'Failed to update education');
       }
-    );
-
-    setIsSaving(false);
-    return result;
+    } catch (error) {
+      console.error('❌ Error saving education:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save education",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Soft Skills management functions
@@ -529,10 +540,17 @@ const MainSettings = () => {
       } else {
         throw new Error(result.error || 'Failed to update soft skills');
       }
-    );
-
-    setIsSaving(false);
-    return result;
+    } catch (error) {
+      console.error('❌ Error saving soft skills:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save soft skills",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Technical Skills management functions
@@ -566,10 +584,17 @@ const MainSettings = () => {
       } else {
         throw new Error(result.error || 'Failed to update technical skills');
       }
-    );
-
-    setIsSaving(false);
-    return result;
+    } catch (error) {
+      console.error('❌ Error saving technical skills:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save technical skills",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Experience management functions
@@ -600,10 +625,17 @@ const MainSettings = () => {
       } else {
         throw new Error(result.error || 'Failed to update experience');
       }
-    );
-
-    setIsSaving(false);
-    return result;
+    } catch (error) {
+      console.error('❌ Error saving experience:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save experience",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Certificates management functions
@@ -652,10 +684,17 @@ const MainSettings = () => {
       } else {
         throw new Error(result.error || 'Failed to update projects');
       }
-    );
-
-    setIsSaving(false);
-    return result;
+    } catch (error) {
+      console.error('❌ Error saving projects:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save projects",
+        variant: "destructive",
+      });
+      return { success: false, error: error.message };
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Technical Skills toggle enabled handler
@@ -934,129 +973,6 @@ const MainSettings = () => {
   const handleSaveInstitutionDetails = async () => {
     setIsSaving(true);
     
-    const institutionFields = {
-      schoolId: profileData.schoolId,
-      collegeId: profileData.collegeId,
-      universityId: profileData.universityId,
-      departmentId: profileData.departmentId,
-      programId: profileData.programId,
-      programSectionId: profileData.programSectionId,
-      schoolClassId: profileData.schoolClassId,
-    };
-    
-    const dataToSave = { ...institutionFields };
-    
-    if (showCustomCollege && customCollegeName) {
-      dataToSave.college = customCollegeName;
-      dataToSave.collegeId = null;
-    }
-    
-    if (showCustomUniversity && customUniversityName) {
-      dataToSave.university = customUniversityName;
-      dataToSave.universityId = null;
-    }
-    
-    if (showCustomSchool && customSchoolName) {
-      dataToSave.college = customSchoolName;
-      dataToSave.schoolId = null;
-    }
-    
-    if (showCustomProgram && customProgramName) {
-      dataToSave.program = customProgramName;
-      dataToSave.programId = null;
-    }
-    
-    if (showCustomSemester && customSemesterName) {
-      dataToSave.section = customSemesterName;
-      dataToSave.programSectionId = null;
-    }
-    
-    if (showCustomSchoolClass && customSchoolClassName) {
-      dataToSave.section = customSchoolClassName;
-      dataToSave.schoolClassId = null;
-    }
-
-    // Check if at least one institution field has a value
-    const hasAnyValue = Object.values(dataToSave).some(val => 
-      val !== null && val !== undefined && val !== ''
-    );
-
-    if (!hasAnyValue) {
-      toast({
-        title: "Validation Error",
-        description: "Please select at least one institution detail before saving",
-        variant: "destructive",
-      });
-      setIsSaving(false);
-      return;
-    }
-
-    const result = await safeSave(
-      () => updateProfile(dataToSave),
-      {
-        section: 'institution',
-        action: 'update_institution_details',
-        data: dataToSave,
-        toast,
-        onSuccess: () => {
-          window.dispatchEvent(new CustomEvent('student_settings_updated', {
-            detail: { type: 'profile_updated', data: institutionFields }
-          }));
-          
-          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
-              console.warn('Could not refresh recent updates:', err)
-            );
-          }
-        },
-      }
-    );
-
-    setIsSaving(false);
-    return result;
-  };
-
-  // Academic Details Tab - save academic information
-  const handleSaveAcademicDetails = async () => {
-    setIsSaving(true);
-    
-    const academicFields = {
-      registrationNumber: profileData.registrationNumber,
-      enrollmentNumber: profileData.enrollmentNumber,
-      currentCgpa: profileData.currentCgpa,
-      grade: profileData.grade,
-      gradeStartDate: profileData.gradeStartDate,
-    };
-
-    const result = await safeSave(
-      () => updateProfile(academicFields),
-      {
-        section: 'academic',
-        action: 'update_academic_details',
-        validationFields: ['cgpa'],
-        data: academicFields,
-        toast,
-        onSuccess: () => {
-          window.dispatchEvent(new CustomEvent('student_settings_updated', {
-            detail: { type: 'profile_updated', data: academicFields }
-          }));
-          
-          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            refreshRecentUpdates().catch(err => 
-              console.warn('Could not refresh recent updates:', err)
-            );
-          }
-        },
-      }
-    );
-
-    setIsSaving(false);
-    return result;
-  };
-
-  // Institution Details Tab - save institution-related fields
-  const handleSaveInstitutionDetails = async () => {
-    setIsSaving(true);
     try {
       const dataToSave = { ...profileData };
       
@@ -1130,11 +1046,11 @@ const MainSettings = () => {
     setIsSaving(true);
     try {
       const academicFields = {
-        rollNumber: profileData.rollNumber,
         registrationNumber: profileData.registrationNumber,
-        yearOfStudy: profileData.yearOfStudy,
-        cgpa: profileData.cgpa,
-        percentage: profileData.percentage,
+        enrollmentNumber: profileData.enrollmentNumber,
+        currentCgpa: profileData.currentCgpa,
+        grade: profileData.grade,
+        gradeStartDate: profileData.gradeStartDate,
       };
       
       await updateProfile(academicFields);

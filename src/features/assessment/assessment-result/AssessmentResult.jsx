@@ -60,6 +60,9 @@ import { calculateStreamRecommendations } from './utils/streamMatchingEngine';
 // Import centralized utilities from assessment feature
 import { normalizeCourseRecommendations } from '../index';
 
+// Import Debug Panel for development
+import AssessmentDebugPanel from '../components/AssessmentDebugPanel';
+
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
 
@@ -585,7 +588,9 @@ const AssessmentResult = () => {
         validationWarnings,
         handleRetry,
         validateResults,
-        navigate
+        navigate,
+        attemptData,
+        resultData
     } = useAssessmentResults();
 
     // Determine if we should show program recommendations
@@ -2289,6 +2294,24 @@ const AssessmentResult = () => {
                     </DialogContent>
                 </Dialog>
             </div>
+
+            {/* Debug Panel - Only visible in development */}
+            <AssessmentDebugPanel
+                assessmentData={results?.all_responses || results?.raw_answers}
+                aiResponse={results?.gemini_results || results}
+                studentContext={{
+                    rawGrade: studentInfo?.grade,
+                    grade: studentInfo?.grade,
+                    programName: studentAcademicData?.program_name,
+                    degreeLevel: studentAcademicData?.degree_level,
+                }}
+                gradeLevel={gradeLevel}
+                studentStream={results?.stream_id}
+                adaptiveResults={results?.adaptive_aptitude_results}
+                timings={results?.timings || results?.section_timings}
+                attemptData={attemptData}
+                resultData={resultData}
+            />
 
         </>
     );

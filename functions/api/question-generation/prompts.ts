@@ -109,13 +109,20 @@ VERIFICATION: After generating, count your questions. You must have EXACTLY {{QU
 CRITICAL REQUIREMENT - 100% STREAM-RELATED QUESTIONS:
 This is for {{STREAM_NAME}} students. ALL questions MUST use {{STREAM_NAME}}-specific context, terminology, scenarios, and examples.
 
+⚠️ CRITICAL FOR SCIENCE STREAMS:
+- For PCM (Physics, Chemistry, Maths): ABSOLUTELY NO BIOLOGY QUESTIONS. Focus only on physics, chemistry, and mathematics.
+- For PCB (Physics, Chemistry, Biology): ABSOLUTELY NO ADVANCED MATHS QUESTIONS beyond basic arithmetic. Focus on physics, chemistry, and biology.
+- For PCMB: Balance questions across all four subjects equally.
+- For PCMS: Focus on physics, chemistry, maths, and computer science. NO BIOLOGY.
+
 {{STREAM_CONTEXT}}
 
 Question Requirements:
 1. All questions must be MCQ with exactly 4 options (except Clerical which has 2 options: "Same" or "Different")
 2. Each question must have exactly ONE correct answer
 3. Mix difficulty levels: 40% easy, 40% medium, 20% hard
-4. Each question must have exactly 4 unique options (A, B, C, D) - NO DUPLICATE OPTIONS ALLOWED
+4. For Science streams (PCM/PCB/PCMB/PCMS): Use 11th-12th grade difficulty - 30% medium, 50% hard, 20% very hard. Questions should challenge students preparing for competitive exams (JEE/NEET level).
+5. Each question must have exactly 4 unique options (A, B, C, D) - NO DUPLICATE OPTIONS ALLOWED
 5. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
 6. NO generic questions - every question must have {{STREAM_NAME}} context
 6. For Clerical Speed & Accuracy: Generate string comparison questions using {{STREAM_NAME}}-specific codes/IDs like "{{CLERICAL_EXAMPLE}}"

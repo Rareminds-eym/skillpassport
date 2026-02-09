@@ -42,7 +42,7 @@ export const useStudentMessageNotifications = ({
 
     // Enable audio after first user interaction
     const enableAudio = () => {
-      if (audioRef.current) {
+      if (audioRef.current && !audioEnabled) {
         // Play and immediately pause to prime the audio
         audioRef.current.play()
           .then(() => {
@@ -52,11 +52,9 @@ export const useStudentMessageNotifications = ({
           })
           .catch(() => {
             // Silent fail - audio will remain disabled
+            console.debug('Audio autoplay blocked - will enable on user interaction');
           });
       }
-      // Remove listeners after first interaction
-      document.removeEventListener('click', enableAudio);
-      document.removeEventListener('keydown', enableAudio);
     };
 
     // Listen for first user interaction
@@ -189,11 +187,12 @@ const showMessageToast = (message: Message, audio: HTMLAudioElement | null) => {
     }
   );
 
-  // Play notification sound
+  // Play notification sound (only if audio was enabled by user interaction)
   if (audio) {
     audio.currentTime = 0;
-    audio.play().catch(() => {
+    audio.play().catch((err) => {
       // Silently handle autoplay restrictions
+      console.debug('Audio playback blocked:', err.name);
     });
   }
 };
