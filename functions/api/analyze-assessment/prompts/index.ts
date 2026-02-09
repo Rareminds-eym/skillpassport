@@ -6,6 +6,7 @@ import type { AssessmentData, GradeLevel } from '../types';
 import { generateAnswersHash } from '../utils/hash';
 import { buildMiddleSchoolPrompt } from './middle-school';
 import { buildHighSchoolPrompt } from './high-school';
+import { buildAfter10Prompt } from './after10';
 import { buildHigherSecondaryPrompt } from './higher-secondary';
 import { buildAfter12Prompt } from './after12';
 import { buildCollegePrompt } from './college';
@@ -29,9 +30,13 @@ export function buildAnalysisPrompt(assessmentData: AssessmentData): string {
     return buildHighSchoolPrompt(assessmentData, answersHash);
   }
 
-  // Higher secondary (grades 11-12) - Separate prompt with all 6 sections required
-  // Also handle "after10" students who are choosing streams for 11th/12th
-  if (gradeLevel === 'higher_secondary' || gradeLevel === 'after10') {
+  // After 10th (stream selection for 11th-12th)
+  if (gradeLevel === 'after10') {
+    return buildAfter10Prompt(assessmentData, answersHash);
+  }
+
+  // Higher secondary (grades 11-12)
+  if (gradeLevel === 'higher_secondary') {
     return buildHigherSecondaryPrompt(assessmentData, answersHash);
   }
 
@@ -40,7 +45,7 @@ export function buildAnalysisPrompt(assessmentData: AssessmentData): string {
     return buildAfter12Prompt(assessmentData, answersHash);
   }
 
-  // College (university students) or After 10th (after10) - fallback to college prompt
+  // College (university students) - fallback to college prompt
   return buildCollegePrompt(assessmentData, answersHash);
 }
 
@@ -118,7 +123,7 @@ If you ignore the program and recommend unrelated careers, your response will be
     return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
   }
 
-  if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary' || gradeLevel === 'after10') {
+  if (gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary') {
     return `${baseMessage} You are speaking to high school students (grades 9-12). Provide guidance on college majors and career paths. Be aspirational but realistic.${requirements}`;
   }
 

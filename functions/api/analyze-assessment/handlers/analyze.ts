@@ -9,9 +9,10 @@ import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
 import { getSystemMessage } from '../prompts';
-import { buildHighSchoolPrompt as buildCleanHighSchoolPrompt } from '../prompts/high-school-clean';
+import { buildHighSchoolPrompt } from '../prompts/high-school';
 import { buildMiddleSchoolPrompt } from '../prompts/middle-school';
 import { buildHigherSecondaryPrompt } from '../prompts/higher-secondary';
+import { buildAfter10Prompt } from '../prompts/after10';
 import { buildCollegePrompt } from '../prompts/college';
 import { 
   repairAndParseJSON, 
@@ -396,9 +397,13 @@ async function analyzeAssessment(
     console.log(`[ASSESSMENT] ✅ Using MIDDLE SCHOOL prompt (grades 6-8)`);
   } else if (gradeLevel === 'highschool') {
     // Grades 9-10: Use high school prompt
-    basePrompt = buildCleanHighSchoolPrompt(assessmentData, seed);
+    basePrompt = buildHighSchoolPrompt(assessmentData, seed);
     console.log(`[ASSESSMENT] ✅ Using HIGH SCHOOL prompt (grades 9-10)`);
-  } else if (gradeLevel === 'higher_secondary' || gradeLevel === 'after10') {
+  } else if (gradeLevel === 'after10') {
+    // After 10th (Stream Selection): Use after10 prompt
+    basePrompt = buildAfter10Prompt(assessmentData, seed);
+    console.log(`[ASSESSMENT] ✅ Using AFTER 10TH prompt (stream selection for 11th-12th)`);
+  } else if (gradeLevel === 'higher_secondary') {
     // Grades 11-12: Use higher secondary prompt
     basePrompt = buildHigherSecondaryPrompt(assessmentData, seed);
     console.log(`[ASSESSMENT] ✅ Using HIGHER SECONDARY prompt (grades 11-12)`);
