@@ -22,6 +22,9 @@ import {
 // Import stream matching engine for After 10th students
 import { calculateStreamRecommendations } from '../features/assessment/assessment-result/utils/streamMatchingEngine';
 
+// Import Supabase client for fetching student data
+import { supabase } from '../lib/supabaseClient';
+
 // ============================================================================
 // PROGRESS TRACKING
 // ============================================================================

@@ -63,7 +63,11 @@ export async function generateAssessment(
         .replace(/\{\{LEVEL\}\}/g, level)
         .replace(/\{\{QUESTION_COUNT\}\}/g, questionCount.toString());
 
-    const systemPrompt = `You are an expert assessment creator for ${courseName}. Generate EXACTLY ${questionCount} questions. Generate ONLY valid JSON.`;
+    const systemPrompt = `You are an expert assessment creator for ${courseName}. 
+
+🎯 CRITICAL: You MUST generate EXACTLY ${questionCount} questions. This is a strict requirement.
+
+Before responding, verify you have EXACTLY ${questionCount} questions. Generate ONLY valid JSON with no markdown.`;
 
     // Use OpenRouter with automatic retry and fallback
     console.log(`🔑 Using OpenRouter with retry for ${questionCount} questions`);
@@ -133,7 +137,7 @@ export async function generateAssessment(
     console.log(`🔍 After validation: ${validQuestions.length}/${questions.length} valid questions (filtered: ${filteredCount})`);
     questions = validQuestions;
 
-    // Validate and fix questions
+    // Use sequential numeric IDs for consistency
     questions = questions.map((q: any, idx: number) => {
         // Add missing correct_answer (use first option as fallback)
         if (!q.correct_answer && q.options?.length > 0) {
@@ -154,8 +158,9 @@ export async function generateAssessment(
         }
 
         return {
-            id: generateUUID(),
             ...q,
+            id: idx + 1, // Sequential numeric ID
+            uuid: generateUUID(), // Keep UUID for database uniqueness
             course_name: courseName,
             level,
             created_at: new Date().toISOString()

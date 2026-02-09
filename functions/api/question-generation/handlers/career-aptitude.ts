@@ -136,8 +136,16 @@ export async function generateAptitudeQuestions(
         }
 
         const systemPrompt = isAfter10
-            ? `You are an expert educational assessment creator for 10th grade students. Generate EXACTLY ${batchTotal} questions total covering school subjects. Generate ONLY valid JSON.`
-            : `You are an expert psychometric assessment creator. Generate EXACTLY ${batchTotal} questions total. Generate ONLY valid JSON.`;
+            ? `You are an expert educational assessment creator for 10th grade students. 
+
+🎯 CRITICAL: You MUST generate EXACTLY ${batchTotal} questions total covering school subjects. This is a strict requirement.
+
+Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONLY valid JSON with no markdown.`
+            : `You are an expert psychometric assessment creator. 
+
+🎯 CRITICAL: You MUST generate EXACTLY ${batchTotal} questions total. This is a strict requirement.
+
+Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONLY valid JSON with no markdown.`;
 
         // Use OpenRouter with automatic retry and fallback
         // Calculate token limit: ~150 tokens per question + 500 buffer

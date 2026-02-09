@@ -676,9 +676,20 @@ export const useAssessmentResults = () => {
                     // takes priority and is set in loadResults() after this runs.
                     let derivedGradeLevel = 'after12'; // default
                     
-                    // Check if student is in college based on program degree level or college_id
+                    // Check if student is in college based on multiple indicators
                     const hasCollegeProgram = studentData.programs?.degree_level && 
                         ['undergraduate', 'postgraduate', 'diploma'].includes(studentData.programs.degree_level.toLowerCase());
+                    
+                    // Check if grade indicates postgraduate/college level
+                    const gradeStr = (studentData.grade || '').toLowerCase();
+                    const isCollegeGradeLevel = ['ug', 'pg', 'diploma', 'undergraduate', 'postgraduate'].some(term => 
+                        gradeStr.includes(term)
+                    );
+                    
+                    // Check if has college name but no college_id (data inconsistency)
+                    const hasCollegeName = studentData.college_school_name && 
+                        studentData.college_school_name !== '—' && 
+                        !studentData.school_id;
                     
                     if (studentData.school_id || studentData.schoolClassId) {
                         // School student - determine if middle or high school based on grade
@@ -695,8 +706,8 @@ export const useAssessmentResults = () => {
                             // If grade is not a number, default to after12 for school students
                             derivedGradeLevel = 'after12';
                         }
-                    } else if (studentData.college_id || hasCollegeProgram) {
-                        // College student - has college_id OR has a college-level program
+                    } else if (studentData.college_id || hasCollegeProgram || isCollegeGradeLevel || hasCollegeName) {
+                        // College student - has college_id OR has a college-level program OR grade indicates college
                         derivedGradeLevel = 'college';
                     }
 
