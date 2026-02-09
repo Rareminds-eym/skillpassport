@@ -2287,13 +2287,16 @@ export const useAssessmentResults = () => {
             // Basic interest exploration (mapped to RIASEC codes)
             if (!riasec || !riasec.topThree || riasec.topThree.length === 0) missingFields.push('Interest Explorer');
 
-            // For high school and higher secondary, check adaptive aptitude results (not aptitude sampling)
+            // For high school, after10, and higher secondary, check adaptive aptitude results
             // Aptitude Sampling is just a self-assessment, real aptitude comes from adaptive test
-            if ((gradeLevel === 'highschool' || gradeLevel === 'higher_secondary')) {
+            if ((gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary')) {
                 // Check if adaptive aptitude results exist
                 const hasAdaptiveResults = results.adaptiveAptitudeResults ||
                     results.adaptive_aptitude_results ||
-                    (results.gemini_results && results.gemini_results.adaptiveAptitudeResults);
+                    results.adaptive_aptitude_session_id ||
+                    (results.gemini_results && results.gemini_results.adaptiveAptitudeResults) ||
+                    (results.aptitude && results.aptitude.adaptiveTest) ||
+                    (results.aptitude && results.aptitude.adaptiveLevel);
 
                 if (!hasAdaptiveResults) {
                     missingFields.push('Adaptive Aptitude Test');
