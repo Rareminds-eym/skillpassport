@@ -820,7 +820,10 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                 profileSnapshot: assessmentData?.gemini_results?.profileSnapshot || assessmentData?.profile_snapshot,
                 overallSummary: assessmentData?.gemini_results?.overallSummary || assessmentData?.overall_summary,
                 finalNote: assessmentData?.gemini_results?.finalNote || assessmentData?.final_note,
-                platformCourses: assessmentData?.platform_courses || []
+                platformCourses: assessmentData?.platform_courses || [],
+                
+                // 🔧 CRITICAL: Preserve gemini_results for nested data access (e.g., adaptive aptitude)
+                gemini_results: assessmentData?.gemini_results
             };
             
             console.log('🔍 Complete Results Debug:', results);
