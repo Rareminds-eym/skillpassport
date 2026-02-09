@@ -570,6 +570,16 @@ export const transformAssessmentResults = (dbResults) => {
     learningStyles: dbResults.learning_styles || [],
     workPreferences: dbResults.work_preferences || [],
 
+    // ===== ADAPTIVE APTITUDE RESULTS =====
+    adaptiveAptitudeResults: dbResults.adaptiveAptitudeResults || 
+                            dbResults.adaptive_aptitude_results || 
+                            dbResults.gemini_results?.adaptiveAptitudeResults ||
+                            dbResults.gemini_results?.adaptive_aptitude_results ||
+                            null,
+
+    // ===== PRESERVE GEMINI_RESULTS FOR NESTED DATA ACCESS =====
+    gemini_results: dbResults.gemini_results || dbResults.gemini_analysis,
+
     // ===== KEEP ORIGINAL FOR DEBUGGING =====
     _original: dbResults,
     _transformed: true,

@@ -1499,14 +1499,14 @@ const AssessmentTestPage: React.FC = () => {
 
             console.log('✅ [CHECKPOINT SAVE] Success - Navigation ALLOWED');
           } else {
-            // LIGHT SAVE: Try to save, block if it fails
+            // LIGHT SAVE: Save answers but don't update section timings
             const saveResult = await dbUpdateProgress(
               nextSectionIndex,
               finalQuestionIndex,
-              {}, // Empty section timings for light save
+              flow.sectionTimings, // Keep section timings
               null,
               null,
-              {} // Empty answers for light save
+              updatedAnswers // CRITICAL FIX: Save all answers on every navigation
             );
 
             if (!saveResult?.success) {

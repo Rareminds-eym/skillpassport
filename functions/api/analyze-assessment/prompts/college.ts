@@ -166,16 +166,24 @@ function buildValidationRulesSection(): string {
   return `
 ## CRITICAL VALIDATION RULES
 
-**MANDATORY:**
-- ✅ Ensure ALL 3 career clusters are related to the student's program field
-- ✅ Match salary ranges to the field's industry standards
-- ✅ Recommend certifications relevant to the field
+**MANDATORY (MUST FOLLOW):**
+- ✅ ALL 3 career clusters MUST be related to the student's program field
+- ✅ Use RIASEC to PERSONALIZE recommendations within the program domain, not override it
+- ✅ Match salary ranges to the field's industry standards in India
+- ✅ Recommend certifications relevant to the program field
 - ✅ Consider degree level (UG = entry-level, PG = mid-senior level)
+- ✅ Explain how their personality traits fit different roles in their field
 
-**PROHIBITED:**
-- ❌ Recommend careers from completely unrelated fields
-- ❌ Ignore the program information and give generic recommendations
+**PROHIBITED (NEVER DO THIS):**
+- ❌ Recommend careers from completely unrelated fields based solely on RIASEC
+- ❌ Ignore the program information and give generic personality-based recommendations
 - ❌ Recommend UG programs to PG students or vice versa
+- ❌ Suggest career pivots away from their field without acknowledging the mismatch
+- ❌ Prioritize RIASEC over program alignment
+
+**FINAL VALIDATION BEFORE RESPONDING:**
+Ask yourself: "If this student showed their assessment results to their program faculty, would the recommendations make sense?"
+If NO → Revise to align with their academic program.
 `;
 }
 
@@ -246,28 +254,25 @@ The student is studying **${studentContext.programName || 'their chosen program'
    - **Cluster 2 (Medium Fit)**: 3-5 careers from your list that are ADJACENT to the field
    - **Cluster 3 (Explore)**: 3-5 careers from your list that are INTERDISCIPLINARY but still use field skills
 
-**STEP 4: FINAL VALIDATION (MANDATORY)**
-   Before returning your response, answer these questions:
+2. **Generate Field-Aligned Career Clusters (PROGRAM-FIRST APPROACH):**
+   - **Cluster 1 (High Fit)**: Core careers directly related to the program, personalized by RIASEC
+     * Start with program domain (e.g., Electronics → Electronics Engineering roles)
+     * Use RIASEC to highlight which roles match their personality (e.g., high A → design-focused roles)
    
-   ✅ Question 1: Are ALL 3 career clusters related to "${studentContext.programName || 'the program'}"?
-      - If NO → GO BACK TO STEP 2 and start over
+   - **Cluster 2 (Medium Fit)**: Adjacent careers within the same domain, influenced by personality
+     * Stay within program field but show related specializations
+     * Use RIASEC to suggest cross-functional roles (e.g., high S → technical training, customer-facing tech roles)
    
-   ✅ Question 2: Would a graduate of "${studentContext.programName || 'the program'}" realistically pursue these careers?
-      - If NO → GO BACK TO STEP 2 and start over
+   - **Cluster 3 (Explore)**: Interdisciplinary careers that STILL USE the program's core skills
+     * Must still leverage program knowledge (e.g., Electronics → Audio Engineering, Medical Devices)
+     * RIASEC can suggest which interdisciplinary paths to explore
    
-   ✅ Question 3: Did you avoid generic careers (Creative Arts, Social Work, NGO, Teaching) unless the program is specifically in those fields?
-      - If NO → GO BACK TO STEP 2 and start over
+   ⚠️ **CRITICAL**: ALL THREE CLUSTERS must be relevant to the student's program field. Do NOT recommend careers from completely different domains just because of RIASEC scores.
    
-   ❌ WRONG EXAMPLES (DO NOT DO THIS):
-      - "Bsc Physics" student → Creative Arts (85%), Education (75%), Media (65%) ← COMPLETELY WRONG
-      - "B.Tech CS" student → Social Work (80%), NGO Management (70%), Teaching (65%) ← COMPLETELY WRONG
-      - "BBA" student → Physics Research (85%), Chemical Engineering (75%), Medical Research (65%) ← COMPLETELY WRONG
-
-**NAMING RULES FOR CAREER CLUSTER TITLES:**
-   - ✅ PREFERRED: Entry-level role names (e.g., "Data Scientist", "Research Scientist", "Software Developer")
-   - ✅ ACCEPTABLE: Generic cluster names when multiple related roles fit (e.g., "Technology & Innovation", "Scientific Research")
-   - ❌ WRONG: Senior role names (e.g., "Senior Engineer", "Manager", "Director")
-   - The title should represent roles accessible to fresh graduates or early-career professionals
+   **VALIDATION CHECK**: Before finalizing recommendations, ask yourself:
+   - "Would someone with this degree qualification be hired for these roles?"
+   - "Do these roles use the technical knowledge from their program?"
+   - If NO to either question → REJECT that recommendation
 ` : '';
 
   // Always include program analysis and validation for college students
@@ -317,18 +322,58 @@ RIASEC SCORING RULES:
 5. VERIFY: The first letter in topThree MUST have the highest score, second letter the second-highest, etc.
 6. DO NOT guess or assume - calculate from the actual responses above
 
-## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
-**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
+## ⚠️⚠️⚠️ CRITICAL: PROGRAM-FIRST CAREER MATCHING STRATEGY ⚠️⚠️⚠️
 
-**MANDATORY for High Artistic (A) Students:**
-- **Music & Entertainment**: Music Producer, Sound Designer, Film Score Composer, Concert Manager, Audio Engineer
-- **Visual Arts**: Digital Artist, Animator, Art Director, Fashion Designer, NFT Creator, VFX Supervisor
-- **Performing Arts**: Actor, Director, Choreographer, Theatre Producer, Voice Actor, Performance Artist
-- **Media & Content**: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter, Documentary Filmmaker
-- **Design**: Graphic Designer, UX/UI Designer, Game Designer, Interior Designer, Brand Designer, Product Designer
+**ABSOLUTE NON-NEGOTIABLE RULE:**
+The student's ACADEMIC PROGRAM is the PRIMARY and MANDATORY filter for ALL career recommendations.
+RIASEC personality traits are ONLY used to personalize recommendations WITHIN the program's field.
 
-**DO NOT default to only Technology/Science/Business careers for Artistic students!**
-**The student's creative interests MUST be reflected in their career recommendations.**
+**STEP-BY-STEP PROCESS (FOLLOW EXACTLY):**
+
+**STEP 1: IDENTIFY THE PROGRAM FIELD (MANDATORY FIRST STEP)**
+- Read the student's program name carefully (e.g., "Bachelor of Technology in Electronics")
+- Identify the core field: Engineering (Electronics), Computer Science, Business, Medical, etc.
+- ALL 3 career clusters MUST be from this field - NO EXCEPTIONS
+
+**STEP 2: GENERATE PROGRAM-ALIGNED CAREER OPTIONS**
+- List 10-15 careers that are DIRECTLY related to the program field
+- These careers should require knowledge/skills from the program
+- Example for Electronics: Electronics Engineer, Embedded Systems Engineer, IoT Engineer, VLSI Designer, Hardware Engineer, Telecommunications Engineer, Control Systems Engineer, Audio Engineer, Robotics Engineer, etc.
+
+**STEP 3: USE RIASEC TO PERSONALIZE (NOT OVERRIDE)**
+- Look at the student's RIASEC scores
+- From the program-aligned careers in Step 2, select which ones match their personality
+- Example: Electronics student with high Artistic (A) → Audio Engineering, Consumer Electronics Design, UX for IoT
+- Example: Electronics student with high Social (S) → Technical Training, Field Application Engineering, Customer Support Engineering
+
+**STEP 4: CREATE 3 CAREER CLUSTERS (ALL FROM PROGRAM FIELD)**
+- Cluster 1 (High Fit): Best program-aligned careers that also match personality
+- Cluster 2 (Medium Fit): Other program-aligned careers with moderate personality fit
+- Cluster 3 (Explore): Adjacent program-aligned careers worth exploring
+
+**VALIDATION CHECKPOINT (BEFORE RESPONDING):**
+❌ If ANY career cluster is from a different field than the program → REJECT and redo
+❌ If you recommended Fashion Design for an Engineering student → REJECT and redo
+❌ If you recommended Software Engineer for a Medical student → REJECT and redo
+✅ ALL 3 clusters must be careers that someone with this degree would actually pursue
+
+**EXAMPLES OF CORRECT INTEGRATION:**
+
+**Electronics B.Tech Student with High Artistic (A) + Social (S):**
+- ✅ CORRECT: Audio/Acoustic Engineer, Consumer Electronics Designer, UX Designer for IoT Devices, Technical Trainer for Electronics
+- ❌ ABSOLUTELY WRONG: Fashion Designer, Graphic Designer, Interior Designer, Teacher (non-technical)
+
+**Computer Science Student with High Social (S) + Enterprising (E):**
+- ✅ CORRECT: Technical Product Manager, Developer Advocate, Solutions Architect, Tech Consultant, Engineering Manager
+- ❌ ABSOLUTELY WRONG: Sales Manager (non-tech), HR Manager, Event Planner, Marketing Manager (non-tech)
+
+**Business Student with High Investigative (I) + Realistic (R):**
+- ✅ CORRECT: Business Analyst, Operations Manager, Supply Chain Analyst, Data-Driven Strategy Consultant, Financial Analyst
+- ❌ ABSOLUTELY WRONG: Lab Researcher, Mechanical Engineer, Scientist, Software Developer
+
+**FINAL REMINDER:**
+If a faculty member from the student's program reviews your recommendations and says "These careers have nothing to do with what we teach" → YOU FAILED.
+The program field is NON-NEGOTIABLE. RIASEC only personalizes WITHIN that field.
 
 ## MULTI-APTITUDE BATTERY RESULTS:
 Pre-calculated Scores:
@@ -438,6 +483,15 @@ ${JSON.stringify(assessmentData.sectionTimings, null, 2)}
 2. **BIG FIVE SCORES**: Calculate AVERAGE (not sum) from responses - must be 1.0 to 5.0
 
 3. **WORK VALUES SCORES**: Calculate AVERAGE (not sum) from responses - must be 1.0 to 5.0
+
+4. **CAREER CLUSTERS - FINAL VALIDATION (MOST IMPORTANT):**
+   - ✅ Check: Are ALL 3 career clusters related to "${studentContext?.programName || 'the student\'s program'}"?
+   - ✅ Check: Would someone with this degree qualification be hired for these roles?
+   - ✅ Check: Do these roles use technical knowledge from their program?
+   - ❌ If you recommended careers from unrelated fields (Fashion Design for Engineering, etc.) → STOP and redo
+   - ❌ If RIASEC scores led you away from the program field → STOP and redo
+   
+   **REMEMBER:** Program field is NON-NEGOTIABLE. RIASEC only personalizes within that field.
 
 Return ONLY a valid JSON object with this EXACT structure (no markdown, no extra text):
 
