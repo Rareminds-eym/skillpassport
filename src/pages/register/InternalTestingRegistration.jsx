@@ -21,7 +21,6 @@ import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { signupStudent } from '../../services/studentAuthService';
-import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
 const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
@@ -171,7 +170,6 @@ const SelectField = ({ label, icon: Icon, error, options, ...props }) => (
 
 export default function InternalTestingRegistration() {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [form, setForm] = useState({ 
     name: '', 
     email: '', 
@@ -263,63 +261,15 @@ export default function InternalTestingRegistration() {
       // Show redirecting loader immediately
       setRedirecting(true);
 
-      // Get the current session from Supabase (user was auto-logged in during signup)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
-      console.log('Session check:', { 
-        hasSession: !!session, 
-        sessionError,
-        userId: session?.user?.id 
-      });
-
-      if (session && session.user) {
-        console.log('Session found, fetching student record...');
-        
-        // Fetch the student record
-        const { data: student, error: studentError } = await supabase
-          .from('students')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
-
-        console.log('Student record:', { hasStudent: !!student, studentError });
-
-        if (student) {
-          console.log('Student record found, updating auth context...');
-          
-          // Update auth context with session and student
-          login(student, session);
-          
-          console.log('Navigating to dashboard...');
-          
-          // Redirect to student dashboard
-          setTimeout(() => {
-            navigate('/student/dashboard');
-          }, 500);
-        } else {
-          console.log('Student record not found, redirecting to login...');
-          // Student record not found, redirect to login
-          setTimeout(() => {
-            navigate('/login', { 
-              state: { 
-                message: 'Account created! Please log in to continue.',
-                email: form.email.trim()
-              }
-            });
-          }, 1500);
-        }
-      } else {
-        console.log('No session found, redirecting to login...');
-        // No session, redirect to login
-        setTimeout(() => {
-          navigate('/login', { 
-            state: { 
-              message: 'Account created! Please log in with your credentials.',
-              email: form.email.trim()
-            }
-          });
-        }, 1500);
-      }
+      // Redirect to login page after successful registration
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            message: 'Account created successfully! Please log in with your credentials.',
+            email: form.email.trim()
+          }
+        });
+      }, 1500);
     } catch (error) {
       console.error('Registration error:', error);
       setRegistrationError(error.message || 'Failed to create account. Please try again.');
@@ -366,7 +316,7 @@ export default function InternalTestingRegistration() {
             transition={{ delay: 0.4 }}
             className="text-base sm:text-lg text-gray-600 mb-6"
           >
-            Redirecting to your dashboard...
+            Redirecting to login page...
           </motion.p>
           
           <motion.div
