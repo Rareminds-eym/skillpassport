@@ -142,14 +142,19 @@ function validateQuestionStructure(questions: any[]): any[] {
             throw new Error(`Question ${index + 1} missing or invalid 'explanation' field`);
         }
         
+        // Clean option text - remove any A), B), C), D) prefixes that AI might add
+        const cleanOption = (text: string) => {
+            return text.trim().replace(/^[A-D]\)\s*/i, '');
+        };
+
         // Return validated and normalized question
         return {
             text: q.text.trim(),
             options: {
-                A: q.options.A.trim(),
-                B: q.options.B.trim(),
-                C: q.options.C.trim(),
-                D: q.options.D.trim(),
+                A: cleanOption(q.options.A),
+                B: cleanOption(q.options.B),
+                C: cleanOption(q.options.C),
+                D: cleanOption(q.options.D),
             },
             correctAnswer: normalizedAnswer,
             explanation: q.explanation.trim(),

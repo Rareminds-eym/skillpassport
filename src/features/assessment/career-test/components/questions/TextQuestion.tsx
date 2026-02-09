@@ -55,6 +55,9 @@ export const TextQuestion: React.FC<TextQuestionProps> = ({
           id={questionId}
           value={value || ''}
           onChange={(e) => onAnswer(e.target.value)}
+          onPaste={(e) => e.preventDefault()}
+          onCopy={(e) => e.preventDefault()}
+          onCut={(e) => e.preventDefault()}
           placeholder={placeholder}
           rows={5}
           className={`

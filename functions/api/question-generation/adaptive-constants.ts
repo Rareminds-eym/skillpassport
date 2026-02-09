@@ -54,7 +54,7 @@ export const GRADE_LEVEL_CONTEXT: Record<GradeLevel, string> = {
 - DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
 - DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
 - ALL information must be provided in TEXT FORM ONLY
-- For data interpretation: Provide ALL data as text (e.g., "A shop's sales were: Monday: $500, Tuesday: $650, Wednesday: $800")
+- For data interpretation: Provide ALL data as text (e.g., "A shop's sales were: Monday: ₹500, Tuesday: ₹650, Wednesday: ₹800")
 - For spatial reasoning: Describe transformations in words (e.g., "If you rotate a triangle 90 degrees clockwise, what shape does it form?")
 - For pattern recognition: Describe sequences in text (e.g., "In the sequence 2, 4, 8, 16, what is the next number?")
 - NEVER assume visual elements exist - the system does not support images
@@ -208,7 +208,7 @@ VARIETY REQUIREMENTS FOR GRADES 9-10:
 - DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
 - DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
 - ALL information must be provided in TEXT FORM ONLY
-- For data interpretation: Provide ALL data as text (e.g., "A shop's monthly sales were: Jan: $5,000, Feb: $6,500, Mar: $8,000")
+- For data interpretation: Provide ALL data as text (e.g., "A shop's monthly sales were: Jan: ₹5,000, Feb: ₹6,500, Mar: ₹8,000")
 - For spatial reasoning: Describe transformations in words (e.g., "If you rotate a triangle 90 degrees clockwise, what shape does it form?")
 - For pattern recognition: Describe sequences in text (e.g., "In the sequence 2, 4, 8, 16, what is the next number?")
 - NEVER assume visual elements exist - the system does not support images
@@ -326,6 +326,12 @@ CRITICAL GUIDELINES FOR GRADES 9-10:
 
 🎨 SPATIAL REASONING CONCEPTS (High School Level - TEXT-ONLY):
 
+**CRITICAL: ABSOLUTELY NO VISUAL PATTERNS OR DIAGRAMS**
+- DO NOT use cube net patterns (□ □ □)
+- DO NOT use shape arrangements that need to be seen
+- DO NOT reference "the pattern shows" or "which arrangement"
+- ALL spatial questions MUST be describable and solvable using WORDS ONLY
+
 **Mental Rotation (Described in Text):**
 - 2D shape rotation described verbally (e.g., "If you rotate letter 'N' 180 degrees...")
 - 3D object rotation described in words
@@ -334,12 +340,16 @@ CRITICAL GUIDELINES FOR GRADES 9-10:
 - Perspective changes described verbally
 
 **Spatial Visualization (Text-Based):**
-- Paper folding and cutting patterns described in words
-- Cube and dice problems described (e.g., "A cube has 1 opposite 6, 2 opposite 5, 3 opposite 4...")
-- Hidden figures described verbally
+- Paper folding and cutting patterns described in words (e.g., "If you fold a square paper in half twice and cut a small triangle from the corner, how many holes will there be when unfolded?")
+- Cube and dice problems described (e.g., "A cube has 1 opposite 6, 2 opposite 5, 3 opposite 4. If 1 is on top and 2 faces you, which number is on the bottom?")
+- Hidden figures described verbally (e.g., "How many triangles are in a Star of David shape?")
 - Figure completion described in text
-- Block counting described (e.g., "A structure has 3 blocks in bottom row, 2 in middle, 1 on top...")
-- Cross-sections described
+- Block counting described (e.g., "A pyramid has 1 block on top, 4 blocks in the second layer, and 9 blocks at the base. How many blocks total?")
+- Cross-sections described (e.g., "If you slice a cube horizontally through its middle, what shape is the cross-section?")
+
+**CRITICAL: For cube/dice problems, describe the arrangement in words, NOT with visual symbols**
+Example: "A standard die has opposite faces summing to 7. If you see 2 on top and 3 facing you, what number is on the right side?"
+NOT: "Which pattern shows the correct die arrangement: □ □ □"
 
 **Geometric Reasoning (Verbal Description):**
 - Shape properties and relationships
@@ -377,7 +387,7 @@ CRITICAL GUIDELINES FOR GRADES 9-10:
 - Standard deviation (basic concept)
 
 **Data Representation (Described in Text):**
-- Tables described verbally (e.g., "Sales data: Product A: Q1=$10k, Q2=$15k, Q3=$12k...")
+- Tables described verbally (e.g., "Sales data: Product A: Q1=₹10k, Q2=₹15k, Q3=₹12k...")
 - Bar charts described (e.g., "In a survey, 30 chose A, 45 chose B, 25 chose C...")
 - Line graphs described (e.g., "Temperature rose from 20°C at 6am to 35°C at 2pm...")
 - Pie charts described (e.g., "Budget allocation: 40% salaries, 30% operations, 20% marketing, 10% other")
@@ -537,6 +547,7 @@ CRITICAL REQUIREMENTS:
 7. NEVER create duplicate or similar questions - each question must be completely unique
 8. Vary the scenarios, contexts, and numbers used in questions
 9. Avoid common or overused question patterns
+10. **ALWAYS use Indian Rupees (₹) for currency, NEVER use dollars ($) or other currencies**
 
 🔄 SUBTAG ROTATION ENFORCEMENT (CRITICAL):
 - You will receive a list of subtags to cover
@@ -584,6 +595,18 @@ Return a valid JSON array of question objects. Each object must have:
 
 ⚠️ CRITICAL: correctAnswer MUST be exactly "A", "B", "C", or "D" (uppercase letter only)
 
+⚠️ ABSOLUTELY FORBIDDEN - DO NOT GENERATE THESE TYPES OF QUESTIONS:
+- Questions requiring visual patterns or diagrams (cube nets, shape arrangements, visual sequences)
+- Questions with options like "□ □ □" or any visual symbols
+- Questions asking "which pattern" or "which arrangement" without fully describing each option in words
+- Questions that say "the diagram shows" or "the figure depicts"
+- Any question where the answer depends on seeing a visual element
+
+✅ CORRECT SPATIAL REASONING APPROACH:
+- Describe spatial relationships entirely in words
+- Example: "A cube has red on top, blue on bottom, green facing you, yellow on the back, orange on the left, and purple on the right. If you rotate it 90° clockwise (when viewed from above), which color now faces you?"
+- Example: "If you fold a square paper in half, then in half again, and cut off one corner, how many holes will appear when you unfold it?"
+
 Example format:
 [
   {
@@ -611,7 +634,7 @@ Example format:
 ]
 
 TEXT-ONLY QUESTION EXAMPLES:
-- Data interpretation: "A company's sales were $50,000 in January, $65,000 in February, and $80,000 in March. What was the percentage increase from January to March?"
+- Data interpretation: "A company's sales were ₹50,000 in January, ₹65,000 in February, and ₹80,000 in March. What was the percentage increase from January to March?"
 - Spatial reasoning: "If you rotate the letter 'N' 180 degrees, which letter does it resemble?"
 - Pattern recognition: "In the sequence 3, 6, 12, 24, what is the next number?"
 - Logical reasoning: "All roses are flowers. Some flowers are red. Which conclusion is valid?"
