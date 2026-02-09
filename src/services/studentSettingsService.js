@@ -266,6 +266,7 @@ export const updateStudentSettings = async (email, updates) => {
       branch: 'branch_field',
       program: 'branch_field', // Custom program name also maps to branch_field
       college: 'college_school_name',
+      courseName: 'course_name', // Program name field
       registrationNumber: 'registration_number',
       enrollmentNumber: 'enrollmentNumber',
       currentCgpa: 'currentCgpa',
@@ -315,6 +316,9 @@ export const updateStudentSettings = async (email, updates) => {
 
     // Define date fields that should be null instead of empty string
     const dateFields = ['dateOfBirth', 'gradeStartDate', 'enrollmentDate', 'expectedGraduationDate'];
+    
+    // Define text fields that should be null instead of empty string
+    const nullableTextFields = ['courseName', 'gapReason'];
 
     // Process updates
     Object.keys(updates).forEach(key => {
@@ -343,6 +347,11 @@ export const updateStudentSettings = async (email, updates) => {
 
         // Handle aadharNumber - convert empty strings to null to satisfy DB constraint
         if (key === 'aadharNumber' && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+        
+        // Handle nullable text fields - convert empty strings to null
+        if (nullableTextFields.includes(key) && (value === '' || value === null || value === undefined)) {
           value = null;
         }
 
