@@ -7,7 +7,7 @@
 
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
 import { authenticateUser } from '../../shared/auth';
@@ -38,16 +38,38 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     // Parse request body
     const body = await request.json() as InitializeTestOptions;
-    const { studentId, gradeLevel, studentCourse } = body;
+    const { gradeLevel, studentCourse } = body;
+    // Note: studentId from body is ignored - we look it up from auth.user.id
 
-    if (!studentId || !gradeLevel) {
+    if (!gradeLevel) {
       return jsonResponse(
-        { error: 'Missing required fields: studentId and gradeLevel' },
+        { error: 'Missing required field: gradeLevel' },
         400
       );
     }
 
-    console.log('📋 [InitializeHandler] Request:', { studentId, gradeLevel, studentCourse });
+    console.log('📋 [InitializeHandler] Request:', { gradeLevel, studentCourse });
+
+    // Create Supabase admin client for verification
+    const supabase = createSupabaseAdminClient(env);
+
+    // Look up the student record for the authenticated user
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('id, user_id')
+      .eq('user_id', auth.user.id)
+      .single();
+
+    if (studentError || !studentData) {
+      console.error('❌ [InitializeHandler] Student record not found for user:', auth.user.id, studentError);
+      return jsonResponse(
+        { error: 'Student record not found', message: studentError?.message },
+        404
+      );
+    }
+
+    const studentId = studentData.id;
+    console.log('✅ [InitializeHandler] Found student record:', studentId);
 
     // Validate gradeLevel
     const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
@@ -64,18 +86,6 @@ export const initializeHandler: PagesFunction = async (context) => {
     console.log('📝 [InitializeHandler] Generating diagnostic screener questions...');
     
     const questionGenUrl = new URL('/api/question-generation/generate/diagnostic', request.url);
-    
-    // Get authorization header from original request to pass through
-    const authHeader = request.headers.get('authorization');
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    
-    // Pass through authentication if present
-    if (authHeader) {
-      headers['authorization'] = authHeader;
-    }
-    
     const questionGenResponse = await fetch(questionGenUrl.toString(), {
       method: 'POST',
       headers: {
@@ -86,8 +96,6 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     if (!questionGenResponse.ok) {
       console.error('❌ [InitializeHandler] Question generation failed:', questionGenResponse.status);
-      const errorText = await questionGenResponse.text();
-      console.error('❌ [InitializeHandler] Error response:', errorText);
       throw new Error(`Failed to generate diagnostic screener questions: ${questionGenResponse.statusText}`);
     }
 
@@ -104,10 +112,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       throw new Error('Failed to generate diagnostic screener questions');
     }
 
-    // Create Supabase admin client (bypasses RLS for server-side operations)
-    const supabase = createSupabaseAdminClient(env);
-
-    // Create session in database
+    // Create session in database (reuse supabase client from earlier)
     console.log('💾 [InitializeHandler] Creating session in database...');
     const { data: sessionData, error: sessionError } = await supabase
       .from('adaptive_aptitude_sessions')
