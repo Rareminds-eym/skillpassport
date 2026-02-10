@@ -34,6 +34,7 @@ import { useAssessmentFlow } from './hooks/useAssessmentFlow';
 import { useStudentGrade } from './hooks/useStudentGrade';
 import { useAIQuestions } from './hooks/useAIQuestions';
 import { useAssessmentSubmission } from './hooks/useAssessmentSubmission';
+import { useAntiCheating } from '../../../hooks/useAntiCheating';
 
 // Config
 import {
@@ -397,13 +398,17 @@ const AssessmentTestPage: React.FC = () => {
   }, [flow]);
 
   const adaptiveAptitude = useAdaptiveAptitude({
-    studentId: studentId || '',
+    studentId: user?.id || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
     attemptId: currentAttempt?.id, // Pass attemptId to link session immediately
     studentCourse: studentProgram || null, // Pass student's course for college students
     onTestComplete: handleAdaptiveTestComplete,
     onError: handleAdaptiveTestError,
   });
+
+  // Enable anti-cheating protections when assessment is active
+  const isAssessmentActive = assessmentStarted && !flow.isComplete && flow.currentSectionIndex >= 0;
+  useAntiCheating(isAssessmentActive);
 
   // Track adaptive loading time for better UX
   const [adaptiveLoadingStartTime, setAdaptiveLoadingStartTime] = React.useState<number | null>(null);

@@ -147,15 +147,57 @@ function validateQuestionStructure(questions: any[]): any[] {
             return text.trim().replace(/^[A-D]\)\s*/i, '');
         };
 
+        const cleanedOptions = {
+            A: cleanOption(q.options.A),
+            B: cleanOption(q.options.B),
+            C: cleanOption(q.options.C),
+            D: cleanOption(q.options.D),
+        };
+
+        // CRITICAL: Validate that all options are unique
+        const optionValues = Object.values(cleanedOptions);
+        const uniqueValues = new Set(optionValues.map(v => v.toLowerCase().trim()));
+        if (uniqueValues.size < 4) {
+            throw new Error(`Question ${index + 1} has duplicate options: ${JSON.stringify(cleanedOptions)}`);
+        }
+
+        // CRITICAL: Validate that all options are non-empty
+        if (optionValues.some(v => !v || v.trim().length === 0)) {
+            throw new Error(`Question ${index + 1} has empty options`);
+        }
+
+        // CRITICAL: Verify the correct answer actually exists in the options
+        // This catches cases where AI says answer is "B" but the actual answer value isn't in any option
+        const correctAnswerText = cleanedOptions[normalizedAnswer];
+        if (!correctAnswerText) {
+            throw new Error(`Question ${index + 1}: correctAnswer "${normalizedAnswer}" does not map to any option`);
+        }
+
+        // Log warning if the question looks like it might have calculation issues
+        const questionLower = q.text.toLowerCase();
+        const hasCalculation = /\d+.*[+\-*/×÷].*\d+|calculate|compute|what is|value of|result of/.test(questionLower);
+        
+        if (hasCalculation) {
+            console.log(`🔢 [Validation] Question ${index + 1} appears to be a calculation question`);
+            console.log(`   Question: ${q.text.substring(0, 80)}...`);
+            console.log(`   Correct answer (${normalizedAnswer}): ${correctAnswerText}`);
+            console.log(`   All options: A="${cleanedOptions.A}" B="${cleanedOptions.B}" C="${cleanedOptions.C}" D="${cleanedOptions.D}"`);
+            
+            // Additional check: For math questions, try to detect if the answer looks wrong
+            // This is a heuristic check - if the question has numbers and operators, 
+            // we expect the correct answer to also be a number
+            const questionHasNumbers = /\d+/.test(questionLower);
+            const answerIsNumber = /^\d+\.?\d*$/.test(correctAnswerText.trim());
+            
+            if (questionHasNumbers && !answerIsNumber) {
+                console.warn(`⚠️ [Validation] Question ${index + 1}: Math question but answer is not a number: "${correctAnswerText}"`);
+            }
+        }
+
         // Return validated and normalized question
         return {
             text: q.text.trim(),
-            options: {
-                A: cleanOption(q.options.A),
-                B: cleanOption(q.options.B),
-                C: cleanOption(q.options.C),
-                D: cleanOption(q.options.D),
-            },
+            options: cleanedOptions,
             correctAnswer: normalizedAnswer,
             explanation: q.explanation.trim(),
         };
@@ -299,9 +341,8 @@ Return ONLY the JSON array, nothing else.`;
 
     console.log(`✅ [Adaptive-Handler] AI generated ${aiQuestionsRaw.length} raw questions`);
 
-    // Filter out any questions that match excluded texts
-    // CHANGED: Use 85% threshold instead of 90% to allow more questions through
-    console.log(`🔍 [Adaptive-Handler] Filtering for duplicates (85% similarity threshold)...`);
+    // COMPREHENSIVE VALIDATION: Filter out invalid questions
+    console.log(`🔍 [Adaptive-Handler] Starting comprehensive validation (80% similarity threshold)...`);
     const filteredQuestions = aiQuestionsRaw.filter((q: any, index: number) => {
         const questionText = q.text?.toLowerCase().trim();
         if (!questionText) {
@@ -324,23 +365,42 @@ Return ONLY the JSON array, nothing else.`;
             return false;
         }
         
-        // Validate answer options are unique
+        // Validate options structure
         const options = q.options || {};
+        const correctAnswer = (q.correctAnswer || '').toString().trim().toUpperCase();
+        
+        // Check all 4 options exist
+        const requiredOptions = ['A', 'B', 'C', 'D'];
+        for (const opt of requiredOptions) {
+            if (!options[opt] || typeof options[opt] !== 'string' || options[opt].trim().length === 0) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} missing or empty option ${opt}, filtering out`);
+                return false;
+            }
+        }
+        
+        // Validate answer options are unique
         const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
         const uniqueOptions = new Set(optionValues);
         
-        if (uniqueOptions.size < optionValues.length) {
+        if (uniqueOptions.size < 4) {
             console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has duplicate options, filtering out`);
+            console.warn(`   Options: ${JSON.stringify(options)}`);
             return false;
         }
         
-        // Validate all options are non-empty
-        if (optionValues.some(v => !v || v.length === 0)) {
-            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has empty options, filtering out`);
+        // CRITICAL: Validate correct answer exists in options
+        if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has invalid correctAnswer "${correctAnswer}", filtering out`);
             return false;
         }
         
-        // Check if this question text is too similar to any excluded text
+        const correctAnswerValue = options[correctAnswer];
+        if (!correctAnswerValue || correctAnswerValue.trim().length === 0) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} correctAnswer "${correctAnswer}" does not map to valid option, filtering out`);
+            return false;
+        }
+        
+        // Check if this question text is too similar to any excluded text (80% threshold for stricter filtering)
         for (const excludedText of excludeTexts) {
             const excluded = excludedText.toLowerCase().trim();
             // Exact match
@@ -348,10 +408,10 @@ Return ONLY the JSON array, nothing else.`;
                 console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is exact duplicate: "${questionText.substring(0, 50)}..."`);
                 return false;
             }
-            // Very similar (>85% match) - CHANGED from 90% to 85%
+            // Very similar (>80% match) - stricter than before
             const similarity = calculateSimilarity(questionText, excluded);
-            if (similarity > 0.85) {
-                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is ${(similarity * 100).toFixed(0)}% similar: "${questionText.substring(0, 50)}..."`);
+            if (similarity > 0.80) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is ${(similarity * 100).toFixed(0)}% similar to previous, filtering out: "${questionText.substring(0, 50)}..."`);
                 return false;
             }
         }

@@ -37,6 +37,7 @@ import {
 import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useAntiCheating } from '../../hooks/useAntiCheating';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '../../types/adaptiveAptitude';
 
 // =============================================================================
@@ -133,6 +134,9 @@ const AdaptiveAptitudeTest = () => {
       console.error('❌ Adaptive aptitude test error:', err);
     },
   });
+
+  // Enable anti-cheating protections during the test
+  useAntiCheating(!!currentQuestion && !isTestComplete);
 
   // Debug logging - after hook is initialized
   useEffect(() => {
