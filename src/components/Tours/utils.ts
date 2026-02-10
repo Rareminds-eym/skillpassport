@@ -40,6 +40,8 @@ export const isTourCompleted = (tourKey: TourKey, progress: TourProgress): boole
       return progress.assessment_test_completed === true;
     case 'assessment_result':
       return progress.assessment_result_completed === true;
+    case 'assessment_result_after12':
+      return progress.assessment_result_after12_completed === true;
     default:
       return false;
   }
@@ -61,6 +63,9 @@ export const markTourCompleted = (tourKey: TourKey, progress: TourProgress): Tou
     case 'assessment_result':
       updatedProgress.assessment_result_completed = true;
       break;
+    case 'assessment_result_after12':
+      updatedProgress.assessment_result_after12_completed = true;
+      break;
   }
   
   updatedProgress.last_completed_tour = tourKey;
@@ -72,71 +77,59 @@ export const markTourCompleted = (tourKey: TourKey, progress: TourProgress): Tou
 /**
  * Check if user is eligible for a tour (new user logic)
  * PURE FUNCTION - NO SIDE EFFECTS
+ * Route checking is now handled by TourWrapper for better performance
  */
 export const isEligibleForTour = (tourKey: TourKey, progress: TourProgress): boolean => {
   // Don't show tour if already completed
   if (isTourCompleted(tourKey, progress)) {
-    console.log(`❌ Tour ${tourKey} already completed`);
     return false;
   }
   
-  // For dashboard tour - eligible if not completed AND on dashboard page
+  // Dashboard tour - always eligible if not completed (route check in TourWrapper)
   if (tourKey === 'dashboard') {
-    const isOnDashboardPage = window.location.pathname === '/student/dashboard';
-    if (!isOnDashboardPage) {
-      console.log(`❌ Dashboard tour not eligible: not on dashboard page (${window.location.pathname})`);
-      return false;
-    }
-    console.log(`✅ Dashboard tour eligible (not completed and on correct page)`);
     return true;
   }
   
-  // For assessment test tour - eligible if dashboard is completed OR if user is on assessment test page (direct access)
+  // Assessment test tour - eligible if dashboard completed or direct access
   if (tourKey === 'assessment_test') {
-    const isOnTestPath = window.location.pathname.includes('/student/assessment/test');
-    if (!isOnTestPath) {
-      console.log(`❌ Assessment test tour not eligible: not on test page (${window.location.pathname})`);
-      return false;
-    }
-    const eligible = progress.dashboard_completed === true || isOnTestPath;
-    console.log(`${eligible ? '✅' : '❌'} Assessment test tour eligible: dashboard_completed = ${progress.dashboard_completed}, isOnTestPath = ${isOnTestPath}`);
-    return eligible;
+    return progress.dashboard_completed === true || true; // Allow direct access
   }
   
-  // For assessment result tour - eligible if dashboard is completed OR assessment test is completed
-  // OR if user is on assessment result page (direct access)
-  if (tourKey === 'assessment_result') {
-    const isOnResultPage = window.location.pathname.includes('/student/assessment/result');
-    if (!isOnResultPage) {
-      console.log(`❌ Assessment result tour not eligible: not on result page (${window.location.pathname})`);
-      return false;
-    }
-    const eligible = progress.dashboard_completed === true || 
-                    progress.assessment_test_completed === true ||
-                    isOnResultPage;
-    console.log(`${eligible ? '✅' : '❌'} Assessment result tour eligible: dashboard_completed = ${progress.dashboard_completed}, assessment_test_completed = ${progress.assessment_test_completed}, isOnResultPage = ${isOnResultPage}`);
-    return eligible;
+  // All assessment result tours - eligible if previous tours completed or direct access
+  if (tourKey === 'assessment_result' || 
+      tourKey === 'assessment_result_after12' || 
+      tourKey === 'assessment_result_generic') {
+    return progress.dashboard_completed === true || 
+           progress.assessment_test_completed === true || 
+           true; // Allow direct access
   }
   
-  console.log(`❌ Unknown tour key: ${tourKey}`);
   return false;
 };
 
 /**
- * Wait for element to exist in DOM
+ * Wait for element to exist in DOM with improved retry logic
  */
 export const waitForElement = (selector: string, timeout = 5000): Promise<Element | null> => {
   return new Promise((resolve) => {
+    // Check immediately first
     const element = document.querySelector(selector);
     if (element) {
+      console.log(`✅ Element found immediately: ${selector}`);
       resolve(element);
       return;
     }
     
+    console.log(`⏳ Waiting for element: ${selector} (timeout: ${timeout}ms)`);
+    
+    let timeoutId: NodeJS.Timeout;
+    
     const observer = new MutationObserver(() => {
       const element = document.querySelector(selector);
       if (element) {
+        console.log(`✅ Element found via observer: ${selector}`);
         observer.disconnect();
+        clearTimeout(timeoutId);
         resolve(element);
       }
     });
@@ -147,7 +140,8 @@ export const waitForElement = (selector: string, timeout = 5000): Promise<Elemen
     });
     
     // Timeout fallback
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
+      console.warn(`⏰ Timeout waiting for element: ${selector}`);
       observer.disconnect();
       resolve(null);
     }, timeout);
@@ -192,7 +186,7 @@ const getScrollbarWidth = (): number => {
   const outer = document.createElement('div');
   outer.style.visibility = 'hidden';
   outer.style.overflow = 'scroll';
-  outer.style.msOverflowStyle = 'scrollbar';
+  (outer.style as any).msOverflowStyle = 'scrollbar'; // IE/Edge specific
   document.body.appendChild(outer);
 
   const inner = document.createElement('div');

@@ -85,7 +85,104 @@ export const ASSESSMENT_RESULT_TOUR_STEPS: TourStep[] = [
     },
   },
 
-  // Step 3: Career Track 1 - Best Fit
+  // Step 3: Recommended Stream (After 10th only) - CONDITIONAL
+  {
+    target: '[data-tour="recommended-stream"]',
+    content: (
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          🎓 Recommended Stream (After 10th)
+        </h3>
+        <p className="text-gray-600 mb-3">
+          Based on your interests, aptitude, and personality, this is your <strong>recommended stream</strong> for 11th and 12th grade.
+          This section shows why this stream fits you, subjects to focus on, and potential career paths after 12th.
+        </p>
+        <p className="text-sm text-blue-600 font-medium">
+          💡 This recommendation helps you choose the right stream for your higher secondary education.
+        </p>
+      </div>
+    ),
+    placement: 'bottom',
+    disableBeacon: true,
+    spotlightClicks: false,
+    spotlightPadding: 15,
+    styles: {
+      tooltip: {
+        width: '460px',
+      },
+      spotlight: {
+        borderRadius: '16px',
+      },
+    },
+    // This step is conditional - only shown for after 10th students
+    gradeLevel: 'after10',
+  },
+  // Step 4: Recommended Programs (After 12th only) - CONDITIONAL
+  {
+    target: '[data-tour="recommended-programs"]',
+    content: (
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          🎓 Recommended Programs (After 12th)
+        </h3>
+        <p className="text-gray-600 mb-3">
+          These are your <strong>best-fit degree programs</strong> based on your assessment results.
+          Each program shows match scores, why it fits you, career roles, top universities, and more.
+        </p>
+        <p className="text-sm text-blue-600 font-medium">
+          💡 These recommendations guide your college and career decisions after 12th grade.
+        </p>
+      </div>
+    ),
+    placement: 'bottom',
+    disableBeacon: true,
+    spotlightClicks: false,
+    spotlightPadding: 15,
+    styles: {
+      tooltip: {
+        width: '460px',
+      },
+      spotlight: {
+        borderRadius: '16px',
+      },
+    },
+    // This step is conditional - only shown for after 12th students
+    gradeLevel: 'after12',
+  },
+
+  // Step 5: Click View Career Clusters Button - CONDITIONAL (only for after10 and after12)
+  {
+    target: '[data-tour="view-career-clusters-button"]',
+    content: (
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          🚀 Ready to Explore Career Paths?
+        </h3>
+        <p className="text-gray-600 mb-3">
+          Now that you've seen your recommended programs/stream, let's explore the <strong>career paths</strong> that align with your profile.
+        </p>
+        <p className="text-sm text-blue-600 font-medium">
+          💡 Click the "View Career Clusters" button to continue and see your top 3 career tracks!
+        </p>
+      </div>
+    ),
+    placement: 'top',
+    disableBeacon: true,
+    spotlightClicks: true,
+    spotlightPadding: 15,
+    styles: {
+      tooltip: {
+        width: '450px',
+      },
+      spotlight: {
+        borderRadius: '12px',
+      },
+    },
+    // This step triggers tab switch - only for after10 and after12
+    gradeLevel: 'after10_after12',
+  },
+
+  // Step 6: Career Track 1 - Best Fit (shown after tab switch for after10/after12, or directly for others)
   {
     target: '[data-tour="career-track-1"]',
     content: (
@@ -115,7 +212,7 @@ export const ASSESSMENT_RESULT_TOUR_STEPS: TourStep[] = [
       },
     },
   },
-  // Step 4: Career Track 2 - Strong Alternative
+  // Step 7: Career Track 2 - Strong Alternative
   {
     target: '[data-tour="career-track-2"]',
     content: (
@@ -145,7 +242,7 @@ export const ASSESSMENT_RESULT_TOUR_STEPS: TourStep[] = [
       },
     },
   },
-  // Step 5: Career Track 3 - Worth Exploring
+  // Step 8: Career Track 3 - Worth Exploring
   {
     target: '[data-tour="career-track-3"]',
     content: (
