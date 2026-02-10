@@ -97,16 +97,20 @@ CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is 
 ⚠️ CRITICAL: UNIQUE QUESTIONS AND OPTIONS REQUIRED ⚠️
 - Each question MUST be completely unique - no similar or repeated questions
 - Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)
-- NO duplicate options within a question (e.g., don't use "10" for both A and C)
+- **ABSOLUTELY NO DUPLICATE OPTIONS**: Each option value must be unique within the question
+- Example BAD: {"A":"23","B":"33","C":"43","D":"33"} ❌ (B and D are duplicates)
+- Example GOOD: {"A":"23","B":"33","C":"43","D":"53"} ✅ (all different)
+- Before finalizing each question, verify all 4 options have different values
 - All options must be non-empty and meaningful
 - Correct answer must be clearly distinguishable from wrong answers
 - **CRITICAL FOR MATH QUESTIONS**: The correct calculated answer MUST be one of the 4 options (A, B, C, or D)
 - **VERIFY YOUR MATH**: Before finalizing a math question, calculate the answer and ensure it matches one of your options
 - If the correct answer is 12.5, then 12.5 MUST appear in one of the options (not 11, 14, 17, 20)
-- **DOUBLE-CHECK**: After creating each math question, verify the calculation and confirm the answer exists in the options
-- **CRITICAL FOR MATH QUESTIONS**: The correct calculated answer MUST be one of the 4 options (A, B, C, or D)
-- **VERIFY YOUR MATH**: Before finalizing a math question, calculate the answer and ensure it matches one of your options
-- If the correct answer is 12.5, then 12.5 MUST appear in one of the options (not 11, 14, 17, 20)
+- **DOUBLE-CHECK PROCESS**: 
+  1. Calculate the correct answer
+  2. Create 3 different wrong answers
+  3. Verify all 4 options are unique (no duplicates)
+  4. Confirm the correct answer is in the options
 
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}

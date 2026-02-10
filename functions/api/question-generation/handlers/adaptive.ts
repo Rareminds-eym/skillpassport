@@ -420,6 +420,70 @@ Return ONLY the JSON array, nothing else.`;
     
     console.log(`🔍 [Adaptive-Handler] After filtering: ${filteredQuestions.length}/${aiQuestionsRaw.length} questions remain`);
 
+    // NEW: If we filtered out questions with issues, try to regenerate just the missing ones
+    if (filteredQuestions.length < count && filteredQuestions.length > 0) {
+        const missingCount = count - filteredQuestions.length;
+        console.log(`🔄 [Adaptive-Handler] ${missingCount} questions were filtered out. Attempting to regenerate them...`);
+        
+        // Add already valid questions to exclusion list
+        const updatedExcludeTexts = new Set([
+            ...excludeTexts,
+            ...filteredQuestions.map((q: any) => q.text)
+        ]);
+        
+        try {
+            const replacementSubtags = Array.from({ length: missingCount }, (_, i) => subtags[i % subtags.length]);
+            const replacementQuestions = await generateQuestionsWithAI(
+                env,
+                gradeLevel,
+                phase,
+                replacementSubtags,
+                difficulty,
+                missingCount,
+                updatedExcludeTexts,
+                studentCourse
+            );
+            
+            console.log(`✅ [Adaptive-Handler] Generated ${replacementQuestions.length} replacement questions`);
+            
+            // Merge the valid questions with replacements
+            const mergedRawQuestions = [
+                ...filteredQuestions,
+                ...replacementQuestions.map(rq => ({
+                    text: rq.text,
+                    options: rq.options,
+                    correctAnswer: rq.correctAnswer,
+                    explanation: rq.explanation
+                }))
+            ];
+            
+            console.log(`📊 [Adaptive-Handler] Total after regeneration: ${mergedRawQuestions.length} questions`);
+            
+            // Use the merged set for final processing
+            const questions: Question[] = mergedRawQuestions.map((q: any, idx: number) => {
+                const assignedSubtag = subtags[idx % subtags.length] || 'logical_reasoning';
+                return {
+                    id: generateQuestionId(gradeLevel, phase as any, difficulty, assignedSubtag),
+                    text: q.text,
+                    options: q.options,
+                    correctAnswer: q.correctAnswer,
+                    explanation: q.explanation,
+                    difficulty: difficulty,
+                    subtag: assignedSubtag,
+                    gradeLevel: gradeLevel,
+                    phase: phase as any,
+                    createdAt: new Date().toISOString()
+                };
+            });
+            
+            console.log(`✅ [Adaptive-Handler] Successfully generated ${questions.length} unique questions`);
+            return questions;
+        } catch (replacementError: any) {
+            console.error(`❌ [Adaptive-Handler] Failed to generate replacements:`, replacementError.message);
+            // Continue with what we have
+        }
+    }
+
     // CHANGED: Don't throw error if all filtered out, just log warning and return what we have
     if (filteredQuestions.length === 0) {
         console.warn(`⚠️ [Adaptive-Handler] All questions were filtered as duplicates, using best available`);
