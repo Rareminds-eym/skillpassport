@@ -63,23 +63,31 @@ export async function generateKnowledgeQuestions(
 
 Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a college student studying ${streamName}.
 
+⚠️ CRITICAL: ALL questions MUST be about ${streamName} - DO NOT generate questions about other subjects!
+- If the course is "Arts with Economics", generate questions about Economics, Political Science, History, Sociology
+- If the course is "Commerce", generate questions about Accounting, Business, Finance
+- If the course is "Computer Science", generate questions about Programming, Algorithms, Data Structures
+- NEVER generate questions about subjects not related to ${streamName}
+
 IMPORTANT: Analyze the course name "${streamName}" and generate questions covering the core subjects and topics typically taught in this program.
 
 Requirements:
 1. All questions must be MCQ with exactly 4 options
 2. Each question must have exactly ONE correct answer
 3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
-4. Difficulty distribution: 30% easy, 50% medium, 20% hard
-5. Test practical understanding and application, not just memorization
-6. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
-7. Questions should be appropriate for undergraduate/graduate level students
+4. The correct answer MUST be one of the 4 options provided
+5. Difficulty distribution: 30% easy, 50% medium, 20% hard
+6. Test practical understanding and application, not just memorization
+7. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
+8. Questions should be appropriate for undergraduate/graduate level students
+9. VERIFY: For each question, ensure the correct answer actually appears in the options
 
 ⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY ${totalQuestions} questions in your response.
 
 Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
 {"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}
 
-REMINDER: Generate EXACTLY ${totalQuestions} questions. No more, no less.`;
+REMINDER: Generate EXACTLY ${totalQuestions} questions about ${streamName}. No more, no less.`;
         } else {
             // For non-college students or when topics are provided, use the existing approach
             prompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${totalQuestions} questions. Count them before responding.

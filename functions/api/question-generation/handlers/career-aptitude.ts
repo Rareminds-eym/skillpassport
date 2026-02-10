@@ -118,6 +118,8 @@ export async function generateAptitudeQuestions(
                 else if (streamId.includes('bca') || streamId.includes('mca') || streamId.includes('cs') || streamId.includes('it')) contextKey = 'it_software';
                 else if (streamId.includes('com')) contextKey = 'commerce';
                 else if (streamId.includes('sc')) contextKey = 'science';
+                else if (streamId.includes('economics')) contextKey = 'arts_economics';
+                else if (streamId.includes('psychology')) contextKey = 'arts_psychology';
                 else if (streamId.includes('art') || streamId.includes('ba')) contextKey = 'arts';
                 else contextKey = 'college'; // Ultimate fallback
             }

@@ -44,6 +44,21 @@ export const STREAM_CONTEXTS: Record<string, {
         context: 'Focus on critical thinking, verbal reasoning, social awareness, and creative interpretation relevant to literature, sociology, and liberal arts.',
         clericalExample: 'ART-123-LIT'
     },
+    'arts_economics': {
+        name: 'Arts with Economics',
+        context: 'Focus on economic reasoning, political analysis, historical context, social structures, and policy evaluation. Questions should cover microeconomics, macroeconomics, political science concepts, historical events, and sociological theories. NO computer science or technical questions - this is for social sciences and humanities.',
+        clericalExample: 'ECO-456-POL'
+    },
+    'arts_psychology': {
+        name: 'Arts with Psychology',
+        context: 'Focus on behavioral analysis, psychological theories, research methods, human development, and social psychology. Questions should cover cognitive processes, personality theories, and mental health concepts.',
+        clericalExample: 'PSY-789-BEH'
+    },
+    'arts_humanities': {
+        name: 'Arts & Humanities General',
+        context: 'Focus on critical thinking, literature analysis, historical reasoning, cultural studies, and philosophical concepts. Questions should cover language, history, geography, and social sciences.',
+        clericalExample: 'HUM-234-LIT'
+    },
 
     // --- College / After 12th Streams ---
     'engineering': {
