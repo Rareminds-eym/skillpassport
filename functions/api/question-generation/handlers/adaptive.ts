@@ -135,7 +135,9 @@ function validateQuestionStructure(questions: any[]): any[] {
         const normalizedAnswer = q.correctAnswer.trim().toUpperCase();
         
         if (!['A', 'B', 'C', 'D'].includes(normalizedAnswer)) {
-            throw new Error(`Question ${index + 1} correctAnswer must be A, B, C, or D, got: ${q.correctAnswer}`);
+            console.warn(`⚠️ [Validation] Question ${index + 1} correctAnswer must be A, B, C, or D, got: ${q.correctAnswer}`);
+            // Mark for filtering instead of throwing
+            (q as any).__invalid_correct_answer = true;
         }
         
         if (!q.explanation || typeof q.explanation !== 'string') {
@@ -158,12 +160,15 @@ function validateQuestionStructure(questions: any[]): any[] {
         const optionValues = Object.values(cleanedOptions);
         const uniqueValues = new Set(optionValues.map(v => v.toLowerCase().trim()));
         if (uniqueValues.size < 4) {
-            throw new Error(`Question ${index + 1} has duplicate options: ${JSON.stringify(cleanedOptions)}`);
+            console.warn(`⚠️ [Validation] Question ${index + 1} has duplicate options: ${JSON.stringify(cleanedOptions)}`);
+            // Mark for filtering instead of throwing
+            (q as any).__invalid_duplicate_options = true;
         }
 
         // CRITICAL: Validate that all options are non-empty
         if (optionValues.some(v => !v || v.trim().length === 0)) {
-            throw new Error(`Question ${index + 1} has empty options`);
+            console.warn(`⚠️ [Validation] Question ${index + 1} has empty options`);
+            (q as any).__invalid_empty_options = true;
         }
 
         // CRITICAL: Verify the correct answer actually exists in the options
@@ -187,11 +192,22 @@ function validateQuestionStructure(questions: any[]): any[] {
             const lastCalc = explanationNumbers[explanationNumbers.length - 1].replace(/[=\s]/g, '');
             const optionValue = optionNumbers[0];
             
-            // If they don't match, this is likely wrong
-            if (lastCalc !== optionValue) {
-                console.warn(`⚠️ [Validation] Question ${index + 1}: Explanation shows "${lastCalc}" but correct option has "${optionValue}"`);
-                console.warn(`   This question may have incorrect answer mapping!`);
-                throw new Error(`Question ${index + 1}: Explanation result (${lastCalc}) doesn't match correct answer option (${optionValue})`);
+            // Allow small rounding differences (e.g., 37.5 vs 38, or 37. vs 37)
+            const calcNum = parseFloat(lastCalc);
+            const optionNum = parseFloat(optionValue);
+            
+            // If they're significantly different (more than 10% or more than 2 units), this is likely an error
+            // But don't throw - just mark it for filtering
+            if (!isNaN(calcNum) && !isNaN(optionNum)) {
+                const diff = Math.abs(calcNum - optionNum);
+                const percentDiff = (diff / Math.max(calcNum, optionNum)) * 100;
+                
+                if (diff > 2 && percentDiff > 10) {
+                    console.warn(`⚠️ [Validation] Question ${index + 1}: Explanation shows "${lastCalc}" but correct option has "${optionValue}"`);
+                    console.warn(`   Difference: ${diff.toFixed(2)} (${percentDiff.toFixed(1)}%) - Marking for filtering`);
+                    // Mark this question as invalid by adding a flag
+                    (q as any).__invalid_calculation = true;
+                }
             }
         }
 
@@ -211,16 +227,25 @@ function validateQuestionStructure(questions: any[]): any[] {
             const answerIsNumber = /^\d+\.?\d*$/.test(correctAnswerText.trim());
             
             // CRITICAL: For math questions, verify at least one option is numeric
+            // Updated regex to handle currency symbols, units, and other numeric formats
             const optionValues = Object.values(cleanedOptions);
-            const numericOptions = optionValues.filter(v => /^\d+\.?\d*$/.test(v.trim()));
+            const numericOptions = optionValues.filter(v => {
+                const trimmed = v.trim();
+                // Match numbers with optional currency symbols, units, or other prefixes/suffixes
+                // Examples: "480", "₹480", "$50", "60 km/h", "25%", "3.14", "1,000"
+                return /\d+/.test(trimmed);
+            });
             
             if (questionHasNumbers && numericOptions.length === 0) {
                 console.error(`❌ [Validation] Question ${index + 1}: Math question but NO numeric options!`);
                 throw new Error(`Question ${index + 1}: Math question has no numeric answer options`);
             }
             
-            if (questionHasNumbers && !answerIsNumber) {
-                console.warn(`⚠️ [Validation] Question ${index + 1}: Math question but correct answer is not numeric: "${correctAnswerText}"`);
+            // Updated check for numeric answer - allow currency symbols and units
+            const answerHasNumber = /\d+/.test(correctAnswerText.trim());
+            
+            if (questionHasNumbers && !answerHasNumber) {
+                console.warn(`⚠️ [Validation] Question ${index + 1}: Math question but correct answer has no number: "${correctAnswerText}"`);
                 console.warn(`   This question may have incorrect answer mapping!`);
                 
                 // Try to find if any option looks like a calculated answer
@@ -447,9 +472,50 @@ Return ONLY the JSON array, nothing else.`;
     // COMPREHENSIVE VALIDATION: Filter out invalid questions
     console.log(`🔍 [Adaptive-Handler] Starting comprehensive validation (80% similarity threshold)...`);
     const filteredQuestions = aiQuestionsRaw.filter((q: any, index: number) => {
+        // Check if marked as invalid during validation
+        if ((q as any).__invalid_calculation) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has invalid calculation, filtering out`);
+            return false;
+        }
+        
+        if ((q as any).__invalid_duplicate_options) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has duplicate options, filtering out`);
+            return false;
+        }
+        
+        if ((q as any).__invalid_empty_options) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has empty options, filtering out`);
+            return false;
+        }
+        
+        if ((q as any).__invalid_correct_answer) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has invalid correctAnswer, filtering out`);
+            return false;
+        }
+        
         const questionText = q.text?.toLowerCase().trim();
         if (!questionText) {
             console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has no text, filtering out`);
+            return false;
+        }
+        
+        // Check for visual pattern symbols in options (like □ or other repeated symbols)
+        const options = q.options || {};
+        const optionValues = Object.values(options).map((v: any) => String(v).trim());
+        
+        // Check if options contain visual pattern symbols
+        const hasVisualSymbols = optionValues.some((opt: string) => {
+            // Check for repeated box symbols or other visual patterns
+            const boxCount = (opt.match(/□/g) || []).length;
+            const hasMultipleBoxes = boxCount > 2;
+            // Check for other visual pattern indicators
+            const hasVisualPattern = /[□■▪▫●○◆◇★☆]/.test(opt);
+            return hasMultipleBoxes || hasVisualPattern;
+        });
+        
+        if (hasVisualSymbols) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} contains visual pattern symbols, filtering out`);
+            console.warn(`   Question: "${questionText.substring(0, 80)}..."`);
             return false;
         }
         
@@ -468,8 +534,7 @@ Return ONLY the JSON array, nothing else.`;
             return false;
         }
         
-        // Validate options structure
-        const options = q.options || {};
+        // Validate options structure (reuse variables from above)
         const correctAnswer = (q.correctAnswer || '').toString().trim().toUpperCase();
         
         // Check all 4 options exist
@@ -481,9 +546,9 @@ Return ONLY the JSON array, nothing else.`;
             }
         }
         
-        // Validate answer options are unique
-        const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
-        const uniqueOptions = new Set(optionValues);
+        // Validate answer options are unique (reuse optionValues from above)
+        const optionValuesLower = optionValues.map((v: string) => v.toLowerCase().trim());
+        const uniqueOptions = new Set(optionValuesLower);
         
         if (uniqueOptions.size < 4) {
             console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has duplicate options, filtering out`);
@@ -510,7 +575,8 @@ Return ONLY the JSON array, nothing else.`;
         if (hasCalculation) {
             const questionHasNumbers = /\d+/.test(qText);
             const optionVals = Object.values(options).map((v: any) => String(v).trim());
-            const numericOptions = optionVals.filter(v => /^\d+\.?\d*/.test(v));
+            // Updated to allow currency symbols and units in numeric options
+            const numericOptions = optionVals.filter(v => /\d+/.test(v));
             
             // If it's a math question with numbers, at least one option should be numeric
             if (questionHasNumbers && numericOptions.length === 0) {
@@ -520,10 +586,10 @@ Return ONLY the JSON array, nothing else.`;
                 return false;
             }
             
-            // Check if the correct answer is numeric for math questions
-            const correctAnswerIsNumeric = /^\d+\.?\d*/.test(correctAnswerValue.trim());
-            if (questionHasNumbers && !correctAnswerIsNumeric && numericOptions.length > 0) {
-                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is math question but correct answer is not numeric, filtering out`);
+            // Check if the correct answer contains a number (allows currency symbols and units)
+            const correctAnswerHasNumber = /\d+/.test(correctAnswerValue.trim());
+            if (questionHasNumbers && !correctAnswerHasNumber && numericOptions.length > 0) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is math question but correct answer has no number, filtering out`);
                 console.warn(`   Correct answer: "${correctAnswerValue}"`);
                 console.warn(`   Available numeric options: ${numericOptions.join(', ')}`);
                 return false;
