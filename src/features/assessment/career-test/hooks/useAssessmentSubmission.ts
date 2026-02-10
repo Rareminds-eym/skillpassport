@@ -513,8 +513,13 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
       // ✅ CRITICAL FIX: Store studentContext in the attempt for later use
       // This ensures the AI analysis can access program information when generating career clusters
+      console.log('📝 Student context to save:', studentContext);
+      console.log('📝 Student context keys:', Object.keys(studentContext));
+      console.log('📝 Student context length:', Object.keys(studentContext).length);
+      
       if (attemptId && Object.keys(studentContext).length > 0) {
         try {
+          console.log('💾 Saving student context to attempt:', attemptId);
 
           const { error: contextError } = await supabase
             .from('personal_assessment_attempts')
@@ -526,7 +531,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           if (contextError) {
             console.warn('⚠️ Could not store student context:', contextError.message);
           } else {
-
+            console.log('✅ Student context saved successfully');
           }
         } catch (contextUpdateError) {
           console.error('❌ Error storing student context:', contextUpdateError);
@@ -673,11 +678,35 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           console.log('📊 [Stage 5/6] Saving to database...');
           window.setAnalysisProgress?.('saving', 'Saving your personalized report...');
           
+          // CRITICAL FIX: Get the actual student record ID (not auth user ID)
+          // The database foreign keys use students.id, not auth.users.id
+          let studentRecordId = userId; // Default to userId
+          
+          if (userId) {
+            try {
+              const { data: studentRecord, error: studentLookupError } = await supabase
+                .from('students')
+                .select('id')
+                .eq('user_id', userId)
+                .single();
+              
+              if (!studentLookupError && studentRecord) {
+                studentRecordId = studentRecord.id;
+                console.log('✅ [Database] Found student record ID:', studentRecordId);
+              } else {
+                console.warn('⚠️ [Database] Could not find student record, using user_id:', userId);
+              }
+            } catch (lookupErr) {
+              console.error('❌ [Database] Error looking up student record:', lookupErr);
+            }
+          }
+          
           console.log('💾 [Database] Calling completeAttempt WITH AI results...');
+          console.log('💾 [Database] Using student_id:', studentRecordId);
           
           const dbResults = await assessmentService.completeAttempt(
             attemptId,
-            userId,
+            studentRecordId, // Use student record ID, not auth user ID
             studentStream,
             gradeLevel || 'after12',
             geminiResults, // ← AI results included!

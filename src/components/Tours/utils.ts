@@ -42,6 +42,8 @@ export const isTourCompleted = (tourKey: TourKey, progress: TourProgress): boole
       return progress.assessment_result_completed === true;
     case 'assessment_result_after12':
       return progress.assessment_result_after12_completed === true;
+    case 'assessment_result_generic':
+      return progress.assessment_result_generic_completed === true;
     default:
       return false;
   }
@@ -65,6 +67,9 @@ export const markTourCompleted = (tourKey: TourKey, progress: TourProgress): Tou
       break;
     case 'assessment_result_after12':
       updatedProgress.assessment_result_after12_completed = true;
+      break;
+    case 'assessment_result_generic':
+      updatedProgress.assessment_result_generic_completed = true;
       break;
   }
   
