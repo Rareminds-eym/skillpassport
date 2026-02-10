@@ -499,20 +499,31 @@ const MainSettings = () => {
               console.warn('Could not refresh recent updates:', err)
             );
           }
-        },
+        } catch (err) {
+          console.warn('Error refreshing recent updates:', err);
+        }
       }
-    );
-
-    setIsSaving(false);
+    } catch (error) {
+      console.error('❌ MainSettings: Error saving education:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update education",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+    
     return result;
   };
 
   // Soft Skills management functions
   const handleSoftSkillsSave = async (skillsList) => {
+    let result;
     try {
       setIsSaving(true);
       
-      const result = await updateSoftSkills(skillsList);
+      result = await updateSoftSkills(skillsList);
       
       if (result.success) {
         setShowSoftSkillsModal(false);
@@ -529,9 +540,17 @@ const MainSettings = () => {
       } else {
         throw new Error(result.error || 'Failed to update soft skills');
       }
-    );
-
-    setIsSaving(false);
+    } catch (error) {
+      console.error('Error updating soft skills:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update soft skills",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+    
     return result;
   };
 
