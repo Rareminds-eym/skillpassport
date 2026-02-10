@@ -64,6 +64,18 @@ export const initializeHandler: PagesFunction = async (context) => {
     console.log('📝 [InitializeHandler] Generating diagnostic screener questions...');
     
     const questionGenUrl = new URL('/api/question-generation/generate/diagnostic', request.url);
+    
+    // Get authorization header from original request to pass through
+    const authHeader = request.headers.get('authorization');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    // Pass through authentication if present
+    if (authHeader) {
+      headers['authorization'] = authHeader;
+    }
+    
     const questionGenResponse = await fetch(questionGenUrl.toString(), {
       method: 'POST',
       headers: {
@@ -74,6 +86,8 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     if (!questionGenResponse.ok) {
       console.error('❌ [InitializeHandler] Question generation failed:', questionGenResponse.status);
+      const errorText = await questionGenResponse.text();
+      console.error('❌ [InitializeHandler] Error response:', errorText);
       throw new Error(`Failed to generate diagnostic screener questions: ${questionGenResponse.statusText}`);
     }
 

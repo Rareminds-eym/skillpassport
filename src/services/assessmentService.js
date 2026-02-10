@@ -979,23 +979,34 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // STEP 3: Create notification for assessment completion
   console.log('=== STEP 3: Creating assessment completion notification ===');
   try {
-    const { error: notificationError } = await supabase
-      .from('notifications')
-      .insert({
-        recipient_id: studentId,
-        type: 'assessment_completed',
-        title: 'Career Assessment Completed',
-        message: `Your ${gradeLevel === 'middle' ? 'Middle School' : gradeLevel === 'highschool' ? 'High School' : gradeLevel === 'after10' ? 'After 10th' : gradeLevel === 'after12' ? 'After 12th' : 'College'} career assessment has been completed. View your personalized results and career recommendations.`,
-        assessment_id: attemptId,
-        read: false,
-        created_at: new Date().toISOString()
-      });
+    // Fetch user_id from students table (studentId is the student record ID, not user_id)
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('user_id')
+      .eq('id', studentId)
+      .single();
 
-    if (notificationError) {
-      console.warn('⚠️ Could not create notification:', notificationError.message);
-      // Don't throw - notification is not critical
+    if (studentError || !studentData?.user_id) {
+      console.warn('⚠️ Could not fetch user_id for notification:', studentError?.message);
     } else {
-      console.log('✅ Assessment completion notification created');
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          recipient_id: studentData.user_id, // Use user_id, not student record ID
+          type: 'assessment_completed',
+          title: 'Career Assessment Completed',
+          message: `Your ${gradeLevel === 'middle' ? 'Middle School' : gradeLevel === 'highschool' ? 'High School' : gradeLevel === 'after10' ? 'After 10th' : gradeLevel === 'after12' ? 'After 12th' : 'College'} career assessment has been completed. View your personalized results and career recommendations.`,
+          assessment_id: attemptId,
+          read: false,
+          created_at: new Date().toISOString()
+        });
+
+      if (notificationError) {
+        console.warn('⚠️ Could not create notification:', notificationError.message);
+        // Don't throw - notification is not critical
+      } else {
+        console.log('✅ Assessment completion notification created');
+      }
     }
   } catch (notifErr) {
     console.warn('⚠️ Notification creation failed:', notifErr.message);

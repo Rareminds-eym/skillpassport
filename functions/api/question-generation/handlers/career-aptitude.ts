@@ -118,6 +118,8 @@ export async function generateAptitudeQuestions(
                 else if (streamId.includes('bca') || streamId.includes('mca') || streamId.includes('cs') || streamId.includes('it')) contextKey = 'it_software';
                 else if (streamId.includes('com')) contextKey = 'commerce';
                 else if (streamId.includes('sc')) contextKey = 'science';
+                else if (streamId.includes('economics')) contextKey = 'arts_economics';
+                else if (streamId.includes('psychology')) contextKey = 'arts_psychology';
                 else if (streamId.includes('art') || streamId.includes('ba')) contextKey = 'arts';
                 else contextKey = 'college'; // Ultimate fallback
             }
@@ -172,7 +174,7 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
 
     console.log(`✅ Generated ${allGeneratedQuestions.length} total questions via AI`);
     
-    // STRICT validation: Check for duplicate questions and validate answer options
+    // COMPREHENSIVE VALIDATION: Check for duplicate questions and validate answer options
     const uniqueQuestions: any[] = [];
     const seenTexts = new Set<string>();
     let filteredCount = 0;
@@ -203,9 +205,32 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
             continue;
         }
         
-        // Validate answer options are unique
+        // Validate options structure
         const options = q.options || {};
-        const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+        const correctAnswer = (q.correct_answer || q.correctAnswer || '').toString().trim().toUpperCase();
+        
+        // Check all 4 options exist (handle both array and object formats)
+        let optionValues: string[];
+        if (Array.isArray(options)) {
+            if (options.length !== 4) {
+                console.warn(`⚠️ Filtered question with ${options.length} options (need 4): "${normalizedText.substring(0, 50)}..."`);
+                filteredCount++;
+                continue;
+            }
+            optionValues = options.map((v: any) => String(v).toLowerCase().trim());
+        } else {
+            const requiredOptions = ['A', 'B', 'C', 'D'];
+            for (const opt of requiredOptions) {
+                if (!options[opt] || typeof options[opt] !== 'string' || options[opt].trim().length === 0) {
+                    console.warn(`⚠️ Filtered question missing or empty option ${opt}: "${normalizedText.substring(0, 50)}..."`);
+                    filteredCount++;
+                    continue;
+                }
+            }
+            optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+        }
+        
+        // Validate answer options are unique
         const uniqueOptions = new Set(optionValues);
         
         if (uniqueOptions.size < optionValues.length) {
@@ -220,6 +245,33 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
             console.warn(`⚠️ Filtered question with empty options: "${normalizedText.substring(0, 50)}..."`);
             filteredCount++;
             continue;
+        }
+        
+        // CRITICAL: Validate correct answer exists in options
+        if (Array.isArray(options)) {
+            // For array format, correct_answer should be the actual value
+            const answerExists = optionValues.some(opt => opt === correctAnswer.toLowerCase());
+            if (!answerExists) {
+                console.warn(`⚠️ Filtered question where correct answer "${correctAnswer}" not in options: "${normalizedText.substring(0, 50)}..."`);
+                console.warn(`   Options: ${JSON.stringify(options)}`);
+                filteredCount++;
+                continue;
+            }
+        } else {
+            // For object format, correct_answer should be A/B/C/D
+            if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+                console.warn(`⚠️ Filtered question with invalid correctAnswer "${correctAnswer}": "${normalizedText.substring(0, 50)}..."`);
+                filteredCount++;
+                continue;
+            }
+            
+            const correctAnswerValue = options[correctAnswer];
+            if (!correctAnswerValue || correctAnswerValue.trim().length === 0) {
+                console.warn(`⚠️ Filtered question where correctAnswer "${correctAnswer}" does not map to valid option: "${normalizedText.substring(0, 50)}..."`);
+                console.warn(`   Options: ${JSON.stringify(options)}`);
+                filteredCount++;
+                continue;
+            }
         }
         
         seenTexts.add(normalizedText);
