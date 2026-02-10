@@ -103,14 +103,28 @@ CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is 
 - Before finalizing each question, verify all 4 options have different values
 - All options must be non-empty and meaningful
 - Correct answer must be clearly distinguishable from wrong answers
-- **CRITICAL FOR MATH QUESTIONS**: The correct calculated answer MUST be one of the 4 options (A, B, C, or D)
-- **VERIFY YOUR MATH**: Before finalizing a math question, calculate the answer and ensure it matches one of your options
-- If the correct answer is 12.5, then 12.5 MUST appear in one of the options (not 11, 14, 17, 20)
-- **DOUBLE-CHECK PROCESS**: 
-  1. Calculate the correct answer
-  2. Create 3 different wrong answers
-  3. Verify all 4 options are unique (no duplicates)
-  4. Confirm the correct answer is in the options
+
+⚠️ CRITICAL FOR MATH/CALCULATION QUESTIONS ⚠️
+**STEP-BY-STEP PROCESS FOR MATH QUESTIONS:**
+1. **CALCULATE THE CORRECT ANSWER FIRST** - Do the math before creating options
+2. **PUT THE CALCULATED ANSWER in one of the options** (A, B, C, or D)
+3. Create 3 different WRONG answers for the other options
+4. **VERIFY**: The correct calculated answer MUST appear exactly in one of the options
+5. **DOUBLE-CHECK**: Read the question, calculate again, confirm the answer is in the options
+
+**Example CORRECT:**
+Question: "If 5 apples cost $10, how much do 8 apples cost?"
+Calculation: (10/5) × 8 = $16
+Options: {"A": "$12", "B": "$14", "C": "$16", "D": "$18"}
+Correct Answer: "C"
+✅ The calculated answer ($16) IS in option C
+
+**Example WRONG (DO NOT DO THIS):**
+Question: "If 5 apples cost $10, how much do 8 apples cost?"
+Calculation: (10/5) × 8 = $16
+Options: {"A": "$12", "B": "$14", "C": "$15", "D": "$18"}
+Correct Answer: "C"
+❌ The calculated answer ($16) is NOT in any option - this is WRONG!
 
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}

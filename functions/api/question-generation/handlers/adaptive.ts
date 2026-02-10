@@ -173,24 +173,89 @@ function validateQuestionStructure(questions: any[]): any[] {
             throw new Error(`Question ${index + 1}: correctAnswer "${normalizedAnswer}" does not map to any option`);
         }
 
-        // Log warning if the question looks like it might have calculation issues
+        // ENHANCED: Cross-validate the explanation with the correct answer
+        const explanationLower = q.explanation?.toLowerCase() || '';
+        const correctAnswerLower = correctAnswerText.toLowerCase().trim();
+        
+        // Check if the explanation mentions a different answer than what's in the options
+        // This catches cases where AI calculates "60" in explanation but puts "55" in the option
+        const explanationNumbers = explanationLower.match(/=\s*(\d+\.?\d*)/g);
+        const optionNumbers = correctAnswerLower.match(/\d+\.?\d*/g);
+        
+        if (explanationNumbers && explanationNumbers.length > 0 && optionNumbers && optionNumbers.length > 0) {
+            // Extract the final calculated value from explanation (usually after the last =)
+            const lastCalc = explanationNumbers[explanationNumbers.length - 1].replace(/[=\s]/g, '');
+            const optionValue = optionNumbers[0];
+            
+            // If they don't match, this is likely wrong
+            if (lastCalc !== optionValue) {
+                console.warn(`⚠️ [Validation] Question ${index + 1}: Explanation shows "${lastCalc}" but correct option has "${optionValue}"`);
+                console.warn(`   This question may have incorrect answer mapping!`);
+                throw new Error(`Question ${index + 1}: Explanation result (${lastCalc}) doesn't match correct answer option (${optionValue})`);
+            }
+        }
+
+        // ENHANCED: Check if this is a math question and validate the answer makes sense
         const questionLower = q.text.toLowerCase();
-        const hasCalculation = /\d+.*[+\-*/×÷].*\d+|calculate|compute|what is|value of|result of/.test(questionLower);
+        const hasCalculation = /\d+.*[+\-*/×÷].*\d+|calculate|compute|what is|value of|result of|find|solve/.test(questionLower);
         
         if (hasCalculation) {
             console.log(`🔢 [Validation] Question ${index + 1} appears to be a calculation question`);
-            console.log(`   Question: ${q.text.substring(0, 80)}...`);
+            console.log(`   Question: ${q.text.substring(0, 100)}...`);
             console.log(`   Correct answer (${normalizedAnswer}): ${correctAnswerText}`);
+            console.log(`   Explanation: ${q.explanation.substring(0, 100)}...`);
             console.log(`   All options: A="${cleanedOptions.A}" B="${cleanedOptions.B}" C="${cleanedOptions.C}" D="${cleanedOptions.D}"`);
             
-            // Additional check: For math questions, try to detect if the answer looks wrong
-            // This is a heuristic check - if the question has numbers and operators, 
-            // we expect the correct answer to also be a number
+            // Check if the question has numbers and operators
             const questionHasNumbers = /\d+/.test(questionLower);
             const answerIsNumber = /^\d+\.?\d*$/.test(correctAnswerText.trim());
             
+            // CRITICAL: For math questions, verify at least one option is numeric
+            const optionValues = Object.values(cleanedOptions);
+            const numericOptions = optionValues.filter(v => /^\d+\.?\d*$/.test(v.trim()));
+            
+            if (questionHasNumbers && numericOptions.length === 0) {
+                console.error(`❌ [Validation] Question ${index + 1}: Math question but NO numeric options!`);
+                throw new Error(`Question ${index + 1}: Math question has no numeric answer options`);
+            }
+            
             if (questionHasNumbers && !answerIsNumber) {
-                console.warn(`⚠️ [Validation] Question ${index + 1}: Math question but answer is not a number: "${correctAnswerText}"`);
+                console.warn(`⚠️ [Validation] Question ${index + 1}: Math question but correct answer is not numeric: "${correctAnswerText}"`);
+                console.warn(`   This question may have incorrect answer mapping!`);
+                
+                // Try to find if any option looks like a calculated answer
+                if (numericOptions.length > 0) {
+                    console.warn(`   Available numeric options: ${numericOptions.join(', ')}`);
+                }
+            }
+        }
+        
+        // ENHANCED: For non-math questions, check if explanation contradicts the answer
+        if (!hasCalculation && explanationLower.length > 0) {
+            // Look for common patterns where explanation states the answer
+            const answerPatterns = [
+                /answer is (.+?)[\.\,]/i,
+                /correct answer is (.+?)[\.\,]/i,
+                /therefore (.+?)[\.\,]/i,
+                /thus (.+?)[\.\,]/i,
+                /so (.+?)[\.\,]/i
+            ];
+            
+            for (const pattern of answerPatterns) {
+                const match = q.explanation.match(pattern);
+                if (match && match[1]) {
+                    const explainedAnswer = match[1].trim().toLowerCase();
+                    const actualAnswer = correctAnswerText.toLowerCase();
+                    
+                    // Check if they're similar (allowing for minor differences)
+                    if (explainedAnswer.length > 3 && actualAnswer.length > 3) {
+                        const similarity = calculateSimilarity(explainedAnswer, actualAnswer);
+                        if (similarity < 0.5) {
+                            console.warn(`⚠️ [Validation] Question ${index + 1}: Explanation mentions "${explainedAnswer}" but correct option is "${actualAnswer}"`);
+                            console.warn(`   Similarity: ${(similarity * 100).toFixed(0)}% - This may be incorrect!`);
+                        }
+                    }
+                }
             }
         }
 
@@ -273,6 +338,58 @@ ${excludeTextsArray.length > 0 ? excludeTextsArray.slice(0, 30).map((t, i) => ` 
 - If you see a pattern in excluded questions, deliberately avoid that pattern
 - Think creatively - each question should feel fresh and unique
 
+⚠️ CRITICAL: CORRECT ANSWER MUST BE IN OPTIONS ⚠️
+**THIS IS THE MOST IMPORTANT RULE - READ CAREFULLY:**
+
+For EVERY question type (math, logic, verbal, reasoning, etc.):
+1. **DETERMINE THE CORRECT ANSWER FIRST** - Know what the right answer is before creating options
+2. **PUT THE EXACT CORRECT ANSWER in one of the options** (A, B, C, or D)
+3. Create 3 different WRONG answers for the other options
+4. **VERIFY**: Look at your correctAnswer field - that EXACT value MUST appear in one of the options
+5. **DOUBLE-CHECK**: Read through all 4 options and confirm the correct answer is there
+
+**Example CORRECT (Math):**
+{
+  "text": "If a train travels 120 km in 2 hours, what is its average speed?",
+  "options": {"A": "50 km/h", "B": "60 km/h", "C": "70 km/h", "D": "80 km/h"},
+  "correctAnswer": "B",
+  "explanation": "Speed = Distance/Time = 120/2 = 60 km/h"
+}
+✅ Correct answer is "60 km/h" and it IS in option B
+
+**Example CORRECT (Logic):**
+{
+  "text": "If all cats are animals and some animals are furry, what can be concluded about cats?",
+  "options": {"A": "Cats are furry", "B": "Cats are not furry", "C": "All cats are furry", "D": "Some cats are furry"},
+  "correctAnswer": "D",
+  "explanation": "We can only conclude that some cats might be furry based on the given information"
+}
+✅ Correct answer is "Some cats are furry" and it IS in option D
+
+**Example WRONG (DO NOT DO THIS):**
+{
+  "text": "If a train travels 120 km in 2 hours, what is its average speed?",
+  "options": {"A": "50 km/h", "B": "55 km/h", "C": "70 km/h", "D": "80 km/h"},
+  "correctAnswer": "B",
+  "explanation": "Speed = Distance/Time = 120/2 = 60 km/h"
+}
+❌ Correct answer is "60 km/h" but it's NOT in any option - option B has "55 km/h" instead
+
+**Example WRONG (DO NOT DO THIS):**
+{
+  "text": "What is the capital of France?",
+  "options": {"A": "London", "B": "Berlin", "C": "Madrid", "D": "Rome"},
+  "correctAnswer": "A",
+  "explanation": "Paris is the capital of France"
+}
+❌ Correct answer is "Paris" but it's NOT in any option
+
+⚠️ OPTION UNIQUENESS (ABSOLUTELY CRITICAL):
+- Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)
+- NO duplicate values (e.g., don't use "33" for both B and D)
+- All options must be distinct and non-empty
+- Verify all 4 options have different values before finalizing
+
 IMPORTANT OUTPUT FORMAT:
 You MUST return a JSON array starting with [ and ending with ].
 Each question object must have these exact fields:
@@ -280,22 +397,6 @@ Each question object must have these exact fields:
 - "options": object with keys "A", "B", "C", "D"
 - "correctAnswer": string (one of "A", "B", "C", or "D")
 - "explanation": string (brief explanation)
-
-Example of correct format:
-[
-  {
-    "text": "What is 2+2?",
-    "options": {"A": "3", "B": "4", "C": "5", "D": "6"},
-    "correctAnswer": "B",
-    "explanation": "2+2=4"
-  },
-  {
-    "text": "What is 3+3?",
-    "options": {"A": "5", "B": "6", "C": "7", "D": "8"},
-    "correctAnswer": "B",
-    "explanation": "3+3=6"
-  }
-]
 
 CRITICAL RULES:
 1. Start your response with [ (opening bracket)
@@ -305,7 +406,9 @@ CRITICAL RULES:
 5. Keep question text concise and on single lines where possible
 6. Ensure all strings are properly quoted
 7. Ensure all commas are in the right places
-8. MOST IMPORTANT: Ensure questions are COMPLETELY UNIQUE and different from excluded questions
+8. **MOST CRITICAL**: The value in your correctAnswer field MUST match one of the option values EXACTLY
+9. VERIFY: All 4 options (A, B, C, D) must have different values - no duplicates!
+10. FINAL CHECK: For each question, verify that options[correctAnswer] contains the actual correct answer
 
 Return ONLY the JSON array, nothing else.`;
 
@@ -398,6 +501,33 @@ Return ONLY the JSON array, nothing else.`;
         if (!correctAnswerValue || correctAnswerValue.trim().length === 0) {
             console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} correctAnswer "${correctAnswer}" does not map to valid option, filtering out`);
             return false;
+        }
+        
+        // ENHANCED: For math questions, verify the answer makes sense
+        const qText = q.text?.toLowerCase().trim() || '';
+        const hasCalculation = /\d+.*[+\-*/×÷].*\d+|calculate|compute|what is|value of|result of|find|solve/.test(qText);
+        
+        if (hasCalculation) {
+            const questionHasNumbers = /\d+/.test(qText);
+            const optionVals = Object.values(options).map((v: any) => String(v).trim());
+            const numericOptions = optionVals.filter(v => /^\d+\.?\d*/.test(v));
+            
+            // If it's a math question with numbers, at least one option should be numeric
+            if (questionHasNumbers && numericOptions.length === 0) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is math question but has NO numeric options, filtering out`);
+                console.warn(`   Question: "${qText.substring(0, 80)}..."`);
+                console.warn(`   Options: ${JSON.stringify(options)}`);
+                return false;
+            }
+            
+            // Check if the correct answer is numeric for math questions
+            const correctAnswerIsNumeric = /^\d+\.?\d*/.test(correctAnswerValue.trim());
+            if (questionHasNumbers && !correctAnswerIsNumeric && numericOptions.length > 0) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is math question but correct answer is not numeric, filtering out`);
+                console.warn(`   Correct answer: "${correctAnswerValue}"`);
+                console.warn(`   Available numeric options: ${numericOptions.join(', ')}`);
+                return false;
+            }
         }
         
         // Check if this question text is too similar to any excluded text (80% threshold for stricter filtering)
