@@ -512,6 +512,18 @@ const AssessmentTestPage: React.FC = () => {
     const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
     const canBuild = flow.studentStream || !needsStream;
 
+    // CRITICAL FIX: For grade levels that use AI knowledge questions (higher_secondary, after12, college),
+    // wait for AI questions to load before building sections
+    // This prevents the knowledge section from being created with 0 questions
+    const needsAIKnowledge = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
+    const hasAIKnowledge = aiQuestions?.knowledge && aiQuestions.knowledge.length > 0;
+    
+    // Don't build sections if we need AI knowledge questions but they haven't loaded yet
+    if (needsAIKnowledge && !hasAIKnowledge && questionsLoading) {
+      console.log('⏳ Waiting for AI knowledge questions to load before building sections');
+      return;
+    }
+
     if (canBuild) {
       const builtSections = buildSectionsWithQuestions(
         flow.gradeLevel,
@@ -521,7 +533,7 @@ const AssessmentTestPage: React.FC = () => {
       );
       setSections(builtSections);
     }
-  }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory]);
+  }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory, questionsLoading]);
 
   // FIX 2: Restore position after sections are built (handles race condition)
   useEffect(() => {
@@ -1935,9 +1947,12 @@ const AssessmentTestPage: React.FC = () => {
     return isAnswered;
   }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion, flow.questionId]);
 
-  // Loading state - only show loading screen for initial checks, not for AI questions
-  // AI questions can load in the background while showing section intro
-  const showLoading = checkingExistingAttempt || (!assessmentStarted && dbLoading);
+  // Loading state - show loading for initial checks AND for AI questions when needed
+  // For grade levels that require AI knowledge questions, show loading until questions are ready
+  const needsAIKnowledge = flow.gradeLevel && ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
+  const waitingForAIQuestions = needsAIKnowledge && questionsLoading && assessmentStarted && sections.length === 0;
+  
+  const showLoading = checkingExistingAttempt || (!assessmentStarted && dbLoading) || waitingForAIQuestions;
 
   // Debug: Log loading states
   if (showLoading) {
@@ -1948,12 +1963,16 @@ const AssessmentTestPage: React.FC = () => {
       dbLoading,
       loadingStudentGrade,
       studentRecordId,
-      currentScreen: flow.currentScreen
+      currentScreen: flow.currentScreen,
+      waitingForAIQuestions
     });
   }
 
   if (showLoading) {
-    return <LoadingScreen message="Loading assessment..." />;
+    const message = waitingForAIQuestions 
+      ? "Generating personalized questions for your stream..." 
+      : "Loading assessment...";
+    return <LoadingScreen message={message} />;
   }
 
   // Error state
