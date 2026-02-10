@@ -232,6 +232,7 @@ const AssessmentTestPage: React.FC = () => {
   const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
   const shouldShowAllOptions = window.location.hostname === 'skillpassport.pages.dev';
   const shouldFilterByGrade = window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' || "dev.skillpassport.pages.dev"
     window.location.hostname === 'skilldevelopment.rareminds.in';
 
   // Student grade info
@@ -1499,14 +1500,14 @@ const AssessmentTestPage: React.FC = () => {
 
             console.log('✅ [CHECKPOINT SAVE] Success - Navigation ALLOWED');
           } else {
-            // LIGHT SAVE: Save answers but don't update section timings
+            // LIGHT SAVE: Try to save, block if it fails
             const saveResult = await dbUpdateProgress(
               nextSectionIndex,
               finalQuestionIndex,
-              flow.sectionTimings, // Keep section timings
+              {}, // Empty section timings for light save
               null,
               null,
-              updatedAnswers // CRITICAL FIX: Save all answers on every navigation
+              {} // Empty answers for light save
             );
 
             if (!saveResult?.success) {

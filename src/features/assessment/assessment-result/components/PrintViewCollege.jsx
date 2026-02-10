@@ -180,18 +180,10 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
           maxScore: results.riasec.maxScore || 
                    results.gemini_results?.riasec?.maxScore || 
                    20
-        },
-        // Ensure gemini_results is preserved for adaptive aptitude data
-        gemini_results: results.gemini_results
+        }
       };
     }
   }
-  
-  console.log('🔍 PrintViewCollege normalizedResults:', {
-    hasGeminiResults: !!normalizedResults.gemini_results,
-    hasAdaptiveTest: !!normalizedResults.gemini_results?.aptitude?.adaptiveTest,
-    adaptiveTestData: normalizedResults.gemini_results?.aptitude?.adaptiveTest
-  });
 
   // Extract data from normalized results
   const { riasec, aptitude, bigFive, workValues, knowledge, employability, careerFit, skillGap, roadmap, overallSummary } = normalizedResults;

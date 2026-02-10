@@ -98,6 +98,11 @@ const SkillPassportPreRegistration = lazy(() =>
   import("../pages/register/SkillPassportPreRegistration")
 );
 
+// Internal Testing Registration
+const InternalTestingRegistration = lazy(() =>
+  import("../pages/register/InternalTestingRegistration")
+);
+
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
 const UnifiedSignup = lazy(() => import("../pages/auth/UnifiedSignup"));
@@ -514,6 +519,9 @@ const AppRoutes = () => {
       <Routes>
         {/* Skill Passport Pre-Registration - Main landing page */}
         <Route path="/register" element={<SkillPassportPreRegistration />} />
+        
+        {/* Internal Testing Registration */}
+        <Route path="/internal-testing" element={<InternalTestingRegistration />} />
         
         {/* Receipt Page - Download PDF receipt */}
         <Route path="/receipt/:orderId" element={<Receipt />} />

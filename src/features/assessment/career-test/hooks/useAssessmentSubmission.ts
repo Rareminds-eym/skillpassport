@@ -377,11 +377,11 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
       }
 
-      // ✅ CRITICAL FIX: Fetch student context for college, after12, and higher_secondary students
-      // This ensures career clusters are aligned with the student's program/course/stream
+      // ✅ CRITICAL FIX: Fetch student context for all students to get their actual grade
+      // This ensures career recommendations are age-appropriate
       let studentContext: any = {};
 
-      if (userId && (gradeLevel === 'college' || gradeLevel === 'after12' || gradeLevel === 'higher_secondary')) {
+      if (userId) {
         try {
 
           const { data: student, error: studentError } = await supabase
@@ -453,6 +453,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
             studentContext = {
               rawGrade: enhancedGrade,
+              grade: student.grade, // Keep original grade too
               programName: programName,
               programCode: programCode,
               degreeLevel: degreeLevel,

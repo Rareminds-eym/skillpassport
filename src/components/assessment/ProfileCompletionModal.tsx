@@ -222,9 +222,9 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
     !profileData.universityId || college.university_id === profileData.universityId
   ) || [];
 
-  const filteredPrograms = programs?.filter((program: any) =>
-    !profileData.universityCollegeId || program.college_id === profileData.universityCollegeId
-  ) || [];
+  // Show all programs when college is selected (same as settings page)
+  // Note: Programs are linked via departments, but we show all for simplicity
+  const filteredPrograms = programs || [];
 
   // Handle form field changes (same logic as Settings page)
   const handleProfileChange = (field: string, value: string) => {

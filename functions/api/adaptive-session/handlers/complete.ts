@@ -83,9 +83,26 @@ export const completeHandler: PagesFunction = async (context) => {
       );
     }
 
-    // Verify session ownership
-    if (sessionData.student_id !== auth.user.id) {
-      console.error('❌ [CompleteHandler] Session ownership verification failed');
+    // Verify session ownership by checking if the student's user_id matches the authenticated user
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('user_id')
+      .eq('id', sessionData.student_id)
+      .single();
+
+    if (studentError || !studentData) {
+      console.error('❌ [CompleteHandler] Failed to fetch student:', studentError);
+      return jsonResponse(
+        { error: 'Student not found' },
+        404
+      );
+    }
+
+    if (studentData.user_id !== auth.user.id) {
+      console.error('❌ [CompleteHandler] Session ownership verification failed', {
+        studentUserId: studentData.user_id,
+        authUserId: auth.user.id
+      });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },
         403

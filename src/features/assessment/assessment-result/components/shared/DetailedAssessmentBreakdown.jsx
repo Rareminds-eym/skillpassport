@@ -43,14 +43,12 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
         riasecOriginal: riasec?._originalScores,
         hasGeminiResults: !!results.gemini_results,
         geminiOriginal: results.gemini_results?.riasec?._originalScores,
-        hasAdaptiveAptitude: !!(results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults || results.gemini_results?.aptitude?.adaptiveTest),
-        adaptiveAptitudeData: results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults || results.gemini_results?.aptitude?.adaptiveTest,
+        hasAdaptiveAptitude: !!(results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults),
+        adaptiveAptitudeData: results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults,
         adaptiveFoundAt: results.adaptiveAptitudeResults ? 'results.adaptiveAptitudeResults' : 
                         results.adaptive_aptitude_results ? 'results.adaptive_aptitude_results' : 
                         results.gemini_results?.adaptiveAptitudeResults ? 'results.gemini_results.adaptiveAptitudeResults' : 
-                        results.gemini_results?.aptitude?.adaptiveTest ? 'results.gemini_results.aptitude.adaptiveTest' :
-                        'NOT FOUND',
-        gradeLevel: gradeLevel
+                        'NOT FOUND'
     });
 
     // 🔧 CRITICAL FIX: Check BOTH locations for _originalScores
@@ -155,111 +153,55 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
         {
             id: 2.5,
             name: 'Adaptive Aptitude Test',
-            data: (() => {
-                const adaptiveData = results.adaptiveAptitudeResults || 
-                                    results.adaptive_aptitude_results || 
-                                    results.aptitude?.adaptiveTest ||
-                                    results.gemini_results?.adaptiveAptitudeResults || 
-                                    results.gemini_results?.aptitude?.adaptiveTest;
-                console.log('🔍 Stage 2.5 data check:', {
-                    found: !!adaptiveData,
-                    data: adaptiveData,
-                    location: results.adaptiveAptitudeResults ? 'adaptiveAptitudeResults' :
-                             results.adaptive_aptitude_results ? 'adaptive_aptitude_results' :
-                             results.aptitude?.adaptiveTest ? 'aptitude.adaptiveTest' :
-                             results.gemini_results?.adaptiveAptitudeResults ? 'gemini_results.adaptiveAptitudeResults' :
-                             results.gemini_results?.aptitude?.adaptiveTest ? 'gemini_results.aptitude.adaptiveTest' : 'NOT FOUND'
-                });
-                return adaptiveData;
-            })(),
+            data: results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults,
             scores: (() => {
-                const adaptiveData = results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.aptitude?.adaptiveTest || results.gemini_results?.adaptiveAptitudeResults || results.gemini_results?.aptitude?.adaptiveTest;
+                const adaptiveData = results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults;
                 if (!adaptiveData) return [];
                 
                 const scores = [];
                 
-                // Check if this is the nested format (only accuracy values, no overall metrics)
-                const isNestedFormat = !adaptiveData.overall_accuracy && !adaptiveData.overallAccuracy && 
-                                      !adaptiveData.total_correct && !adaptiveData.totalCorrect;
+                // Overall metrics
+                scores.push({
+                    label: 'Aptitude Level',
+                    value: adaptiveData.aptitude_level || adaptiveData.aptitudeLevel || 0,
+                    max: 10,
+                    percentage: Math.round(((adaptiveData.aptitude_level || adaptiveData.aptitudeLevel || 0) / 10) * 100)
+                });
                 
-                if (isNestedFormat) {
-                    // Handle nested format from gemini_results.aptitude.adaptiveTest
-                    // This format has direct properties like verbal_reasoning: { accuracy: 15 }
-                    const subtagLabels = {
-                        'verbal_reasoning': 'Verbal Reasoning',
-                        'logical_reasoning': 'Logical Reasoning',
-                        'spatial_reasoning': 'Spatial Reasoning',
-                        'numerical_reasoning': 'Numerical Reasoning',
-                        'pattern_recognition': 'Pattern Recognition',
-                        'data_interpretation': 'Data Interpretation'
-                    };
-                    
-                    Object.entries(adaptiveData).forEach(([subtag, data]) => {
-                        if (data && typeof data === 'object' && data.accuracy !== undefined) {
-                            scores.push({
-                                label: subtagLabels[subtag] || subtag,
-                                value: data.accuracy,
-                                max: 100,
-                                percentage: Math.round(data.accuracy)
-                            });
-                        }
-                    });
-                } else {
-                    // Handle standard format with overall metrics
-                    scores.push({
-                        label: 'Aptitude Level',
-                        value: adaptiveData.aptitude_level || adaptiveData.aptitudeLevel || 0,
-                        max: 10,
-                        percentage: Math.round(((adaptiveData.aptitude_level || adaptiveData.aptitudeLevel || 0) / 10) * 100)
-                    });
-                    
-                    scores.push({
-                        label: 'Overall Accuracy',
-                        value: adaptiveData.total_correct || adaptiveData.totalCorrect || 0,
-                        max: adaptiveData.total_questions || adaptiveData.totalQuestions || 1,
-                        percentage: Math.round(parseFloat(adaptiveData.overall_accuracy || adaptiveData.overallAccuracy || 0))
-                    });
-                    
-                    // Breakdown by subtag (question type)
-                    const accuracyBySubtag = adaptiveData.accuracy_by_subtag || adaptiveData.accuracyBySubtag || {};
-                    const subtagLabels = {
-                        'verbal_reasoning': 'Verbal Reasoning',
-                        'logical_reasoning': 'Logical Reasoning',
-                        'spatial_reasoning': 'Spatial Reasoning',
-                        'numerical_reasoning': 'Numerical Reasoning',
-                        'pattern_recognition': 'Pattern Recognition',
-                        'data_interpretation': 'Data Interpretation'
-                    };
-                    
-                    Object.entries(accuracyBySubtag).forEach(([subtag, data]) => {
-                        if (data && data.total > 0) {
-                            scores.push({
-                                label: subtagLabels[subtag] || subtag,
-                                value: data.correct || 0,
-                                max: data.total || 1,
-                                percentage: Math.round(data.accuracy || 0)
-                            });
-                        }
-                    });
-                }
+                scores.push({
+                    label: 'Overall Accuracy',
+                    value: adaptiveData.total_correct || adaptiveData.totalCorrect || 0,
+                    max: adaptiveData.total_questions || adaptiveData.totalQuestions || 1,
+                    percentage: Math.round(parseFloat(adaptiveData.overall_accuracy || adaptiveData.overallAccuracy || 0))
+                });
+                
+                // Breakdown by subtag (question type)
+                const accuracyBySubtag = adaptiveData.accuracy_by_subtag || adaptiveData.accuracyBySubtag || {};
+                const subtagLabels = {
+                    'verbal_reasoning': 'Verbal Reasoning',
+                    'logical_reasoning': 'Logical Reasoning',
+                    'spatial_reasoning': 'Spatial Reasoning',
+                    'numerical_reasoning': 'Numerical Reasoning',
+                    'pattern_recognition': 'Pattern Recognition',
+                    'data_interpretation': 'Data Interpretation'
+                };
+                
+                Object.entries(accuracyBySubtag).forEach(([subtag, data]) => {
+                    if (data && data.total > 0) {
+                        scores.push({
+                            label: subtagLabels[subtag] || subtag,
+                            value: data.correct || 0,
+                            max: data.total || 1,
+                            percentage: Math.round(data.accuracy || 0)
+                        });
+                    }
+                });
                 
                 return scores;
             })(),
             avgPercentage: (() => {
-                const adaptiveData = results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.aptitude?.adaptiveTest || results.gemini_results?.adaptiveAptitudeResults || results.gemini_results?.aptitude?.adaptiveTest;
+                const adaptiveData = results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults;
                 if (!adaptiveData) return 0;
-                
-                // If data is nested in aptitude.adaptiveTest, calculate average from accuracy values
-                if (results.gemini_results?.aptitude?.adaptiveTest && !adaptiveData.overall_accuracy && !adaptiveData.overallAccuracy) {
-                    const accuracyValues = Object.values(adaptiveData)
-                        .filter(item => typeof item === 'object' && item.accuracy !== undefined)
-                        .map(item => item.accuracy);
-                    
-                    if (accuracyValues.length > 0) {
-                        return Math.round(accuracyValues.reduce((sum, val) => sum + val, 0) / accuracyValues.length);
-                    }
-                }
-                
                 return Math.round(parseFloat(adaptiveData.overall_accuracy || adaptiveData.overallAccuracy || 0));
             })()
         },
