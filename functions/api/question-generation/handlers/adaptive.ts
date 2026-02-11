@@ -376,20 +376,39 @@ ${excludeTextsArray.length > 0 ? excludeTextsArray.slice(0, 30).map((t, i) => ` 
 **THIS IS THE MOST IMPORTANT RULE - READ CAREFULLY:**
 
 For EVERY question type (math, logic, verbal, reasoning, etc.):
-1. **DETERMINE THE CORRECT ANSWER FIRST** - Know what the right answer is before creating options
-2. **PUT THE EXACT CORRECT ANSWER in one of the options** (A, B, C, or D)
-3. Create 3 different WRONG answers for the other options
-4. **VERIFY**: Look at your correctAnswer field - that EXACT value MUST appear in one of the options
-5. **DOUBLE-CHECK**: Read through all 4 options and confirm the correct answer is there
+1. **SOLVE THE PROBLEM FIRST** - Calculate or determine the actual correct answer
+2. **FOR MATH QUESTIONS**: Double-check your calculation before creating options
+3. **PUT THE EXACT CORRECT ANSWER in one of the options** (A, B, C, or D)
+4. Create 3 different WRONG answers for the other options (make them plausible but incorrect)
+5. **VERIFY**: Look at your correctAnswer field - that EXACT value MUST appear in one of the options
+6. **TRIPLE-CHECK MATH**: For calculation questions, verify your math is correct
 
-**Example CORRECT (Math):**
+**Example CORRECT (Math - Combinations):**
+{
+  "text": "How many ways can you choose 2 items from a set of 5 items?",
+  "options": {"A": "8", "B": "10", "C": "12", "D": "15"},
+  "correctAnswer": "B",
+  "explanation": "C(5,2) = 5!/(2!×3!) = (5×4)/(2×1) = 10"
+}
+✅ Calculated C(5,2) = 10, and "10" IS in option B
+
+**Example WRONG (DO NOT DO THIS - Math Error):**
+{
+  "text": "If a box contains 84 chocolates and 3 are picked, how many ways can they be picked?",
+  "options": {"A": "952", "B": "1312", "C": "2184", "D": "2352"},
+  "correctAnswer": "A",
+  "explanation": "C(84,3) = 95284"
+}
+❌ The explanation says 95284 but none of the options have this value! This is WRONG!
+
+**Example CORRECT (Speed/Distance):**
 {
   "text": "If a train travels 120 km in 2 hours, what is its average speed?",
   "options": {"A": "50 km/h", "B": "60 km/h", "C": "70 km/h", "D": "80 km/h"},
   "correctAnswer": "B",
   "explanation": "Speed = Distance/Time = 120/2 = 60 km/h"
 }
-✅ Correct answer is "60 km/h" and it IS in option B
+✅ Calculated 120/2 = 60, and "60 km/h" IS in option B
 
 **Example CORRECT (Logic):**
 {
@@ -398,6 +417,7 @@ For EVERY question type (math, logic, verbal, reasoning, etc.):
   "correctAnswer": "D",
   "explanation": "We can only conclude that some cats might be furry based on the given information"
 }
+✅ Correct logical conclusion is "Some cats are furry" and it IS in option D
 ✅ Correct answer is "Some cats are furry" and it IS in option D
 
 **Example WRONG (DO NOT DO THIS):**
@@ -612,6 +632,97 @@ Return ONLY the JSON array, nothing else.`;
                 console.warn(`   Available numeric options: ${numericOptions.join(', ')}`);
                 return false;
             }
+            
+            // NEW: Check if numeric options are reasonably distributed (not all very similar or wildly different)
+            if (numericOptions.length >= 3) {
+                const numbers = numericOptions.map(opt => {
+                    const match = opt.match(/\d+/);
+                    return match ? parseInt(match[0]) : 0;
+                }).filter(n => n > 0);
+                
+                if (numbers.length >= 3) {
+                    const sorted = [...numbers].sort((a, b) => a - b);
+                    const min = sorted[0];
+                    const max = sorted[sorted.length - 1];
+                    
+                    // If all options are identical, that's invalid
+                    if (min === max) {
+                        console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has all identical numeric values, filtering out`);
+                        return false;
+                    }
+                    
+                    // If the range is too extreme (max > 100x min), likely an error
+                    if (max > min * 100) {
+                        console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has extreme numeric range (${min} to ${max}), filtering out`);
+                        console.warn(`   Question: "${qText.substring(0, 80)}..."`);
+                        console.warn(`   Options: ${JSON.stringify(options)}`);
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        // NEW: Additional validation for ALL question types
+        
+        // 12. Question should not be too short or too long
+        const questionLength = questionText.length;
+        if (questionLength < 20) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is too short (${questionLength} chars), filtering out`);
+            return false;
+        }
+        if (questionLength > 600) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is too long (${questionLength} chars), filtering out`);
+            return false;
+        }
+        
+        // 13. Options should have reasonable length
+        for (const [key, value] of Object.entries(options)) {
+            const optLen = String(value).trim().length;
+            if (optLen > 250) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} option ${key} is too long (${optLen} chars), filtering out`);
+                return false;
+            }
+        }
+        
+        // 14. For non-math questions, check if options are too similar
+        if (!hasCalculation) {
+            const optTexts = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+            for (let i = 0; i < optTexts.length; i++) {
+                for (let j = i + 1; j < optTexts.length; j++) {
+                    const similarity = calculateSimilarity(optTexts[i], optTexts[j]);
+                    if (similarity > 0.90) {
+                        console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has very similar options (${(similarity * 100).toFixed(0)}% match), filtering out`);
+                        console.warn(`   Option ${String.fromCharCode(65 + i)}: "${optTexts[i].substring(0, 50)}..."`);
+                        console.warn(`   Option ${String.fromCharCode(65 + j)}: "${optTexts[j].substring(0, 50)}..."`);
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        // 15. Check for incomplete or malformed questions
+        const endsWithQuestionMark = questionText.trim().endsWith('?');
+        const hasQuestionWords = /what|which|who|where|when|why|how|can|is|are|does|do|will|would|should/.test(qText);
+        if (!endsWithQuestionMark && !hasQuestionWords) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} doesn't appear to be a proper question, filtering out`);
+            console.warn(`   Question: "${questionText.substring(0, 80)}..."`);
+            return false;
+        }
+        
+        // 16. Check for placeholder text or incomplete content
+        const hasPlaceholders = /\[.*\]|{.*}|<.*>|xxx|yyy|zzz|placeholder|todo|tbd|fill in|insert here/i.test(questionText) || 
+                               optionValues.some((v: string) => /\[.*\]|{.*}|<.*>|xxx|yyy|zzz|placeholder|todo|tbd/i.test(v));
+        if (hasPlaceholders) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} contains placeholder text, filtering out`);
+            return false;
+        }
+        
+        // 17. Check for nonsensical or gibberish text
+        const hasRepeatedChars = /(.)\1{5,}/.test(questionText); // 6+ repeated characters
+        const hasExcessivePunctuation = /[!?.,]{4,}/.test(questionText);
+        if (hasRepeatedChars || hasExcessivePunctuation) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} contains nonsensical text patterns, filtering out`);
+            return false;
         }
         
         // Check if this question text is too similar to any excluded text (80% threshold for stricter filtering)
