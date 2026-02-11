@@ -12,7 +12,7 @@ import type {
   QuizQuestion,
   Flashcard
 } from '../types/video';
-import { callOpenRouterWithRetry } from '../../shared/ai-config';
+import { callOpenRouterWithRetry, repairAndParseJSON } from '../../shared/ai-config';
 
 /**
  * Generate comprehensive video summary with AI
@@ -47,7 +47,7 @@ Return JSON: {"summary": "...", "keyPoints": ["..."], "chapters": [{"timestamp":
       }
     );
     
-    const parsed = JSON.parse(content);
+    const parsed = repairAndParseJSON(content, true);
     return {
       summary: parsed.summary || '',
       keyPoints: parsed.keyPoints || [],
@@ -91,7 +91,7 @@ Return JSON: {"quotes": [{"text": "exact quote", "timestamp": seconds, "context"
       }
     );
     
-    const parsed = JSON.parse(content);
+    const parsed = repairAndParseJSON(content, true);
     return parsed.quotes || [];
   } catch (error) {
     console.error('Failed to extract notable quotes:', error);
@@ -127,7 +127,7 @@ Return JSON: {"questions": [{"question": "...", "options": ["A", "B", "C", "D"],
       }
     );
     
-    const parsed = JSON.parse(content);
+    const parsed = repairAndParseJSON(content, true);
     return parsed.questions || [];
   } catch (error) {
     console.error('Failed to generate quiz questions:', error);
@@ -163,7 +163,7 @@ Return JSON: {"flashcards": [{"front": "Question or term", "back": "Answer or de
       }
     );
     
-    const parsed = JSON.parse(content);
+    const parsed = repairAndParseJSON(content, true);
     return parsed.flashcards || [];
   } catch (error) {
     console.error('Failed to generate flashcards:', error);
