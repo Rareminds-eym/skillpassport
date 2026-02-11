@@ -347,7 +347,8 @@ const AssessmentTestPage: React.FC = () => {
   const {
     aiQuestions,
     loading: questionsLoading,
-    error: questionsError
+    error: questionsError,
+    reload: reloadAIQuestions
   } = useAIQuestions({
     gradeLevel: flow.gradeLevel,
     studentStream: flow.studentStream,
@@ -512,6 +513,15 @@ const AssessmentTestPage: React.FC = () => {
     const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
     const canBuild = flow.studentStream || !needsStream;
 
+    // CRITICAL: Don't build sections if AI questions haven't been attempted yet
+    // This prevents premature section building during resume (race condition where
+    // gradeLevel/stream are set but loadQuestions useEffect hasn't fired yet)
+    const needsAIQuestions = ['higher_secondary', 'after10', 'after12', 'college'].includes(flow.gradeLevel);
+    if (needsAIQuestions && aiQuestions?.aptitude === null && !questionsLoading) {
+      console.log('⏳ Waiting for AI question loading to initialize before building sections');
+      return;
+    }
+
     // CRITICAL FIX: For grade levels that use AI knowledge questions (higher_secondary, after12, college),
     // wait for AI questions to load before building sections
     // This prevents the knowledge section from being created with 0 questions
@@ -525,12 +535,29 @@ const AssessmentTestPage: React.FC = () => {
     }
 
     if (canBuild) {
-      const builtSections = buildSectionsWithQuestions(
+      let builtSections = buildSectionsWithQuestions(
         flow.gradeLevel,
         flow.studentStream,
         aiQuestions,
         flow.selectedCategory
       );
+      
+      // Filter out AI-dependent sections that have 0 questions (failed to load)
+      // This prevents the UI from showing an empty/broken section
+      const aiSectionIds = ['aptitude', 'knowledge'];
+      const beforeFilterCount = builtSections.length;
+      builtSections = builtSections.filter(section => {
+        if (aiSectionIds.includes(section.id) && (!section.questions || section.questions.length === 0) && !questionsLoading) {
+          console.warn(`⚠️ Removing ${section.id} section: AI questions failed to load (0 questions)`);
+          return false;
+        }
+        return true;
+      });
+      
+      if (builtSections.length < beforeFilterCount) {
+        console.warn(`⚠️ Removed ${beforeFilterCount - builtSections.length} section(s) with 0 AI questions`);
+      }
+      
       setSections(builtSections);
     }
   }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory, questionsLoading]);
@@ -1110,8 +1137,17 @@ const AssessmentTestPage: React.FC = () => {
     }
 
     // FIX 3: Check if we need to wait for AI questions
-    const needsAIQuestions = ['after10', 'after12', 'college'].includes(pendingAttempt.grade_level);
+    const needsAIQuestions = ['higher_secondary', 'after10', 'after12', 'college'].includes(pendingAttempt.grade_level);
 
+    // CRITICAL: Check if AI questions are in initial null state (not yet attempted)
+    // This happens during resume when gradeLevel/stream are set but loadQuestions hasn't fired yet
+    if (needsAIQuestions && aiQuestions?.aptitude === null && !questionsLoading) {
+      console.log('⏳ [RESUME] AI questions not yet initialized, waiting for loadQuestions to start');
+      // Set screen to loading so useEffect can detect and restore position later
+      flow.setCurrentScreen('loading');
+      // Position will be restored in the useEffect once questions start loading and sections are built
+      return;
+    }
 
     if (needsAIQuestions && questionsLoading) {
 
@@ -1308,8 +1344,7 @@ const AssessmentTestPage: React.FC = () => {
         let streamId = flow.studentStream;
         
         // Fallback: If no stream selected, use 'college' for college students
-        // Note: College students have gradeLevel='after12' but isCollegeStudent=true
-        if (!streamId && isCollegeStudent) {
+        if (!streamId && (isCollegeStudent || flow.gradeLevel === 'college')) {
           streamId = 'college';
         }
         // For after12, after10, middle, highschool: streamId should already be set
@@ -1975,14 +2010,47 @@ const AssessmentTestPage: React.FC = () => {
     return <LoadingScreen message={message} />;
   }
 
-  // Error state
+  // Error state - show retry UI for AI question generation failures
   if (questionsError && flow.currentScreen !== 'grade_selection') {
     return (
-      <RestrictionScreen
-        errorMessage={questionsError}
-        onViewLastReport={() => navigate('/student/assessment/result')}
-        onBackToDashboard={() => navigate('/student/dashboard')}
-      />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Question Generation Issue</h2>
+          <p className="text-gray-600 mb-6">{questionsError}</p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => reloadAIQuestions()}
+              disabled={questionsLoading}
+              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {questionsLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Retry
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => navigate('/student/dashboard')}
+              className="px-6 py-3 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -2252,7 +2320,39 @@ const AssessmentTestPage: React.FC = () => {
 
           {/* Loading Question Fallback - Handle race condition where intro is hidden but question loading */}
           {!flow.showSectionIntro && !flow.showSectionComplete && !currentQuestion && !currentSection?.isAdaptive && (
-            <LoadingScreen message="Loading question..." />
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+              {questionsLoading ? (
+                <LoadingScreen message="Loading question..." />
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 max-w-md text-center">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <h3 className="text-lg font-semibold text-amber-900">Question Loading Issue</h3>
+                  </div>
+                  <p className="text-amber-700 mb-4">Questions could not be loaded for this section. Please try again.</p>
+                  <div className="flex gap-3 justify-center">
+                    <button
+                      onClick={() => reloadAIQuestions()}
+                      disabled={questionsLoading}
+                      className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Retry
+                    </button>
+                    <button
+                      onClick={() => flow.setShowSectionIntro(true)}
+                      className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Go Back
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
           
           {/* Adaptive Section Loading - Show loading when adaptive test is initializing */}
@@ -2289,15 +2389,29 @@ const AssessmentTestPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  adaptiveAptitude.clearError();
-                  flow.setShowSectionIntro(true);
-                }}
-                className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                Try Again
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    adaptiveAptitude.clearError();
+                    adaptiveAptitude.startTest();
+                  }}
+                  className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Retry
+                </button>
+                <button
+                  onClick={() => {
+                    adaptiveAptitude.clearError();
+                    flow.setShowSectionIntro(true);
+                  }}
+                  className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Go Back
+                </button>
+              </div>
             </div>
           )}
 

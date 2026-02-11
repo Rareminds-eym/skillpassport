@@ -99,7 +99,7 @@ export const requiresCategorySelection = (gradeLevel: GradeLevel | null): boolea
  * Check if grade level has adaptive aptitude section
  */
 export const hasAdaptiveAptitude = (gradeLevel: GradeLevel | null): boolean => {
-  return gradeLevel === 'highschool' || gradeLevel === 'higher_secondary';
+  return gradeLevel === 'highschool' || gradeLevel === 'higher_secondary' || gradeLevel === 'after10' || gradeLevel === 'after12' || gradeLevel === 'college';
 };
 
 /**

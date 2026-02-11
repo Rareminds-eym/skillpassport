@@ -123,11 +123,11 @@ If you ignore the program and recommend unrelated careers, your response will be
     return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
   }
 
-  if (gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary') {
+  if (gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12') {
     return `${baseMessage} You are speaking to high school students (grades 9-12). Provide guidance on college majors and career paths. Be aspirational but realistic.${requirements}`;
   }
 
-  // College students - add program validation
+  // College students - add program validation (after12 = real 12th graders, don't need this)
   if (gradeLevel === 'college') {
     return `${baseMessage}${collegeStudentProgramValidation}${requirements}`;
   }

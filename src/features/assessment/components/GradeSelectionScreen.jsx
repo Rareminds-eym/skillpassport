@@ -136,8 +136,8 @@ const shouldShowOption = (optionId, {
       return detectedGradeLevel === 'higher_secondary' && isGrade12 && (monthsInGrade === null || hasBeenInGrade6Months);
 
     case 'college':
-      // Show for college students or after12 detected
-      return isCollegeStudent || detectedGradeLevel === 'after12';
+      // Show for college students or college/after12 detected
+      return isCollegeStudent || detectedGradeLevel === 'college' || detectedGradeLevel === 'after12';
 
     default:
       return false;

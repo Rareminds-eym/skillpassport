@@ -145,13 +145,13 @@ const calculateProgress = (attempt) => {
       break;
       
     case 'college':
-      // College sections:
+      // College sections (same as after12):
       // - RIASEC: 48 questions
       // - Big Five: 30 questions
       // - Work Values: 24 questions
       // - Employability: 42 questions
-      // - Aptitude: ~50 questions (AI-generated, varies 44-50 based on stream)
-      // - Knowledge: 20 questions (AI-generated, consistent)
+      // - Aptitude: ~50 questions (AI-generated)
+      // - Knowledge: 20 questions (AI-generated)
       estimatedTotal = 214; // = 214
       break;
   }

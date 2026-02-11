@@ -136,9 +136,10 @@ const WorkPreferencesSection = ({ workPreferences }) => {
  * @param {Object} props.traitNames - Big Five trait names mapping (optional)
  * @param {Array} props.courseRecommendations - Course/program recommendations (optional)
  * @param {Object} props.studentAcademicData - Student academic data (optional)
+ * @param {string} props.gradeLevel - Grade level ('after12' or 'college')
  * @returns {JSX.Element} - Print view component
  */
-const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, courseRecommendations, studentAcademicData }) => {
+const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, courseRecommendations, studentAcademicData, gradeLevel }) => {
   // Debug: Log studentInfo to see what data is being passed
   console.log('PrintViewCollege - studentInfo received:', studentInfo);
   
@@ -219,7 +220,7 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         <DetailedAssessmentBreakdown 
           results={normalizedResults} 
           riasecNames={safeRiasecNames}
-          gradeLevel="college"
+          gradeLevel={gradeLevel || 'college'}
         />
 
         {/* ✅ NEW: Learning Styles Section */}
@@ -272,11 +273,10 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
           <DetailedCareerRoadmapSection roadmap={roadmap} />
         )} */}
         
-        {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
-        {/* College students are already in a degree program, they don't need degree recommendations */}
-        {/* {courseRecommendations && courseRecommendations.length > 0 && (
+        {/* Course Recommendations - Show for after12 students (who need degree guidance) */}
+        {gradeLevel === 'after12' && courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
-        )} */}
+        )}
 
         {/* Final Recommendations */}
         {/* {overallSummary && (
@@ -305,7 +305,7 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         <DetailedAssessmentBreakdown 
           results={results} 
           riasecNames={safeRiasecNames}
-          gradeLevel="college"
+          gradeLevel={gradeLevel || 'college'}
         />
 
         {/* ✅ NEW: Learning Styles Section */}
@@ -345,10 +345,10 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
         {roadmap && (
           <DetailedCareerRoadmapSection roadmap={roadmap} />
         )} */}
-        {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
-        {/* {courseRecommendations && courseRecommendations.length > 0 && (
+        {/* Course Recommendations - Show for after12 students (who need degree guidance) */}
+        {gradeLevel === 'after12' && courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
-        )} */}
+        )}
         {/* {overallSummary && (
           <FinalRecommendationsSection overallSummary={overallSummary} />
         )} */}

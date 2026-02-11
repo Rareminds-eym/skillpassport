@@ -25,12 +25,12 @@ export const GRADE_RANGES: Record<string, GradeRange> = {
 };
 
 export const PROGRAM_GRADE_MAPPINGS: Record<string, GradeLevel> = {
-  'UG': 'after12',
-  'UNDERGRADUATE': 'after12',
-  'PG': 'after12',
-  'POSTGRADUATE': 'after12',
+  'UG': 'college',
+  'UNDERGRADUATE': 'college',
+  'PG': 'college',
+  'POSTGRADUATE': 'college',
   'DIPLOMA': 'after10',
-  'CERTIFICATE': 'after12',
+  'CERTIFICATE': 'college',
 };
 
 // ============================================

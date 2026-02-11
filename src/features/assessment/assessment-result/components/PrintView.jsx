@@ -127,6 +127,7 @@ const PrintView = ({
       traitNames={traitNames}
       courseRecommendations={courseRecommendations}
       studentAcademicData={studentAcademicData}
+      gradeLevel={gradeLevel}
     />
   );
 };

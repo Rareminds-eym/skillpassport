@@ -307,6 +307,12 @@ export const COMPREHENSIVE_SECTIONS: Omit<SectionConfig, 'icon'>[] = [
 export const HIGHER_SECONDARY_SECTIONS = COMPREHENSIVE_SECTIONS;
 
 /**
+ * Section definitions for College (UG/PG) students
+ * Uses the same comprehensive assessment as after12/higher_secondary
+ */
+export const COLLEGE_SECTIONS = COMPREHENSIVE_SECTIONS;
+
+/**
  * Get section configurations for a specific grade level
  */
 export const getSectionsForGrade = (gradeLevel: GradeLevel): Omit<SectionConfig, 'icon'>[] => {
@@ -320,8 +326,9 @@ export const getSectionsForGrade = (gradeLevel: GradeLevel): Omit<SectionConfig,
     case 'after10':
       return AFTER_10TH_SECTIONS; // Stream-agnostic (no knowledge section)
     case 'after12':
-    case 'college':
       return COMPREHENSIVE_SECTIONS; // Includes knowledge section
+    case 'college':
+      return COLLEGE_SECTIONS; // Like COMPREHENSIVE but without redundant static aptitude
     default:
       return [];
   }

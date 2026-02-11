@@ -1699,22 +1699,26 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
         console.warn(`⚠️ Removed ${beforeDuplicateRemoval - validQuestions.length} duplicate knowledge questions`);
       }
       
-      // STRICT: Must have EXACTLY the expected count
-      if (validQuestions.length !== questionCount) {
-        console.warn(`⚠️ Question count mismatch: ${validQuestions.length}/${questionCount} knowledge questions`);
+      // Accept if we have at least 80% of expected questions (e.g., 16 out of 20)
+      const minimumAcceptable = Math.ceil(questionCount * 0.8);
+      if (validQuestions.length < minimumAcceptable) {
+        console.warn(`⚠️ Too few knowledge questions: ${validQuestions.length}/${questionCount} (minimum: ${minimumAcceptable})`);
         
         if (attempt < maxRetries) {
-          const needed = questionCount - validQuestions.length;
-          console.log(`🔄 Retrying to get exactly ${questionCount} knowledge questions (attempt ${attempt + 1}/${maxRetries})...`);
+          console.log(`🔄 Retrying to get at least ${minimumAcceptable} knowledge questions (attempt ${attempt + 1}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
           continue;
         } else {
-          console.error(`❌ Failed to get exactly ${questionCount} knowledge questions after ${maxRetries} attempts. Got ${validQuestions.length}.`);
-          return null; // Reject - must be exactly 20
+          console.error(`❌ Failed to get enough knowledge questions after ${maxRetries} attempts. Got ${validQuestions.length}/${questionCount} (minimum: ${minimumAcceptable}).`);
+          return null;
         }
       }
       
-      console.log(`✅ Validation passed: Exactly ${questionCount} valid unique knowledge questions`);
+      if (validQuestions.length < questionCount) {
+        console.warn(`⚠️ Proceeding with ${validQuestions.length}/${questionCount} knowledge questions (above ${minimumAcceptable} minimum threshold)`);
+      } else {
+        console.log(`✅ Validation passed: ${validQuestions.length}/${questionCount} valid unique knowledge questions`);
+      }
       
       // If API returned questions but didn't save them, save from frontend as fallback
       if (validQuestions.length > 0 && studentId && !data.cached) {
@@ -2102,17 +2106,25 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
       console.log(`✅ Using ${aiAptitude.length} AI aptitude questions`);
     }
     
-    // Add delay between API calls to avoid rate limiting
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Generate/load knowledge questions (will use saved if available)
-    // For college students, pass their course; for others, use normalized stream
-    const knowledgeStreamId = (gradeLevel === 'college' && studentCourse) ? studentCourse : normalizedStreamId;
-    const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, studentId, attemptId, gradeLevel);
-    
-    if (aiKnowledge && aiKnowledge.length > 0) {
-      questions.knowledge = aiKnowledge;
-      console.log(`✅ Using ${aiKnowledge.length} AI knowledge questions`);
+    // Generate knowledge questions for grade levels that need them
+    // after10 does NOT need knowledge questions (stream-agnostic assessment)
+    if (gradeLevel !== 'after10') {
+      // Add delay between API calls to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate/load knowledge questions (will use saved if available)
+      // For college students, pass their course; for others, use normalized stream
+      const knowledgeStreamId = (gradeLevel === 'college' && studentCourse) ? studentCourse : normalizedStreamId;
+      const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, studentId, attemptId, gradeLevel);
+      
+      if (aiKnowledge && aiKnowledge.length > 0) {
+        questions.knowledge = aiKnowledge;
+        console.log(`✅ Using ${aiKnowledge.length} AI knowledge questions`);
+      } else {
+        console.warn(`⚠️ Knowledge question generation failed or returned empty for stream: ${knowledgeStreamId}`);
+      }
+    } else {
+      console.log('⏭️ Skipping knowledge questions for after10 grade level (stream-agnostic)');
     }
   }
 

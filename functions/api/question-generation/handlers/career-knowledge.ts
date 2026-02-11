@@ -49,11 +49,13 @@ export async function generateKnowledgeQuestions(
     const useSingleBatch = isCollegeStudent && questionCount <= 20;
     const batchCount = useSingleBatch ? 1 : 2;
 
-    console.log(`📝 Generating fresh knowledge questions in ${batchCount} batch${batchCount > 1 ? 'es' : ''} for: ${streamName}`);
+    // Request extra questions upfront to account for validation filtering
+    const requestCount = Math.ceil(questionCount * 1.25); // Request 25% more than needed
+    console.log(`📝 Generating fresh knowledge questions in ${batchCount} batch${batchCount > 1 ? 'es' : ''} for: ${streamName} (requesting ${requestCount} to account for filtering)`);
 
     for (let batchNum = 1; batchNum <= batchCount; batchNum++) {
-        const count = Math.floor(questionCount / batchCount);
-        const totalQuestions = batchNum === batchCount ? questionCount - (count * (batchCount - 1)) : count;
+        const count = Math.floor(requestCount / batchCount);
+        const totalQuestions = batchNum === batchCount ? requestCount - (count * (batchCount - 1)) : count;
 
         let prompt: string;
         
@@ -149,11 +151,103 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
     console.log(`✅ Generated ${allQuestions.length} total knowledge questions via AI`);
     
     // COMPREHENSIVE VALIDATION: Check for duplicate questions and validate answer options
+    let validatedQuestions = validateKnowledgeQuestions(allQuestions);
+    
+    // If validation filtered too many questions, generate supplementary batch to fill the gap
+    if (validatedQuestions.length < questionCount) {
+        const needed = questionCount - validatedQuestions.length;
+        console.log(`⚠️ Only ${validatedQuestions.length}/${questionCount} valid questions after filtering. Generating ${needed} supplementary questions...`);
+        
+        const supplementaryPrompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${needed} questions. Count them before responding.
+
+Generate EXACTLY ${needed} multiple-choice knowledge questions for ${isCollegeStudent ? `a college student studying ${streamName}` : streamName}.
+
+⚠️ IMPORTANT RULES:
+1. All questions must be MCQ with exactly 4 options
+2. Each question must have exactly ONE correct answer
+3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
+4. The correct answer MUST be one of the 4 options provided
+5. DO NOT include questions that reference graphs, charts, tables, images, diagrams, or figures
+6. DO NOT include questions about visual patterns, mirror images, or spatial rotations
+7. Each question must be self-contained text only
+
+Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
+{"questions":[{"id":1,"type":"mcq","difficulty":"medium","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}
+
+REMINDER: Generate EXACTLY ${needed} questions. No more, no less.`;
+
+        const supplementarySystem = `You are an expert educational assessment creator. Generate EXACTLY ${needed} knowledge-based questions about ${streamName}. Generate ONLY valid JSON with no markdown.`;
+
+        try {
+            const suppJsonText = await callOpenRouterWithRetry(openRouterKey, [
+                { role: 'system', content: supplementarySystem },
+                { role: 'user', content: supplementaryPrompt }
+            ], {
+                maxTokens: needed * 150 + 500
+            });
+
+            const suppParsed = repairAndParseJSON(suppJsonText);
+            const suppQuestions = suppParsed.questions || suppParsed;
+
+            if (Array.isArray(suppQuestions) && suppQuestions.length > 0) {
+                // Validate supplementary questions using same logic, passing existing texts to avoid duplicates
+                const existingTexts = new Set(validatedQuestions.map((q: any) => (q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '')));
+                const validSupp = validateKnowledgeQuestions(suppQuestions, existingTexts);
+                validatedQuestions.push(...validSupp.slice(0, needed));
+                console.log(`✅ Supplementary batch: ${validSupp.length} valid questions added (total now: ${validatedQuestions.length})`);
+            }
+        } catch (suppError) {
+            console.warn('⚠️ Supplementary question generation failed:', suppError);
+        }
+    }
+    
+    console.log('🎓 ============================================');
+
+    // Use sequential numeric IDs for consistency with answer storage
+    const processedQuestions = validatedQuestions.slice(0, questionCount).map((q: any, index: number) => ({
+        ...q,
+        id: index + 1,
+        uuid: generateUUID(),
+        stream_id: streamId,
+        stream_name: streamName,
+        created_at: new Date().toISOString()
+    }));
+
+    if (studentId && attemptId) {
+        const { error } = await supabase
+            .from('career_assessment_ai_questions')
+            .upsert({
+                student_id: studentId,
+                question_type: 'knowledge',
+                questions: processedQuestions,
+                stream_id: streamId,
+                created_at: new Date().toISOString()
+            }, {
+                onConflict: 'student_id, stream_id, question_type',
+                ignoreDuplicates: false
+            });
+
+        if (error) {
+            console.error('❌ Database error saving knowledge questions:', error);
+        }
+    }
+
+    console.log(`📦 Returning ${processedQuestions.length} questions`);
+    return processedQuestions;
+}
+
+/**
+ * Validate and filter knowledge questions, removing duplicates and invalid entries
+ * @param questions - Raw questions to validate
+ * @param existingTexts - Optional set of existing question texts to check duplicates against
+ * @returns Array of valid questions
+ */
+function validateKnowledgeQuestions(questions: any[], existingTexts?: Set<string>): any[] {
     const uniqueQuestions: any[] = [];
-    const seenTexts = new Set<string>();
+    const seenTexts = existingTexts ? new Set(existingTexts) : new Set<string>();
     let filteredCount = 0;
     
-    for (const q of allQuestions) {
+    for (const q of questions) {
         const normalizedText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
         
         // Check for duplicate question text
@@ -252,47 +346,11 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
         uniqueQuestions.push(q);
     }
     
-    console.log(`🔍 After validation: ${uniqueQuestions.length}/${allQuestions.length} valid questions (filtered: ${filteredCount})`);
+    console.log(`🔍 After validation: ${uniqueQuestions.length}/${questions.length} valid questions (filtered: ${filteredCount})`);
     
-    // If more than 20% were filtered, log warning
-    if (filteredCount > allQuestions.length * 0.2) {
-        console.warn(`⚠️ WARNING: ${filteredCount} questions filtered (${Math.round(filteredCount/allQuestions.length*100)}%) - AI quality may need improvement`);
+    if (filteredCount > questions.length * 0.2) {
+        console.warn(`⚠️ WARNING: ${filteredCount} questions filtered (${Math.round(filteredCount/questions.length*100)}%) - AI quality may need improvement`);
     }
     
-    console.log('🎓 ============================================');
-
-    // Use sequential numeric IDs for consistency with answer storage
-    // Format: 1, 2, 3, ... (not UUIDs) so answers can be matched
-    const processedQuestions = uniqueQuestions.map((q: any, index: number) => ({
-        ...q,
-        id: index + 1, // Sequential numeric ID
-        uuid: generateUUID(), // Keep UUID for database uniqueness
-        stream_id: streamId,
-        stream_name: streamName,
-        created_at: new Date().toISOString()
-    }));
-
-    if (studentId && attemptId) {
-        // Use upsert to handle potential race conditions or re-generation
-        const { error } = await supabase
-            .from('career_assessment_ai_questions')
-            .upsert({
-                student_id: studentId, // Use studentId (UUID) not attemptId
-                question_type: 'knowledge',
-                questions: processedQuestions, // Store the entire array as JSONB
-                stream_id: streamId,
-                created_at: new Date().toISOString()
-            }, {
-                onConflict: 'student_id, stream_id, question_type',
-                ignoreDuplicates: false // Update if exists
-            });
-
-        if (error) {
-            console.error('❌ Database error saving knowledge questions:', error);
-            // Don't throw error here to allow the generated questions to be returned to frontend
-        }
-    }
-
-    console.log(`📦 Returning ${processedQuestions.length} questions`);
-    return processedQuestions;
+    return uniqueQuestions;
 }

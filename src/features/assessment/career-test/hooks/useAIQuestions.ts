@@ -152,6 +152,9 @@ export const useAIQuestions = ({
       return;
     }
 
+    // Reset questions to null so sections know to wait for fresh data on retry
+    setAiQuestions({ aptitude: null, knowledge: null });
+
     // Set loading state to true when generation starts
     setLoading(true);
     isLoadingRef.current = true;
@@ -235,9 +238,11 @@ export const useAIQuestions = ({
       clearInterval(knowledgeProgressInterval);
 
       // Normalize questions to match UI format
+      // Use empty array (not null) for failed sections so the UI can distinguish
+      // "failed to load" ([]) from "not yet loaded" (null)
       const normalizedQuestions: AIQuestionsState = {
-        aptitude: questions.aptitude?.map(normalizeAIQuestion) || null,
-        knowledge: questions.knowledge?.map(normalizeAIQuestion) || null
+        aptitude: questions.aptitude?.map(normalizeAIQuestion) || [],
+        knowledge: questions.knowledge?.map(normalizeAIQuestion) || []
       };
 
       setAiQuestions(normalizedQuestions);
@@ -274,6 +279,13 @@ export const useAIQuestions = ({
       }
 
       setError(userMessage);
+      
+      // Mark failed sections with empty arrays (not null) so the UI can
+      // distinguish "failed to load" from "not yet loaded"
+      setAiQuestions(prev => ({
+        aptitude: prev.aptitude ?? [],
+        knowledge: prev.knowledge ?? []
+      }));
 
       // Reset progress on error
       setProgress({
