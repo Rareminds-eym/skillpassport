@@ -356,12 +356,21 @@ ${excludeTextsArray.length > 0 ? excludeTextsArray.slice(0, 30).map((t, i) => ` 
 ⚠️ UNIQUENESS REQUIREMENTS (CRITICAL):
 - Use COMPLETELY DIFFERENT scenarios and contexts from the excluded questions above
 - Change numerical values by at least 50% from any similar questions
-- Use different measurement units (if one uses dollars, use meters/hours/pieces/etc.)
+- Use different measurement units (if one uses currency, use meters/hours/pieces/etc.)
 - Vary the problem structure (if one is about profit/loss, use time-speed-distance/ratio/percentage/etc.)
 - Use different subjects (if one mentions fruits, use vehicles/animals/students/books/etc.)
 - Create ORIGINAL contexts - do not repeat or slightly modify excluded scenarios
 - If you see a pattern in excluded questions, deliberately avoid that pattern
 - Think creatively - each question should feel fresh and unique
+
+⚠️ CURRENCY AND SYMBOLS (CRITICAL):
+- DO NOT use "$" (dollar symbol) in questions or options
+- DO NOT use "₹" (rupee symbol) in questions or options  
+- For currency questions, write "rupees" in full text
+- DO NOT ask about rotating symbols like "$", "₹", "%", "#", "@", "&"
+- For spatial/rotation questions, use letters (A, B, C) or simple shapes described in words
+- Example CORRECT: "If you rotate the letter N 180 degrees, which letter does it look like?"
+- Example WRONG: "If you rotate the dollar symbol ($) 90 degrees..."
 
 ⚠️ CRITICAL: CORRECT ANSWER MUST BE IN OPTIONS ⚠️
 **THIS IS THE MOST IMPORTANT RULE - READ CAREFULLY:**
@@ -534,6 +543,15 @@ Return ONLY the JSON array, nothing else.`;
             return false;
         }
         
+        // Check for currency symbols or symbol rotation questions
+        const hasCurrencySymbols = /[$₹]/.test(questionText) || optionValues.some((opt: string) => /[$₹]/.test(opt));
+        const hasSymbolRotation = /rotate.*[$₹%#@&]|[$₹%#@&].*rotate|symbol.*rotate|rotate.*symbol/.test(questionText);
+        
+        if (hasCurrencySymbols || hasSymbolRotation) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has currency symbols or symbol rotation, filtering out: "${questionText.substring(0, 50)}..."`);
+            return false;
+        }
+        
         // Validate options structure (reuse variables from above)
         const correctAnswer = (q.correctAnswer || '').toString().trim().toUpperCase();
         
@@ -616,10 +634,14 @@ Return ONLY the JSON array, nothing else.`;
     
     console.log(`🔍 [Adaptive-Handler] After filtering: ${filteredQuestions.length}/${aiQuestionsRaw.length} questions remain`);
 
-    // NEW: If we filtered out questions with issues, try to regenerate just the missing ones
-    if (filteredQuestions.length < count && filteredQuestions.length > 0) {
+    // NEW: If we filtered out questions with issues, try to regenerate just the missing ones with retry loop
+    let regenerationAttempts = 0;
+    const maxRegenerationAttempts = 3;
+    
+    while (filteredQuestions.length < count && regenerationAttempts < maxRegenerationAttempts) {
         const missingCount = count - filteredQuestions.length;
-        console.log(`🔄 [Adaptive-Handler] ${missingCount} questions were filtered out. Attempting to regenerate them...`);
+        regenerationAttempts++;
+        console.log(`🔄 [Adaptive-Handler] Attempt ${regenerationAttempts}/${maxRegenerationAttempts}: ${missingCount} questions needed. Regenerating...`);
         
         // Add already valid questions to exclusion list
         const updatedExcludeTexts = new Set([
@@ -642,42 +664,82 @@ Return ONLY the JSON array, nothing else.`;
             
             console.log(`✅ [Adaptive-Handler] Generated ${replacementQuestions.length} replacement questions`);
             
-            // Merge the valid questions with replacements
-            const mergedRawQuestions = [
-                ...filteredQuestions,
-                ...replacementQuestions.map(rq => ({
-                    text: rq.text,
-                    options: rq.options,
-                    correctAnswer: rq.correctAnswer,
-                    explanation: rq.explanation
-                }))
-            ];
-            
-            console.log(`📊 [Adaptive-Handler] Total after regeneration: ${mergedRawQuestions.length} questions`);
-            
-            // Use the merged set for final processing
-            const questions: Question[] = mergedRawQuestions.map((q: any, idx: number) => {
-                const assignedSubtag = subtags[idx % subtags.length] || 'logical_reasoning';
-                return {
-                    id: generateQuestionId(gradeLevel, phase as any, difficulty, assignedSubtag),
-                    text: q.text,
-                    options: q.options,
-                    correctAnswer: q.correctAnswer,
-                    explanation: q.explanation,
-                    difficulty: difficulty,
-                    subtag: assignedSubtag,
-                    gradeLevel: gradeLevel,
-                    phase: phase as any,
-                    createdAt: new Date().toISOString()
-                };
+            // Validate replacement questions with same strict criteria
+            const validReplacements = replacementQuestions.filter((rq: any) => {
+                const qText = rq.text?.toLowerCase().trim();
+                if (!qText) return false;
+                
+                // Check all validation criteria
+                const options = rq.options || {};
+                const correctAnswer = (rq.correctAnswer || '').toString().trim().toUpperCase();
+                
+                // Must have all 4 options
+                if (!['A', 'B', 'C', 'D'].every(opt => options[opt] && options[opt].trim().length > 0)) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: missing/empty options`);
+                    return false;
+                }
+                
+                // Options must be unique
+                const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+                const uniqueOpts = new Set(optionValues);
+                if (uniqueOpts.size < 4) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: duplicate options`);
+                    return false;
+                }
+                
+                // Correct answer must be valid
+                if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: invalid correctAnswer "${correctAnswer}"`);
+                    return false;
+                }
+                
+                // Correct answer must exist in options
+                if (!options[correctAnswer] || options[correctAnswer].trim().length === 0) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: correctAnswer not in options`);
+                    return false;
+                }
+                
+                // No currency symbols
+                if (/[$₹]/.test(qText) || optionValues.some(v => /[$₹]/.test(v))) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: has currency symbols`);
+                    return false;
+                }
+                
+                // No image references
+                const imageKeywords = ['graph', 'chart', 'diagram', 'image', 'figure', 'shown', 'visual'];
+                if (imageKeywords.some(kw => qText.includes(kw))) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: has image reference`);
+                    return false;
+                }
+                
+                // Not a duplicate
+                if (updatedExcludeTexts.has(qText)) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: duplicate question`);
+                    return false;
+                }
+                
+                return true;
             });
             
-            console.log(`✅ [Adaptive-Handler] Successfully generated ${questions.length} unique questions`);
-            return questions;
-        } catch (replacementError: any) {
-            console.error(`❌ [Adaptive-Handler] Failed to generate replacements:`, replacementError.message);
-            // Continue with what we have
+            console.log(`✅ [Adaptive-Handler] ${validReplacements.length}/${replacementQuestions.length} replacement questions passed validation`);
+            
+            // Add valid replacements to our collection
+            filteredQuestions.push(...validReplacements);
+            
+            // Update exclusion list for next iteration
+            validReplacements.forEach((q: any) => updatedExcludeTexts.add(q.text.toLowerCase().trim()));
+            
+            if (filteredQuestions.length >= count) {
+                console.log(`✅ [Adaptive-Handler] Successfully reached target count of ${count} questions`);
+                break;
+            }
+        } catch (error) {
+            console.error(`❌ [Adaptive-Handler] Regeneration attempt ${regenerationAttempts} failed:`, error);
         }
+    }
+    
+    if (filteredQuestions.length < count) {
+        console.warn(`⚠️ [Adaptive-Handler] After ${regenerationAttempts} attempts, only have ${filteredQuestions.length}/${count} valid questions`);
     }
 
     // CHANGED: Don't throw error if all filtered out, just log warning and return what we have

@@ -1,10 +1,20 @@
+-- Check what will be deleted
 SELECT 
-    id,
-    grade_level,
-    CASE WHEN gemini_results IS NOT NULL THEN 'Has gemini_results' ELSE 'Missing' END as gemini_status,
-    CASE WHEN riasec_scores IS NOT NULL THEN 'Has riasec' ELSE 'Missing' END as riasec_status,
-    CASE WHEN career_fit IS NOT NULL THEN 'Has career_fit' ELSE 'Missing' END as career_status,
-    created_at
-FROM personal_assessment_results
-ORDER BY created_at DESC
-LIMIT 5;
+  student_id,
+  question_type,
+  stream_id,
+  grade_level,
+  created_at,
+  jsonb_array_length(questions) as question_count
+FROM career_assessment_ai_questions 
+WHERE question_type = 'aptitude'
+ORDER BY created_at DESC;
+ 
+-- Delete all aptitude questions
+DELETE FROM career_assessment_ai_questions 
+WHERE question_type = 'aptitude';
+ 
+-- Or delete only for specific grade levels
+DELETE FROM career_assessment_ai_questions 
+WHERE question_type = 'aptitude' 
+AND grade_level IN ('higher_secondary', 'after12', 'college', 'after10');
