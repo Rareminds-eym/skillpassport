@@ -46,6 +46,7 @@ export const getStudentSettingsByEmail = async (email) => {
         other_social_links,
         resumeUrl,
         profilePicture,
+        bio,
         gender,
         bloodGroup,
         guardianName,
@@ -176,7 +177,7 @@ export const getStudentSettingsByEmail = async (email) => {
       // Profile
       resumeUrl: data.resumeUrl || '',
       profilePicture: data.profilePicture || '',
-      bio: '', // Bio field removed from profile JSONB
+      bio: data.bio || '',
 
       // New fields for gap years, work experience, and academic info
       gapInStudies: data.gap_in_studies || false,
@@ -295,6 +296,7 @@ export const updateStudentSettings = async (email, updates) => {
       portfolio: 'portfolio_link',
       resumeUrl: 'resumeUrl',
       profilePicture: 'profilePicture',
+      bio: 'bio',
       // New fields for gap years, work experience, and academic info
       gapInStudies: 'gap_in_studies',
       gapYears: 'gap_years',
