@@ -49,6 +49,7 @@ import { SectionIntroScreen } from './components/screens/SectionIntroScreen';
 import { SectionCompleteScreen } from './components/screens/SectionCompleteScreen';
 import { LoadingScreen } from './components/screens/LoadingScreen';
 import { AnalyzingScreen } from './components/screens/AnalyzingScreen';
+import { ErrorScreen, type ErrorType } from './components/screens/ErrorScreen';
 import { ProgressHeader } from './components/layout/ProgressHeader';
 import { QuestionLayout } from './components/layout/QuestionLayout';
 import { TestModeControls } from './components/layout/TestModeControls';
@@ -136,6 +137,36 @@ const getSectionIconPath = (sectionId: string): string => {
   };
 
   return iconMap[sectionId] || '/assets/Assessment Icons/Career Interests.png';
+};
+
+/**
+ * Determine error type from error message
+ */
+const getErrorType = (errorMessage: string): ErrorType => {
+  const msg = errorMessage.toLowerCase();
+  
+  if (msg.includes('network') || msg.includes('connection') || msg.includes('offline') || msg.includes('fetch')) {
+    return 'network';
+  }
+  if (msg.includes('server') || msg.includes('500') || msg.includes('503') || msg.includes('502')) {
+    return 'server';
+  }
+  if (msg.includes('session') || msg.includes('expired') || msg.includes('token') || msg.includes('unauthorized')) {
+    return 'session';
+  }
+  if (msg.includes('load') || msg.includes('timeout') || msg.includes('failed to fetch')) {
+    return 'loading';
+  }
+  return 'generic';
+};
+
+/**
+ * Check if error should show ErrorScreen instead of RestrictionScreen
+ */
+const shouldShowErrorScreen = (errorMessage: string): boolean => {
+  const errorType = getErrorType(errorMessage);
+  // Show ErrorScreen for technical errors, RestrictionScreen for restriction errors
+  return errorType !== 'generic' || !errorMessage.includes('month');
 };
 
 /**
@@ -1964,6 +1995,30 @@ const AssessmentTestPage: React.FC = () => {
 
   // Restriction/Error state
   if (flow.error && !showResumePrompt && !assessmentStarted) {
+    // Determine if we should show ErrorScreen or RestrictionScreen
+    const showErrorScreen = shouldShowErrorScreen(flow.error);
+    const errorType = getErrorType(flow.error);
+
+    if (showErrorScreen) {
+      return (
+        <ErrorScreen
+          errorType={errorType}
+          message={flow.error}
+          onRetry={() => {
+            flow.setError(null);
+            // Retry loading questions if it was a loading error
+            if (errorType === 'loading' && flow.gradeLevel) {
+              window.location.reload();
+            }
+          }}
+          onRefresh={() => window.location.reload()}
+          onBackToDashboard={() => navigate('/student/dashboard')}
+          showContactSupport={errorType === 'server'}
+        />
+      );
+    }
+
+    // Show RestrictionScreen for restriction errors (6-month wait)
     return (
       <RestrictionScreen
         errorMessage={flow.error}
@@ -2201,6 +2256,7 @@ const AssessmentTestPage: React.FC = () => {
               isAdaptive={currentSection.isAdaptive}
               isTimed={currentSection.isTimed}
               showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
+              gradeLevel={flow.gradeLevel}
               isLoading={
                 // Show loading for adaptive aptitude (50 questions)
                 (currentSection.isAdaptive && adaptiveAptitude.loading) ||
