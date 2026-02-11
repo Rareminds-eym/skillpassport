@@ -63,23 +63,31 @@ export async function generateKnowledgeQuestions(
 
 Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a college student studying ${streamName}.
 
+⚠️ CRITICAL: ALL questions MUST be about ${streamName} - DO NOT generate questions about other subjects!
+- If the course is "Arts with Economics", generate questions about Economics, Political Science, History, Sociology
+- If the course is "Commerce", generate questions about Accounting, Business, Finance
+- If the course is "Computer Science", generate questions about Programming, Algorithms, Data Structures
+- NEVER generate questions about subjects not related to ${streamName}
+
 IMPORTANT: Analyze the course name "${streamName}" and generate questions covering the core subjects and topics typically taught in this program.
 
 Requirements:
 1. All questions must be MCQ with exactly 4 options
 2. Each question must have exactly ONE correct answer
 3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
-4. Difficulty distribution: 30% easy, 50% medium, 20% hard
-5. Test practical understanding and application, not just memorization
-6. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
-7. Questions should be appropriate for undergraduate/graduate level students
+4. The correct answer MUST be one of the 4 options provided
+5. Difficulty distribution: 30% easy, 50% medium, 20% hard
+6. Test practical understanding and application, not just memorization
+7. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
+8. Questions should be appropriate for undergraduate/graduate level students
+9. VERIFY: For each question, ensure the correct answer actually appears in the options
 
 ⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY ${totalQuestions} questions in your response.
 
 Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
 {"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}
 
-REMINDER: Generate EXACTLY ${totalQuestions} questions. No more, no less.`;
+REMINDER: Generate EXACTLY ${totalQuestions} questions about ${streamName}. No more, no less.`;
         } else {
             // For non-college students or when topics are provided, use the existing approach
             prompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${totalQuestions} questions. Count them before responding.
@@ -140,7 +148,7 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
 
     console.log(`✅ Generated ${allQuestions.length} total knowledge questions via AI`);
     
-    // STRICT validation: Check for duplicate questions and validate answer options
+    // COMPREHENSIVE VALIDATION: Check for duplicate questions and validate answer options
     const uniqueQuestions: any[] = [];
     const seenTexts = new Set<string>();
     let filteredCount = 0;
@@ -171,9 +179,32 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
             continue;
         }
         
-        // Validate answer options are unique
+        // Validate options structure
         const options = q.options || {};
-        const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+        const correctAnswer = (q.correct_answer || q.correctAnswer || '').toString().trim().toUpperCase();
+        
+        // Check all 4 options exist (handle both array and object formats)
+        let optionValues: string[];
+        if (Array.isArray(options)) {
+            if (options.length !== 4) {
+                console.warn(`⚠️ Filtered question with ${options.length} options (need 4): "${normalizedText.substring(0, 50)}..."`);
+                filteredCount++;
+                continue;
+            }
+            optionValues = options.map((v: any) => String(v).toLowerCase().trim());
+        } else {
+            const requiredOptions = ['A', 'B', 'C', 'D'];
+            for (const opt of requiredOptions) {
+                if (!options[opt] || typeof options[opt] !== 'string' || options[opt].trim().length === 0) {
+                    console.warn(`⚠️ Filtered question missing or empty option ${opt}: "${normalizedText.substring(0, 50)}..."`);
+                    filteredCount++;
+                    continue;
+                }
+            }
+            optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+        }
+        
+        // Validate answer options are unique
         const uniqueOptions = new Set(optionValues);
         
         if (uniqueOptions.size < optionValues.length) {
@@ -190,6 +221,33 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
             continue;
         }
         
+        // CRITICAL: Validate correct answer exists in options
+        if (Array.isArray(options)) {
+            // For array format, correct_answer should be the actual value
+            const answerExists = optionValues.some(opt => opt === correctAnswer.toLowerCase());
+            if (!answerExists) {
+                console.warn(`⚠️ Filtered question where correct answer "${correctAnswer}" not in options: "${normalizedText.substring(0, 50)}..."`);
+                console.warn(`   Options: ${JSON.stringify(options)}`);
+                filteredCount++;
+                continue;
+            }
+        } else {
+            // For object format, correct_answer should be A/B/C/D
+            if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+                console.warn(`⚠️ Filtered question with invalid correctAnswer "${correctAnswer}": "${normalizedText.substring(0, 50)}..."`);
+                filteredCount++;
+                continue;
+            }
+            
+            const correctAnswerValue = options[correctAnswer];
+            if (!correctAnswerValue || correctAnswerValue.trim().length === 0) {
+                console.warn(`⚠️ Filtered question where correctAnswer "${correctAnswer}" does not map to valid option: "${normalizedText.substring(0, 50)}..."`);
+                console.warn(`   Options: ${JSON.stringify(options)}`);
+                filteredCount++;
+                continue;
+            }
+        }
+        
         seenTexts.add(normalizedText);
         uniqueQuestions.push(q);
     }
@@ -203,9 +261,12 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
     
     console.log('🎓 ============================================');
 
-    const processedQuestions = uniqueQuestions.map((q: any) => ({
+    // Use sequential numeric IDs for consistency with answer storage
+    // Format: 1, 2, 3, ... (not UUIDs) so answers can be matched
+    const processedQuestions = uniqueQuestions.map((q: any, index: number) => ({
         ...q,
-        id: generateUUID(), // Override any existing id from AI
+        id: index + 1, // Sequential numeric ID
+        uuid: generateUUID(), // Keep UUID for database uniqueness
         stream_id: streamId,
         stream_name: streamName,
         created_at: new Date().toISOString()

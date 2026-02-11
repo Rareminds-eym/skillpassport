@@ -802,7 +802,8 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
         "personality": "High Conscientiousness (4.3) and Openness (4.1) suggest disciplined learning and curiosity",
         "values": "Achievement (4.5) and Independence (4.2) align with project-based autonomous work",
         "employability": "Strong problem-solving (90%) and digital literacy (95%) provide solid foundation",
-        "knowledge": "Domain knowledge score of 78% demonstrates readiness for advanced CS concepts"
+        "knowledge": "Domain knowledge score of 78% demonstrates readiness for advanced CS concepts",
+        "adaptiveAptitude": "Adaptive test level 4/5 with 85% accuracy confirms strong analytical and logical reasoning abilities"
       }
     },
     {
@@ -820,7 +821,8 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
         "personality": "High Conscientiousness (4.3) ensures disciplined approach to engineering projects",
         "values": "Achievement (4.5) drives success in challenging engineering work",
         "employability": "Problem-solving (90%) and technical skills support engineering careers",
-        "knowledge": "Strong foundation (78%) enables transition to engineering studies"
+        "knowledge": "Strong foundation (78%) enables transition to engineering studies",
+        "adaptiveAptitude": "Adaptive test results demonstrate strong spatial and analytical reasoning for engineering"
       }
     },
     {
@@ -838,7 +840,8 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
         "personality": "High Conscientiousness (4.3) and Agreeableness (4.0) suit medical profession",
         "values": "Achievement (4.5) and helping others drive medical career success",
         "employability": "Communication (85%) and problem-solving (90%) are essential for doctors",
-        "knowledge": "Biology knowledge (78%) provides foundation for medical studies"
+        "knowledge": "Biology knowledge (78%) provides foundation for medical studies",
+        "adaptiveAptitude": "Adaptive test shows strong analytical and reasoning skills needed for medical diagnosis"
       }
     }
   ]
@@ -1013,7 +1016,15 @@ Example structure:
   "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad"],  // ← REQUIRED - MUST BE PRESENT
   "alignedWithCluster": "Technology & Innovation",
   "whyThisFitsYou": "Your exceptional logical reasoning...",
-  "evidence": { ... }
+  "evidence": {
+    "interest": "...",
+    "aptitude": "...",
+    "personality": "...",
+    "values": "...",
+    "employability": "...",
+    "knowledge": "...",
+    "adaptiveAptitude": "..."
+  }
 }`;
 }
 

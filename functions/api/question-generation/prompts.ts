@@ -97,9 +97,34 @@ CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is 
 ⚠️ CRITICAL: UNIQUE QUESTIONS AND OPTIONS REQUIRED ⚠️
 - Each question MUST be completely unique - no similar or repeated questions
 - Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)
-- NO duplicate options within a question (e.g., don't use "10" for both A and C)
+- **ABSOLUTELY NO DUPLICATE OPTIONS**: Each option value must be unique within the question
+- Example BAD: {"A":"23","B":"33","C":"43","D":"33"} ❌ (B and D are duplicates)
+- Example GOOD: {"A":"23","B":"33","C":"43","D":"53"} ✅ (all different)
+- Before finalizing each question, verify all 4 options have different values
 - All options must be non-empty and meaningful
 - Correct answer must be clearly distinguishable from wrong answers
+
+⚠️ CRITICAL FOR MATH/CALCULATION QUESTIONS ⚠️
+**STEP-BY-STEP PROCESS FOR MATH QUESTIONS:**
+1. **CALCULATE THE CORRECT ANSWER FIRST** - Do the math before creating options
+2. **PUT THE CALCULATED ANSWER in one of the options** (A, B, C, or D)
+3. Create 3 different WRONG answers for the other options
+4. **VERIFY**: The correct calculated answer MUST appear exactly in one of the options
+5. **DOUBLE-CHECK**: Read the question, calculate again, confirm the answer is in the options
+
+**Example CORRECT:**
+Question: "If 5 apples cost $10, how much do 8 apples cost?"
+Calculation: (10/5) × 8 = $16
+Options: {"A": "$12", "B": "$14", "C": "$16", "D": "$18"}
+Correct Answer: "C"
+✅ The calculated answer ($16) IS in option C
+
+**Example WRONG (DO NOT DO THIS):**
+Question: "If 5 apples cost $10, how much do 8 apples cost?"
+Calculation: (10/5) × 8 = $16
+Options: {"A": "$12", "B": "$14", "C": "$15", "D": "$18"}
+Correct Answer: "C"
+❌ The calculated answer ($16) is NOT in any option - this is WRONG!
 
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
@@ -109,13 +134,20 @@ VERIFICATION: After generating, count your questions. You must have EXACTLY {{QU
 CRITICAL REQUIREMENT - 100% STREAM-RELATED QUESTIONS:
 This is for {{STREAM_NAME}} students. ALL questions MUST use {{STREAM_NAME}}-specific context, terminology, scenarios, and examples.
 
+⚠️ CRITICAL FOR SCIENCE STREAMS:
+- For PCM (Physics, Chemistry, Maths): ABSOLUTELY NO BIOLOGY QUESTIONS. Focus only on physics, chemistry, and mathematics.
+- For PCB (Physics, Chemistry, Biology): ABSOLUTELY NO ADVANCED MATHS QUESTIONS beyond basic arithmetic. Focus on physics, chemistry, and biology.
+- For PCMB: Balance questions across all four subjects equally.
+- For PCMS: Focus on physics, chemistry, maths, and computer science. NO BIOLOGY.
+
 {{STREAM_CONTEXT}}
 
 Question Requirements:
 1. All questions must be MCQ with exactly 4 options (except Clerical which has 2 options: "Same" or "Different")
 2. Each question must have exactly ONE correct answer
 3. Mix difficulty levels: 40% easy, 40% medium, 20% hard
-4. Each question must have exactly 4 unique options (A, B, C, D) - NO DUPLICATE OPTIONS ALLOWED
+4. For Science streams (PCM/PCB/PCMB/PCMS): Use 11th-12th grade difficulty - 30% medium, 50% hard, 20% very hard. Questions should challenge students preparing for competitive exams (JEE/NEET level).
+5. Each question must have exactly 4 unique options (A, B, C, D) - NO DUPLICATE OPTIONS ALLOWED
 5. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
 6. NO generic questions - every question must have {{STREAM_NAME}} context
 6. For Clerical Speed & Accuracy: Generate string comparison questions using {{STREAM_NAME}}-specific codes/IDs like "{{CLERICAL_EXAMPLE}}"

@@ -222,28 +222,50 @@ const SchoolMyClass: React.FC = () => {
   // Fetch co-curriculars data
   const fetchCoCurricularsData = async () => {
     try {
-      // Fetch clubs data
-      const { data: membershipData } = await supabase
-        .from('club_memberships_with_students')
-        .select('*')
+      // Fetch clubs data with proper joins
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('club_memberships')
+        .select(`
+          membership_id,
+          club_id,
+          student_email,
+          status,
+          enrolled_at,
+          total_sessions_attended,
+          total_sessions_held,
+          attendance_percentage,
+          performance_score,
+          clubs (
+            club_id,
+            name,
+            category,
+            description,
+            meeting_day,
+            meeting_time,
+            location,
+            capacity,
+            is_active
+          )
+        `)
         .eq('student_email', userEmail)
         .eq('status', 'active');
 
+      if (membershipError) {
+        console.error('Error fetching club memberships:', membershipError);
+        return;
+      }
+
       if (membershipData && membershipData.length > 0) {
         const clubsData = membershipData.map((membership: any) => ({
-          club_id: membership.club_id,
-          name: membership.club_name,
-          category: membership.club_category,
-          description: '',
-          meeting_day: membership.meeting_day,
-          meeting_time: membership.meeting_time,
-          location: membership.location,
-          mentor_type: membership.mentor_type,
-          mentor_name: membership.mentor_name,
-          mentor_email: membership.mentor_email,
-          mentor_phone: membership.mentor_phone,
-          is_active: true,
-          capacity: 0,
+          club_id: membership.clubs?.club_id,
+          name: membership.clubs?.name,
+          category: membership.clubs?.category,
+          description: membership.clubs?.description || '',
+          meeting_day: membership.clubs?.meeting_day,
+          meeting_time: membership.clubs?.meeting_time,
+          location: membership.clubs?.location,
+          is_active: membership.clubs?.is_active,
+          capacity: membership.clubs?.capacity || 30,
           membership_id: membership.membership_id,
           enrolled_at: membership.enrolled_at,
           total_sessions_attended: membership.total_sessions_attended,
@@ -253,28 +275,20 @@ const SchoolMyClass: React.FC = () => {
           memberCount: 0,
           avgAttendance: Math.round(membership.attendance_percentage || 0),
           upcomingActivities: [],
-          meetingDay: membership.meeting_day || 'TBD',
-          meetingTime: membership.meeting_time || 'TBD',
+          meetingDay: membership.clubs?.meeting_day || 'TBD',
+          meetingTime: membership.clubs?.meeting_time || 'TBD',
         }));
 
         const clubsWithMembers = await Promise.all(
           clubsData.map(async (club: any) => {
-            const { data: clubDetails } = await supabase
-              .from('clubs')
-              .select('capacity, description')
-              .eq('club_id', club.club_id)
-              .single();
-
             const { count: memberCount } = await supabase
-              .from('club_memberships_with_students')
+              .from('club_memberships')
               .select('*', { count: 'exact', head: true })
               .eq('club_id', club.club_id)
               .eq('status', 'active');
 
             return {
               ...club,
-              capacity: clubDetails?.capacity || 30,
-              description: clubDetails?.description || '',
               memberCount: memberCount || 0,
             };
           })

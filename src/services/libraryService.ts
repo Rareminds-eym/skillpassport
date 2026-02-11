@@ -140,7 +140,13 @@ class LibraryService {
     }
 
     if (filters?.status) {
-      query = query.eq('status', filters.status);
+      if (filters.status === 'available') {
+        query = query.gt('available_copies', 0);
+      } else if (filters.status === 'unavailable') {
+        query = query.eq('available_copies', 0);
+      } else {
+        query = query.eq('status', filters.status);
+      }
     }
 
     if (filters?.page && filters?.limit) {

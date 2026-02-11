@@ -80,7 +80,8 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
               )}
 
               {/* Progress Badge */}
-              <div className="flex items-center gap-3 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100" data-tour="progress-percentage">                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
+              <div className="flex items-center gap-3 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100" data-tour="progress-percentage">
+                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
                 <span className="text-xs font-semibold text-indigo-700">
                   {Math.round(progress)}% Complete
                 </span>
