@@ -219,16 +219,6 @@ The student is studying **${studentContext.programName || 'their chosen program'
 
 **IF YOU IGNORE THE PROGRAM AND RECOMMEND UNRELATED CAREERS, YOUR RESPONSE WILL BE REJECTED.**
 
-**EXAMPLES OF CORRECT PROGRAM-TO-CAREER MAPPING:**
-
-- **"Bsc Physics"** → Physics Research Scientist, Data Scientist (Physics/Analytics), Aerospace Engineer, Quantum Computing Researcher, Scientific Instrumentation Engineer, Materials Scientist, Astrophysicist, Nuclear Physicist
-- **"Bsc Chemistry"** → Chemical Research Scientist, Pharmaceutical R&D Scientist, Quality Control Chemist, Materials Scientist, Forensic Scientist, Analytical Chemist, Biochemist
-- **"BCA" / "B.Tech CS"** → Software Developer, Data Analyst, Web Developer, Mobile App Developer, Cloud Engineer, DevOps Engineer, Full Stack Developer
-- **"BBA" / "MBA"** → Business Analyst, Marketing Manager, HR Manager, Operations Manager, Product Manager, Strategy Consultant, Financial Analyst
-- **"B.Pharm"** → Pharmacist, Drug Safety Associate, Regulatory Affairs Specialist, Clinical Research Associate, Medical Representative, Pharmaceutical Analyst
-- **"BA Psychology"** → Clinical Psychologist, HR Specialist, Counselor, UX Researcher, Organizational Behavior Analyst, Mental Health Counselor
-- **"LLB"** → Corporate Lawyer, Legal Consultant, Compliance Officer, Patent Attorney, Legal Advisor, Contract Specialist
-
 **MANDATORY STEP-BY-STEP PROCESS (FOLLOW EXACTLY):**
 
 **STEP 1: IDENTIFY THE PROGRAM FIELD**
@@ -258,10 +248,11 @@ The student is studying **${studentContext.programName || 'their chosen program'
    ✅ Question 3: Did you avoid generic careers (Creative Arts, Social Work, NGO, Teaching) unless the program is specifically in those fields?
       - If NO → GO BACK TO STEP 2 and start over
    
-   ❌ WRONG EXAMPLES (DO NOT DO THIS):
-      - "Bsc Physics" student → Creative Arts (85%), Education (75%), Media (65%) ← COMPLETELY WRONG
-      - "B.Tech CS" student → Social Work (80%), NGO Management (70%), Teaching (65%) ← COMPLETELY WRONG
-      - "BBA" student → Physics Research (85%), Chemical Engineering (75%), Medical Research (65%) ← COMPLETELY WRONG
+   ⚠️ IMPORTANT VALIDATION NOTES:
+      - Career clusters must align with BOTH the program field AND the student's RIASEC profile
+      - If a Physics student has high Artistic (A) scores, consider creative physics careers (science communication, visualization, education)
+      - If a CS student has high Social (S) scores, consider people-focused tech careers (UX research, tech education, product management)
+      - Balance program relevance with personal interests - don't force mismatched careers
 
 **NAMING RULES FOR CAREER CLUSTER TITLES:**
    - ✅ PREFERRED: Entry-level role names (e.g., "Data Scientist", "Research Scientist", "Software Developer")
@@ -317,18 +308,31 @@ RIASEC SCORING RULES:
 5. VERIFY: The first letter in topThree MUST have the highest score, second letter the second-highest, etc.
 6. DO NOT guess or assume - calculate from the actual responses above
 
-## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
-**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
+## ⚠️ CRITICAL: RIASEC-ALIGNED CAREER MATCHING ⚠️
 
-**MANDATORY for High Artistic (A) Students:**
-- **Music & Entertainment**: Music Producer, Sound Designer, Film Score Composer, Concert Manager, Audio Engineer
-- **Visual Arts**: Digital Artist, Animator, Art Director, Fashion Designer, NFT Creator, VFX Supervisor
-- **Performing Arts**: Actor, Director, Choreographer, Theatre Producer, Voice Actor, Performance Artist
-- **Media & Content**: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter, Documentary Filmmaker
-- **Design**: Graphic Designer, UX/UI Designer, Game Designer, Interior Designer, Brand Designer, Product Designer
+**YOU MUST align career recommendations with the student's top RIASEC types:**
 
-**DO NOT default to only Technology/Science/Business careers for Artistic students!**
-**The student's creative interests MUST be reflected in their career recommendations.**
+**RIASEC Type Definitions:**
+- **R (Realistic)**: Hands-on, technical, mechanical work; working with tools, machines, or physical objects
+- **I (Investigative)**: Research, analysis, problem-solving; scientific, mathematical, or intellectual work
+- **A (Artistic)**: Creative expression, design, arts; working with ideas, aesthetics, and innovation
+- **S (Social)**: Helping, teaching, counseling; working with people to support, educate, or care
+- **E (Enterprising)**: Leadership, persuasion, business; managing, selling, or influencing others
+- **C (Conventional)**: Organization, data management, detail work; structured, systematic tasks
+
+**MANDATORY RIASEC ALIGNMENT RULES:**
+
+1. **Identify the student's top 3 RIASEC types** from their assessment scores
+2. **Generate career clusters that match these types** - don't default to generic tech/business careers
+3. **For Artistic (A) students**: Include creative careers (design, media, arts, content creation, entertainment)
+4. **For Social (S) students**: Include people-focused careers (counseling, teaching, HR, healthcare, social work)
+5. **For Realistic (R) students**: Include hands-on careers (engineering, trades, technical roles, manufacturing)
+6. **For Investigative (I) students**: Include research/analytical careers (science, data analysis, research)
+7. **For Enterprising (E) students**: Include business/leadership careers (management, sales, entrepreneurship)
+8. **For Conventional (C) students**: Include structured careers (accounting, administration, operations)
+
+**DO NOT ignore the student's RIASEC profile!**
+**Career recommendations MUST reflect their actual interests, not just their academic program.**
 
 ## MULTI-APTITUDE BATTERY RESULTS:
 Pre-calculated Scores:

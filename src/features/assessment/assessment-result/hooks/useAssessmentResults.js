@@ -736,19 +736,39 @@ export const useAssessmentResults = () => {
                         // Priority: program.name > program.code > course_name > branch_field
                         programName = studentData.programs?.name || studentData.programs?.code || studentData.course_name || studentData.branch_field || '—';
                         
-                        // Determine degree level from program or grade
+                        // Determine degree level from program, branch_field, or grade
                         const degreeLevel = studentData.programs?.degree_level || null;
+                        const branchField = studentData.branch_field || '';
                         const gradeStr = (studentData.grade || '').toLowerCase();
+                        const branchStr = branchField.toLowerCase();
                         
-                        if (degreeLevel === 'postgraduate' || gradeStr.includes('pg') || gradeStr.includes('postgraduate') || 
-                            gradeStr.includes('m.tech') || gradeStr.includes('mtech') || gradeStr.includes('mca') || 
-                            gradeStr.includes('mba') || gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
+                        // Check branch_field first for degree level indicators
+                        if (degreeLevel === 'postgraduate' || 
+                            branchStr.includes('m.tech') || branchStr.includes('mtech') ||
+                            branchStr.includes('mca') || branchStr.includes('mba') ||
+                            branchStr.includes('m.sc') || branchStr.includes('msc') ||
+                            branchStr.includes('m.com') || branchStr.includes('mcom') ||
+                            branchStr.includes('ma ') || branchStr.includes('m.a') ||
+                            gradeStr.includes('pg') || gradeStr.includes('postgraduate') || 
+                            gradeStr.includes('m.tech') || gradeStr.includes('mtech') || 
+                            gradeStr.includes('mca') || gradeStr.includes('mba') || 
+                            gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
                             derivedStream = 'Postgraduate';
-                        } else if (degreeLevel === 'undergraduate' || gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
-                            gradeStr.includes('b.tech') || gradeStr.includes('btech') || gradeStr.includes('bca') || 
-                            gradeStr.includes('b.sc') || gradeStr.includes('b.com') || gradeStr.includes('ba ') || gradeStr.includes('bba')) {
+                        } else if (degreeLevel === 'undergraduate' || 
+                            branchStr.includes('b.tech') || branchStr.includes('btech') ||
+                            branchStr.includes('bca') || branchStr.includes('b.sc') || branchStr.includes('bsc') ||
+                            branchStr.includes('b.com') || branchStr.includes('bcom') ||
+                            branchStr.includes('ba ') || branchStr.includes('b.a') ||
+                            branchStr.includes('bba') ||
+                            gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
+                            gradeStr.includes('b.tech') || gradeStr.includes('btech') || 
+                            gradeStr.includes('bca') || gradeStr.includes('b.sc') || 
+                            gradeStr.includes('b.com') || gradeStr.includes('ba ') || 
+                            gradeStr.includes('bba')) {
                             derivedStream = 'Undergraduate';
-                        } else if (degreeLevel === 'diploma' || gradeStr.includes('diploma')) {
+                        } else if (degreeLevel === 'diploma' || 
+                            branchStr.includes('diploma') || 
+                            gradeStr.includes('diploma')) {
                             derivedStream = 'Diploma';
                         } else {
                             derivedStream = 'College';
@@ -1899,16 +1919,16 @@ export const useAssessmentResults = () => {
             } else {
                 console.log('⚠️ No student context in attempt, building from studentInfo...');
                 // Fallback: Build from studentInfo that was fetched earlier
-                // Try multiple sources for program name with correct priority
-                // Priority: courseName (from studentInfo) > branchField > fetch from DB
-                let programName = studentInfo.courseName || studentInfo.branchField || null;
+                let programName = null;
+                let branchField = null;
+                let programDegreeLevel = null;
                 
-                // If still no program name, try to fetch from student record
-                if (!programName && attempt.student_id) {
+                // If we have attempt.student_id, fetch fresh data from database
+                if (attempt.student_id) {
                     try {
                         const { data: studentData } = await supabase
                             .from('students')
-                            .select('course_name, branch_field, program:program_id(name, code)')
+                            .select('course_name, branch_field, grade, program:program_id(name, code, degree_level)')
                             .eq('id', attempt.student_id)
                             .maybeSingle();
                         
@@ -1918,18 +1938,60 @@ export const useAssessmentResults = () => {
                                          studentData.program?.code || 
                                          studentData.course_name ||
                                          studentData.branch_field;
-                            console.log('📚 Fetched program name from student record:', programName);
+                            branchField = studentData.branch_field;
+                            programDegreeLevel = studentData.program?.degree_level;
+                            console.log('📚 Fetched from student record:', {
+                                programName,
+                                branchField,
+                                programDegreeLevel,
+                                grade: studentData.grade
+                            });
                         }
                     } catch (err) {
-                        console.warn('Could not fetch program name:', err);
+                        console.warn('Could not fetch student data:', err);
                     }
                 }
+                
+                // Extract degree level from program, branch_field, or grade
+                const extractDegreeLevelEnhanced = (grade, programDegreeLevel, branchField) => {
+                    if (programDegreeLevel) return programDegreeLevel;
+                    
+                    // Check branch_field first
+                    if (branchField) {
+                        const branchStr = branchField.toLowerCase();
+                        if (branchStr.includes('m.tech') || branchStr.includes('mtech') ||
+                            branchStr.includes('mca') || branchStr.includes('mba') ||
+                            branchStr.includes('m.sc') || branchStr.includes('msc') ||
+                            branchStr.includes('m.com') || branchStr.includes('mcom') ||
+                            branchStr.includes('ma ') || branchStr.includes('m.a') ||
+                            branchStr.includes('pg ') || branchStr.includes('postgraduate')) {
+                            return 'postgraduate';
+                        }
+                        if (branchStr.includes('b.tech') || branchStr.includes('btech') ||
+                            branchStr.includes('bca') || branchStr.includes('b.sc') || branchStr.includes('bsc') ||
+                            branchStr.includes('b.com') || branchStr.includes('bcom') ||
+                            branchStr.includes('ba ') || branchStr.includes('b.a') ||
+                            branchStr.includes('bba') || branchStr.includes('ug ') || branchStr.includes('undergraduate')) {
+                            return 'undergraduate';
+                        }
+                        if (branchStr.includes('diploma')) {
+                            return 'diploma';
+                        }
+                    }
+                    
+                    // Fallback to grade
+                    return extractDegreeLevel(grade);
+                };
                 
                 studentContext = {
                     rawGrade: studentInfo.grade || storedGradeLevel,
                     programName: programName,
                     programCode: null,
-                    degreeLevel: extractDegreeLevel(studentInfo.grade || storedGradeLevel)
+                    degreeLevel: extractDegreeLevelEnhanced(
+                        studentInfo.grade || storedGradeLevel,
+                        programDegreeLevel,
+                        branchField
+                    )
                 };
             }
 

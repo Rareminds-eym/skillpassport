@@ -401,9 +401,34 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             .maybeSingle();
 
           if (!studentError && student) {
-            // Extract degree level from grade or program
-            const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null): string | null => {
+            // Extract degree level from grade, program, or branch_field
+            const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null, branchField: string | null): string | null => {
               if (programDegreeLevel) return programDegreeLevel;
+              
+              // Check branch_field first (e.g., "Bsc Physics", "M.Tech CS")
+              if (branchField) {
+                const branchStr = branchField.toLowerCase();
+                if (branchStr.includes('m.tech') || branchStr.includes('mtech') ||
+                  branchStr.includes('mca') || branchStr.includes('mba') ||
+                  branchStr.includes('m.sc') || branchStr.includes('msc') ||
+                  branchStr.includes('m.com') || branchStr.includes('mcom') ||
+                  branchStr.includes('ma ') || branchStr.includes('m.a') ||
+                  branchStr.includes('pg ') || branchStr.includes('postgraduate')) {
+                  return 'postgraduate';
+                }
+                if (branchStr.includes('b.tech') || branchStr.includes('btech') ||
+                  branchStr.includes('bca') || branchStr.includes('b.sc') || branchStr.includes('bsc') ||
+                  branchStr.includes('b.com') || branchStr.includes('bcom') ||
+                  branchStr.includes('ba ') || branchStr.includes('b.a') ||
+                  branchStr.includes('bba') || branchStr.includes('ug ') || branchStr.includes('undergraduate')) {
+                  return 'undergraduate';
+                }
+                if (branchStr.includes('diploma')) {
+                  return 'diploma';
+                }
+              }
+              
+              // Fallback to grade
               if (!grade) return null;
               const gradeStr = grade.toLowerCase();
               if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') ||
@@ -433,7 +458,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             const programCode = (student.programs as any)?.code || null;
             const degreeLevel = extractDegreeLevel(
               student.grade,
-              (student.programs as any)?.degree_level
+              (student.programs as any)?.degree_level,
+              student.branch_field
             );
 
             // ✅ FIX: For higher_secondary, include the selected stream in rawGrade
