@@ -11,6 +11,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, Sparkles, Code, Zap, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../../../../components/Students/components/ui/button';
+import type { GradeLevel } from '../../config/sections';
 
 interface SectionIntroScreenProps {
   title: string;
@@ -26,6 +27,7 @@ interface SectionIntroScreenProps {
   isTimed?: boolean;
   showAIPoweredBadge?: boolean;
   isLoading?: boolean;
+  gradeLevel?: GradeLevel | null;
   onStart: () => void;
 }
 
@@ -46,12 +48,33 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
   isTimed = false,
   showAIPoweredBadge = false,
   isLoading = false,
+  gradeLevel = null,
   onStart
 }) => {
   // Format time limit for display
   const formatTimeLimit = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+  };
+
+  // Get time per question label for adaptive aptitude
+  const getAdaptiveTimeLabel = () => {
+    // Middle school (6-8) gets 5 minutes per question
+    if (gradeLevel === '6-8') {
+      return '5 min per question';
+    }
+    // All other grades get 1 minute per question
+    return '1 min per question';
+  };
+
+  // Get total time label for adaptive aptitude
+  const getAdaptiveTotalTime = () => {
+    // Middle school (6-8): 50 questions × 5 minutes = 250 minutes
+    if (gradeLevel === '6-8') {
+      return '250 min total';
+    }
+    // All other grades: 50 questions × 1 minute = 50 minutes
+    return '50 min total';
   };
 
   // Get section type indicator
@@ -188,9 +211,14 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
           </span>
         )}
         {isAdaptive && (
-          <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full">
-            90 sec per question
-          </span>
+          <>
+            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full">
+              {getAdaptiveTimeLabel()}
+            </span>
+            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full">
+              {getAdaptiveTotalTime()}
+            </span>
+          </>
         )}
       </motion.div>
 
