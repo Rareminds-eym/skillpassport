@@ -13,6 +13,7 @@ export interface TourStep extends Step {
   showSkipButton?: boolean;
   spotlightClicks?: boolean;
   styles?: Record<string, any>;
+  gradeLevel?: 'after10' | 'after12' | 'after10_after12'; // Conditional step based on grade level
 }
 
 export interface TourConfig {
@@ -30,6 +31,8 @@ export interface TourProgress {
   dashboard_completed?: boolean;
   assessment_test_completed?: boolean;
   assessment_result_completed?: boolean;
+  assessment_result_after12_completed?: boolean;
+  assessment_result_generic_completed?: boolean;
   last_completed_tour?: string;
   completed_at?: string;
 }
@@ -41,4 +44,4 @@ export interface TourState {
   progress: TourProgress;
 }
 
-export type TourKey = 'dashboard' | 'assessment_test' | 'assessment_result';
+export type TourKey = 'dashboard' | 'assessment_test' | 'assessment_result' | 'assessment_result_after12' | 'assessment_result_generic';

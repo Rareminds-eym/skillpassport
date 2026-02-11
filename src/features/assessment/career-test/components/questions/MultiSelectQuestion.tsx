@@ -70,7 +70,7 @@ export const MultiSelectQuestion: React.FC<MultiSelectQuestionProps> = ({
       )}
 
       {/* Question Text */}
-      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">
+      <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug" data-tour="question-content">
         {questionText}
       </h3>
 
@@ -82,7 +82,7 @@ export const MultiSelectQuestion: React.FC<MultiSelectQuestionProps> = ({
       </div>
 
       {/* Options - styled like reference with circular indicators */}
-      <div className="space-y-3 mt-4">
+      <div className="space-y-3 mt-4" data-tour="answer-options">
         {options.map((option, idx) => {
           const selected = isSelected(option);
           const disabled = !selected && !canSelectMore;

@@ -68,13 +68,22 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "algebra",
       "estimated_time": 60
     }
   ]
 }
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without letter prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
 
 IMPORTANT: 
 - Use sequential numeric IDs (1, 2, 3, etc.)
@@ -97,9 +106,34 @@ CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is 
 ⚠️ CRITICAL: UNIQUE QUESTIONS AND OPTIONS REQUIRED ⚠️
 - Each question MUST be completely unique - no similar or repeated questions
 - Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)
-- NO duplicate options within a question (e.g., don't use "10" for both A and C)
+- **ABSOLUTELY NO DUPLICATE OPTIONS**: Each option value must be unique within the question
+- Example BAD: {"A":"23","B":"33","C":"43","D":"33"} ❌ (B and D are duplicates)
+- Example GOOD: {"A":"23","B":"33","C":"43","D":"53"} ✅ (all different)
+- Before finalizing each question, verify all 4 options have different values
 - All options must be non-empty and meaningful
 - Correct answer must be clearly distinguishable from wrong answers
+
+⚠️ CRITICAL FOR MATH/CALCULATION QUESTIONS ⚠️
+**STEP-BY-STEP PROCESS FOR MATH QUESTIONS:**
+1. **CALCULATE THE CORRECT ANSWER FIRST** - Do the math before creating options
+2. **PUT THE CALCULATED ANSWER in one of the options** (A, B, C, or D)
+3. Create 3 different WRONG answers for the other options
+4. **VERIFY**: The correct calculated answer MUST appear exactly in one of the options
+5. **DOUBLE-CHECK**: Read the question, calculate again, confirm the answer is in the options
+
+**Example CORRECT:**
+Question: "If 5 apples cost $10, how much do 8 apples cost?"
+Calculation: (10/5) × 8 = $16
+Options: {"A": "$12", "B": "$14", "C": "$16", "D": "$18"}
+Correct Answer: "C"
+✅ The calculated answer ($16) IS in option C
+
+**Example WRONG (DO NOT DO THIS):**
+Question: "If 5 apples cost $10, how much do 8 apples cost?"
+Calculation: (10/5) × 8 = $16
+Options: {"A": "$12", "B": "$14", "C": "$15", "D": "$18"}
+Correct Answer: "C"
+❌ The calculated answer ($16) is NOT in any option - this is WRONG!
 
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
@@ -152,8 +186,8 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "vocabulary",
       "estimated_time": 45
     },
@@ -170,6 +204,15 @@ Output Format - Respond with ONLY valid JSON:
     }
   ]
 }
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without any prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
 
 IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 
@@ -204,13 +247,22 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "topic name",
       "estimated_time": 60
     }
   ]
 }
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without any prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
 
 IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 
@@ -253,10 +305,19 @@ Required JSON structure:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "Skill being tested",
       "estimated_time": 45
     }
   ]
-}`;
+}
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without letter prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]`;

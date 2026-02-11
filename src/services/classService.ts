@@ -41,6 +41,7 @@ export interface EducatorClass {
   year: string
   status: ClassStatus
   total_students: number
+  max_students: number
   avg_progress: number
   performance_band: PerformanceBand
   skillAreas: string[]
@@ -150,6 +151,7 @@ const transformDBClassToClass = (dbClass: any, educatorType: 'school' | 'college
     year: dbClass.academic_year || String(new Date().getFullYear()),
     status: (metadata.status || "Active") as ClassStatus,
     total_students: dbClass.current_students || 0,
+    max_students: dbClass.max_students || 40,
     avg_progress: 0,
     performance_band: "Low" as PerformanceBand,
     skillAreas: metadata.skillAreas || [],

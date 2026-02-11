@@ -2367,7 +2367,7 @@ const AssessmentTest = () => {
                                 Test Mode
                             </button>
                         )}
-                        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full">
+                        <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-full" data-tour="progress-percentage">
                             <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></div>
                             <span className="text-sm font-semibold text-indigo-700">{Math.round(progress)}% Complete</span>
                         </div>
@@ -2936,7 +2936,7 @@ const AssessmentTest = () => {
                                         </div>
                                     </div>
 
-                                    <div className="mt-auto space-y-4">
+                                    <div className="mt-auto space-y-4" data-tour="section-info">
                                         <div className="flex items-center gap-3 text-sm text-gray-600">
                                             <Target className="w-4 h-4" />
                                             <span>Section {currentSectionIndex + 1} of {sections.length}</span>
@@ -2968,7 +2968,7 @@ const AssessmentTest = () => {
                                         {currentSection?.isTimed && !currentSection?.isAdaptive ? (
                                             currentSection.isAptitude ? (
                                                 aptitudePhase === 'individual' ? (
-                                                    <div className="flex flex-col gap-2">
+                                                    <div className="flex flex-col gap-2" data-tour="timer-display">
                                                         <div className={`flex items-center gap-3 text-sm font-semibold ${aptitudeQuestionTimer <= 10 ? 'text-red-600' : 'text-orange-600'}`}>
                                                             <Clock className="w-4 h-4" />
                                                             <span>Question Time: {formatTime(aptitudeQuestionTimer)}</span>
@@ -2978,7 +2978,7 @@ const AssessmentTest = () => {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="flex flex-col gap-2">
+                                                    <div className="flex flex-col gap-2" data-tour="timer-display">
                                                         <div className={`flex items-center gap-3 text-sm font-semibold ${timeRemaining !== null && timeRemaining <= 60 ? 'text-red-600' : 'text-orange-600'}`}>
                                                             <Clock className="w-4 h-4" />
                                                             <span>Time Left: {formatTime(timeRemaining || 0)}</span>
@@ -2989,13 +2989,13 @@ const AssessmentTest = () => {
                                                     </div>
                                                 )
                                             ) : timeRemaining !== null ? (
-                                                <div className="flex items-center gap-3 text-sm font-semibold text-orange-600">
+                                                <div className="flex items-center gap-3 text-sm font-semibold text-orange-600" data-tour="timer-display">
                                                     <Clock className="w-4 h-4" />
                                                     <span>Time Left: {formatTime(timeRemaining)}</span>
                                                 </div>
                                             ) : null
                                         ) : (
-                                            <div className="flex items-center gap-3 text-sm font-medium text-emerald-600">
+                                            <div className="flex items-center gap-3 text-sm font-medium text-emerald-600" data-tour="timer-display">
                                                 <Clock className="w-4 h-4" />
                                                 <span>Time: {formatElapsedTime(elapsedTime)}</span>
                                             </div>
@@ -3234,7 +3234,7 @@ const AssessmentTest = () => {
                                                             </div>
                                                         ) : currentQuestion.type === 'multiselect' ? (
                                                             // Multi-select questions (Middle School)
-                                                            <div className="space-y-4">
+                                                            <div className="space-y-4" data-tour="answer-options">
                                                                 <div className="p-3 bg-green-50 rounded-lg border border-green-200 mb-4">
                                                                     <p className="text-sm font-medium text-green-700">
                                                                         Select up to <span className="font-bold">{currentQuestion.maxSelections}</span> options that feel most like you
@@ -3292,7 +3292,7 @@ const AssessmentTest = () => {
                                                             </div>
                                                         ) : currentQuestion.type === 'singleselect' ? (
                                                             // Single-select questions (Middle School - simpler UI)
-                                                            <div className="space-y-3">
+                                                            <div className="space-y-3" data-tour="answer-options">
                                                                 {currentQuestion.options.map((option, idx) => {
                                                                     const isSelected = answers[questionId] === option;
 
@@ -3324,7 +3324,7 @@ const AssessmentTest = () => {
                                                             </div>
                                                         ) : currentQuestion.type === 'rating' ? (
                                                             // Rating questions (1-4 scale for middle school)
-                                                            <div className="space-y-4">
+                                                            <div className="space-y-4" data-tour="answer-options">
                                                                 <div className="flex justify-center gap-2 md:gap-4">
                                                                     {currentSection.responseScale.map((option) => (
                                                                         <button
@@ -3415,7 +3415,7 @@ const AssessmentTest = () => {
 
                                     {/* Navigation - only show when answering questions */}
                                     {!isSubmitting && !showSectionComplete && !error && (
-                                        <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-100">
+                                        <div className="mt-8 flex justify-between items-center pt-6 border-t border-gray-100" data-tour="navigation-controls">
                                             <Button
                                                 variant="ghost"
                                                 onClick={handlePrevious}

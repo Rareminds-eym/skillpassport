@@ -34,6 +34,7 @@ import { useAssessmentFlow } from './hooks/useAssessmentFlow';
 import { useStudentGrade } from './hooks/useStudentGrade';
 import { useAIQuestions } from './hooks/useAIQuestions';
 import { useAssessmentSubmission } from './hooks/useAssessmentSubmission';
+import { useAntiCheating } from '../../../hooks/useAntiCheating';
 
 // Config
 import {
@@ -49,6 +50,7 @@ import { SectionIntroScreen } from './components/screens/SectionIntroScreen';
 import { SectionCompleteScreen } from './components/screens/SectionCompleteScreen';
 import { LoadingScreen } from './components/screens/LoadingScreen';
 import { AnalyzingScreen } from './components/screens/AnalyzingScreen';
+import { ErrorScreen, type ErrorType } from './components/screens/ErrorScreen';
 import { ProgressHeader } from './components/layout/ProgressHeader';
 import { QuestionLayout } from './components/layout/QuestionLayout';
 import { TestModeControls } from './components/layout/TestModeControls';
@@ -136,6 +138,36 @@ const getSectionIconPath = (sectionId: string): string => {
   };
 
   return iconMap[sectionId] || '/assets/Assessment Icons/Career Interests.png';
+};
+
+/**
+ * Determine error type from error message
+ */
+const getErrorType = (errorMessage: string): ErrorType => {
+  const msg = errorMessage.toLowerCase();
+  
+  if (msg.includes('network') || msg.includes('connection') || msg.includes('offline') || msg.includes('fetch')) {
+    return 'network';
+  }
+  if (msg.includes('server') || msg.includes('500') || msg.includes('503') || msg.includes('502')) {
+    return 'server';
+  }
+  if (msg.includes('session') || msg.includes('expired') || msg.includes('token') || msg.includes('unauthorized')) {
+    return 'session';
+  }
+  if (msg.includes('load') || msg.includes('timeout') || msg.includes('failed to fetch')) {
+    return 'loading';
+  }
+  return 'generic';
+};
+
+/**
+ * Check if error should show ErrorScreen instead of RestrictionScreen
+ */
+const shouldShowErrorScreen = (errorMessage: string): boolean => {
+  const errorType = getErrorType(errorMessage);
+  // Show ErrorScreen for technical errors, RestrictionScreen for restriction errors
+  return errorType !== 'generic' || !errorMessage.includes('month');
 };
 
 /**
@@ -397,13 +429,17 @@ const AssessmentTestPage: React.FC = () => {
   }, [flow]);
 
   const adaptiveAptitude = useAdaptiveAptitude({
-    studentId: studentId || '',
+    studentId: user?.id || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || ('after12' as GradeLevel)),
     attemptId: currentAttempt?.id, // Pass attemptId to link session immediately
     studentCourse: studentProgram || null, // Pass student's course for college students
     onTestComplete: handleAdaptiveTestComplete,
     onError: handleAdaptiveTestError,
   });
+
+  // Enable anti-cheating protections when assessment is active
+  const isAssessmentActive = assessmentStarted && flow.currentSectionIndex >= 0 && flow.currentScreen === 'assessment';
+  useAntiCheating(isAssessmentActive);
 
   // Track adaptive loading time for better UX
   const [adaptiveLoadingStartTime, setAdaptiveLoadingStartTime] = React.useState<number | null>(null);
@@ -507,6 +543,18 @@ const AssessmentTestPage: React.FC = () => {
     const needsStream = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
     const canBuild = flow.studentStream || !needsStream;
 
+    // CRITICAL FIX: For grade levels that use AI knowledge questions (higher_secondary, after12, college),
+    // wait for AI questions to load before building sections
+    // This prevents the knowledge section from being created with 0 questions
+    const needsAIKnowledge = ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
+    const hasAIKnowledge = aiQuestions?.knowledge && aiQuestions.knowledge.length > 0;
+    
+    // Don't build sections if we need AI knowledge questions but they haven't loaded yet
+    if (needsAIKnowledge && !hasAIKnowledge && questionsLoading) {
+      console.log('⏳ Waiting for AI knowledge questions to load before building sections');
+      return;
+    }
+
     if (canBuild) {
       const builtSections = buildSectionsWithQuestions(
         flow.gradeLevel,
@@ -516,7 +564,7 @@ const AssessmentTestPage: React.FC = () => {
       );
       setSections(builtSections);
     }
-  }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory]);
+  }, [flow.gradeLevel, flow.studentStream, aiQuestions, flow.selectedCategory, questionsLoading]);
 
   // FIX 2: Restore position after sections are built (handles race condition)
   useEffect(() => {
@@ -1072,9 +1120,11 @@ const AssessmentTestPage: React.FC = () => {
         // Don't try to resume - the section is already complete
         // Check if we're currently on the adaptive section
         const adaptiveSectionIndex = sections.findIndex(s => s.isAdaptive);
+        const sectionIndex = flow.currentSectionIndex;
         if (sectionIndex === adaptiveSectionIndex) {
           console.log('✅ [ADAPTIVE RESUME] Currently on adaptive section, showing section complete');
-          flow.setShowSectionComplete(true);
+          // Use the state setter directly instead of the non-existent method
+          flow.setShowSectionIntro(false);
         }
       } else {
         // Session is in progress, try to resume it
@@ -1157,7 +1207,6 @@ const AssessmentTestPage: React.FC = () => {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
             flow.setCurrentQuestionIndex(0);
             flow.setShowSectionIntro(false);
-            flow.setShowSectionComplete(true);
             flow.setCurrentScreen('section_complete');
           } else {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session exists and in progress, resuming to assessment screen');
@@ -1930,9 +1979,12 @@ const AssessmentTestPage: React.FC = () => {
     return isAnswered;
   }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion, flow.questionId]);
 
-  // Loading state - only show loading screen for initial checks, not for AI questions
-  // AI questions can load in the background while showing section intro
-  const showLoading = checkingExistingAttempt || (!assessmentStarted && dbLoading);
+  // Loading state - show loading for initial checks AND for AI questions when needed
+  // For grade levels that require AI knowledge questions, show loading until questions are ready
+  const needsAIKnowledge = flow.gradeLevel && ['higher_secondary', 'after12', 'college'].includes(flow.gradeLevel);
+  const waitingForAIQuestions = needsAIKnowledge && questionsLoading && assessmentStarted && sections.length === 0;
+  
+  const showLoading = checkingExistingAttempt || (!assessmentStarted && dbLoading) || waitingForAIQuestions;
 
   // Debug: Log loading states
   if (showLoading) {
@@ -1943,12 +1995,16 @@ const AssessmentTestPage: React.FC = () => {
       dbLoading,
       loadingStudentGrade,
       studentRecordId,
-      currentScreen: flow.currentScreen
+      currentScreen: flow.currentScreen,
+      waitingForAIQuestions
     });
   }
 
   if (showLoading) {
-    return <LoadingScreen message="Loading assessment..." />;
+    const message = waitingForAIQuestions 
+      ? "Generating personalized questions for your stream..." 
+      : "Loading assessment...";
+    return <LoadingScreen message={message} />;
   }
 
   // Error state
@@ -1964,6 +2020,30 @@ const AssessmentTestPage: React.FC = () => {
 
   // Restriction/Error state
   if (flow.error && !showResumePrompt && !assessmentStarted) {
+    // Determine if we should show ErrorScreen or RestrictionScreen
+    const showErrorScreen = shouldShowErrorScreen(flow.error);
+    const errorType = getErrorType(flow.error);
+
+    if (showErrorScreen) {
+      return (
+        <ErrorScreen
+          errorType={errorType}
+          message={flow.error}
+          onRetry={() => {
+            flow.setError(null);
+            // Retry loading questions if it was a loading error
+            if (errorType === 'loading' && flow.gradeLevel) {
+              window.location.reload();
+            }
+          }}
+          onRefresh={() => window.location.reload()}
+          onBackToDashboard={() => navigate('/student/dashboard')}
+          showContactSupport={errorType === 'server'}
+        />
+      );
+    }
+
+    // Show RestrictionScreen for restriction errors (6-month wait)
     return (
       <RestrictionScreen
         errorMessage={flow.error}
@@ -2201,6 +2281,7 @@ const AssessmentTestPage: React.FC = () => {
               isAdaptive={currentSection.isAdaptive}
               isTimed={currentSection.isTimed}
               showAIPoweredBadge={currentSection.id === 'aptitude' || currentSection.id === 'knowledge'}
+              gradeLevel={flow.gradeLevel}
               isLoading={
                 // Show loading for adaptive aptitude (50 questions)
                 (currentSection.isAdaptive && adaptiveAptitude.loading) ||
@@ -2351,7 +2432,12 @@ const AssessmentTestPage: React.FC = () => {
                   <QuestionNavigation
                     onPrevious={flow.goToPreviousQuestion}
                     onNext={handleNextQuestion}
-                    canGoPrevious={flow.currentQuestionIndex > 0 && !currentSection?.isAdaptive}
+                    canGoPrevious={
+                      flow.currentQuestionIndex > 0 && 
+                      !currentSection?.isAdaptive && 
+                      !currentSection?.isAptitude && 
+                      !currentSection?.isKnowledge
+                    }
                     isAnswered={isCurrentAnswered}
                     isSubmitting={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
                     isLastQuestion={flow.isLastQuestion}

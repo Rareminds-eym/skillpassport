@@ -111,16 +111,18 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
         console.log('📥 Request body:', JSON.stringify(body, null, 2));
         const { streamId, streamName, topics, questionCount = 20, studentId, attemptId, gradeLevel, isCollegeStudent } = body;
 
-        // For college students, topics can be null (AI will determine dynamically)
+        // For college students and higher secondary (11th/12th), topics can be null (AI will determine dynamically)
+        const usesDynamicTopics = isCollegeStudent || gradeLevel === 'higher_secondary';
+        
         if (!streamId || !streamName) {
           console.error('❌ Missing required fields:', { streamId, streamName });
           return jsonResponse({ error: 'Stream ID and name are required' }, 400);
         }
         
-        // Topics are optional for college students
-        if (!isCollegeStudent && !topics) {
-          console.error('❌ Topics required for non-college students');
-          return jsonResponse({ error: 'Topics are required for non-college students' }, 400);
+        // Topics are optional for college students and 11th/12th students
+        if (!usesDynamicTopics && !topics) {
+          console.error('❌ Topics required for non-college/non-higher-secondary students');
+          return jsonResponse({ error: 'Topics are required for students below 11th grade' }, 400);
         }
 
         const result = await generateKnowledgeQuestions(env, streamId, streamName, topics, questionCount, studentId, attemptId, gradeLevel, isCollegeStudent);

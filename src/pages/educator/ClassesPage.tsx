@@ -214,7 +214,16 @@ const ClassDetailsDrawer = ({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Students</p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">{classItem.total_students}</p>
+              <p className={`mt-2 text-2xl font-semibold ${
+                classItem.total_students > classItem.max_students ? 'text-red-600' : 'text-gray-900'
+              }`}>
+                {classItem.total_students} / {classItem.max_students}
+              </p>
+              {classItem.total_students > classItem.max_students && (
+                <p className="mt-1 text-xs text-red-600 font-medium">
+                  Over capacity by {classItem.total_students - classItem.max_students}
+                </p>
+              )}
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Average Progress</p>
@@ -434,7 +443,7 @@ const AddEditClassModal = ({
       setGrade(editingClass.course)
       setSection(editingClass.department)
       setAcademicYear(editingClass.year)
-      setMaxStudents(String(editingClass.total_students))
+      setMaxStudents(String(editingClass.max_students || 40))
       setStatus(editingClass.status)
       setSkillInput(editingClass.skillAreas.join(", "))
     } else if (!isOpen) {
@@ -469,7 +478,95 @@ const AddEditClassModal = ({
       setError("Fill in all required fields")
       return
     }
+    
+    // Validate Class Name
+    const trimmedName = name.trim()
+    if (trimmedName.length < 2) {
+      setError("Class name must be at least 2 characters long")
+      return
+    }
+    if (trimmedName.length > 100) {
+      setError("Class name must not exceed 100 characters")
+      return
+    }
+    // Allow alphanumeric, spaces, hyphens, and common punctuation
+    if (!/^[a-zA-Z0-9\s\-.,()&]+$/.test(trimmedName)) {
+      setError("Class name contains invalid characters. Only letters, numbers, spaces, and basic punctuation allowed")
+      return
+    }
 
+    // Validate Grade
+    const trimmedGrade = grade.trim()
+    if (trimmedGrade.length > 20) {
+      setError("Grade must not exceed 20 characters")
+      return
+    }
+    // For schools: typically 1-12 or KG, Pre-K, etc.
+    // For colleges: could be "1st Year", "Sophomore", etc.
+    if (!/^[a-zA-Z0-9\s\-]+$/.test(trimmedGrade)) {
+      setError("Grade contains invalid characters. Only letters, numbers, spaces, and hyphens allowed")
+      return
+    }
+
+    // Validate Section
+    const trimmedSection = section.trim()
+    if (trimmedSection.length > 10) {
+      setError("Section must not exceed 10 characters")
+      return
+    }
+    if (!/^[a-zA-Z0-9\s\-]+$/.test(trimmedSection)) {
+      setError("Section contains invalid characters. Only letters, numbers, spaces, and hyphens allowed")
+      return
+    }
+
+    // Validate Academic Year (YYYY-YYYY format)
+    const trimmedYear = academicYear.trim()
+    const yearPattern = /^(\d{4})-(\d{4})$/
+    const yearMatch = trimmedYear.match(yearPattern)
+    
+    if (!yearMatch) {
+      setError("Academic year must be in YYYY-YYYY format (e.g., 2024-2025)")
+      return
+    }
+
+    const startYear = parseInt(yearMatch[1])
+    const endYear = parseInt(yearMatch[2])
+    const currentYear = new Date().getFullYear()
+
+    // Validate year range (reasonable years)
+    if (startYear < 2000 || startYear > currentYear + 5) {
+      setError(`Start year must be between 2000 and ${currentYear + 5}`)
+      return
+    }
+
+    if (endYear < 2000 || endYear > currentYear + 6) {
+      setError(`End year must be between 2000 and ${currentYear + 6}`)
+      return
+    }
+
+    // Validate logic: end year should be start year + 1
+    if (endYear !== startYear + 1) {
+      setError("End year must be exactly one year after start year (e.g., 2024-2025)")
+      return
+    }
+
+    // Validate Max Students
+    const maxStudentsNum = parseInt(maxStudents)
+    if (isNaN(maxStudentsNum) || maxStudentsNum <= 0) {
+      setError("Max students must be a positive number")
+      return
+    }
+
+    if (maxStudentsNum > 500) {
+      setError("Max students cannot exceed 500. Please contact support for larger classes")
+      return
+    }
+
+    // When editing: check if new max is less than current enrolled students
+    if (editingClass && maxStudentsNum < editingClass.total_students) {
+      setError(`Cannot set max students to ${maxStudentsNum}. There are already ${editingClass.total_students} students enrolled in this class`)
+      return
+    }
     // Validate educator info is available
     if (!educatorInfo) {
       setError("Educator information not available")
@@ -486,11 +583,6 @@ const AddEditClassModal = ({
       return
     }
 
-    const maxStudentsNum = parseInt(maxStudents)
-    if (isNaN(maxStudentsNum) || maxStudentsNum <= 0) {
-      setError("Max students must be a positive number")
-      return
-    }
 
     setError(null)
     setSubmitting(true)
@@ -1203,7 +1295,7 @@ const ClassesPage = () => {
               Showing <span className="font-medium">{filteredClasses.length}</span> result{filteredClasses.length === 1 ? "" : "s"}
               {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
             </p>
-            <button
+            {/* <button
               onClick={() => {
                 setEditingClass(null)
                 setShowAddClassModal(true)
@@ -1213,7 +1305,7 @@ const ClassesPage = () => {
             >
               <PlusCircleIcon className="h-4 w-4 mr-2" />
               Add New Class
-            </button>
+            </button> */}
           </div>
 
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
@@ -1246,10 +1338,35 @@ const ClassesPage = () => {
                     <div className="mb-4 space-y-3">
                       <div className="flex items-center justify-between text-sm text-gray-600">
                         <span>Enrolled Students</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
-                          {classItem.total_students}
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          classItem.total_students > classItem.max_students
+                            ? 'bg-red-100 text-red-700'
+                            : classItem.total_students === classItem.max_students
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {classItem.total_students} / {classItem.max_students}
                         </span>
                       </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            classItem.total_students > classItem.max_students
+                              ? 'bg-red-500'
+                              : classItem.total_students === classItem.max_students
+                                ? 'bg-yellow-500'
+                                : 'bg-indigo-600'
+                          }`}
+                          style={{
+                            width: `${Math.min(100, (classItem.total_students / classItem.max_students) * 100)}%`
+                          }}
+                        />
+                      </div>
+                      {classItem.total_students > classItem.max_students && (
+                        <div className="text-xs text-red-600 font-medium">
+                          ⚠️ Over capacity by {classItem.total_students - classItem.max_students} student{classItem.total_students - classItem.max_students === 1 ? '' : 's'}
+                        </div>
+                      )}
                       <ProgressBar value={classItem.avg_progress} />
                       {classItem.educator && classItem.educator !== "TBD" && (
                         <div className="text-sm text-gray-600">
@@ -1324,7 +1441,18 @@ const ClassesPage = () => {
                           <div className="text-xs text-gray-500">{classItem.educator}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classItem.course}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classItem.total_students}</td>
+                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex items-center space-x-2">
+                            <span className={classItem.total_students > classItem.max_students ? 'text-red-600 font-medium' : ''}>
+                              {classItem.total_students} / {classItem.max_students}
+                            </span>
+                            {classItem.total_students > classItem.max_students && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                Over
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="w-36">
                             <ProgressBar value={classItem.avg_progress} />
