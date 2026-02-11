@@ -532,8 +532,8 @@ const BrowseCourses = () => {
               disabled={currentPage === 1}
               className={`px-3 py-2 ${
                 currentPage === 1
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
+                  ? '!bg-gray-200 !text-gray-400 cursor-not-allowed'
+                  : '!bg-white !text-indigo-600 !hover:bg-indigo-50 border border-indigo-200'
               }`}
             >
               <ChevronLeft className="w-5 h-5" />
@@ -550,8 +550,8 @@ const BrowseCourses = () => {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`px-4 py-2 min-w-[40px] ${
                         currentPage === pageNum
-                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                          ? '!bg-indigo-600 !text-white !hover:bg-indigo-700'
+                          : '!bg-white !text-gray-700 !hover:bg-gray-50 border border-gray-300'
                       }`}
                     >
                       {pageNum}
@@ -567,8 +567,8 @@ const BrowseCourses = () => {
               disabled={currentPage === totalPages}
               className={`px-3 py-2 ${
                 currentPage === totalPages
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-200'
+                  ? '!bg-gray-200 !text-gray-400 cursor-not-allowed'
+                  : '!bg-white !text-indigo-600 !hover:bg-indigo-50 border border-indigo-200'
               }`}
             >
               <ChevronRight className="w-5 h-5" />

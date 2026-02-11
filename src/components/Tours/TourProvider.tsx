@@ -44,72 +44,63 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     progress: {},
   });
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
   
   // Single source of truth for tour running state
   const [isTourRunning, setIsTourRunning] = useState(false);
   const [activeTourKey, setActiveTourKey] = useState<TourKey | null>(null);
   
-  // Prevent duplicate eligibility checks
-  const lastEligibilityCheck = useRef<{ [key: string]: boolean }>({});
+  // Track if we've loaded progress for current studentId
+  const loadedForStudentId = useRef<string | undefined>(undefined);
 
-  // Load tour progress from database or localStorage
+  // Load tour progress - ONLY when studentId is available
   const loadTourProgress = useCallback(async () => {
+    // Don't load if already loaded for this studentId
+    if (loadedForStudentId.current === studentId) {
+      console.log('📚 Tour progress already loaded for this studentId, skipping');
+      return;
+    }
+
+    // Don't load if studentId is not available yet
+    if (!studentId) {
+      console.log('📚 Waiting for studentId before loading tour progress...');
+      setLoading(true);
+      return;
+    }
+
     setLoading(true);
-    
-    // CRITICAL: Clear any existing eligibility cache when loading starts
-    lastEligibilityCheck.current = {};
+    console.log('📚 Loading tour progress for studentId:', studentId);
     
     try {
       let progress: TourProgress = {};
       
-      // Try to load from database first
-      if (studentId) {
-        const { data, error } = await supabase
-          .from('students')
-          .select('tour_progress')
-          .eq('id', studentId)
-          .single();
-          
-        if (!error && data?.tour_progress) {
-          progress = data.tour_progress;
-          console.log('📚 Tour progress loaded from database:', progress);
-          // Also sync to localStorage for consistency
-          saveTourProgressToStorage(progress);
-        } else {
-          console.log('📚 No tour progress in database, checking localStorage');
-          // Fallback to localStorage
-          progress = getTourProgressFromStorage();
-          
-          // If localStorage has data but database doesn't, sync to database
-          if (Object.keys(progress).length > 0) {
-            console.log('📚 Syncing localStorage tour progress to database');
-            const { error: syncError } = await supabase
-              .from('students')
-              .update({ tour_progress: progress })
-              .eq('id', studentId);
-            if (syncError) {
-              console.warn('Failed to sync tour progress to database:', syncError);
-            }
-          }
-        }
+      // Load from database
+      const { data, error } = await supabase
+        .from('students')
+        .select('tour_progress')
+        .eq('id', studentId)
+        .single();
+        
+      if (!error && data?.tour_progress) {
+        progress = data.tour_progress;
+        console.log('📚 Tour progress loaded from database:', progress);
+        // Sync to localStorage
+        saveTourProgressToStorage(progress);
       } else {
-        // No student ID, use localStorage only
-        progress = getTourProgressFromStorage();
+        console.log('📚 No tour progress in database, using empty progress');
+        progress = {};
       }
       
       setState(prev => ({ ...prev, progress }));
-      
-      // CRITICAL: Clear eligibility cache after progress is loaded
-      lastEligibilityCheck.current = {};
+      loadedForStudentId.current = studentId;
       
     } catch (error) {
       console.error('Failed to load tour progress:', error);
-      // Fallback to localStorage
-      const progress = getTourProgressFromStorage();
-      setState(prev => ({ ...prev, progress }));
+      setState(prev => ({ ...prev, progress: {} }));
     } finally {
       setLoading(false);
-      console.log('📚 Tour progress loading completed');
+      setInitialized(true);
+      console.log('📚 Tour progress loading completed for studentId:', studentId);
     }
   }, [studentId]);
 
@@ -141,37 +132,32 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     }
   }, [studentId]);
 
-  // Load progress on mount and initialize scroll utilities
+  // Load progress when studentId becomes available
   useEffect(() => {
-    // Initialize scroll utilities to ensure clean state
-    initializeScrollUtils();
-    loadTourProgress();
-  }, [loadTourProgress]);
+    if (studentId && !initialized) {
+      console.log('🔄 StudentId available, initializing tour system:', studentId);
+      initializeScrollUtils();
+      loadTourProgress();
+    }
+  }, [studentId, initialized, loadTourProgress]);
 
   // CRITICAL: Centralized scroll lock management
-  // Scroll is locked ONLY when isTourRunning is true
-  // Added debouncing to prevent rapid lock/unlock cycles
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (isTourRunning) {
-        lockScroll();
-        console.log('🔒 Scroll locked - tour is running');
-      } else {
-        forceUnlockScroll();
-        console.log('🔓 Scroll unlocked - no tour running');
-      }
-    }, 100); // Small delay to prevent rapid changes
-
-    return () => clearTimeout(timeoutId);
+    if (isTourRunning) {
+      lockScroll();
+      console.log('🔒 Scroll locked - tour is running');
+    } else {
+      forceUnlockScroll();
+      console.log('🔓 Scroll unlocked - no tour running');
+    }
   }, [isTourRunning]);
 
-  // CRITICAL: Safety mechanism - if loading completes and a tour is running but shouldn't be
+  // CRITICAL: Safety mechanism - stop tour if it becomes ineligible
   useEffect(() => {
     if (!loading && isTourRunning && activeTourKey) {
-      // Double-check if the currently running tour should still be eligible
       const stillEligible = isEligibleForTour(activeTourKey, state.progress);
       if (!stillEligible) {
-        console.warn(`🚨 Tour ${activeTourKey} was running but is no longer eligible after loading completed - stopping tour`);
+        console.warn(`🚨 Tour ${activeTourKey} is no longer eligible - stopping tour`);
         setActiveTourKey(null);
         setIsTourRunning(false);
         setState(prev => ({
@@ -184,7 +170,7 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     }
   }, [loading, isTourRunning, activeTourKey, state.progress]);
 
-  // Cleanup on unmount - ensure scroll is unlocked
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       setActiveTourKey(null);
@@ -194,54 +180,29 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     };
   }, []);
 
-  // Cleanup on route changes - ensure scroll is unlocked
-  useEffect(() => {
-    const handleRouteChange = () => {
-      if (isTourRunning) {
-        console.log('🔄 Route change detected - stopping tour and unlocking scroll');
-        setActiveTourKey(null);
-        setIsTourRunning(false);
-        setState(prev => ({
-          ...prev,
-          isRunning: false,
-          stepIndex: 0,
-          tourKey: null,
-        }));
-      }
-    };
-
-    // Listen for route changes
-    window.addEventListener('popstate', handleRouteChange);
-    
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
-  }, [isTourRunning]);
-
-  // FIXED: startTour with race condition prevention
-  // Scroll lock is handled by the centralized effect above
+  // Start tour - only if all conditions are met
   const startTour = useCallback((tourKey: TourKey) => {
-    // CRITICAL: Don't start if loading is still in progress
+    // Don't start if still loading
     if (loading) {
       console.log(`⚠️ Tour ${tourKey} requested but tour progress is still loading`);
       return;
     }
     
-    // CRITICAL: Double-check eligibility before starting (prevents race condition)
+    // Don't start if not eligible
     if (!isEligibleForTour(tourKey, state.progress)) {
-      console.log(`⚠️ Tour ${tourKey} requested but is not eligible (race condition prevented)`);
+      console.log(`⚠️ Tour ${tourKey} requested but is not eligible`);
       return;
     }
     
-    // Prevent starting a new tour if one is already running
+    // Don't start if another tour is running
     if (isTourRunning && activeTourKey !== tourKey) {
       console.log(`⚠️ Tour ${tourKey} requested but tour ${activeTourKey} is already running`);
       return;
     }
     
-    // Prevent duplicate starts of the same tour
+    // Don't start if same tour is already running
     if (isTourRunning && activeTourKey === tourKey) {
-      console.log(`⚠️ Tour ${tourKey} already running, ignoring duplicate start request`);
+      console.log(`⚠️ Tour ${tourKey} already running`);
       return;
     }
     
@@ -254,7 +215,6 @@ export const TourProvider: React.FC<TourProviderProps> = ({
       tourKey,
     }));
     
-    // Set the centralized tour running state
     setActiveTourKey(tourKey);
     setIsTourRunning(true);
   }, [loading, state.progress, isTourRunning, activeTourKey]);
@@ -293,25 +253,13 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     await saveTourProgress(updatedProgress);
   }, [state.progress, saveTourProgress]);
 
-  // FIXED: Pure eligibility check with caching to prevent duplicate checks
-  // CRITICAL: Always return false if still loading to prevent race conditions
+  // Pure eligibility check - always return false if loading
   const isEligible = useCallback((tourKey: TourKey) => {
-    // CRITICAL: Never allow tours to be eligible while loading
     if (loading) {
       return false;
     }
     
-    // Prevent duplicate checks during rapid re-renders
-    const cacheKey = `${tourKey}_${JSON.stringify(state.progress)}_${loading}`;
-    if (lastEligibilityCheck.current[cacheKey] !== undefined) {
-      return lastEligibilityCheck.current[cacheKey];
-    }
-    
-    const eligible = isEligibleForTour(tourKey, state.progress);
-    lastEligibilityCheck.current[cacheKey] = eligible;
-    
-    console.log(`🎯 Eligibility check for ${tourKey}: ${eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE'} (loading: ${loading})`);
-    return eligible;
+    return isEligibleForTour(tourKey, state.progress);
   }, [state.progress, loading]);
 
   const value: TourContextType = {

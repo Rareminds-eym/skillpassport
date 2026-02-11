@@ -184,7 +184,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
         </span>
         {isTimed && timeLimit && (
           <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full">
-            {formatTimeLimit(timeLimit)}
+            60 sec per question
           </span>
         )}
         {isAdaptive && (

@@ -1400,7 +1400,7 @@ const AssessmentResult = () => {
                                                     />
 
                                                     {/* Content */}
-                                                    <div className="relative z-[1] px-16 py-12">
+                                                    <div className="relative z-[1] px-16 py-12" data-tour="recommended-stream">
                                                         {/* Header Section */}
                                                         <div className="flex items-center gap-4 mb-6">
                                                             <div
@@ -1541,6 +1541,7 @@ const AssessmentResult = () => {
                                                                     boxShadow: '0 0 20px rgba(255, 255, 255, 0.3)'
                                                                 }}
                                                                 whileTap={{ scale: 0.95 }}
+                                                                data-tour="view-career-clusters-button"
                                                             >
                                                                 <span>View Career Clusters</span>
                                                                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -1653,6 +1654,7 @@ const AssessmentResult = () => {
                                     <div
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'primary' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('primary')}
+                                        data-tour="programs-tab-button"
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${activeRecommendationTab === 'primary'
                                             ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -1674,6 +1676,7 @@ const AssessmentResult = () => {
                                     <div
                                         className={`flex items-center gap-2 cursor-pointer transition-all duration-300 ${activeRecommendationTab === 'career' ? 'opacity-100' : 'opacity-50 hover:opacity-75'}`}
                                         onClick={() => setActiveRecommendationTab('career')}
+                                        data-tour="career-tab-button"
                                     >
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${activeRecommendationTab === 'career'
                                             ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -1693,7 +1696,7 @@ const AssessmentResult = () => {
                                 <>
                                     {/* After 12th: Course Recommendations - Dark Theme matching After 10 */}
                                     {shouldShowProgramRecommendations && (
-                                        <div>
+                                        <div data-tour="recommended-programs">
                                             {/* Check if we have AI-generated programs from Gemini */}
                                             {(() => {
                                                 // Check both nested (gemini_results.careerFit) and flattened (careerFit) structures
@@ -1828,7 +1831,7 @@ const AssessmentResult = () => {
                                                                     <div className="absolute w-full h-[1px]" style={{ bottom: '2%', background: `linear-gradient(90deg, ${purpleConfig.accent}40 30%, #1d1f1f 70%)` }} />
 
                                                                     {/* Content */}
-                                                                    <div className="relative z-[1] px-16 py-12">
+                                                                    <div className="relative z-[1] px-16 py-12" data-tour="recommended-programs">
                                                                         {/* Header Section */}
                                                                         <div className="flex items-center gap-4 mb-8">
                                                                             <div
@@ -1977,6 +1980,7 @@ const AssessmentResult = () => {
                                                                                     boxShadow: '0 0 20px rgba(255, 255, 255, 0.3)'
                                                                                 }}
                                                                                 whileTap={{ scale: 0.95 }}
+                                                                                data-tour="view-career-clusters-button"
                                                                             >
                                                                                 <span>View Career Clusters</span>
                                                                                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -1992,7 +1996,7 @@ const AssessmentResult = () => {
                                                 // FALLBACK: Old grid layout if AI programs not available
                                                 <div>
                                                     {/* Header Section - Dark Theme */}
-                                                    <div className="bg-slate-800 rounded-xl p-6 mb-6 shadow-lg">
+                                                    <div className="bg-slate-800 rounded-xl p-6 mb-6 shadow-lg" data-tour="recommended-programs">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center shadow-lg">
                                                                 <GraduationCap className="w-6 h-6 text-white" />
@@ -2208,6 +2212,7 @@ const AssessmentResult = () => {
                                                         'exploreLater'
                                             ] || cluster.specificRoles || []}
                                             onCardClick={handleTrackClick}
+                                            data-tour={`career-track-${index + 1}`}
                                         />
                                     ))}
                                 </div>

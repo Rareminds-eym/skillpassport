@@ -976,6 +976,20 @@ const MainSettings = () => {
     try {
       const dataToSave = { ...profileData };
       
+      // Convert empty string IDs to null
+      if (dataToSave.programId === '') dataToSave.programId = null;
+      if (dataToSave.universityCollegeId === '') dataToSave.universityCollegeId = null;
+      if (dataToSave.schoolId === '') dataToSave.schoolId = null;
+      if (dataToSave.schoolClassId === '') dataToSave.schoolClassId = null;
+      if (dataToSave.collegeId === '') dataToSave.collegeId = null;
+      if (dataToSave.universityId === '') dataToSave.universityId = null;
+      if (dataToSave.programSectionId === '') dataToSave.programSectionId = null;
+      
+      // Convert empty course_name to null
+      if (dataToSave.courseName === '' || dataToSave.courseName === undefined) {
+        dataToSave.courseName = null;
+      }
+      
       // Custom program name → branch field (for assessment tests)
       if (showCustomProgram && customProgramName) {
         dataToSave.branch = customProgramName;
