@@ -407,6 +407,20 @@ export async function getVideoSummary(id: string): Promise<VideoSummary | null> 
   }
 }
 
+export async function deleteVideoSummary(id: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('video_summaries')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.warn('Error deleting video summary:', error);
+    }
+  } catch (err) {
+    console.warn('Exception deleting video summary:', err);
+  }
+}
+
 export async function checkProcessingStatus(id: string): Promise<{
   status: string;
   summary?: VideoSummary;
