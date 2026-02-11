@@ -250,6 +250,7 @@ const Assessments = () => {
     const [fileUpdateTrigger, setFileUpdateTrigger] = useState(0); // Force re-render trigger
     const fileUploadRef = React.useRef<{ uploadStagedFiles: (assignmentId: string) => Promise<any[]> }>(null);
     const allSkills = useMemo(() => [...SKILL_AREAS, ...additionalSkills], [additionalSkills]);
+    const [curriculumSubjects, setCurriculumSubjects] = useState<Array<{ id: string; name: string; subject_code: string }>>([]);
 
     const showNotificationModal = (type: 'error' | 'success' | 'warning' | 'info', title: string, message: string) => {
         setNotification({ type, title, message });
@@ -390,6 +391,30 @@ const Assessments = () => {
         fetchEducatorAndTasks();
     }, []);
 
+    // Fetch curriculum subjects for the educator's school
+    useEffect(() => {
+        const fetchCurriculumSubjects = async () => {
+            if (!educatorSchool?.id) return;
+            
+            try {
+                const { data, error } = await supabase
+                    .from('curriculum_subjects')
+                    .select('id, name, subject_code')
+                    .eq('school_id', educatorSchool.id)
+                    .eq('is_active', true)
+                    .order('display_order', { ascending: true });
+                
+                if (!error && data) {
+                    setCurriculumSubjects(data);
+                }
+            } catch (err) {
+                console.error('Error fetching curriculum subjects:', err);
+            }
+        };
+        
+        fetchCurriculumSubjects();
+    }, [educatorSchool?.id]);
+
     // Filtered Tasks
     const filteredTasks = useMemo(() => {
         return tasks.filter(task => {
@@ -435,6 +460,84 @@ const Assessments = () => {
             if (newTask.assignedTo.length === 0) {
                 showNotificationModal('warning', 'Missing Classes', 'Please select at least one class to assign the task.');
                 return;
+            }
+
+            // Date validations
+            const now = new Date();
+            const oneYearFromNow = new Date();
+            oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            // Check if dates have changed (for edit mode)
+            const datesChanged = selectedTask ? (
+                newTask.deadline !== selectedTask.deadline ||
+                newTask.availableFrom !== (selectedTask as any).availableFrom
+            ) : true;
+
+            // Only validate dates if creating new or dates changed in edit mode
+            if (!selectedTask || datesChanged) {
+                // Validate Due Date (required)
+                if (!newTask.deadline || !newTask.deadline.trim()) {
+                    showNotificationModal('error', 'Due Date Required', 'Please select a due date for the assignment.');
+                    return;
+                }
+
+                const dueDate = new Date(newTask.deadline);
+                
+                // Check if due date is valid
+                if (isNaN(dueDate.getTime())) {
+                    showNotificationModal('error', 'Invalid Due Date', 'Please enter a valid due date.');
+                    return;
+                }
+
+                // Due date cannot be in the past
+                if (dueDate < now) {
+                    showNotificationModal('error', 'Past Due Date', 'Due date cannot be in the past. Please select a future date.');
+                    return;
+                }
+
+                // Due date cannot be more than 1 year in future
+                if (dueDate > oneYearFromNow) {
+                    showNotificationModal('error', 'Due Date Too Far', 'Due date cannot be more than 1 year in the future.');
+                    return;
+                }
+
+                // Validate Available From (optional)
+                if (newTask.availableFrom && newTask.availableFrom.trim()) {
+                    const availableDate = new Date(newTask.availableFrom);
+                    
+                    // Check if available date is valid
+                    if (isNaN(availableDate.getTime())) {
+                        showNotificationModal('error', 'Invalid Available Date', 'Please enter a valid available from date.');
+                        return;
+                    }
+
+                    // Available date cannot be more than 7 days in past
+                    if (availableDate < sevenDaysAgo) {
+                        showNotificationModal('error', 'Available Date Too Old', 'Available from date cannot be more than 7 days in the past.');
+                        return;
+                    }
+
+                    // Available date cannot be more than 1 year in future
+                    if (availableDate > oneYearFromNow) {
+                        showNotificationModal('error', 'Available Date Too Far', 'Available from date cannot be more than 1 year in the future.');
+                        return;
+                    }
+
+                    // Available date must be before due date
+                    if (availableDate >= dueDate) {
+                        showNotificationModal('error', 'Invalid Date Range', 'Available from date must be before the due date.');
+                        return;
+                    }
+                }
+            } else if (selectedTask) {
+                // Edit mode with unchanged dates - show warning if dates are in past
+                const dueDate = new Date(newTask.deadline);
+                if (dueDate < now) {
+                    console.warn('⚠️ This assignment has past dates');
+                    // Don't block, just log warning
+                }
             }
 
             // Get token for file uploads
@@ -1100,23 +1203,49 @@ const Assessments = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Course Name *</label>
-                                        <input
-                                            type="text"
+                                        <select
                                             value={newTask.courseName}
-                                            onChange={(e) => setNewTask({ ...newTask, courseName: e.target.value })}
+                                            onChange={(e) => {
+                                                const selectedSubject = curriculumSubjects.find(s => s.name === e.target.value);
+                                                setNewTask({ 
+                                                    ...newTask, 
+                                                    courseName: e.target.value,
+                                                    courseCode: selectedSubject?.subject_code || newTask.courseCode
+                                                });
+                                            }}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                            placeholder="e.g., Web Development"
                                             required
-                                        />
+                                        >
+                                            <option value="">Select a subject</option>
+                                            {curriculumSubjects.map((subject) => (
+                                                <option key={subject.id} value={subject.name}>
+                                                    {subject.name}
+                                                </option>
+                                            ))}
+                                            {/* Show existing course name if it's not in the curriculum subjects list */}
+                                            {selectedTask && newTask.courseName && !curriculumSubjects.some(s => s.name === newTask.courseName) && (
+                                                <option value={newTask.courseName}>
+                                                    {newTask.courseName} (Current)
+                                                </option>
+                                            )}
+                                        </select>
+                                        {selectedTask && newTask.courseName && !curriculumSubjects.some(s => s.name === newTask.courseName) && (
+                                            <p className="mt-1 text-xs text-amber-600">
+                                                ⚠️ This subject is not in your curriculum list. Consider selecting a standard subject.
+                                            </p>
+                                        )}
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Course Code</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Course Code
+                                            <span className="ml-1 text-xs text-gray-500">(Auto-filled)</span>
+                                        </label>
                                         <input
                                             type="text"
                                             value={newTask.courseCode}
-                                            onChange={(e) => setNewTask({ ...newTask, courseCode: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                            placeholder="e.g., CS301"
+                                            readOnly
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                                            placeholder="Select a subject first"
                                         />
                                     </div>
                                 </div>
