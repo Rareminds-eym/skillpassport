@@ -16,14 +16,8 @@ import {
     Clock,
     MapPin,
     User,
-    Star,
-    Award,
-    Activity,
-    TrendingUp,
     Eye,
-    Settings,
     CheckCircle,
-    AlertCircle,
     Info,
     ChevronLeft,
     ChevronRight,
@@ -33,8 +27,7 @@ import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import * as clubsService from "../../services/clubsService";
 import * as competitionsService from "../../services/competitionsService";
 import * as XLSX from 'xlsx';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+
 const categories = [
     { id: "all", label: "All Categories" },
     { id: "arts", label: "Arts" },
@@ -71,7 +64,7 @@ const competitionCategories = [
     { id: "literature", label: "Literature" },
 ];
 
-function formatDate(d) {
+function formatDate(d: string | Date | null | undefined): string {
     if (!d) return 'TBD';
     try {
         const dd = new Date(d);
@@ -82,7 +75,7 @@ function formatDate(d) {
     }
 }
 
-function downloadCSV(filename, rows) {
+function downloadCSV(filename: string, rows: Record<string, any>[]): void {
     if (!rows || !rows.length) {
         console.warn('No data available for CSV export');
         return;
@@ -92,7 +85,7 @@ function downloadCSV(filename, rows) {
         const header = Object.keys(rows[0]);
         const csv = [header.join(",")]
             .concat(
-                rows.map((r) => header.map((h) => {
+                rows.map((r: Record<string, any>) => header.map((h) => {
                     const value = (r[h] ?? "").toString().replace(/"/g, '""');
                     // Wrap in quotes if contains comma, newline, or quote
                     return value.includes(',') || value.includes('\n') || value.includes('"') 
@@ -111,38 +104,23 @@ function downloadCSV(filename, rows) {
         link.remove();
         
         console.log(`✅ CSV exported successfully: ${filename}`);
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ Error exporting CSV:', error);
         throw new Error('Failed to export CSV file');
     }
 }
 
-function exportTableAsPrint(htmlString, title = "Report") {
-    const w = window.open("", "_blank", "noopener,noreferrer");
-    if (!w) return alert("Unable to open export window. Please allow popups.");
-    w.document.write(`
-    <html>
-      <head>
-        <title>${title}</title>
-        <style>
-          body { font-family: Arial, Helvetica, sans-serif; padding: 20px; }
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #ddd; padding: 8px; }
-          th { background: #f4f4f4; }
-        </style>
-      </head>
-      <body>
-        <h2>${title}</h2>
-        ${htmlString}
-      </body>
-    </html>
-  `);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 500);
+interface ClubCardProps {
+    club: Club;
+    isJoined: boolean;
+    onJoin: (club: Club) => void;
+    onLeave: (club: Club) => void;
+    onOpenDetails: (club: Club) => void;
+    onEdit: (club: Club) => void;
+    onDelete: (club: Club) => void;
 }
 
-function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDelete }) {
+function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDelete }: ClubCardProps) {
     const memberCount = club.members?.length ?? 0;
     const full = memberCount >= club.capacity;
 
@@ -272,7 +250,16 @@ function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDe
     );
 }
 
-function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems, itemType }) {
+interface PaginationProps {
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+    itemsPerPage: number;
+    totalItems: number;
+    itemType: string;
+}
+
+function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems, itemType }: PaginationProps) {
     if (totalPages <= 1) return null;
 
     const getPageNumbers = () => {
@@ -364,7 +351,14 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
     );
 }
 
-function Modal({ open, onClose, title, children }) {
+interface ModalProps {
+    open: boolean;
+    onClose: () => void;
+    title: string;
+    children: React.ReactNode;
+}
+
+function Modal({ open, onClose, title, children }: ModalProps) {
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -388,12 +382,13 @@ interface Club {
     category: string;
     description: string;
     capacity: number;
-    members: string[];
+    members?: string[];
     meeting_day?: string;
     meeting_time?: string;
     location?: string;
     upcomingCompetitions?: any[];
     avgAttendance?: number;
+    is_active?: boolean;
 }
 
 interface Competition {
@@ -434,7 +429,6 @@ export default function ClubsActivitiesPage() {
 
     const [clubs, setClubs] = useState<Club[]>([]);
     const [competitions, setCompetitions] = useState<Competition[]>([]);
-    const [loading, setLoading] = useState(true);
     
     // Tab state
     const [activeTab, setActiveTab] = useState("clubs");
@@ -454,7 +448,7 @@ export default function ClubsActivitiesPage() {
     const ITEMS_PER_PAGE = 6; // 3x3 grid
 
     // Enhanced tab switching with keyboard support
-    const handleTabSwitch = (tab) => {
+    const handleTabSwitch = (tab: string) => {
         setActiveTab(tab);
         // Reset pagination when switching tabs
         if (tab === "clubs") {
@@ -466,7 +460,7 @@ export default function ClubsActivitiesPage() {
 
     // Keyboard navigation for tabs
     useEffect(() => {
-        const handleKeyPress = (e) => {
+        const handleKeyPress = (e: KeyboardEvent) => {
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === '1') {
                     e.preventDefault();
@@ -484,8 +478,8 @@ export default function ClubsActivitiesPage() {
 
     // Close filter dropdown when clicking outside
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
                 setShowCompetitionFilters(false);
             }
         };
@@ -532,22 +526,19 @@ export default function ClubsActivitiesPage() {
     }, []);
 
     // Get educator's school information with class assignments
-    const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+    const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
     useEffect(() => {
         const fetchData = async () => {
             try {
-                setLoading(true);
                 const [clubsData, competitionsData] = await Promise.all([
                     clubsService.fetchClubs(),
                     competitionsService.fetchCompetitions()
                 ]);
                 setClubs(clubsData);
                 setCompetitions(competitionsData);
-            } catch (error) {
+            } catch (error: any) {
                 console.error('Error fetching data:', error);
                 // Silently handle error - don't show notice to user
-            } finally {
-                setLoading(false);
             }
         };
 
@@ -601,7 +592,7 @@ export default function ClubsActivitiesPage() {
 
                 console.log('🔍 [SkillCurricular] Fetching students for educator type:', educatorType);
                 
-                let students = [];
+                let students: Student[] = [];
                 
                 if (educatorType === 'school' && educatorSchool) {
                     // For school educators, filter by assigned classes
@@ -618,7 +609,7 @@ export default function ClubsActivitiesPage() {
                         if (error) {
                             console.error('❌ [SkillCurricular] Error fetching students:', error);
                         } else {
-                            students = data || [];
+                            students = (data || []) as any[];
                         }
                     } else {
                         // Fallback for admins or educators without class assignments
@@ -633,7 +624,7 @@ export default function ClubsActivitiesPage() {
                         if (error) {
                             console.error('❌ [SkillCurricular] Error fetching students:', error);
                         } else {
-                            students = data || [];
+                            students = (data || []) as any[];
                         }
                     }
                 } else if (educatorType === 'college' && educatorCollege) {
@@ -649,7 +640,7 @@ export default function ClubsActivitiesPage() {
                     if (error) {
                         console.error('❌ [SkillCurricular] Error fetching college students:', error);
                     } else {
-                        students = data || [];
+                        students = (data || []) as any[];
                     }
                 }
 
@@ -661,7 +652,7 @@ export default function ClubsActivitiesPage() {
                 }
 
                 // Map students to the format we need (using user_id as primary ID, consistent with other educator pages)
-                const mappedStudents = students.map(student => ({
+                const mappedStudents: Student[] = students.map((student: any) => ({
                     id: student.user_id || student.id, // Use user_id as primary identifier
                     user_id: student.user_id,
                     email: student.email,
@@ -669,7 +660,7 @@ export default function ClubsActivitiesPage() {
                     grade: student.grade || 'N/A',
                     section: student.section || '',
                     rollNumber: student.roll_number || '',
-                    school_id: student.school_id || student.college_id,
+                    school_id: student.school_id || student.college_id || '',
                     school_class_id: student.school_class_id
                 }));
                 
@@ -722,10 +713,10 @@ export default function ClubsActivitiesPage() {
         description: "",
         category: "",
         status: "upcoming",
+        results: [] as any[],
         participatingClubs: [] as string[]
     });
     const [competitionRegistrations, setCompetitionRegistrations] = useState<any[]>([]);
-    const [loadingRegistrations, setLoadingRegistrations] = useState(false);
     const [editingRegistration, setEditingRegistration] = useState<any>(null);
     const [registrationTab, setRegistrationTab] = useState("individual"); // "individual" or "bulk"
     const [bulkUploadFile, setBulkUploadFile] = useState<File | null>(null);
@@ -778,34 +769,35 @@ export default function ClubsActivitiesPage() {
         setCurrentCompetitionPage(1);
     }, [competitionSearchQuery, competitionStatusFilter, competitionCategoryFilter, competitionLevelFilter]);
 
-    const enrollStudent = (club) => {
+    const enrollStudent = (club: Club) => {
         setStudentDrawer({ open: true, club: club });
     };
 
-    const leaveClub = async (club) => {
+    const leaveClub = async (_selectedClub: Club) => {
         // This function is not used in educator interface since educators manage students, not join clubs
         // But keeping it for consistency - would need currentStudent.email if used
         setNotice({ type: "info", text: "Educators manage student memberships through the 'Manage' button." });
     };
 
-    const openDetails = (club) => {
+    const openDetails = (club: Club) => {
         setSelectedClub(club);
         setDetailsOpen(true);
     };
 
-    const openAttendanceModal = (club) => {
-        setAttendanceModal({ open: true, club });
+    const openAttendanceModal = (selectedClub: Club) => {
+        setAttendanceModal({ open: true, club: selectedClub });
         setAttendanceDate(new Date().toISOString().split('T')[0]);
         setAttendanceTopic("");
         // Initialize attendance records for all club members (using email as key)
-        const records = {};
-        club.members.forEach(memberEmail => {
+        const records: Record<string, string> = {};
+        const members = selectedClub.members || [];
+        members.forEach((memberEmail: string) => {
             records[memberEmail] = 'present'; // Default to present
         });
         setAttendanceRecords(records);
     };
 
-    const handleAttendanceStatusChange = (studentId, status) => {
+    const handleAttendanceStatusChange = (studentId: string, status: string) => {
         setAttendanceRecords(prev => ({
             ...prev,
             [studentId]: status
@@ -821,11 +813,11 @@ export default function ClubsActivitiesPage() {
         try {
             const attendanceRecordsArray = Object.entries(attendanceRecords).map(([studentEmail, status]) => ({
                 student_email: studentEmail,
-                status: status
+                status: status as "present" | "absent" | "late" | "excused"
             }));
 
             await clubsService.markAttendance(
-                attendanceModal.club?.club_id,
+                attendanceModal.club?.club_id || '',
                 attendanceDate,
                 attendanceTopic,
                 attendanceRecordsArray
@@ -841,7 +833,7 @@ export default function ClubsActivitiesPage() {
             
             setAttendanceModal({ open: false, club: null });
             setAttendanceRecords({});
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving attendance:', error);
             
             // Provide specific error messages
@@ -856,7 +848,7 @@ export default function ClubsActivitiesPage() {
             setNotice({ type: "error", text: errorMessage });
         }
     };
-   const handleStudentEnroll = async (studentId, club) => {
+   const handleStudentEnroll = async (studentId: string, club: Club) => {
         // Find the student to get their email first
         const student = allStudents.find(s => s.id === studentId);
         if (!student) {
@@ -864,7 +856,7 @@ export default function ClubsActivitiesPage() {
             return;
         }
 
-        if ((club.members.length ?? 0) >= club.capacity) {
+        if ((club.members?.length ?? 0) >= club.capacity) {
             setNotice({ type: "error", text: "Club is full. Cannot join." });
             return;
         }
@@ -891,14 +883,14 @@ export default function ClubsActivitiesPage() {
             }
 
             // Check if student is already enrolled (using email, not ID) - local check
-            if (club.members.includes(student.email)) {
+            if (club.members?.includes(student.email)) {
                 console.log('⚠️ Student already enrolled (found in local state)');
                 setNotice({ type: "warning", text: `${student.name} is already enrolled in this club.` });
                 return;
             }
 
             // Check how many clubs this student is already enrolled in
-            const studentClubCount = clubs.filter(c => c.members.includes(student.email)).length;
+            const studentClubCount = clubs.filter(c => (c.members || []).includes(student.email)).length;
             
             if (studentClubCount >= 5) {
                 setNotice({ 
@@ -918,18 +910,18 @@ export default function ClubsActivitiesPage() {
             // Only update local state after successful database operation
             const updated = clubs.map((c) => 
                 c.club_id === club.club_id 
-                    ? { ...c, members: [...c.members, student.email] } 
+                    ? { ...c, members: [...(c.members || []), student.email] } 
                     : c
             );
             setClubs(updated);
             
             // Refresh the student drawer with updated club data
-            const updatedClub = updated.find(c => c.club_id === club.club_id);
+            const updatedClub = updated.find(c => c.club_id === club.club_id) || null;
             setStudentDrawer({ open: true, club: updatedClub });
             
             setNotice({ type: "success", text: `${student.name} enrolled in ${club?.name || 'club'}` });
             
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error enrolling student:', error);
             
             // Check for specific error messages from the backend
@@ -945,7 +937,7 @@ export default function ClubsActivitiesPage() {
                     console.log('🔄 Refreshing club data due to duplicate key error');
                     const refreshedClubs = await clubsService.fetchClubs();
                     setClubs(refreshedClubs);
-                } catch (refreshError) {
+                } catch (refreshError: any) {
                     console.error('Error refreshing club data:', refreshError);
                 }
                 
@@ -957,7 +949,7 @@ export default function ClubsActivitiesPage() {
                     console.log('🔄 Refreshing club data due to duplicate key error');
                     const refreshedClubs = await clubsService.fetchClubs();
                     setClubs(refreshedClubs);
-                } catch (refreshError) {
+                } catch (refreshError: any) {
                     console.error('Error refreshing club data:', refreshError);
                 }
                 
@@ -969,7 +961,7 @@ export default function ClubsActivitiesPage() {
         }
     };
 
-const handleStudentLeave = async (studentId, club) => {
+const handleStudentLeave = async (studentId: string, club: Club) => {
     try {
         // Find the student to get their email
         const student = allStudents.find(s => s.id === studentId);
@@ -979,7 +971,7 @@ const handleStudentLeave = async (studentId, club) => {
         }
 
         // Check if student is actually a member (by email, not ID)
-        if (!club.members.includes(student.email)) {
+        if (!(club.members || []).includes(student.email)) {
             setNotice({ type: "warning", text: `${student.name} is not a member of this club.` });
             return;
         }
@@ -988,13 +980,13 @@ const handleStudentLeave = async (studentId, club) => {
         
         const updated = clubs.map((c) => 
             c.club_id === club.club_id 
-                ? { ...c, members: c.members.filter((m) => m !== student.email) } 
+                ? { ...c, members: (c.members || []).filter((m) => m !== student.email) } 
                 : c
         );
         setClubs(updated);
-        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
+        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) || null });
         setNotice({ type: "info", text: `${student.name} removed from ${club?.name || 'club'}` });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error removing student:', error);
         setNotice({ type: "error", text: "Failed to remove student. Please try again." });
     }
@@ -1140,7 +1132,7 @@ const handleStudentLeave = async (studentId, club) => {
             } else {
                 setNotice({ type: "error", text: "No club data available to export" });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Export clubs CSV error:', error);
             setNotice({ type: "error", text: "Failed to export clubs data. Please try again." });
         } finally {
@@ -1159,89 +1151,9 @@ const handleStudentLeave = async (studentId, club) => {
             } else {
                 setNotice({ type: "error", text: "No competition data available to export" });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Export competitions CSV error:', error);
             setNotice({ type: "error", text: "Failed to export competitions data. Please try again." });
-        } finally {
-            setShowExportMenu(false);
-        }
-    };
-
-    const exportClubsPDF = async () => {
-        try {
-            setNotice({ type: "info", text: "Preparing clubs PDF export..." });
-            const rows = await buildClubParticipationRows();
-            
-            if (rows && rows.length > 0) {
-                const headers = Object.keys(rows[0]);
-                const html = `
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                        <thead>
-                            <tr style="background-color: #f8f9fa;">
-                                ${headers.map((h) => `<th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">${h}</th>`).join("")}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows.map((r) => `
-                                <tr>
-                                    ${headers.map((h) => `<td style="border: 1px solid #ddd; padding: 8px;">${r[h] || 'N/A'}</td>`).join("")}
-                                </tr>
-                            `).join("")}
-                        </tbody>
-                    </table>
-                    <div style="margin-top: 20px; font-size: 12px; color: #666;">
-                        <p>Report generated on: ${new Date().toLocaleString()}</p>
-                        <p>Total clubs: ${rows.length}</p>
-                    </div>
-                `;
-                exportTableAsPrint(html, "Club Participation Report");
-                setNotice({ type: "success", text: `Successfully exported ${rows.length} club records to PDF!` });
-            } else {
-                setNotice({ type: "error", text: "No club data available to export" });
-            }
-        } catch (error) {
-            console.error('❌ Export clubs PDF error:', error);
-            setNotice({ type: "error", text: "Failed to export clubs PDF. Please try again." });
-        } finally {
-            setShowExportMenu(false);
-        }
-    };
-
-    const exportCompetitionsPDF = async () => {
-        try {
-            setNotice({ type: "info", text: "Preparing competitions PDF export..." });
-            const rows = await buildCompetitionPerformanceRows();
-            
-            if (rows && rows.length > 0) {
-                const headers = Object.keys(rows[0]);
-                const html = `
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                        <thead>
-                            <tr style="background-color: #f8f9fa;">
-                                ${headers.map((h) => `<th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">${h}</th>`).join("")}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows.map((r) => `
-                                <tr>
-                                    ${headers.map((h) => `<td style="border: 1px solid #ddd; padding: 8px;">${r[h] || 'N/A'}</td>`).join("")}
-                                </tr>
-                            `).join("")}
-                        </tbody>
-                    </table>
-                    <div style="margin-top: 20px; font-size: 12px; color: #666;">
-                        <p>Report generated on: ${new Date().toLocaleString()}</p>
-                        <p>Total competitions: ${rows.length}</p>
-                    </div>
-                `;
-                exportTableAsPrint(html, "Competition Performance Report");
-                setNotice({ type: "success", text: `Successfully exported ${rows.length} competition records to PDF!` });
-            } else {
-                setNotice({ type: "error", text: "No competition data available to export" });
-            }
-        } catch (error) {
-            console.error('❌ Export competitions PDF error:', error);
-            setNotice({ type: "error", text: "Failed to export competitions PDF. Please try again." });
         } finally {
             setShowExportMenu(false);
         }
@@ -1258,18 +1170,18 @@ const handleStudentLeave = async (studentId, club) => {
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Club Participation");
                 
                 // Auto-size columns
-                const maxWidth = rows.reduce((w, r) => {
+                const maxWidth: Record<string, number> = rows.reduce((w: Record<string, number>, r: any) => {
                     return Object.keys(r).reduce((acc, key) => {
-                        const value = r[key]?.toString() || '';
+                        const value = (r as any)[key]?.toString() || '';
                         acc[key] = Math.max(acc[key] || 10, Math.min(value.length + 2, 50));
                         return acc;
                     }, w);
                 }, {});
                 
-                worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: maxWidth[key] }));
+                worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: (maxWidth as any)[key] }));
                 
                 // Add header styling
-                const headerRange = XLSX.utils.decode_range(worksheet['!ref']);
+                const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
                 for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
                     const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
                     if (!worksheet[cellAddress]) continue;
@@ -1285,7 +1197,7 @@ const handleStudentLeave = async (studentId, club) => {
             } else {
                 setNotice({ type: "error", text: "No club data available to export" });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Export clubs Excel error:', error);
             setNotice({ type: "error", text: "Failed to export clubs Excel. Please try again." });
         } finally {
@@ -1304,18 +1216,18 @@ const handleStudentLeave = async (studentId, club) => {
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Competition Performance");
                 
                 // Auto-size columns
-                const maxWidth = rows.reduce((w, r) => {
+                const maxWidth: Record<string, number> = rows.reduce((w: Record<string, number>, r: any) => {
                     return Object.keys(r).reduce((acc, key) => {
-                        const value = r[key]?.toString() || '';
+                        const value = (r as any)[key]?.toString() || '';
                         acc[key] = Math.max(acc[key] || 10, Math.min(value.length + 2, 50));
                         return acc;
                     }, w);
                 }, {});
                 
-                worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: maxWidth[key] }));
+                worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: (maxWidth as any)[key] }));
                 
                 // Add header styling
-                const headerRange = XLSX.utils.decode_range(worksheet['!ref']);
+                const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
                 for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
                     const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
                     if (!worksheet[cellAddress]) continue;
@@ -1331,7 +1243,7 @@ const handleStudentLeave = async (studentId, club) => {
             } else {
                 setNotice({ type: "error", text: "No competition data available to export" });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ Export competitions Excel error:', error);
             setNotice({ type: "error", text: "Failed to export competitions Excel. Please try again." });
         } finally {
@@ -1360,23 +1272,23 @@ const handleStudentLeave = async (studentId, club) => {
                 name: newClubForm.name,
                 category: newClubForm.category,
                 description: newClubForm.description,
-                capacity: parseInt(newClubForm.capacity),
-                meeting_day: newClubForm.meeting_day || null,
-                meeting_time: newClubForm.meeting_time || null,
-                location: newClubForm.location || null
+                capacity: Number(newClubForm.capacity),
+                meeting_day: newClubForm.meeting_day || undefined,
+                meeting_time: newClubForm.meeting_time || undefined,
+                location: newClubForm.location || undefined
             });
 
             setClubs([...clubs, createdClub]);
             setNotice({ type: "success", text: `${createdClub?.name || 'Club'} has been created successfully!` });
             setAddClubModal(false);
             setNewClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error creating club:', error);
             setNotice({ type: "error", text: "Failed to create club. Please try again." });
         }
     };
 
-    const handleEditClub = (club) => {
+    const handleEditClub = (club: Club) => {
         setEditClubForm({
             name: club.name,
             category: club.category,
@@ -1405,20 +1317,25 @@ const handleStudentLeave = async (studentId, club) => {
             return;
         }
 
+        if (!editClubModal) {
+            setNotice({ type: "error", text: "No club selected for editing" });
+            return;
+        }
+
         try {
             await clubsService.updateClub(editClubModal.club_id, {
                 name: editClubForm.name,
                 category: editClubForm.category,
                 description: editClubForm.description,
-                capacity: parseInt(editClubForm.capacity),
-                meeting_day: editClubForm.meeting_day || null,
-                meeting_time: editClubForm.meeting_time || null,
-                location: editClubForm.location || null
+                capacity: Number(editClubForm.capacity),
+                meeting_day: editClubForm.meeting_day || undefined,
+                meeting_time: editClubForm.meeting_time || undefined,
+                location: editClubForm.location || undefined
             });
 
             const updatedClubs = clubs.map(c => 
                 c.club_id === editClubModal.club_id 
-                    ? { ...c, ...editClubForm, capacity: parseInt(editClubForm.capacity) }
+                    ? { ...c, ...editClubForm, capacity: Number(editClubForm.capacity) }
                     : c
             );
             setClubs(updatedClubs);
@@ -1426,13 +1343,13 @@ const handleStudentLeave = async (studentId, club) => {
             setNotice({ type: "success", text: `${editClubForm?.name || 'Club'} has been updated successfully!` });
             setEditClubModal(null);
             setEditClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error updating club:', error);
             setNotice({ type: "error", text: "Failed to update club. Please try again." });
         }
     };
 
-    const handleDeleteClub = async (club) => {
+    const handleDeleteClub = async (club: Club) => {
         if (!confirm(`Are you sure you want to delete "${club?.name || 'this club'}"? This action cannot be undone.`)) {
             return;
         }
@@ -1444,7 +1361,7 @@ const handleStudentLeave = async (studentId, club) => {
             setClubs(updatedClubs);
             
             setNotice({ type: "success", text: `${club?.name || 'Club'} has been deleted successfully!` });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error deleting club:', error);
             setNotice({ type: "error", text: "Failed to delete club. Please try again." });
         }
@@ -1457,17 +1374,14 @@ const handleStudentLeave = async (studentId, club) => {
         }
     }, [registerCompModal]);
 
-    const loadCompetitionRegistrations = async (compId) => {
+    const loadCompetitionRegistrations = async (compId: string) => {
         try {
-            setLoadingRegistrations(true);
             console.log('🔍 [Educator] Loading registrations for competition:', compId);
             const registrations = await competitionsService.getCompetitionRegistrations(compId);
             console.log('📋 [Educator] Loaded registrations:', registrations.length, registrations);
             setCompetitionRegistrations(registrations);
-        } catch (error) {
+        } catch (error: any) {
             console.error('❌ [Educator] Error loading registrations:', error);
-        } finally {
-            setLoadingRegistrations(false);
         }
     };
 
@@ -1481,6 +1395,11 @@ const handleStudentLeave = async (studentId, club) => {
         const student = allStudents.find(s => s.email === registrationForm.studentEmail);
         if (!student) {
             setNotice({ type: "error", text: "Student not found" });
+            return;
+        }
+
+        if (!registerCompModal) {
+            setNotice({ type: "error", text: "No competition selected" });
             return;
         }
 
@@ -1518,7 +1437,7 @@ const handleStudentLeave = async (studentId, club) => {
             }
 
             // Update competition status if changed
-            if (registrationForm.status && registrationForm.status !== registerCompModal?.status) {
+            if (registerCompModal && registrationForm.status && registrationForm.status !== registerCompModal?.status) {
                 await competitionsService.updateCompetition(registerCompModal.comp_id, {
                     status: registrationForm.status
                 });
@@ -1538,13 +1457,13 @@ const handleStudentLeave = async (studentId, club) => {
             // Reset form
             setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
             setEditingRegistration(null);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error registering for competition:', error);
             setNotice({ type: "error", text: error.message || "Failed to register. Please try again." });
         }
     };
 
-    const handleEditRegistration = (registration) => {
+    const handleEditRegistration = (registration: any) => {
         setEditingRegistration(registration);
         setRegistrationForm({
             studentEmail: registration.student_email,
@@ -1554,7 +1473,7 @@ const handleStudentLeave = async (studentId, club) => {
         });
     };
 
-    const handleDeleteRegistration = async (registrationId) => {
+    const handleDeleteRegistration = async (registrationId: string) => {
         if (!confirm('Are you sure you want to delete this registration?')) {
             return;
         }
@@ -1562,8 +1481,8 @@ const handleStudentLeave = async (studentId, club) => {
         try {
             await competitionsService.deleteCompetitionRegistration(registrationId);
             setNotice({ type: "success", text: "Registration deleted successfully" });
-            await loadCompetitionRegistrations(registerCompModal.comp_id);
-        } catch (error) {
+            await loadCompetitionRegistrations(registerCompModal?.comp_id || '');
+        } catch (error: any) {
             console.error('Error deleting registration:', error);
             setNotice({ type: "error", text: "Failed to delete registration" });
         }
@@ -1765,9 +1684,10 @@ const handleStudentLeave = async (studentId, club) => {
                 description: "",
                 category: "",
                 status: "upcoming",
+                results: [],
                 participatingClubs: []
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error creating competition:', error);
             
             // Provide more specific error messages
@@ -1787,14 +1707,15 @@ const handleStudentLeave = async (studentId, club) => {
         }
     };
 
-    const handleEditCompetition = (comp) => {
+    const handleEditCompetition = (comp: Competition) => {
         setEditCompForm({
             name: comp.name,
             level: comp.level,
-            date: comp.competition_date || comp.date,
+            date: comp.competition_date || comp.date || '',
             description: comp.description || "",
             category: comp.category || "",
             status: comp.status || "upcoming",
+            results: [],
             participatingClubs: comp.participatingClubs || []
         });
         setEditCompModal(comp);
@@ -1808,6 +1729,11 @@ const handleStudentLeave = async (studentId, club) => {
 
         if (!editCompForm.date) {
             setNotice({ type: "error", text: "Competition date is required" });
+            return;
+        }
+
+        if (!editCompModal) {
+            setNotice({ type: "error", text: "No competition selected for editing" });
             return;
         }
 
@@ -1838,9 +1764,10 @@ const handleStudentLeave = async (studentId, club) => {
                 description: "",
                 category: "",
                 status: "upcoming",
+                results: [],
                 participatingClubs: []
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error updating competition:', error);
             
             // Provide more specific error messages
@@ -1860,7 +1787,7 @@ const handleStudentLeave = async (studentId, club) => {
         }
     };
 
-    const handleDeleteCompetition = async (comp) => {
+    const handleDeleteCompetition = async (comp: Competition) => {
         if (!confirm(`Are you sure you want to delete "${comp?.name || 'this competition'}"? This action cannot be undone.`)) {
             return;
         }
@@ -1872,7 +1799,7 @@ const handleStudentLeave = async (studentId, club) => {
             setCompetitions(updatedCompetitions);
             
             setNotice({ type: "success", text: `${comp?.name || 'Competition'} has been deleted successfully!` });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error deleting competition:', error);
             setNotice({ type: "error", text: "Failed to delete competition. Please try again." });
         }
@@ -1897,7 +1824,7 @@ const handleStudentLeave = async (studentId, club) => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Users size={16} className="text-green-600" />
-                                    <span>{clubs.reduce((acc, club) => acc + club.members.length, 0)} Total Members</span>
+                                    <span>{clubs.reduce((acc, club) => acc + (club.members?.length || 0), 0)} Total Members</span>
                                 </div>
                             </div>
                         </div>
@@ -2792,10 +2719,10 @@ const handleStudentLeave = async (studentId, club) => {
                             <div className="mb-3 text-sm">{selectedClub.description}</div>
 
                             <div className="mb-4">
-                                <div className="text-xs text-slate-500 mb-2">Members ({selectedClub.members.length}/{selectedClub.capacity})</div>
+                                <div className="text-xs text-slate-500 mb-2">Members ({selectedClub.members?.length || 0}/{selectedClub.capacity})</div>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    {selectedClub.members.length > 0 ? (
-                                        selectedClub.members.map((m, index) => (
+                                    {(selectedClub.members?.length || 0) > 0 ? (
+                                        selectedClub.members?.map((m, index) => (
                                             <div key={typeof m === 'string' ? m : `member-${index}`} className="px-2 py-1 bg-gray-100 rounded-full text-xs">{m}</div>
                                         ))
                                     ) : (
@@ -2831,7 +2758,7 @@ const handleStudentLeave = async (studentId, club) => {
                                         setDetailsOpen(false); 
                                     }} 
                                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                                    disabled={selectedClub.members.length === 0}
+                                    disabled={(selectedClub.members?.length || 0) === 0}
                                 >
                                     Mark Attendance
                                 </button>
@@ -2886,7 +2813,7 @@ const handleStudentLeave = async (studentId, club) => {
                             <input
                                 type="number"
                                 value={newClubForm.capacity}
-                                onChange={(e) => setNewClubForm({ ...newClubForm, capacity: e.target.value })}
+                                onChange={(e) => setNewClubForm({ ...newClubForm, capacity: Number(e.target.value) })}
                                 min="1"
                                 placeholder="Maximum members"
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -3018,7 +2945,7 @@ const handleStudentLeave = async (studentId, club) => {
                             <input
                                 type="number"
                                 value={editClubForm.capacity}
-                                onChange={(e) => setEditClubForm({ ...editClubForm, capacity: e.target.value })}
+                                onChange={(e) => setEditClubForm({ ...editClubForm, capacity: Number(e.target.value) })}
                                 min="1"
                                 placeholder="Maximum members"
                                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -3571,7 +3498,8 @@ const handleStudentLeave = async (studentId, club) => {
 
                             <button
                                 onClick={() => {
-                                    setRegisterCompModal(viewComp.comp_id);
+                                    const comp = competitions.find(c => c.comp_id === viewComp?.comp_id);
+                                    if (comp) setRegisterCompModal(comp);
                                     setViewComp(null);
                                 }}
                                 className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -3718,7 +3646,7 @@ const handleStudentLeave = async (studentId, club) => {
                                     <div>
                                         <label className="block text-xs font-medium text-blue-900 mb-1">Total Members</label>
                                         <div className="px-3 py-2 bg-white border rounded-md text-sm font-semibold">
-                                            {attendanceModal.club.members.length}
+                                            {attendanceModal.club?.members?.length || 0}
                                         </div>
                                     </div>
                                 </div>
@@ -3770,8 +3698,8 @@ const handleStudentLeave = async (studentId, club) => {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => {
-                                                const records = {};
-                                                attendanceModal.club.members.forEach(memberEmail => records[memberEmail] = 'present');
+                                                const records: Record<string, string> = {};
+                                                attendanceModal.club?.members?.forEach(memberEmail => records[memberEmail] = 'present');
                                                 setAttendanceRecords(records);
                                             }}
                                             className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
@@ -3780,8 +3708,8 @@ const handleStudentLeave = async (studentId, club) => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                const records = {};
-                                                attendanceModal.club.members.forEach(memberEmail => records[memberEmail] = 'absent');
+                                                const records: Record<string, string> = {};
+                                                attendanceModal.club?.members?.forEach(memberEmail => records[memberEmail] = 'absent');
                                                 setAttendanceRecords(records);
                                             }}
                                             className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
@@ -3792,8 +3720,8 @@ const handleStudentLeave = async (studentId, club) => {
                                 </div>
 
                                 <div className="max-h-80 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
-                                    {attendanceModal.club.members.length > 0 ? (
-                                        attendanceModal.club.members.map((memberEmail, index) => {
+                                    {(attendanceModal.club?.members?.length || 0) > 0 ? (
+                                        attendanceModal.club?.members?.map((memberEmail, index) => {
                                             const student = allStudents.find(s => s.email === memberEmail);
                                             const studentName = student?.name || memberEmail;
                                             const studentGrade = student?.grade || 'N/A';
@@ -3894,7 +3822,7 @@ const handleStudentLeave = async (studentId, club) => {
     {studentDrawer.club && (
         <div className="space-y-3">
             <div className="text-sm text-slate-600 mb-4">
-                Current Members: {studentDrawer.club.members.length} / {studentDrawer.club.capacity}
+                Current Members: {studentDrawer.club?.members?.length || 0} / {studentDrawer.club?.capacity || 0}
             </div>
 
             {/* Search Bar */}
@@ -3959,8 +3887,8 @@ const handleStudentLeave = async (studentId, club) => {
                 return (
                     <div className="max-h-96 overflow-y-auto space-y-2">
                         {filteredStudents.map((student) => {
-                            const isEnrolled = studentDrawer.club.members.includes(student.email);
-                            const isFull = studentDrawer.club.members.length >= studentDrawer.club.capacity;
+                            const isEnrolled = studentDrawer.club?.members?.includes(student.email) || false;
+                            const isFull = (studentDrawer.club?.members?.length || 0) >= (studentDrawer.club?.capacity || 0);
 
                             return (
                                 <div
@@ -3974,7 +3902,7 @@ const handleStudentLeave = async (studentId, club) => {
 
                                     {isEnrolled ? (
                                         <button
-                                            onClick={() => handleStudentLeave(student.id, studentDrawer.club)}
+                                            onClick={() => studentDrawer.club && handleStudentLeave(student.id, studentDrawer.club)}
                                             className="flex items-center gap-1 px-3 py-1 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 hover:bg-red-100"
                                         >
                                             <X size={14} />
@@ -3983,7 +3911,7 @@ const handleStudentLeave = async (studentId, club) => {
                                     ) : (
                                         <button
                                             disabled={isFull}
-                                            onClick={() => handleStudentEnroll(student.id, studentDrawer.club)}
+                                            onClick={() => studentDrawer.club && handleStudentEnroll(student.id, studentDrawer.club)}
                                             className={`flex items-center gap-1 px-3 py-1 text-sm rounded-md ${
                                                 isFull
                                                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
