@@ -602,6 +602,20 @@ Return ONLY the JSON array, nothing else.`;
             return false;
         }
         
+        // Check for currency words used incorrectly (e.g., "circumference in rupees")
+        const hasCurrencyWord = /\brupees\b|\bdollars\b|\brubles\b|\byuan\b|\beuro\b/i.test(questionText);
+        if (hasCurrencyWord) {
+            // If question mentions currency, it should be about money, not distance/area/volume
+            const hasNonMoneyUnits = /\b(cm|meter|km|inch|feet|mile|gram|kg|liter|ml|square|cubic|degree|celsius|fahrenheit|circumference|area|volume|perimeter|radius|diameter)\b/i.test(questionText);
+            const isMoneyQuestion = /price|cost|paid|spend|earn|profit|loss|salary|wage|buy|sell|purchase|total.*rupees|rupees.*total/i.test(questionText);
+            
+            if (hasNonMoneyUnits && !isMoneyQuestion) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} uses currency with non-money units, filtering out`);
+                console.warn(`   Question: "${questionText.substring(0, 100)}..."`);
+                return false;
+            }
+        }
+        
         // Validate options structure (reuse variables from above)
         const correctAnswer = (q.correctAnswer || '').toString().trim().toUpperCase();
         
