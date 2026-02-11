@@ -68,13 +68,22 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "algebra",
       "estimated_time": 60
     }
   ]
 }
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without letter prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
 
 IMPORTANT: 
 - Use sequential numeric IDs (1, 2, 3, etc.)
@@ -177,8 +186,8 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "vocabulary",
       "estimated_time": 45
     },
@@ -195,6 +204,15 @@ Output Format - Respond with ONLY valid JSON:
     }
   ]
 }
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without any prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
 
 IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 
@@ -229,13 +247,22 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "topic name",
       "estimated_time": 60
     }
   ]
 }
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without any prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
 
 IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 
@@ -278,10 +305,19 @@ Required JSON structure:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "Skill being tested",
       "estimated_time": 45
     }
   ]
-}`;
+}
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without letter prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]`;

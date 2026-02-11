@@ -34,6 +34,9 @@ export async function generateKnowledgeQuestions(
     console.log(`📋 Student ID: ${studentId || 'not specified'}`);
     console.log(`📋 Attempt ID: ${attemptId || 'not specified'}`);
     
+    // Treat higher_secondary (11th/12th) same as college for dynamic topic generation
+    const usesDynamicTopics = isCollegeStudent || gradeLevel === 'higher_secondary';
+    
     const supabase = createSupabaseAdminClient(env);
 
     const { openRouter: openRouterKey } = getAPIKeys(env);
@@ -44,9 +47,9 @@ export async function generateKnowledgeQuestions(
 
     const allQuestions: any[] = [];
 
-    // For college students with 20 questions, use single batch for better consistency
+    // For college students and higher secondary (11th/12th) with 20 questions, use single batch for better consistency
     // For larger counts, split into batches
-    const useSingleBatch = isCollegeStudent && questionCount <= 20;
+    const useSingleBatch = usesDynamicTopics && questionCount <= 20;
     const batchCount = useSingleBatch ? 1 : 2;
 
     console.log(`📝 Generating fresh knowledge questions in ${batchCount} batch${batchCount > 1 ? 'es' : ''} for: ${streamName}`);
@@ -57,19 +60,21 @@ export async function generateKnowledgeQuestions(
 
         let prompt: string;
         
-        if (isCollegeStudent && !topics) {
-            // For college students without predefined topics, let AI determine topics dynamically
+        if (usesDynamicTopics && !topics) {
+            // For college students and 11th/12th students without predefined topics, let AI determine topics dynamically
+            const studentLevel = gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university';
             prompt = `🎯 CRITICAL REQUIREMENT: You MUST generate EXACTLY ${totalQuestions} questions. Count them before responding.
 
-Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a college student studying ${streamName}.
+Generate EXACTLY ${totalQuestions} multiple-choice knowledge questions for a ${studentLevel} student studying ${streamName}.
 
 ⚠️ CRITICAL: ALL questions MUST be about ${streamName} - DO NOT generate questions about other subjects!
-- If the course is "Arts with Economics", generate questions about Economics, Political Science, History, Sociology
-- If the course is "Commerce", generate questions about Accounting, Business, Finance
-- If the course is "Computer Science", generate questions about Programming, Algorithms, Data Structures
+- If the stream is "Science (PCM)", generate questions about Physics, Chemistry, and Mathematics at ${studentLevel} level
+- If the stream is "Science (PCB)", generate questions about Physics, Chemistry, and Biology at ${studentLevel} level
+- If the stream is "Commerce", generate questions about Accounting, Business, Economics at ${studentLevel} level
+- If the stream is "Arts with Economics", generate questions about Economics, Political Science, History, Sociology at ${studentLevel} level
 - NEVER generate questions about subjects not related to ${streamName}
 
-IMPORTANT: Analyze the course name "${streamName}" and generate questions covering the core subjects and topics typically taught in this program.
+IMPORTANT: Analyze the stream/course name "${streamName}" and generate questions covering the core subjects and topics typically taught in this program at ${studentLevel}.
 
 Requirements:
 1. All questions must be MCQ with exactly 4 options
@@ -79,7 +84,7 @@ Requirements:
 5. Difficulty distribution: 30% easy, 50% medium, 20% hard
 6. Test practical understanding and application, not just memorization
 7. Cover fundamental concepts, theories, and real-world applications relevant to ${streamName}
-8. Questions should be appropriate for undergraduate/graduate level students
+8. Questions should be appropriate for ${studentLevel} students
 9. VERIFY: For each question, ensure the correct answer actually appears in the options
 
 ⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY ${totalQuestions} questions in your response.
@@ -109,12 +114,12 @@ Output Format - Respond with ONLY valid JSON (no markdown, no explanation):
 REMINDER: Generate EXACTLY ${totalQuestions} questions. No more, no less.`;
         }
 
-        const systemPrompt = isCollegeStudent 
-            ? `You are an expert educational assessment creator for college/university students. 
+        const systemPrompt = usesDynamicTopics 
+            ? `You are an expert educational assessment creator for ${gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university'} students. 
 
 🎯 CRITICAL: You MUST generate EXACTLY ${totalQuestions} knowledge-based questions. This is a strict requirement.
 
-Analyze the course name and generate questions covering core topics of that program. 
+Analyze the stream/course name and generate questions covering core topics of that program. 
 
 Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate ONLY valid JSON with no markdown.`
             : `You are an expert educational assessment creator. 
@@ -253,6 +258,79 @@ Before responding, verify you have EXACTLY ${totalQuestions} questions. Generate
     }
     
     console.log(`🔍 After validation: ${uniqueQuestions.length}/${allQuestions.length} valid questions (filtered: ${filteredCount})`);
+    
+    // If we don't have enough questions, generate more to reach the target
+    if (uniqueQuestions.length < questionCount) {
+        const needed = questionCount - uniqueQuestions.length;
+        console.warn(`⚠️ Only ${uniqueQuestions.length}/${questionCount} valid questions. Generating ${needed} more...`);
+        
+        const studentLevel = gradeLevel === 'higher_secondary' ? '11th-12th grade' : 'college/university';
+        const additionalPrompt = usesDynamicTopics && !topics
+            ? `Generate EXACTLY ${needed} additional multiple-choice knowledge questions for a ${studentLevel} student studying ${streamName}.
+
+⚠️ CRITICAL: ALL questions MUST be about ${streamName} - DO NOT generate questions about other subjects!
+
+Requirements:
+1. All questions must be MCQ with exactly 4 options
+2. Each question must have exactly ONE correct answer
+3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
+4. The correct answer MUST be one of the 4 options provided
+5. Difficulty distribution: 30% easy, 50% medium, 20% hard
+6. Test practical understanding and application
+7. Questions should be appropriate for ${studentLevel} students
+
+Output Format - Respond with ONLY valid JSON (no markdown):
+{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`
+            : `Generate EXACTLY ${needed} additional multiple-choice questions about ${streamName}.
+
+Requirements:
+1. All questions must be MCQ with exactly 4 options
+2. Each question must have exactly ONE correct answer
+3. ALL 4 OPTIONS MUST BE UNIQUE - no duplicate answers allowed
+4. Difficulty distribution: 30% easy, 50% medium, 20% hard
+
+Output Format - Respond with ONLY valid JSON (no markdown):
+{"questions":[{"id":1,"type":"mcq","difficulty":"easy","question":"Question text","options":["A","B","C","D"],"correct_answer":"A","skill_tag":"topic"}]}`;
+
+        const additionalSystemPrompt = `You are an expert educational assessment creator. Generate EXACTLY ${needed} questions. Generate ONLY valid JSON with no markdown.`;
+
+        try {
+            const additionalJsonText = await callOpenRouterWithRetry(openRouterKey, [
+                { role: 'system', content: additionalSystemPrompt },
+                { role: 'user', content: additionalPrompt }
+            ], {
+                maxTokens: needed * 150 + 500
+            });
+
+            const additionalParsed = repairAndParseJSON(additionalJsonText);
+            const additionalQuestions = additionalParsed.questions || additionalParsed;
+
+            if (Array.isArray(additionalQuestions)) {
+                // Validate additional questions with same criteria
+                for (const q of additionalQuestions) {
+                    const normalizedText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
+                    
+                    if (!normalizedText || seenTexts.has(normalizedText)) continue;
+                    
+                    const options = q.options || {};
+                    if (Array.isArray(options) && options.length === 4) {
+                        const optionValues = options.map((v: any) => String(v).toLowerCase().trim());
+                        const uniqueOptions = new Set(optionValues);
+                        
+                        if (uniqueOptions.size === 4 && optionValues.every(v => v && v.length > 0)) {
+                            seenTexts.add(normalizedText);
+                            uniqueQuestions.push(q);
+                            
+                            if (uniqueQuestions.length >= questionCount) break;
+                        }
+                    }
+                }
+                console.log(`✅ Added ${uniqueQuestions.length - (questionCount - needed)} additional valid questions`);
+            }
+        } catch (error) {
+            console.error(`❌ Failed to generate additional questions:`, error);
+        }
+    }
     
     // If more than 20% were filtered, log warning
     if (filteredCount > allQuestions.length * 0.2) {

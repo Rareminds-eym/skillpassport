@@ -145,10 +145,24 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       const adjustment = AdaptiveEngine.adjustDifficulty(currentDifficulty, isCorrect);
       newDifficulty = adjustment.newDifficulty;
       difficultyChange = adjustment.change;
+      
+      console.log('🎯 [SubmitAnswerHandler] Difficulty adjustment:', {
+        currentDifficulty,
+        isCorrect,
+        newDifficulty,
+        difficultyChange,
+        questionNumber: sessionData.questions_answered + 1,
+      });
+    } else {
+      console.log('ℹ️ [SubmitAnswerHandler] Not in adaptive_core phase, difficulty unchanged:', {
+        currentPhase,
+        currentDifficulty,
+        questionNumber: sessionData.questions_answered + 1,
+      });
     }
 
-    // Update difficulty path
-    const newDifficultyPath = [...difficultyPath, currentDifficulty];
+    // Update difficulty path - add the NEW difficulty after adjustment
+    const newDifficultyPath = [...difficultyPath, newDifficulty];
 
     // Create response record with full question content
     const sequenceNumber = sessionData.questions_answered + 1;

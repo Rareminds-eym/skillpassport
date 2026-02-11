@@ -356,31 +356,89 @@ ${excludeTextsArray.length > 0 ? excludeTextsArray.slice(0, 30).map((t, i) => ` 
 ⚠️ UNIQUENESS REQUIREMENTS (CRITICAL):
 - Use COMPLETELY DIFFERENT scenarios and contexts from the excluded questions above
 - Change numerical values by at least 50% from any similar questions
-- Use different measurement units (if one uses dollars, use meters/hours/pieces/etc.)
+- Use different measurement units (if one uses currency, use meters/hours/pieces/etc.)
 - Vary the problem structure (if one is about profit/loss, use time-speed-distance/ratio/percentage/etc.)
 - Use different subjects (if one mentions fruits, use vehicles/animals/students/books/etc.)
 - Create ORIGINAL contexts - do not repeat or slightly modify excluded scenarios
 - If you see a pattern in excluded questions, deliberately avoid that pattern
 - Think creatively - each question should feel fresh and unique
 
+⚠️ CURRENCY AND SYMBOLS (CRITICAL):
+- DO NOT use "$" (dollar symbol) in questions or options
+- DO NOT use "₹" (rupee symbol) in questions or options  
+- For currency questions, write "rupees" in full text
+- DO NOT ask about rotating symbols like "$", "₹", "%", "#", "@", "&"
+- For spatial/rotation questions, use letters (A, B, C) or simple shapes described in words
+- Example CORRECT: "If you rotate the letter N 180 degrees, which letter does it look like?"
+- Example WRONG: "If you rotate the dollar symbol ($) 90 degrees..."
+
+⚠️ NO VISUAL/DIAGRAM QUESTIONS (CRITICAL):
+- DO NOT create questions requiring Venn diagrams, charts, graphs, maps, or any visual aids
+- DO NOT create set theory questions without providing ALL necessary data
+- DO NOT reference "the diagram", "the figure", "shown above", "see below"
+- For set theory (Venn diagram) questions, you MUST provide ALL overlap data in the question text
+- Example WRONG: "120 like Math, 90 like Science, 60 like both. How many like only Math?" ❌ (Missing total students)
+- Example CORRECT: "Out of 200 students: 120 like Math, 90 like Science, 60 like both. How many like only Math?" ✅
+- For spatial/direction questions, provide coordinates or clear descriptions, not references to maps
+- Example WRONG: "Starting at point A, move 5km north. Which point is closest?" ❌ (No map data)
+- Example CORRECT: "Starting at (0,0), move 5km north to (0,5), then 3km east to (3,5). What's the distance from origin?" ✅
+
 ⚠️ CRITICAL: CORRECT ANSWER MUST BE IN OPTIONS ⚠️
 **THIS IS THE MOST IMPORTANT RULE - READ CAREFULLY:**
 
 For EVERY question type (math, logic, verbal, reasoning, etc.):
-1. **DETERMINE THE CORRECT ANSWER FIRST** - Know what the right answer is before creating options
-2. **PUT THE EXACT CORRECT ANSWER in one of the options** (A, B, C, or D)
-3. Create 3 different WRONG answers for the other options
-4. **VERIFY**: Look at your correctAnswer field - that EXACT value MUST appear in one of the options
-5. **DOUBLE-CHECK**: Read through all 4 options and confirm the correct answer is there
+1. **SOLVE THE PROBLEM FIRST** - Calculate or determine the actual correct answer
+2. **FOR MATH QUESTIONS**: Double-check your calculation before creating options
+3. **PUT THE EXACT CORRECT ANSWER in one of the options** (A, B, C, or D)
+4. Create 3 different WRONG answers for the other options (make them plausible but incorrect)
+5. **VERIFY**: Look at your correctAnswer field - that EXACT value MUST appear in one of the options
+6. **TRIPLE-CHECK MATH**: For calculation questions, verify your math is correct
+7. **EXPLANATION MUST MATCH**: The final answer in your explanation MUST match the correct option value
 
-**Example CORRECT (Math):**
+**Example CORRECT (Math - Combinations):**
+{
+  "text": "How many ways can you choose 2 items from a set of 5 items?",
+  "options": {"A": "8", "B": "10", "C": "12", "D": "15"},
+  "correctAnswer": "B",
+  "explanation": "C(5,2) = 5!/(2!×3!) = (5×4)/(2×1) = 10"
+}
+✅ Calculated C(5,2) = 10, and "10" IS in option B, explanation says "= 10"
+
+**Example WRONG (Explanation doesn't match):**
+{
+  "text": "If 480 students and 25% are in science club, how many are NOT in the club?",
+  "options": {"A": "340", "B": "360", "C": "380", "D": "400"},
+  "correctAnswer": "C",
+  "explanation": "25% of 480 = 120. Not in club = 480 - 120 = 360"
+}
+❌ Explanation says 360 but correctAnswer is C (380). Should be correctAnswer: "B"!
+
+**Example CORRECT (Percentage):**
+{
+  "text": "If 480 students and 25% are in science club, how many are NOT in the club?",
+  "options": {"A": "340", "B": "360", "C": "380", "D": "400"},
+  "correctAnswer": "B",
+  "explanation": "25% of 480 = 0.25 × 480 = 120. Not in club = 480 - 120 = 360"
+}
+✅ Calculated 480 - 120 = 360, and "360" IS in option B, explanation says "= 360"
+
+**Example WRONG (DO NOT DO THIS - Math Error):**
+{
+  "text": "If a box contains 84 chocolates and 3 are picked, how many ways can they be picked?",
+  "options": {"A": "952", "B": "1312", "C": "2184", "D": "2352"},
+  "correctAnswer": "A",
+  "explanation": "C(84,3) = 95284"
+}
+❌ The explanation says 95284 but none of the options have this value! This is WRONG!
+
+**Example CORRECT (Speed/Distance):**
 {
   "text": "If a train travels 120 km in 2 hours, what is its average speed?",
   "options": {"A": "50 km/h", "B": "60 km/h", "C": "70 km/h", "D": "80 km/h"},
   "correctAnswer": "B",
   "explanation": "Speed = Distance/Time = 120/2 = 60 km/h"
 }
-✅ Correct answer is "60 km/h" and it IS in option B
+✅ Calculated 120/2 = 60, and "60 km/h" IS in option B
 
 **Example CORRECT (Logic):**
 {
@@ -389,6 +447,7 @@ For EVERY question type (math, logic, verbal, reasoning, etc.):
   "correctAnswer": "D",
   "explanation": "We can only conclude that some cats might be furry based on the given information"
 }
+✅ Correct logical conclusion is "Some cats are furry" and it IS in option D
 ✅ Correct answer is "Some cats are furry" and it IS in option D
 
 **Example WRONG (DO NOT DO THIS):**
@@ -534,6 +593,29 @@ Return ONLY the JSON array, nothing else.`;
             return false;
         }
         
+        // Check for currency symbols or symbol rotation questions
+        const hasCurrencySymbols = /[$₹]/.test(questionText) || optionValues.some((opt: string) => /[$₹]/.test(opt));
+        const hasSymbolRotation = /rotate.*[$₹%#@&]|[$₹%#@&].*rotate|symbol.*rotate|rotate.*symbol/.test(questionText);
+        
+        if (hasCurrencySymbols || hasSymbolRotation) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has currency symbols or symbol rotation, filtering out: "${questionText.substring(0, 50)}..."`);
+            return false;
+        }
+        
+        // Check for currency words used incorrectly (e.g., "circumference in rupees")
+        const hasCurrencyWord = /\brupees\b|\bdollars\b|\brubles\b|\byuan\b|\beuro\b/i.test(questionText);
+        if (hasCurrencyWord) {
+            // If question mentions currency, it should be about money, not distance/area/volume
+            const hasNonMoneyUnits = /\b(cm|meter|km|inch|feet|mile|gram|kg|liter|ml|square|cubic|degree|celsius|fahrenheit|circumference|area|volume|perimeter|radius|diameter)\b/i.test(questionText);
+            const isMoneyQuestion = /price|cost|paid|spend|earn|profit|loss|salary|wage|buy|sell|purchase|total.*rupees|rupees.*total/i.test(questionText);
+            
+            if (hasNonMoneyUnits && !isMoneyQuestion) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} uses currency with non-money units, filtering out`);
+                console.warn(`   Question: "${questionText.substring(0, 100)}..."`);
+                return false;
+            }
+        }
+        
         // Validate options structure (reuse variables from above)
         const correctAnswer = (q.correctAnswer || '').toString().trim().toUpperCase();
         
@@ -594,6 +676,172 @@ Return ONLY the JSON array, nothing else.`;
                 console.warn(`   Available numeric options: ${numericOptions.join(', ')}`);
                 return false;
             }
+            
+            // NEW: Check if numeric options are reasonably distributed (not all very similar or wildly different)
+            if (numericOptions.length >= 3) {
+                const numbers = numericOptions.map(opt => {
+                    const match = opt.match(/\d+/);
+                    return match ? parseInt(match[0]) : 0;
+                }).filter(n => n > 0);
+                
+                if (numbers.length >= 3) {
+                    const sorted = [...numbers].sort((a, b) => a - b);
+                    const min = sorted[0];
+                    const max = sorted[sorted.length - 1];
+                    
+                    // If all options are identical, that's invalid
+                    if (min === max) {
+                        console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has all identical numeric values, filtering out`);
+                        return false;
+                    }
+                    
+                    // If the range is too extreme (max > 100x min), likely an error
+                    if (max > min * 100) {
+                        console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has extreme numeric range (${min} to ${max}), filtering out`);
+                        console.warn(`   Question: "${qText.substring(0, 80)}..."`);
+                        console.warn(`   Options: ${JSON.stringify(options)}`);
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        // NEW: Additional validation for ALL question types
+        
+        // 12. Question should not be too short or too long
+        const questionLength = questionText.length;
+        if (questionLength < 20) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is too short (${questionLength} chars), filtering out`);
+            return false;
+        }
+        if (questionLength > 600) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is too long (${questionLength} chars), filtering out`);
+            return false;
+        }
+        
+        // 13. Options should have reasonable length
+        for (const [key, value] of Object.entries(options)) {
+            const optLen = String(value).trim().length;
+            if (optLen > 250) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} option ${key} is too long (${optLen} chars), filtering out`);
+                return false;
+            }
+        }
+        
+        // 14. For non-math questions, check if options are too similar (optimized)
+        if (!hasCalculation) {
+            const optTexts = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+            // Quick check: if any two options are identical after trimming, reject immediately
+            const uniqueSet = new Set(optTexts);
+            if (uniqueSet.size < 4) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has duplicate options after trimming, filtering out`);
+                return false;
+            }
+            
+            // Only do similarity check if options are reasonably long (skip for short answers)
+            const hasLongOptions = optTexts.some(t => t.length > 15);
+            if (hasLongOptions) {
+                // Check only adjacent pairs and first-last to save time
+                for (let i = 0; i < optTexts.length - 1; i++) {
+                    const similarity = calculateSimilarity(optTexts[i], optTexts[i + 1]);
+                    if (similarity > 0.90) {
+                        console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has very similar adjacent options, filtering out`);
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        // 15. Check for incomplete or malformed questions
+        const endsWithQuestionMark = questionText.trim().endsWith('?');
+        const hasQuestionWords = /what|which|who|where|when|why|how|can|is|are|does|do|will|would|should/.test(qText);
+        if (!endsWithQuestionMark && !hasQuestionWords) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} doesn't appear to be a proper question, filtering out`);
+            console.warn(`   Question: "${questionText.substring(0, 80)}..."`);
+            return false;
+        }
+        
+        // 16. Check for placeholder text or incomplete content
+        const hasPlaceholders = /\[.*\]|{.*}|<.*>|xxx|yyy|zzz|placeholder|todo|tbd|fill in|insert here/i.test(questionText) || 
+                               optionValues.some((v: string) => /\[.*\]|{.*}|<.*>|xxx|yyy|zzz|placeholder|todo|tbd/i.test(v));
+        if (hasPlaceholders) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} contains placeholder text, filtering out`);
+            return false;
+        }
+        
+        // 17. Check for nonsensical or gibberish text
+        const hasRepeatedChars = /(.)\1{5,}/.test(questionText); // 6+ repeated characters
+        const hasExcessivePunctuation = /[!?.,]{4,}/.test(questionText);
+        if (hasRepeatedChars || hasExcessivePunctuation) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} contains nonsensical text patterns, filtering out`);
+            return false;
+        }
+        
+        // 18. Check for questions requiring visual data (Venn diagrams, maps, graphs) - optimized regex
+        const requiresVisualData = /venn|diagram|figure|chart|map|shown|depicted|illustrated/i.test(questionText);
+        if (requiresVisualData) {
+            // More specific check only if initial match found
+            const hasVisualReference = /venn diagram|refer to.*diagram|shown in.*figure|see.*diagram|look at.*map|given.*chart|following.*table|as shown|depicted in|illustrated in/i.test(questionText);
+            if (hasVisualReference) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} requires visual data or diagram, filtering out`);
+                return false;
+            }
+        }
+        
+        const hasSetTheoryWithoutData = /like.*and.*like.*but not|only.*and.*not/i.test(questionText) && 
+                                        !/exactly|total.*is|given that.*=/i.test(questionText);
+        if (hasSetTheoryWithoutData) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is incomplete set theory question, filtering out`);
+            return false;
+        }
+        
+        const hasSpatialWithoutMap = /point [A-Z].*move.*(north|south|east|west)|closest to|distance from.*to/i.test(questionText) && 
+                                     !/coordinate|grid|at \(|located at/i.test(questionText);
+        if (hasSpatialWithoutMap) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} requires map/coordinates, filtering out`);
+            return false;
+        }
+        
+        // 19. Check for incomplete set theory/Venn diagram questions (simplified)
+        if (/\d+.*like.*\d+.*like.*\d+.*like/i.test(questionText)) {
+            // Quick check: if mentions "all three" or specific overlap numbers, it's likely complete
+            const hasCompleteData = /all three|all \d+|exactly|only.*and.*not.*\d+|just.*and.*\d+/i.test(questionText);
+            if (!hasCompleteData) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is incomplete Venn diagram question, filtering out`);
+                return false;
+            }
+        }
+        
+        // 20. Check for questions with undefined references
+        const hasUndefinedReferences = /the diagram|the figure|the table|the chart|the map|the graph|above|below|following/i.test(questionText) &&
+                                       !/given|where|if|suppose|assume/i.test(questionText);
+        if (hasUndefinedReferences) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} references missing diagram/figure, filtering out`);
+            return false;
+        }
+        
+        // 21. CRITICAL: Verify explanation matches the correct answer (for math questions)
+        if (hasCalculation && q.explanation) {
+            const explanation = q.explanation.toLowerCase();
+            const correctAnswerText = correctAnswerValue.toLowerCase().trim();
+            
+            // Extract numbers from explanation and correct answer
+            const explanationNumbers = explanation.match(/=\s*(\d+)/g)?.map(m => m.replace(/[=\s]/g, '')) || [];
+            const answerNumbers = correctAnswerText.match(/\d+/g) || [];
+            
+            // If explanation has a final answer (after =), it should match the correct answer
+            if (explanationNumbers.length > 0 && answerNumbers.length > 0) {
+                const explanationFinalAnswer = explanationNumbers[explanationNumbers.length - 1];
+                const hasMatchingNumber = answerNumbers.some(num => num === explanationFinalAnswer);
+                
+                if (!hasMatchingNumber) {
+                    console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} explanation doesn't match correct answer, filtering out`);
+                    console.warn(`   Correct answer: "${correctAnswerValue}"`);
+                    console.warn(`   Explanation final result: ${explanationFinalAnswer}`);
+                    console.warn(`   Explanation: "${q.explanation.substring(0, 100)}..."`);
+                    return false;
+                }
+            }
         }
         
         // Check if this question text is too similar to any excluded text (80% threshold for stricter filtering)
@@ -616,10 +864,14 @@ Return ONLY the JSON array, nothing else.`;
     
     console.log(`🔍 [Adaptive-Handler] After filtering: ${filteredQuestions.length}/${aiQuestionsRaw.length} questions remain`);
 
-    // NEW: If we filtered out questions with issues, try to regenerate just the missing ones
-    if (filteredQuestions.length < count && filteredQuestions.length > 0) {
+    // NEW: If we filtered out questions with issues, try to regenerate just the missing ones with retry loop
+    let regenerationAttempts = 0;
+    const maxRegenerationAttempts = 3;
+    
+    while (filteredQuestions.length < count && regenerationAttempts < maxRegenerationAttempts) {
         const missingCount = count - filteredQuestions.length;
-        console.log(`🔄 [Adaptive-Handler] ${missingCount} questions were filtered out. Attempting to regenerate them...`);
+        regenerationAttempts++;
+        console.log(`🔄 [Adaptive-Handler] Attempt ${regenerationAttempts}/${maxRegenerationAttempts}: ${missingCount} questions needed. Regenerating...`);
         
         // Add already valid questions to exclusion list
         const updatedExcludeTexts = new Set([
@@ -642,42 +894,82 @@ Return ONLY the JSON array, nothing else.`;
             
             console.log(`✅ [Adaptive-Handler] Generated ${replacementQuestions.length} replacement questions`);
             
-            // Merge the valid questions with replacements
-            const mergedRawQuestions = [
-                ...filteredQuestions,
-                ...replacementQuestions.map(rq => ({
-                    text: rq.text,
-                    options: rq.options,
-                    correctAnswer: rq.correctAnswer,
-                    explanation: rq.explanation
-                }))
-            ];
-            
-            console.log(`📊 [Adaptive-Handler] Total after regeneration: ${mergedRawQuestions.length} questions`);
-            
-            // Use the merged set for final processing
-            const questions: Question[] = mergedRawQuestions.map((q: any, idx: number) => {
-                const assignedSubtag = subtags[idx % subtags.length] || 'logical_reasoning';
-                return {
-                    id: generateQuestionId(gradeLevel, phase as any, difficulty, assignedSubtag),
-                    text: q.text,
-                    options: q.options,
-                    correctAnswer: q.correctAnswer,
-                    explanation: q.explanation,
-                    difficulty: difficulty,
-                    subtag: assignedSubtag,
-                    gradeLevel: gradeLevel,
-                    phase: phase as any,
-                    createdAt: new Date().toISOString()
-                };
+            // Validate replacement questions with same strict criteria
+            const validReplacements = replacementQuestions.filter((rq: any) => {
+                const qText = rq.text?.toLowerCase().trim();
+                if (!qText) return false;
+                
+                // Check all validation criteria
+                const options = rq.options || {};
+                const correctAnswer = (rq.correctAnswer || '').toString().trim().toUpperCase();
+                
+                // Must have all 4 options
+                if (!['A', 'B', 'C', 'D'].every(opt => options[opt] && options[opt].trim().length > 0)) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: missing/empty options`);
+                    return false;
+                }
+                
+                // Options must be unique
+                const optionValues = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
+                const uniqueOpts = new Set(optionValues);
+                if (uniqueOpts.size < 4) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: duplicate options`);
+                    return false;
+                }
+                
+                // Correct answer must be valid
+                if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: invalid correctAnswer "${correctAnswer}"`);
+                    return false;
+                }
+                
+                // Correct answer must exist in options
+                if (!options[correctAnswer] || options[correctAnswer].trim().length === 0) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: correctAnswer not in options`);
+                    return false;
+                }
+                
+                // No currency symbols
+                if (/[$₹]/.test(qText) || optionValues.some(v => /[$₹]/.test(v))) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: has currency symbols`);
+                    return false;
+                }
+                
+                // No image references
+                const imageKeywords = ['graph', 'chart', 'diagram', 'image', 'figure', 'shown', 'visual'];
+                if (imageKeywords.some(kw => qText.includes(kw))) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: has image reference`);
+                    return false;
+                }
+                
+                // Not a duplicate
+                if (updatedExcludeTexts.has(qText)) {
+                    console.warn(`⚠️ [Regeneration] Filtered replacement: duplicate question`);
+                    return false;
+                }
+                
+                return true;
             });
             
-            console.log(`✅ [Adaptive-Handler] Successfully generated ${questions.length} unique questions`);
-            return questions;
-        } catch (replacementError: any) {
-            console.error(`❌ [Adaptive-Handler] Failed to generate replacements:`, replacementError.message);
-            // Continue with what we have
+            console.log(`✅ [Adaptive-Handler] ${validReplacements.length}/${replacementQuestions.length} replacement questions passed validation`);
+            
+            // Add valid replacements to our collection
+            filteredQuestions.push(...validReplacements);
+            
+            // Update exclusion list for next iteration
+            validReplacements.forEach((q: any) => updatedExcludeTexts.add(q.text.toLowerCase().trim()));
+            
+            if (filteredQuestions.length >= count) {
+                console.log(`✅ [Adaptive-Handler] Successfully reached target count of ${count} questions`);
+                break;
+            }
+        } catch (error) {
+            console.error(`❌ [Adaptive-Handler] Regeneration attempt ${regenerationAttempts} failed:`, error);
         }
+    }
+    
+    if (filteredQuestions.length < count) {
+        console.warn(`⚠️ [Adaptive-Handler] After ${regenerationAttempts} attempts, only have ${filteredQuestions.length}/${count} valid questions`);
     }
 
     // CHANGED: Don't throw error if all filtered out, just log warning and return what we have

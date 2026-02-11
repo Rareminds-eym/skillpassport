@@ -58,6 +58,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
       currentQuestionIndex: sessionData.current_question_index,
       questionsAnswered: sessionData.questions_answered,
       currentDifficulty: sessionData.current_difficulty,
+      difficultyPath: sessionData.difficulty_path,
       phaseQuestionsCount: (sessionData.current_phase_questions as Question[])?.length,
     });
 
@@ -150,6 +151,8 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         difficulty: currentDifficulty,
         subtag: selectedSubtag,
         excludeIdsCount: allExcludeIds.length,
+        questionNumber: totalQuestionsAnswered + 1,
+        adaptiveCoreQuestionNumber: adaptiveCoreQuestionsAnswered + 1,
       });
 
       // Call question generation API
@@ -289,6 +292,9 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           console.log('✅ [NextQuestionHandler] Generated adaptive question:', {
             questionId: newQuestion.id,
             difficulty: newQuestion.difficulty,
+            subtag: newQuestion.subtag,
+            sessionDifficulty: currentDifficulty,
+            match: newQuestion.difficulty === currentDifficulty ? '✅' : '❌ MISMATCH!',
           });
 
           const result: NextQuestionResult = {
