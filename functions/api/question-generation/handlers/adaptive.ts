@@ -372,6 +372,17 @@ ${excludeTextsArray.length > 0 ? excludeTextsArray.slice(0, 30).map((t, i) => ` 
 - Example CORRECT: "If you rotate the letter N 180 degrees, which letter does it look like?"
 - Example WRONG: "If you rotate the dollar symbol ($) 90 degrees..."
 
+⚠️ NO VISUAL/DIAGRAM QUESTIONS (CRITICAL):
+- DO NOT create questions requiring Venn diagrams, charts, graphs, maps, or any visual aids
+- DO NOT create set theory questions without providing ALL necessary data
+- DO NOT reference "the diagram", "the figure", "shown above", "see below"
+- For set theory (Venn diagram) questions, you MUST provide ALL overlap data in the question text
+- Example WRONG: "120 like Math, 90 like Science, 60 like both. How many like only Math?" ❌ (Missing total students)
+- Example CORRECT: "Out of 200 students: 120 like Math, 90 like Science, 60 like both. How many like only Math?" ✅
+- For spatial/direction questions, provide coordinates or clear descriptions, not references to maps
+- Example WRONG: "Starting at point A, move 5km north. Which point is closest?" ❌ (No map data)
+- Example CORRECT: "Starting at (0,0), move 5km north to (0,5), then 3km east to (3,5). What's the distance from origin?" ✅
+
 ⚠️ CRITICAL: CORRECT ANSWER MUST BE IN OPTIONS ⚠️
 **THIS IS THE MOST IMPORTANT RULE - READ CAREFULLY:**
 
@@ -382,6 +393,7 @@ For EVERY question type (math, logic, verbal, reasoning, etc.):
 4. Create 3 different WRONG answers for the other options (make them plausible but incorrect)
 5. **VERIFY**: Look at your correctAnswer field - that EXACT value MUST appear in one of the options
 6. **TRIPLE-CHECK MATH**: For calculation questions, verify your math is correct
+7. **EXPLANATION MUST MATCH**: The final answer in your explanation MUST match the correct option value
 
 **Example CORRECT (Math - Combinations):**
 {
@@ -390,7 +402,25 @@ For EVERY question type (math, logic, verbal, reasoning, etc.):
   "correctAnswer": "B",
   "explanation": "C(5,2) = 5!/(2!×3!) = (5×4)/(2×1) = 10"
 }
-✅ Calculated C(5,2) = 10, and "10" IS in option B
+✅ Calculated C(5,2) = 10, and "10" IS in option B, explanation says "= 10"
+
+**Example WRONG (Explanation doesn't match):**
+{
+  "text": "If 480 students and 25% are in science club, how many are NOT in the club?",
+  "options": {"A": "340", "B": "360", "C": "380", "D": "400"},
+  "correctAnswer": "C",
+  "explanation": "25% of 480 = 120. Not in club = 480 - 120 = 360"
+}
+❌ Explanation says 360 but correctAnswer is C (380). Should be correctAnswer: "B"!
+
+**Example CORRECT (Percentage):**
+{
+  "text": "If 480 students and 25% are in science club, how many are NOT in the club?",
+  "options": {"A": "340", "B": "360", "C": "380", "D": "400"},
+  "correctAnswer": "B",
+  "explanation": "25% of 480 = 0.25 × 480 = 120. Not in club = 480 - 120 = 360"
+}
+✅ Calculated 480 - 120 = 360, and "360" IS in option B, explanation says "= 360"
 
 **Example WRONG (DO NOT DO THIS - Math Error):**
 {
@@ -684,16 +714,24 @@ Return ONLY the JSON array, nothing else.`;
             }
         }
         
-        // 14. For non-math questions, check if options are too similar
+        // 14. For non-math questions, check if options are too similar (optimized)
         if (!hasCalculation) {
             const optTexts = Object.values(options).map((v: any) => String(v).toLowerCase().trim());
-            for (let i = 0; i < optTexts.length; i++) {
-                for (let j = i + 1; j < optTexts.length; j++) {
-                    const similarity = calculateSimilarity(optTexts[i], optTexts[j]);
+            // Quick check: if any two options are identical after trimming, reject immediately
+            const uniqueSet = new Set(optTexts);
+            if (uniqueSet.size < 4) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has duplicate options after trimming, filtering out`);
+                return false;
+            }
+            
+            // Only do similarity check if options are reasonably long (skip for short answers)
+            const hasLongOptions = optTexts.some(t => t.length > 15);
+            if (hasLongOptions) {
+                // Check only adjacent pairs and first-last to save time
+                for (let i = 0; i < optTexts.length - 1; i++) {
+                    const similarity = calculateSimilarity(optTexts[i], optTexts[i + 1]);
                     if (similarity > 0.90) {
-                        console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has very similar options (${(similarity * 100).toFixed(0)}% match), filtering out`);
-                        console.warn(`   Option ${String.fromCharCode(65 + i)}: "${optTexts[i].substring(0, 50)}..."`);
-                        console.warn(`   Option ${String.fromCharCode(65 + j)}: "${optTexts[j].substring(0, 50)}..."`);
+                        console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} has very similar adjacent options, filtering out`);
                         return false;
                     }
                 }
@@ -723,6 +761,73 @@ Return ONLY the JSON array, nothing else.`;
         if (hasRepeatedChars || hasExcessivePunctuation) {
             console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} contains nonsensical text patterns, filtering out`);
             return false;
+        }
+        
+        // 18. Check for questions requiring visual data (Venn diagrams, maps, graphs) - optimized regex
+        const requiresVisualData = /venn|diagram|figure|chart|map|shown|depicted|illustrated/i.test(questionText);
+        if (requiresVisualData) {
+            // More specific check only if initial match found
+            const hasVisualReference = /venn diagram|refer to.*diagram|shown in.*figure|see.*diagram|look at.*map|given.*chart|following.*table|as shown|depicted in|illustrated in/i.test(questionText);
+            if (hasVisualReference) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} requires visual data or diagram, filtering out`);
+                return false;
+            }
+        }
+        
+        const hasSetTheoryWithoutData = /like.*and.*like.*but not|only.*and.*not/i.test(questionText) && 
+                                        !/exactly|total.*is|given that.*=/i.test(questionText);
+        if (hasSetTheoryWithoutData) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is incomplete set theory question, filtering out`);
+            return false;
+        }
+        
+        const hasSpatialWithoutMap = /point [A-Z].*move.*(north|south|east|west)|closest to|distance from.*to/i.test(questionText) && 
+                                     !/coordinate|grid|at \(|located at/i.test(questionText);
+        if (hasSpatialWithoutMap) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} requires map/coordinates, filtering out`);
+            return false;
+        }
+        
+        // 19. Check for incomplete set theory/Venn diagram questions (simplified)
+        if (/\d+.*like.*\d+.*like.*\d+.*like/i.test(questionText)) {
+            // Quick check: if mentions "all three" or specific overlap numbers, it's likely complete
+            const hasCompleteData = /all three|all \d+|exactly|only.*and.*not.*\d+|just.*and.*\d+/i.test(questionText);
+            if (!hasCompleteData) {
+                console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} is incomplete Venn diagram question, filtering out`);
+                return false;
+            }
+        }
+        
+        // 20. Check for questions with undefined references
+        const hasUndefinedReferences = /the diagram|the figure|the table|the chart|the map|the graph|above|below|following/i.test(questionText) &&
+                                       !/given|where|if|suppose|assume/i.test(questionText);
+        if (hasUndefinedReferences) {
+            console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} references missing diagram/figure, filtering out`);
+            return false;
+        }
+        
+        // 21. CRITICAL: Verify explanation matches the correct answer (for math questions)
+        if (hasCalculation && q.explanation) {
+            const explanation = q.explanation.toLowerCase();
+            const correctAnswerText = correctAnswerValue.toLowerCase().trim();
+            
+            // Extract numbers from explanation and correct answer
+            const explanationNumbers = explanation.match(/=\s*(\d+)/g)?.map(m => m.replace(/[=\s]/g, '')) || [];
+            const answerNumbers = correctAnswerText.match(/\d+/g) || [];
+            
+            // If explanation has a final answer (after =), it should match the correct answer
+            if (explanationNumbers.length > 0 && answerNumbers.length > 0) {
+                const explanationFinalAnswer = explanationNumbers[explanationNumbers.length - 1];
+                const hasMatchingNumber = answerNumbers.some(num => num === explanationFinalAnswer);
+                
+                if (!hasMatchingNumber) {
+                    console.warn(`⚠️ [Adaptive-Handler] Question ${index + 1} explanation doesn't match correct answer, filtering out`);
+                    console.warn(`   Correct answer: "${correctAnswerValue}"`);
+                    console.warn(`   Explanation final result: ${explanationFinalAnswer}`);
+                    console.warn(`   Explanation: "${q.explanation.substring(0, 100)}..."`);
+                    return false;
+                }
+            }
         }
         
         // Check if this question text is too similar to any excluded text (80% threshold for stricter filtering)
