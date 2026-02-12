@@ -2,7 +2,7 @@
  * Type definitions for Adaptive Aptitude API
  */
 
-export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary';
+export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary' | 'college';
 export type TestPhase = 'diagnostic_screener' | 'adaptive_core' | 'stability_confirmation';
 export type DifficultyLevel = 1 | 2 | 3 | 4 | 5;
 export type Subtag =

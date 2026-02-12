@@ -499,6 +499,246 @@ VARIETY REQUIREMENTS FOR GRADES 9-10:
 - Verbal + Logical → Arts/Humanities indicators
 - Spatial + Pattern Recognition → Design/Engineering indicators
 - Results should guide stream selection after 10th grade`,
+
+  college: `You are creating aptitude test questions for COLLEGE/UNIVERSITY students (undergraduate level, ages 18-22).
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
+- DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
+- DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
+- ALL information must be provided in TEXT FORM ONLY
+- For data interpretation: Provide ALL data as text (e.g., "A company's quarterly sales were: Q1: ₹2.5M, Q2: ₹3.2M, Q3: ₹2.8M, Q4: ₹3.5M")
+- For spatial reasoning: Describe transformations in words (e.g., "If you rotate a geometric shape 90 degrees clockwise...")
+- For pattern recognition: Describe sequences in text (e.g., "In the sequence 2, 6, 12, 20, what is the next number?")
+- NEVER assume visual elements exist - the system does not support images
+- Focus on verbal, numerical, and logical reasoning that can be expressed purely in text
+
+🎯 COGNITIVE EXPECTATIONS FOR COLLEGE STUDENTS (Ages 18-22):
+- Fully developed abstract and critical thinking abilities
+- Can handle complex multi-step problems with minimal guidance
+- Strong pattern recognition and logical deduction skills
+- Higher-order thinking and analytical reasoning
+- Vocabulary: 15,000+ words (including academic and technical terminology)
+
+📚 CAREER CONTEXT - PROFESSIONAL DEVELOPMENT:
+- Students are pursuing specialized degrees (B.Tech, B.Com, BBA, BA, etc.)
+- Questions should help identify career aptitudes for professional roles
+- Focus on: complex analytical thinking, business reasoning, technical problem-solving
+- Build awareness of industry-ready skills and professional competencies
+- Questions should reveal strengths for career path decisions and placement readiness
+
+🎓 DIFFICULTY DISCIPLINE (Relative to College Level):
+- Level 1: Foundational concepts, straightforward applications (review level)
+- Level 2: Moderate complexity, standard problem-solving (undergraduate baseline)
+- Level 3: Challenging problems requiring analysis (typical exam level)
+- Level 4: Complex reasoning, advanced applications (competitive/entrance exam level)
+- Level 5: Sophisticated problems requiring deep insight (elite/top-tier level)
+
+CRITICAL GUIDELINES FOR COLLEGE STUDENTS:
+- Use professional vocabulary appropriate for 18-22 year olds
+- Questions should be intellectually stimulating
+- Use diverse scenarios: business cases, technology problems, research contexts, real-world applications
+- Include data interpretation, financial analysis, logical puzzles, and analytical reasoning
+- Numbers should support calculator use: complex calculations, percentages, ratios, financial math
+- Reference career and industry contexts relevant to their field of study
+
+📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (College Level):
+
+**Advanced Arithmetic & Commercial Math:**
+- Complex percentages, profit/loss, discounts, markups
+- Compound interest, EMI calculations, investment returns
+- Ratio and proportion in business contexts
+- Averages, weighted averages, mixtures
+
+**Algebra & Equations:**
+- Linear and quadratic equations
+- Simultaneous equations
+- Functions and their properties
+- Basic set theory and Venn diagrams (described in text)
+
+**Data Interpretation & Statistics:**
+- Mean, median, mode, standard deviation concepts
+- Probability and combinations
+- Trend analysis and forecasting
+- Financial data analysis
+
+**Business Mathematics:**
+- Cost-benefit analysis
+- Break-even analysis
+- Return on investment (ROI) calculations
+- Market share and growth calculations
+
+🧠 LOGICAL REASONING CONCEPTS (College Level):
+
+**Advanced Logic:**
+- Complex syllogisms and deductive reasoning
+- Conditional and biconditional statements
+- Logical puzzles and arrangement problems
+- Critical argument evaluation
+
+**Analytical Reasoning:**
+- Seating arrangements and scheduling (described in text)
+- Blood relations and family trees (described verbally)
+- Direction sense and distances
+- Coding-decoding and pattern analysis
+
+**Data Sufficiency:**
+- Determining if given data is adequate to answer questions
+- Identifying missing information
+- Evaluating statement combinations
+
+📚 VERBAL REASONING CONCEPTS (College Level):
+
+**Vocabulary & Language:**
+- Advanced synonyms and antonyms
+- Idioms and phrases
+- Analogies with complex relationships
+- Contextual comprehension
+
+**Reading Comprehension:**
+- Business passages and case studies
+- Abstract and philosophical texts
+- Technical and scientific excerpts
+- Inference and critical analysis
+
+**Critical Reasoning:**
+- Strengthening and weakening arguments
+- Identifying assumptions and conclusions
+- Evaluating evidence and claims
+- Logical fallacies identification
+
+🎨 SPATIAL REASONING CONCEPTS (College Level - TEXT-ONLY):
+
+**CRITICAL: ABSOLUTELY NO VISUAL PATTERNS OR DIAGRAMS**
+- DO NOT use cube net patterns
+- DO NOT use shape arrangements that need to be seen
+- DO NOT reference "the pattern shows" or "which arrangement"
+- ALL spatial questions MUST be describable and solvable using WORDS ONLY
+
+**Mental Rotation (Described in Text):**
+- 2D shape rotation described verbally
+- 3D object rotation described in words
+- Mirror images and reflections described
+- Folding and unfolding described
+- Perspective changes described verbally
+
+**Spatial Visualization (Text-Based):**
+- Paper folding and cutting patterns described in words
+- Cube and dice problems described
+- Hidden figures described verbally
+- Figure completion described in text
+- Block counting described
+- Cross-sections described
+
+**Geometric Reasoning (Verbal Description):**
+- Shape properties and relationships
+- Symmetry described
+- Tessellations and patterns described
+- Perspective and multiple views described
+- Spatial transformations described in words
+- Congruence and similarity
+
+📊 DATA INTERPRETATION CONCEPTS (College Level - TEXT-ONLY):
+
+**Statistical Analysis (Data in Text):**
+- Mean, median, mode, standard deviation
+- Percentages and proportions (complex calculations)
+- Ratios and comparisons (multiple data sets in text)
+- Percentage change and growth rates
+- Weighted averages and combined means
+
+**Data Representation (Described in Text):**
+- Tables described verbally
+- Bar charts described
+- Line graphs described
+- Pie charts described
+- Comparative data sets in text
+- Mixed data formats described verbally
+
+**Data Reasoning:**
+- Trend identification from text descriptions
+- Comparison and ranking (multiple criteria)
+- Maximum/minimum values and extremes
+- Data sufficiency (is given data adequate?)
+- Logical deductions from data
+- Interpolation and extrapolation
+
+**Quantitative Comparison:**
+- Comparing quantities (which is greater?)
+- Estimating values (approximation)
+- Order of magnitude
+- Relative changes (absolute vs percentage)
+- Proportional reasoning
+- Rate of change
+
+**Real-World Applications (Text-Based):**
+- Business data described (sales, revenue, profit, market share)
+- Scientific data described (experiments, observations, measurements)
+- Survey results and demographics in text
+- Economic indicators described (GDP, inflation, unemployment)
+- Performance metrics (scores, ratings, rankings)
+- Financial data described (investments, returns, interest)
+
+🔢 PATTERN RECOGNITION CONCEPTS (College Level):
+
+**Number Patterns:**
+- Arithmetic sequences (linear, constant difference)
+- Geometric sequences (exponential, constant ratio)
+- Fibonacci-type sequences
+- Square/cube sequences
+- Prime number patterns
+- Mixed operation patterns
+- Recursive patterns
+
+**Algebraic Patterns:**
+- Function patterns (linear, quadratic, exponential)
+- Recursive relationships
+- Polynomial patterns
+- Exponential growth and decay
+- Pattern generalization (finding nth term)
+- Formula derivation
+
+**Logical Patterns:**
+- Alternating patterns
+- Nested patterns
+- Multi-rule patterns
+- Position-based patterns
+- Conditional patterns
+- Cyclic patterns
+
+**Abstract Patterns:**
+- Letter sequences
+- Symbol patterns described in text
+- Code patterns
+- Relationship patterns
+- Word patterns
+
+🔄 SUBTAG ROTATION ENFORCEMENT:
+- NEVER use the same subtag consecutively
+- Distribute subtags evenly across the question set
+- Each subtag must appear at least once in every 6-question block
+- Rotate through: numerical_reasoning → logical_reasoning → verbal_reasoning → spatial_reasoning → data_interpretation → pattern_recognition
+
+🚫 REPETITION PREVENTION:
+- NEVER reuse similar scenarios
+- NEVER reuse similar numerical patterns
+- NEVER reuse similar logical structures
+- Change contexts completely between questions
+- Vary numerical values by at least 50%
+- Use different measurement units and subjects
+
+📊 ANALYTICS-SAFE DIFFICULTY PATHS:
+- Questions must have clear, unambiguous correct answers
+- Difficulty progression should be measurable and consistent
+- Each question must reliably discriminate between ability levels
+- Avoid trick questions or ambiguous wording
+- Ensure distractors are plausible but clearly incorrect
+
+🎯 CAREER RECOMMENDATION READINESS:
+- Questions should reveal aptitude patterns for professional career paths
+- Numerical + Data Interpretation → Finance, Analytics, Consulting, STEM careers
+- Verbal + Logical → Management, Law, Civil Services, Research careers
+- Spatial + Pattern Recognition → Engineering, Design, Architecture careers
+- Balanced performance → Versatile career options and leadership roles`,
 };
 
 /* ======================================================

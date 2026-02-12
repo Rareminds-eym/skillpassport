@@ -408,7 +408,7 @@ const AssessmentTestPage: React.FC = () => {
   });
 
   // Enable anti-cheating protections when assessment is active
-  const isAssessmentActive = assessmentStarted && !flow.isComplete && flow.currentSectionIndex >= 0;
+  const isAssessmentActive = assessmentStarted && flow.currentScreen !== 'section_complete' && flow.currentSectionIndex >= 0;
   useAntiCheating(isAssessmentActive);
 
   // Track adaptive loading time for better UX
@@ -1116,9 +1116,9 @@ const AssessmentTestPage: React.FC = () => {
         // Don't try to resume - the section is already complete
         // Check if we're currently on the adaptive section
         const adaptiveSectionIndex = sections.findIndex(s => s.isAdaptive);
-        if (sectionIndex === adaptiveSectionIndex) {
+        if (dbSectionIndex === adaptiveSectionIndex) {
           console.log('✅ [ADAPTIVE RESUME] Currently on adaptive section, showing section complete');
-          flow.setShowSectionComplete(true);
+          flow.completeSection();
         }
       } else {
         // Session is in progress, try to resume it
@@ -1210,8 +1210,7 @@ const AssessmentTestPage: React.FC = () => {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
             flow.setCurrentQuestionIndex(0);
             flow.setShowSectionIntro(false);
-            flow.setShowSectionComplete(true);
-            flow.setCurrentScreen('section_complete');
+            flow.completeSection();
           } else {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session exists and in progress, resuming to assessment screen');
             // Adaptive session was already resumed above
@@ -2276,7 +2275,7 @@ const AssessmentTestPage: React.FC = () => {
       )}
 
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync">
           {/* Section Intro */}
           {flow.showSectionIntro && currentSection && (
             <SectionIntroScreen
@@ -2460,7 +2459,7 @@ const AssessmentTestPage: React.FC = () => {
               </div>
 
               <motion.div
-                key={questionId}
+                key={questionId || `question-${flow.currentSectionIndex}-${flow.currentQuestionIndex}`}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}

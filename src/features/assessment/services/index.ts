@@ -23,6 +23,21 @@ export { default as assessmentService } from '../../../services/assessmentServic
 // @ts-ignore - JS file without type declarations
 export * from '../../../services/assessmentService';
 
+// =============================================================================
+// ENHANCED INDUSTRIAL-GRADE SERVICES
+// =============================================================================
+
+// Enhanced Assessment Service (circuit breakers, retry logic, idempotency)
+export {
+  AssessmentServiceEnhanced,
+  saveResponseEnhanced,
+  completeAssessmentEnhanced,
+  getServiceHealth as getEnhancedServiceHealth,
+  type SaveResponseParams,
+  type SaveResponseResult,
+  type CompleteAssessmentParams
+} from './assessmentServiceEnhanced';
+
 // Assessment Generation Service (AI-powered question generation)
 // @ts-ignore - JS file without type declarations
 export { generateAssessment, validateAssessment, saveGeneratedAssessment, loadGeneratedAssessment, cacheAssessment, getCachedAssessment } from '../../../services/assessmentGenerationService';

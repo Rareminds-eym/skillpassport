@@ -171,8 +171,50 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     onAnswerChange: (questionId, answer) => {
       // Auto-save to database if enabled
       if (useDatabase && currentAttempt?.id) {
-        const [sectionId, qId] = questionId.split('_');
-        dbSaveResponse(sectionId, qId, answer);
+        // CRITICAL FIX: Handle different question ID formats
+        // Format 1: sectionId_questionId (e.g., 'riasec_r1', 'bigfive_o1')
+        // Format 2: sectionId_UUID (e.g., 'aptitude_f48f122d-...') - AI questions
+        
+        let sectionId: string;
+        let qId: string;
+        let isCorrect: boolean | null = null;
+        
+        if (questionId.includes('_')) {
+          // Split by first underscore only
+          const underscoreIndex = questionId.indexOf('_');
+          sectionId = questionId.substring(0, underscoreIndex);
+          qId = questionId.substring(underscoreIndex + 1);
+          
+          // Check if qId is a UUID (AI question)
+          const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(qId);
+          
+          if (isUUID) {
+            // For AI questions, check correctness if it's an MCQ (aptitude/knowledge)
+            const currentQuestion = flow.currentQuestion;
+            if (currentQuestion?.correct !== undefined) {
+              // Compare answer with correct answer (handle both array and string correct values)
+              const correctAnswer = currentQuestion.correct;
+              if (Array.isArray(correctAnswer)) {
+                isCorrect = correctAnswer.includes(answer);
+              } else {
+                isCorrect = answer === correctAnswer;
+              }
+              console.log(`✓ MCQ correctness check: ${isCorrect ? 'CORRECT' : 'INCORRECT'} (answer: ${answer}, correct: ${correctAnswer})`);
+            }
+            console.log(`💾 Saved AI question response: ${sectionId} / ${qId}, isCorrect: ${isCorrect}`);
+          } else {
+            // Static question (RIASEC, BigFive, etc.)
+            console.log(`💾 Saved static question response: ${sectionId} / ${qId}`);
+          }
+        } else {
+          // Fallback: use current section if available
+          const currentSection = flow.currentSection;
+          sectionId = currentSection?.id || 'unknown';
+          qId = questionId;
+          console.warn(`⚠️ Unknown question ID format: ${questionId}, using current section: ${sectionId}`);
+        }
+        
+        dbSaveResponse(sectionId, qId, answer, isCorrect);
       }
     }
   });

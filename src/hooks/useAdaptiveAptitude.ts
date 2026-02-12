@@ -348,6 +348,8 @@ export function useAdaptiveAptitude(
       console.error('❌ [useAdaptiveAptitude] Error message:', err instanceof Error ? err.message : 'Unknown');
       console.error('❌ [useAdaptiveAptitude] Error stack:', err instanceof Error ? err.stack : 'No stack');
       handleError(err, 'Failed to start test');
+      // Re-throw so caller knows it failed
+      throw err;
     } finally {
       setLoading(false);
     }

@@ -300,7 +300,6 @@ import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useAuth } from "../../context/AuthContext";
 import { ExperienceEditModal } from "../../components/Students/components/ProfileEditModals";
 import { useRecentUpdates } from "../../hooks/useRecentUpdates";
-import { useRecentUpdatesLegacy } from "../../hooks/useRecentUpdatesLegacy";
 import { useAIJobMatching } from "../../hooks/useAIJobMatching";
 import SuggestedNextSteps from "../../components/Students/components/SuggestedNextSteps";
 import { suggestions as mockSuggestions } from "../../components/Students/data/mockData";

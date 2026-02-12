@@ -11,6 +11,7 @@ import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabas
 import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
 import { authenticateUser } from '../../shared/auth';
+import { generateDiagnosticScreenerQuestions } from '../../question-generation/handlers/adaptive';
 
 /**
  * Initializes a new adaptive aptitude test session
@@ -72,34 +73,27 @@ export const initializeHandler: PagesFunction = async (context) => {
     console.log('✅ [InitializeHandler] Found student record:', studentId);
 
     // Validate gradeLevel
-    const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
+    const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary', 'college'];
     if (!validGradeLevels.includes(gradeLevel)) {
       return jsonResponse(
-        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary' },
+        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, college' },
         400
       );
     }
 
     console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel });
 
-    // Generate diagnostic screener questions by calling the question generation API
+    // Generate diagnostic screener questions by directly calling the generation function
     console.log('📝 [InitializeHandler] Generating diagnostic screener questions...');
     
-    const questionGenUrl = new URL('/api/question-generation/generate/diagnostic', request.url);
-    const questionGenResponse = await fetch(questionGenUrl.toString(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ gradeLevel, studentCourse }),
-    });
-
-    if (!questionGenResponse.ok) {
-      console.error('❌ [InitializeHandler] Question generation failed:', questionGenResponse.status);
-      throw new Error(`Failed to generate diagnostic screener questions: ${questionGenResponse.statusText}`);
-    }
-
-    const questionResult = await questionGenResponse.json();
+    const questionResult = await generateDiagnosticScreenerQuestions(
+      env,
+      gradeLevel,
+      [], // excludeQuestionIds
+      [], // excludeQuestionTexts
+      studentCourse
+    );
+    
     console.log('📋 [InitializeHandler] Question generation result:', {
       questionsCount: questionResult.questions?.length || 0,
       fromCache: questionResult.fromCache,
@@ -155,10 +149,17 @@ export const initializeHandler: PagesFunction = async (context) => {
 
   } catch (error) {
     console.error('❌ [InitializeHandler] Error:', error);
+    console.error('❌ [InitializeHandler] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('❌ [InitializeHandler] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      type: typeof error
+    });
     return jsonResponse(
       { 
         error: 'Failed to initialize test',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       },
       500
     );
