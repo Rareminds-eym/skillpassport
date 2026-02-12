@@ -19,12 +19,14 @@ const HomePage: React.FC = () => {
     }
   }, [location.state, setStudent]);
 
-  // Determine if user is an admin viewing a student portfolio
-  const isAdminViewing = role && (role.includes('admin') || role === 'admin');
+  // Determine if user is viewing as admin/educator (not as student)
+  // Admins and educators should use public portfolio routes to view student portfolios
+  const roleStr = String(role || '');
+  const isViewingAsNonStudent = roleStr.includes('admin') || roleStr === 'educator';
   
-  // For admins, use the direct portfolio routes that don't require student role
-  const portfolioPath = isAdminViewing ? '/portfolio' : '/student/digital-portfolio/portfolio';
-  const passportPath = isAdminViewing ? '/passport' : '/student/digital-portfolio/passport';
+  // For admins and educators, use the direct portfolio routes that don't require student role
+  const portfolioPath = isViewingAsNonStudent ? '/portfolio' : '/student/digital-portfolio/portfolio';
+  const passportPath = isViewingAsNonStudent ? '/passport' : '/student/digital-portfolio/passport';
   const handleGoBack = () => {
     // Go back to the previous page
     navigate(-1);
@@ -33,8 +35,8 @@ const HomePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
       
-      {/* Back Button - Fixed at top - Only show for admins */}
-      {isAdminViewing && (
+      {/* Back Button - Fixed at top - Only show for admins and educators */}
+      {isViewingAsNonStudent && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

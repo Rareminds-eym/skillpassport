@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+// @ts-ignore - AuthContext is a .jsx file
+import { useAuth } from '../context/AuthContext';
 
 // Types
 export interface KPIData {
@@ -91,6 +93,7 @@ interface UseAnalyticsOptions {
 
 export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = options;
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -127,8 +130,11 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
             .from('students')
             .select('user_id')
             .eq('school_id', schoolId)
-            .eq('is_deleted', false);
-          return schoolStudents?.map(s => s.user_id) || [];
+            .eq('is_deleted', false)
+            .is('college_id', null)  // Ensure they're NOT college students
+            .not('student_id', 'is', null);  // Exclude students without student_id
+          // Filter out null user_ids
+          return schoolStudents?.map(s => s.user_id).filter(id => id != null) || [];
         } else if (assignedClassIds && assignedClassIds.length > 0) {
           // Regular educators can only see students in their assigned classes
           const { data: schoolStudents } = await supabase
@@ -136,20 +142,73 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
             .select('user_id')
             .eq('school_id', schoolId)
             .in('school_class_id', assignedClassIds)
-            .eq('is_deleted', false);
-          return schoolStudents?.map(s => s.user_id) || [];
+            .eq('is_deleted', false)
+            .is('college_id', null)  // Ensure they're NOT college students
+            .not('student_id', 'is', null);  // Exclude students without student_id
+          // Filter out null user_ids
+          return schoolStudents?.map(s => s.user_id).filter(id => id != null) || [];
         } else {
           // Educators with no class assignments should see no students
           return [];
         }
       } else if (educatorType === 'college' && collegeId) {
-        // For college educators, filter by college
-        const { data: collegeStudents } = await supabase
+        // For college faculty, get program sections they're assigned to teach
+        // Note: Using same filtering as Dashboard - program_id + semester + section
+        
+        // Get program sections where this faculty is assigned (using auth user_id)
+        const { data: programSections } = await supabase
+          .from('program_sections')
+          .select('program_id, semester, section')
+          .eq('faculty_id', (user as any)?.id)
+          .eq('status', 'active');
+
+        console.log('📚 Program sections found for faculty:', programSections?.length || 0);
+
+        if (!programSections || programSections.length === 0) {
+          console.log('No program sections assigned to this faculty');
+          return [];
+        }
+
+        console.log('📋 Program sections:', programSections);
+
+        // Get students using EXACT same filtering as Dashboard
+        // Build OR conditions for each program section (program_id + semester + section)
+        let studentsQuery = supabase
           .from('students')
-          .select('user_id')
+          .select('user_id, name, student_id, college_id, school_id, program_id, semester, section')
           .eq('college_id', collegeId)
-          .eq('is_deleted', false);
-        return collegeStudents?.map(s => s.user_id) || [];
+          .eq('is_deleted', false)
+          .is('school_id', null)  // Ensure they're NOT school students
+          .not('student_id', 'is', null);  // Exclude students without student_id
+
+        // Build complex OR condition: (program_id=X AND semester=Y AND section=Z) OR ...
+        const orConditions = programSections.map(section => 
+          `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
+        ).join(',');
+
+        console.log('🔍 Applying exact filtering conditions:', orConditions);
+
+        // Use the or() method to combine all conditions
+        studentsQuery = studentsQuery.or(orConditions);
+
+        const { data: collegeStudents } = await studentsQuery;
+
+        console.log('👥 Students found in program sections:', collegeStudents?.length || 0);
+        
+        // Log student names and verify they're college students
+        if (collegeStudents && collegeStudents.length > 0) {
+          console.log('📝 Student names in faculty sections:');
+          collegeStudents.forEach((student, index) => {
+            const type = student.school_id ? '⚠️ SCHOOL' : '✅ COLLEGE';
+            const hasStudentId = student.student_id ? '✅' : '❌ NO STUDENT_ID';
+            console.log(`  ${index + 1}. ${student.name || 'Unknown'} (${type}) ${hasStudentId} (Program: ${student.program_id}, Sem: ${student.semester}, Sec: ${student.section})`);
+          });
+        }
+
+        // Filter out null user_ids, school students, and students without student_id
+        return collegeStudents
+          ?.filter(s => s.user_id != null && !s.school_id && s.student_id != null)
+          .map(s => s.user_id) || [];
       }
       
       return [];
@@ -159,13 +218,99 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
     }
   };
 
+  // Helper function to get filtered student RECORD IDs (for attendance queries)
+  const getFilteredStudentRecordIds = async (): Promise<string[]> => {
+    if (!schoolId && !collegeId) return [];
+    
+    try {
+      if (educatorType === 'school' && schoolId) {
+        // For school educators, check role and class assignments
+        if (educatorRole === 'admin' || educatorRole === 'school_admin') {
+          const { data: schoolStudents } = await supabase
+            .from('students')
+            .select('id')
+            .eq('school_id', schoolId)
+            .eq('is_deleted', false)
+            .is('college_id', null)
+            .not('student_id', 'is', null);
+          return schoolStudents?.map(s => s.id).filter(id => id != null) || [];
+        } else if (assignedClassIds && assignedClassIds.length > 0) {
+          const { data: schoolStudents } = await supabase
+            .from('students')
+            .select('id')
+            .eq('school_id', schoolId)
+            .in('school_class_id', assignedClassIds)
+            .eq('is_deleted', false)
+            .is('college_id', null)
+            .not('student_id', 'is', null);
+          return schoolStudents?.map(s => s.id).filter(id => id != null) || [];
+        } else {
+          return [];
+        }
+      } else if (educatorType === 'college' && collegeId) {
+        // Get program sections
+        const { data: programSections } = await supabase
+          .from('program_sections')
+          .select('program_id, semester, section')
+          .eq('faculty_id', (user as any)?.id)
+          .eq('status', 'active');
+
+        if (!programSections || programSections.length === 0) {
+          return [];
+        }
+
+        // Get student record IDs
+        let studentsQuery = supabase
+          .from('students')
+          .select('id')
+          .eq('college_id', collegeId)
+          .eq('is_deleted', false)
+          .is('school_id', null)
+          .not('student_id', 'is', null);
+
+        const orConditions = programSections.map(section => 
+          `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
+        ).join(',');
+
+        studentsQuery = studentsQuery.or(orConditions);
+        const { data: collegeStudents } = await studentsQuery;
+
+        return collegeStudents?.map(s => s.id).filter(id => id != null) || [];
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error getting filtered student record IDs:', error);
+      return [];
+    }
+  };
+
   // Fetch KPI Data
   const fetchKPIData = async () => {
     try {
+      console.log('📊 [Analytics KPI] Starting KPI data fetch with options:', {
+        educatorType,
+        schoolId,
+        collegeId,
+        educatorRole,
+        assignedClassIds,
+        userId: (user as any)?.id
+      });
+
       // Get filtered student IDs based on educator type and assignments
       const studentIds = await getFilteredStudentIds();
       
+      console.log('📊 [Analytics KPI] Filtered student IDs:', {
+        count: studentIds.length,
+        studentIds: studentIds,
+        educatorType,
+        schoolId,
+        collegeId,
+        assignedClassIds
+      });
+      
       if (studentIds.length === 0) {
+        console.log('⚠️ [Active Students] No students found for this educator');
         setKpiData({
           activeStudents: 0,
           totalVerifiedActivities: 0,
@@ -176,8 +321,6 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         });
         return;
       }
-
-      const activeStudents = studentIds.length;
 
       // Helper to build queries with student filtering
       const buildCountQuery = (table: string) => {
@@ -201,6 +344,9 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         { count: pendingCerts },
         { count: pendingTrainings },
         { data: allSkills },
+        { data: projectStudents },
+        { data: certStudents },
+        { data: trainingStudents },
       ] = await Promise.all([
         buildCountQuery('projects')
           .eq('approval_status', 'approved'),
@@ -222,7 +368,62 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           .eq('approval_status', 'pending'),
         buildDataQuery('skills', 'student_id')
           .eq('enabled', true),
+        buildDataQuery('projects', 'student_id'),
+        buildDataQuery('certificates', 'student_id'),
+        buildDataQuery('trainings', 'student_id'),
       ]);
+
+      // Calculate active students: students who have at least one activity (project, certificate, training, or skill)
+      const activeStudentSet = new Set<string>();
+      
+      console.log('📊 [Active Students] Activity data fetched:', {
+        skills: allSkills?.length || 0,
+        projects: projectStudents?.length || 0,
+        certificates: certStudents?.length || 0,
+        trainings: trainingStudents?.length || 0
+      });
+      
+      // Add students with skills
+      (allSkills as Array<{ student_id: string }> | null)?.forEach(skill => {
+        if (skill.student_id) activeStudentSet.add(skill.student_id);
+      });
+      
+      // Add students with projects
+      (projectStudents as Array<{ student_id: string }> | null)?.forEach(project => {
+        if (project.student_id) activeStudentSet.add(project.student_id);
+      });
+      
+      // Add students with certificates
+      (certStudents as Array<{ student_id: string }> | null)?.forEach(cert => {
+        if (cert.student_id) activeStudentSet.add(cert.student_id);
+      });
+      
+      // Add students with trainings
+      (trainingStudents as Array<{ student_id: string }> | null)?.forEach(training => {
+        if (training.student_id) activeStudentSet.add(training.student_id);
+      });
+
+      const activeStudents = activeStudentSet.size;
+      
+      console.log('✅ [Active Students] Final count:', {
+        activeStudents: activeStudents,
+        uniqueStudentIds: Array.from(activeStudentSet)
+      });
+
+      // Fetch and log active student names
+      if (activeStudents > 0) {
+        const { data: activeStudentDetails } = await supabase
+          .from('students')
+          .select('user_id, name, student_id')
+          .in('user_id', Array.from(activeStudentSet));
+
+        if (activeStudentDetails && activeStudentDetails.length > 0) {
+          console.log('👥 Active student names (students with activities):');
+          activeStudentDetails.forEach((student, index) => {
+            console.log(`  ${index + 1}. ${student.name || 'Unknown'} (ID: ${student.student_id || student.user_id})`);
+          });
+        }
+      }
 
       // Calculate totals to match Activities page logic
       const totalApproved = (approvedProjects || 0) + (approvedCerts || 0) + (approvedTrainings || 0);
@@ -231,16 +432,113 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       const totalPending = (pendingProjects || 0) + (pendingCerts || 0) + (pendingTrainings || 0);
       const avgSkills = activeStudents ? (allSkills?.length || 0) / activeStudents : 0;
 
-      setKpiData({
+      // Calculate real attendance rate from database (filtered by school/college and educator's students)
+      let attendanceRate = 0;
+      let engagementRate = 0;
+
+      console.log('📊 [Analytics KPI] Fetching attendance data:', {
+        educatorType,
+        schoolId,
+        collegeId,
+        studentIdsCount: studentIds.length
+      });
+
+      if (educatorType === 'school' && studentIds.length > 0 && schoolId) {
+        // Get student record IDs for attendance query
+        const studentRecordIds = await getFilteredStudentRecordIds();
+        
+        // Query attendance_records for school - filtered by school_id and student record IDs
+        const { data: attendanceRecords, error: attendanceError } = await supabase
+          .from('attendance_records')
+          .select('status, student_id')
+          .eq('school_id', schoolId)
+          .in('student_id', studentRecordIds);
+
+        console.log('📊 [Analytics KPI] School attendance query result:', {
+          recordsCount: attendanceRecords?.length || 0,
+          error: attendanceError,
+          sampleRecords: attendanceRecords?.slice(0, 3),
+          query: {
+            table: 'attendance_records',
+            school_id: schoolId,
+            student_record_ids_count: studentRecordIds.length
+          }
+        });
+
+        if (attendanceRecords && attendanceRecords.length > 0) {
+          const presentCount = attendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length;
+          attendanceRate = Math.round((presentCount / attendanceRecords.length) * 100);
+          console.log('📊 [Analytics KPI] School attendance calculated:', {
+            totalRecords: attendanceRecords.length,
+            presentCount,
+            attendanceRate
+          });
+        }
+      } else if (educatorType === 'college' && studentIds.length > 0 && collegeId) {
+        // Get student record IDs for attendance query
+        const studentRecordIds = await getFilteredStudentRecordIds();
+        
+        console.log('📊 [Analytics KPI] Using student record IDs for college attendance:', {
+          studentRecordIds: studentRecordIds.slice(0, 5),
+          totalCount: studentRecordIds.length
+        });
+
+        // Query college_attendance_records for college - filtered by college_id and student record IDs
+        const { data: collegeAttendanceRecords, error: attendanceError } = await supabase
+          .from('college_attendance_records')
+          .select('status, student_id, date, college_id')
+          .eq('college_id', collegeId)
+          .in('student_id', studentRecordIds);
+
+        console.log('📊 [Analytics KPI] College attendance query result:', {
+          recordsCount: collegeAttendanceRecords?.length || 0,
+          error: attendanceError,
+          sampleRecords: collegeAttendanceRecords?.slice(0, 3),
+          query: {
+            table: 'college_attendance_records',
+            college_id: collegeId,
+            student_record_ids: studentRecordIds.slice(0, 5),
+            student_record_ids_count: studentRecordIds.length
+          }
+        });
+
+        if (collegeAttendanceRecords && collegeAttendanceRecords.length > 0) {
+          const presentCount = collegeAttendanceRecords.filter(r => r.status === 'present' || r.status === 'late').length;
+          attendanceRate = Math.round((presentCount / collegeAttendanceRecords.length) * 100);
+          console.log('📊 [Analytics KPI] College attendance calculated:', {
+            totalRecords: collegeAttendanceRecords.length,
+            presentCount,
+            attendanceRate
+          });
+        } else {
+          console.log('⚠️ [Analytics KPI] No college attendance records found');
+        }
+      }
+
+      // Calculate engagement rate based on activity participation
+      if (activeStudents > 0) {
+        const totalActivities = totalVerified + totalPending;
+        engagementRate = Math.min(100, Math.round((totalActivities / activeStudents) * 10));
+      }
+
+      // COMMENTED OUT: Old static/dummy data
+      // attendanceRate: Math.floor(Math.random() * 20) + 75,
+      // engagementRate: Math.floor(Math.random() * 20) + 65,
+
+      const finalKpiData = {
         activeStudents: activeStudents || 0,
         totalVerifiedActivities: totalVerified,
         pendingVerifications: totalPending,
         avgSkillsPerStudent: Math.round(avgSkills * 10) / 10,
-        attendanceRate: Math.floor(Math.random() * 20) + 75,
-        engagementRate: Math.floor(Math.random() * 20) + 65,
-      });
+        attendanceRate: attendanceRate,
+        engagementRate: engagementRate,
+      };
+
+      console.log('✅ [Analytics KPI] Final KPI data calculated:', finalKpiData);
+
+      setKpiData(finalKpiData);
     } catch (error) {
-      console.error('Error fetching KPI data:', error);
+      console.error('❌ [Analytics KPI] Error fetching KPI data:', error);
     }
   };
 
@@ -260,7 +558,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       ] = await Promise.all([
         supabase
           .from('skills')
-          .select('type, approval_status, level, student_id, enabled')
+          .select('type, verified, level, student_id, enabled')
           .eq('enabled', true)
           .in('student_id', studentIds),
       ]);
@@ -287,7 +585,8 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
           };
         }
         categoryMap[category].total++;
-        if (skill.approval_status === 'approved') {
+        // For skills, use the 'verified' boolean field, not approval_status
+        if (skill.verified === true) {
           categoryMap[category].verified++;
         }
         categoryMap[category].totalLevels += skill.level || 0;
@@ -317,6 +616,24 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Attendance Data (Last 6 Months)
   const fetchAttendanceData = async () => {
     try {
+      console.log('📊 [Analytics Attendance] Starting attendance data fetch');
+
+      // Get filtered student IDs based on educator type and assignments
+      const studentIds = await getFilteredStudentIds();
+      
+      console.log('📊 [Analytics Attendance] Student IDs:', {
+        count: studentIds.length,
+        educatorType,
+        schoolId,
+        collegeId
+      });
+
+      if (studentIds.length === 0) {
+        console.log('⚠️ [Analytics Attendance] No students found, returning empty data');
+        setAttendanceData([]);
+        return;
+      }
+
       const months = [];
       const now = new Date();
       
@@ -324,20 +641,104 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
         months.push({
           label: date.toLocaleDateString('en-US', { month: 'short' }),
+          startDate: new Date(date.getFullYear(), date.getMonth(), 1).toISOString(),
+          endDate: new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString(),
         });
       }
       
-      // For demo purposes, generating dummy attendance data
-      const dummyData = months.map(month => ({
-        month: month.label,
-        present: Math.floor(Math.random() * 30) + 20,
-        absent: Math.floor(Math.random() * 10) + 2,
-        late: Math.floor(Math.random() * 8) + 1,
-      }));
+      console.log('📊 [Analytics Attendance] Fetching data for months:', months.map(m => m.label));
 
-      setAttendanceData(dummyData);
+      // Query real attendance data from database (filtered by school/college and educator's students)
+      const attendancePromises = months.map(async month => {
+        let attendanceRecords: Array<{ status: string; date: string; student_id: string }> = [];
+
+        if (educatorType === 'school' && schoolId) {
+          // Get student record IDs
+          const studentRecordIds = await getFilteredStudentRecordIds();
+          
+          // Query attendance_records for school - filtered by school_id and student record IDs
+          const { data, error } = await supabase
+            .from('attendance_records')
+            .select('status, date, student_id')
+            .eq('school_id', schoolId)
+            .in('student_id', studentRecordIds)
+            .gte('date', month.startDate)
+            .lte('date', month.endDate);
+          
+          console.log(`📊 [Analytics Attendance] School data for ${month.label}:`, {
+            recordsCount: data?.length || 0,
+            error,
+            query: {
+              table: 'attendance_records',
+              school_id: schoolId,
+              dateRange: `${month.startDate} to ${month.endDate}`
+            }
+          });
+
+          attendanceRecords = data || [];
+        } else if (educatorType === 'college' && collegeId) {
+          // Get student record IDs
+          const studentRecordIds = await getFilteredStudentRecordIds();
+          
+          // Query college_attendance_records for college - filtered by college_id and student record IDs
+          const { data, error } = await supabase
+            .from('college_attendance_records')
+            .select('status, date, student_id')
+            .eq('college_id', collegeId)
+            .in('student_id', studentRecordIds)
+            .gte('date', month.startDate)
+            .lte('date', month.endDate);
+          
+          console.log(`📊 [Analytics Attendance] College data for ${month.label}:`, {
+            recordsCount: data?.length || 0,
+            error,
+            sampleRecords: data?.slice(0, 2),
+            query: {
+              table: 'college_attendance_records',
+              college_id: collegeId,
+              student_record_ids_count: studentRecordIds.length,
+              dateRange: `${month.startDate} to ${month.endDate}`
+            }
+          });
+
+          attendanceRecords = data || [];
+        }
+
+        const present = attendanceRecords.filter(r => r.status === 'present').length;
+        const absent = attendanceRecords.filter(r => r.status === 'absent').length;
+        const late = attendanceRecords.filter(r => r.status === 'late').length;
+
+        console.log(`📊 [Analytics Attendance] ${month.label} summary:`, {
+          present,
+          absent,
+          late,
+          total: attendanceRecords.length
+        });
+
+        return {
+          month: month.label,
+          present,
+          absent,
+          late,
+        };
+      });
+
+      const data = await Promise.all(attendancePromises);
+      console.log('✅ [Analytics Attendance] Final attendance data:', data);
+      setAttendanceData(data);
+
+      // COMMENTED OUT: Old dummy/static data generation
+      // const dummyData = months.map(month => ({
+      //   month: month.label,
+      //   present: Math.floor(Math.random() * 30) + 20,
+      //   absent: Math.floor(Math.random() * 10) + 2,
+      //   late: Math.floor(Math.random() * 8) + 1,
+      // }));
+      // setAttendanceData(dummyData);
+
     } catch (error) {
-      console.error('Error fetching attendance data:', error);
+      console.error('❌ [Analytics Attendance] Error fetching attendance data:', error);
+      setAttendanceData([]);
     }
   };
 
@@ -406,31 +807,97 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   // Fetch Leaderboard Data
   const fetchLeaderboardData = async () => {
     try {
-      // Get filtered student IDs based on educator type and assignments
-      const studentIds = await getFilteredStudentIds();
+      // Get students directly using the same filtering as Dashboard (not via getFilteredStudentIds)
+      let studentsQuery;
       
-      if (studentIds.length === 0) {
+      if (educatorType === 'school' && schoolId) {
+        if (educatorRole === 'admin' || educatorRole === 'school_admin') {
+          studentsQuery = supabase
+            .from('students')
+            .select('id, user_id, name, student_id')
+            .eq('school_id', schoolId)
+            .eq('is_deleted', false)
+            .is('college_id', null)
+            .not('student_id', 'is', null);
+        } else if (assignedClassIds && assignedClassIds.length > 0) {
+          studentsQuery = supabase
+            .from('students')
+            .select('id, user_id, name, student_id')
+            .eq('school_id', schoolId)
+            .in('school_class_id', assignedClassIds)
+            .eq('is_deleted', false)
+            .is('college_id', null)
+            .not('student_id', 'is', null);
+        } else {
+          setLeaderboard([]);
+          return;
+        }
+      } else if (educatorType === 'college' && collegeId) {
+        // Get program sections for college faculty
+        const { data: programSections } = await supabase
+          .from('program_sections')
+          .select('program_id, semester, section')
+          .eq('faculty_id', (user as any)?.id)
+          .eq('status', 'active');
+
+        if (!programSections || programSections.length === 0) {
+          console.log('No program sections assigned to this faculty');
+          setLeaderboard([]);
+          return;
+        }
+
+        // Build OR conditions for program sections
+        const orConditions = programSections.map(section => 
+          `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
+        ).join(',');
+
+        studentsQuery = supabase
+          .from('students')
+          .select('id, user_id, name, student_id')
+          .eq('college_id', collegeId)
+          .eq('is_deleted', false)
+          .is('school_id', null)
+          .not('student_id', 'is', null)
+          .or(orConditions);
+      } else {
         setLeaderboard([]);
         return;
       }
 
-      // Get student details for the filtered IDs
-      const { data: students } = await supabase
-        .from('students')
-        .select('id, user_id, name, student_id')
-        .in('user_id', studentIds)
-        .eq('is_deleted', false);
+      const { data: students, error: studentsError } = await studentsQuery;
+
+      console.log('📊 [Leaderboard] Students query result:', {
+        returned: students?.length || 0,
+        error: studentsError,
+        sampleStudents: students?.slice(0, 3).map(s => ({ name: s.name, user_id: s.user_id, student_id: s.student_id }))
+      });
 
       if (!students || students.length === 0) {
+        console.log('⚠️ [Leaderboard] No students returned from query, returning empty leaderboard');
         setLeaderboard([]);
         return;
       }
 
-      const studentUserIds = students.map(s => s.user_id);
+      console.log('📊 [Leaderboard] All students in leaderboard:');
+      students.forEach((s, idx) => {
+        console.log(`  ${idx + 1}. ${s.name || 'Unknown'} (user_id: ${s.user_id || 'NONE'}, student_id: ${s.student_id})`);
+      });
+      
+      // Use user_id for students that have it, otherwise use id
+      // This ensures we include ALL students from educator's sections
+      const studentUserIds = students.map(s => s.user_id || s.id).filter(id => id != null);
+      
+      console.log('📊 [Leaderboard] Student IDs for activity queries:', {
+        total: students.length,
+        withUserId: students.filter(s => s.user_id).length,
+        withoutUserId: students.filter(s => !s.user_id).length,
+        studentUserIds: studentUserIds
+      });
       
       const buildQuery = (table: string, select: string) => {
         return supabase.from(table).select(select)
-          .in('student_id', studentUserIds);
+          .in('student_id', studentUserIds)
+          .eq('enabled', true);  // Only count enabled activities
       };
 
       const [
@@ -439,7 +906,9 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         certificatesResult,
         trainingsResult,
       ] = await Promise.all([
-        buildQuery('skills', 'student_id, approval_status, enabled').eq('enabled', true),
+        supabase.from('skills').select('student_id, verified, enabled')
+          .in('student_id', studentUserIds)
+          .eq('enabled', true),
         buildQuery('projects', 'student_id, approval_status'),
         buildQuery('certificates', 'student_id, approval_status'),
         buildQuery('trainings', 'student_id, approval_status'),
@@ -450,18 +919,45 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
       const certificates = certificatesResult.data || [];
       const trainings = trainingsResult.data || [];
 
+      // Log all unique approval statuses to debug
+      const projectStatuses = new Set(projects.map((p: any) => p.approval_status));
+      const certStatuses = new Set(certificates.map((c: any) => c.approval_status));
+      const trainingStatuses = new Set(trainings.map((t: any) => t.approval_status));
+
+      console.log('📊 [Leaderboard] Activities fetched:', {
+        skills: skills.length,
+        projects: projects.length,
+        certificates: certificates.length,
+        trainings: trainings.length,
+        projectStatuses: Array.from(projectStatuses),
+        certStatuses: Array.from(certStatuses),
+        trainingStatuses: Array.from(trainingStatuses),
+        projectsWithSentToAdmin: projects.filter((p: any) => p.approval_status === 'sent_to_admin').length,
+        projectsWithApproved: projects.filter((p: any) => p.approval_status === 'approved').length,
+        projectsWithPending: projects.filter((p: any) => p.approval_status === 'pending').length,
+        certificatesWithSentToAdmin: certificates.filter((c: any) => c.approval_status === 'sent_to_admin').length,
+        certificatesWithApproved: certificates.filter((c: any) => c.approval_status === 'approved').length,
+        certificatesWithPending: certificates.filter((c: any) => c.approval_status === 'pending').length,
+        trainingsWithSentToAdmin: trainings.filter((t: any) => t.approval_status === 'sent_to_admin').length,
+        trainingsWithApproved: trainings.filter((t: any) => t.approval_status === 'approved').length,
+        trainingsWithPending: trainings.filter((t: any) => t.approval_status === 'pending').length,
+      });
+
+      // Initialize activity map for ALL students (using user_id or id as key)
       const activityMap: Record<string, { total: number; verified: number }> = {};
 
       students.forEach(s => {
-        activityMap[s.user_id] = { total: 0, verified: 0 };
+        const key = s.user_id || s.id;
+        activityMap[key] = { total: 0, verified: 0 };
       });
 
       // Process activities (excluding skills to match Activities page)
       [...projects, ...certificates, ...trainings].forEach((activity: any) => {
         if (activity && activityMap[activity.student_id]) {
           activityMap[activity.student_id].total++;
-          // Count both 'approved' and 'sent_to_admin' as verified to match Activities page
-          if (activity.approval_status === 'approved' || activity.approval_status === 'sent_to_admin') {
+          // Count both 'approved' and 'sent_to_admin' as verified
+          // (approved = admin approved, sent_to_admin = educator verified)
+          if (activity.approval_status === 'sent_to_admin' || activity.approval_status === 'approved') {
             activityMap[activity.student_id].verified++;
           }
         }
@@ -469,7 +965,8 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
 
       const leaderboardData = students
         .map(student => {
-          const { total, verified } = activityMap[student.user_id] || { total: 0, verified: 0 };
+          const key = student.user_id || student.id;
+          const { total, verified } = activityMap[key] || { total: 0, verified: 0 };
           return {
             studentId: student.student_id || student.id,
             studentName: student.name || 'Unknown Student',
@@ -485,6 +982,18 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
             : b.totalActivities - a.totalActivities
         )
         .map((entry, index) => ({ ...entry, rank: index + 1 }));
+
+      console.log('✅ [Leaderboard] Final leaderboard:', {
+        totalStudents: leaderboardData.length,
+        studentsWithActivities: leaderboardData.filter(s => s.totalActivities > 0).length,
+        studentsWithoutActivities: leaderboardData.filter(s => s.totalActivities === 0).length,
+        topStudents: leaderboardData.slice(0, 5).map(s => ({ name: s.studentName, activities: s.totalActivities }))
+      });
+
+      console.log('📋 [Leaderboard] Complete leaderboard entries:');
+      leaderboardData.forEach(entry => {
+        console.log(`  ${entry.rank}. ${entry.studentName} - Activities: ${entry.totalActivities}, Verified: ${entry.verifiedActivities}`);
+      });
 
       setLeaderboard(leaderboardData);
     } catch (error) {
