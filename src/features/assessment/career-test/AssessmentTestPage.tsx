@@ -89,6 +89,9 @@ import {
 } from '../../assessment/data/questions';
 import { supabase } from '@/lib/supabaseClient';
 
+// Tour context to detect when tour is running
+import { useTour } from '../../../components/Tours/TourProvider';
+
 /**
  * Get icon image path for a section based on section ID
  */
@@ -259,6 +262,9 @@ const buildSectionsWithQuestions = (
 const AssessmentTestPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Tour hook - check if tour is running to pause timers
+  const { isTourRunning } = useTour();
 
   // Environment flags
   const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
@@ -705,7 +711,8 @@ const AssessmentTestPage: React.FC = () => {
 
   // Timer effects
   useEffect(() => {
-    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting) {
+    // Pause timer when tour is running
+    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting || isTourRunning) {
       return;
     }
 
@@ -750,7 +757,7 @@ const AssessmentTestPage: React.FC = () => {
     if (currentSection.isTimed && flow.timeRemaining === 0) {
       handleNextQuestion();
     }
-  }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections]);
+  }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections, isTourRunning]);
 
   // Aptitude and Knowledge per-question timer
   useEffect(() => {
@@ -759,7 +766,8 @@ const AssessmentTestPage: React.FC = () => {
     const hasIndividualTimer = (currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge;
 
     if (!hasIndividualTimer) return;
-    if (flow.showSectionIntro || flow.showSectionComplete) return;
+    // Pause timer when tour is running
+    if (flow.showSectionIntro || flow.showSectionComplete || isTourRunning) return;
 
     if (flow.aptitudeQuestionTimer > 0) {
       const interval = setInterval(() => {
@@ -770,13 +778,14 @@ const AssessmentTestPage: React.FC = () => {
       // Auto-advance when individual question time runs out
       handleNextQuestion();
     }
-  }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
+  }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections, isTourRunning]);
 
   // Adaptive aptitude per-question timer (90 seconds)
   useEffect(() => {
     const currentSection = sections[flow.currentSectionIndex];
     if (!currentSection?.isAdaptive) return;
-    if (flow.showSectionIntro || flow.showSectionComplete) return;
+    // Pause timer when tour is running
+    if (flow.showSectionIntro || flow.showSectionComplete || isTourRunning) return;
     if (adaptiveAptitude.loading || adaptiveAptitude.submitting) return;
     if (!adaptiveAptitude.currentQuestion) return;
 
