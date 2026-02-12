@@ -91,7 +91,7 @@ const PrintViewHigherSecondary = ({
   }
 
   // Extract data from normalized results
-  const { riasec, aptitude, bigFive, workValues, employability, careerFit, skillGap, roadmap } = normalizedResults;
+  const { riasec, aptitude, bigFive, workValues, employability, careerFit, skillGap, roadmap, finalNote, profileSnapshot, overallSummary } = normalizedResults;
 
   // Safe student info with defaults
   const safeStudentInfo = getSafeStudentInfo(studentInfo);
@@ -166,6 +166,21 @@ const PrintViewHigherSecondary = ({
           {courseRecommendations && courseRecommendations.length > 0 && (
             <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
           )}
+
+          {/* Overall Summary */}
+          {overallSummary && (
+            <OverallSummarySection overallSummary={overallSummary} />
+          )}
+
+          {/* Profile Snapshot */}
+          {profileSnapshot && (
+            <ProfileSnapshotSection profileSnapshot={profileSnapshot} />
+          )}
+
+          {/* Final Note */}
+          {finalNote && (
+            <FinalNoteSection finalNote={finalNote} />
+          )}
           
           <DetailedAssessmentBreakdown 
             results={normalizedResults} 
@@ -210,6 +225,21 @@ const PrintViewHigherSecondary = ({
         )}
         {courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
+        )}
+
+        {/* Overall Summary */}
+        {overallSummary && (
+          <OverallSummarySection overallSummary={overallSummary} />
+        )}
+
+        {/* Profile Snapshot */}
+        {profileSnapshot && (
+          <ProfileSnapshotSection profileSnapshot={profileSnapshot} />
+        )}
+
+        {/* Final Note */}
+        {finalNote && (
+          <FinalNoteSection finalNote={finalNote} />
         )}
         
         <ReportDisclaimer />
@@ -400,9 +430,11 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
         marginBottom: '6px',
         textAlign: 'left'
       }}>
-        <strong>Your Top Interests:</strong> {topInterestsText}. {hasStrongInterests 
-          ? 'These interests indicate your natural preferences and can guide your career exploration.' 
-          : 'The student has not expressed any strong interests in any of the RIASEC categories, indicating a need for exploration in various fields.'}
+        <strong>Your Top Interests:</strong> {topInterestsText}. {riasec.interpretation 
+          ? safeRender(riasec.interpretation)
+          : (hasStrongInterests 
+            ? 'These interests indicate your natural preferences and can guide your career exploration.' 
+            : 'The student has not expressed any strong interests in any of the RIASEC categories, indicating a need for exploration in various fields.')}
       </div>
     </div>
   );
@@ -419,6 +451,43 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
   return (
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>2. Cognitive Abilities</h2>
+
+      {/* Overall Score */}
+      {aptitude.overallScore > 0 && (
+        <div style={{ ...printStyles.card, marginBottom: '8px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1' }}>Overall Cognitive Score</div>
+            <span style={{ ...printStyles.badge, background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', fontSize: '10px', fontWeight: 'bold' }}>
+              {Math.round(aptitude.overallScore)}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Top Strengths */}
+      {aptitude.topStrengths && aptitude.topStrengths.length > 0 && (
+        <div style={{ marginBottom: '8px' }}>
+          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#166534' }}>Top Strengths: </span>
+          {aptitude.topStrengths.map((strength, idx) => (
+            <span key={idx} style={{ ...printStyles.badge, background: '#dcfce7', color: '#166534', border: '1px solid #86efac', marginRight: '4px' }}>
+              {safeRender(strength)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Areas to Improve */}
+      {aptitude.areasToImprove && aptitude.areasToImprove.length > 0 && aptitude.areasToImprove.some(a => a.length > 20) && (
+        <div style={{ marginBottom: '8px' }}>
+          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#854d0e' }}>Areas to Improve: </span>
+          {aptitude.areasToImprove.map((area, idx) => (
+            <span key={idx} style={{ ...printStyles.badge, background: '#fef9c3', color: '#854d0e', border: '1px solid #fde047', marginRight: '4px' }}>
+              {safeRender(area)}
+            </span>
+          ))}
+        </div>
+      )}
+
       <h3 style={printStyles.subTitle}>Aptitude Test Results</h3>
 
       <div style={printStyles.twoCol}>
@@ -462,6 +531,15 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
           );
         })}
       </div>
+
+      {/* Career Implications */}
+      {aptitude.careerImplications && aptitude.careerImplications.length > 60 && (
+        <div style={{ ...printStyles.card, marginTop: '8px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
+            <strong>Career Implications:</strong> {safeRender(aptitude.careerImplications)}
+          </p>
+        </div>
+      )}
     </>
   );
 };
@@ -490,7 +568,7 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
       <div style={printStyles.twoCol}>
         {traits.map((trait) => {
           const score = bigFive[trait] || 0;
-          const percentage = Math.round(score);
+          const percentage = Math.round((score / 5) * 100);
           const scoreStyle = getScoreStyle(percentage);
 
           return (
@@ -584,14 +662,28 @@ const WorkValuesSection = ({ workValues }) => {
                 </span>
               </div>
               {score > 0 && (
-                <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                <div style={{ fontSize: '9px', color: '#6b7280', marginBottom: item.description ? '4px' : '0' }}>
                   Score: {score}
                 </div>
+              )}
+              {item.description && (
+                <p style={{ fontSize: '8px', color: '#4b5563', margin: '0', lineHeight: '1.4', fontStyle: 'italic' }}>
+                  {safeRender(item.description)}
+                </p>
               )}
             </div>
           );
         })}
       </div>
+
+      {/* Work Values Interpretation */}
+      {workValues.interpretation && (
+        <div style={{ ...printStyles.card, marginTop: '8px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#0369a1' }}>
+            {safeRender(workValues.interpretation)}
+          </p>
+        </div>
+      )}
     </>
   );
 };
@@ -1021,8 +1113,11 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
           <div style={{ marginBottom: '8px' }}>
             {allGaps.map((gap, idx) => {
               const skill = typeof gap === 'string' ? gap : gap.skill;
-              const whyNeeded = gap.whyNeeded;
+              const whyNeeded = gap.whyNeeded || gap.reason;
               const howToBuild = gap.howToBuild;
+              const timeline = gap.timeline;
+              const currentLevel = gap.currentLevel;
+              const targetLevel = gap.targetLevel;
               const priority = gap.priority || (idx < priorityA.length ? 'High' : 'Medium');
               
               const priorityColors = {
@@ -1058,9 +1153,28 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
                     </p>
                   )}
                   {howToBuild && (
-                    <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+                    <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 4px 0', lineHeight: '1.4' }}>
                       <strong>How to build:</strong> {safeRender(howToBuild)}
                     </p>
+                  )}
+                  {(timeline || currentLevel || targetLevel) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                      {timeline && (
+                        <span style={{ ...printStyles.badge, background: '#e0f2fe', color: '#0369a1', border: '1px solid #7dd3fc', fontSize: '8px' }}>
+                          ⏱ {safeRender(timeline)}
+                        </span>
+                      )}
+                      {currentLevel && (
+                        <span style={{ ...printStyles.badge, background: '#fef9c3', color: '#854d0e', border: '1px solid #fde047', fontSize: '8px' }}>
+                          Current: {safeRender(currentLevel)}
+                        </span>
+                      )}
+                      {targetLevel && (
+                        <span style={{ ...printStyles.badge, background: '#dcfce7', color: '#166534', border: '1px solid #86efac', fontSize: '8px' }}>
+                          Target: {safeRender(targetLevel)}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -1491,17 +1605,23 @@ const StreamRecommendationSection = ({ streamRecommendation }) => {
           Recommended Stream: {streamRecommendation.recommendedStream}
         </div>
 
-        {streamRecommendation.matchScore && (
-          <div style={{ 
-            fontSize: '11px', 
-            color: '#059669',
-            fontWeight: '600',
-            textAlign: 'center',
-            marginBottom: '10px'
-          }}>
-            Match Score: {Math.round(streamRecommendation.matchScore)}%
-          </div>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>
+          {streamRecommendation.matchScore && (
+            <span style={{ fontSize: '11px', color: '#059669', fontWeight: '600' }}>
+              Match Score: {Math.round(streamRecommendation.matchScore)}%
+            </span>
+          )}
+          {streamRecommendation.confidence && (
+            <span style={{
+              ...printStyles.badge,
+              background: streamRecommendation.confidence === 'High' ? '#dcfce7' : '#fef9c3',
+              color: streamRecommendation.confidence === 'High' ? '#166534' : '#854d0e',
+              border: `1px solid ${streamRecommendation.confidence === 'High' ? '#86efac' : '#fde047'}`
+            }}>
+              Confidence: {streamRecommendation.confidence}
+            </span>
+          )}
+        </div>
 
         {streamRecommendation.reasoning && (
           <div style={{ 
@@ -1528,6 +1648,46 @@ const StreamRecommendationSection = ({ streamRecommendation }) => {
           </div>
         )}
       </div>
+
+      {/* Evidence Breakdown */}
+      {streamRecommendation.evidence && Object.keys(streamRecommendation.evidence).length > 0 && (
+        <div style={{ ...printStyles.card, marginBottom: '8px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
+            Evidence Supporting This Recommendation
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+            {Object.entries(streamRecommendation.evidence).map(([key, value]) => (
+              <div key={key} style={{ fontSize: '8px', color: '#475569', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '4px 6px' }}>
+                <strong style={{ color: '#1e293b' }}>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {safeRender(value)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Preparation Advice */}
+      {streamRecommendation.preparationAdvice && (
+        <div style={{ ...printStyles.card, marginBottom: '8px', background: '#f0fdf4', border: '1px solid #86efac' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#166534', marginBottom: '4px' }}>📝 Preparation Advice</div>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#475569' }}>
+            {safeRender(streamRecommendation.preparationAdvice)}
+          </p>
+        </div>
+      )}
+
+      {/* Why Not Other Streams */}
+      {streamRecommendation.whyNotOtherStreams && Object.keys(streamRecommendation.whyNotOtherStreams).length > 0 && (
+        <div style={{ marginBottom: '8px' }}>
+          <h3 style={printStyles.subTitle}>Why Not Other Streams?</h3>
+          {Object.entries(streamRecommendation.whyNotOtherStreams).map(([key, value]) => (
+            <div key={key} style={{ ...printStyles.card, marginBottom: '4px', background: '#fef2f2', border: '1px solid #fecaca' }}>
+              <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#991b1b' }}>
+                {safeRender(value)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Alternative Streams */}
       {streamRecommendation.alternatives && streamRecommendation.alternatives.length > 0 && (
@@ -1683,12 +1843,26 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
 const EmployabilitySkillsSection = ({ employability }) => {
   if (!employability) return null;
 
+  const getReadinessInfo = (value) => {
+    if (typeof value === 'number') {
+      if (value >= 70) return { label: `${Math.round(value)}% — High`, bg: '#dcfce7', color: '#166534', border: '#86efac' };
+      if (value >= 40) return { label: `${Math.round(value)}% — Medium`, bg: '#fef9c3', color: '#854d0e', border: '#fde047' };
+      return { label: `${Math.round(value)}% — Developing`, bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' };
+    }
+    if (value === 'High') return { label: 'High', bg: '#dcfce7', color: '#166534', border: '#86efac' };
+    if (value === 'Medium') return { label: 'Medium', bg: '#fef9c3', color: '#854d0e', border: '#fde047' };
+    return { label: String(value), bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' };
+  };
+
+  const readiness = employability.overallReadiness != null ? getReadinessInfo(employability.overallReadiness) : null;
+  const devAreas = employability.developmentAreas || employability.improvementAreas || [];
+
   return (
     <>
       <h3 style={{ ...printStyles.subTitle, marginTop: '8px' }}>Employability Skills Assessment</h3>
 
       {/* Overall Readiness */}
-      {employability.overallReadiness && (
+      {readiness && (
         <div style={{ ...printStyles.card, marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
@@ -1696,16 +1870,18 @@ const EmployabilitySkillsSection = ({ employability }) => {
             </div>
             <span style={{
               ...printStyles.badge,
-              background: employability.overallReadiness === 'High' ? '#dcfce7' : 
-                         employability.overallReadiness === 'Medium' ? '#fef9c3' : '#fee2e2',
-              color: employability.overallReadiness === 'High' ? '#166534' : 
-                     employability.overallReadiness === 'Medium' ? '#854d0e' : '#991b1b',
-              border: employability.overallReadiness === 'High' ? '1px solid #86efac' : 
-                     employability.overallReadiness === 'Medium' ? '1px solid #fde047' : '1px solid #fca5a5'
+              background: readiness.bg,
+              color: readiness.color,
+              border: `1px solid ${readiness.border}`
             }}>
-              {employability.overallReadiness}
+              {readiness.label}
             </span>
           </div>
+          {employability.careerReadiness && (
+            <p style={{ margin: '6px 0 0 0', fontSize: '9px', color: '#475569', lineHeight: '1.5' }}>
+              {safeRender(employability.careerReadiness)}
+            </p>
+          )}
         </div>
       )}
 
@@ -1774,14 +1950,14 @@ const EmployabilitySkillsSection = ({ employability }) => {
         </div>
       )}
 
-      {/* Improvement Areas */}
-      {employability.improvementAreas && employability.improvementAreas.length > 0 && (
+      {/* Development Areas */}
+      {devAreas.length > 0 && (
         <div style={{ marginTop: '10px' }}>
           <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '6px' }}>
             Areas to Develop:
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {employability.improvementAreas.map((area, idx) => (
+            {devAreas.map((area, idx) => (
               <span
                 key={idx}
                 style={{
@@ -1798,6 +1974,173 @@ const EmployabilitySkillsSection = ({ employability }) => {
         </div>
       )}
     </>
+  );
+};
+
+/**
+ * OverallSummarySection Component
+ * Renders the overall assessment summary
+ */
+const OverallSummarySection = ({ overallSummary }) => {
+  if (!overallSummary) return null;
+
+  return (
+    <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+      <h2 style={printStyles.sectionTitle}>Overall Assessment Summary</h2>
+      <div style={{ ...printStyles.card, background: '#f0f9ff', border: '2px solid #3b82f6' }}>
+        <p style={{ margin: '0', fontSize: '10px', lineHeight: '1.6', color: '#1e293b' }}>
+          {safeRender(overallSummary)}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * ProfileSnapshotSection Component
+ * Renders the student's profile snapshot with key patterns, strengths, and development areas
+ */
+const ProfileSnapshotSection = ({ profileSnapshot }) => {
+  if (!profileSnapshot) return null;
+
+  const patternIcons = {
+    strength: '💪',
+    enjoyment: '😊',
+    readiness: '✅',
+    workStyle: '🔧',
+    motivation: '🎯',
+    preparation: '📋'
+  };
+
+  const patternLabels = {
+    strength: 'Your Strengths',
+    enjoyment: 'What You Enjoy',
+    readiness: 'Career Readiness',
+    workStyle: 'Work Style',
+    motivation: 'What Drives You',
+    preparation: 'Academic Preparation'
+  };
+
+  return (
+    <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+      <h2 style={printStyles.sectionTitle}>Your Profile Snapshot</h2>
+
+      {/* Stream Fit Summary */}
+      {profileSnapshot.streamFitSummary && (
+        <div style={{ ...printStyles.card, marginBottom: '8px', background: '#eff6ff', border: '2px solid #3b82f6' }}>
+          <p style={{ margin: '0', fontSize: '10px', lineHeight: '1.5', color: '#1e40af', fontWeight: '600' }}>
+            {safeRender(profileSnapshot.streamFitSummary)}
+          </p>
+        </div>
+      )}
+
+      {/* Key Patterns */}
+      {profileSnapshot.keyPatterns && Object.keys(profileSnapshot.keyPatterns).length > 0 && (
+        <div style={{ marginBottom: '8px' }}>
+          <h3 style={printStyles.subTitle}>Key Insights About You</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            {Object.entries(profileSnapshot.keyPatterns).map(([key, value]) => (
+              <div key={key} style={{ ...printStyles.card, pageBreakInside: 'avoid' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                  <span style={{ fontSize: '12px', flexShrink: 0 }}>{patternIcons[key] || '📌'}</span>
+                  <div>
+                    <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#1e293b', marginBottom: '2px' }}>
+                      {patternLabels[key] || key.charAt(0).toUpperCase() + key.slice(1)}
+                    </div>
+                    <p style={{ margin: '0', fontSize: '8px', lineHeight: '1.4', color: '#4b5563' }}>
+                      {safeRender(value)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Unique Strengths & Development Areas */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+        {profileSnapshot.uniqueStrengths && profileSnapshot.uniqueStrengths.length > 0 && (
+          <div style={{ ...printStyles.card, background: '#f0fdf4', border: '1px solid #86efac' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#166534', marginBottom: '6px' }}>🌟 Unique Strengths</div>
+            {profileSnapshot.uniqueStrengths.map((strength, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
+                <span style={{ fontSize: '8px', color: '#059669' }}>✓</span>
+                <span style={{ fontSize: '9px', color: '#374151' }}>{safeRender(strength)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {profileSnapshot.developmentAreas && profileSnapshot.developmentAreas.length > 0 && (
+          <div style={{ ...printStyles.card, background: '#fefce8', border: '1px solid #fde68a' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#854d0e', marginBottom: '6px' }}>📈 Areas to Develop</div>
+            {profileSnapshot.developmentAreas.map((area, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '3px' }}>
+                <span style={{ fontSize: '8px', color: '#d97706' }}>→</span>
+                <span style={{ fontSize: '9px', color: '#374151' }}>{safeRender(area)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * FinalNoteSection Component
+ * Renders the encouraging final note with advantage, focus area, and encouragement
+ */
+const FinalNoteSection = ({ finalNote }) => {
+  if (!finalNote) return null;
+
+  return (
+    <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+      <h2 style={printStyles.sectionTitle}>A Message for You</h2>
+      <div style={{
+        ...printStyles.card,
+        background: '#eff6ff',
+        border: '2px solid #3b82f6',
+        padding: '12px',
+        pageBreakInside: 'avoid'
+      }}>
+        {finalNote.advantage && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e40af', marginBottom: '4px' }}>
+              💪 Your Competitive Advantage
+            </div>
+            <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e293b' }}>
+              {safeRender(finalNote.advantage)}
+            </p>
+          </div>
+        )}
+
+        {finalNote.focusArea && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#059669', marginBottom: '4px' }}>
+              🎯 Key Focus Area
+            </div>
+            <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e293b' }}>
+              {safeRender(finalNote.focusArea)}
+            </p>
+          </div>
+        )}
+
+        {finalNote.encouragement && (
+          <div style={{
+            background: '#fefce8',
+            border: '1px solid #fde68a',
+            borderRadius: '6px',
+            padding: '8px',
+            textAlign: 'center'
+          }}>
+            <p style={{ margin: '0', fontSize: '10px', lineHeight: '1.5', color: '#854d0e', fontWeight: '600', fontStyle: 'italic' }}>
+              ✨ {safeRender(finalNote.encouragement)}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
