@@ -30,7 +30,6 @@ const TimetableScheduler: React.FC<TimetableSchedulerProps> = ({
       // Initialize with one empty slot
       setSlots([{
         assessment_id: assessmentId,
-        course_id: '',
         exam_date: '',
         start_time: '09:00',
         end_time: '12:00',
@@ -44,7 +43,6 @@ const TimetableScheduler: React.FC<TimetableSchedulerProps> = ({
   const addSlot = () => {
     setSlots([...slots, {
       assessment_id: assessmentId,
-      course_id: '',
       exam_date: '',
       start_time: '09:00',
       end_time: '12:00',
@@ -104,7 +102,6 @@ const TimetableScheduler: React.FC<TimetableSchedulerProps> = ({
     const generatedSlots: Partial<ExamSlot>[] = [
       {
         assessment_id: assessmentId,
-        course_id: '',
         exam_date: baseDate.toISOString().split('T')[0],
         start_time: '09:00',
         end_time: '12:00',
@@ -114,7 +111,6 @@ const TimetableScheduler: React.FC<TimetableSchedulerProps> = ({
       },
       {
         assessment_id: assessmentId,
-        course_id: '',
         exam_date: baseDate.toISOString().split('T')[0],
         start_time: '09:00',
         end_time: '12:00',
