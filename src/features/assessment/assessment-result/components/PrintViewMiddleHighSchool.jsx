@@ -121,7 +121,11 @@ const PrintViewMiddleHighSchool = ({
     profileSnapshot = normalizedResults.profileSnapshot || normalizedResults.gemini_results?.profileSnapshot,
     characterStrengths = normalizedResults.characterStrengths || normalizedResults.gemini_results?.characterStrengths,
     learningStyle = normalizedResults.learningStyle || normalizedResults.gemini_results?.learningStyle,
-    adaptiveAptitudeResults = normalizedResults.adaptiveAptitudeResults || normalizedResults.gemini_results?.adaptiveAptitudeResults
+    adaptiveAptitudeResults = normalizedResults.adaptiveAptitudeResults || normalizedResults.gemini_results?.adaptiveAptitudeResults,
+    overallSummary = normalizedResults.overallSummary || normalizedResults.gemini_results?.overallSummary,
+    bigFive = normalizedResults.bigFive || normalizedResults.gemini_results?.bigFive,
+    workValues = normalizedResults.workValues || normalizedResults.gemini_results?.workValues,
+    employability = normalizedResults.employability || normalizedResults.gemini_results?.employability
   } = normalizedResults;
 
   console.log('🔍 PDF PrintViewMiddleHighSchool - Extracted data:', {
@@ -174,8 +178,18 @@ const PrintViewMiddleHighSchool = ({
                 <StreamRecommendationSection streamRecommendation={streamRecommendation} />
               )}
 
+              {/* Overall Summary */}
+              {overallSummary && (
+                <OverallSummarySection overallSummary={overallSummary} />
+              )}
+
               {/* Section 1: Student Profile Snapshot */}
               <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
+
+              {/* Profile Snapshot Details */}
+              {profileSnapshot && (profileSnapshot.interestHighlights || profileSnapshot.personalityInsights) && (
+                <ProfileSnapshotDetailsSection profileSnapshot={profileSnapshot} />
+              )}
 
               {/* Interest Explorer Section */}
               <InterestExplorerSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
@@ -188,12 +202,27 @@ const PrintViewMiddleHighSchool = ({
                 />
               )}
 
+              {/* Big Five Personality Section */}
+              {bigFive && (
+                <BigFiveSection bigFive={bigFive} />
+              )}
+
               {/* Learning & Work Style Section - Use learningStyle from middle school data */}
               {(learningStyle || profileSnapshot?.keyPatterns) && (
                 <LearningWorkStyleSection 
                   learningStyle={learningStyle}
                   keyPatterns={profileSnapshot?.keyPatterns} 
                 />
+              )}
+
+              {/* Work Values Section */}
+              {workValues?.topThree && workValues.topThree.length > 0 && (
+                <WorkValuesSection workValues={workValues} />
+              )}
+
+              {/* Employability Section */}
+              {employability && (employability.strengthAreas || employability.improvementAreas) && (
+                <EmployabilitySection employability={employability} />
               )}
 
               {/* Adaptive Aptitude Section - Show adaptive test results */}
@@ -228,6 +257,11 @@ const PrintViewMiddleHighSchool = ({
               {/* Projects to Try - ONLY for high school (grades 9-10), NOT for middle school */}
               {!isMiddleSchool && roadmap?.projects && roadmap.projects.length > 0 && (
                 <ProjectsSection projects={roadmap.projects} />
+              )}
+
+              {/* Internship Opportunities - ONLY for high school (grades 9-10), NOT for middle school */}
+              {!isMiddleSchool && roadmap?.internship && (
+                <InternshipSection internship={roadmap.internship} />
               )}
 
               {/* Activities & Exposure - ONLY for high school (grades 9-10), NOT for middle school */}
@@ -412,6 +446,50 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
           </div>
         </div>
       </div>
+
+      {/* RIASEC Percentage Breakdown */}
+      {riasec.percentages && Object.keys(riasec.percentages).length > 0 && (
+        <div style={{ marginTop: '10px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '6px' }}>
+            Interest Profile Breakdown
+          </div>
+          {Object.entries(riasec.percentages).map(([code, pct]) => (
+            <div key={code} style={{ display: 'flex', alignItems: 'center', marginBottom: '3px' }}>
+              <div style={{ width: '110px', fontSize: '8px', color: '#4b5563' }}>
+                {safeRiasecNames[code]} ({code})
+              </div>
+              <div style={{ flex: 1, height: '10px', background: '#e5e7eb', borderRadius: '5px', overflow: 'hidden' }}>
+                <div style={{ 
+                  width: `${pct}%`, 
+                  height: '100%', 
+                  background: riasec.topThree?.includes(code) ? '#4f46e5' : '#94a3b8', 
+                  borderRadius: '5px',
+                  transition: 'width 0.3s'
+                }} />
+              </div>
+              <div style={{ width: '35px', textAlign: 'right', fontSize: '9px', fontWeight: '600', color: '#1e293b' }}>
+                {pct}%
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Interpretation Text */}
+      {riasec.interpretation && (
+        <div style={{
+          fontSize: '9px',
+          color: '#374151',
+          lineHeight: '1.5',
+          marginTop: '8px',
+          padding: '8px',
+          background: '#f0f9ff',
+          borderRadius: '6px',
+          border: '1px solid #bae6fd'
+        }}>
+          {riasec.interpretation}
+        </div>
+      )}
 
       {/* Bottom Summary Text */}
       <div style={{ 
@@ -812,21 +890,61 @@ const CareerExplorationSection = ({ careerFit }) => {
  * Requirements: 1.1 - Skills to develop for middle/high school
  */
 const SkillsToDevelopSection = ({ skillGap }) => {
+  const priorityAItems = skillGap.priorityA || [];
+  const priorityBItems = skillGap.priorityB || [];
+  const legacyGaps = skillGap.gaps || [];
+  const hasSkills = priorityAItems.length > 0 || priorityBItems.length > 0 || legacyGaps.length > 0;
+
   return (
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>3. Skills to Develop</h2>
 
-      {skillGap.gaps && skillGap.gaps.length > 0 && (
+      {/* Recommended Track */}
+      {skillGap.recommendedTrack && (
+        <div style={{
+          ...printStyles.summaryBox,
+          marginBottom: '8px'
+        }}>
+          <strong style={{ fontSize: '10px', color: '#0369a1' }}>Recommended Track: </strong>
+          <span style={{ fontSize: '10px', color: '#1e293b' }}>{skillGap.recommendedTrack}</span>
+        </div>
+      )}
+
+      {/* Current Strengths */}
+      {skillGap.currentStrengths && skillGap.currentStrengths.length > 0 && (
+        <div style={{ marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+            Current Strengths:
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {skillGap.currentStrengths.map((strength, idx) => (
+              <span key={idx} style={{
+                ...printStyles.badge,
+                background: '#dcfce7',
+                color: '#166534',
+                border: '1px solid #86efac'
+              }}>
+                {safeRender(strength)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Priority A + B skills table */}
+      {hasSkills && (
         <div>
           <table style={printStyles.table}>
             <thead>
               <tr>
                 <th style={printStyles.th}>Skill</th>
-                <th style={{ ...printStyles.th, width: '100px' }}>Priority</th>
+                <th style={printStyles.th}>Details</th>
+                <th style={{ ...printStyles.th, width: '80px' }}>Priority</th>
               </tr>
             </thead>
             <tbody>
-              {skillGap.gaps.map((gap, idx) => {
+              {/* Legacy gaps format */}
+              {legacyGaps.map((gap, idx) => {
                 const priority = gap.priority || 'Medium';
                 const priorityColors = {
                   High: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
@@ -834,23 +952,55 @@ const SkillsToDevelopSection = ({ skillGap }) => {
                   Low: { bg: '#dcfce7', color: '#166534', border: '#86efac' }
                 };
                 const colors = priorityColors[priority] || priorityColors.Medium;
-
                 return (
-                  <tr key={idx}>
+                  <tr key={`gap-${idx}`}>
                     <td style={printStyles.td}>{safeRender(gap.skill || gap)}</td>
                     <td style={printStyles.td}>
-                      <span style={{
-                        ...printStyles.badge,
-                        background: colors.bg,
-                        color: colors.color,
-                        border: `1px solid ${colors.border}`
-                      }}>
+                      <span style={{ fontSize: '8px', color: '#6b7280' }}>{gap.reason || ''}</span>
+                    </td>
+                    <td style={printStyles.td}>
+                      <span style={{ ...printStyles.badge, background: colors.bg, color: colors.color, border: `1px solid ${colors.border}` }}>
                         {priority}
                       </span>
                     </td>
                   </tr>
                 );
               })}
+              {/* Priority A items (High) */}
+              {priorityAItems.map((item, idx) => (
+                <tr key={`a-${idx}`}>
+                  <td style={{ ...printStyles.td, fontWeight: '600' }}>
+                    {safeRender(item.skill)}
+                    {item.currentLevel && item.targetLevel && (
+                      <div style={{ fontSize: '8px', color: '#6b7280', fontWeight: 'normal', marginTop: '2px' }}>
+                        {item.currentLevel} → {item.targetLevel}
+                      </div>
+                    )}
+                  </td>
+                  <td style={printStyles.td}>
+                    <span style={{ fontSize: '8px', color: '#4b5563', lineHeight: '1.4' }}>{item.reason || ''}</span>
+                  </td>
+                  <td style={printStyles.td}>
+                    <span style={{ ...printStyles.badge, background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5' }}>
+                      High
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {/* Priority B items (Medium) */}
+              {priorityBItems.map((item, idx) => (
+                <tr key={`b-${idx}`}>
+                  <td style={{ ...printStyles.td, fontWeight: '600' }}>{safeRender(item.skill)}</td>
+                  <td style={printStyles.td}>
+                    <span style={{ fontSize: '8px', color: '#4b5563', lineHeight: '1.4' }}>{item.reason || ''}</span>
+                  </td>
+                  <td style={printStyles.td}>
+                    <span style={{ ...printStyles.badge, background: '#fef9c3', color: '#854d0e', border: '1px solid #fde047' }}>
+                      Medium
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -865,25 +1015,85 @@ const SkillsToDevelopSection = ({ skillGap }) => {
  * Requirements: 1.1 - 12-month journey for middle/high school
  */
 const TwelveMonthJourneySection = ({ twelveMonthJourney }) => {
-  // Handle various data formats - could be array, object with items, or null
-  const journeyItems = Array.isArray(twelveMonthJourney) 
-    ? twelveMonthJourney 
-    : twelveMonthJourney?.items || twelveMonthJourney?.months || [];
-  
-  if (!journeyItems || journeyItems.length === 0) return null;
+  // Handle various data formats:
+  // 1. Array of items (legacy)
+  // 2. Object with items/months array (legacy)
+  // 3. Object with phase1-phase4 (middle/high school format)
+  let journeyPhases = [];
+
+  if (Array.isArray(twelveMonthJourney)) {
+    journeyPhases = twelveMonthJourney.map((item, idx) => ({
+      title: item.title || item.month || `Month ${idx + 1}`,
+      months: item.months || '',
+      goals: item.goals || [],
+      activities: item.activities || (item.activity ? [item.activity] : []),
+      outcome: item.outcome || ''
+    }));
+  } else if (twelveMonthJourney?.items || twelveMonthJourney?.months) {
+    const items = twelveMonthJourney.items || twelveMonthJourney.months || [];
+    journeyPhases = items.map((item, idx) => ({
+      title: item.title || item.month || `Month ${idx + 1}`,
+      months: item.months || '',
+      goals: item.goals || [],
+      activities: item.activities || (item.activity ? [item.activity] : []),
+      outcome: item.outcome || ''
+    }));
+  } else {
+    // Extract phase1-phase4 (or more) from the object
+    const phaseKeys = Object.keys(twelveMonthJourney || {})
+      .filter(k => k.startsWith('phase'))
+      .sort();
+    journeyPhases = phaseKeys.map(key => twelveMonthJourney[key]).filter(Boolean);
+  }
+
+  if (journeyPhases.length === 0) return null;
+
+  const phaseColors = ['#4f46e5', '#059669', '#d97706', '#dc2626'];
 
   return (
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>4. Your 12-Month Journey</h2>
       <div style={{ marginTop: '10px' }}>
-        {journeyItems.map((item, idx) => (
-          <div key={idx} style={{ ...printStyles.card, marginBottom: '8px' }}>
-            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#4f46e5', marginBottom: '3px' }}>
-              {safeRender(item.month || `Month ${idx + 1}`)}
+        {journeyPhases.map((phase, idx) => (
+          <div key={idx} style={{ ...printStyles.card, marginBottom: '8px', borderLeft: `3px solid ${phaseColors[idx % phaseColors.length]}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '11px', color: phaseColors[idx % phaseColors.length] }}>
+                {safeRender(phase.title)}
+              </div>
+              {phase.months && (
+                <span style={{ fontSize: '8px', color: '#6b7280', fontStyle: 'italic' }}>
+                  {phase.months}
+                </span>
+              )}
             </div>
-            <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-              {safeRender(item.activity || item)}
-            </p>
+
+            {phase.goals && phase.goals.length > 0 && (
+              <div style={{ marginBottom: '4px' }}>
+                <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '2px' }}>Goals:</div>
+                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                  {phase.goals.map((goal, gIdx) => (
+                    <li key={gIdx}>{safeRender(goal)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {phase.activities && phase.activities.length > 0 && (
+              <div style={{ marginBottom: '4px' }}>
+                <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '2px' }}>Activities:</div>
+                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                  {phase.activities.map((activity, aIdx) => (
+                    <li key={aIdx}>{safeRender(activity)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {phase.outcome && (
+              <div style={{ fontSize: '9px', color: '#059669', fontStyle: 'italic', marginTop: '2px' }}>
+                <strong>Outcome:</strong> {phase.outcome}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -902,20 +1112,48 @@ const ProjectsSection = ({ projects }) => {
   return (
     <>
       <h3 style={{ ...printStyles.subTitle, marginTop: '12px' }}>Projects to Try</h3>
-      <div style={printStyles.twoCol}>
-        {projects.map((project, idx) => (
-          <div key={idx} style={printStyles.card}>
-            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
-              {safeRender(project.name || project)}
+      {projects.map((project, idx) => (
+        <div key={idx} style={{ ...printStyles.card, marginBottom: '6px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
+              {safeRender(project.title || project.name || project)}
             </div>
-            {project.description && (
-              <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-                {project.description}
-              </p>
-            )}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {project.difficulty && (
+                <span style={{ ...printStyles.badge, background: '#e0e7ff', color: '#4338ca', border: '1px solid #a5b4fc' }}>
+                  {project.difficulty}
+                </span>
+              )}
+              {project.timeline && (
+                <span style={{ ...printStyles.badge, background: '#fef3c7', color: '#92400e', border: '1px solid #fde047' }}>
+                  {project.timeline}
+                </span>
+              )}
+            </div>
           </div>
-        ))}
-      </div>
+          {project.description && (
+            <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 4px 0', lineHeight: '1.4' }}>
+              {project.description}
+            </p>
+          )}
+          {project.skills && project.skills.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+              {project.skills.map((skill, sIdx) => (
+                <span key={sIdx} style={{ ...printStyles.badge, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', fontSize: '7px' }}>
+                  {safeRender(skill)}
+                </span>
+              ))}
+            </div>
+          )}
+          {project.steps && project.steps.length > 0 && (
+            <ol style={{ margin: '4px 0 0 0', paddingLeft: '18px', fontSize: '8px', color: '#6b7280', lineHeight: '1.5' }}>
+              {project.steps.map((step, sIdx) => (
+                <li key={sIdx}>{safeRender(step)}</li>
+              ))}
+            </ol>
+          )}
+        </div>
+      ))}
     </>
   );
 };
@@ -1192,6 +1430,289 @@ const StreamRecommendationSection = ({ streamRecommendation }) => {
         </div>
       )}
     </>
+  );
+};
+
+/**
+ * OverallSummarySection Component
+ * Renders overall assessment summary in a prominent highlight box
+ */
+const OverallSummarySection = ({ overallSummary }) => {
+  if (!overallSummary) return null;
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      borderRadius: '8px',
+      padding: '12px 16px',
+      marginBottom: '10px',
+      color: 'white'
+    }}>
+      <h3 style={{ fontSize: '12px', fontWeight: 'bold', margin: '0 0 6px 0', color: '#ffffff' }}>
+        Overall Assessment Summary
+      </h3>
+      <p style={{ fontSize: '10px', lineHeight: '1.6', margin: '0', color: '#f0f0ff' }}>
+        {overallSummary}
+      </p>
+    </div>
+  );
+};
+
+/**
+ * ProfileSnapshotDetailsSection Component
+ * Renders interest highlights and personality insights from profileSnapshot
+ */
+const ProfileSnapshotDetailsSection = ({ profileSnapshot }) => {
+  if (!profileSnapshot) return null;
+  const { interestHighlights, personalityInsights } = profileSnapshot;
+  if (!interestHighlights?.length && !personalityInsights?.length) return null;
+
+  return (
+    <div style={{ marginBottom: '8px' }}>
+      {interestHighlights && interestHighlights.length > 0 && (
+        <div style={{ marginBottom: '6px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>
+            Key Interest Areas:
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {interestHighlights.map((highlight, idx) => (
+              <span key={idx} style={{
+                ...printStyles.badge,
+                background: '#e0e7ff',
+                color: '#4338ca',
+                border: '1px solid #a5b4fc'
+              }}>
+                {safeRender(highlight)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {personalityInsights && personalityInsights.length > 0 && (
+        <div style={{
+          fontSize: '9px',
+          color: '#374151',
+          lineHeight: '1.5',
+          padding: '6px 8px',
+          background: '#faf5ff',
+          borderRadius: '6px',
+          border: '1px solid #e9d5ff'
+        }}>
+          {personalityInsights.map((insight, idx) => (
+            <p key={idx} style={{ margin: idx === 0 ? '0' : '4px 0 0 0' }}>{safeRender(insight)}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * BigFiveSection Component
+ * Renders Big Five personality trait scores with progress bars
+ */
+const BigFiveSection = ({ bigFive }) => {
+  if (!bigFive) return null;
+
+  const traits = [
+    { code: 'O', name: 'Openness', desc: 'Curiosity and willingness to try new things' },
+    { code: 'C', name: 'Conscientiousness', desc: 'Organization and self-discipline' },
+    { code: 'E', name: 'Extraversion', desc: 'Energy from social interactions' },
+    { code: 'A', name: 'Agreeableness', desc: 'Cooperation and kindness' },
+    { code: 'N', name: 'Neuroticism', desc: 'Emotional sensitivity' }
+  ];
+
+  const getBarColor = (score) => {
+    if (score >= 4) return '#22c55e';
+    if (score >= 3) return '#eab308';
+    return '#ef4444';
+  };
+
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <h3 style={printStyles.subTitle}>Personality Profile (Big Five)</h3>
+      <div style={printStyles.card}>
+        {traits.map((trait) => {
+          const score = bigFive[trait.code] || 0;
+          const percentage = Math.round((score / 5) * 100);
+          return (
+            <div key={trait.code} style={{ marginBottom: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b' }}>
+                  {trait.name}
+                  <span style={{ fontWeight: 'normal', color: '#6b7280', marginLeft: '4px', fontSize: '8px' }}>
+                    {trait.desc}
+                  </span>
+                </div>
+                <div style={{ fontSize: '9px', fontWeight: '600', color: '#1e293b' }}>
+                  {score.toFixed(1)}/5
+                </div>
+              </div>
+              <div style={printStyles.progressBar}>
+                <div style={{ width: `${percentage}%`, height: '100%', background: getBarColor(score), borderRadius: '3px' }} />
+              </div>
+            </div>
+          );
+        })}
+        {bigFive.workStyleSummary && (
+          <div style={{
+            fontSize: '9px',
+            color: '#374151',
+            lineHeight: '1.5',
+            marginTop: '8px',
+            padding: '6px 8px',
+            background: '#f8fafc',
+            borderRadius: '4px',
+            border: '1px solid #e2e8f0'
+          }}>
+            <strong>Work Style:</strong> {bigFive.workStyleSummary}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * WorkValuesSection Component
+ * Renders top work values with scores
+ */
+const WorkValuesSection = ({ workValues }) => {
+  if (!workValues?.topThree || workValues.topThree.length === 0) return null;
+
+  const medalEmojis = ['🥇', '🥈', '🥉'];
+
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <h3 style={printStyles.subTitle}>Work Values</h3>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        {workValues.topThree.map((item, idx) => (
+          <div key={idx} style={{
+            ...printStyles.card,
+            flex: 1,
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '16px', marginBottom: '4px' }}>{medalEmojis[idx] || '⭐'}</div>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '2px' }}>
+              {safeRender(item.value)}
+            </div>
+            <div style={{ fontSize: '9px', color: '#059669', fontWeight: '600' }}>
+              {item.score}/5
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * EmployabilitySection Component
+ * Renders employability strength and improvement areas
+ */
+const EmployabilitySection = ({ employability }) => {
+  if (!employability) return null;
+  const { strengthAreas, improvementAreas } = employability;
+  if (!strengthAreas?.length && !improvementAreas?.length) return null;
+
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <h3 style={printStyles.subTitle}>Employability Skills</h3>
+      <div style={printStyles.twoCol}>
+        {strengthAreas && strengthAreas.length > 0 && (
+          <div style={printStyles.card}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#166534', marginBottom: '6px' }}>
+              ✅ Strengths
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {strengthAreas.map((area, idx) => (
+                <span key={idx} style={{
+                  ...printStyles.badge,
+                  background: '#dcfce7',
+                  color: '#166534',
+                  border: '1px solid #86efac'
+                }}>
+                  {safeRender(area)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {improvementAreas && improvementAreas.length > 0 && (
+          <div style={printStyles.card}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#92400e', marginBottom: '6px' }}>
+              🎯 Areas to Improve
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {improvementAreas.map((area, idx) => (
+                <span key={idx} style={{
+                  ...printStyles.badge,
+                  background: '#fef9c3',
+                  color: '#854d0e',
+                  border: '1px solid #fde047'
+                }}>
+                  {safeRender(area)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * InternshipSection Component
+ * Renders internship opportunities and preparation tips
+ */
+const InternshipSection = ({ internship }) => {
+  if (!internship) return null;
+
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <h3 style={printStyles.subTitle}>Internship & Experience Opportunities</h3>
+
+      {internship.types && internship.types.length > 0 && (
+        <div style={{ ...printStyles.card, marginBottom: '6px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
+            Opportunities to Explore:
+          </div>
+          <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+            {internship.types.map((type, idx) => (
+              <li key={idx}>{safeRender(type)}</li>
+            ))}
+          </ul>
+          {internship.timing && (
+            <div style={{ fontSize: '9px', color: '#0369a1', marginTop: '4px', fontStyle: 'italic' }}>
+              Best Timing: {internship.timing}
+            </div>
+          )}
+        </div>
+      )}
+
+      {internship.preparation && (
+        <div style={printStyles.twoCol}>
+          {internship.preparation.resume && (
+            <div style={printStyles.card}>
+              <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#1e293b', marginBottom: '2px' }}>📄 Resume</div>
+              <p style={{ fontSize: '8px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>{internship.preparation.resume}</p>
+            </div>
+          )}
+          {internship.preparation.interview && (
+            <div style={printStyles.card}>
+              <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#1e293b', marginBottom: '2px' }}>🎤 Interview</div>
+              <p style={{ fontSize: '8px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>{internship.preparation.interview}</p>
+            </div>
+          )}
+          {internship.preparation.portfolio && (
+            <div style={printStyles.card}>
+              <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#1e293b', marginBottom: '2px' }}>📂 Portfolio</div>
+              <p style={{ fontSize: '8px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>{internship.preparation.portfolio}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

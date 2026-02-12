@@ -486,17 +486,26 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
       }
 
-      // Save to database WITHOUT AI analysis
-      // AI analysis will be generated on-demand when viewing result (same as Regenerate)
+      // ✅ CRITICAL FIX: Convert auth user_id to student record ID early
+      // The foreign key constraints on personal_assessment_attempts and personal_assessment_results
+      // expect students.id, not auth.users.id
+      let studentRecordId: string | null = null;
+      if (userId) {
+        studentRecordId = await getStudentRecordId(userId);
+        if (!studentRecordId) {
+          throw new Error('Student record not found. Please ensure your account is properly set up.');
+        }
+      }
+
       let attemptId = currentAttempt?.id;
 
-      if (!attemptId && userId) {
+      if (!attemptId && studentRecordId) {
 
         try {
           const { data: latestAttempt } = await supabase
             .from('personal_assessment_attempts')
             .select('id, stream_id, grade_level')
-            .eq('student_id', userId)
+            .eq('student_id', studentRecordId)
             .eq('status', 'in_progress')
             .order('created_at', { ascending: false })
             .limit(1)
@@ -534,7 +543,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       }
 
       // Save completion to database
-      if (attemptId && userId) {
+      if (attemptId && studentRecordId) {
         try {
           console.log('🚀 [UNIFIED LOADER] Starting AI analysis during submission...');
           console.log('🚀 [UNIFIED LOADER] This will show ONE loader for the entire process');
@@ -677,7 +686,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           
           const dbResults = await assessmentService.completeAttempt(
             attemptId,
-            userId,
+            studentRecordId,
             studentStream,
             gradeLevel || 'after12',
             geminiResults, // ← AI results included!
@@ -752,7 +761,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           }
         }
       } else {
-        console.log('❌ No attemptId or userId available - cannot save results');
+        console.log('❌ No attemptId or studentRecordId available - cannot save results');
         const errorMessage = 'Assessment data not found. Please ensure you started the assessment properly.';
         alert(errorMessage);
         setError(errorMessage);
