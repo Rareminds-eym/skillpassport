@@ -5,7 +5,6 @@ import {
     Edit3,
     Eye,
     MessageCircle,
-    MoreVertical,
     Trash2,
     User,
     X,
@@ -23,49 +22,6 @@ import {
 } from "../../services/educator/mentorNotes";
 // @ts-ignore
 import { useAuth } from "../../context/AuthContext";
-
-// Add animation styles
-const modalAnimationStyles = `
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  
-  @keyframes scaleIn {
-    from { 
-      opacity: 0;
-      transform: scale(0.9);
-    }
-    to { 
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-  
-  .animate-fadeIn {
-    animation: fadeIn 0.2s ease-out;
-  }
-  
-  .animate-scaleIn {
-    animation: scaleIn 0.3s ease-out;
-  }
-`;
-
-// Inject styles
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement("style");
-  styleSheet.textContent = modalAnimationStyles;
-  document.head.appendChild(styleSheet);
-}
-
-interface Student {
-  id: string;
-  name: string;
-  user_id: string;
-  grade?: string;
-  section?: string;
-  school_class_id?: string;
-}
 
 interface MentorNote {
   id: string;
@@ -171,18 +127,11 @@ const MentorNotesContent = () => {
       if (quickDropdownRef.current && !quickDropdownRef.current.contains(event.target as Node)) {
         setQuickDropdownOpen(false);
       }
-      // Close three-dot menu when clicking outside
-      if (openMenuId) {
-        const menuRef = menuRefs.current[openMenuId];
-        if (menuRef && !menuRef.contains(event.target as Node)) {
-          setOpenMenuId(null);
-        }
-      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [openMenuId]);
+  }, []);
 
   // filtered students for dropdown search (only show students with user_id)
   const filteredStudents = students.filter((s) =>
@@ -536,111 +485,64 @@ const MentorNotesContent = () => {
       <div className="max-w-7xl mx-auto mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-            <MessageCircle className="text-blue-600" size={22} />
+            <MessageCircle className="text-green-600" size={22} />
             Mentor Notes
           </h1>
           <p className="text-gray-600 mt-1">Track and record qualitative feedback for your students.</p>
         </div>
 
-        <button
-          onClick={() => setShowTaskModal(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
-        >
-          <Edit3 size={18} strokeWidth={2.5} />
-          Add New Note
-        </button>
-      </div>
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-gray-600 hidden sm:block">
+            Showing <strong>{Math.min((page - 1) * pageSize + 1, totalNotes || 0)}</strong> - <strong>{Math.min(page * pageSize, totalNotes || 0)}</strong> of <strong>{totalNotes}</strong>
+          </div>
 
-      {/* Add New Note Modal */}
-      {showTaskModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-xl">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Edit3 className="text-blue-600" size={22} />
-                Add New Note
-              </h2>
-              <button
-                onClick={() => {
-                  setShowTaskModal(false);
-                  setSelectedStudent("");
-                  setSelectedQuickNotes([]);
-                  setFeedback("");
-                  setActionPoints("");
-                  setOtherNote("");
-                  setIsOtherSelected(false);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X className="h-6 w-6 text-gray-400" />
-              </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className={`px-3 py-1 rounded-md border ${page === 1 ? "text-gray-300 border-gray-200" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`}
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }).map((_, i) => {
+                const p = i + 1;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-1 rounded-md border ${p === page ? "bg-blue-600 text-white border-blue-600" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`}
+                    aria-label={`Go to page ${p}`}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="p-6 space-y-6">
-              <div className="space-y-5">
-                {/* Student Dropdown (searchable) */}
-                <div className="relative" ref={dropdownRef}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Student *</label>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className={`px-3 py-1 rounded-md border ${page === totalPages ? "text-gray-300 border-gray-200" : "text-gray-700 border-gray-200 hover:bg-gray-50"}`}
+              aria-label="Next page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
 
-                  <div
-                    onClick={() => students.length > 0 && setDropdownOpen((v) => !v)}
-                    className={`w-full border border-gray-300 bg-white rounded-lg px-4 py-3 flex justify-between items-center transition-colors ${
-                      students.length > 0 
-                        ? 'cursor-pointer hover:border-gray-400' 
-                        : 'cursor-not-allowed bg-gray-50 text-gray-400'
-                    }`}
-                    role="button"
-                    tabIndex={students.length > 0 ? 0 : -1}
-                    onKeyDown={(e) => students.length > 0 && e.key === "Enter" && setDropdownOpen((v) => !v)}
-                  >
-                    <span className={students.length > 0 ? "text-gray-700" : "text-gray-400"}>
-                      {selectedStudent ? students.find((s) => s.id === selectedStudent)?.name : 
-                       students.length === 0 ? "No students available" : "Select Student"}
-                    </span>
-                    <svg className={`w-5 h-5 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-
-                  {dropdownOpen && students.length > 0 && (
-                    <div className="absolute z-30 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl">
-                      <input
-                        type="text"
-                        placeholder="Search student..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full border-b border-gray-200 rounded-t-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                      />
-                      <div className="max-h-56 overflow-y-auto p-2">
-                        {displayStudents.length > 0 ? (
-                          displayStudents.map((s) => (
-                            <div
-                              key={s.id}
-                              onClick={() => {
-                                setSelectedStudent(s.id);
-                                setDropdownOpen(false);
-                              }}
-                             className="px-3 py-2 rounded-md cursor-pointer hover:bg-green-50 text-gray-800 text-sm transition-colors"
-                            >
-                              {s.name}
-                            </div>
-                          ))
-                        ) : students.length === 0 ? (
-                          <div className="px-3 py-4 text-center">
-                            <p className="text-sm text-gray-500 mb-1">No students available</p>
-                            <p className="text-xs text-gray-400">
-                              {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
-                                ? 'You have not been assigned to any classes yet'
-                                : 'No students found in your assigned classes'}
-                            </p>
-                          </div>
-                        ) : (
-                           <p className="text-sm text-gray-500 px-3 py-2 text-center">No matching students</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+      {/* Add New Note */}
+      <div className="max-w-7xl mx-auto bg-white shadow-sm rounded-2xl p-8 mb-8 border border-gray-200">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-1">
+            <Edit3 className="text-blue-600" size={20} />
+            Add New Note
+          </h2>
+          <div className="text-sm text-gray-500 hidden sm:block">Quickly add feedback for a student</div>
+        </div>
 
         <div className="space-y-5">
           {/* Student Dropdown (searchable) */}
@@ -691,11 +593,23 @@ const MentorNotesContent = () => {
                       >
                         {s.name}
                       </div>
+                    ))
+                  ) : students.length === 0 ? (
+                    <div className="px-3 py-4 text-center">
+                      <p className="text-sm text-gray-500 mb-1">No students available</p>
+                      <p className="text-xs text-gray-400">
+                        {educatorType === 'school' && educatorRole !== 'admin' && assignedClassIds.length === 0
+                          ? 'You have not been assigned to any classes yet'
+                          : 'No students found in your assigned classes'}
+                      </p>
                     </div>
                   ) : (
                      <p className="text-sm text-gray-500 px-3 py-2 text-center">No eligible students found</p>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
 
           {/* Quick Add Notes */}
           <div className="relative" ref={quickDropdownRef}>
@@ -712,41 +626,25 @@ const MentorNotesContent = () => {
               </svg>
             </div>
 
-                {isOtherSelected && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Enter Custom Note</label>
-                    <input
-                      type="text"
-                      value={otherNote}
-                      onChange={handleOtherNoteChange}
-                      placeholder="Type custom note and it will be added as a chip"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    />
-                  </div>
-                )}
-
-                {/* Feedback */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Feedback</label>
-                  <textarea
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    rows={4}
-                    value={feedback}
-                    onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="Enter detailed feedback for the student..."
-                  />
-                </div>
-
-                {/* Action Points */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Action Points</label>
-                  <textarea
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    rows={3}
-                    value={actionPoints}
-                    onChange={(e) => setActionPoints(e.target.value)}
-                    placeholder="Enter specific action points or recommendations..."
-                  />
+            {quickDropdownOpen && (
+              <div className="absolute z-30 w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-xl p-3">
+                <div className="max-h-56 overflow-y-auto">
+                  {quickNoteOptions.map((note, idx) => {
+                    const checked = selectedQuickNotes.includes(note);
+                    return (
+                      <label
+                        key={idx}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer hover:bg-gray-50"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleQuickNote(note);
+                        }}
+                      >
+                        <input type="checkbox" checked={checked} readOnly className="cursor-pointer w-4 h-4 text-blue-600" />
+                        <span className="text-gray-800 text-sm">{note}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -840,91 +738,69 @@ const MentorNotesContent = () => {
           {paginatedNotes.map((note) => (
             <article
               key={note.id}
-              className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative hover:shadow-md transition"
+              className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative hover:shadow-md transition"
             >
-              <header className="flex justify-between items-start mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <header className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-md bg-blue-50 flex items-center justify-center">
                     <User size={16} className="text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-800">
+                    <h3 className="font-medium text-gray-800">
                       {Array.isArray(note.students) ? note.students[0]?.name : note.students?.name}
                     </h3>
+                    <div className="text-xs text-gray-400 flex items-center gap-2 mt-1">
+                      <Calendar size={14} />
+                      <span>{new Date(note.note_date).toLocaleDateString()}</span>
+                    </div>
                   </div>
                 </div>
-                
-                {/* Three-dot menu */}
-                <div className="relative" ref={(el) => (menuRefs.current[note.id] = el)}>
-                  <button
-                    onClick={() => setOpenMenuId(openMenuId === note.id ? null : note.id)}
-                    className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
-                    title="More options"
-                  >
-                    <MoreVertical size={16} className="text-gray-600" />
+                <div className="flex items-center gap-2">
+                  {/* compact icon buttons */}
+                  <button onClick={() => handleView(note)} title="View" className="p-2 rounded-md hover:bg-gray-50">
+                    <Eye size={16} className="text-gray-600" />
                   </button>
-                  
-                  {openMenuId === note.id && (
-                    <div className="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[140px] z-10 animate-scaleIn">
-                      <button
-                        onClick={() => {
-                          handleView(note);
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition-colors text-left"
-                      >
-                        <Eye size={14} className="text-gray-600" />
-                        <span className="text-xs text-gray-700 font-medium">View</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleEditOpen(note);
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 transition-colors text-left"
-                      >
-                        <Edit3 size={14} className="text-blue-600" />
-                        <span className="text-xs text-gray-700 font-medium">Edit</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleDelete(note.id);
-                          setOpenMenuId(null);
-                        }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-red-50 transition-colors text-left"
-                      >
-                        <Trash2 size={14} className="text-red-600" />
-                        <span className="text-xs text-red-600 font-medium">Delete</span>
-                      </button>
-                    </div>
-                  )}
+                  <button onClick={() => handleEditOpen(note)} title="Edit" className="p-2 rounded-md hover:bg-gray-50">
+                    <Edit3 size={16} className="text-blue-600" />
+                  </button>
+                  <button onClick={() => handleDelete(note.id)} title="Delete" className="p-2 rounded-md hover:bg-red-50">
+                    <Trash2 size={16} className="text-red-600" />
+                  </button>
                 </div>
               </header>
 
-              <div className="space-y-3">
-                {/* Feedback section */}
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-xs font-semibold text-gray-700">Feedback:</span>
-                  </div>
-                  <p className="text-gray-800 text-sm leading-relaxed line-clamp-2">
-                    {note.feedback || <span className="text-gray-400 text-xs italic">No feedback</span>}
-                  </p>
-                </div>
+              <div>
+                <p className="text-gray-700 min-h-[48px]">{note.feedback || <span className="text-gray-400">No feedback</span>}</p>
+                <p className="text-sm text-gray-600 mt-3">
+                  <strong>Action Points:</strong> {note.action_points || <span className="text-gray-400">—</span>}
+                </p>
 
-                {/* Action Points section */}
-                <div>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <span className="text-xs font-semibold text-gray-700">Action Points:</span>
+                {/* quick notes chips preview */}
+                {Array.isArray(note.quick_notes) && note.quick_notes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {note.quick_notes.map((qn, i) => (
+                      <span key={i} className={`px-2 py-0.5 rounded-full text-xs border ${colorForText(qn)}`}>
+                        {qn}
+                      </span>
+                    ))}
                   </div>
-                  <p className="text-gray-800 text-sm leading-relaxed line-clamp-2">
-                    {note.action_points || <span className="text-gray-400 text-xs italic">No action points</span>}
-                  </p>
-                </div>
+                )}
               </div>
 
               {/* action buttons (labelled) */}
+              <div className="flex gap-3 mt-4">
+                <button onClick={() => handleView(note)} className="px-3 py-1 rounded-md border text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                  <Eye size={14} /> View
+                </button>
 
+                <button onClick={() => handleEditOpen(note)} className="px-3 py-1 rounded-md border text-sm bg-blue-50 text-blue-700 hover:bg-blue-50 flex items-center gap-2">
+                  <Edit3 size={14} /> Edit
+                </button>
+
+                <button onClick={() => handleDelete(note.id)} className="px-3 py-1 rounded-md border text-sm bg-red-50 text-red-600 hover:bg-red-50 flex items-center gap-2">
+                  <Trash2 size={14} /> Delete
+                </button>
+              </div>
             </article>
           ))}
 
@@ -971,110 +847,54 @@ const MentorNotesContent = () => {
 
       {/* View modal */}
       {viewingNote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-scaleIn">
-            {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <User size={24} className="text-white" />
+        <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 sm:pt-24 bg-black/40">
+          <div className="bg-white rounded-xl max-w-xl w-full p-6 shadow-lg overflow-auto max-h-[80vh]">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="rounded-md bg-green-50 p-2">
+                  <Eye size={20} className="text-green-600" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">
+                  <h3 className="text-lg font-semibold">View Note</h3>
+                  <div className="text-sm text-gray-500">
                     {Array.isArray(viewingNote.students) ? viewingNote.students[0]?.name : viewingNote.students?.name}
-                  </h3>
-                  <div className="flex items-center gap-2 text-blue-100 text-sm mt-1">
-                    <Calendar size={14} />
-                    <span>{new Date(viewingNote.note_date).toLocaleDateString('en-US', { 
-                      weekday: 'short', 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}</span>
                   </div>
                 </div>
               </div>
-              <button 
-                onClick={() => setViewingNote(null)} 
-                className="p-2 rounded-lg hover:bg-white/20 transition-colors"
-              >
-                <X size={22} className="text-white" />
+              <button onClick={() => setViewingNote(null)} className="p-2 rounded-md hover:bg-gray-100">
+                <X size={18} />
               </button>
             </div>
 
-            {/* Content area with scroll */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                {/* Left Column */}
-                <div className="space-y-5">
-                  {/* Quick Notes Section */}
-                  {Array.isArray(viewingNote.quick_notes) && viewingNote.quick_notes.length > 0 && (
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
-                          <MessageCircle size={14} className="text-white" />
-                        </div>
-                        <h4 className="font-semibold text-gray-800 text-sm">Quick Notes</h4>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        {viewingNote.quick_notes.map((qn, i) => (
-                          <span 
-                            key={i} 
-                            className="px-3 py-1 rounded-lg text-xs border bg-blue-50 text-blue-700 border-blue-200 font-medium shadow-sm"
-                          >
-                            {qn}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            <div className="mt-4">
+              <div className="flex items-center gap-3">
+                <Calendar size={16} className="text-gray-400" />
+                <div className="text-sm text-gray-500">{new Date(viewingNote.note_date).toLocaleString()}</div>
+              </div>
 
-                  {/* Feedback Section */}
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
-                        <MessageCircle size={14} className="text-white" />
-                      </div>
-                      <h4 className="font-semibold text-gray-800 text-sm">Feedback</h4>
-                    </div>
-                    <div className="bg-white rounded-lg p-3 border border-blue-200">
-                      <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
-                        {viewingNote.feedback || <span className="text-gray-400 italic">No feedback provided</span>}
-                      </p>
-                    </div>
-                  </div>
+              {Array.isArray(viewingNote.quick_notes) && viewingNote.quick_notes.length > 0 && (
+                <div className="flex gap-2 flex-wrap mt-3">
+                  {viewingNote.quick_notes.map((qn, i) => (
+                    <span key={i} className={`px-2 py-0.5 rounded-full text-xs border ${colorForText(qn)}`}>
+                      {qn}
+                    </span>
+                  ))}
                 </div>
+              )}
 
-                {/* Right Column */}
-                <div className="space-y-5">
-                  {/* Action Points Section */}
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-blue-500 flex items-center justify-center">
-                        <Edit3 size={14} className="text-white" />
-                      </div>
-                      <h4 className="font-semibold text-gray-800 text-sm">Action Points</h4>
-                    </div>
-                    <div className="bg-white rounded-lg p-3 border border-blue-200">
-                      <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">
-                        {viewingNote.action_points || <span className="text-gray-400 italic">No action points provided</span>}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <div className="mt-4">
+                <h4 className="text-sm font-semibold text-gray-700">Feedback</h4>
+                <p className="mt-1 text-gray-700">{viewingNote.feedback || "—"}</p>
+              </div>
+
+              <div className="mt-3">
+                <h4 className="text-sm font-semibold text-gray-700">Action Points</h4>
+                <p className="mt-1 text-gray-700">{viewingNote.action_points || "—"}</p>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-              <button 
-                onClick={() => setViewingNote(null)} 
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
-              >
-                Close
-              </button>
+            <div className="mt-6 flex justify-end gap-2">
+              <button onClick={() => setViewingNote(null)} className="px-4 py-2 rounded-md border text-sm">Close</button>
             </div>
           </div>
         </div>
