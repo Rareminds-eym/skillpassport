@@ -7,14 +7,42 @@
  * - Prevents keyboard shortcuts (copy, paste, print, view source)
  * - Blocks copy/cut/paste events
  * - Disables browser extensions (Grammarly, etc.)
+ * - Tab/window switch detection with warnings
+ * - Fullscreen enforcement (optional)
+ * - Screenshot prevention attempts
+ * - DevTools detection
  * - Works cross-browser and cross-platform (Windows/Mac)
  * 
  * NOTE: Automatically disabled on localhost and development environments for testing
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-export const useAntiCheating = (enabled: boolean = true) => {
+interface AntiCheatingOptions {
+  enabled?: boolean;
+  onTabSwitch?: () => void;
+  onDevToolsDetected?: () => void;
+  enforceFullscreen?: boolean;
+  maxTabSwitches?: number;
+}
+
+export const useAntiCheating = (options: AntiCheatingOptions | boolean = true) => {
+  // Handle both boolean and object parameters for backward compatibility
+  const config = typeof options === 'boolean' 
+    ? { enabled: options } 
+    : { enabled: true, ...options };
+
+  const { 
+    enabled = true, 
+    onTabSwitch, 
+    onDevToolsDetected,
+    enforceFullscreen = false,
+    maxTabSwitches = 3
+  } = config;
+
+  const tabSwitchCountRef = useRef(0);
+  const devToolsCheckIntervalRef = useRef<number | null>(null);
+
   useEffect(() => {
     // Disable anti-cheating on localhost and development environments
     const hostname = window.location.hostname;
@@ -116,6 +144,67 @@ export const useAntiCheating = (enabled: boolean = true) => {
       return false;
     };
 
+    // Tab/Window switch detection
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        tabSwitchCountRef.current += 1;
+        console.warn(`⚠️ [Anti-Cheating] Tab switch detected (${tabSwitchCountRef.current}/${maxTabSwitches})`);
+        
+        if (onTabSwitch) {
+          onTabSwitch();
+        }
+
+        if (tabSwitchCountRef.current >= maxTabSwitches) {
+          alert(`⚠️ Warning: You have switched tabs ${maxTabSwitches} times.\n\nExcessive tab switching may be flagged as suspicious behavior.\n\nPlease stay focused on the assessment.`);
+        }
+      }
+    };
+
+    const handleBlur = () => {
+      console.warn('⚠️ [Anti-Cheating] Window lost focus');
+    };
+
+    // Prevent screenshots (limited effectiveness but adds friction)
+    const handlePrintScreen = (e: KeyboardEvent) => {
+      if (e.key === 'PrintScreen') {
+        e.preventDefault();
+        console.warn('⚠️ [Anti-Cheating] Screenshot attempt detected');
+        alert('⚠️ Screenshots are not allowed during the assessment.');
+        return false;
+      }
+    };
+
+    // DevTools detection (basic check)
+    const detectDevTools = () => {
+      const threshold = 160;
+      const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+      const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+      
+      if (widthThreshold || heightThreshold) {
+        console.warn('⚠️ [Anti-Cheating] DevTools may be open');
+        if (onDevToolsDetected) {
+          onDevToolsDetected();
+        }
+      }
+    };
+
+    // Fullscreen enforcement
+    const requestFullscreen = () => {
+      if (enforceFullscreen && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen?.().catch(err => {
+          console.warn('⚠️ [Anti-Cheating] Could not enter fullscreen:', err);
+        });
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      if (enforceFullscreen && !document.fullscreenElement) {
+        console.warn('⚠️ [Anti-Cheating] User exited fullscreen');
+        alert('⚠️ Please stay in fullscreen mode during the assessment.');
+        requestFullscreen();
+      }
+    };
+
     // Add event listeners
     document.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('keydown', handleKeyDown);
@@ -124,6 +213,19 @@ export const useAntiCheating = (enabled: boolean = true) => {
     document.addEventListener('paste', handlePaste);
     document.addEventListener('dragstart', handleDragStart);
     document.addEventListener('selectstart', handleSelectStart);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    document.addEventListener('keyup', handlePrintScreen);
+    
+    if (enforceFullscreen) {
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      requestFullscreen();
+    }
+
+    // Start DevTools detection
+    if (onDevToolsDetected) {
+      devToolsCheckIntervalRef.current = window.setInterval(detectDevTools, 1000);
+    }
 
     // Disable browser extensions (Grammarly, etc.) on input fields
     const disableExtensions = () => {
@@ -202,6 +304,20 @@ export const useAntiCheating = (enabled: boolean = true) => {
       document.removeEventListener('paste', handlePaste);
       document.removeEventListener('dragstart', handleDragStart);
       document.removeEventListener('selectstart', handleSelectStart);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('keyup', handlePrintScreen);
+      
+      if (enforceFullscreen) {
+        document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        if (document.fullscreenElement) {
+          document.exitFullscreen?.().catch(() => {});
+        }
+      }
+
+      if (devToolsCheckIntervalRef.current) {
+        clearInterval(devToolsCheckIntervalRef.current);
+      }
       
       // Disconnect observer
       observer.disconnect();
@@ -212,5 +328,36 @@ export const useAntiCheating = (enabled: boolean = true) => {
         styleElement.remove();
       }
     };
-  }, [enabled]);
+  }, [enabled, onTabSwitch, onDevToolsDetected, enforceFullscreen, maxTabSwitches]);
+};
+
+// Hook to track and report suspicious behavior
+export const useAntiCheatingMonitor = () => {
+  const [suspiciousEvents, setSuspiciousEvents] = useState<Array<{
+    type: string;
+    timestamp: number;
+    details?: string;
+  }>>([]);
+
+  const logEvent = (type: string, details?: string) => {
+    setSuspiciousEvents(prev => [...prev, {
+      type,
+      timestamp: Date.now(),
+      details
+    }]);
+  };
+
+  const getReport = () => ({
+    totalEvents: suspiciousEvents.length,
+    events: suspiciousEvents,
+    tabSwitches: suspiciousEvents.filter(e => e.type === 'tab_switch').length,
+    devToolsDetections: suspiciousEvents.filter(e => e.type === 'devtools').length,
+    copyAttempts: suspiciousEvents.filter(e => e.type === 'copy_attempt').length,
+  });
+
+  return {
+    logEvent,
+    getReport,
+    suspiciousEvents
+  };
 };
