@@ -621,8 +621,13 @@ const UnifiedProfileEditModal = ({
 
       // Save directly to database
       await onSave([updatedItem]);
+      
       toast({ title: "Saved!", description: `${config.title} saved successfully.` });
-      onClose();
+      
+      // Close modal after a brief delay to allow refresh to complete
+      setTimeout(() => {
+        onClose();
+      }, 300);
     } catch (error) {
       console.error("Error saving:", error);
       toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
@@ -879,8 +884,13 @@ const UnifiedProfileEditModal = ({
       }
       
       await onSave(processedItems);
+      
       toast({ title: "Saved!", description: `${config.title} saved successfully.` });
-      onClose();
+      
+      // Close modal after a brief delay to allow refresh to complete
+      setTimeout(() => {
+        onClose();
+      }, 300);
     } catch (error) {
       console.error("Error saving:", error);
       toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
