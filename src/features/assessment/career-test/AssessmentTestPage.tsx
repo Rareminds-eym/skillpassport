@@ -34,7 +34,7 @@ import { useAssessmentFlow } from './hooks/useAssessmentFlow';
 import { useStudentGrade } from './hooks/useStudentGrade';
 import { useAIQuestions } from './hooks/useAIQuestions';
 import { useAssessmentSubmission } from './hooks/useAssessmentSubmission';
-import { useAntiCheating } from '../../../hooks/useAntiCheating';
+import { useAntiCheating, useAntiCheatingMonitor } from '../../../hooks/useAntiCheating';
 
 // Config
 import {
@@ -304,6 +304,9 @@ const AssessmentTestPage: React.FC = () => {
   // Toast notification state for save errors
   const [toastError, setToastError] = useState<string | null>(null);
 
+  // Anti-cheating monitoring
+  const antiCheatingMonitor = useAntiCheatingMonitor();
+
   // Flow state machine
   const flow = useAssessmentFlow({
     sections,
@@ -439,7 +442,17 @@ const AssessmentTestPage: React.FC = () => {
 
   // Enable anti-cheating protections when assessment is active
   const isAssessmentActive = assessmentStarted && flow.currentSectionIndex >= 0 && flow.currentScreen === 'assessment';
-  useAntiCheating(isAssessmentActive);
+  useAntiCheating({
+    enabled: isAssessmentActive,
+    onTabSwitch: () => {
+      antiCheatingMonitor.logEvent('tab_switch', 'User switched tabs during assessment');
+    },
+    onDevToolsDetected: () => {
+      antiCheatingMonitor.logEvent('devtools', 'DevTools may be open');
+    },
+    enforceFullscreen: false, // Set to true if you want to force fullscreen
+    maxTabSwitches: 5 // Warning after 5 tab switches
+  });
 
   // Track adaptive loading time for better UX
   const [adaptiveLoadingStartTime, setAdaptiveLoadingStartTime] = React.useState<number | null>(null);
@@ -1674,7 +1687,8 @@ const AssessmentTestPage: React.FC = () => {
         userId: user?.id || null,
         timeRemaining: flow.timeRemaining,
         elapsedTime: flow.elapsedTime,
-        selectedCategory: flow.selectedCategory
+        selectedCategory: flow.selectedCategory,
+        antiCheatingReport: antiCheatingMonitor.getReport()
       });
     } else {
       console.log('⏭️ [NEXT SECTION] Moving to next section with optimized save strategy');
