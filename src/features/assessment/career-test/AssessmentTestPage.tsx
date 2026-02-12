@@ -438,7 +438,7 @@ const AssessmentTestPage: React.FC = () => {
   });
 
   // Enable anti-cheating protections when assessment is active
-  const isAssessmentActive = assessmentStarted && !flow.isComplete && flow.currentSectionIndex >= 0;
+  const isAssessmentActive = assessmentStarted && flow.currentSectionIndex >= 0 && flow.currentScreen === 'assessment';
   useAntiCheating(isAssessmentActive);
 
   // Track adaptive loading time for better UX
@@ -1120,9 +1120,11 @@ const AssessmentTestPage: React.FC = () => {
         // Don't try to resume - the section is already complete
         // Check if we're currently on the adaptive section
         const adaptiveSectionIndex = sections.findIndex(s => s.isAdaptive);
+        const sectionIndex = flow.currentSectionIndex;
         if (sectionIndex === adaptiveSectionIndex) {
           console.log('✅ [ADAPTIVE RESUME] Currently on adaptive section, showing section complete');
-          flow.setShowSectionComplete(true);
+          // Use the state setter directly instead of the non-existent method
+          flow.setShowSectionIntro(false);
         }
       } else {
         // Session is in progress, try to resume it
@@ -1205,7 +1207,6 @@ const AssessmentTestPage: React.FC = () => {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
             flow.setCurrentQuestionIndex(0);
             flow.setShowSectionIntro(false);
-            flow.setShowSectionComplete(true);
             flow.setCurrentScreen('section_complete');
           } else {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session exists and in progress, resuming to assessment screen');
@@ -2431,7 +2432,12 @@ const AssessmentTestPage: React.FC = () => {
                   <QuestionNavigation
                     onPrevious={flow.goToPreviousQuestion}
                     onNext={handleNextQuestion}
-                    canGoPrevious={flow.currentQuestionIndex > 0 && !currentSection?.isAdaptive}
+                    canGoPrevious={
+                      flow.currentQuestionIndex > 0 && 
+                      !currentSection?.isAdaptive && 
+                      !currentSection?.isAptitude && 
+                      !currentSection?.isKnowledge
+                    }
                     isAnswered={isCurrentAnswered}
                     isSubmitting={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
                     isLastQuestion={flow.isLastQuestion}

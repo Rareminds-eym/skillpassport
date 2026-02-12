@@ -1585,18 +1585,18 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
  * If studentId provided, saves questions for resume functionality
  */
 export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null, gradeLevel = null) {
-  // For college students, streamId is their actual course (e.g., "B.COM", "B.Tech CSE")
+  // For college students AND higher secondary (11th/12th), streamId is their actual course/stream
   // For other students, normalize the stream ID to match STREAM_KNOWLEDGE_PROMPTS keys
-  const isCollegeStudent = gradeLevel === 'college';
+  const isCollegeStudent = gradeLevel === 'college' || gradeLevel === 'higher_secondary';
   
   let effectiveStreamId, effectiveStreamName, effectiveTopics;
   
   if (isCollegeStudent) {
-    // For college students, use their course directly without normalization
+    // For college students and 11th/12th students, use their course/stream directly without normalization
     effectiveStreamId = streamId;
-    effectiveStreamName = streamId; // Use course name as-is (e.g., "B.COM")
-    effectiveTopics = null; // Let AI determine topics dynamically based on course name
-    console.log(`🎓 College student - generating knowledge questions for course: ${streamId}`);
+    effectiveStreamName = streamId; // Use course/stream name as-is (e.g., "B.COM", "Science (PCM)")
+    effectiveTopics = null; // Let AI determine topics dynamically based on course/stream name
+    console.log(`🎓 ${gradeLevel === 'higher_secondary' ? 'Higher Secondary (11th/12th)' : 'College'} student - generating knowledge questions for: ${streamId}`);
   } else {
     // For non-college students, use the hardcoded topic mappings
     const normalizedStreamId = normalizeStreamId(streamId);
