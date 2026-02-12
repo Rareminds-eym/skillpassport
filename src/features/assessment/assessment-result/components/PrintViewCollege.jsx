@@ -9,18 +9,8 @@ import { printStyles } from './shared/styles';
 import { safeRender, safeJoin, getSafeStudentInfo, getScoreStyle, riasecDescriptions, defaultRiasecNames, defaultTraitNames } from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
-import PrintPage from './shared/PrintPage';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
-import {
-  CompleteCareerFitSection,
-  CompleteSkillGapSection,
-  CompleteRoadmapSection,
-  CompleteCourseRecommendationsSection,
-  ProfileSnapshotSection,
-  TimingAnalysisSection,
-  FinalNoteSection
-} from './shared/CompletePDFSections';
 
 /**
  * Learning Styles Section
@@ -39,18 +29,18 @@ const LearningStylesSection = ({ learningStyles }) => {
   };
 
   return (
-    <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+    <div style={{ marginBottom: '10px', pageBreakInside: 'avoid' }}>
       <h3 style={printStyles.subTitle}>Your Learning Preferences</h3>
-      <p style={{ fontSize: '10px', color: '#4b5563', marginBottom: '15px' }}>
+      <p style={{ fontSize: '10px', color: '#4b5563', marginBottom: '8px' }}>
         Understanding how you learn best can help you choose effective study strategies and learning environments.
       </p>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         {learningStyles.map((style, index) => (
           <div 
             key={index}
             style={{
-              padding: '12px',
+              padding: '8px',
               background: '#f8fafc',
               border: '1px solid #e2e8f0',
               borderRadius: '8px'
@@ -93,9 +83,9 @@ const WorkPreferencesSection = ({ workPreferences }) => {
   };
 
   return (
-    <div style={{ marginBottom: '30px', pageBreakInside: 'avoid' }}>
+    <div style={{ marginBottom: '10px', pageBreakInside: 'avoid' }}>
       <h3 style={printStyles.subTitle}>Ideal Work Environment</h3>
-      <p style={{ fontSize: '10px', color: '#4b5563', marginBottom: '15px' }}>
+      <p style={{ fontSize: '10px', color: '#4b5563', marginBottom: '8px' }}>
         These work environment characteristics align with your personality and preferences.
       </p>
       
@@ -232,74 +222,11 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
           <WorkPreferencesSection workPreferences={results.workPreferences} />
         )}
 
-        {/* OLD SECTIONS COMMENTED OUT - Data now shown in Detailed Assessment Breakdown */}
-        {/* Career Fit Analysis */}
-        {/* {careerFit && (
-          <CareerFitAnalysisSection careerFit={careerFit} />
-        )} */}
-        
-        {/* Skill Gap & Development Plan */}
-        {/* {skillGap && (
-          <SkillGapDevelopmentSection skillGap={skillGap} />
-        )} */}
-
-        {/* ========== NEW COMPLETE DATA SECTIONS - COMMENTED OUT TO AVOID DUPLICATES ON PAGE 2 ========== */}
-        {/* Profile Snapshot */}
-        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} /> */}
-        
-        {/* Complete Skill Gap - Additional details with resources */}
-        {/* <CompleteSkillGapSection skillGap={results.skillGap} /> */}
-        
-        {/* Complete Course Recommendations */}
-        {/* <CompleteCourseRecommendationsSection 
-          skillGapCourses={results.skillGapCourses}
-          platformCourses={results.platformCourses}
-          coursesByType={results.coursesByType}
-        /> */}
-        
-        {/* Complete Roadmap */}
-        {/* <CompleteRoadmapSection roadmap={results.roadmap} /> */}
-        
-        {/* Timing Analysis */}
-        {/* <TimingAnalysisSection timingAnalysis={results.timingAnalysis} /> */}
-        
-        {/* Final Note */}
-        {/* <FinalNoteSection finalNote={results.finalNote} /> */}
-        {/* ========== END OF NEW SECTIONS ========== */}
-
-        {/* Career Roadmap */}
-        {/* {roadmap && (
-          <DetailedCareerRoadmapSection roadmap={roadmap} />
-        )} */}
-        
-        {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
-        {/* College students are already in a degree program, they don't need degree recommendations */}
-        {/* {courseRecommendations && courseRecommendations.length > 0 && (
-          <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
-        )} */}
-
-        {/* Final Recommendations */}
-        {/* {overallSummary && (
-          <FinalRecommendationsSection overallSummary={overallSummary} />
-        )} */}
-        
-        {/* ========== DUPLICATE SECTIONS COMMENTED OUT - Already shown above ========== */}
-        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} />
-        <CompleteCourseRecommendationsSection 
-          skillGapCourses={results.skillGapCourses}
-          platformCourses={results.platformCourses}
-          coursesByType={results.coursesByType}
-        />
-        <CompleteRoadmapSection roadmap={results.roadmap} />
-        <TimingAnalysisSection timingAnalysis={results.timingAnalysis} />
-        <FinalNoteSection finalNote={results.finalNote} /> */}
-        {/* ========== END OF DUPLICATE SECTIONS ========== */}
-        
         <ReportDisclaimer />
       </div>
 
       {/* Screen-only continuous content (hidden in print) */}
-      <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
+      <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '40px' }}>
         <DataPrivacyNotice />
         {/* Show Detailed Assessment Breakdown for screen view */}
         <DetailedAssessmentBreakdown 
@@ -318,53 +245,6 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
           <WorkPreferencesSection workPreferences={results.workPreferences} />
         )}
 
-        {/* OLD SECTIONS COMMENTED OUT - Data now shown in Detailed Assessment Breakdown */}
-        {/* <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
-        <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
-        {aptitude && (
-          <CognitiveAbilitiesSection aptitude={aptitude} />
-        )}
-        {bigFive && (
-          <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
-        )}
-        {workValues && (
-          <WorkValuesSection workValues={workValues} />
-        )}
-        {knowledge && (
-          <KnowledgeAssessmentSection knowledge={knowledge} />
-        )}
-        {employability && (
-          <EmployabilityScoreSection employability={employability} />
-        )} */}
-        {/* {careerFit && (
-          <CareerFitAnalysisSection careerFit={careerFit} />
-        )}
-        {skillGap && (
-          <SkillGapDevelopmentSection skillGap={skillGap} />
-        )}
-        {roadmap && (
-          <DetailedCareerRoadmapSection roadmap={roadmap} />
-        )} */}
-        {/* Course Recommendations - REMOVED for college students (only for After 12th) */}
-        {/* {courseRecommendations && courseRecommendations.length > 0 && (
-          <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
-        )} */}
-        {/* {overallSummary && (
-          <FinalRecommendationsSection overallSummary={overallSummary} />
-        )} */}
-        
-        {/* ========== DUPLICATE SECTIONS COMMENTED OUT - Already shown above ========== */}
-        {/* <ProfileSnapshotSection profileSnapshot={results.profileSnapshot} />
-        <CompleteCourseRecommendationsSection 
-          skillGapCourses={results.skillGapCourses}
-          platformCourses={results.platformCourses}
-          coursesByType={results.coursesByType}
-        />
-        <CompleteRoadmapSection roadmap={results.roadmap} />
-        <TimingAnalysisSection timingAnalysis={results.timingAnalysis} />
-        <FinalNoteSection finalNote={results.finalNote} /> */}
-        {/* ========== END OF DUPLICATE SECTIONS ========== */}
-        
         <ReportDisclaimer />
       </div>
     </div>
@@ -407,10 +287,10 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
       {/* RIASEC Infographic Layout with Central Circle */}
       <div style={{
         position: 'relative',
-        padding: '20px 0',
-        marginTop: '10px',
-        marginBottom: '8px',
-        minHeight: '320px'
+        padding: '8px 0',
+        marginTop: '6px',
+        marginBottom: '6px',
+        minHeight: '260px'
       }}>
         {/* SVG for connecting lines */}
         <svg style={{
@@ -570,11 +450,11 @@ const CognitiveAbilitiesSection = ({ aptitude }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Cognitive Abilities</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>2. Cognitive Abilities</h2>
       
       {/* Top Strengths Badges */}
       {aptitude.topStrengths && aptitude.topStrengths.length > 0 && (
-        <div style={{ marginBottom: '15px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <h3 style={printStyles.subTitle}>Your Cognitive Strengths</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {aptitude.topStrengths.map((strength, idx) => (
@@ -690,8 +570,8 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Big Five Personality Traits</h2>
-      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>3. Big Five Personality Traits</h2>
+      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         The Big Five model measures five broad dimensions of personality that influence how you interact with the world, 
         approach work, and relate to others.
       </p>
@@ -734,7 +614,7 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
       {/* Work Style Summary */}
       {bigFive.workStyleSummary && (
-        <div style={{ ...printStyles.summaryBox, marginTop: '15px' }}>
+        <div style={{ ...printStyles.summaryBox, marginTop: '8px' }}>
           <h4 style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: 'bold', color: '#0369a1' }}>
             Your Work Style Profile
           </h4>
@@ -757,8 +637,8 @@ const WorkValuesSection = ({ workValues }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Work Values & Motivations</h2>
-      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>4. Work Values & Motivations</h2>
+      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         Understanding what motivates you at work helps identify careers and work environments where you'll thrive.
       </p>
 
@@ -826,8 +706,8 @@ const KnowledgeAssessmentSection = ({ knowledge }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>5. Knowledge Assessment</h2>
-      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>5. Knowledge Assessment</h2>
+      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         This assessment measures your knowledge across various academic and professional domains, 
         helping identify areas of expertise and opportunities for growth.
       </p>
@@ -907,8 +787,8 @@ const EmployabilityScoreSection = ({ employability }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>6. Employability Score</h2>
-      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>6. Employability Score</h2>
+      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         Your employability score reflects your readiness for the job market based on skills, knowledge, 
         personality traits, and career alignment.
       </p>
@@ -919,8 +799,8 @@ const EmployabilityScoreSection = ({ employability }) => {
         background: overallScoreStyle.bg,
         border: `2px solid ${overallScoreStyle.border}`,
         textAlign: 'center',
-        padding: '20px',
-        marginBottom: '15px'
+        padding: '12px',
+        marginBottom: '8px'
       }}>
         <div style={{ fontSize: '11px', fontWeight: 'bold', color: overallScoreStyle.color, marginBottom: '8px' }}>
           Overall Employability Score
@@ -1019,17 +899,17 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>2. Career Fit Analysis</h2>
-      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>2. Career Fit Analysis</h2>
+      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         Based on your interests, abilities, personality, and values, these careers offer the best alignment 
         with your profile. The fit score indicates how well each career matches your overall assessment results.
       </p>
 
       {/* Career Tracks with Roles & Salary (if available) */}
       {careerTracks.length > 0 && (
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <h3 style={printStyles.subTitle}>Top Career Tracks for You</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '6px' }}>
             {careerTracks.slice(0, 3).map((track, idx) => {
               const trackNumber = idx + 1;
               const trackName = track.name || track.trackName || `Track ${trackNumber}`;
@@ -1134,7 +1014,7 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 
       {/* Career Clusters (if available) */}
       {careerFit.clusters && careerFit.clusters.length > 0 && (
-        <div style={{ marginBottom: '15px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <h3 style={printStyles.subTitle}>Recommended Career Clusters</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {careerFit.clusters.map((cluster, idx) => (
@@ -1158,7 +1038,7 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 
       {/* Top Career Recommendations */}
       <h3 style={printStyles.subTitle}>Your Top Career Matches</h3>
-      <div style={{ marginTop: '10px' }}>
+      <div style={{ marginTop: '6px' }}>
         {careerFit.topCareers.slice(0, 8).map((career, idx) => {
           const name = safeRender(career.name || career);
           const fitScore = career.fitScore || 0;
@@ -1168,7 +1048,7 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
           const scoreStyle = getScoreStyle(fitScore);
 
           return (
-            <div key={idx} style={{ ...printStyles.card, marginBottom: '12px' }}>
+            <div key={idx} style={{ ...printStyles.card, marginBottom: '6px' }}>
               {/* Career Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                 <div style={{ flex: 1 }}>
@@ -1257,15 +1137,15 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Skill Gap & Development Plan</h2>
-      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>3. Skill Gap & Development Plan</h2>
+      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         This analysis compares your current skills with those required for your target careers, 
         helping you prioritize your professional development efforts.
       </p>
 
       {/* Current Skills */}
       {skillGap.currentSkills && skillGap.currentSkills.length > 0 && (
-        <div style={{ marginBottom: '15px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <h3 style={printStyles.subTitle}>Your Current Skills</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {skillGap.currentSkills.map((skill, idx) => (
@@ -1289,7 +1169,7 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 
       {/* Required Skills */}
       {skillGap.requiredSkills && skillGap.requiredSkills.length > 0 && (
-        <div style={{ marginBottom: '15px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <h3 style={printStyles.subTitle}>Skills Needed for Your Career Goals</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {skillGap.requiredSkills.map((skill, idx) => (
@@ -1366,8 +1246,8 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
       )}
 
       {/* Development Strategy */}
-      <div style={{ ...printStyles.summaryBox, marginTop: '15px' }}>
-        <h4 style={{ margin: '0 0 8px 0', fontSize: '10px', fontWeight: 'bold', color: '#0369a1' }}>
+      <div style={{ ...printStyles.summaryBox, marginTop: '8px' }}>
+        <h4 style={{ margin: '0 0 6px 0', fontSize: '10px', fontWeight: 'bold', color: '#0369a1' }}>
           Development Strategy
         </h4>
         <div style={{ fontSize: '9px', lineHeight: '1.6', color: '#475569' }}>
@@ -1402,8 +1282,8 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Detailed Career Roadmap</h2>
-      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '12px', lineHeight: '1.5' }}>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>4. Detailed Career Roadmap</h2>
+      <p style={{ fontSize: '9px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         This roadmap provides a structured path to achieve your career goals, with specific phases, 
         timelines, and actionable steps.
       </p>
@@ -1426,7 +1306,7 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
                 ...printStyles.card,
                 background: colors.bg,
                 border: `2px solid ${colors.border}`,
-                marginBottom: '15px'
+                marginBottom: '8px'
               }}>
                 {/* Phase Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -1488,7 +1368,7 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
 
       {/* 12-Month Action Plan (if available) */}
       {roadmap.twelveMonthJourney && roadmap.twelveMonthJourney.length > 0 && (
-        <div style={{ marginTop: '20px' }}>
+        <div style={{ marginTop: '10px' }}>
           <h3 style={printStyles.subTitle}>12-Month Action Plan</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
             {roadmap.twelveMonthJourney.map((item, idx) => (
@@ -1507,7 +1387,7 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
 
       {/* Recommended Projects (if available) */}
       {roadmap.projects && roadmap.projects.length > 0 && (
-        <div style={{ marginTop: '30px' }}>
+        <div style={{ marginTop: '10px' }}>
           <h3 style={printStyles.subTitle}>Recommended Projects & Experiences</h3>
           <div style={printStyles.twoCol}>
             {roadmap.projects.map((project, idx) => (
@@ -1533,7 +1413,7 @@ const DetailedCareerRoadmapSection = ({ roadmap }) => {
 
       {/* Resources & Opportunities (if available) */}
       {roadmap.exposure && (
-        <div style={{ marginTop: '20px' }}>
+        <div style={{ marginTop: '10px' }}>
           <h3 style={printStyles.subTitle}>Resources & Opportunities</h3>
           <div style={printStyles.twoCol}>
             {roadmap.exposure.activities && roadmap.exposure.activities.length > 0 && (
@@ -1603,14 +1483,14 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
   return (
     <>
       <h2 style={printStyles.sectionTitle}>Recommended Degree Programs</h2>
-      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
+      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         Based on your assessment results, interests, and aptitudes, here are the top degree programs that align with your profile:
       </p>
 
       {topCourses.map((course, index) => (
         <div key={index} style={{ 
           ...printStyles.card, 
-          marginBottom: '12px',
+          marginBottom: '6px',
           border: index === 0 ? '2px solid #3b82f6' : '1px solid #e5e7eb',
           backgroundColor: index === 0 ? '#eff6ff' : '#ffffff'
         }}>
@@ -1721,8 +1601,8 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
       ))}
 
       <div style={{ 
-        marginTop: '15px', 
-        padding: '10px', 
+        marginTop: '8px', 
+        padding: '8px', 
         backgroundColor: '#f0f9ff', 
         borderLeft: '3px solid #3b82f6',
         fontSize: '9px',

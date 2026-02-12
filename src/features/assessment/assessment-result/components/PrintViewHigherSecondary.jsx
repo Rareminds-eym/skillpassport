@@ -16,22 +16,12 @@ import {
 } from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
-import PrintPage from './shared/PrintPage';
 import Watermarks, {
   DataPrivacyNotice,
   ReportDisclaimer,
   RepeatingHeader,
   RepeatingFooter,
 } from './shared/Watermarks';
-import {
-  CompleteCareerFitSection,
-  CompleteSkillGapSection,
-  CompleteRoadmapSection,
-  CompleteCourseRecommendationsSection,
-  ProfileSnapshotSection,
-  TimingAnalysisSection,
-  FinalNoteSection
-} from './shared/CompletePDFSections';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
 
 /**
@@ -128,13 +118,16 @@ const PrintViewHigherSecondary = ({
         {/* Page 1: Cover already handled above */}
         
         {/* Content flows naturally - only break where absolutely necessary */}
-        <div style={{ padding: '12mm' }}>
+        <div style={{ padding: '0' }}>
           <DataPrivacyNotice />
+          
+          {/* Stream Recommendation - Before Profile Snapshot */}
+          {streamRecommendation && streamRecommendation.recommendedStream && (
+            <StreamRecommendationSection streamRecommendation={streamRecommendation} />
+          )}
+          
           <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
           <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} />
-          
-          {/* Page break after interests */}
-          <div style={{ pageBreakAfter: 'always', breakAfter: 'page', height: '0' }}></div>
           
           {/* Cognitive Abilities */}
           {aptitude && (
@@ -145,9 +138,6 @@ const PrintViewHigherSecondary = ({
           {bigFive && (
             <BigFivePersonalitySection bigFive={bigFive} safeTraitNames={safeTraitNames} />
           )}
-          
-          {/* Page break before values section */}
-          <div style={{ pageBreakBefore: 'always', breakBefore: 'page', height: '0' }}></div>
           
           {/* Work Values */}
           {workValues && (
@@ -164,12 +154,7 @@ const PrintViewHigherSecondary = ({
             <CareerFitAnalysisSection careerFit={careerFit} />
           )}
           
-          {/* Page break before skill gap ONLY if career fit exists and has content */}
-          {careerFit && careerFit.topCareers && careerFit.topCareers.length > 0 && (
-            <div style={{ pageBreakBefore: 'always', breakBefore: 'page', height: '0' }}></div>
-          )}
-          
-          {/* Skill Gap & Roadmap - Combined as one continuous section, NO page break between */}
+          {/* Skill Gap & Roadmap - Combined as one continuous section */}
           {skillGap && (
             <SkillGapDevelopmentSection skillGap={skillGap} />
           )}
@@ -178,23 +163,9 @@ const PrintViewHigherSecondary = ({
             <DevelopmentRoadmapSection roadmap={roadmap} />
           )}
           
-          {/* Only break if we have stream/course recommendations */}
-          {(streamRecommendation?.recommendedStream || (courseRecommendations && courseRecommendations.length > 0)) && (
-            <>
-              <div style={{ pageBreakBefore: 'always', breakBefore: 'page', height: '0' }}></div>
-              
-              {streamRecommendation && streamRecommendation.recommendedStream && (
-                <StreamRecommendationSection streamRecommendation={streamRecommendation} />
-              )}
-              
-              {courseRecommendations && courseRecommendations.length > 0 && (
-                <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
-              )}
-            </>
+          {courseRecommendations && courseRecommendations.length > 0 && (
+            <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
           )}
-          
-          {/* Page break before assessment breakdown */}
-          <div style={{ pageBreakBefore: 'always', breakBefore: 'page', height: '0' }}></div>
           
           <DetailedAssessmentBreakdown 
             results={normalizedResults} 
@@ -202,16 +173,19 @@ const PrintViewHigherSecondary = ({
             gradeLevel="after10"
           />
           
-          {/* Page break before disclaimer */}
-          <div style={{ pageBreakBefore: 'always', breakBefore: 'page', height: '0' }}></div>
-          
           <ReportDisclaimer />
         </div>
       </div>
 
       {/* Screen-only continuous content (hidden in print) */}
-      <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '70px' }}>
+      <div className="print-content" style={{ position: 'relative', zIndex: 1, paddingBottom: '40px' }}>
         <DataPrivacyNotice />
+        
+        {/* Stream Recommendation - Before Profile Snapshot */}
+        {streamRecommendation && streamRecommendation.recommendedStream && (
+          <StreamRecommendationSection streamRecommendation={streamRecommendation} />
+        )}
+        
         {/* COMMENTED OUT: Already showing on page 1 in print view */}
         {/* <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
         <InterestProfileSection riasec={riasec} safeRiasecNames={safeRiasecNames} /> */}
@@ -231,26 +205,8 @@ const PrintViewHigherSecondary = ({
           <SkillGapDevelopmentSection skillGap={skillGap} />
         )}
         
-        {/* ========== NEW COMPLETE DATA SECTIONS - TEMPORARILY DISABLED FOR DEBUGGING ========== */}
-        {/* All Complete sections temporarily disabled to debug React error #31 */}
-        {/* {normalizedResults.skillGap && <CompleteSkillGapSection skillGap={normalizedResults.skillGap} />} */}
-        {/* {(normalizedResults.skillGapCourses || normalizedResults.platformCourses || normalizedResults.coursesByType) && (
-          <CompleteCourseRecommendationsSection 
-            skillGapCourses={normalizedResults.skillGapCourses}
-            platformCourses={normalizedResults.platformCourses}
-            coursesByType={normalizedResults.coursesByType}
-          />
-        )} */}
-        {/* {normalizedResults.roadmap && <CompleteRoadmapSection roadmap={normalizedResults.roadmap} />} */}
-        {/* {normalizedResults.timingAnalysis && <TimingAnalysisSection timingAnalysis={normalizedResults.timingAnalysis} />} */}
-        {/* {normalizedResults.finalNote && <FinalNoteSection finalNote={normalizedResults.finalNote} />} */}
-        {/* ========== END OF DISABLED SECTIONS ========== */}
-        
         {roadmap && (
           <DevelopmentRoadmapSection roadmap={roadmap} />
-        )}
-        {streamRecommendation && streamRecommendation.recommendedStream && (
-          <StreamRecommendationSection streamRecommendation={streamRecommendation} />
         )}
         {courseRecommendations && courseRecommendations.length > 0 && (
           <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
@@ -574,7 +530,7 @@ const BigFivePersonalitySection = ({ bigFive, safeTraitNames }) => {
 
       {/* Work Style Summary */}
       {bigFive.workStyleSummary && (
-        <div style={{ ...printStyles.card, marginTop: '15px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+        <div style={{ ...printStyles.card, marginTop: '8px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
           <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1', marginBottom: '6px' }}>
             Work Style Summary
           </div>
@@ -642,51 +598,375 @@ const WorkValuesSection = ({ workValues }) => {
 
 /**
  * CareerFitAnalysisSection Component
- * Renders career recommendations with fit scores
+ * Renders career clusters, roles with salary ranges, education paths, entrance exams,
+ * evidence breakdown, and specific career options by fit level.
  * Requirements: 1.2 - Career fit analysis for higher secondary students
  */
 const CareerFitAnalysisSection = ({ careerFit }) => {
-  if (!careerFit || !careerFit.topCareers || careerFit.topCareers.length === 0) return null;
+  const hasClusters = careerFit?.clusters && careerFit.clusters.length > 0;
+  const hasTopCareers = careerFit?.topCareers && careerFit.topCareers.length > 0;
+  const hasSpecificOptions = careerFit?.specificOptions && (
+    careerFit.specificOptions.highFit?.length > 0 ||
+    careerFit.specificOptions.mediumFit?.length > 0 ||
+    careerFit.specificOptions.exploreLater?.length > 0
+  );
+
+  if (!careerFit || (!hasClusters && !hasTopCareers && !hasSpecificOptions)) return null;
+
+  const fitBadgeStyle = (fit) => {
+    if (fit === 'High') return { bg: '#dcfce7', color: '#166534', border: '#86efac' };
+    if (fit === 'Medium') return { bg: '#fef3c7', color: '#92400e', border: '#fde047' };
+    return { bg: '#e0f2fe', color: '#1e40af', border: '#93c5fd' };
+  };
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>5. Career Fit Analysis</h2>
-      <h3 style={printStyles.subTitle}>Recommended Career Paths</h3>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '10px' }}>5. Career Fit Analysis</h2>
 
-      <div style={printStyles.twoCol}>
-        {careerFit.topCareers.slice(0, 6).map((career, idx) => {
-          const name = safeRender(career.name || career);
-          const fitScore = career.fitScore || 0;
-          const description = career.description || '';
-          const scoreStyle = getScoreStyle(fitScore);
-
-          return (
-            <div key={idx} style={printStyles.card}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', flex: 1 }}>
-                  {name}
+      {/* Career Clusters */}
+      {hasClusters && (
+        <div style={{ marginBottom: '8px' }}>
+          <h3 style={printStyles.subTitle}>Career Paths That Match Your Profile</h3>
+          {careerFit.clusters.map((cluster, idx) => {
+            const badge = fitBadgeStyle(cluster.fit);
+            return (
+              <div key={idx} style={{ ...printStyles.card, marginBottom: '8px', pageBreakInside: 'avoid' }}>
+                {/* Cluster Header */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b' }}>
+                    {cluster.trackNumber ? `Track ${cluster.trackNumber}: ` : ''}{safeRender(cluster.title)}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    <span style={{
+                      ...printStyles.badge,
+                      background: badge.bg,
+                      color: badge.color,
+                      border: `1px solid ${badge.border}`
+                    }}>
+                      {cluster.fit} Fit
+                    </span>
+                    {cluster.matchScore > 0 && (
+                      <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#059669' }}>
+                        {cluster.matchScore}%
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {fitScore > 0 && (
-                  <span style={{
-                    ...printStyles.badge,
-                    background: scoreStyle.bg,
-                    color: scoreStyle.color,
-                    border: `1px solid ${scoreStyle.border}`,
-                    marginLeft: '8px'
-                  }}>
-                    {fitScore}% Fit
-                  </span>
+
+                {/* Description */}
+                {cluster.description && (
+                  <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 6px 0', lineHeight: '1.4' }}>
+                    {safeRender(cluster.description)}
+                  </p>
+                )}
+
+                {/* Why It Fits */}
+                {cluster.whyItFits && (
+                  <div style={{ fontSize: '9px', color: '#1e40af', margin: '0 0 6px 0', lineHeight: '1.4', fontStyle: 'italic' }}>
+                    <strong>Why this fits you:</strong> {safeRender(cluster.whyItFits)}
+                  </div>
+                )}
+
+                {/* What You'll Do */}
+                {cluster.whatYoullDo && (
+                  <div style={{ fontSize: '9px', color: '#475569', margin: '0 0 6px 0', lineHeight: '1.4' }}>
+                    <strong>What you'll do:</strong> {safeRender(cluster.whatYoullDo)}
+                  </div>
+                )}
+
+                {/* Domains */}
+                {cluster.domains && cluster.domains.length > 0 && (
+                  <div style={{ marginBottom: '6px' }}>
+                    <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b' }}>Domains: </span>
+                    {cluster.domains.map((domain, dIdx) => (
+                      <span key={dIdx} style={{
+                        ...printStyles.badge,
+                        background: '#f3f4f6',
+                        color: '#374151',
+                        border: '1px solid #d1d5db',
+                        marginRight: '4px',
+                        fontSize: '8px'
+                      }}>
+                        {safeRender(domain)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Roles by Level with Salary */}
+                {cluster.roles && (
+                  <div style={{ marginBottom: '6px' }}>
+                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b', marginBottom: '4px' }}>Career Roles & Salary Ranges:</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
+                      {cluster.roles.entry && cluster.roles.entry.length > 0 && (
+                        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '4px', padding: '4px' }}>
+                          <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#166534', marginBottom: '2px' }}>Entry Level</div>
+                          {cluster.salaryRange?.entry && (
+                            <div style={{ fontSize: '8px', color: '#059669', marginBottom: '3px' }}>
+                              ₹{cluster.salaryRange.entry.min}-{cluster.salaryRange.entry.max} {cluster.salaryRange.entry.currency}
+                            </div>
+                          )}
+                          <ul style={{ margin: '0', paddingLeft: '12px', fontSize: '8px', color: '#4b5563', lineHeight: '1.4' }}>
+                            {cluster.roles.entry.map((role, rIdx) => (
+                              <li key={rIdx}>{safeRender(role)}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {cluster.roles.mid && cluster.roles.mid.length > 0 && (
+                        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '4px', padding: '4px' }}>
+                          <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e40af', marginBottom: '2px' }}>Mid Level</div>
+                          {cluster.salaryRange?.mid && (
+                            <div style={{ fontSize: '8px', color: '#2563eb', marginBottom: '3px' }}>
+                              ₹{cluster.salaryRange.mid.min}-{cluster.salaryRange.mid.max} {cluster.salaryRange.mid.currency}
+                            </div>
+                          )}
+                          <ul style={{ margin: '0', paddingLeft: '12px', fontSize: '8px', color: '#4b5563', lineHeight: '1.4' }}>
+                            {cluster.roles.mid.map((role, rIdx) => (
+                              <li key={rIdx}>{safeRender(role)}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {cluster.roles.senior && cluster.roles.senior.length > 0 && (
+                        <div style={{ background: '#fdf4ff', border: '1px solid #e9d5ff', borderRadius: '4px', padding: '4px' }}>
+                          <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#7c3aed', marginBottom: '2px' }}>Senior Level</div>
+                          {cluster.salaryRange?.senior && (
+                            <div style={{ fontSize: '8px', color: '#7c3aed', marginBottom: '3px' }}>
+                              ₹{cluster.salaryRange.senior.min}-{cluster.salaryRange.senior.max} {cluster.salaryRange.senior.currency}
+                            </div>
+                          )}
+                          <ul style={{ margin: '0', paddingLeft: '12px', fontSize: '8px', color: '#4b5563', lineHeight: '1.4' }}>
+                            {cluster.roles.senior.map((role, rIdx) => (
+                              <li key={rIdx}>{safeRender(role)}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Education Path & Entrance Exams */}
+                {(cluster.educationPath || (cluster.entranceExams && cluster.entranceExams.length > 0)) && (
+                  <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: '4px', padding: '4px 6px', marginBottom: '6px' }}>
+                    {cluster.educationPath && (
+                      <div style={{ fontSize: '8px', color: '#854d0e', lineHeight: '1.4', marginBottom: cluster.entranceExams?.length > 0 ? '3px' : '0' }}>
+                        <strong>Education Path:</strong> {safeRender(cluster.educationPath)}
+                      </div>
+                    )}
+                    {cluster.entranceExams && cluster.entranceExams.length > 0 && (
+                      <div style={{ fontSize: '8px', color: '#854d0e' }}>
+                        <strong>Entrance Exams:</strong>{' '}
+                        {cluster.entranceExams.map((exam, eIdx) => (
+                          <span key={eIdx} style={{
+                            ...printStyles.badge,
+                            background: '#fef9c3',
+                            color: '#854d0e',
+                            border: '1px solid #fde047',
+                            marginRight: '3px',
+                            fontSize: '8px'
+                          }}>
+                            {safeRender(exam)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Subjects to Focus */}
+                {cluster.subjectsToFocusIn11th12th && cluster.subjectsToFocusIn11th12th.length > 0 && (
+                  <div style={{ marginBottom: '6px' }}>
+                    <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b' }}>Subjects to Focus: </span>
+                    {cluster.subjectsToFocusIn11th12th.map((subject, sIdx) => (
+                      <span key={sIdx} style={{
+                        ...printStyles.badge,
+                        background: '#dbeafe',
+                        color: '#1e40af',
+                        border: '1px solid #93c5fd',
+                        marginRight: '3px',
+                        fontSize: '8px'
+                      }}>
+                        {safeRender(subject)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Growth Outlook */}
+                {cluster.growthOutlook && (
+                  <div style={{ fontSize: '8px', color: '#059669', lineHeight: '1.4', marginBottom: '6px' }}>
+                    <strong>Growth Outlook:</strong> {safeRender(cluster.growthOutlook)}
+                  </div>
+                )}
+
+                {/* Evidence Breakdown */}
+                {cluster.evidence && (
+                  <div style={{ marginBottom: '4px' }}>
+                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b', marginBottom: '3px' }}>Evidence from Your Assessment:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                      {Object.entries(cluster.evidence).map(([key, value]) => (
+                        <span key={key} style={{
+                          fontSize: '8px',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '3px',
+                          padding: '2px 4px',
+                          color: '#475569'
+                        }}>
+                          <strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {safeRender(value)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Example Careers with Salary Progression */}
+                {cluster.examples && cluster.examples.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b', marginBottom: '3px' }}>Example Careers:</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                      {cluster.examples.map((example, exIdx) => (
+                        <span key={exIdx} style={{
+                          ...printStyles.badge,
+                          background: '#f3f4f6',
+                          color: '#374151',
+                          border: '1px solid #d1d5db',
+                          fontSize: '8px'
+                        }}>
+                          {safeRender(example)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
-              {description && (
-                <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-                  {description}
-                </p>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Specific Career Options by Fit Level */}
+      {hasSpecificOptions && (
+        <div style={{ marginTop: '8px' }}>
+          <h3 style={printStyles.subTitle}>Recommended Career Options</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+            {careerFit.specificOptions.highFit && careerFit.specificOptions.highFit.length > 0 && (
+              <div style={printStyles.card}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#166534', marginBottom: '6px' }}>
+                  ⭐ Best Match Careers
+                </div>
+                {careerFit.specificOptions.highFit.map((career, idx) => (
+                  <div key={idx} style={{ marginBottom: '4px', paddingBottom: '4px', borderBottom: idx < careerFit.specificOptions.highFit.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                    <div style={{ fontSize: '9px', fontWeight: '600', color: '#1e293b' }}>
+                      {safeRender(career.name || career)}
+                      {career.salary && (
+                        <span style={{ fontSize: '8px', color: '#059669', marginLeft: '4px', fontWeight: 'normal' }}>
+                          ₹{career.salary.min}-{career.salary.max} LPA
+                        </span>
+                      )}
+                    </div>
+                    {career.description && (
+                      <p style={{ fontSize: '8px', color: '#6b7280', margin: '2px 0 0 0', lineHeight: '1.3' }}>
+                        {safeRender(career.description)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {careerFit.specificOptions.mediumFit && careerFit.specificOptions.mediumFit.length > 0 && (
+              <div style={printStyles.card}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#92400e', marginBottom: '6px' }}>
+                  💡 Good Match Careers
+                </div>
+                {careerFit.specificOptions.mediumFit.map((career, idx) => (
+                  <div key={idx} style={{ marginBottom: '4px', paddingBottom: '4px', borderBottom: idx < careerFit.specificOptions.mediumFit.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                    <div style={{ fontSize: '9px', fontWeight: '600', color: '#1e293b' }}>
+                      {safeRender(career.name || career)}
+                      {career.salary && (
+                        <span style={{ fontSize: '8px', color: '#059669', marginLeft: '4px', fontWeight: 'normal' }}>
+                          ₹{career.salary.min}-{career.salary.max} LPA
+                        </span>
+                      )}
+                    </div>
+                    {career.description && (
+                      <p style={{ fontSize: '8px', color: '#6b7280', margin: '2px 0 0 0', lineHeight: '1.3' }}>
+                        {safeRender(career.description)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            {careerFit.specificOptions.exploreLater && careerFit.specificOptions.exploreLater.length > 0 && (
+              <div style={printStyles.card}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e40af', marginBottom: '6px' }}>
+                  🔍 Careers to Explore
+                </div>
+                {careerFit.specificOptions.exploreLater.map((career, idx) => (
+                  <div key={idx} style={{ marginBottom: '4px', paddingBottom: '4px', borderBottom: idx < careerFit.specificOptions.exploreLater.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                    <div style={{ fontSize: '9px', fontWeight: '600', color: '#1e293b' }}>
+                      {safeRender(career.name || career)}
+                      {career.salary && (
+                        <span style={{ fontSize: '8px', color: '#059669', marginLeft: '4px', fontWeight: 'normal' }}>
+                          ₹{career.salary.min}-{career.salary.max} LPA
+                        </span>
+                      )}
+                    </div>
+                    {career.description && (
+                      <p style={{ fontSize: '8px', color: '#6b7280', margin: '2px 0 0 0', lineHeight: '1.3' }}>
+                        {safeRender(career.description)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Fallback: Top Careers (simple list) */}
+      {!hasClusters && hasTopCareers && (
+        <div>
+          <h3 style={printStyles.subTitle}>Recommended Career Paths</h3>
+          <div style={printStyles.twoCol}>
+            {careerFit.topCareers.slice(0, 6).map((career, idx) => {
+              const name = safeRender(career.name || career);
+              const fitScore = career.fitScore || 0;
+              const description = career.description || '';
+              const scoreStyle = getScoreStyle(fitScore);
+              return (
+                <div key={idx} style={printStyles.card}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', flex: 1 }}>
+                      {name}
+                    </div>
+                    {fitScore > 0 && (
+                      <span style={{
+                        ...printStyles.badge,
+                        background: scoreStyle.bg,
+                        color: scoreStyle.color,
+                        border: `1px solid ${scoreStyle.border}`,
+                        marginLeft: '8px'
+                      }}>
+                        {fitScore}% Fit
+                      </span>
+                    )}
+                  </div>
+                  {description && (
+                    <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+                      {description}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </>
   );
 };
@@ -710,7 +990,7 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>6. Skill Gap & Development Plan</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '10px' }}>6. Skill Gap & Development Plan</h2>
 
       {/* Current Strengths */}
       {currentStrengths.length > 0 && (
@@ -810,38 +1090,254 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
 
 /**
  * DevelopmentRoadmapSection Component
- * Renders development roadmap with phases and goals
+ * Renders development roadmap with grade-wise phases, entrance exams, projects, and more
  * Requirements: 1.2 - Development roadmap for higher secondary students
  */
 const DevelopmentRoadmapSection = ({ roadmap }) => {
   if (!roadmap) return null;
 
+  const hasGradePhases = roadmap.immediate || roadmap.eleventhGrade || roadmap.twelfthGrade;
+
+  const phaseColors = {
+    immediate: { bg: '#f0fdf4', border: '#86efac', headerBg: '#dcfce7', headerColor: '#166534', accent: '#059669', icon: '🎯' },
+    eleventhGrade: { bg: '#eff6ff', border: '#93c5fd', headerBg: '#dbeafe', headerColor: '#1e40af', accent: '#2563eb', icon: '📚' },
+    twelfthGrade: { bg: '#faf5ff', border: '#c4b5fd', headerBg: '#ede9fe', headerColor: '#6d28d9', accent: '#7c3aed', icon: '🎓' },
+  };
+
+  const renderPhaseCard = (phase, phaseKey) => {
+    if (!phase) return null;
+    const colors = phaseColors[phaseKey];
+    return (
+      <div style={{
+        ...printStyles.card,
+        background: colors.bg,
+        border: `2px solid ${colors.border}`,
+        marginBottom: '8px',
+        pageBreakInside: 'avoid'
+      }}>
+        <div style={{
+          background: colors.headerBg,
+          margin: '-6px -6px 6px -6px',
+          padding: '6px 8px',
+          borderRadius: '4px 4px 0 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px'
+        }}>
+          <span style={{ fontSize: '12px' }}>{colors.icon}</span>
+          <span style={{ fontWeight: 'bold', fontSize: '10px', color: colors.headerColor }}>
+            {safeRender(phase.title || phaseKey)}
+          </span>
+        </div>
+
+        {phase.goals && phase.goals.length > 0 && (
+          <div style={{ marginBottom: '6px' }}>
+            <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b', marginBottom: '3px' }}>Goals:</div>
+            {phase.goals.map((goal, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '4px', marginBottom: '2px' }}>
+                <span style={{ fontSize: '8px', color: colors.accent, flexShrink: 0, marginTop: '1px' }}>☐</span>
+                <span style={{ fontSize: '8px', color: '#374151', lineHeight: '1.4' }}>{safeRender(goal)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {phase.actions && phase.actions.length > 0 && (
+          <div style={{ marginBottom: '6px' }}>
+            <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b', marginBottom: '3px' }}>Action Steps:</div>
+            <ul style={{ margin: '0', paddingLeft: '14px', fontSize: '8px', color: '#4b5563', lineHeight: '1.5' }}>
+              {phase.actions.map((action, idx) => (
+                <li key={idx}>{safeRender(action)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {phase.milestones && phase.milestones.length > 0 && (
+          <div>
+            <div style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b', marginBottom: '3px' }}>Milestones:</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {phase.milestones.map((milestone, idx) => (
+                <span key={idx} style={{
+                  ...printStyles.badge,
+                  background: colors.headerBg,
+                  color: colors.headerColor,
+                  border: `1px solid ${colors.border}`,
+                  fontSize: '8px'
+                }}>
+                  ✓ {safeRender(milestone)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const difficultyColor = (level) => {
+    const l = (level || '').toLowerCase();
+    if (l === 'beginner' || l === 'easy') return { bg: '#dcfce7', color: '#166534', border: '#86efac' };
+    if (l === 'intermediate' || l === 'medium') return { bg: '#fef3c7', color: '#92400e', border: '#fde047' };
+    if (l === 'advanced' || l === 'hard') return { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' };
+    return { bg: '#f3f4f6', color: '#374151', border: '#d1d5db' };
+  };
+
   return (
-    <div style={{ pageBreakInside: 'auto', breakInside: 'auto', marginTop: '12px' }}>
+    <div style={{ pageBreakInside: 'auto', breakInside: 'auto', marginTop: '10px' }}>
       <h2 style={{ ...printStyles.sectionTitle, pageBreakBefore: 'auto', breakBefore: 'auto' }}>7. Development Roadmap</h2>
 
-      {/* Projects */}
+      {/* Grade-wise Phases Timeline */}
+      {hasGradePhases && (
+        <div style={{ marginBottom: '10px' }}>
+          <h3 style={printStyles.subTitle}>Your Academic Journey Plan</h3>
+          {renderPhaseCard(roadmap.immediate, 'immediate')}
+          {renderPhaseCard(roadmap.eleventhGrade, 'eleventhGrade')}
+          {renderPhaseCard(roadmap.twelfthGrade, 'twelfthGrade')}
+        </div>
+      )}
+
+      {/* Entrance Exams */}
+      {roadmap.entranceExams && roadmap.entranceExams.length > 0 && (
+        <div style={{ marginBottom: '10px' }}>
+          <h3 style={printStyles.subTitle}>Entrance Exam Preparation</h3>
+          {roadmap.entranceExams.map((examInfo, idx) => (
+            <div key={idx} style={{
+              ...printStyles.card,
+              marginBottom: '8px',
+              border: '2px solid #fde68a',
+              background: '#fffbeb',
+              pageBreakInside: 'avoid'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#92400e' }}>
+                  📝 {safeRender(examInfo.exam)}
+                </div>
+              </div>
+
+              {examInfo.relevance && (
+                <p style={{ fontSize: '8px', color: '#4b5563', margin: '0 0 6px 0', lineHeight: '1.4' }}>
+                  <strong>Why it matters:</strong> {safeRender(examInfo.relevance)}
+                </p>
+              )}
+
+              {examInfo.preparationTimeline && (
+                <p style={{ fontSize: '8px', color: '#854d0e', margin: '0 0 6px 0', lineHeight: '1.4' }}>
+                  <strong>⏱ Preparation Timeline:</strong> {safeRender(examInfo.preparationTimeline)}
+                </p>
+              )}
+
+              {examInfo.keySubjects && examInfo.keySubjects.length > 0 && (
+                <div style={{ marginBottom: '6px' }}>
+                  <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b' }}>Key Subjects: </span>
+                  {examInfo.keySubjects.map((subject, sIdx) => (
+                    <span key={sIdx} style={{
+                      ...printStyles.badge,
+                      background: '#dbeafe',
+                      color: '#1e40af',
+                      border: '1px solid #93c5fd',
+                      marginRight: '3px',
+                      fontSize: '8px'
+                    }}>
+                      {safeRender(subject)}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {examInfo.resources && examInfo.resources.length > 0 && (
+                <div>
+                  <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b' }}>Resources: </span>
+                  {examInfo.resources.map((resource, rIdx) => (
+                    <span key={rIdx} style={{
+                      ...printStyles.badge,
+                      background: '#f0fdf4',
+                      color: '#166534',
+                      border: '1px solid #86efac',
+                      marginRight: '3px',
+                      fontSize: '8px'
+                    }}>
+                      {safeRender(resource)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Recommended Projects - Full Details */}
       {roadmap.projects && roadmap.projects.length > 0 && (
         <div style={{ marginBottom: '10px' }}>
           <h3 style={printStyles.subTitle}>Recommended Projects</h3>
           <div style={printStyles.twoCol}>
-            {roadmap.projects.map((project, idx) => (
-              <div key={idx} style={printStyles.card}>
-                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
-                  {safeRender(project.title || project)}
+            {roadmap.projects.map((project, idx) => {
+              const diffColors = difficultyColor(project.difficulty);
+              return (
+                <div key={idx} style={{ ...printStyles.card, pageBreakInside: 'avoid' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', flex: 1 }}>
+                      {safeRender(project.title || project)}
+                    </div>
+                    {project.difficulty && (
+                      <span style={{
+                        ...printStyles.badge,
+                        background: diffColors.bg,
+                        color: diffColors.color,
+                        border: `1px solid ${diffColors.border}`,
+                        marginLeft: '4px',
+                        flexShrink: 0
+                      }}>
+                        {project.difficulty}
+                      </span>
+                    )}
+                  </div>
+
+                  {(project.description || project.purpose) && (
+                    <p style={{ fontSize: '8px', color: '#4b5563', margin: '0 0 4px 0', lineHeight: '1.4' }}>
+                      {safeRender(project.description || project.purpose)}
+                    </p>
+                  )}
+
+                  {project.timeline && (
+                    <p style={{ fontSize: '8px', color: '#6b7280', margin: '0 0 4px 0', lineHeight: '1.4' }}>
+                      <strong>Timeline:</strong> {safeRender(project.timeline)}
+                    </p>
+                  )}
+
+                  {project.skills && project.skills.length > 0 && (
+                    <div style={{ marginBottom: '4px' }}>
+                      <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e293b' }}>Skills: </span>
+                      {project.skills.map((skill, sIdx) => (
+                        <span key={sIdx} style={{
+                          ...printStyles.badge,
+                          background: '#e0f2fe',
+                          color: '#0369a1',
+                          border: '1px solid #7dd3fc',
+                          marginRight: '3px',
+                          fontSize: '8px'
+                        }}>
+                          {safeRender(skill)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {project.output && (
+                    <p style={{ fontSize: '8px', color: '#059669', margin: '0 0 4px 0', lineHeight: '1.4' }}>
+                      <strong>Output:</strong> {safeRender(project.output)}
+                    </p>
+                  )}
+
+                  {(project.careerRelevance || project.purpose) && (
+                    <p style={{ fontSize: '8px', color: '#1e40af', margin: '0', lineHeight: '1.4', fontStyle: 'italic' }}>
+                      <strong>Career Relevance:</strong> {safeRender(project.careerRelevance || project.purpose)}
+                    </p>
+                  )}
                 </div>
-                {project.purpose && (
-                  <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 4px 0', lineHeight: '1.4' }}>
-                    <strong>Purpose:</strong> {safeRender(project.purpose)}
-                  </p>
-                )}
-                {project.output && (
-                  <p style={{ fontSize: '9px', color: '#059669', margin: '0', lineHeight: '1.4' }}>
-                    <strong>Output:</strong> {safeRender(project.output)}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -856,7 +1352,7 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
                 <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
                   Activities to Try
                 </div>
-                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                <ul style={{ margin: '0', paddingLeft: '14px', fontSize: '8px', color: '#4b5563', lineHeight: '1.5' }}>
                   {roadmap.exposure.activities.map((activity, idx) => (
                     <li key={idx}>{safeRender(activity)}</li>
                   ))}
@@ -868,7 +1364,7 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
                 <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
                   Certifications to Pursue
                 </div>
-                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                <ul style={{ margin: '0', paddingLeft: '14px', fontSize: '8px', color: '#4b5563', lineHeight: '1.5' }}>
                   {roadmap.exposure.certifications.map((cert, idx) => (
                     <li key={idx}>{safeRender(cert)}</li>
                   ))}
@@ -881,7 +1377,7 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
 
       {/* Internship Preparation */}
       {roadmap.internship && (
-        <div>
+        <div style={{ marginBottom: '10px' }}>
           <h3 style={printStyles.subTitle}>Internship Preparation</h3>
           <div style={printStyles.card}>
             {roadmap.internship.types && roadmap.internship.types.length > 0 && (
@@ -907,16 +1403,16 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
               </div>
             )}
             {roadmap.internship.timeline && (
-              <p style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.4' }}>
+              <p style={{ fontSize: '8px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.4' }}>
                 <strong>Timeline:</strong> {safeRender(roadmap.internship.timeline)}
               </p>
             )}
             {roadmap.internship.preparation && (
               <div>
-                <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#1e293b', marginBottom: '4px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '8px', color: '#1e293b', marginBottom: '4px' }}>
                   Preparation Tips:
                 </div>
-                <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                <ul style={{ margin: '0', paddingLeft: '14px', fontSize: '8px', color: '#4b5563', lineHeight: '1.5' }}>
                   {Object.entries(roadmap.internship.preparation).map(([key, value]) => (
                     <li key={key}>
                       <strong>{key.charAt(0).toUpperCase() + key.slice(1)}:</strong> {safeRender(value)}
@@ -951,7 +1447,7 @@ const DevelopmentRoadmapSection = ({ roadmap }) => {
                 )}
               </div>
               {phase.goals && phase.goals.length > 0 && (
-                <ul style={{ margin: '0', paddingLeft: '18px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                <ul style={{ margin: '0', paddingLeft: '14px', fontSize: '8px', color: '#4b5563', lineHeight: '1.5' }}>
                   {phase.goals.map((goal, goalIdx) => (
                     <li key={goalIdx}>{safeRender(goal)}</li>
                   ))}
@@ -975,7 +1471,7 @@ const StreamRecommendationSection = ({ streamRecommendation }) => {
   return (
     <>
       <h2 style={printStyles.sectionTitle}>11th/12th Stream Recommendation</h2>
-      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
+      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         Based on your interests, aptitudes, and academic performance, here is your recommended stream for grades 11-12:
       </p>
 
@@ -983,7 +1479,7 @@ const StreamRecommendationSection = ({ streamRecommendation }) => {
         ...printStyles.card, 
         border: '2px solid #3b82f6',
         backgroundColor: '#eff6ff',
-        marginBottom: '15px'
+        marginBottom: '8px'
       }}>
         <div style={{ 
           fontWeight: 'bold', 
@@ -1035,7 +1531,7 @@ const StreamRecommendationSection = ({ streamRecommendation }) => {
 
       {/* Alternative Streams */}
       {streamRecommendation.alternatives && streamRecommendation.alternatives.length > 0 && (
-        <div style={{ marginTop: '15px' }}>
+        <div style={{ marginTop: '8px' }}>
           <h3 style={printStyles.subTitle}>Alternative Stream Options</h3>
           {streamRecommendation.alternatives.map((alt, index) => (
             <div key={index} style={{ 
@@ -1090,14 +1586,14 @@ const CourseRecommendationsSection = ({ courseRecommendations }) => {
   return (
     <>
       <h2 style={printStyles.sectionTitle}>Recommended Degree Programs</h2>
-      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '15px', lineHeight: '1.5' }}>
+      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
         Based on your assessment results and chosen stream, here are the top degree programs for you:
       </p>
 
       {topCourses.map((course, index) => (
         <div key={index} style={{ 
           ...printStyles.card, 
-          marginBottom: '12px',
+          marginBottom: '6px',
           border: index === 0 ? '2px solid #3b82f6' : '1px solid #e5e7eb',
           backgroundColor: index === 0 ? '#eff6ff' : '#ffffff'
         }}>
@@ -1189,7 +1685,7 @@ const EmployabilitySkillsSection = ({ employability }) => {
 
   return (
     <>
-      <h3 style={{ ...printStyles.subTitle, marginTop: '15px' }}>Employability Skills Assessment</h3>
+      <h3 style={{ ...printStyles.subTitle, marginTop: '8px' }}>Employability Skills Assessment</h3>
 
       {/* Overall Readiness */}
       {employability.overallReadiness && (

@@ -169,6 +169,11 @@ const PrintViewMiddleHighSchool = ({
               {/* Data Privacy Notice */}
               <DataPrivacyNotice />
 
+              {/* Stream Recommendation - Before Profile Snapshot */}
+              {streamRecommendation && streamRecommendation.recommendedStream && (
+                <StreamRecommendationSection streamRecommendation={streamRecommendation} />
+              )}
+
               {/* Section 1: Student Profile Snapshot */}
               <h2 style={printStyles.sectionTitle}>1. Student Profile Snapshot</h2>
 
@@ -197,7 +202,7 @@ const PrintViewMiddleHighSchool = ({
               )}
 
               {/* Detailed Assessment Breakdown (Developer Reference) */}
-              <div style={{ pageBreakBefore: 'always' }}>
+              <div>
                 <DetailedAssessmentBreakdown 
                   results={normalizedResults} 
                   riasecNames={safeRiasecNames}
@@ -272,10 +277,10 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
       {/* RIASEC Infographic Layout with Central Circle */}
       <div style={{
         position: 'relative',
-        padding: '20px 0',
-        marginTop: '10px',
-        marginBottom: '8px',
-        minHeight: '320px'
+        padding: '8px 0',
+        marginTop: '6px',
+        marginBottom: '6px',
+        minHeight: '260px'
       }}>
         {/* SVG for connecting lines */}
         <svg style={{
@@ -440,7 +445,7 @@ const CharacterStrengthsSection = ({ characterStrengths, aptitudeStrengths }) =>
   if (!strengths || strengths.length === 0) return null;
 
   return (
-    <div style={{ marginTop: '15px' }}>
+    <div style={{ marginTop: '8px' }}>
       <h3 style={printStyles.subTitle}>Character Strengths & Personal Qualities</h3>
       
       {/* Top Strengths List */}
@@ -533,7 +538,7 @@ const LearningWorkStyleSection = ({ learningStyle, keyPatterns }) => {
   if (!style) return null;
 
   return (
-    <div style={{ marginTop: '15px' }}>
+    <div style={{ marginTop: '8px' }}>
       <h3 style={printStyles.subTitle}>Learning & Work Preferences</h3>
       <div style={printStyles.twoCol}>
         {/* Preferred Learning Methods */}
@@ -626,14 +631,14 @@ const CareerExplorationSection = ({ careerFit }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px', pageBreakBefore: 'always' }}>2. Career Exploration</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>2. Career Exploration</h2>
 
       {/* Career Clusters with detailed information */}
       {careerFit.clusters && careerFit.clusters.length > 0 && (
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <h3 style={printStyles.subTitle}>Career Paths That Match Your Profile</h3>
           {careerFit.clusters.map((cluster, idx) => (
-            <div key={idx} style={{ ...printStyles.card, marginBottom: '12px', pageBreakInside: 'avoid' }}>
+            <div key={idx} style={{ ...printStyles.card, marginBottom: '6px', pageBreakInside: 'avoid' }}>
               {/* Cluster Header */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#1e293b' }}>
@@ -729,7 +734,7 @@ const CareerExplorationSection = ({ careerFit }) => {
 
       {/* Specific Career Options by Fit Level */}
       {careerFit.specificOptions && (
-        <div style={{ marginTop: '15px' }}>
+        <div style={{ marginTop: '8px' }}>
           <h3 style={printStyles.subTitle}>Recommended Career Options</h3>
           <div style={printStyles.twoCol}>
             {/* High Fit Careers */}
@@ -809,7 +814,7 @@ const CareerExplorationSection = ({ careerFit }) => {
 const SkillsToDevelopSection = ({ skillGap }) => {
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Skills to Develop</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>3. Skills to Develop</h2>
 
       {skillGap.gaps && skillGap.gaps.length > 0 && (
         <div>
@@ -869,7 +874,7 @@ const TwelveMonthJourneySection = ({ twelveMonthJourney }) => {
 
   return (
     <>
-      <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>4. Your 12-Month Journey</h2>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>4. Your 12-Month Journey</h2>
       <div style={{ marginTop: '10px' }}>
         {journeyItems.map((item, idx) => (
           <div key={idx} style={{ ...printStyles.card, marginBottom: '8px' }}>
@@ -896,7 +901,7 @@ const ProjectsSection = ({ projects }) => {
 
   return (
     <>
-      <h3 style={{ ...printStyles.subTitle, marginTop: '30px' }}>Projects to Try</h3>
+      <h3 style={{ ...printStyles.subTitle, marginTop: '12px' }}>Projects to Try</h3>
       <div style={printStyles.twoCol}>
         {projects.map((project, idx) => (
           <div key={idx} style={printStyles.card}>
@@ -924,7 +929,7 @@ const ActivitiesExposureSection = ({ exposure }) => {
   if (!exposure) return null;
 
   return (
-    <div style={{ ...printStyles.twoCol, marginTop: '15px' }}>
+    <div style={{ ...printStyles.twoCol, marginTop: '8px' }}>
       {exposure.activities && exposure.activities.length > 0 && (
         <div style={printStyles.card}>
           <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
@@ -1017,7 +1022,7 @@ const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
   const subtags = accuracy_by_subtag || accuracyBySubtag;
 
   return (
-    <div style={{ marginTop: '15px' }}>
+    <div style={{ marginTop: '8px' }}>
       <h3 style={printStyles.subTitle}>Adaptive Aptitude Test Results</h3>
       
       {/* Overall Summary */}
@@ -1074,6 +1079,119 @@ const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
         </div>
       )}
     </div>
+  );
+};
+
+/**
+ * StreamRecommendationSection Component
+ * Renders stream recommendation for after 10th students
+ */
+const StreamRecommendationSection = ({ streamRecommendation }) => {
+  if (!streamRecommendation || !streamRecommendation.recommendedStream) return null;
+
+  return (
+    <>
+      <h2 style={printStyles.sectionTitle}>11th/12th Stream Recommendation</h2>
+      <p style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', lineHeight: '1.5' }}>
+        Based on your interests, aptitudes, and academic performance, here is your recommended stream for grades 11-12:
+      </p>
+
+      <div style={{ 
+        ...printStyles.card, 
+        border: '2px solid #3b82f6',
+        backgroundColor: '#eff6ff',
+        marginBottom: '8px'
+      }}>
+        <div style={{ 
+          fontWeight: 'bold', 
+          fontSize: '14px', 
+          color: '#1e40af', 
+          marginBottom: '8px',
+          textAlign: 'center'
+        }}>
+          Recommended Stream: {streamRecommendation.recommendedStream}
+        </div>
+
+        {streamRecommendation.matchScore && (
+          <div style={{ 
+            fontSize: '11px', 
+            color: '#059669',
+            fontWeight: '600',
+            textAlign: 'center',
+            marginBottom: '10px'
+          }}>
+            Match Score: {Math.round(streamRecommendation.matchScore)}%
+          </div>
+        )}
+
+        {streamRecommendation.reasoning && (
+          <div style={{ 
+            fontSize: '9px', 
+            color: '#4b5563', 
+            lineHeight: '1.5',
+            margin: '0'
+          }}>
+            {typeof streamRecommendation.reasoning === 'string' ? (
+              <p style={{ margin: '0' }}>{streamRecommendation.reasoning}</p>
+            ) : (
+              <div>
+                {streamRecommendation.reasoning.interests && (
+                  <p style={{ margin: '0 0 4px 0' }}>• <strong>Interests:</strong> {streamRecommendation.reasoning.interests}</p>
+                )}
+                {streamRecommendation.reasoning.aptitude && (
+                  <p style={{ margin: '0 0 4px 0' }}>• <strong>Aptitude:</strong> {streamRecommendation.reasoning.aptitude}</p>
+                )}
+                {streamRecommendation.reasoning.personality && (
+                  <p style={{ margin: '0' }}>• <strong>Personality:</strong> {streamRecommendation.reasoning.personality}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Alternative Streams */}
+      {streamRecommendation.alternatives && streamRecommendation.alternatives.length > 0 && (
+        <div style={{ marginTop: '8px' }}>
+          <h3 style={printStyles.subTitle}>Alternative Stream Options</h3>
+          {streamRecommendation.alternatives.map((alt, index) => (
+            <div key={index} style={{ 
+              ...printStyles.card, 
+              marginBottom: '10px',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{ 
+                fontWeight: 'bold', 
+                fontSize: '11px', 
+                color: '#1e293b', 
+                marginBottom: '4px'
+              }}>
+                {alt.stream}
+                {alt.matchScore && (
+                  <span style={{ 
+                    fontSize: '9px', 
+                    color: '#059669',
+                    marginLeft: '8px'
+                  }}>
+                    ({Math.round(alt.matchScore)}% match)
+                  </span>
+                )}
+              </div>
+              {alt.reasoning && (
+                <p style={{ 
+                  fontSize: '9px', 
+                  color: '#4b5563', 
+                  lineHeight: '1.5',
+                  margin: '0'
+                }}>
+                  {alt.reasoning}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
   );
 };
 
