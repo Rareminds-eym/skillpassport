@@ -257,12 +257,19 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                 
                 // Handle skillScores object (e.g., {Teamwork: 4.67, Leadership: 5, ...})
                 if (employability.skillScores && typeof employability.skillScores === 'object') {
-                    return Object.entries(employability.skillScores).map(([skill, score]) => ({
-                        label: skill,
-                        value: score,
-                        max: 5,
-                        percentage: Math.round((score / 5) * 100)
-                    }));
+                    return Object.entries(employability.skillScores).map(([skill, score]) => {
+                        // Check if score is already a percentage (> 5) or a 0-5 scale
+                        const isPercentage = score > 5;
+                        const normalizedScore = isPercentage ? score / 20 : score; // If percentage, convert back to 0-5 scale
+                        const percentage = isPercentage ? Math.round(score) : Math.round((score / 5) * 100);
+                        
+                        return {
+                            label: skill,
+                            value: normalizedScore,
+                            max: 5,
+                            percentage: percentage
+                        };
+                    });
                 }
                 
                 // Handle strengthAreas array (e.g., ["Leadership", "Teamwork", ...])
@@ -270,11 +277,16 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                     return employability.strengthAreas.map((area) => {
                         // If area is an object with skill and score
                         if (typeof area === 'object' && area.skill) {
+                            const score = area.score || 4;
+                            const isPercentage = score > 5;
+                            const normalizedScore = isPercentage ? score / 20 : score;
+                            const percentage = isPercentage ? Math.round(score) : Math.round((score / 5) * 100);
+                            
                             return {
                                 label: area.skill,
-                                value: area.score || 4,
+                                value: normalizedScore,
                                 max: 5,
-                                percentage: Math.round(((area.score || 4) / 5) * 100)
+                                percentage: percentage
                             };
                         }
                         // If area is just a string, use default score
@@ -301,7 +313,17 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                 // Calculate from skillScores
                 if (employability.skillScores && typeof employability.skillScores === 'object') {
                     const scores = Object.values(employability.skillScores);
-                    return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length / 5 * 100);
+                    // Check if scores are already percentages (> 5) or 0-5 scale
+                    const firstScore = scores[0] || 0;
+                    const isPercentage = firstScore > 5;
+                    
+                    if (isPercentage) {
+                        // Scores are already percentages, just average them
+                        return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
+                    } else {
+                        // Scores are 0-5 scale, convert to percentage
+                        return Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length / 5 * 100);
+                    }
                 }
                 
                 // Default for strengthAreas

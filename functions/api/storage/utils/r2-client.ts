@@ -202,6 +202,34 @@ export class R2Client {
   }
 
   /**
+   * Generate a presigned URL for downloading/viewing a file
+   * @param key - The file key (path) in R2
+   * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour, max: 604800 = 7 days)
+   * @returns The presigned URL for accessing the file
+   */
+  async generatePresignedGetUrl(key: string, expiresIn: number = 3600): Promise<string> {
+    // Ensure expiresIn doesn't exceed 7 days (604800 seconds)
+    const validExpiresIn = Math.min(expiresIn, 604800);
+    
+    // Add X-Amz-Expires to the URL BEFORE signing
+    const downloadUrl = new URL(`${this.endpoint}/${this.bucketName}/${key}`);
+    downloadUrl.searchParams.set('X-Amz-Expires', validExpiresIn.toString());
+
+    const downloadRequest = new Request(downloadUrl.toString(), {
+      method: 'GET',
+    });
+
+    // Sign with query parameters instead of Authorization header
+    const signedRequest = await this.client.sign(downloadRequest, {
+      aws: {
+        signQuery: true,
+      },
+    });
+    
+    return signedRequest.url;
+  }
+
+  /**
    * Get an object from R2
    * @param key - The file key (path) in R2
    * @returns Response object containing the file content

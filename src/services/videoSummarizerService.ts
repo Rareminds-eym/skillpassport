@@ -276,39 +276,12 @@ export async function getVideoSummaryByLesson(lessonId: string): Promise<VideoSu
  * Get video summary with robust error handling and fallback strategies
  */
 export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string): Promise<VideoSummary | null> {
-  // Strategy 1: Try lesson_id first (most reliable)
+  // Strategy 1: Try lesson_id first (most reliable for presigned URLs)
   if (lessonId) {
     try {
       console.log('[VideoSummary] Attempting lesson_id lookup:', lessonId);
-      const summary = await getVideoSummaryByLesson(lessonId);
-      if (summary) {
-        console.log('[VideoSummary] Found by lesson_id');
-        return summary;
-      }
-    } catch (err) {
-      console.warn('[VideoSummary] Lesson_id lookup failed:', err);
-    }
-  }
-
-  // Strategy 2: Try video_url if lesson_id failed
-  if (videoUrl) {
-    try {
-      console.log('[VideoSummary] Attempting video_url lookup');
-      const summary = await getVideoSummaryByUrl(videoUrl);
-      if (summary) {
-        console.log('[VideoSummary] Found by video_url');
-        return summary;
-      }
-    } catch (err) {
-      console.warn('[VideoSummary] Video_url lookup failed:', err);
-    }
-  }
-
-  // Strategy 3: Direct SQL query as last resort (for debugging)
-  if (lessonId) {
-    try {
-      console.log('[VideoSummary] Attempting direct query fallback');
-      // This is a fallback that might help identify the issue
+      
+      // Get ANY status (completed, failed, processing) to check what exists
       const { data, error } = await supabase
         .from('video_summaries')
         .select('*')
@@ -317,20 +290,58 @@ export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string
         .limit(1)
         .maybeSingle();
 
-      if (data && data.processing_status === 'completed') {
-        console.log('[VideoSummary] Found by direct query (completed)');
-        return transformVideoSummary(data);
-      } else if (data) {
-        console.log('[VideoSummary] Found by direct query but status is:', data.processing_status);
-      } else {
-        console.log('[VideoSummary] No records found for lesson_id');
-      }
-
       if (error) {
-        console.warn('[VideoSummary] Direct query error:', error);
+        console.warn('[VideoSummary] Lesson_id query error:', error);
+      } else if (data) {
+        console.log('[VideoSummary] Found by lesson_id, status:', data.processing_status);
+        
+        // Return completed summaries
+        if (data.processing_status === 'completed') {
+          return transformVideoSummary(data);
+        }
+        
+        // Return failed summaries (so UI can show the error)
+        if (data.processing_status === 'failed') {
+          return transformVideoSummary(data);
+        }
+        
+        // Return processing summaries (so UI can poll)
+        if (data.processing_status === 'processing') {
+          return transformVideoSummary(data);
+        }
       }
     } catch (err) {
-      console.warn('[VideoSummary] Direct query exception:', err);
+      console.warn('[VideoSummary] Lesson_id lookup failed:', err);
+    }
+  }
+
+  // Strategy 2: Try video_url if lesson_id failed (less reliable for presigned URLs)
+  if (videoUrl) {
+    try {
+      console.log('[VideoSummary] Attempting video_url lookup');
+      
+      // Extract the base file path from presigned URL (remove query params)
+      const baseUrl = videoUrl.split('?')[0];
+      
+      const { data, error } = await supabase
+        .from('video_summaries')
+        .select('*')
+        .or(`video_url.eq.${videoUrl},video_url.like.${baseUrl}%`)
+        .eq('processing_status', 'completed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        console.log('[VideoSummary] Found by video_url');
+        return transformVideoSummary(data);
+      }
+      
+      if (error) {
+        console.warn('[VideoSummary] Video_url query error:', error);
+      }
+    } catch (err) {
+      console.warn('[VideoSummary] Video_url lookup failed:', err);
     }
   }
 
