@@ -25,6 +25,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import {
     VideoSummary,
+    deleteVideoSummary,
     downloadSRT,
     downloadVTT,
     formatTimestamp,
@@ -354,7 +355,8 @@ const QuizTab: React.FC<{
 // ============ FLASHCARDS COMPONENT (Modern Stack) ============
 const FlashcardsTab: React.FC<{
   flashcards: VideoSummary['flashcards'];
-}> = ({ flashcards }) => {
+  onRetry?: () => void;
+}> = ({ flashcards, onRetry }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [mastered, setMastered] = useState<Set<number>>(new Set());
@@ -366,9 +368,17 @@ const FlashcardsTab: React.FC<{
           <BookOpen className="w-10 h-10 text-violet-400" />
         </div>
         <h3 className="text-lg font-semibold text-slate-700 mb-2">No Flashcards Yet</h3>
-        <p className="text-slate-500 text-sm text-center max-w-xs">
+        <p className="text-slate-500 text-sm text-center max-w-xs mb-4">
           Flashcards are created from key concepts in the video. Try educational content!
         </p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-xl font-medium shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" /> Retry Generation
+          </button>
+        )}
       </div>
     );
   }
@@ -948,7 +958,7 @@ const VideoLearningPanel: React.FC<VideoLearningPanelProps> = ({
             {activeTab === 'quiz' && <QuizTab questions={summary.quizQuestions} onSeekTo={handleSeekTo} />}
 
             {/* ===== FLASHCARDS TAB ===== */}
-            {activeTab === 'flashcards' && <FlashcardsTab flashcards={summary.flashcards} />}
+            {activeTab === 'flashcards' && <FlashcardsTab flashcards={summary.flashcards} onRetry={async () => { if (summary?.id) await deleteVideoSummary(summary.id); setSummary(null); loadOrProcessVideo(); }} />}
           </>
         ) : null}
       </div>
