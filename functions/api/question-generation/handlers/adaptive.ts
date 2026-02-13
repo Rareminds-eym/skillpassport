@@ -197,7 +197,7 @@ function validateQuestionStructure(questions: any[]): any[] {
             const calcNum = parseFloat(lastCalc);
             const optionNum = parseFloat(optionValue);
             
-            // If they're significantly different (more than 10% or more than 2 units), REJECT the question
+            // If they're significantly different (more than 10% or more than 2 units), MARK for filtering
             if (!isNaN(calcNum) && !isNaN(optionNum)) {
                 const diff = Math.abs(calcNum - optionNum);
                 const percentDiff = (diff / Math.max(calcNum, optionNum)) * 100;
@@ -207,7 +207,8 @@ function validateQuestionStructure(questions: any[]): any[] {
                     console.error(`   Difference: ${diff.toFixed(2)} (${percentDiff.toFixed(1)}%)`);
                     console.error(`   Question: ${q.text.substring(0, 100)}`);
                     console.error(`   Explanation: ${q.explanation.substring(0, 100)}`);
-                    throw new Error(`Question ${index + 1}: Explanation calculation (${lastCalc}) doesn't match correct answer (${optionValue})`);
+                    // Mark for filtering instead of throwing
+                    (q as any).__invalid_calculation = true;
                 }
             }
         }
