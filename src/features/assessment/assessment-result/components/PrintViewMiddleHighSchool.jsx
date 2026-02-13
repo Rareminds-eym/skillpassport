@@ -6,20 +6,11 @@
 
 import CoverPage from './CoverPage';
 import { printStyles } from './shared/styles';
-import { safeRender, getSafeStudentInfo, riasecDescriptions, defaultRiasecNames } from './shared/utils';
+import { safeRender, getSafeStudentInfo, riasecDescriptions, defaultRiasecNames, getScoreStyle } from './shared/utils';
 import RiasecIcon from './shared/RiasecIcon';
 import PrintStyles from './shared/PrintStyles';
 import Watermarks, { DataPrivacyNotice, ReportDisclaimer, RepeatingHeader, RepeatingFooter } from './shared/Watermarks';
 import DetailedAssessmentBreakdown from './shared/DetailedAssessmentBreakdown';
-import {
-  CompleteCareerFitSection,
-  CompleteSkillGapSection,
-  CompleteRoadmapSection,
-  CompleteCourseRecommendationsSection,
-  ProfileSnapshotSection,
-  TimingAnalysisSection,
-  FinalNoteSection as CompleteFinalNoteSection
-} from './shared/CompletePDFSections';
 
 /**
  * PrintViewMiddleHighSchool Component
@@ -125,7 +116,9 @@ const PrintViewMiddleHighSchool = ({
     overallSummary = normalizedResults.overallSummary || normalizedResults.gemini_results?.overallSummary,
     bigFive = normalizedResults.bigFive || normalizedResults.gemini_results?.bigFive,
     workValues = normalizedResults.workValues || normalizedResults.gemini_results?.workValues,
-    employability = normalizedResults.employability || normalizedResults.gemini_results?.employability
+    employability = normalizedResults.employability || normalizedResults.gemini_results?.employability,
+    aptitude = normalizedResults.aptitude || normalizedResults.gemini_results?.aptitude,
+    knowledge = normalizedResults.knowledge || normalizedResults.gemini_results?.knowledge
   } = normalizedResults;
 
   console.log('🔍 PDF PrintViewMiddleHighSchool - Extracted data:', {
@@ -137,7 +130,7 @@ const PrintViewMiddleHighSchool = ({
   });
 
   // Determine if this is middle school (grades 6-8)
-  // Middle school students should NOT see career exploration, skills, or roadmap sections
+  // Used to pass correct gradeLevel to DetailedAssessmentBreakdown
   const isMiddleSchool = gradeLevel === 'middle' || 
                          (studentInfo?.grade && parseInt(studentInfo.grade.toString().match(/\d+/)?.[0]) <= 8);
 
@@ -225,6 +218,14 @@ const PrintViewMiddleHighSchool = ({
                 <EmployabilitySection employability={employability} />
               )}
 
+              {/* Aptitude AI Analysis Section */}
+              {aptitude && (aptitude.topStrengths?.length > 0 || aptitude.cognitiveProfile || aptitude.careerImplications) && (
+                <AptitudeAnalysisSection aptitude={aptitude} />
+              )}
+
+              {/* Knowledge Section */}
+              {knowledge && <KnowledgeSection knowledge={knowledge} />}
+
               {/* Adaptive Aptitude Section - Show adaptive test results */}
               {adaptiveAptitudeResults && (
                 <AdaptiveAptitudeSection adaptiveAptitudeResults={adaptiveAptitudeResults} />
@@ -239,33 +240,33 @@ const PrintViewMiddleHighSchool = ({
                 />
               </div>
 
-              {/* Section 2: Career Exploration - ONLY for high school (grades 9-10), NOT for middle school */}
-              {!isMiddleSchool && careerFit && (
+              {/* Section 2: Career Exploration */}
+              {careerFit && (
                 <CareerExplorationSection careerFit={careerFit} />
               )}
 
-              {/* Section 3: Skills to Develop - ONLY for high school (grades 9-10), NOT for middle school */}
-              {!isMiddleSchool && skillGap && (
+              {/* Section 3: Skills to Develop */}
+              {skillGap && (
                 <SkillsToDevelopSection skillGap={skillGap} />
               )}
 
-              {/* Section 4: 12-Month Journey - ONLY for high school (grades 9-10), NOT for middle school */}
-              {!isMiddleSchool && roadmap?.twelveMonthJourney && (
+              {/* Section 4: 12-Month Journey */}
+              {roadmap?.twelveMonthJourney && (
                 <TwelveMonthJourneySection twelveMonthJourney={roadmap.twelveMonthJourney} />
               )}
 
-              {/* Projects to Try - ONLY for high school (grades 9-10), NOT for middle school */}
-              {!isMiddleSchool && roadmap?.projects && roadmap.projects.length > 0 && (
+              {/* Projects to Try */}
+              {roadmap?.projects && roadmap.projects.length > 0 && (
                 <ProjectsSection projects={roadmap.projects} />
               )}
 
-              {/* Internship Opportunities - ONLY for high school (grades 9-10), NOT for middle school */}
-              {!isMiddleSchool && roadmap?.internship && (
+              {/* Internship Opportunities */}
+              {roadmap?.internship && (
                 <InternshipSection internship={roadmap.internship} />
               )}
 
-              {/* Activities & Exposure - ONLY for high school (grades 9-10), NOT for middle school */}
-              {!isMiddleSchool && roadmap?.exposure && (
+              {/* Activities & Exposure */}
+              {roadmap?.exposure && (
                 <ActivitiesExposureSection exposure={roadmap.exposure} />
               )}
 
@@ -1228,6 +1229,185 @@ const FinalNoteSection = ({ finalNote }) => {
 };
 
 /**
+ * AptitudeAnalysisSection Component
+ * Renders AI-analyzed aptitude insights (topStrengths, areasToImprove, cognitiveProfile, careerImplications)
+ */
+const AptitudeAnalysisSection = ({ aptitude }) => {
+  if (!aptitude) return null;
+  const hasContent = (aptitude.topStrengths?.length > 0) || aptitude.cognitiveProfile || aptitude.careerImplications;
+  if (!hasContent) return null;
+
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <h3 style={printStyles.subTitle}>Cognitive Abilities</h3>
+
+      {aptitude.overallScore > 0 && (
+        <div style={{ ...printStyles.card, marginBottom: '8px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1' }}>Overall Cognitive Score</div>
+            <span style={{
+              ...printStyles.badge,
+              background: '#dbeafe',
+              color: '#1e40af',
+              border: '1px solid #93c5fd',
+              fontSize: '10px',
+              fontWeight: 'bold'
+            }}>
+              {Math.round(aptitude.overallScore)}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      {aptitude.topStrengths && aptitude.topStrengths.length > 0 && (
+        <div style={{ marginBottom: '8px' }}>
+          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#166534' }}>Top Strengths: </span>
+          {aptitude.topStrengths.map((strength, idx) => (
+            <span
+              key={idx}
+              style={{
+                ...printStyles.badge,
+                background: '#dcfce7',
+                color: '#166534',
+                border: '1px solid #86efac',
+                marginRight: '4px'
+              }}
+            >
+              ★ {safeRender(strength)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {aptitude.areasToImprove && aptitude.areasToImprove.length > 0 && (
+        <div style={{ marginBottom: '8px' }}>
+          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#854d0e' }}>Areas to Improve: </span>
+          {aptitude.areasToImprove.map((area, idx) => (
+            <span key={idx} style={{
+              ...printStyles.badge,
+              background: '#fef9c3',
+              color: '#854d0e',
+              border: '1px solid #fde047',
+              marginRight: '4px'
+            }}>
+              {safeRender(area)}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {aptitude.cognitiveProfile && (
+        <div style={{ ...printStyles.summaryBox, marginTop: '6px' }}>
+          <h4 style={{ margin: '0 0 4px 0', fontSize: '9px', fontWeight: 'bold', color: '#0369a1' }}>
+            Cognitive Profile
+          </h4>
+          <p style={{ margin: '0', fontSize: '8px', lineHeight: '1.5', color: '#475569' }}>
+            {safeRender(aptitude.cognitiveProfile)}
+          </p>
+        </div>
+      )}
+
+      {aptitude.careerImplications && (
+        <div style={{ ...printStyles.card, marginTop: '6px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
+            <strong>Career Implications:</strong> {safeRender(aptitude.careerImplications)}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * KnowledgeSection Component
+ * Renders knowledge assessment results (score, strong/weak topics, recommendation)
+ */
+const KnowledgeSection = ({ knowledge }) => {
+  if (!knowledge || Object.keys(knowledge).length === 0) return null;
+
+  const score = typeof knowledge.score === 'number' ? Math.round(knowledge.score) : 0;
+  const correctCount = knowledge.correctCount || 0;
+  const totalQuestions = knowledge.totalQuestions || 0;
+  const strongTopics = knowledge.strongTopics || [];
+  const weakTopics = knowledge.weakTopics || [];
+
+  const isNoData = (arr) => !arr || arr.length === 0 || (arr.length === 1 && arr[0] === 'No data');
+  const hasData = score > 0 || !isNoData(strongTopics) || !isNoData(weakTopics);
+  if (!hasData) return null;
+
+  const scoreStyle = getScoreStyle(score);
+
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <h3 style={printStyles.subTitle}>Knowledge Assessment</h3>
+
+      <div style={{ ...printStyles.card, marginBottom: '8px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1' }}>Overall Knowledge Score</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {totalQuestions > 0 && (
+              <span style={{ fontSize: '10px', fontWeight: '600', color: '#1e293b' }}>
+                {correctCount}/{totalQuestions}
+              </span>
+            )}
+            <span style={{
+              ...printStyles.badge,
+              background: scoreStyle.bg,
+              color: scoreStyle.color,
+              border: `1px solid ${scoreStyle.border}`,
+              fontSize: '10px',
+              fontWeight: 'bold'
+            }}>
+              {score}%
+            </span>
+          </div>
+        </div>
+        <div style={printStyles.progressBar}>
+          <div style={{ width: `${score}%`, height: '100%', background: score >= 70 ? '#22c55e' : score >= 40 ? '#eab308' : '#ef4444', borderRadius: '3px' }}></div>
+        </div>
+      </div>
+
+      {(!isNoData(strongTopics) || !isNoData(weakTopics)) && (
+        <div style={printStyles.twoCol}>
+          {!isNoData(strongTopics) && (
+            <div style={{ ...printStyles.card, background: '#f0fdf4', border: '1px solid #86efac' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#166534', marginBottom: '6px' }}>✅ Strong Topics</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {strongTopics.map((topic, idx) => (
+                  <span key={idx} style={{ ...printStyles.badge, background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}>
+                    {safeRender(topic)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {!isNoData(weakTopics) && (
+            <div style={{ ...printStyles.card, background: '#fefce8', border: '1px solid #fde68a' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#854d0e', marginBottom: '6px' }}>⚠️ Weak Topics</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {weakTopics.map((topic, idx) => (
+                  <span key={idx} style={{ ...printStyles.badge, background: '#fef9c3', color: '#854d0e', border: '1px solid #fde047' }}>
+                    {safeRender(topic)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {knowledge.recommendation && (
+        <div style={{ ...printStyles.card, marginTop: '6px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
+            <strong>Recommendation:</strong> {safeRender(knowledge.recommendation)}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
  * AdaptiveAptitudeSection Component
  * Renders adaptive aptitude test results
  * Requirements: 1.1, 2.1 - Adaptive aptitude for middle/high school
@@ -1249,7 +1429,13 @@ const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
     confidenceTag,
     tier,
     accuracy_by_subtag,
-    accuracyBySubtag
+    accuracyBySubtag,
+    path_classification,
+    pathClassification,
+    accuracy_by_difficulty,
+    accuracyByDifficulty,
+    average_response_time_ms,
+    averageResponseTimeMs
   } = adaptiveAptitudeResults;
 
   const level = aptitude_level || aptitudeLevel;
@@ -1258,6 +1444,9 @@ const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
   const correct = total_correct || totalCorrect;
   const confidence = confidence_tag || confidenceTag;
   const subtags = accuracy_by_subtag || accuracyBySubtag;
+  const classification = path_classification || pathClassification;
+  const difficultyBreakdown = accuracy_by_difficulty || accuracyByDifficulty;
+  const avgResponseMs = average_response_time_ms || averageResponseTimeMs;
 
   return (
     <div style={{ marginTop: '8px' }}>
@@ -1272,6 +1461,16 @@ const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
             </div>
             <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '2px' }}>
               Tier: {tier} | Confidence: {confidence}
+              {classification && (
+                <span> | Path: <span style={{
+                  ...printStyles.badge,
+                  background: '#e0e7ff',
+                  color: '#4338ca',
+                  border: '1px solid #a5b4fc',
+                  marginLeft: '4px',
+                  textTransform: 'capitalize'
+                }}>{classification}</span></span>
+              )}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -1280,6 +1479,9 @@ const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
             </div>
             <div style={{ fontSize: '9px', color: '#6b7280', marginTop: '2px' }}>
               {correct}/{questions} correct
+              {avgResponseMs && (
+                <span> | Avg: {(avgResponseMs / 1000).toFixed(1)}s/question</span>
+              )}
             </div>
           </div>
         </div>
@@ -1313,6 +1515,46 @@ const AdaptiveAptitudeSection = ({ adaptiveAptitudeResults }) => {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Accuracy by Difficulty Level */}
+      {difficultyBreakdown && Object.keys(difficultyBreakdown).length > 0 && (
+        <div style={{ marginTop: '8px' }}>
+          <div style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e293b', marginBottom: '6px' }}>
+            Accuracy by Difficulty Level:
+          </div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {Object.entries(difficultyBreakdown)
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([diffLevel, data]) => {
+                const acc = typeof data.accuracy === 'number' ? Math.round(data.accuracy) : 0;
+                const scoreStyle = getScoreStyle(acc);
+                return (
+                  <div key={diffLevel} style={{
+                    ...printStyles.card,
+                    flex: '1 1 60px',
+                    textAlign: 'center',
+                    minWidth: '60px'
+                  }}>
+                    <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b', marginBottom: '2px' }}>
+                      Level {diffLevel}
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '2px' }}>
+                      {data.correct}/{data.total}
+                    </div>
+                    <span style={{
+                      ...printStyles.badge,
+                      background: scoreStyle.bg,
+                      color: scoreStyle.color,
+                      border: `1px solid ${scoreStyle.border}`
+                    }}>
+                      {acc}%
+                    </span>
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}
@@ -1463,8 +1705,8 @@ const OverallSummarySection = ({ overallSummary }) => {
  */
 const ProfileSnapshotDetailsSection = ({ profileSnapshot }) => {
   if (!profileSnapshot) return null;
-  const { interestHighlights, personalityInsights } = profileSnapshot;
-  if (!interestHighlights?.length && !personalityInsights?.length) return null;
+  const { interestHighlights, personalityInsights, keyPatterns } = profileSnapshot;
+  if (!interestHighlights?.length && !personalityInsights?.length && !keyPatterns) return null;
 
   return (
     <div style={{ marginBottom: '8px' }}>
@@ -1500,6 +1742,30 @@ const ProfileSnapshotDetailsSection = ({ profileSnapshot }) => {
           {personalityInsights.map((insight, idx) => (
             <p key={idx} style={{ margin: idx === 0 ? '0' : '4px 0 0 0' }}>{safeRender(insight)}</p>
           ))}
+        </div>
+      )}
+      {keyPatterns && (keyPatterns.strength || keyPatterns.motivation || keyPatterns.enjoyment || keyPatterns.workStyle) && (
+        <div style={{ ...printStyles.card, marginTop: '6px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+          {keyPatterns.strength && (
+            <p style={{ fontSize: '9px', color: '#166534', margin: '0 0 4px 0', lineHeight: '1.5' }}>
+              <strong>Strength:</strong> {safeRender(keyPatterns.strength)}
+            </p>
+          )}
+          {keyPatterns.enjoyment && (
+            <p style={{ fontSize: '9px', color: '#166534', margin: '0 0 4px 0', lineHeight: '1.5' }}>
+              <strong>Enjoyment:</strong> {safeRender(keyPatterns.enjoyment)}
+            </p>
+          )}
+          {keyPatterns.workStyle && (
+            <p style={{ fontSize: '9px', color: '#166534', margin: '0 0 4px 0', lineHeight: '1.5' }}>
+              <strong>Work Style:</strong> {safeRender(keyPatterns.workStyle)}
+            </p>
+          )}
+          {keyPatterns.motivation && (
+            <p style={{ fontSize: '9px', color: '#166534', margin: '0', lineHeight: '1.5' }}>
+              <strong>Motivation:</strong> {safeRender(keyPatterns.motivation)}
+            </p>
+          )}
         </div>
       )}
     </div>

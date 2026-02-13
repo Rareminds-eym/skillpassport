@@ -91,7 +91,12 @@ const PrintViewHigherSecondary = ({
   }
 
   // Extract data from normalized results
-  const { riasec, aptitude, bigFive, workValues, employability, careerFit, skillGap, roadmap, finalNote, profileSnapshot, overallSummary } = normalizedResults;
+  const { riasec, aptitude, bigFive, workValues, employability, careerFit, skillGap, roadmap, finalNote, profileSnapshot, overallSummary, knowledge } = normalizedResults;
+  const characterStrengths = normalizedResults.characterStrengths || normalizedResults.gemini_results?.characterStrengths;
+  const learningStyle = normalizedResults.learningStyle || normalizedResults.gemini_results?.learningStyle;
+  const timingAnalysis = normalizedResults.timingAnalysis || normalizedResults.gemini_results?.timingAnalysis;
+  const adaptiveAptitudeResults = normalizedResults.adaptiveAptitudeResults || normalizedResults.gemini_results?.adaptiveAptitudeResults;
+  const dbCourseRecommendations = normalizedResults.courseRecommendations || normalizedResults.platformCourses || normalizedResults.gemini_results?.courseRecommendations || normalizedResults.gemini_results?.platformCourses;
 
   // Safe student info with defaults
   const safeStudentInfo = getSafeStudentInfo(studentInfo);
@@ -163,8 +168,8 @@ const PrintViewHigherSecondary = ({
             <DevelopmentRoadmapSection roadmap={roadmap} />
           )}
           
-          {courseRecommendations && courseRecommendations.length > 0 && (
-            <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
+          {dbCourseRecommendations && dbCourseRecommendations.length > 0 && (
+            <CourseRecommendationsSection courseRecommendations={dbCourseRecommendations} />
           )}
 
           {/* Overall Summary */}
@@ -181,6 +186,14 @@ const PrintViewHigherSecondary = ({
           {finalNote && (
             <FinalNoteSection finalNote={finalNote} />
           )}
+
+          {knowledge && Object.keys(knowledge).length > 0 && (
+            <KnowledgeAssessmentSection knowledge={knowledge} />
+          )}
+          {characterStrengths && <CharacterStrengthsSection characterStrengths={characterStrengths} />}
+          {learningStyle && <LearningStylesSection learningStyle={learningStyle} />}
+          {timingAnalysis && <TimingAnalysisSection timingAnalysis={timingAnalysis} />}
+          {adaptiveAptitudeResults && <AdaptiveAptitudeResultsSection adaptiveAptitudeResults={adaptiveAptitudeResults} />}
           
           <DetailedAssessmentBreakdown 
             results={normalizedResults} 
@@ -223,8 +236,8 @@ const PrintViewHigherSecondary = ({
         {roadmap && (
           <DevelopmentRoadmapSection roadmap={roadmap} />
         )}
-        {courseRecommendations && courseRecommendations.length > 0 && (
-          <CourseRecommendationsSection courseRecommendations={courseRecommendations} />
+        {dbCourseRecommendations && dbCourseRecommendations.length > 0 && (
+          <CourseRecommendationsSection courseRecommendations={dbCourseRecommendations} />
         )}
 
         {/* Overall Summary */}
@@ -241,6 +254,14 @@ const PrintViewHigherSecondary = ({
         {finalNote && (
           <FinalNoteSection finalNote={finalNote} />
         )}
+
+        {knowledge && Object.keys(knowledge).length > 0 && (
+          <KnowledgeAssessmentSection knowledge={knowledge} />
+        )}
+        {characterStrengths && <CharacterStrengthsSection characterStrengths={characterStrengths} />}
+        {learningStyle && <LearningStylesSection learningStyle={learningStyle} />}
+        {timingAnalysis && <TimingAnalysisSection timingAnalysis={timingAnalysis} />}
+        {adaptiveAptitudeResults && <AdaptiveAptitudeResultsSection adaptiveAptitudeResults={adaptiveAptitudeResults} />}
         
         <ReportDisclaimer />
       </div>
@@ -275,7 +296,6 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
     .map(item => item.code);
 
   const topInterestsText = topThree.map(code => safeRiasecNames[code]).join(', ');
-  const hasStrongInterests = topThree.some(code => (scores[code] || 0) >= maxScore * 0.5);
 
   return (
     <div>
@@ -430,11 +450,7 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
         marginBottom: '6px',
         textAlign: 'left'
       }}>
-        <strong>Your Top Interests:</strong> {topInterestsText}. {riasec.interpretation 
-          ? safeRender(riasec.interpretation)
-          : (hasStrongInterests 
-            ? 'These interests indicate your natural preferences and can guide your career exploration.' 
-            : 'The student has not expressed any strong interests in any of the RIASEC categories, indicating a need for exploration in various fields.')}
+        <strong>Your Top Interests:</strong> {topInterestsText}.{riasec.interpretation ? ` ${safeRender(riasec.interpretation)}` : ''}
       </div>
     </div>
   );
@@ -633,6 +649,14 @@ const WorkValuesSection = ({ workValues }) => {
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '0' }}>4. Work Values</h2>
       <h3 style={printStyles.subTitle}>Your Top Work Motivations</h3>
+
+      {workValues.motivationSummary && (
+        <div style={{ ...printStyles.card, marginBottom: '10px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
+            {safeRender(workValues.motivationSummary)}
+          </p>
+        </div>
+      )}
 
       <div style={printStyles.twoCol}>
         {workValues.topThree.map((item, idx) => {
@@ -2115,13 +2139,24 @@ const FinalNoteSection = ({ finalNote }) => {
           </div>
         )}
 
-        {finalNote.focusArea && (
+        {(finalNote.focusArea || finalNote.growthFocus) && (
           <div style={{ marginBottom: '8px' }}>
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#059669', marginBottom: '4px' }}>
               🎯 Key Focus Area
             </div>
             <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e293b' }}>
-              {safeRender(finalNote.focusArea)}
+              {safeRender(finalNote.focusArea || finalNote.growthFocus)}
+            </p>
+          </div>
+        )}
+
+        {finalNote.nextReview && (
+          <div style={{ marginBottom: '8px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#6b7280', marginBottom: '4px' }}>
+              📅 Next Review
+            </div>
+            <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e293b' }}>
+              {safeRender(finalNote.nextReview)}
             </p>
           </div>
         )}
@@ -2141,6 +2176,480 @@ const FinalNoteSection = ({ finalNote }) => {
         )}
       </div>
     </div>
+  );
+};
+
+/**
+ * KnowledgeAssessmentSection Component
+ * Renders knowledge assessment — supports flat DB format (score, strongTopics, weakTopics)
+ * and legacy domain-based format (domain → {correct, total, percentage})
+ */
+const KnowledgeAssessmentSection = ({ knowledge }) => {
+  if (!knowledge || Object.keys(knowledge).length === 0) return null;
+
+  const isFlatFormat = 'totalQuestions' in knowledge || 'correctCount' in knowledge || 'strongTopics' in knowledge;
+
+  if (isFlatFormat) {
+    const percentage = typeof knowledge.score === 'number' ? Math.round(knowledge.score) : 0;
+    const scoreStyle = getScoreStyle(percentage);
+    const correctCount = knowledge.correctCount || 0;
+    const totalQuestions = knowledge.totalQuestions || 0;
+    const strongTopics = knowledge.strongTopics || [];
+    const weakTopics = knowledge.weakTopics || [];
+
+    return (
+      <>
+        <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>Knowledge Assessment</h2>
+
+        {/* Overall Score */}
+        <div style={{ ...printStyles.card, marginBottom: '10px', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#0369a1' }}>Overall Knowledge Score</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '10px', fontWeight: '600', color: '#1e293b' }}>
+                {correctCount}/{totalQuestions}
+              </span>
+              <span style={{ ...printStyles.badge, background: scoreStyle.bg, color: scoreStyle.color, border: `1px solid ${scoreStyle.border}`, fontSize: '10px', fontWeight: 'bold' }}>
+                {percentage}%
+              </span>
+            </div>
+          </div>
+          <div style={printStyles.progressBar}>
+            <div style={{ width: `${percentage}%`, height: '100%', background: percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444', borderRadius: '4px' }}></div>
+          </div>
+        </div>
+
+        {/* Strong & Weak Topics */}
+        {(strongTopics.length > 0 || weakTopics.length > 0) && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+            {strongTopics.length > 0 && (
+              <div style={{ ...printStyles.card, background: '#f0fdf4', border: '1px solid #86efac' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#166534', marginBottom: '6px' }}>✅ Strong Topics</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {strongTopics.map((topic, idx) => (
+                    <span key={idx} style={{ ...printStyles.badge, background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}>
+                      {safeRender(topic)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {weakTopics.length > 0 && (
+              <div style={{ ...printStyles.card, background: '#fefce8', border: '1px solid #fde68a' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#854d0e', marginBottom: '6px' }}>⚠️ Weak Topics</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {weakTopics.map((topic, idx) => (
+                    <span key={idx} style={{ ...printStyles.badge, background: '#fef9c3', color: '#854d0e', border: '1px solid #fde047' }}>
+                      {safeRender(topic)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Recommendation */}
+        {knowledge.recommendation && (
+          <div style={{ ...printStyles.card, background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+            <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
+              <strong>Recommendation:</strong> {safeRender(knowledge.recommendation)}
+            </p>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Legacy domain-based format: { domainName: { correct, total, percentage }, ... }
+  const getPercentage = (score) => {
+    if (typeof score === 'object' && score !== null) {
+      return score.percentage || (score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0);
+    }
+    return Math.round(score);
+  };
+
+  const sortedDomains = Object.entries(knowledge)
+    .sort(([, a], [, b]) => getPercentage(b) - getPercentage(a));
+
+  return (
+    <>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>Knowledge Assessment</h2>
+      <table style={printStyles.table}>
+        <thead>
+          <tr>
+            <th style={printStyles.th}>Knowledge Domain</th>
+            <th style={{ ...printStyles.th, width: '100px', textAlign: 'center' }}>Score</th>
+            <th style={{ ...printStyles.th, width: '140px' }}>Proficiency</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sortedDomains.map(([domain, score]) => {
+            const percentage = getPercentage(score);
+            const scoreStyle = getScoreStyle(percentage);
+            const isObject = typeof score === 'object' && score !== null;
+            return (
+              <tr key={domain}>
+                <td style={printStyles.td}>
+                  <span style={{ fontWeight: '600', fontSize: '10px' }}>{domain}</span>
+                </td>
+                <td style={{ ...printStyles.td, textAlign: 'center', fontWeight: '600' }}>
+                  {isObject ? `${score.correct || 0}/${score.total || 0}` : ''}
+                </td>
+                <td style={printStyles.td}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={printStyles.progressBar}>
+                        <div style={{ width: `${percentage}%`, height: '100%', background: percentage >= 70 ? '#22c55e' : percentage >= 40 ? '#eab308' : '#ef4444', borderRadius: '4px' }}></div>
+                      </div>
+                    </div>
+                    <span style={{ ...printStyles.badge, background: scoreStyle.bg, color: scoreStyle.color, border: `1px solid ${scoreStyle.border}` }}>
+                      {percentage}%
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </>
+  );
+};
+
+/**
+ * CharacterStrengthsSection Component
+ * Renders character strengths, growth areas, and strength descriptions with ratings
+ */
+const CharacterStrengthsSection = ({ characterStrengths }) => {
+  if (!characterStrengths) return null;
+
+  const { topStrengths, growthAreas, strengthDescriptions } = characterStrengths;
+  const hasContent = (topStrengths && topStrengths.length > 0) ||
+    (growthAreas && growthAreas.length > 0) ||
+    (strengthDescriptions && strengthDescriptions.length > 0);
+
+  if (!hasContent) return null;
+
+  return (
+    <>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>Character Strengths</h2>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+        {topStrengths && topStrengths.length > 0 && (
+          <div style={{ ...printStyles.card, background: '#f0fdf4', border: '1px solid #86efac' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#166534', marginBottom: '6px' }}>⭐ Top Strengths</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {topStrengths.map((strength, idx) => (
+                <span key={idx} style={{ ...printStyles.badge, background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}>
+                  ★ {safeRender(strength)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {growthAreas && growthAreas.length > 0 && (
+          <div style={{ ...printStyles.card, background: '#fefce8', border: '1px solid #fde68a' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#854d0e', marginBottom: '6px' }}>📈 Growth Areas</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {growthAreas.map((area, idx) => (
+                <span key={idx} style={{ ...printStyles.badge, background: '#fef9c3', color: '#854d0e', border: '1px solid #fde047' }}>
+                  → {safeRender(area)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {strengthDescriptions && strengthDescriptions.length > 0 && (
+        <div style={printStyles.twoCol}>
+          {strengthDescriptions.map((item, idx) => {
+            const percentage = Math.round(((item.rating || 0) / 5) * 100);
+            const scoreStyle = getScoreStyle(percentage);
+            return (
+              <div key={idx} style={printStyles.card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b' }}>
+                    {safeRender(item.name)}
+                  </div>
+                  <span style={{ ...printStyles.badge, background: scoreStyle.bg, color: scoreStyle.color, border: `1px solid ${scoreStyle.border}` }}>
+                    {item.rating}/5
+                  </span>
+                </div>
+                <div style={printStyles.progressBar}>
+                  <div style={{ width: `${percentage}%`, height: '100%', background: scoreStyle.color, borderRadius: '4px' }}></div>
+                </div>
+                {item.description && (
+                  <p style={{ margin: '4px 0 0 0', fontSize: '8px', color: '#4b5563', lineHeight: '1.4' }}>
+                    {safeRender(item.description)}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+};
+
+/**
+ * LearningStylesSection Component
+ * Renders primary/secondary learning styles with description
+ */
+const LearningStylesSection = ({ learningStyle }) => {
+  if (!learningStyle || (!learningStyle.primary && !learningStyle.secondary)) return null;
+
+  return (
+    <div style={{ marginBottom: '10px', pageBreakInside: 'avoid' }}>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>Your Learning Preferences</h2>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
+        {learningStyle.primary && (
+          <div style={{ padding: '8px 14px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', borderRadius: '20px', fontSize: '10px', fontWeight: '600' }}>
+            Primary: {learningStyle.primary}
+          </div>
+        )}
+        {learningStyle.secondary && (
+          <div style={{ padding: '8px 14px', background: '#e0e7ff', color: '#4338ca', borderRadius: '20px', fontSize: '10px', fontWeight: '600', border: '1px solid #a5b4fc' }}>
+            Secondary: {learningStyle.secondary}
+          </div>
+        )}
+      </div>
+      {learningStyle.description && (
+        <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.5' }}>
+          {safeRender(learningStyle.description)}
+        </p>
+      )}
+    </div>
+  );
+};
+
+/**
+ * TimingAnalysisSection Component
+ * Renders assessment timing insights: pace, decision style, section insights
+ */
+const TimingAnalysisSection = ({ timingAnalysis }) => {
+  if (!timingAnalysis) return null;
+
+  const paceColors = {
+    'Quick': { bg: '#dcfce7', color: '#166534', border: '#86efac' },
+    'Moderate': { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
+    'Deliberate': { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
+    'Slow': { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' }
+  };
+
+  const confidenceColors = {
+    'High': { bg: '#dcfce7', color: '#166534', border: '#86efac' },
+    'Medium': { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
+    'Low': { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' }
+  };
+
+  return (
+    <>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>Assessment Insights</h2>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+        {timingAnalysis.overallPace && (() => {
+          const colors = paceColors[timingAnalysis.overallPace] || paceColors['Moderate'];
+          return (
+            <div style={{ ...printStyles.card, flex: '1', minWidth: '120px', textAlign: 'center' }}>
+              <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Overall Pace</div>
+              <span style={{ ...printStyles.badge, background: colors.bg, color: colors.color, border: `1px solid ${colors.border}`, fontSize: '10px', fontWeight: 'bold' }}>
+                {timingAnalysis.overallPace}
+              </span>
+            </div>
+          );
+        })()}
+        {timingAnalysis.decisionStyle && (
+          <div style={{ ...printStyles.card, flex: '1', minWidth: '120px', textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Decision Style</div>
+            <span style={{ ...printStyles.badge, background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', fontSize: '10px', fontWeight: 'bold' }}>
+              {timingAnalysis.decisionStyle}
+            </span>
+          </div>
+        )}
+        {timingAnalysis.confidenceIndicator && (() => {
+          const colors = confidenceColors[timingAnalysis.confidenceIndicator] || confidenceColors['Medium'];
+          return (
+            <div style={{ ...printStyles.card, flex: '1', minWidth: '120px', textAlign: 'center' }}>
+              <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Confidence</div>
+              <span style={{ ...printStyles.badge, background: colors.bg, color: colors.color, border: `1px solid ${colors.border}`, fontSize: '10px', fontWeight: 'bold' }}>
+                {timingAnalysis.confidenceIndicator}
+              </span>
+            </div>
+          );
+        })()}
+      </div>
+
+      {timingAnalysis.recommendation && (
+        <div style={{ ...printStyles.card, background: '#eff6ff', border: '1px solid #bfdbfe', marginBottom: '10px' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
+            {safeRender(timingAnalysis.recommendation)}
+          </p>
+        </div>
+      )}
+
+      {timingAnalysis.sectionInsights && Object.keys(timingAnalysis.sectionInsights).length > 0 && (
+        <div>
+          <h3 style={printStyles.subTitle}>Section-wise Insights</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+            {Object.entries(timingAnalysis.sectionInsights).map(([section, insight]) => (
+              <div key={section} style={{ ...printStyles.card, pageBreakInside: 'avoid' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '9px', color: '#1e293b', marginBottom: '3px', textTransform: 'capitalize' }}>
+                  {section.replace(/_/g, ' ')}
+                </div>
+                <p style={{ margin: '0', fontSize: '8px', lineHeight: '1.4', color: '#4b5563' }}>
+                  {safeRender(insight)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+/**
+ * AdaptiveAptitudeResultsSection Component
+ * Renders detailed adaptive aptitude breakdown: accuracy by subtag, difficulty, overall stats
+ */
+const AdaptiveAptitudeResultsSection = ({ adaptiveAptitudeResults }) => {
+  if (!adaptiveAptitudeResults) return null;
+
+  const avgResponseSec = adaptiveAptitudeResults.averageResponseTimeMs
+    ? (adaptiveAptitudeResults.averageResponseTimeMs / 1000).toFixed(1)
+    : null;
+
+  const tierLabels = { H: 'High', M: 'Medium', L: 'Low' };
+  const tierColors = {
+    H: { bg: '#dcfce7', color: '#166534', border: '#86efac' },
+    M: { bg: '#fef9c3', color: '#854d0e', border: '#fde047' },
+    L: { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' }
+  };
+  const tier = adaptiveAptitudeResults.tier || '';
+  const tColors = tierColors[tier] || tierColors['M'];
+
+  return (
+    <>
+      <h2 style={{ ...printStyles.sectionTitle, marginTop: '12px' }}>Adaptive Aptitude Assessment</h2>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+        {tier && (
+          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Tier</div>
+            <span style={{ ...printStyles.badge, background: tColors.bg, color: tColors.color, border: `1px solid ${tColors.border}`, fontSize: '10px', fontWeight: 'bold' }}>
+              {tierLabels[tier] || tier}
+            </span>
+          </div>
+        )}
+        {adaptiveAptitudeResults.overallAccuracy != null && (
+          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Overall Accuracy</div>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#0369a1' }}>
+              {Math.round(adaptiveAptitudeResults.overallAccuracy)}%
+            </div>
+          </div>
+        )}
+        {adaptiveAptitudeResults.totalCorrect != null && adaptiveAptitudeResults.totalQuestions != null && (
+          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Score</div>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b' }}>
+              {adaptiveAptitudeResults.totalCorrect}/{adaptiveAptitudeResults.totalQuestions}
+            </div>
+          </div>
+        )}
+        {avgResponseSec && (
+          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Avg Response</div>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b' }}>
+              {avgResponseSec}s
+            </div>
+          </div>
+        )}
+        {adaptiveAptitudeResults.pathClassification && (
+          <div style={{ ...printStyles.card, flex: '1', minWidth: '90px', textAlign: 'center' }}>
+            <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '4px' }}>Path</div>
+            <span style={{ ...printStyles.badge, background: '#e0e7ff', color: '#4338ca', border: '1px solid #a5b4fc', fontSize: '9px', fontWeight: '600', textTransform: 'capitalize' }}>
+              {adaptiveAptitudeResults.pathClassification}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {adaptiveAptitudeResults.accuracyBySubtag && Object.keys(adaptiveAptitudeResults.accuracyBySubtag).length > 0 && (
+        <div style={{ marginBottom: '10px' }}>
+          <h3 style={printStyles.subTitle}>Accuracy by Cognitive Area</h3>
+          <table style={printStyles.table}>
+            <thead>
+              <tr>
+                <th style={printStyles.th}>Cognitive Area</th>
+                <th style={{ ...printStyles.th, width: '80px', textAlign: 'center' }}>Score</th>
+                <th style={{ ...printStyles.th, width: '140px' }}>Accuracy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(adaptiveAptitudeResults.accuracyBySubtag)
+                .sort(([, a], [, b]) => (b.accuracy || 0) - (a.accuracy || 0))
+                .map(([subtag, data]) => {
+                  const accuracy = Math.round(data.accuracy || 0);
+                  const scoreStyle = getScoreStyle(accuracy);
+                  return (
+                    <tr key={subtag}>
+                      <td style={printStyles.td}>
+                        <span style={{ fontWeight: '600', fontSize: '10px', textTransform: 'capitalize' }}>
+                          {subtag.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td style={{ ...printStyles.td, textAlign: 'center', fontWeight: '600' }}>
+                        {data.correct || 0}/{data.total || 0}
+                      </td>
+                      <td style={printStyles.td}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={printStyles.progressBar}>
+                              <div style={{ width: `${accuracy}%`, height: '100%', background: accuracy >= 70 ? '#22c55e' : accuracy >= 40 ? '#eab308' : '#ef4444', borderRadius: '4px' }}></div>
+                            </div>
+                          </div>
+                          <span style={{ ...printStyles.badge, background: scoreStyle.bg, color: scoreStyle.color, border: `1px solid ${scoreStyle.border}` }}>
+                            {accuracy}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {adaptiveAptitudeResults.accuracyByDifficulty && Object.keys(adaptiveAptitudeResults.accuracyByDifficulty).length > 0 && (
+        <div>
+          <h3 style={printStyles.subTitle}>Performance by Difficulty Level</h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {Object.entries(adaptiveAptitudeResults.accuracyByDifficulty)
+              .sort(([a], [b]) => Number(a) - Number(b))
+              .map(([level, data]) => {
+                const accuracy = Math.round(data.accuracy || 0);
+                const scoreStyle = getScoreStyle(accuracy);
+                return (
+                  <div key={level} style={{ ...printStyles.card, flex: '1', minWidth: '80px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '8px', color: '#6b7280', marginBottom: '2px' }}>Level {level}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: scoreStyle.color, marginBottom: '2px' }}>
+                      {accuracy}%
+                    </div>
+                    <div style={{ fontSize: '8px', color: '#6b7280' }}>
+                      {data.correct || 0}/{data.total || 0}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
