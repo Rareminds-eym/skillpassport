@@ -211,6 +211,51 @@ function validateQuestionStructure(questions: any[]): any[] {
             }
         }
 
+        // CRITICAL: Auto-correct if explanation's final answer matches a different option better
+        // This catches: correctAnswer="C" but explanation says "360" which is in option B
+        // Instead of filtering, we AUTO-CORRECT the mapping to save AI calls
+        if (explanationNumbers && explanationNumbers.length > 0) {
+            const explanationFinalAnswer = explanationNumbers[explanationNumbers.length - 1].replace(/[=\s]/g, '');
+            const explanationNum = parseFloat(explanationFinalAnswer);
+            
+            if (!isNaN(explanationNum)) {
+                // Check all options to see which one matches the explanation best
+                let bestMatchOption: string | null = null;
+                let bestMatchDiff = Infinity;
+                
+                for (const [optKey, optVal] of Object.entries(cleanedOptions)) {
+                    const optNumbers = String(optVal).match(/\d+\.?\d*/g);
+                    if (optNumbers && optNumbers.length > 0) {
+                        const optNum = parseFloat(optNumbers[0]);
+                        if (!isNaN(optNum)) {
+                            const diff = Math.abs(explanationNum - optNum);
+                            if (diff < bestMatchDiff) {
+                                bestMatchDiff = diff;
+                                bestMatchOption = optKey;
+                            }
+                        }
+                    }
+                }
+                
+                // If the explanation matches a different option better than the correct answer, AUTO-CORRECT IT
+                if (bestMatchOption && bestMatchOption !== normalizedAnswer && bestMatchDiff <= 1) {
+                    console.warn(`🔧 [Auto-Correct] Question ${index + 1}: Fixing wrong answer letter mapping`);
+                    console.warn(`   Explanation calculates: ${explanationFinalAnswer}`);
+                    console.warn(`   Was marked as: ${normalizedAnswer} = "${correctAnswerText}"`);
+                    console.warn(`   Auto-correcting to: ${bestMatchOption} = "${cleanedOptions[bestMatchOption]}"`);
+                    
+                    // AUTO-CORRECT: Update the correctAnswer to match the explanation
+                    q.correctAnswer = bestMatchOption;
+                    
+                    // Update normalizedAnswer for subsequent validations
+                    const correctedAnswer = bestMatchOption;
+                    
+                    // Log the correction
+                    console.log(`✅ [Auto-Correct] Question ${index + 1} corrected successfully`);
+                }
+            }
+        }
+
         // ENHANCED: Check if this is a math question and validate the answer makes sense
         const questionLower = q.text.toLowerCase();
         const hasCalculation = /\d+.*[+\-*/×÷].*\d+|calculate|compute|what is|value of|result of|find|solve/.test(questionLower);

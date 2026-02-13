@@ -184,6 +184,22 @@ Session ID: ${answersHash}
 - **Stream**: ${assessmentData.stream}
 - **Assessment Type**: Comprehensive 6-section career assessment
 
+## ⚠️ ABSOLUTE REQUIREMENT: STREAM ALIGNMENT
+
+**THE STUDENT SELECTED ${assessmentData.stream?.toUpperCase()} STREAM.**
+
+🚫 **STRICTLY FORBIDDEN:**
+- DO NOT recommend Commerce programs (BBA, B.Com, etc.) to Science students
+- DO NOT recommend Science programs (B.Tech, MBBS, etc.) to Commerce students  
+- DO NOT recommend Arts programs to Science/Commerce students
+- ALL career clusters and program recommendations MUST align with ${assessmentData.stream}
+
+✅ **YOU MUST:**
+- Recommend ONLY careers and programs that match ${assessmentData.stream}
+- If stream is science_pcmb/science_pcms/science_pcm/science_pcb → Recommend ONLY Science careers
+- If stream is commerce → Recommend ONLY Commerce careers
+- If stream is arts/humanities → Recommend ONLY Arts careers
+
 ## ⚠️ CRITICAL REQUIREMENT: USE ALL 6 ASSESSMENT SECTIONS
 
 This student completed a comprehensive assessment with 6 sections. You MUST use data from ALL 6 sections when generating career clusters:
