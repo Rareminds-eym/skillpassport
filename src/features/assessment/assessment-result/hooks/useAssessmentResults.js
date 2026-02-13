@@ -2023,26 +2023,32 @@ export const useAssessmentResults = () => {
                 validatedResults.adaptive_aptitude_results = answers.adaptive_aptitude_results;
             }
 
-            // ✅ Save to database only (no localStorage)
+            // ✅ Save to database - look up by attemptId, create if not exists
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
-                    // Get the latest result and update it
-                    const latestResult = await assessmentService.getLatestResult(user.id);
-                    if (latestResult) {
-                        // Extract individual scores from AI results for database columns
+                    // Look up existing result by attemptId (more reliable than getLatestResult)
+                    const { data: existingResult, error: lookupError } = await supabase
+                        .from('personal_assessment_results')
+                        .select('id')
+                        .eq('attempt_id', attemptId)
+                        .maybeSingle();
+
+                    if (lookupError) {
+                        console.error('❌ Error looking up result by attemptId:', lookupError.message);
+                    }
+
+                    if (existingResult) {
+                        // Result exists — update it with regenerated AI analysis
                         const updateData = {
                             gemini_results: validatedResults,
                             updated_at: new Date().toISOString()
                         };
 
-                        // Include adaptive_aptitude_session_id if available from attempt
                         if (attempt?.adaptive_aptitude_session_id) {
                             updateData.adaptive_aptitude_session_id = attempt.adaptive_aptitude_session_id;
-                            console.log('✅ Including adaptive_aptitude_session_id in update:', attempt.adaptive_aptitude_session_id);
                         }
 
-                        // Extract and store individual score components
                         if (validatedResults.riasec) {
                             updateData.riasec_scores = validatedResults.riasec.scores;
                             updateData.riasec_code = validatedResults.riasec.code;
@@ -2084,46 +2090,38 @@ export const useAssessmentResults = () => {
                             updateData.overall_summary = validatedResults.overallSummary;
                         }
 
-                        // 🔧 CRITICAL FIX: Ensure adaptive results are saved in gemini_results
-                        // This is needed for the validation check and display
-                        if (validatedResults.adaptiveAptitudeResults || validatedResults.adaptive_aptitude_results) {
-                            console.log('✅ Including adaptive results in database save');
-                            // Already in validatedResults, will be saved in gemini_results
-                        }
-
-                        // Update the existing result with new AI analysis
                         const { error: updateError } = await supabase
                             .from('personal_assessment_results')
                             .update(updateData)
-                            .eq('id', latestResult.id);
+                            .eq('id', existingResult.id);
 
                         if (updateError) {
-                            console.warn('Could not update database result:', updateError.message);
+                            console.error('❌ Could not update database result:', updateError.message);
                         } else {
                             console.log('✅ Database result updated with regenerated AI analysis');
                         }
-
-                        // DISABLED: Course recommendation saving
-                        // Courses are now generated on-demand when user clicks a job role
-                        /*
-                        // Save course recommendations
-                        if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
-                            try {
-                                await saveRecommendations(
-                                    user.id,
-                                    validatedResults.platformCourses,
-                                    latestResult.id,
-                                    'assessment'
-                                );
-                            } catch (recError) {
-                                console.log('Recommendations sync:', recError.message);
-                            }
+                    } else {
+                        // No result record exists — create one via completeAttempt
+                        // This handles cases where the initial save failed (e.g. FK violation)
+                        console.log('⚠️ No existing result for attemptId:', attemptId, '— creating new record');
+                        const studentRecordId = await getStudentRecordId(user.id);
+                        if (studentRecordId) {
+                            const newResult = await assessmentService.completeAttempt(
+                                attemptId,
+                                studentRecordId,
+                                stream,
+                                storedGradeLevel,
+                                validatedResults,
+                                sectionTimings
+                            );
+                            console.log('✅ New result record created:', newResult?.id);
+                        } else {
+                            console.error('❌ Cannot create result — student record not found for auth user:', user.id);
                         }
-                        */
                     }
                 }
             } catch (dbError) {
-                console.log('Could not update database:', dbError.message);
+                console.error('❌ Error saving results to database:', dbError.message);
             }
 
             // Update state with new results

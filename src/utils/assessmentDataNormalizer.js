@@ -119,6 +119,17 @@ export const normalizeAssessmentResults = (results) => {
         normalized.careerFit = normalized.gemini_results.careerFit;
     }
 
+    // 🔧 Lift timingAnalysis to top level for PDF components
+    if (normalized.gemini_results?.timingAnalysis && !normalized.timingAnalysis) {
+        normalized.timingAnalysis = normalized.gemini_results.timingAnalysis;
+    }
+
+    // 🔧 Lift knowledge to top level for PDF components
+    if (normalized.gemini_results?.knowledge && !normalized.knowledge) {
+        console.log('🔧 Lifting knowledge from gemini_results to top level');
+        normalized.knowledge = normalized.gemini_results.knowledge;
+    }
+
     // 🔧 CRITICAL FIX: Fix aptitude scores if needed
     // Priority 1: Use top-level aptitude_scores column (most reliable)
     // Priority 2: Use gemini_results.aptitude._originalScores
