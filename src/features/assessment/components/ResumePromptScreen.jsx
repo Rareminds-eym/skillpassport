@@ -60,6 +60,12 @@ const calculateProgress = (attempt) => {
     streamId: attempt.stream_id,
     allResponsesCount: attempt.all_responses ? Object.keys(attempt.all_responses).length : 0,
     restoredResponsesCount: attempt.restoredResponses ? Object.keys(attempt.restoredResponses).length : 0,
+    // NEW: Check for assessment_snapshot_v2 (college students)
+    hasSnapshotV2: !!attempt.assessment_snapshot_v2,
+    snapshotV2Sections: attempt.assessment_snapshot_v2 ? Object.keys(attempt.assessment_snapshot_v2.sections || {}) : [],
+    snapshotV2QuestionCount: attempt.assessment_snapshot_v2 
+      ? Object.values(attempt.assessment_snapshot_v2.sections || {}).reduce((acc, section) => acc + (section.questions?.length || 0), 0)
+      : 0,
     currentSection: attempt.current_section_index,
     currentQuestion: attempt.current_question_index,
     // Show sample keys to debug
@@ -74,8 +80,19 @@ const calculateProgress = (attempt) => {
 
   // IMPORTANT: restoredResponses contains BOTH UUID and non-UUID responses combined
   // So we should use restoredResponses as the total count, not add them separately
-  // However, if restoredResponses is empty, fallback to all_responses
+  // However, if restoredResponses is empty, fallback to all_responses or assessment_snapshot_v2
   let totalAnsweredQuestions = Object.keys(attempt.restoredResponses || {}).length;
+  
+  // NEW: For college students, check assessment_snapshot_v2 for comprehensive progress data
+  if (totalAnsweredQuestions === 0 && attempt.grade_level === 'college' && attempt.assessment_snapshot_v2?.sections) {
+    const sections = attempt.assessment_snapshot_v2.sections;
+    totalAnsweredQuestions = Object.values(sections).reduce((acc, section) => {
+      return acc + (section.questions?.filter(q => q.answer?.value !== undefined && q.answer?.value !== null).length || 0);
+    }, 0);
+    if (totalAnsweredQuestions > 0) {
+      console.log('✅ [COLLEGE] Using assessment_snapshot_v2 for question count:', totalAnsweredQuestions);
+    }
+  }
   
   // Fallback: If restoredResponses is empty but all_responses has data, use all_responses
   if (totalAnsweredQuestions === 0 && attempt.all_responses) {
@@ -200,9 +217,24 @@ export const ResumePromptScreen = ({
     allResponsesExists: !!pendingAttempt.all_responses,
     allResponsesCount: pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0,
     allResponsesSample: pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).slice(0, 5) : [],
+    // NEW: Check assessment_snapshot_v2 for college students
+    hasSnapshotV2: !!pendingAttempt.assessment_snapshot_v2,
+    snapshotV2Sections: pendingAttempt.assessment_snapshot_v2 ? Object.keys(pendingAttempt.assessment_snapshot_v2.sections || {}) : [],
+    isCollegeStudent: pendingAttempt.grade_level === 'college',
     adaptiveProgressExists: !!pendingAttempt.adaptiveProgress,
     adaptiveQuestionsAnswered: pendingAttempt.adaptiveProgress?.questionsAnswered || 0
   });
+  
+  // NEW: For college students, check assessment_snapshot_v2 for comprehensive progress data
+  if (totalAnsweredQuestions === 0 && pendingAttempt.grade_level === 'college' && pendingAttempt.assessment_snapshot_v2?.sections) {
+    const sections = pendingAttempt.assessment_snapshot_v2.sections;
+    totalAnsweredQuestions = Object.values(sections).reduce((acc, section) => {
+      return acc + (section.questions?.filter(q => q.answer?.value !== undefined && q.answer?.value !== null).length || 0);
+    }, 0);
+    if (totalAnsweredQuestions > 0) {
+      console.log('✅ [COLLEGE] Using assessment_snapshot_v2 for question count:', totalAnsweredQuestions);
+    }
+  }
   
   // Fallback: If restoredResponses is empty but all_responses has data, use all_responses
   if (totalAnsweredQuestions === 0 && pendingAttempt.all_responses) {
@@ -217,7 +249,9 @@ export const ResumePromptScreen = ({
     totalAnsweredQuestions,
     adaptiveQuestionsAnswered,
     finalAnsweredCount: answeredCount,
-    calculationMethod: totalAnsweredQuestions > 0 ? 'restoredResponses' : 'all_responses_fallback'
+    calculationMethod: totalAnsweredQuestions > 0 
+      ? (pendingAttempt.assessment_snapshot_v2 && pendingAttempt.grade_level === 'college' ? 'assessment_snapshot_v2' : 'restoredResponses')
+      : 'all_responses_fallback'
   });
   
   const startedAt = formatDate(pendingAttempt.started_at);

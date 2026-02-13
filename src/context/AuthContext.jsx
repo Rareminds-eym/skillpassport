@@ -13,6 +13,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const isRefreshing = useRef(false);
   const refreshAttempts = useRef(0);
@@ -135,6 +136,7 @@ export const AuthProvider = ({ children }) => {
             if (refreshedSession?.user && mounted) {
               const userData = restoreUserFromStorage(refreshedSession.user);
               setUser(userData);
+              setSession(refreshedSession);
               localStorage.setItem('user', JSON.stringify(userData));
               setLoading(false);
               return;
@@ -148,6 +150,7 @@ export const AuthProvider = ({ children }) => {
           // Session exists - load user data from localStorage or create from session
           const userData = restoreUserFromStorage(session.user);
           setUser(userData);
+          setSession(session);
           localStorage.setItem('user', JSON.stringify(userData));
         } else {
           // No session - clear any stale user data
@@ -159,10 +162,12 @@ export const AuthProvider = ({ children }) => {
               // Only allow demo users without a session
               if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
                 setUser(parsedUser);
+                setSession(null);
               } else {
                 // Real user but no session - clear stale data
                 console.warn('⚠️ Clearing stale user data - no valid Supabase session');
                 setUser(null);
+                setSession(null);
                 localStorage.removeItem('user');
                 localStorage.removeItem('userEmail');
                 localStorage.removeItem('pendingUser');
@@ -170,6 +175,7 @@ export const AuthProvider = ({ children }) => {
             } catch (e) {
               console.warn('Failed to parse stored user:', e);
               setUser(null);
+              setSession(null);
               localStorage.removeItem('user');
               localStorage.removeItem('pendingUser');
             }
@@ -222,6 +228,7 @@ export const AuthProvider = ({ children }) => {
           refreshAttempts.current = 0; // Reset refresh attempts on successful sign in
           const userData = restoreUserFromStorage(session.user);
           setUser(userData);
+          setSession(session);
           localStorage.setItem('user', JSON.stringify(userData));
         } else if (event === 'SIGNED_OUT') {
           // User signed out - clear state (but preserve demo users)
@@ -238,6 +245,7 @@ export const AuthProvider = ({ children }) => {
             }
           }
           setUser(null);
+          setSession(null);
           localStorage.removeItem('user');
           localStorage.removeItem('userEmail');
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
@@ -248,6 +256,7 @@ export const AuthProvider = ({ children }) => {
           // Always update user state on token refresh to ensure consistency
           const userData = restoreUserFromStorage(session.user);
           setUser(userData);
+          setSession(session);
           localStorage.setItem('user', JSON.stringify(userData));
         } else if (event === 'USER_UPDATED' && session?.user) {
           // User data updated - refresh stored user data
@@ -314,12 +323,13 @@ export const AuthProvider = ({ children }) => {
   // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     user,
+    session,
     login,
     logout,
     loading,
     isAuthenticated: !!user,
     role: user?.role || null,
-  }), [user, loading]);
+  }), [user, session, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

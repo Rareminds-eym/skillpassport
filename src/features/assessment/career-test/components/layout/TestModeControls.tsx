@@ -425,32 +425,6 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
               </div>
             </div>
           )}
-
-          {/* Console Log Button */}
-          <div className="pt-3 border-t border-gray-300">
-            <button
-              onClick={() => {
-                console.log('=== TEST MODE DEBUG INFO ===');
-                console.log('Grade Level:', gradeLevel);
-                console.log('Student Stream:', studentStream);
-                console.log('Current Section:', currentSectionIndex, '/', totalSections);
-                console.log('AI Questions Loading:', aiQuestionsLoading);
-                console.log('AI Questions Loaded:', aiQuestionsLoaded);
-                console.log('Sections:', sections.map(s => ({
-                  id: s.id,
-                  title: s.title,
-                  questions: s.questions?.length || 0
-                })));
-                console.log('Is Comprehensive:', isComprehensiveAssessment);
-                console.log('Is Higher Secondary:', isHigherSecondary);
-                console.log('Is After 12th:', isAfter12);
-                console.log('Is Middle School:', isMiddleSchool);
-              }}
-              className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg text-xs font-semibold hover:bg-gray-800 transition-all"
-            >
-              📋 Log Full Debug Info to Console
-            </button>
-          </div>
         </div>
       )}
     </div>

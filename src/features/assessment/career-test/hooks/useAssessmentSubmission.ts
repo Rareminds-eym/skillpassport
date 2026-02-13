@@ -50,7 +50,7 @@ const getStudentRecordId = async (authUserId: string): Promise<string | null> =>
 
     return student.id;
   } catch (err) {
-    console.error('Error looking up student record:', err);
+    // Silent fail - student record lookup is not critical
     return null;
   }
 };
@@ -115,10 +115,8 @@ const fetchAIAptitudeQuestions = async (authUserId: string, answerKeys?: string[
       return transformQuestions(matchingSet);
     }
 
-    console.log('No AI aptitude questions found in database');
     return [];
   } catch (err) {
-    console.error('Error fetching AI aptitude questions:', err);
     return [];
   }
 };
@@ -151,11 +149,7 @@ const findMatchingQuestionSet = (allQuestionSets: any[], targetQuestionIds: stri
   }
 
   if (!matchingQuestionSet) {
-    console.warn('⚠️ No matching question set found, using latest');
     matchingQuestionSet = allQuestionSets[0];
-  } else if (bestMatchCount < targetQuestionIds.length * 0.5) {
-    console.warn(`⚠️ Poor match quality: only ${bestMatchCount}/${targetQuestionIds.length} IDs matched (${Math.round(bestMatchCount / targetQuestionIds.length * 100)}%)`);
-    console.warn('⚠️ This will result in incomplete scoring - questions may have been regenerated');
   }
 
   return matchingQuestionSet;
@@ -193,7 +187,6 @@ const fetchAIKnowledgeQuestions = async (authUserId: string, answerKeys?: string
       targetQuestionIds = answerKeys
         .filter(k => k.startsWith('knowledge_'))
         .map(k => k.replace('knowledge_', ''));
-      console.log(`🔍 Looking for knowledge questions matching ${targetQuestionIds.length} answer IDs`);
     }
 
     // First, look up the student record ID from the auth user ID
@@ -202,16 +195,12 @@ const fetchAIKnowledgeQuestions = async (authUserId: string, answerKeys?: string
 
     // Try with student record ID first (this is how questions are saved)
     if (studentRecordId) {
-      console.log(`📡 Fetching knowledge questions for student_id: ${studentRecordId}`);
-
       const { data: allQuestionSets, error } = await supabase
         .from('career_assessment_ai_questions')
         .select('id, questions, created_at')
         .eq('student_id', studentRecordId)
         .eq('question_type', 'knowledge')
         .order('created_at', { ascending: false });
-
-      console.log(`📡 Knowledge query result: ${allQuestionSets?.length || 0} question sets found, error: ${error?.message || 'none'}`);
 
       if (!error && allQuestionSets && allQuestionSets.length > 0) {
         const matchingSet = findMatchingQuestionSet(allQuestionSets, targetQuestionIds);
@@ -220,7 +209,6 @@ const fetchAIKnowledgeQuestions = async (authUserId: string, answerKeys?: string
     }
 
     // Fallback: Try with auth user ID directly (in case questions were saved with auth ID)
-    console.log(`📡 Fallback: Fetching knowledge questions with auth user id: ${authUserId}`);
     const { data: fallbackQuestionSets, error: fallbackError } = await supabase
       .from('career_assessment_ai_questions')
       .select('id, questions, created_at')
@@ -228,17 +216,13 @@ const fetchAIKnowledgeQuestions = async (authUserId: string, answerKeys?: string
       .eq('question_type', 'knowledge')
       .order('created_at', { ascending: false });
 
-    console.log(`📡 Fallback knowledge query result: ${fallbackQuestionSets?.length || 0} question sets found`);
-
     if (!fallbackError && fallbackQuestionSets && fallbackQuestionSets.length > 0) {
       const matchingSet = findMatchingQuestionSet(fallbackQuestionSets, targetQuestionIds);
       return transformKnowledgeQuestions(matchingSet);
     }
 
-    console.log('No AI knowledge questions found in database');
     return [];
   } catch (err) {
-    console.error('Error fetching AI knowledge questions:', err);
     return [];
   }
 };
@@ -253,7 +237,6 @@ const transformKnowledgeQuestions = (questionSet: any): any[] => {
     correctAnswer: q.correct_answer
   }));
 
-  console.log(`📚 Fetched ${questions.length} AI knowledge questions from database`);
   return questions;
 };
 
@@ -448,7 +431,6 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
               };
               const streamName = streamMap[studentStream] || studentStream;
               enhancedGrade = `${student.grade} - ${streamName}`;
-              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}"`);
             }
 
             studentContext = {
@@ -461,12 +443,11 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
               selectedCategory: derivedCategory // Include the category (arts/science/commerce)
             };
 
-
           } else {
-            console.warn('⚠️ Could not fetch student context:', studentError?.message);
+            // Could not fetch student context - continue without it
           }
         } catch (contextError) {
-          console.error('❌ Error fetching student context:', contextError);
+          // Continue without student context
         }
       }
 
@@ -507,15 +488,14 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
           }
         } catch (fetchErr: any) {
-          console.log('Could not fetch latest attempt:', fetchErr.message);
+          // Could not fetch latest attempt - continue without it
         }
       }
 
-      // ✅ CRITICAL FIX: Store studentContext in the attempt for later use
+      // Store studentContext in the attempt for later use
       // This ensures the AI analysis can access program information when generating career clusters
       if (attemptId && Object.keys(studentContext).length > 0) {
         try {
-
           const { error: contextError } = await supabase
             .from('personal_assessment_attempts')
             .update({
@@ -524,33 +504,22 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             .eq('id', attemptId);
 
           if (contextError) {
-            console.warn('⚠️ Could not store student context:', contextError.message);
-          } else {
-
+            // Could not store student context - non-critical
           }
         } catch (contextUpdateError) {
-          console.error('❌ Error storing student context:', contextUpdateError);
+          // Continue without storing context
         }
       }
 
       // Save completion to database
       if (attemptId && userId) {
         try {
-          console.log('🚀 [UNIFIED LOADER] Starting AI analysis during submission...');
-          console.log('🚀 [UNIFIED LOADER] This will show ONE loader for the entire process');
-          
-          // ============================================================================
-          // STAGE 1: PREPARING (0-10%)
-          // ============================================================================
-          console.log('📊 [Stage 1/6] Preparing your responses...');
+          // Stage 1: Preparing
           window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
           
           // Fetch adaptive aptitude results if available
           let adaptiveResults = null;
           if (currentAttempt?.adaptive_aptitude_session_id) {
-            console.log('🔍 [Preparing] Fetching adaptive aptitude results...');
-            console.log('🔍 [Preparing] Session ID:', currentAttempt.adaptive_aptitude_session_id);
-            
             try {
               const { data: adaptiveData, error: adaptiveError } = await supabase
                 .from('adaptive_aptitude_results')
@@ -560,63 +529,29 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
               
               if (!adaptiveError && adaptiveData) {
                 adaptiveResults = adaptiveData;
-                console.log('✅ [Preparing] Adaptive results fetched:', {
-                  level: adaptiveData.aptitude_level,
-                  accuracy: adaptiveData.overall_accuracy,
-                  totalQuestions: adaptiveData.total_questions,
-                  totalCorrect: adaptiveData.total_correct
-                });
-              } else {
-                console.warn('⚠️ [Preparing] No adaptive results found:', adaptiveError?.message);
               }
             } catch (adaptiveErr) {
-              console.error('❌ [Preparing] Error fetching adaptive results:', adaptiveErr);
+              // Continue without adaptive results
             }
-          } else {
-            console.log('ℹ️ [Preparing] No adaptive session ID found in attempt');
           }
           
           // Merge answers with adaptive results for AI analysis
           const answersWithAdaptive = { ...answers };
-          console.log('📦 [Preparing] Prepared answers:', {
-            totalAnswers: Object.keys(answersWithAdaptive).length,
-            hasAdaptiveResults: !!adaptiveResults
-          });
           
           // Small delay to show preparing stage
           await new Promise(resolve => setTimeout(resolve, 1000));
           
-          // ============================================================================
-          // STAGE 2: SENDING (10-20%)
-          // ============================================================================
-          console.log('📊 [Stage 2/6] Connecting to AI engine...');
+          // Stage 2: Sending
           window.setAnalysisProgress?.('sending', 'Sending your responses to AI...');
           
           await new Promise(resolve => setTimeout(resolve, 500));
           
-          // ============================================================================
-          // STAGE 3: AI ANALYZING (20-70%) - THE MAIN EVENT
-          // ============================================================================
-          console.log('📊 [Stage 3/6] AI Analysis starting...');
-          console.log('⏱️ [AI Analysis] Starting timer...');
+          // Stage 3: AI Analyzing
           window.setAnalysisProgress?.('analyzing', 'AI is analyzing your assessment...');
           
-          const aiStartTime = Date.now();
           let geminiResults = null;
           
           try {
-            console.log('🤖 [AI Analysis] Calling analyzeAssessmentWithGemini...');
-            console.log('🤖 [AI Analysis] Parameters:', {
-              hasAnswers: !!answersWithAdaptive,
-              answerCount: Object.keys(answersWithAdaptive).length,
-              stream: studentStream,
-              gradeLevel: gradeLevel || 'after12',
-              hasQuestionBanks: !!(riasecQuestions && bigFiveQuestions),
-              hasTimings: !!finalTimings,
-              hasAdaptiveResults: !!adaptiveResults,
-              adaptiveSessionId: currentAttempt?.adaptive_aptitude_session_id
-            });
-            
             // Call AI analysis with all data
             geminiResults = await analyzeAssessmentWithGemini(
               answersWithAdaptive,
@@ -636,80 +571,38 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
               adaptiveResults
             );
             
-            const aiDuration = ((Date.now() - aiStartTime) / 1000).toFixed(1);
-            console.log(`✅ [AI Analysis] Completed successfully in ${aiDuration}s`);
-            console.log('✅ [AI Analysis] Results received:', {
-              hasRiasec: !!geminiResults?.riasec,
-              hasCareerFit: !!geminiResults?.careerFit,
-              hasRoadmap: !!geminiResults?.roadmap,
-              resultKeys: geminiResults ? Object.keys(geminiResults) : []
-            });
-            
           } catch (aiError: any) {
-            console.error('❌ [AI Analysis] Failed:', aiError);
-            console.error('❌ [AI Analysis] Error details:', {
-              message: aiError.message,
-              code: aiError.code,
-              stack: aiError.stack
-            });
-            
             // Show error in analyzing screen
             window.setAnalysisProgress?.('error', `AI analysis failed: ${aiError.message}`);
             
             throw new Error(`AI analysis failed: ${aiError.message}`);
           }
           
-          // ============================================================================
-          // STAGE 4: PROCESSING (70-85%)
-          // ============================================================================
-          console.log('📊 [Stage 4/6] Processing results...');
+          // Stage 4: Processing
           window.setAnalysisProgress?.('processing', 'Generating career matches...');
           
           await new Promise(resolve => setTimeout(resolve, 1000));
           
-          // ============================================================================
-          // STAGE 5: SAVING (85-95%)
-          // ============================================================================
-          console.log('📊 [Stage 5/6] Saving to database...');
+          // Stage 5: Saving
           window.setAnalysisProgress?.('saving', 'Saving your personalized report...');
           
-          console.log('💾 [Database] Calling completeAttempt WITH AI results...');
-          
-          const dbResults = await assessmentService.completeAttempt(
+          await assessmentService.completeAttempt(
             attemptId,
             userId,
             studentStream,
             gradeLevel || 'after12',
-            geminiResults, // ← AI results included!
+            geminiResults, // AI results included!
             finalTimings
           );
-
-          console.log('✅ [Database] Assessment saved successfully:', dbResults.id);
-          console.log('✅ [Database] AI results are now in database');
           
-          // ============================================================================
-          // STAGE 6: COMPLETE (95-100%)
-          // ============================================================================
-          console.log('📊 [Stage 6/6] Complete!');
+          // Stage 6: Complete
           window.setAnalysisProgress?.('complete', 'Analysis complete!');
           
           await new Promise(resolve => setTimeout(resolve, 500));
-          
-          console.log('🎉 [UNIFIED LOADER] All stages complete!');
-          console.log('🎉 [UNIFIED LOADER] Total time:', ((Date.now() - aiStartTime) / 1000).toFixed(1) + 's');
-          console.log('🎉 [UNIFIED LOADER] Redirecting to results page...');
-          console.log('🎉 [UNIFIED LOADER] Results will display IMMEDIATELY (no additional loading)');
 
           // Navigate with attemptId
           navigate(`/student/assessment/result?attemptId=${attemptId}`);
         } catch (dbErr: any) {
-          console.error('❌ [UNIFIED LOADER] Failed:', dbErr);
-          console.error('❌ [UNIFIED LOADER] Error details:', {
-            message: dbErr.message,
-            code: dbErr.code,
-            stage: 'submission'
-          });
-          
           // Show error in analyzing screen
           window.setAnalysisProgress?.('error', dbErr.message || 'Submission failed');
           
@@ -732,7 +625,6 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           
           // If we have an attemptId, try to navigate anyway (data might be partially saved)
           if (attemptId) {
-            console.log('⚠️ [UNIFIED LOADER] Attempting to navigate to results despite error...');
             const shouldNavigate = confirm(
               `${errorMessage}\n\nYour answers may be saved. Would you like to try viewing your results?`
             );
@@ -752,7 +644,6 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           }
         }
       } else {
-        console.log('❌ No attemptId or userId available - cannot save results');
         const errorMessage = 'Assessment data not found. Please ensure you started the assessment properly.';
         alert(errorMessage);
         setError(errorMessage);
@@ -760,11 +651,9 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         return;
       }
     } catch (err: any) {
-      console.error('Error submitting assessment:', err);
       setIsSubmitting(false);
 
       const errorMessage = err.message || 'Failed to submit assessment. Please try again.';
-      console.error('❌ Assessment submission failed:', errorMessage);
 
       alert(`Assessment Submission Error: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
     }

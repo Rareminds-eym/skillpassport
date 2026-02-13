@@ -106,7 +106,6 @@ export const useAIQuestions = ({
   // Cleanup function to reset state on unmount
   useEffect(() => {
     return () => {
-      console.log('🧹 Cleaning up useAIQuestions hook');
       setLoading(false);
       isLoadingRef.current = false;
       setError(null);
@@ -123,7 +122,6 @@ export const useAIQuestions = ({
   const loadQuestions = useCallback(async () => {
     // Prevent duplicate calls
     if (isLoadingRef.current) {
-      console.log('⏳ Already loading questions, skipping duplicate call');
       return;
     }
 
@@ -133,22 +131,7 @@ export const useAIQuestions = ({
     // For after10, we use 'general' stream if no specific stream is set
     const effectiveStream = studentStream || (gradeLevel === 'after10' ? 'general' : null);
 
-    console.log('🔍 useAIQuestions.loadQuestions called:', {
-      gradeLevel,
-      studentStream,
-      effectiveStream,
-      usesAI,
-      willLoad: usesAI && !!effectiveStream
-    });
-
     if (!usesAI || !effectiveStream) {
-      console.log('⏭️ Skipping AI question load:', {
-        usesAI,
-        effectiveStream,
-        gradeLevel,
-        studentStream,
-        reason: !usesAI ? 'Grade level does not use AI' : 'No stream selected yet'
-      });
       return;
     }
 
@@ -167,8 +150,6 @@ export const useAIQuestions = ({
     const TOTAL_TIME = TYPICAL_APTITUDE_TIME + TYPICAL_KNOWLEDGE_TIME;
 
     try {
-      console.log(`🤖 Loading AI questions for ${gradeLevel} student, stream:`, effectiveStream);
-
       // Stage 1: Loading aptitude questions
       setProgress({
         stage: 'aptitude',
@@ -255,14 +236,7 @@ export const useAIQuestions = ({
         estimatedTimeRemaining: 0,
         message: 'Questions loaded successfully!'
       });
-
-      console.log('✅ AI questions loaded:', {
-        aptitude: normalizedQuestions.aptitude?.length || 0,
-        knowledge: normalizedQuestions.knowledge?.length || 0
-      });
     } catch (err) {
-      console.warn('Failed to load AI questions:', err);
-
       // Set user-friendly error message based on error type
       let userMessage = 'Failed to load AI questions. Please try again.';
 

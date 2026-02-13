@@ -250,14 +250,16 @@ export const useAssessment = () => {
   }, [currentAttempt?.id]);
 
   // Update progress
-  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null, aptitudeQuestionTimer = null) => {
-    if (!currentAttempt?.id) {
+  const updateProgress = useCallback(async (sectionIndex, questionIndex, sectionTimings, timerRemaining = null, elapsedTime = null, allResponses = null, aptitudeQuestionTimer = null, overrideAttemptId = null) => {
+    // Use overrideAttemptId during resume, otherwise use currentAttempt.id
+    const attemptId = overrideAttemptId || currentAttempt?.id;
+    if (!attemptId) {
       console.warn('⚠️ No active attempt, skipping progress update');
       return { success: false, error: 'No active attempt' };
     }
 
     try {
-      await assessmentService.updateAttemptProgress(currentAttempt.id, {
+      await assessmentService.updateAttemptProgress(attemptId, {
         sectionIndex,
         questionIndex,
         sectionTimings,

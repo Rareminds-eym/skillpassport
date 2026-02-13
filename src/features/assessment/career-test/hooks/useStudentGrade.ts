@@ -63,9 +63,6 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
       setLoading(true);
       setError(null);
 
-
-      const startTime = performance.now();
-
       // OPTIMIZED: Single query with OR condition to check both user_id and id
       // Also fetch by email as fallback in the same query pattern
       const { data: student, error: fetchError } = await supabase
@@ -86,11 +83,7 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         .or(`user_id.eq.${userId}${userEmail ? `,email.eq.${userEmail}` : ''}`)
         .maybeSingle();
 
-      const endTime = performance.now();
-
-
       if (fetchError) {
-        console.error('Error fetching student grade:', fetchError);
         setError(fetchError.message);
         return;
       }
@@ -145,7 +138,6 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
 
       fetchComplete.current = true;
     } catch (err) {
-      console.error('Error fetching student grade:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);

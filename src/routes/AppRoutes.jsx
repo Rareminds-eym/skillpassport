@@ -15,6 +15,7 @@ import StudentLayout from "../layouts/StudentLayout";
 import { PortfolioProvider } from '../context/PortfolioContext';
 import { ThemeProvider } from '../context/ThemeContext';
 import { TestProvider } from '../context/assessment/TestContext';
+import { AssessmentProvider } from '../features/assessment/career-test/context/AssessmentContext';
 import HomePage from '../pages/digital-pp/HomePage';
 import DigitalPassportPage from '../pages/digital-pp/PassportPage';
 import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
@@ -903,13 +904,13 @@ const AppRoutes = () => {
           <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
-          <Route path="assessment-report" element={<AssessmentTestPage />} /> {/* Updated to use new modular component */}
-          <Route path="assessment/test" element={<AssessmentTestPage />} /> {/* Updated to use new modular component */}
+          <Route path="assessment-report" element={<AssessmentProvider><AssessmentTestPage /></AssessmentProvider>} /> {/* Updated to use new modular component */}
+          <Route path="assessment/test" element={<AssessmentProvider><AssessmentTestPage /></AssessmentProvider>} /> {/* Updated to use new modular component */}
           <Route path="assessment/result" element={<AssessmentResult />} />
           <Route path="assessment/platform" element={<AssessmentStart />} />
           <Route path="assessment/dynamic" element={<DynamicAssessment />} />
           <Route path="adaptive-aptitude-test" element={<AdaptiveAptitudeTest />} />
-          <Route path="assessment/start" element={<TestProvider><AssessmentTestPage /></TestProvider>} />
+          <Route path="assessment/start" element={<AssessmentProvider><TestProvider><AssessmentTestPage /></TestProvider></AssessmentProvider>} />
           <Route path="assessment/results" element={<TestProvider><AssessmentResults /></TestProvider>} />
 
           {/* Digital Portfolio routes with required providers */}

@@ -160,18 +160,12 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     const values = Object.values(rawOptions).map(v => String(v));
     if (values.length > 0) {
       optionsArray = values;
-      console.log('✅ Converted object options to array:', values);
     }
   }
 
-  // Debug log for troubleshooting - only if conversion failed
+  // Silent fail if conversion failed
   if (!optionsArray && (question.options || questionAny[' options'])) {
-    console.error('❌ Failed to convert options:', {
-      questionId,
-      optionsRaw: JSON.stringify(rawOptions),
-      isArray: Array.isArray(rawOptions),
-      typeOf: typeof rawOptions
-    });
+    // Options conversion failed - will show fallback UI
   }
 
   if (optionsArray && optionsArray.length > 0) {
@@ -188,16 +182,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     );
   }
 
-  // Fallback: Simple text display with debug info in dev mode
-  console.warn('⚠️ Question type not recognized:', {
-    questionId,
-    questionText: question.text?.substring(0, 50),
-    type: question.type,
-    hasOptions: !!question.options,
-    optionsType: typeof question.options,
-    hasResponseScale: !!responseScale
-  });
-  
+  // Fallback: Simple text display
   return (
     <div className="space-y-4">
       <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug">

@@ -146,13 +146,8 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
 
   // Listen for progress updates from the submission process
   useEffect(() => {
-    console.log('🎬 [AnalyzingScreen] Component mounted - LOADER 1 DISPLAYED');
-    console.log('🎬 [AnalyzingScreen] Initial stage:', controlledStage || 'preparing');
-    console.log('🎬 [AnalyzingScreen] Initial progress:', controlledProgress || 0);
-    
     const handleProgressUpdate = (event: CustomEvent<{ stage: AnalysisStageId; message?: string }>) => {
-      const { stage: newStage, message } = event.detail;
-      console.log('📊 [AnalyzingScreen] Progress update received:', { stage: newStage, message });
+      const { stage: newStage } = event.detail;
       setStage(newStage);
     };
 
@@ -160,12 +155,10 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     
     // Check for initial progress
     if (window.analysisProgress?.stage) {
-      console.log('📊 [AnalyzingScreen] Found existing progress:', window.analysisProgress.stage);
       setStage(window.analysisProgress.stage);
     }
 
     return () => {
-      console.log('🎬 [AnalyzingScreen] Component unmounting - LOADER 1 HIDDEN');
       window.removeEventListener('analysisProgressUpdate', handleProgressUpdate as EventListener);
     };
   }, []);
@@ -182,7 +175,6 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     if (!stageConfig) return;
 
     const [minProgress, maxProgress] = stageConfig.progressRange;
-    console.log(`📊 [AnalyzingScreen] Stage changed to: ${stage} (${minProgress}% - ${maxProgress}%)`);
     
     // Animate progress within the stage range
     const interval = setInterval(() => {
@@ -193,7 +185,6 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
         
         // Don't exceed the max for this stage (unless complete)
         if (stage === 'complete') {
-          console.log('✅ [AnalyzingScreen] Analysis complete - should redirect soon');
           return 100;
         }
         if (stage === 'error') return prev;
@@ -211,7 +202,6 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
   // Track elapsed time for analyzing stage specifically
   useEffect(() => {
     if (stage === 'analyzing' && !analyzingStartTime) {
-      console.log('⏱️ [AnalyzingScreen] Starting analyzing timer');
       setAnalyzingStartTime(Date.now());
     }
     
@@ -219,14 +209,12 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
       const interval = setInterval(() => {
         const elapsed = Math.floor((Date.now() - analyzingStartTime) / 1000);
         setAnalyzingElapsed(elapsed);
-        console.log(`⏱️ [AnalyzingScreen] AI analyzing... ${elapsed}s elapsed`);
       }, 1000);
       return () => clearInterval(interval);
     }
     
     // Reset timer when leaving analyzing stage
     if (stage !== 'analyzing' && analyzingStartTime) {
-      console.log(`⏱️ [AnalyzingScreen] Analyzing complete. Total: ${analyzingElapsed}s`);
       setAnalyzingStartTime(null);
     }
   }, [stage, analyzingStartTime, analyzingElapsed]);

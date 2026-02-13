@@ -35,6 +35,7 @@ import { useStudentGrade } from './hooks/useStudentGrade';
 import { useAIQuestions } from './hooks/useAIQuestions';
 import { useAssessmentSubmission } from './hooks/useAssessmentSubmission';
 import { useAntiCheating } from '../../../hooks/useAntiCheating';
+import { useAssessmentContext } from './context/AssessmentContext';
 
 // Config
 import {
@@ -248,18 +249,16 @@ const AssessmentTestPage: React.FC = () => {
   } = useStudentGrade({ userId: user?.id, userEmail: user?.email });
 
   // Database integration
+  // NOTE: currentAttempt comes from useAssessmentContext (line 344) since that's where startAssessment updates it
   const {
     loading: dbLoading,
-    currentAttempt,
-    startAssessment: dbStartAssessment,
     saveResponse: dbSaveResponse,
-    updateProgress: dbUpdateProgress,
     checkInProgressAttempt,
     studentRecordId
   } = useAssessment();
 
-  // Local state
-  const [sections, setSections] = useState<any[]>([]);
+  // Local state - NOTE: sections now comes from context via setSections
+  // const [sections, setSections] = useState<any[]>([]); // REMOVED - now using context sections
   const [useDatabase, setUseDatabase] = useState(false);
   const [testMode, setTestMode] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
@@ -273,7 +272,11 @@ const AssessmentTestPage: React.FC = () => {
   // Toast notification state for save errors
   const [toastError, setToastError] = useState<string | null>(null);
 
-  // Flow state machine
+  // Get buildAndSaveSnapshot, startAssessment, updateProgress, currentAttempt, setSections, sections, and snapshotBuilder from context FIRST
+  // CRITICAL: Must be declared before useAssessmentFlow callbacks that reference these
+  const { buildAndSaveSnapshot, startAssessment, updateProgress, currentAttempt, setSections, sections, snapshotBuilder, createSnapshotBuilderForResume } = useAssessmentContext();
+
+  // Flow state machine - callbacks reference currentAttempt and updateProgress from context
   const flow = useAssessmentFlow({
     sections,
     onSectionComplete: async (sectionId, timeSpent) => {
@@ -286,7 +289,7 @@ const AssessmentTestPage: React.FC = () => {
 
       if (useDatabase && currentAttempt?.id) {
         // Save all responses including non-UUID questions (RIASEC, BigFive, etc.)
-        const progressResult = await dbUpdateProgress(flow.currentSectionIndex, 0, updatedTimings, null, null, flow.answers);
+        const progressResult = await updateProgress(flow.currentSectionIndex, 0, updatedTimings, undefined, undefined, flow.answers);
         
         // BLOCKING: Show error if section completion save failed
         if (!progressResult.success) {
@@ -297,8 +300,30 @@ const AssessmentTestPage: React.FC = () => {
       }
     },
     onAnswerChange: async (questionId, answer) => {
+      // CRITICAL: Also update snapshot builder if available (for college students)
+      // We need to call the context's onAnswerChange logic here
+      const currentSection = sections[flow.currentSectionIndex];
+      if (currentSection && snapshotBuilder) {
+        const sectionId = currentSection.id;
+        const qId = questionId.includes('_') 
+          ? questionId.substring(questionId.indexOf('_') + 1)
+          : questionId;
+        
+        snapshotBuilder.addQuestion(sectionId, {
+          questionId: qId,
+          question: currentSection.questions?.[flow.currentQuestionIndex],
+          sectionId,
+          sequence: flow.currentQuestionIndex + 1,
+          answer,
+          answeredAt: new Date().toISOString(),
+          timeSpentSeconds: 0
+        });
+      }
+      
       // Save to database if database mode is enabled and we have an active attempt
-      if (useDatabase && currentAttempt?.id) {
+      // CRITICAL: During resume, currentAttempt may be null, so use pendingAttempt as fallback
+      const attemptId = currentAttempt?.id || pendingAttempt?.id;
+      if (useDatabase && attemptId) {
         const [sectionId, qId] = questionId.split('_');
 
         // Check if qId is a valid UUID (36 chars with dashes: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
@@ -326,7 +351,8 @@ const AssessmentTestPage: React.FC = () => {
 
         // Update progress (current position) after every answer
         // Also save all responses to the all_responses column
-        const progressResult = await dbUpdateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers);
+        // Pass attemptId explicitly for resume case (7th param = overrideAttemptId)
+        const progressResult = await updateProgress(flow.currentSectionIndex, flow.currentQuestionIndex, flow.sectionTimings, null, null, updatedAnswers, attemptId);
         
         // BLOCKING: Show error and prevent continuing if progress update failed
         if (!progressResult.success) {
@@ -365,27 +391,16 @@ const AssessmentTestPage: React.FC = () => {
   // Memoize callbacks to prevent infinite re-render loop
   // These callbacks were causing the hook to re-initialize on every render
   const handleAdaptiveTestComplete = useCallback(async (testResults: any) => {
-    console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
     flow.setAnswer('adaptive_aptitude_results', testResults);
     flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
     
     // Link the adaptive session to the assessment attempt
     // NOTE: This is now also done in startTest, but keeping it here as a backup
     if (testResults.sessionId && currentAttempt?.id) {
-      console.log('🔗 [AssessmentTestPage] Linking adaptive session to assessment attempt (backup):', {
-        sessionId: testResults.sessionId,
-        attemptId: currentAttempt.id
-      });
       await assessmentService.updateAttemptAdaptiveSession(
         currentAttempt.id,
         testResults.sessionId
       );
-      console.log('✅ [AssessmentTestPage] Backup linking complete');
-    } else {
-      console.warn('⚠️ [AssessmentTestPage] Backup linking skipped:', {
-        hasSessionId: !!testResults.sessionId,
-        hasAttemptId: !!currentAttempt?.id
-      });
     }
     
     // Always call completeSection to show the section complete screen
@@ -394,7 +409,6 @@ const AssessmentTestPage: React.FC = () => {
   }, [flow, currentAttempt?.id]);
 
   const handleAdaptiveTestError = useCallback((err: any) => {
-    console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
     flow.setError(`Adaptive test error: ${err}`);
   }, [flow]);
 
@@ -491,7 +505,6 @@ const AssessmentTestPage: React.FC = () => {
           flow.setCurrentScreen('grade_selection');
         }
       } catch (err) {
-        console.error('Error checking existing attempt:', err);
         initialCheckDoneRef.current = true;
         flow.setCurrentScreen('grade_selection');
       } finally {
@@ -518,7 +531,6 @@ const AssessmentTestPage: React.FC = () => {
     // gradeLevel/stream are set but loadQuestions useEffect hasn't fired yet)
     const needsAIQuestions = ['higher_secondary', 'after10', 'after12', 'college'].includes(flow.gradeLevel);
     if (needsAIQuestions && aiQuestions?.aptitude === null && !questionsLoading) {
-      console.log('⏳ Waiting for AI question loading to initialize before building sections');
       return;
     }
 
@@ -530,7 +542,6 @@ const AssessmentTestPage: React.FC = () => {
     
     // Don't build sections if we need AI knowledge questions but they haven't loaded yet
     if (needsAIKnowledge && !hasAIKnowledge && questionsLoading) {
-      console.log('⏳ Waiting for AI knowledge questions to load before building sections');
       return;
     }
 
@@ -548,14 +559,13 @@ const AssessmentTestPage: React.FC = () => {
       const beforeFilterCount = builtSections.length;
       builtSections = builtSections.filter(section => {
         if (aiSectionIds.includes(section.id) && (!section.questions || section.questions.length === 0) && !questionsLoading) {
-          console.warn(`⚠️ Removing ${section.id} section: AI questions failed to load (0 questions)`);
           return false;
         }
         return true;
       });
       
       if (builtSections.length < beforeFilterCount) {
-        console.warn(`⚠️ Removed ${beforeFilterCount - builtSections.length} section(s) with 0 AI questions`);
+        // Removed sections with 0 AI questions
       }
       
       setSections(builtSections);
@@ -585,7 +595,6 @@ const AssessmentTestPage: React.FC = () => {
 
     // Validate that the section index is valid
     if (sectionIndex >= sections.length) {
-      console.error('❌ Invalid section index:', sectionIndex, 'sections.length:', sections.length);
       // Start from beginning if invalid
       flow.setCurrentSectionIndex(0);
       flow.setCurrentQuestionIndex(0);
@@ -612,14 +621,10 @@ const AssessmentTestPage: React.FC = () => {
     // FIX: For adaptive sections, handle resume differently
     // Only skip intro if we have an active adaptive session with a question
     if (targetSection?.isAdaptive) {
-      console.log('🔄 [ADAPTIVE RESUME] Restoring adaptive section position');
-      
       // CRITICAL FIX: Check if adaptive session exists in the attempt
       // If user completed previous section and moved to adaptive section but never clicked "Start Section",
       // the adaptive_aptitude_session_id will be NULL
       if (!pendingAttempt.adaptive_aptitude_session_id) {
-        console.log('⚠️ [ADAPTIVE RESUME] No adaptive session ID found - user never started this section');
-        console.log('⚠️ [ADAPTIVE RESUME] Showing section intro so user can start the section');
         // Show section intro screen so user can click "Start Section"
         flow.setCurrentQuestionIndex(0);
         flow.setShowSectionIntro(true);
@@ -629,21 +634,18 @@ const AssessmentTestPage: React.FC = () => {
       
       // Adaptive session exists, check if it was successfully resumed and questions are loaded
       if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
-        console.log('✅ [ADAPTIVE RESUME] Questions loaded, starting section immediately');
         // Adaptive session was already resumed in handleResumeAssessment
         // Questions are loaded, so we can start immediately
         flow.setCurrentQuestionIndex(0);
         flow.setShowSectionIntro(false);
         flow.setCurrentScreen('assessment');
       } else if (adaptiveAptitude.loading) {
-        console.log('⏳ [ADAPTIVE RESUME] Questions still loading, waiting...');
         // Questions are still loading, wait for them
         // The useEffect below will handle starting the section once questions load
         flow.setCurrentQuestionIndex(0);
         flow.setShowSectionIntro(false);
         flow.setCurrentScreen('assessment'); // Show assessment screen with loading state
       } else {
-        console.error('❌ [ADAPTIVE RESUME] No questions loaded and not loading - session resume may have failed');
         // Session resume failed or no questions available
         flow.setError('Failed to resume adaptive test. Please refresh and try again.');
         flow.setCurrentScreen('section_intro');
@@ -655,9 +657,6 @@ const AssessmentTestPage: React.FC = () => {
 
       // Check if question index is out of bounds (past last question)
       if (questionIndex >= questionCount && questionCount > 0) {
-        console.warn(`⚠️ Question index ${questionIndex} is out of bounds (section has ${questionCount} questions)`);
-
-
         // Set to last valid question
         flow.setCurrentQuestionIndex(Math.max(0, questionCount - 1));
 
@@ -821,7 +820,6 @@ const AssessmentTestPage: React.FC = () => {
       !adaptiveAptitude.loading &&
       adaptiveAptitude.currentQuestion
     ) {
-      console.log('✅ [ADAPTIVE] Questions loaded after clicking Start Section');
       adaptiveStartPendingRef.current = false;
       flow.startSection();
       return;
@@ -838,7 +836,6 @@ const AssessmentTestPage: React.FC = () => {
       adaptiveAptitude.currentQuestion &&
       flow.currentQuestionIndex === 0 // Just restored position
     ) {
-      console.log('✅ [ADAPTIVE RESUME] Questions loaded after resume, assessment screen ready');
       // Questions are loaded, screen is already set to 'assessment', nothing more to do
       // The QuestionRenderer will display the adaptive question
       return;
@@ -853,7 +850,6 @@ const AssessmentTestPage: React.FC = () => {
     ) {
       const timeoutId = setTimeout(() => {
         if (adaptiveAptitude.loading) {
-          console.error('❌ [ADAPTIVE] Timeout: Questions failed to load after 30 seconds');
           adaptiveStartPendingRef.current = false;
           flow.setError('Adaptive test initialization timed out. Please refresh the page and try again.');
         }
@@ -875,7 +871,7 @@ const AssessmentTestPage: React.FC = () => {
           );
 
         } catch (err) {
-          console.warn('⚠️ Could not link adaptive session to attempt:', err);
+          // Could not link adaptive session to attempt - non-critical
         }
       }
     };
@@ -895,7 +891,7 @@ const AssessmentTestPage: React.FC = () => {
       const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
 
 
-      dbUpdateProgress(
+      updateProgress(
         flow.currentSectionIndex,
         flow.currentQuestionIndex,
         flow.sectionTimings,
@@ -916,7 +912,7 @@ const AssessmentTestPage: React.FC = () => {
     flow.isSubmitting,
     useDatabase,
     currentAttempt?.id,
-    dbUpdateProgress,
+    updateProgress,
     sections
   ]);
 
@@ -937,7 +933,7 @@ const AssessmentTestPage: React.FC = () => {
 
     if (questionsAnswered > 0) {
       // Update the attempt with current section index and adaptive progress
-      dbUpdateProgress(
+      updateProgress(
         flow.currentSectionIndex,
         questionsAnswered, // Use questions answered as question index
         flow.sectionTimings,
@@ -953,7 +949,7 @@ const AssessmentTestPage: React.FC = () => {
     sections,
     useDatabase,
     currentAttempt?.id,
-    dbUpdateProgress
+    updateProgress
   ]);
 
   // Handlers
@@ -1006,7 +1002,7 @@ const AssessmentTestPage: React.FC = () => {
       setAssessmentStarted(true);
       flow.setCurrentScreen('section_intro');
     }
-  }, [flow, studentRecordId, dbStartAssessment, studentProgram]);
+  }, [flow, studentRecordId, studentProgram]);
 
   const handleCategorySelect = useCallback(async (category: string) => {
     flow.setSelectedCategory(category);
@@ -1024,7 +1020,7 @@ const AssessmentTestPage: React.FC = () => {
     // This prevents orphan attempts when user just browses
 
     flow.setCurrentScreen('section_intro');
-  }, [flow, studentRecordId, dbStartAssessment]);
+  }, [flow, studentRecordId]);
 
   const handleResumeAssessment = useCallback(async () => {
     if (!pendingAttempt) return;
@@ -1036,8 +1032,6 @@ const AssessmentTestPage: React.FC = () => {
     const dbQuestionIndex = pendingAttempt.current_question_index;
 
     if (dbSectionIndex === null || dbSectionIndex === undefined) {
-      console.error('❌ CRITICAL: current_section_index is null/undefined in database!');
-      console.error('❌ This indicates a database save issue. Starting from beginning.');
       // Start from beginning if database values are invalid
       flow.setCurrentSectionIndex(0);
       flow.setCurrentQuestionIndex(0);
@@ -1049,13 +1043,63 @@ const AssessmentTestPage: React.FC = () => {
     }
 
     if (dbQuestionIndex === null || dbQuestionIndex === undefined) {
-      console.error('❌ CRITICAL: current_question_index is null/undefined in database!');
-      console.error('❌ This indicates a database save issue. Using section index only.');
+      // Question index missing - using section index only
     }
 
     setShowResumePrompt(false);
     setAssessmentStarted(true);
     setUseDatabase(true);
+    
+    // CRITICAL: Create snapshot builder for resume if it doesn't exist
+    if (isCollegeStudent && !snapshotBuilder && pendingAttempt?.id) {
+      const builder = createSnapshotBuilderForResume(pendingAttempt.id, pendingAttempt.grade_level || 'college');
+      
+      // CRITICAL FIX: Initialize sections from the saved snapshot so builder has questions
+      if (builder && pendingAttempt.assessment_snapshot_v2?.sections) {
+        const savedSections = pendingAttempt.assessment_snapshot_v2.sections;
+        Object.entries(savedSections).forEach(([sectionId, sectionData]: [string, any]) => {
+          if (sectionData.questions && sectionData.questions.length > 0) {
+            builder.startSection(sectionId, {
+              title: sectionData.title,
+              questions: sectionData.questions.map((q: any) => ({
+                id: q.question_id,
+                text: q.question_text,
+                options: q.options,
+                category: q.category,
+                trait: q.trait,
+                difficulty: q.difficulty,
+                ai_generated: q.ai_generated
+              }))
+            });
+            
+            // Restore answers for each question
+            sectionData.questions.forEach((q: any) => {
+              if (q.answer?.value !== null && q.answer?.value !== undefined) {
+                builder.addQuestion(sectionId, {
+                  questionId: q.question_id,
+                  question: {
+                    id: q.question_id,
+                    text: q.question_text,
+                    options: q.options
+                  },
+                  sectionId: sectionId,
+                  sequence: q.sequence || 1,
+                  answer: q.answer.value,
+                  answeredAt: q.answer.selected_at || new Date().toISOString(),
+                  timeSpentSeconds: q.answer.time_spent_seconds || 0
+                });
+              }
+            });
+          }
+        });
+      }
+    }
+    
+    // CRITICAL: Set currentAttempt from pendingAttempt so saves work during resume
+    if (pendingAttempt?.id) {
+      // Note: We can't set the hook's currentAttempt directly, but we can use pendingAttempt
+      // The save functions should check for pendingAttempt as fallback during resume
+    }
 
 
 
@@ -1097,12 +1141,30 @@ const AssessmentTestPage: React.FC = () => {
       });
     }
 
+    // CRITICAL FIX: Restore answers from assessment_snapshot_v2 for college students
+    // This is the primary source of truth for college student answers
+    if (pendingAttempt.assessment_snapshot_v2) {
+      const snapshot = pendingAttempt.assessment_snapshot_v2;
+      const sections = snapshot.sections || {};
+      
+      // Iterate through all sections in the snapshot
+      Object.entries(sections).forEach(([sectionId, sectionData]: [string, any]) => {
+        const questions = sectionData.questions || [];
+        
+        questions.forEach((q: any) => {
+          // Only restore if there's an actual answer value
+          if (q.answer?.value !== null && q.answer?.value !== undefined && q.answer?.value !== '') {
+            const questionKey = `${sectionId}_${q.question_id}`;
+            flow.setAnswer(questionKey, q.answer.value);
+          }
+        });
+      });
+    }
+
 
 
     // FIX 1: Resume adaptive aptitude session if exists
     if (pendingAttempt.adaptive_aptitude_session_id) {
-      console.log('🔄 [ADAPTIVE RESUME] Found adaptive session ID, attempting to resume:', pendingAttempt.adaptive_aptitude_session_id);
-      
       // Check if the adaptive session is already completed
       const { data: adaptiveSession } = await supabase
         .from('adaptive_aptitude_sessions')
@@ -1111,29 +1173,22 @@ const AssessmentTestPage: React.FC = () => {
         .single();
       
       if (adaptiveSession?.status === 'completed') {
-        console.log('✅ [ADAPTIVE RESUME] Adaptive session already completed, skipping resume');
-        console.log('✅ [ADAPTIVE RESUME] Will show section complete screen');
         // Don't try to resume - the section is already complete
         // Check if we're currently on the adaptive section
         const adaptiveSectionIndex = sections.findIndex(s => s.isAdaptive);
         if (dbSectionIndex === adaptiveSectionIndex) {
-          console.log('✅ [ADAPTIVE RESUME] Currently on adaptive section, showing section complete');
           flow.completeSection();
         }
       } else {
         // Session is in progress, try to resume it
         try {
           await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
-          console.log('✅ [ADAPTIVE RESUME] Session resumed successfully');
         } catch (err) {
-          console.error('❌ [ADAPTIVE RESUME] Failed to resume adaptive session:', err);
           // Show error to user but allow them to continue
           flow.setError('Could not resume adaptive test session. The section will restart from the beginning.');
           // Continue with regular resume - adaptive section will restart if needed
         }
       }
-    } else {
-      console.log('ℹ️ [ADAPTIVE RESUME] No adaptive session ID found - user may not have started adaptive section yet');
     }
 
     // FIX 3: Check if we need to wait for AI questions
@@ -1142,7 +1197,6 @@ const AssessmentTestPage: React.FC = () => {
     // CRITICAL: Check if AI questions are in initial null state (not yet attempted)
     // This happens during resume when gradeLevel/stream are set but loadQuestions hasn't fired yet
     if (needsAIQuestions && aiQuestions?.aptitude === null && !questionsLoading) {
-      console.log('⏳ [RESUME] AI questions not yet initialized, waiting for loadQuestions to start');
       // Set screen to loading so useEffect can detect and restore position later
       flow.setCurrentScreen('loading');
       // Position will be restored in the useEffect once questions start loading and sections are built
@@ -1168,10 +1222,6 @@ const AssessmentTestPage: React.FC = () => {
     if (sections.length > 0) {
       // CRITICAL: Validate section index against actual sections
       if (sectionIndex >= sections.length) {
-        console.error('❌ CRITICAL: Database section index', sectionIndex, 'is out of bounds! Available sections:', sections.length);
-        console.error('❌ Available sections:', sections.map((s, i) => `${i}: ${s.id}`));
-        console.error('❌ This indicates a mismatch between database and current sections. Starting from beginning.');
-
         // Start from beginning if section index is invalid
         flow.setCurrentSectionIndex(0);
         flow.setCurrentQuestionIndex(0);
@@ -1186,14 +1236,11 @@ const AssessmentTestPage: React.FC = () => {
       // FIX: For adaptive sections, check if session exists
       // The adaptive hook manages its own question state
       if (targetSection?.isAdaptive) {
-        console.log('🔄 [ADAPTIVE RESUME] Detected adaptive section in handleResumeAssessment');
         
         // CRITICAL FIX: Check if adaptive session exists
         // If user completed previous section and moved to adaptive section but never clicked "Start Section",
         // the adaptive_aptitude_session_id will be NULL
         if (!pendingAttempt.adaptive_aptitude_session_id) {
-          console.log('⚠️ [ADAPTIVE RESUME] No adaptive session ID found - user never started this section');
-          console.log('⚠️ [ADAPTIVE RESUME] Showing section intro so user can start the section');
           // Show section intro screen so user can click "Start Section"
           flow.setCurrentQuestionIndex(0);
           flow.setShowSectionIntro(true);
@@ -1207,12 +1254,10 @@ const AssessmentTestPage: React.FC = () => {
             .single();
           
           if (adaptiveSession?.status === 'completed') {
-            console.log('✅ [ADAPTIVE RESUME] Adaptive session is completed, showing section complete');
             flow.setCurrentQuestionIndex(0);
             flow.setShowSectionIntro(false);
             flow.completeSection();
           } else {
-            console.log('✅ [ADAPTIVE RESUME] Adaptive session exists and in progress, resuming to assessment screen');
             // Adaptive session was already resumed above
             // Just set to question 0 and let adaptive hook take over
             flow.setCurrentQuestionIndex(0);
@@ -1229,7 +1274,6 @@ const AssessmentTestPage: React.FC = () => {
 
         // Check if question index is out of bounds (past last question)
         if (questionIndex >= questionCount && questionCount > 0) {
-          console.warn(`⚠️ Question index ${questionIndex} is out of bounds (section has ${questionCount} questions)`);
 
 
           // Set to last valid question
@@ -1283,11 +1327,8 @@ const AssessmentTestPage: React.FC = () => {
 
     if (pendingAttempt?.id) {
       try {
-
         await assessmentService.abandonAttempt(pendingAttempt.id);
-
       } catch (err) {
-        console.error('❌ Error abandoning attempt:', err);
         // Continue anyway - user wants to start fresh
       }
     }
@@ -1303,7 +1344,7 @@ const AssessmentTestPage: React.FC = () => {
       try {
         await assessmentService.abandonAttempt(currentAttempt.id);
       } catch (err) {
-        console.error('Error abandoning current attempt:', err);
+        // Continue anyway
       }
     }
 
@@ -1313,15 +1354,6 @@ const AssessmentTestPage: React.FC = () => {
 
   const handleStartSection = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
-
-    console.log('🚀 [handleStartSection] Called:', {
-      currentSectionIndex: flow.currentSectionIndex,
-      sectionId: currentSection?.id,
-      hasCurrentAttempt: !!currentAttempt,
-      hasStudentRecordId: !!studentRecordId,
-      studentRecordId,
-      useDatabase
-    });
 
     // SAFEGUARD: Ensure resume prompt is hidden when starting a section
     // This prevents any race conditions from showing the prompt
@@ -1335,7 +1367,6 @@ const AssessmentTestPage: React.FC = () => {
     // CRITICAL: Check if currentAttempt has an ID, not just if it exists
     if (!currentAttempt?.id && studentRecordId) {
       try {
-        console.log('💾 [handleStartSection] Setting useDatabase to true');
         setUseDatabase(true);
 
         // Determine the appropriate stream ID based on grade level
@@ -1348,28 +1379,10 @@ const AssessmentTestPage: React.FC = () => {
         }
         // For after12, after10, middle, highschool: streamId should already be set
 
-        console.log('🎯 [AssessmentTestPage] Creating attempt:', { 
-          streamId, 
-          gradeLevel: flow.gradeLevel, 
-          studentRecordId,
-          currentSectionIndex: flow.currentSectionIndex,
-          note: streamId === 'college' ? 'Using college stream (program-based)' : 
-                streamId ? 'Using selected stream' : 
-                'No stream (will be null)'
-        });
-        
-        await dbStartAssessment(streamId, flow.gradeLevel || 'after10');
-        console.log('✅ [handleStartSection] Attempt created successfully');
+        await startAssessment(streamId, flow.gradeLevel || 'after10');
       } catch (err) {
-        console.error('❌ [handleStartSection] Error starting assessment:', err);
+        // Error starting assessment - continue anyway
       }
-    } else {
-      console.log('⏭️ [handleStartSection] Skipping attempt creation:', {
-        reason: !studentRecordId ? 'No studentRecordId' : 'Already have currentAttempt with ID',
-        hasCurrentAttempt: !!currentAttempt,
-        hasAttemptId: !!currentAttempt?.id,
-        studentRecordId: !!studentRecordId
-      });
     }
 
     // Initialize timer for timed sections
@@ -1392,26 +1405,21 @@ const AssessmentTestPage: React.FC = () => {
 
     // Initialize adaptive test
     if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
-      console.log('🚀 [ADAPTIVE] Starting adaptive test...');
       // Initialize adaptive timer based on section config
       setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);
       
       // Check if questions are already loaded
       if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
-        console.log('✅ [ADAPTIVE] Questions already loaded, starting immediately');
         // Questions already loaded, start immediately
         flow.startSection();
       } else {
-        console.log('⏳ [ADAPTIVE] Questions not loaded yet, setting pending flag');
         // Set pending flag so useEffect knows to start section when questions load
         adaptiveStartPendingRef.current = true;
         
         // Start the adaptive test (async - questions will load in background)
         try {
           await adaptiveAptitude.startTest();
-          console.log('✅ [ADAPTIVE] startTest completed successfully');
         } catch (err) {
-          console.error('❌ [ADAPTIVE] Failed to start test:', err);
           adaptiveStartPendingRef.current = false;
           flow.setError('Failed to initialize adaptive test. Please try again.');
           return;
@@ -1423,26 +1431,15 @@ const AssessmentTestPage: React.FC = () => {
     }
 
     flow.startSection();
-  }, [sections, flow, adaptiveAptitude, currentAttempt, studentRecordId, dbStartAssessment, showResumePrompt]);
+  }, [sections, flow, adaptiveAptitude, currentAttempt, studentRecordId, startAssessment, showResumePrompt]);
 
   const handleNextQuestion = useCallback(async () => {
     const currentSection = sections[flow.currentSectionIndex];
 
     // CRITICAL FIX 1: Race Condition Protection
     if (flow.isSaving) {
-      console.log('⏳ [RACE PROTECTION] Already saving, ignoring click');
       return;
     }
-
-    console.log('🔄 [NEXT QUESTION] Starting navigation with save-first logic:', {
-      currentSectionIndex: flow.currentSectionIndex,
-      currentQuestionIndex: flow.currentQuestionIndex,
-      sectionId: currentSection?.id,
-      totalQuestions: currentSection?.questions?.length,
-      useDatabase,
-      hasCurrentAttempt: !!currentAttempt?.id,
-      isSaving: flow.isSaving
-    });
 
     // Handle adaptive section
     if (currentSection?.isAdaptive) {
@@ -1451,7 +1448,6 @@ const AssessmentTestPage: React.FC = () => {
       }
 
       if (adaptiveAptitudeAnswer !== null) {
-        console.log('🎯 [ADAPTIVE] Submitting answer:', adaptiveAptitudeAnswer);
         adaptiveAptitude.submitAnswer(adaptiveAptitudeAnswer as 'A' | 'B' | 'C' | 'D');
         setAdaptiveAptitudeAnswer(null);
       }
@@ -1459,8 +1455,9 @@ const AssessmentTestPage: React.FC = () => {
     }
 
     // CRITICAL: Block navigation if database is required but we can't save
-    if (useDatabase && !currentAttempt?.id) {
-      console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
+    // During resume, use pendingAttempt as fallback since currentAttempt may not be set yet
+    const attemptId = currentAttempt?.id || pendingAttempt?.id;
+    if (useDatabase && !attemptId) {
       showBlockingError('Assessment session not found. Please refresh the page and try again.');
       return;
     }
@@ -1479,13 +1476,6 @@ const AssessmentTestPage: React.FC = () => {
       const nextSectionIndex = isLastInSection ? flow.currentSectionIndex + 1 : flow.currentSectionIndex;
       const finalQuestionIndex = isLastInSection ? 0 : nextQuestionIndex;
 
-      console.log('📊 [SAVE STRATEGY] Determining save approach:', {
-        isLastInSection,
-        isEvery10th,
-        nextPosition: { section: nextSectionIndex, question: finalQuestionIndex },
-        saveStrategy: isLastInSection ? 'CRITICAL' : isEvery10th ? 'CHECKPOINT' : 'LIGHT'
-      });
-
       // Reset timers before navigation
       if (currentSection?.isAptitude && flow.aptitudePhase === 'individual') {
         flow.setAptitudeQuestionTimer(currentSection.individualTimeLimit || 60);
@@ -1495,101 +1485,77 @@ const AssessmentTestPage: React.FC = () => {
       }
 
       // Smart save strategy based on importance
-      if (useDatabase && currentAttempt?.id) {
+      // During resume, use pendingAttempt as fallback since currentAttempt may not be set yet
+      const attemptId = currentAttempt?.id || pendingAttempt?.id;
+      if (useDatabase && attemptId) {
         const updatedAnswers = { ...flow.answers };
 
         if (isLastInSection) {
           // CRITICAL SAVE: Block at section boundaries (data integrity)
-          console.log('💾 [CRITICAL SAVE] Section boundary - blocking save for data integrity');
-          const saveStartTime = performance.now();
-          const saveResult = await dbUpdateProgress(
+          const saveResult = await updateProgress(
             nextSectionIndex,
             finalQuestionIndex,
             flow.sectionTimings,
             null,
             null,
-            updatedAnswers
+            updatedAnswers,
+            attemptId // Pass attemptId explicitly for resume case
           );
-          const saveEndTime = performance.now();
-          const saveDuration = Math.round(saveEndTime - saveStartTime);
-
-          console.log('📊 [CRITICAL SAVE] Completed:', {
-            success: saveResult?.success,
-            duration: `${saveDuration}ms`,
-            error: saveResult?.error || 'none'
-          });
 
           if (!saveResult?.success) {
-            console.error('❌ [SAVE BLOCK] Critical save failed - Navigation BLOCKED');
-            console.error('❌ [SAVE BLOCK] Save result:', saveResult);
             showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
             return; // BLOCK NAVIGATION - critical save failed
           }
-
-          console.log('✅ [CRITICAL SAVE] Success - Navigation ALLOWED');
         } else {
           // For non-critical saves, try to save first, then navigate
-          console.log('💾 [BACKGROUND SAVE] Attempting save before navigation...');
-
           if (isEvery10th) {
             // CHECKPOINT SAVE: Try to save, block if it fails
-            const saveResult = await dbUpdateProgress(
+            const saveResult = await updateProgress(
               nextSectionIndex,
               finalQuestionIndex,
               flow.sectionTimings,
               null,
               null,
-              updatedAnswers
+              updatedAnswers,
+              attemptId // Pass attemptId explicitly for resume case (7th param)
             );
 
             if (!saveResult?.success) {
-              console.error('❌ [SAVE BLOCK] Checkpoint save failed - Navigation BLOCKED');
-              console.error('❌ [SAVE BLOCK] Save result:', saveResult);
               showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
               return; // BLOCK NAVIGATION - checkpoint save failed
             }
 
-            console.log('✅ [CHECKPOINT SAVE] Success - Navigation ALLOWED');
+            // Only navigate after successful save
+            flow.goToNextQuestion();
+            return; // Early return for non-critical saves
           } else {
             // LIGHT SAVE: Try to save, block if it fails
-            const saveResult = await dbUpdateProgress(
+            const saveResult = await updateProgress(
               nextSectionIndex,
               finalQuestionIndex,
               {}, // Empty section timings for light save
               null,
               null,
-              {} // Empty answers for light save
+              {}, // Empty answers for light save
+              attemptId // Pass attemptId explicitly for resume case (7th param)
             );
 
             if (!saveResult?.success) {
-              console.error('❌ [SAVE BLOCK] Light save failed - Navigation BLOCKED');
-              console.error('❌ [SAVE BLOCK] Save result:', saveResult);
               showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
               return; // BLOCK NAVIGATION - light save failed
             }
 
-            console.log('✅ [LIGHT SAVE] Success - Navigation ALLOWED');
+            // Only navigate after successful save
+            flow.goToNextQuestion();
+            return; // Early return for non-critical saves
           }
-
-          // Only navigate after successful save
-          console.log('🚀 [NAVIGATION] Proceeding with navigation after successful save');
-          flow.goToNextQuestion();
-          console.log('✅ [NAVIGATION] Navigation completed');
-          return; // Early return for non-critical saves
         }
-      } else {
-        console.log('⏭️ [SAVE] Database disabled - allowing navigation without save');
       }
 
       // Navigate after critical save or when database is disabled
-      console.log('🚀 [NAVIGATION] Proceeding with navigation after critical save');
       flow.goToNextQuestion();
-      console.log('✅ [NAVIGATION] Navigation completed');
 
     } catch (error: any) {
-      // CRITICAL FIX 3: Handle network errors and other exceptions
-      console.error('❌ [CRITICAL ERROR] Unexpected error during navigation:', error);
-
       // Provide user-friendly error messages based on error type
       if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
         showBlockingError('Network connection lost. Please check your internet connection and try again.');
@@ -1605,30 +1571,16 @@ const AssessmentTestPage: React.FC = () => {
       return;
     } finally {
       // CRITICAL FIX 4: Always clear saving state in finally block
-      console.log('🔓 [SAVE] Clearing isSaving state in finally block');
       flow.setIsSaving(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, flow, adaptiveAptitude, adaptiveAptitudeAnswer, useDatabase, currentAttempt, dbUpdateProgress]);
+  }, [sections, flow, adaptiveAptitude, adaptiveAptitudeAnswer, useDatabase, currentAttempt, updateProgress]);
 
   const handleNextSection = useCallback(async () => {
     // Compute isLastSection directly to avoid stale closure issues
     const isLastSection = flow.currentSectionIndex === sections.length - 1;
 
-
-    console.log('📊 handleNextSection state:', {
-      isLastSection,
-      flowIsLastSection: flow.isLastSection,
-      currentSectionIndex: flow.currentSectionIndex,
-      sectionsLength: sections.length,
-      gradeLevel: flow.gradeLevel,
-      useDatabase,
-      hasCurrentAttempt: !!currentAttempt?.id,
-      currentAttemptId: currentAttempt?.id
-    });
-
     if (isLastSection) {
-
       // IMPORTANT: Set submitting state IMMEDIATELY so the UI shows loading
       // This prevents the button from appearing unresponsive during database fetch
       flow.setIsSubmitting(true);
@@ -1650,18 +1602,30 @@ const AssessmentTestPage: React.FC = () => {
           if (!fetchError && attemptData) {
             if (attemptData.all_responses) {
               answersToSubmit = attemptData.all_responses;
-            } else {
-              console.warn('⚠️ Could not load answers from database, using flow.answers');
             }
-
             if (attemptData.section_timings) {
               timingsToSubmit = attemptData.section_timings;
-            } else {
-              console.warn('⚠️ Could not load section timings from database, using flow.sectionTimings');
             }
           }
         } catch (err) {
-          console.error('Error loading data from database:', err);
+          // Continue with flow data if fetch fails
+        }
+      }
+
+      // CRITICAL FIX: Build comprehensive snapshot for college students BEFORE submitting
+      // This captures all questions, options, and answers with full context
+      if (flow.gradeLevel === 'college' && buildAndSaveSnapshot) {
+        try {
+          await buildAndSaveSnapshot({
+            questionsAnswered: adaptiveAptitude.progress?.questionsAnswered || 0,
+            correctAnswers: adaptiveAptitude.progress?.correctAnswers || 0,
+            estimatedAbility: adaptiveAptitude.session?.abilityEstimate || 0,
+            phasesCompleted: adaptiveAptitude.progress?.phases || [],
+            finalPhase: adaptiveAptitude.progress?.currentPhase || '',
+            reliability: adaptiveAptitude.progress?.reliability || 0
+          });
+        } catch (snapshotError) {
+          // Continue with submission even if snapshot fails - don't block the user
         }
       }
 
@@ -1679,19 +1643,10 @@ const AssessmentTestPage: React.FC = () => {
         selectedCategory: flow.selectedCategory
       });
     } else {
-      console.log('⏭️ [NEXT SECTION] Moving to next section with optimized save strategy');
-      console.log('📊 [NEXT SECTION] Current state:', {
-        currentSectionIndex: flow.currentSectionIndex,
-        totalSections: sections.length,
-        currentQuestionIndex: flow.currentQuestionIndex,
-        useDatabase,
-        hasCurrentAttempt: !!currentAttempt?.id
-      });
-
       // CRITICAL: Block navigation if database is required but we can't save
-      if (useDatabase && !currentAttempt?.id) {
-        console.error('❌ [SAVE BLOCK] Cannot save - no current attempt ID');
-        console.error('❌ [SAVE BLOCK] Section navigation BLOCKED - database enabled but no attempt');
+      // During resume, use pendingAttempt as fallback since currentAttempt may not be set yet
+      const attemptIdForNextSection = currentAttempt?.id || pendingAttempt?.id;
+      if (useDatabase && !attemptIdForNextSection) {
         showBlockingError('Assessment session not found. Please refresh the page and try again.');
         return; // BLOCK NAVIGATION - cannot save at all
       }
@@ -1700,47 +1655,28 @@ const AssessmentTestPage: React.FC = () => {
       const nextSectionIndex = flow.currentSectionIndex + 1;
       const nextQuestionIndex = 0; // Always start at question 0 in new section
 
-      console.log('📊 [NEXT SECTION] Next position:', {
-        currentPosition: { section: flow.currentSectionIndex, question: flow.currentQuestionIndex },
-        nextPosition: { section: nextSectionIndex, question: nextQuestionIndex }
-      });
-
       // CRITICAL SAVE: Section boundaries are always critical for data integrity
-      if (useDatabase && currentAttempt?.id) {
-        console.log('💾 [CRITICAL SAVE] Section boundary - blocking save for data integrity');
+      // During resume, use pendingAttempt as fallback since currentAttempt may not be set yet
+      const sectionAttemptId = currentAttempt?.id || pendingAttempt?.id;
+      if (useDatabase && sectionAttemptId) {
         const updatedAnswers = { ...flow.answers };
 
         try {
-          const saveStartTime = performance.now();
-          const saveResult = await dbUpdateProgress(
+          const saveResult = await updateProgress(
             nextSectionIndex,
             nextQuestionIndex,
             flow.sectionTimings,
             null,
             null,
-            updatedAnswers
+            updatedAnswers,
+            sectionAttemptId // Pass attemptId explicitly for resume case (7th param)
           );
-          const saveEndTime = performance.now();
-          const saveDuration = Math.round(saveEndTime - saveStartTime);
-
-          console.log('📊 [CRITICAL SAVE] Section boundary save completed:', {
-            success: saveResult?.success,
-            duration: `${saveDuration}ms`,
-            error: saveResult?.error || 'none'
-          });
 
           if (!saveResult?.success) {
-            console.error('❌ [SAVE BLOCK] Section save failed - Navigation BLOCKED');
-            console.error('❌ [SAVE BLOCK] Save result:', saveResult);
             showBlockingError('Failed to save your progress. Please check your internet connection and try again.');
             return; // BLOCK NAVIGATION - critical save failed
           }
-
-          console.log('✅ [CRITICAL SAVE] Section save successful - Navigation ALLOWED');
         } catch (error: any) {
-          console.error('❌ [SAVE BLOCK] Section save error - Navigation BLOCKED');
-          console.error('❌ [SAVE BLOCK] Error details:', error);
-
           // Provide user-friendly error messages based on error type
           if (error?.message?.includes('NetworkError') || error?.message?.includes('fetch')) {
             showBlockingError('Network connection lost. Please check your internet connection and try again.');
@@ -1751,43 +1687,29 @@ const AssessmentTestPage: React.FC = () => {
           } else {
             showBlockingError('An unexpected error occurred. Please try again or refresh the page.');
           }
-
           return; // BLOCK NAVIGATION - critical save error
         }
-      } else {
-        console.log('⏭️ [SAVE] Database disabled - allowing section navigation without save');
       }
 
       // Navigate after critical save or when database is disabled
-      console.log('🚀 [SECTION NAVIGATION] Proceeding with section navigation after critical save');
       flow.goToNextSection();
-      console.log('✅ [SECTION NAVIGATION] Section navigation completed');
     }
-  }, [flow, sections, submission, currentAttempt, user, useDatabase, dbUpdateProgress]);
+  }, [flow, sections, submission, currentAttempt, user, useDatabase, updateProgress]);
 
   const handleAnswerChange = useCallback((value: any) => {
     const currentSection = sections[flow.currentSectionIndex];
     const qId = flow.questionId; // Capture questionId at the time of answer
 
-    console.log(`📝 [Answer Change] Section: ${currentSection?.id}, QuestionID: ${qId}, Value:`, value);
-
     if (currentSection?.isAdaptive) {
       setAdaptiveAptitudeAnswer(value);
     } else {
       flow.setAnswer(qId, value);
-      console.log(`📝 [Answer Stored] QuestionID: ${qId}, Answers now:`, Object.keys(flow.answers).length, 'total');
-      
-      // Log the actual stored value to verify
-      setTimeout(() => {
-        console.log(`📝 [Answer Verify] Checking if stored - flow.answers[${qId}]:`, flow.answers[qId]);
-      }, 100);
     }
   }, [sections, flow]);
 
   // Blocking error helper function - shows alert and blocks user
   const showBlockingError = useCallback((message: string) => {
-    console.log('🚨 [BLOCKING ERROR] Showing blocking error:', message);
-    alert(`❌ Save Failed\n\n${message}\n\nPlease try again or check your internet connection.`);
+    alert(`Save Failed\n\n${message}\n\nPlease try again or check your internet connection.`);
   }, []);
 
   // Test mode functions
@@ -1823,17 +1745,14 @@ const AssessmentTestPage: React.FC = () => {
         }
       });
     });
-    console.log('Test Mode: Auto-filled all answers with valid RIASEC data');
   }, [sections, flow]);
 
   const skipToSection = useCallback((sectionIndex: number) => {
     if (sections.length === 0) {
-      console.warn('❌ Cannot skip: sections array is empty');
       return;
     }
 
     if (sectionIndex >= sections.length) {
-      console.warn(`❌ Cannot skip to section ${sectionIndex}: only ${sections.length} sections available`);
       return;
     }
 
@@ -1877,9 +1796,6 @@ const AssessmentTestPage: React.FC = () => {
     
     // For adaptive sections, we need to initialize the test first
     if (targetSection?.isAdaptive) {
-      console.log(`✅ Test Mode: Skipped to adaptive section ${sectionIndex} (${targetSection.title})`);
-      console.log('⏳ Initializing adaptive test...');
-      
       // Initialize adaptive timer
       setAdaptiveQuestionTimer(targetSection.individualTimeLimit || 60);
       
@@ -1896,10 +1812,8 @@ const AssessmentTestPage: React.FC = () => {
       setTimeout(() => {
         flow.startSection();
       }, 100);
-      
-      console.log(`✅ Test Mode: Skipped to section ${sectionIndex} (${targetSection?.title})`);
     }
-  }, [sections, flow, useDatabase, currentAttempt, dbUpdateProgress, dbSaveResponse, adaptiveAptitude, setAdaptiveQuestionTimer]);
+  }, [sections, flow, useDatabase, currentAttempt, updateProgress, dbSaveResponse, adaptiveAptitude, setAdaptiveQuestionTimer]);
 
   // Get current question (handle adaptive sections)
   const currentSection = sections[flow.currentSectionIndex];
@@ -1913,72 +1827,47 @@ const AssessmentTestPage: React.FC = () => {
 
   // Check if current question is answered
   const isCurrentAnswered = useMemo(() => {
-    console.log('🔍 [MCQ Check START] Checking if answered...');
-    console.log('🔍 [MCQ Check] Current section:', currentSection?.id, 'isAptitude:', currentSection?.isAptitude, 'isKnowledge:', currentSection?.isKnowledge);
-    console.log('🔍 [MCQ Check] QuestionID from flow:', flow.questionId);
-    console.log('🔍 [MCQ Check] QuestionID local:', questionId);
-    console.log('🔍 [MCQ Check] Are they equal?:', flow.questionId === questionId);
-    
     // Check for adaptive sections
     if (currentSection?.isAdaptive) {
-      const isAnswered = adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
-      console.log('🔍 [Adaptive Check] Is answered:', isAnswered);
-      return isAnswered;
+      return adaptiveAptitudeAnswer !== null && adaptiveAptitudeAnswer !== undefined && adaptiveAptitudeAnswer !== '';
     }
 
     // Validate questionId
     if (!questionId || questionId.includes('undefined')) {
-      console.log('🔍 [Validation] Invalid questionId:', questionId);
       return false;
     }
 
     const answer = flow.answers[questionId];
-    console.log('🔍 [Answer Check] QuestionID:', questionId, 'Answer:', answer, 'Type:', typeof answer);
     
     // For MCQ questions (aptitude and knowledge sections), answer must be a non-empty string
     // CRITICAL: Check this BEFORE the general empty check to ensure strict validation
     if (currentSection?.isAptitude || currentSection?.isKnowledge) {
       // Answer must be a non-empty string (option value like "A", "B", "C", "D" or the actual option text)
-      const isAnswered = typeof answer === 'string' && answer.trim().length > 0;
-      console.log('🔍 [MCQ Check] Answer value:', answer);
-      console.log('🔍 [MCQ Check] Answer type:', typeof answer);
-      console.log('🔍 [MCQ Check] Is answered:', isAnswered);
-      console.log('🔍 [MCQ Check] Total answers in flow:', Object.keys(flow.answers).length);
-      console.log('🔍 [MCQ Check] All answer keys:', Object.keys(flow.answers));
-      return isAnswered;
+      return typeof answer === 'string' && answer.trim().length > 0;
     }
     
     // Check for empty/null/undefined answers for other question types
     if (answer === null || answer === undefined || answer === '') {
-      console.log('🔍 [Empty Check] No answer found for questionId:', questionId);
       return false;
     }
 
     // For SJT questions, both best and worst must be selected
     if (currentQuestion?.partType === 'sjt') {
-      const isAnswered = answer.best && answer.worst;
-      console.log('🔍 [SJT Check] Is answered:', isAnswered);
-      return isAnswered;
+      return answer.best && answer.worst;
     }
     
     // For multiselect questions, check if required number of selections made
     if (currentQuestion?.type === 'multiselect') {
-      const isAnswered = Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
-      console.log('🔍 [Multiselect Check] Is answered:', isAnswered);
-      return isAnswered;
+      return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
     }
     
     // For text questions, check if there's some content (at least 10 characters for meaningful response)
     if (currentQuestion?.type === 'text') {
-      const isAnswered = typeof answer === 'string' && answer.trim().length >= 10;
-      console.log('🔍 [Text Check] Is answered:', isAnswered);
-      return isAnswered;
+      return typeof answer === 'string' && answer.trim().length >= 10;
     }
     
     // For other question types (Likert scales, etc.), ensure answer is not empty
-    const isAnswered = answer !== null && answer !== undefined && answer !== '';
-    console.log('🔍 [Default Check] Is answered:', isAnswered, 'Answer:', answer);
-    return isAnswered;
+    return answer !== null && answer !== undefined && answer !== '';
   }, [currentSection, adaptiveAptitudeAnswer, flow.answers, questionId, currentQuestion, flow.questionId]);
 
   // Loading state - show loading for initial checks AND for AI questions when needed
@@ -1987,20 +1876,6 @@ const AssessmentTestPage: React.FC = () => {
   const waitingForAIQuestions = needsAIKnowledge && questionsLoading && assessmentStarted && sections.length === 0;
   
   const showLoading = checkingExistingAttempt || (!assessmentStarted && dbLoading) || waitingForAIQuestions;
-
-  // Debug: Log loading states
-  if (showLoading) {
-    console.log('🔄 Loading states:', {
-      checkingExistingAttempt,
-      questionsLoading,
-      assessmentStarted,
-      dbLoading,
-      loadingStudentGrade,
-      studentRecordId,
-      currentScreen: flow.currentScreen,
-      waitingForAIQuestions
-    });
-  }
 
   if (showLoading) {
     const message = waitingForAIQuestions 
@@ -2192,22 +2067,16 @@ const AssessmentTestPage: React.FC = () => {
               const aptitudeIndex = sections.findIndex(s => s.id === 'aptitude' || s.id === 'hs_aptitude_sampling' || s.id === 'adaptive_aptitude');
               if (aptitudeIndex >= 0) {
                 skipToSection(aptitudeIndex);
-              } else {
-                console.warn('❌ Aptitude section not found');
               }
             }}
             onSkipToKnowledge={() => {
               const knowledgeIndex = sections.findIndex(s => s.id === 'knowledge' || s.id === 'adaptive_aptitude');
               if (knowledgeIndex >= 0) {
                 skipToSection(knowledgeIndex);
-              } else {
-                console.warn('❌ Knowledge section not found');
               }
             }}
             onSkipToSubmit={async () => {
-
               if (sections.length === 0) {
-                console.warn('❌ Cannot submit: sections array is empty');
                 return;
               }
 
@@ -2220,12 +2089,12 @@ const AssessmentTestPage: React.FC = () => {
                   const streamId = flow.studentStream || 
                     (flow.gradeLevel === 'college' ? 'college' : null);
                   
-                  await dbStartAssessment(streamId, flow.gradeLevel || 'after12');
+                  await startAssessment(streamId, flow.gradeLevel || 'after12');
 
                   // Wait a bit for the attempt to be created
                   await new Promise(resolve => setTimeout(resolve, 500));
                 } catch (err) {
-                  console.error('❌ Failed to create database attempt:', err);
+                  // Continue anyway - attempt creation is not critical for test mode
                 }
               }
 

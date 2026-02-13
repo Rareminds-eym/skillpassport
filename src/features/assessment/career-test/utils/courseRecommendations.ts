@@ -198,7 +198,6 @@ export const generateCourseRecommendations = (
     // Sort by match score and return top 5
     return courseMatches.sort((a, b) => b.matchScore - a.matchScore).slice(0, 5);
   } catch (error) {
-    console.error('Error generating course recommendations:', error);
     return [];
   }
 };

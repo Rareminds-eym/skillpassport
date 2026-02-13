@@ -15,8 +15,13 @@ import { useAdaptiveAptitude } from '../../../../hooks/useAdaptiveAptitude';
 import { useAssessmentFlow, type FlowScreen } from '../hooks/useAssessmentFlow';
 import { useStudentGrade } from '../hooks/useStudentGrade';
 import { useAIQuestions } from '../hooks/useAIQuestions';
-import { getSectionsForGrade, type GradeLevel } from '../config/sections';
+import { type GradeLevel } from '../config/sections';
 import { getAdaptiveGradeLevel } from '../../../assessment/utils/gradeUtils';
+import { 
+  AssessmentSnapshotBuilder, 
+  createSnapshotBuilder 
+} from '../services/assessmentSnapshotBuilder';
+import type { AssessmentSnapshot } from '../types/assessmentSnapshot';
 
 // Types
 interface Section {
@@ -30,6 +35,7 @@ interface Section {
   isTimed?: boolean;
   timeLimit?: number;
   isAptitude?: boolean;
+  isKnowledge?: boolean;
   isAdaptive?: boolean;
   individualTimeLimit?: number;
 }
@@ -57,6 +63,7 @@ interface AssessmentContextValue {
   currentSection: Section | null;
   currentQuestion: any | null;
   questionId: string;
+  setSections: (sections: Section[]) => void;
   
   // Answers
   answers: Record<string, any>;
@@ -78,6 +85,7 @@ interface AssessmentContextValue {
   // Database
   currentAttempt: any;
   useDatabase: boolean;
+  snapshotBuilder: AssessmentSnapshotBuilder | null;
   
   // Adaptive Aptitude
   adaptiveAptitude: ReturnType<typeof useAdaptiveAptitude>;
@@ -111,8 +119,16 @@ interface AssessmentContextValue {
   // Database Actions
   startAssessment: (streamId: string | null, gradeLevel: string) => Promise<any>;
   saveResponse: (sectionName: string, questionId: string, value: any, isCorrect?: boolean | null) => Promise<any>;
-  updateProgress: (sectionIndex: number, questionIndex: number, timings: Record<string, number>) => Promise<any>;
+  updateProgress: (sectionIndex: number, questionIndex: number, timings: Record<string, number>, timerRemaining?: number | null, elapsedTime?: number | null, allResponses?: Record<string, any>, overrideAttemptId?: string) => Promise<any>;
   checkInProgressAttempt: () => Promise<any>;
+  buildAndSaveSnapshot: (adaptiveResults?: any) => Promise<AssessmentSnapshot | null>;
+  createSnapshotBuilderForResume: (attemptId: string, gradeLevel?: string) => any;
+  
+  // AI Questions
+  aiQuestions: any;
+  questionsLoading: boolean;
+  questionsError: string | null;
+  loadQuestions: () => void;
   
   // Navigation
   navigate: ReturnType<typeof useNavigate>;
@@ -134,7 +150,7 @@ interface AssessmentProviderProps {
 
 export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, session: authSession } = useAuth();
   
   // Student grade info
   const {
@@ -144,7 +160,7 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     studentProgram,
     monthsInGrade,
     loading: loadingStudentGrade
-  } = useStudentGrade();
+  } = useStudentGrade({ userId: user?.id, userEmail: user?.email });
   
   // Database integration
   const {
@@ -162,16 +178,66 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
   const [useDatabase, setUseDatabase] = React.useState(false);
   const [adaptiveAptitudeAnswer, setAdaptiveAptitudeAnswer] = React.useState<string | null>(null);
   
+  // Snapshot builder for comprehensive data capture
+  const [snapshotBuilder, setSnapshotBuilder] = React.useState<AssessmentSnapshotBuilder | null>(null);
+  const [currentQuestionStartTime, setCurrentQuestionStartTime] = React.useState<Date | null>(null);
+  
+  // Track answered questions with timestamps for snapshot
+  const answeredQuestionsRef = React.useRef<Map<string, { 
+    answer: any; 
+    answeredAt: string; 
+    timeSpentSeconds: number;
+    question: any;
+  }>>(new Map());
+  
   // Flow state machine
   const flow = useAssessmentFlow({
     sections,
     onSectionComplete: (sectionId, timeSpent) => {
-      console.log(`Section ${sectionId} completed in ${timeSpent}s`);
+      // Complete section in snapshot builder
+      if (snapshotBuilder) {
+        snapshotBuilder.completeSection(sectionId, timeSpent);
+      }
     },
     onAnswerChange: (questionId, answer) => {
+      // Track question with full context for snapshot
+      if (flow.currentSection && flow.currentQuestion) {
+        const now = new Date();
+        const timeSpent = currentQuestionStartTime 
+          ? Math.round((now.getTime() - currentQuestionStartTime.getTime()) / 1000)
+          : 0;
+        
+        // Extract section and question IDs
+        let sectionId = flow.currentSection.id;
+        let qId = questionId.includes('_') 
+          ? questionId.substring(questionId.indexOf('_') + 1)
+          : questionId;
+        
+        // Store in ref for snapshot building
+        answeredQuestionsRef.current.set(questionId, {
+          answer,
+          answeredAt: now.toISOString(),
+          timeSpentSeconds: timeSpent,
+          question: flow.currentQuestion
+        });
+        
+        // Add to snapshot builder if available
+        if (snapshotBuilder) {
+          snapshotBuilder.addQuestion(sectionId, {
+            questionId: qId,
+            question: flow.currentQuestion,
+            sectionId,
+            sequence: flow.currentQuestionIndex + 1,
+            answer,
+            answeredAt: now.toISOString(),
+            timeSpentSeconds: timeSpent
+          });
+        }
+      }
+      
       // Auto-save to database if enabled
       if (useDatabase && currentAttempt?.id) {
-        // CRITICAL FIX: Handle different question ID formats
+        // Handle different question ID formats
         // Format 1: sectionId_questionId (e.g., 'riasec_r1', 'bigfive_o1')
         // Format 2: sectionId_UUID (e.g., 'aptitude_f48f122d-...') - AI questions
         
@@ -199,19 +265,13 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
               } else {
                 isCorrect = answer === correctAnswer;
               }
-              console.log(`✓ MCQ correctness check: ${isCorrect ? 'CORRECT' : 'INCORRECT'} (answer: ${answer}, correct: ${correctAnswer})`);
             }
-            console.log(`💾 Saved AI question response: ${sectionId} / ${qId}, isCorrect: ${isCorrect}`);
-          } else {
-            // Static question (RIASEC, BigFive, etc.)
-            console.log(`💾 Saved static question response: ${sectionId} / ${qId}`);
           }
         } else {
           // Fallback: use current section if available
           const currentSection = flow.currentSection;
           sectionId = currentSection?.id || 'unknown';
           qId = questionId;
-          console.warn(`⚠️ Unknown question ID format: ${questionId}, using current section: ${sectionId}`);
         }
         
         dbSaveResponse(sectionId, qId, answer, isCorrect);
@@ -221,40 +281,30 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
   
   // AI Questions for aptitude/knowledge sections
   const {
-    questions: aiQuestions,
+    aiQuestions,
     loading: questionsLoading,
     error: questionsError,
-    loadQuestions
-  } = useAIQuestions();
+    reload: loadQuestions
+  } = useAIQuestions({
+    gradeLevel: flow.gradeLevel,
+    studentStream: flow.studentStream,
+    studentId,
+    attemptId: currentAttempt?.id || null,
+    studentProgram
+  });
   
   // Adaptive Aptitude Hook
   const adaptiveAptitude = useAdaptiveAptitude({
     studentId: studentId || '',
     gradeLevel: getAdaptiveGradeLevel(flow.gradeLevel || 'after12'),
     onTestComplete: (testResults) => {
-      console.log('✅ Adaptive aptitude test completed:', testResults);
       flow.setAnswer('adaptive_aptitude_results', testResults);
       flow.completeSection();
     },
     onError: (err) => {
-      console.error('❌ Adaptive aptitude test error:', err);
       flow.setError(`Adaptive test error: ${err}`);
     },
   });
-  
-  // Update sections when grade level changes
-  useEffect(() => {
-    if (flow.gradeLevel) {
-      const sectionConfigs = getSectionsForGrade(flow.gradeLevel);
-      // Convert configs to full sections (questions will be loaded separately)
-      const fullSections: Section[] = sectionConfigs.map(config => ({
-        ...config,
-        icon: null, // Icons handled by components
-        questions: [] // Will be populated by AI questions or static data
-      }));
-      setSections(fullSections);
-    }
-  }, [flow.gradeLevel]);
   
   // Get current question (handle adaptive sections)
   const currentQuestion = useMemo(() => {
@@ -263,6 +313,77 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     }
     return flow.currentQuestion;
   }, [flow.currentSection, flow.currentQuestion, adaptiveAptitude.currentQuestion]);
+  
+  // Track question start time and section starts
+  useEffect(() => {
+    // Reset start time when question changes
+    setCurrentQuestionStartTime(new Date());
+    
+    // Start section tracking if we have sections and builder
+    // CRITICAL: Check for both 'assessment' (resumed) and 'section_intro' (new) screens
+    const isAssessmentScreen = flow.currentScreen === 'assessment' || flow.currentScreen === 'section_intro';
+    
+    if (isAssessmentScreen && snapshotBuilder && sections.length > 0) {
+      // Start ALL sections in the builder (they get marked as completed later)
+      sections.forEach(section => {
+        if (!answeredQuestionsRef.current.has(`_section_started_${section.id}`)) {
+          snapshotBuilder.startSection(section.id, { 
+            questions: section.questions, 
+            title: section.title, 
+            description: section.description 
+          });
+          answeredQuestionsRef.current.set(`_section_started_${section.id}`, {
+            answer: null,
+            answeredAt: new Date().toISOString(),
+            timeSpentSeconds: 0,
+            question: null
+          });
+        }
+      });
+    }
+  }, [flow.currentQuestion, flow.currentScreen, snapshotBuilder, sections]);
+
+  /**
+   * Create snapshot builder for resume (when currentAttempt is not yet set)
+   * This allows AssessmentTestPage to create the builder with pendingAttempt.id
+   */
+  const createSnapshotBuilderForResume = useCallback((attemptId: string, gradeLevel: string = 'college') => {
+    if (!isCollegeStudent || !studentId || snapshotBuilder) {
+      return null;
+    }
+    
+    const builder = createSnapshotBuilder(
+      attemptId,
+      studentId,
+      gradeLevel,
+      {
+        userAgent: navigator.userAgent,
+        screen: `${window.screen.width}x${window.screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
+    );
+    setSnapshotBuilder(builder);
+    return builder;
+  }, [isCollegeStudent, studentId, snapshotBuilder]);
+
+  // CRITICAL: Create snapshot builder during resume for college students
+  // This useEffect handles the case when currentAttempt is already set
+  useEffect(() => {
+    // Only create if: college student, has attempt, no builder yet, has studentId
+    if (isCollegeStudent && currentAttempt?.id && !snapshotBuilder && studentId) {
+      const builder = createSnapshotBuilder(
+        currentAttempt.id,
+        studentId,
+        currentAttempt.grade_level || 'college',
+        {
+          userAgent: navigator.userAgent,
+          screen: `${window.screen.width}x${window.screen.height}`,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      );
+      setSnapshotBuilder(builder);
+    }
+  }, [isCollegeStudent, currentAttempt?.id, currentAttempt?.grade_level, studentId, snapshotBuilder]);
   
   // Get question ID (handle adaptive sections)
   const questionId = useMemo(() => {
@@ -283,8 +404,44 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
   // Wrap database actions
   const startAssessment = useCallback(async (streamId: string | null, gradeLevel: string) => {
     setUseDatabase(true);
-    return dbStartAssessment(streamId, gradeLevel);
-  }, [dbStartAssessment]);
+    const attempt = await dbStartAssessment(streamId, gradeLevel);
+    
+    // Initialize snapshot builder if we have valid attempt and student
+    if (attempt?.id && studentId && isCollegeStudent) {
+      const builder = createSnapshotBuilder(
+        attempt.id,
+        studentId,
+        gradeLevel,
+        {
+          userAgent: navigator.userAgent,
+          screen: `${window.screen.width}x${window.screen.height}`,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      );
+      setSnapshotBuilder(builder);
+      
+      // If sections already exist, start tracking them immediately
+      if (sections.length > 0) {
+        sections.forEach(section => {
+          if (!answeredQuestionsRef.current.has(`_section_started_${section.id}`)) {
+            builder.startSection(section.id, { 
+              questions: section.questions, 
+              title: section.title, 
+              description: section.description 
+            });
+            answeredQuestionsRef.current.set(`_section_started_${section.id}`, {
+              answer: null,
+              answeredAt: new Date().toISOString(),
+              timeSpentSeconds: 0,
+              question: null
+            });
+          }
+        });
+      }
+    }
+    
+    return attempt;
+  }, [dbStartAssessment, studentId, isCollegeStudent, sections]);
   
   const saveResponse = useCallback(async (
     sectionName: string, 
@@ -295,13 +452,78 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     return dbSaveResponse(sectionName, questionId, value, isCorrect);
   }, [dbSaveResponse]);
   
+  /**
+   * Build and save comprehensive assessment snapshot with all questions, options, and answers
+   * Call this when assessment is complete (before completeAttempt)
+   */
+  const buildAndSaveSnapshot = useCallback(async (
+    adaptiveResults?: {
+      questionsAnswered: number;
+      correctAnswers: number;
+      estimatedAbility: number;
+      phasesCompleted: string[];
+      finalPhase: string;
+      reliability: number;
+    }
+  ): Promise<AssessmentSnapshot | null> => {
+    if (!snapshotBuilder || !currentAttempt?.id) {
+      return null;
+    }
+    
+    try {
+      // Get adaptive session ID if available
+      const adaptiveSessionId = currentAttempt?.adaptive_aptitude_session_id || undefined;
+      
+      // Build the snapshot
+      const snapshot = await snapshotBuilder.buildSnapshot(
+        adaptiveSessionId,
+        adaptiveResults
+      );
+      
+      // Save to database with auth token
+      await snapshotBuilder.saveToDatabase(snapshot, authSession?.access_token);
+      
+      return snapshot;
+    } catch (error) {
+      return null;
+    }
+  }, [snapshotBuilder, currentAttempt]);
+  
   const updateProgress = useCallback(async (
     sectionIndex: number, 
     questionIndex: number, 
-    timings: Record<string, number>
+    timings: Record<string, number>,
+    timerRemaining?: number | null,
+    elapsedTime?: number | null,
+    allResponses?: Record<string, any>,
+    overrideAttemptId?: string // Optional: for resume when currentAttempt not yet set
   ) => {
-    return dbUpdateProgress(sectionIndex, questionIndex, timings);
-  }, [dbUpdateProgress]);
+    // CRITICAL: For college students, save incremental snapshot at every progress update
+    // This replaces the all_responses column usage for comprehensive data capture
+    // Use overrideAttemptId during resume, otherwise use currentAttempt.id
+    const attemptId = overrideAttemptId || currentAttempt?.id;
+    
+    if (isCollegeStudent && snapshotBuilder && attemptId) {
+      try {
+        await snapshotBuilder.buildAndSaveIncrementalSnapshot(
+          sectionIndex,
+          questionIndex,
+          false, // isComplete = false (in progress)
+          currentAttempt?.adaptive_aptitude_session_id || undefined,
+          undefined, // No final adaptive results yet
+          authSession?.access_token // Pass auth token from React context
+        );
+      } catch (snapshotError) {
+        // Continue with regular progress update even if snapshot fails
+      }
+    }
+
+    // For college students, don't save to all_responses since snapshot has all the data
+    // For non-college students, continue with regular all_responses save
+    const responsesToSave = isCollegeStudent ? null : allResponses;
+    
+    return dbUpdateProgress(sectionIndex, questionIndex, timings, timerRemaining, elapsedTime, responsesToSave, null, overrideAttemptId);
+  }, [dbUpdateProgress, isCollegeStudent, snapshotBuilder, currentAttempt]);
   
   const value: AssessmentContextValue = {
     // User & Student Info
@@ -347,6 +569,7 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     // Database
     currentAttempt,
     useDatabase,
+    snapshotBuilder,
     
     // Adaptive Aptitude
     adaptiveAptitude,
@@ -374,7 +597,8 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     setTimeRemaining: flow.setTimeRemaining,
     setElapsedTime: flow.setElapsedTime,
     setAptitudeQuestionTimer: flow.setAptitudeQuestionTimer,
-    setError: flow.setError,
+    // Section Management
+    setSections,
     resetFlow: flow.resetFlow,
     
     // Database Actions
@@ -382,9 +606,14 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
     saveResponse,
     updateProgress,
     checkInProgressAttempt,
+    buildAndSaveSnapshot,
+    createSnapshotBuilderForResume,
     
-    // Navigation
-    navigate
+    // AI Questions
+    aiQuestions,
+    questionsLoading,
+    questionsError,
+    loadQuestions,
   };
   
   return (
