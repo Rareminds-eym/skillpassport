@@ -602,6 +602,22 @@ const CharacterStrengthsSection = ({ characterStrengths, aptitudeStrengths }) =>
           </div>
         </div>
       )}
+
+      {characterStrengths?.othersAppreciate && (
+        <div style={{ ...printStyles.card, marginTop: '8px', background: '#faf5ff', border: '1px solid #e9d5ff' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#6b21a8', fontStyle: 'italic' }}>
+            <strong>What Others Appreciate:</strong> {safeRender(characterStrengths.othersAppreciate)}
+          </p>
+        </div>
+      )}
+
+      {characterStrengths?.challengeOvercome && (
+        <div style={{ ...printStyles.card, marginTop: '6px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af', fontStyle: 'italic' }}>
+            <strong>Challenge Overcome:</strong> {safeRender(characterStrengths.challengeOvercome)}
+          </p>
+        </div>
+      )}
     </div>
   );
 };
@@ -634,38 +650,46 @@ const LearningWorkStyleSection = ({ learningStyle, keyPatterns }) => {
           </div>
         )}
         
-        {/* Work Preference */}
-        {style.workPreference && (
+        {/* Work Preference / Task Preferences */}
+        {(style.workPreference || (style.taskPreferences && style.taskPreferences.length > 0)) && (
           <div style={printStyles.card}>
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
               Work Preference
             </div>
-            <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-              {safeRender(style.workPreference)}
-            </p>
+            {style.workPreference ? (
+              <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
+                {safeRender(style.workPreference)}
+              </p>
+            ) : (
+              <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+                {style.taskPreferences.map((pref, idx) => (
+                  <li key={idx}>{safeRender(pref)}</li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
         
-        {/* Team Role */}
-        {style.teamRole && (
+        {/* Team Role / Team Contribution */}
+        {(style.teamRole || style.teamContribution) && (
           <div style={printStyles.card}>
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
               Your Team Role
             </div>
             <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-              {safeRender(style.teamRole)}
+              {safeRender(style.teamRole || style.teamContribution)}
             </p>
           </div>
         )}
         
-        {/* Problem Solving Approach */}
-        {style.problemSolvingApproach && (
+        {/* Problem Solving Approach / Starting Approach */}
+        {(style.problemSolvingApproach || style.startingApproach) && (
           <div style={printStyles.card}>
             <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '4px' }}>
               Problem Solving Style
             </div>
             <p style={{ fontSize: '9px', color: '#4b5563', margin: '0', lineHeight: '1.4' }}>
-              {safeRender(style.problemSolvingApproach)}
+              {safeRender(style.problemSolvingApproach || style.startingApproach)}
             </p>
           </div>
         )}
@@ -2001,6 +2025,14 @@ const EmployabilitySection = ({ employability }) => {
           </div>
         )}
       </div>
+
+      {employability.overallReadiness && (
+        <div style={{ ...printStyles.card, marginTop: '6px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
+            <strong>Overall Readiness:</strong> {safeRender(employability.overallReadiness)}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

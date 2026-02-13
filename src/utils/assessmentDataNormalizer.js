@@ -130,6 +130,26 @@ export const normalizeAssessmentResults = (results) => {
         normalized.knowledge = normalized.gemini_results.knowledge;
     }
 
+    // 🔧 CRITICAL FIX: Lift recommendedStream and map to streamRecommendation format
+    // The AI stores stream recommendation under key "recommendedStream" with subfield "stream" for the name,
+    // but AssessmentResult.jsx and PrintView components expect "streamRecommendation" with subfield "recommendedStream"
+    if (!normalized.streamRecommendation) {
+        const rs = normalized.recommendedStream || normalized.gemini_results?.recommendedStream;
+        if (rs && (rs.stream || rs.recommendedStream)) {
+            console.log('🔧 Lifting recommendedStream and mapping to streamRecommendation format');
+            normalized.streamRecommendation = {
+                recommendedStream: rs.stream || rs.recommendedStream,
+                confidence: rs.confidence,
+                matchScore: rs.matchScore,
+                reasoning: rs.reasoning,
+                evidence: rs.evidence,
+                preparationAdvice: rs.preparationAdvice,
+                whyNotOtherStreams: rs.whyNotOtherStreams,
+            };
+            console.log('✅ streamRecommendation mapped:', normalized.streamRecommendation.recommendedStream);
+        }
+    }
+
     // 🔧 CRITICAL FIX: Fix aptitude scores if needed
     // Priority 1: Use top-level aptitude_scores column (most reliable)
     // Priority 2: Use gemini_results.aptitude._originalScores

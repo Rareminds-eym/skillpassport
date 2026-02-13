@@ -844,18 +844,20 @@ const AssessmentResult = () => {
         // Use the stream matching engine with academic data (marks, projects, experiences)
         const streamRec = calculateStreamRecommendations(results, studentAcademicData);
 
-        // Merge with AI recommendation if available, PREFERRING AI results over engine calculations
-        // AI has analyzed the full assessment context and provides more accurate recommendations
+        // Only show stream recommendation when AI data exists in the database
+        // If no AI data, don't show the section at all (no engine-only fallback)
         if (results?.streamRecommendation) {
             return {
                 ...streamRec,                      // Engine results as base
                 ...results.streamRecommendation,   // AI results OVERRIDE engine (AI is more accurate)
                 // Merge reasoning - prefer AI reasoning, fallback to engine
-                reasoning: {
-                    interests: results.streamRecommendation.reasoning?.interests || streamRec.reasoning?.interests,
-                    aptitude: results.streamRecommendation.reasoning?.aptitude || streamRec.reasoning?.aptitude,
-                    personality: results.streamRecommendation.reasoning?.personality || streamRec.reasoning?.personality
-                },
+                reasoning: typeof results.streamRecommendation.reasoning === 'string'
+                    ? results.streamRecommendation.reasoning
+                    : {
+                        interests: results.streamRecommendation.reasoning?.interests || streamRec.reasoning?.interests,
+                        aptitude: results.streamRecommendation.reasoning?.aptitude || streamRec.reasoning?.aptitude,
+                        personality: results.streamRecommendation.reasoning?.personality || streamRec.reasoning?.personality
+                    },
                 // Keep engine's additional data that AI doesn't provide
                 subjectsToFocus: results.streamRecommendation.subjectsToFocus || streamRec.subjectsToFocus,
                 careerPathsAfter12: results.streamRecommendation.careerPathsAfter12 || streamRec.careerPathsAfter12,
@@ -867,7 +869,8 @@ const AssessmentResult = () => {
             };
         }
 
-        return streamRec;
+        // No AI stream recommendation in database — don't show section at all
+        return null;
     }, [gradeLevel, results, studentAcademicData]);
 
     // Custom print function that opens print view in new window
