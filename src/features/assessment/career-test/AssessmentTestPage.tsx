@@ -1492,12 +1492,14 @@ const AssessmentTestPage: React.FC = () => {
 
         if (isLastInSection) {
           // CRITICAL SAVE: Block at section boundaries (data integrity)
+          const currentSection = sections[flow.currentSectionIndex];
+          const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
           const saveResult = await updateProgress(
             nextSectionIndex,
             finalQuestionIndex,
             flow.sectionTimings,
-            null,
-            null,
+            timerRemaining,
+            flow.elapsedTime,
             updatedAnswers,
             attemptId // Pass attemptId explicitly for resume case
           );
@@ -1510,12 +1512,14 @@ const AssessmentTestPage: React.FC = () => {
           // For non-critical saves, try to save first, then navigate
           if (isEvery10th) {
             // CHECKPOINT SAVE: Try to save, block if it fails
+            const currentSection = sections[flow.currentSectionIndex];
+            const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
             const saveResult = await updateProgress(
               nextSectionIndex,
               finalQuestionIndex,
               flow.sectionTimings,
-              null,
-              null,
+              timerRemaining,
+              flow.elapsedTime,
               updatedAnswers,
               attemptId // Pass attemptId explicitly for resume case (7th param)
             );
@@ -1530,12 +1534,14 @@ const AssessmentTestPage: React.FC = () => {
             return; // Early return for non-critical saves
           } else {
             // LIGHT SAVE: Try to save, block if it fails
+            const currentSection = sections[flow.currentSectionIndex];
+            const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
             const saveResult = await updateProgress(
               nextSectionIndex,
               finalQuestionIndex,
               {}, // Empty section timings for light save
-              null,
-              null,
+              timerRemaining,
+              flow.elapsedTime,
               {}, // Empty answers for light save
               attemptId // Pass attemptId explicitly for resume case (7th param)
             );
@@ -1662,12 +1668,14 @@ const AssessmentTestPage: React.FC = () => {
         const updatedAnswers = { ...flow.answers };
 
         try {
+          const currentSection = sections[flow.currentSectionIndex];
+          const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
           const saveResult = await updateProgress(
             nextSectionIndex,
             nextQuestionIndex,
             flow.sectionTimings,
-            null,
-            null,
+            timerRemaining,
+            flow.elapsedTime,
             updatedAnswers,
             sectionAttemptId // Pass attemptId explicitly for resume case (7th param)
           );
@@ -2188,7 +2196,7 @@ const AssessmentTestPage: React.FC = () => {
 
           {/* Loading Question Fallback - Handle race condition where intro is hidden but question loading */}
           {!flow.showSectionIntro && !flow.showSectionComplete && !currentQuestion && !currentSection?.isAdaptive && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+            <div key="loading-fallback" className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
               {questionsLoading ? (
                 <LoadingScreen message="Loading question..." />
               ) : (
@@ -2225,7 +2233,7 @@ const AssessmentTestPage: React.FC = () => {
           
           {/* Adaptive Section Loading - Show loading when adaptive test is initializing */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && (adaptiveAptitude.loading || !adaptiveAptitude.currentQuestion) && !adaptiveAptitude.error && !adaptiveAptitude.isTestComplete && (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
+            <div key="adaptive-loading" className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 flex items-center justify-center">
               <div className="text-center max-w-md px-4">
                 <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4" />
                 <p className="text-gray-600 text-lg mb-2">Initializing adaptive test...</p>
@@ -2245,7 +2253,7 @@ const AssessmentTestPage: React.FC = () => {
           
           {/* Adaptive Section Error - Show error if adaptive test fails to initialize */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.error && (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
+            <div key="adaptive-error" className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
               <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
                 <div className="flex items-start gap-3">
                   <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2286,6 +2294,7 @@ const AssessmentTestPage: React.FC = () => {
           {/* Question with Sidebar Layout */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentQuestion && (
             <QuestionLayout
+              key={`question-layout-${flow.currentSectionIndex}-${flow.currentQuestionIndex}`}
               sectionTitle={currentSection?.title || ''}
               sectionDescription={currentSection?.description || ''}
               sectionInstruction={currentSection?.instruction}
