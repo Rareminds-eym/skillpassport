@@ -131,8 +131,8 @@ function validateQuestionStructure(questions: any[]): any[] {
             throw new Error(`Question ${index + 1} missing or invalid 'correctAnswer' field`);
         }
         
-        // Normalize correctAnswer to uppercase
-        const normalizedAnswer = q.correctAnswer.trim().toUpperCase();
+        // Normalize correctAnswer to uppercase (use let so we can update it during auto-correction)
+        let normalizedAnswer = q.correctAnswer.trim().toUpperCase();
         
         if (!['A', 'B', 'C', 'D'].includes(normalizedAnswer)) {
             console.warn(`⚠️ [Validation] Question ${index + 1} correctAnswer must be A, B, C, or D, got: ${q.correctAnswer}`);
@@ -173,7 +173,8 @@ function validateQuestionStructure(questions: any[]): any[] {
 
         // CRITICAL: Verify the correct answer actually exists in the options
         // This catches cases where AI says answer is "B" but the actual answer value isn't in any option
-        const correctAnswerText = cleanedOptions[normalizedAnswer];
+        // Use let so we can update it if normalizedAnswer changes during auto-correction
+        let correctAnswerText = cleanedOptions[normalizedAnswer];
         if (!correctAnswerText) {
             throw new Error(`Question ${index + 1}: correctAnswer "${normalizedAnswer}" does not map to any option`);
         }
@@ -196,17 +197,17 @@ function validateQuestionStructure(questions: any[]): any[] {
             const calcNum = parseFloat(lastCalc);
             const optionNum = parseFloat(optionValue);
             
-            // If they're significantly different (more than 10% or more than 2 units), this is likely an error
-            // But don't throw - just mark it for filtering
+            // If they're significantly different (more than 10% or more than 2 units), REJECT the question
             if (!isNaN(calcNum) && !isNaN(optionNum)) {
                 const diff = Math.abs(calcNum - optionNum);
                 const percentDiff = (diff / Math.max(calcNum, optionNum)) * 100;
                 
                 if (diff > 2 && percentDiff > 10) {
-                    console.warn(`⚠️ [Validation] Question ${index + 1}: Explanation shows "${lastCalc}" but correct option has "${optionValue}"`);
-                    console.warn(`   Difference: ${diff.toFixed(2)} (${percentDiff.toFixed(1)}%) - Marking for filtering`);
-                    // Mark this question as invalid by adding a flag
-                    (q as any).__invalid_calculation = true;
+                    console.error(`❌ [Validation] Question ${index + 1}: Explanation shows "${lastCalc}" but correct option has "${optionValue}"`);
+                    console.error(`   Difference: ${diff.toFixed(2)} (${percentDiff.toFixed(1)}%)`);
+                    console.error(`   Question: ${q.text.substring(0, 100)}`);
+                    console.error(`   Explanation: ${q.explanation.substring(0, 100)}`);
+                    throw new Error(`Question ${index + 1}: Explanation calculation (${lastCalc}) doesn't match correct answer (${optionValue})`);
                 }
             }
         }
@@ -247,8 +248,11 @@ function validateQuestionStructure(questions: any[]): any[] {
                     // AUTO-CORRECT: Update the correctAnswer to match the explanation
                     q.correctAnswer = bestMatchOption;
                     
-                    // Update normalizedAnswer for subsequent validations
-                    const correctedAnswer = bestMatchOption;
+                    // CRITICAL FIX: Update normalizedAnswer so it's used in the return statement
+                    normalizedAnswer = bestMatchOption;
+                    
+                    // CRITICAL FIX: Update correctAnswerText to match the new answer
+                    correctAnswerText = cleanedOptions[bestMatchOption];
                     
                     // Log the correction
                     console.log(`✅ [Auto-Correct] Question ${index + 1} corrected successfully`);
@@ -327,6 +331,15 @@ function validateQuestionStructure(questions: any[]): any[] {
                     }
                 }
             }
+        }
+
+        // FINAL CRITICAL VALIDATION: Verify correctAnswer maps to a valid option
+        // This is the last line of defense before returning the question
+        const finalCorrectAnswerText = cleanedOptions[normalizedAnswer];
+        if (!finalCorrectAnswerText || finalCorrectAnswerText.trim().length === 0) {
+            console.error(`❌ [Validation] Question ${index + 1}: FINAL CHECK FAILED - correctAnswer "${normalizedAnswer}" has no valid option text`);
+            console.error(`   Options: ${JSON.stringify(cleanedOptions)}`);
+            throw new Error(`Question ${index + 1}: correctAnswer "${normalizedAnswer}" does not map to valid option`);
         }
 
         // Return validated and normalized question
@@ -439,6 +452,15 @@ For EVERY question type (math, logic, verbal, reasoning, etc.):
 5. **VERIFY**: Look at your correctAnswer field - that EXACT value MUST appear in one of the options
 6. **TRIPLE-CHECK MATH**: For calculation questions, verify your math is correct
 7. **EXPLANATION MUST MATCH**: The final answer in your explanation MUST match the correct option value
+8. **BEFORE SUBMITTING**: For each question, manually verify options[correctAnswer] contains the right answer
+
+**VERIFICATION CHECKLIST (DO THIS FOR EVERY QUESTION):**
+✓ Step 1: Solve the problem and get the answer (e.g., "200")
+✓ Step 2: Put that EXACT answer in one of the options (e.g., B: "200")
+✓ Step 3: Set correctAnswer to that option letter (e.g., "correctAnswer": "B")
+✓ Step 4: Verify: Does options["B"] contain "200"? YES ✓
+✓ Step 5: Does explanation end with "= 200"? YES ✓
+✓ Step 6: Are all 4 options different? YES ✓
 
 **Example CORRECT (Math - Combinations):**
 {
@@ -493,7 +515,6 @@ For EVERY question type (math, logic, verbal, reasoning, etc.):
   "explanation": "We can only conclude that some cats might be furry based on the given information"
 }
 ✅ Correct logical conclusion is "Some cats are furry" and it IS in option D
-✅ Correct answer is "Some cats are furry" and it IS in option D
 
 **Example WRONG (DO NOT DO THIS):**
 {
@@ -512,6 +533,13 @@ For EVERY question type (math, logic, verbal, reasoning, etc.):
   "explanation": "Paris is the capital of France"
 }
 ❌ Correct answer is "Paris" but it's NOT in any option
+
+**COMMON MISTAKES TO AVOID:**
+❌ Setting correctAnswer to "C" when the right answer is in option "B"
+❌ Calculating "360" in explanation but putting "380" in the option
+❌ Putting the answer in option B but setting correctAnswer to "A"
+❌ Having duplicate values in options (e.g., both B and D say "33")
+❌ Explanation says one thing, options say another
 
 ⚠️ OPTION UNIQUENESS (ABSOLUTELY CRITICAL):
 - Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)

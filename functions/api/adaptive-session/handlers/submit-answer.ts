@@ -135,7 +135,20 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     }
 
     // Check if answer is correct
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    // Normalize both answers to uppercase for comparison to avoid case sensitivity issues
+    const normalizedSelected = String(selectedAnswer).trim().toUpperCase();
+    const normalizedCorrect = String(currentQuestion.correctAnswer).trim().toUpperCase();
+    const isCorrect = normalizedSelected === normalizedCorrect;
+    
+    console.log('🔍 [SubmitAnswerHandler] Answer comparison:', {
+      selectedAnswer,
+      correctAnswer: currentQuestion.correctAnswer,
+      normalizedSelected,
+      normalizedCorrect,
+      isCorrect,
+      questionId,
+      questionText: currentQuestion.text?.substring(0, 50),
+    });
 
     // Calculate new difficulty (only during adaptive_core phase)
     let newDifficulty = currentDifficulty;
