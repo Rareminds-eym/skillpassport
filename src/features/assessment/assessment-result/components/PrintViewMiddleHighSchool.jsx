@@ -751,6 +751,39 @@ const CareerExplorationSection = ({ careerFit }) => {
                   <strong>Why this fits you:</strong> {safeRender(cluster.whyItFits)}
                 </div>
               )}
+
+              {/* Evidence Breakdown */}
+              {cluster.evidence && (cluster.evidence.interest || cluster.evidence.aptitude || cluster.evidence.personality) && (
+                <div style={{ fontSize: '8px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.5', padding: '6px 8px', background: '#f8fafc', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                  {cluster.evidence.interest && (
+                    <p style={{ margin: '0 0 2px 0' }}>• <strong>Interest:</strong> {safeRender(cluster.evidence.interest)}</p>
+                  )}
+                  {cluster.evidence.aptitude && (
+                    <p style={{ margin: '0 0 2px 0' }}>• <strong>Aptitude:</strong> {safeRender(cluster.evidence.aptitude)}</p>
+                  )}
+                  {cluster.evidence.personality && (
+                    <p style={{ margin: '0' }}>• <strong>Personality:</strong> {safeRender(cluster.evidence.personality)}</p>
+                  )}
+                </div>
+              )}
+
+              {/* What You'll Do */}
+              {cluster.whatYoullDo && (
+                <div style={{ fontSize: '9px', color: '#4b5563', margin: '0 0 8px 0', lineHeight: '1.5' }}>
+                  {safeRender(cluster.whatYoullDo)}
+                </div>
+              )}
+
+              {/* Domains */}
+              {cluster.domains && cluster.domains.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                  {cluster.domains.map((domain, dIdx) => (
+                    <span key={dIdx} style={{ ...printStyles.badge, background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', fontSize: '8px' }}>
+                      {safeRender(domain)}
+                    </span>
+                  ))}
+                </div>
+              )}
               
               {/* Example Careers */}
               {cluster.examples && cluster.examples.length > 0 && (
@@ -1137,6 +1170,16 @@ const ProjectsSection = ({ projects }) => {
               {project.description}
             </p>
           )}
+          {project.purpose && (
+            <p style={{ fontSize: '8px', color: '#059669', margin: '0 0 4px 0', lineHeight: '1.4', fontStyle: 'italic' }}>
+              <strong>Purpose:</strong> {safeRender(project.purpose)}
+            </p>
+          )}
+          {project.output && (
+            <p style={{ fontSize: '8px', color: '#0369a1', margin: '0 0 4px 0', lineHeight: '1.4' }}>
+              <strong>Expected Output:</strong> {safeRender(project.output)}
+            </p>
+          )}
           {project.skills && project.skills.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
               {project.skills.map((skill, sIdx) => (
@@ -1190,6 +1233,19 @@ const ActivitiesExposureSection = ({ exposure }) => {
           <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
             {exposure.resources.map((resource, idx) => (
               <li key={idx}>{safeRender(resource)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {exposure.certifications && exposure.certifications.length > 0 && (
+        <div style={printStyles.card}>
+          <div style={{ fontWeight: 'bold', fontSize: '10px', color: '#1e293b', marginBottom: '6px' }}>
+            Suggested Certifications
+          </div>
+          <ul style={{ margin: '0', paddingLeft: '15px', fontSize: '9px', color: '#4b5563', lineHeight: '1.5' }}>
+            {exposure.certifications.map((cert, idx) => (
+              <li key={idx}>{safeRender(cert)}</li>
             ))}
           </ul>
         </div>
@@ -1819,6 +1875,16 @@ const BigFiveSection = ({ bigFive }) => {
             </div>
           );
         })}
+        {bigFive.dominantTraits && bigFive.dominantTraits.length > 0 && (
+          <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#1e293b' }}>Dominant Traits:</span>
+            {bigFive.dominantTraits.map((trait, idx) => (
+              <span key={idx} style={{ ...printStyles.badge, background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd' }}>
+                {safeRender(trait)}
+              </span>
+            ))}
+          </div>
+        )}
         {bigFive.workStyleSummary && (
           <div style={{
             fontSize: '9px',
@@ -1850,6 +1916,13 @@ const WorkValuesSection = ({ workValues }) => {
   return (
     <div style={{ marginTop: '8px' }}>
       <h3 style={printStyles.subTitle}>Work Values</h3>
+      {workValues.motivationSummary && (
+        <div style={{ ...printStyles.card, marginBottom: '8px', background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <p style={{ margin: '0', fontSize: '9px', lineHeight: '1.5', color: '#1e40af' }}>
+            {safeRender(workValues.motivationSummary)}
+          </p>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: '8px' }}>
         {workValues.topThree.map((item, idx) => (
           <div key={idx} style={{
@@ -1864,6 +1937,11 @@ const WorkValuesSection = ({ workValues }) => {
             <div style={{ fontSize: '9px', color: '#059669', fontWeight: '600' }}>
               {item.score}/5
             </div>
+            {item.description && (
+              <div style={{ fontSize: '8px', color: '#6b7280', marginTop: '3px', lineHeight: '1.4' }}>
+                {safeRender(item.description)}
+              </div>
+            )}
           </div>
         ))}
       </div>
