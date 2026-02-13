@@ -35,13 +35,13 @@ Return JSON: {"summary": "...", "keyPoints": ["..."], "chapters": [{"timestamp":
 
   try {
     const content = await callOpenRouterWithRetry(
-      env.VITE_OPENROUTER_API_KEY,
+      env.OPENROUTER_API_KEY,
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       {
-        models: ['openai/gpt-4o-mini'],
+        models: ['google/gemini-2.0-flash-exp:free', 'openai/gpt-4o-mini'],
         maxTokens: 4000,
         temperature: 0.3
       }
@@ -79,13 +79,13 @@ Return JSON: {"quotes": [{"text": "exact quote", "timestamp": seconds, "context"
 
   try {
     const content = await callOpenRouterWithRetry(
-      env.VITE_OPENROUTER_API_KEY,
+      env.OPENROUTER_API_KEY,
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       {
-        models: ['openai/gpt-4o-mini'],
+        models: ['google/gemini-2.0-flash-exp:free', 'openai/gpt-4o-mini'],
         maxTokens: 2000,
         temperature: 0.3
       }
@@ -115,13 +115,13 @@ Return JSON: {"questions": [{"question": "...", "options": ["A", "B", "C", "D"],
 
   try {
     const content = await callOpenRouterWithRetry(
-      env.VITE_OPENROUTER_API_KEY,
+      env.OPENROUTER_API_KEY,
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       {
-        models: ['openai/gpt-4o-mini'],
+        models: ['google/gemini-2.0-flash-exp:free', 'openai/gpt-4o-mini'],
         maxTokens: 3000,
         temperature: 0.3
       }
@@ -151,13 +151,13 @@ Return JSON: {"flashcards": [{"front": "Question or term", "back": "Answer or de
 
   try {
     const content = await callOpenRouterWithRetry(
-      env.VITE_OPENROUTER_API_KEY,
+      env.OPENROUTER_API_KEY,
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       {
-        models: ['openai/gpt-4o-mini'],
+        models: ['google/gemini-2.0-flash-exp:free', 'openai/gpt-4o-mini'],
         maxTokens: 3000,
         temperature: 0.3
       }

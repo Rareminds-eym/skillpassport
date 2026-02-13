@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { uploadInstructionFile, deleteInstructionFile } from '../../services/educator/assignmentsService';
 import { useAuth } from '../../context/AuthContext';
+import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { supabase } from '../../lib/supabaseClient';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import NotificationModal from '../ui/NotificationModal';
@@ -416,13 +417,9 @@ const AssignmentFileUpload = React.forwardRef<
               {/* View/Download button */}
               {file.file_url && (
                 <a
-                  href={(() => {
-                    const { getPagesApiUrl } = require('../../utils/pagesUrl');
-                    const storageApiUrl = getPagesApiUrl('storage');
-                    return file.file_url.includes('/document-access') 
-                      ? file.file_url 
-                      : `${storageApiUrl}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`;
-                  })()}
+                  href={file.file_url.includes('/document-access') 
+                    ? file.file_url 
+                    : `${getPagesApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-1 hover:bg-blue-100 rounded transition-colors text-blue-600"

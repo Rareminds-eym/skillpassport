@@ -114,7 +114,7 @@ const ProfileFixed = () => {
     return 'karthikeyan@rareminds.in';
   }, []);
 
-  // Load profile function
+  // Load profile function - supports both school and college educators
   const loadProfile = useCallback(async (email: string) => {
     if (!email) return;
     
@@ -122,7 +122,18 @@ const ProfileFixed = () => {
       setLoading(true);
       console.log('🔍 Loading profile for:', email);
 
-      const { data: educatorData, error } = await supabase
+      // Get current user ID from auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('❌ No authenticated user');
+        navigate('/login/educator');
+        return;
+      }
+
+      console.log('👤 User ID:', user.id);
+
+      // Try school educators first
+      const { data: schoolData, error: schoolError } = await supabase
         .from('school_educators')
         .select(`
           *,
@@ -131,76 +142,143 @@ const ProfileFixed = () => {
             organization_type
           )
         `)
-        .eq('email', email)
+        .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) {
-        console.error('❌ Error loading profile:', error.message);
-        throw error;
-      }
-
-      if (educatorData) {
+      if (schoolData) {
+        console.log('✅ Found school educator data');
         const profileData: EducatorProfile = {
           // Primary fields
-          id: educatorData.id,
-          user_id: educatorData.user_id,
-          school_id: educatorData.school_id,
-          employee_id: educatorData.employee_id || '',
-          email: educatorData.email,
+          id: schoolData.id,
+          user_id: schoolData.user_id,
+          school_id: schoolData.school_id,
+          employee_id: schoolData.employee_id || '',
+          email: schoolData.email,
           
           // Personal Information
-          first_name: educatorData.first_name || '',
-          last_name: educatorData.last_name || '',
-          phone_number: educatorData.phone_number || '',
-          dob: educatorData.dob || '',
-          gender: educatorData.gender || '',
-          address: educatorData.address || '',
-          city: educatorData.city || '',
-          state: educatorData.state || '',
-          country: educatorData.country || '',
-          pincode: educatorData.pincode || '',
-          photo_url: educatorData.photo_url || '',
+          first_name: schoolData.first_name || '',
+          last_name: schoolData.last_name || '',
+          phone_number: schoolData.phone_number || '',
+          dob: schoolData.dob || '',
+          gender: schoolData.gender || '',
+          address: schoolData.address || '',
+          city: schoolData.city || '',
+          state: schoolData.state || '',
+          country: schoolData.country || '',
+          pincode: schoolData.pincode || '',
+          photo_url: schoolData.photo_url || '',
           
           // Professional Information
-          specialization: educatorData.specialization || '',
-          qualification: educatorData.qualification || '',
-          experience_years: educatorData.experience_years || 0,
-          designation: educatorData.designation || '',
-          department: educatorData.department || '',
-          date_of_joining: educatorData.date_of_joining || educatorData.created_at,
-          subjects_handled: educatorData.subjects_handled || [],
+          specialization: schoolData.specialization || '',
+          qualification: schoolData.qualification || '',
+          experience_years: schoolData.experience_years || 0,
+          designation: schoolData.designation || '',
+          department: schoolData.department || '',
+          date_of_joining: schoolData.date_of_joining || '',
+          subjects_handled: schoolData.subjects_handled || [],
           
           // Documents
-          resume_url: educatorData.resume_url || '',
-          id_proof_url: educatorData.id_proof_url || '',
+          resume_url: schoolData.resume_url || '',
+          id_proof_url: schoolData.id_proof_url || '',
           
-          // Status & Verification
-          account_status: educatorData.account_status || 'active',
-          verification_status: educatorData.verification_status || 'Pending',
-          verified_by: educatorData.verified_by || '',
-          verified_at: educatorData.verified_at || '',
+          // Verification & Status
+          account_status: schoolData.account_status || '',
+          verification_status: schoolData.verification_status || '',
+          verified_by: schoolData.verified_by || '',
+          verified_at: schoolData.verified_at || '',
           
           // Computed fields
-          school_name: educatorData.schools?.name || '',
-          full_name: educatorData.first_name && educatorData.last_name 
-            ? `${educatorData.first_name} ${educatorData.last_name}`
-            : educatorData.first_name || 'Educator',
+          school_name: schoolData.school?.name || '',
+          full_name: `${schoolData.first_name || ''} ${schoolData.last_name || ''}`.trim() || 'Educator',
           
           // Metadata
-          metadata: educatorData.metadata || {},
+          metadata: schoolData.metadata || {},
         };
 
-        console.log('✅ Profile loaded successfully:', profileData);
         setProfile(profileData);
-      } else {
-        console.log('❌ No educator data found');
-        // Create basic profile
-        setProfile({
-          id: '',
-          email: email,
-          full_name: 'Educator',
-        });
+        setFormData(profileData);
+        return;
       }
+
+      // If not found in school_educators, try college_lecturers
+      const { data: collegeData, error: collegeError } = await supabase
+        .from('college_lecturers')
+        .select(`
+          *,
+          college:organizations!college_lecturers_collegeid_fkey (
+            name,
+            organization_type
+          )
+        `)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (collegeData) {
+        console.log('✅ Found college lecturer data');
+        const profileData: EducatorProfile = {
+          // Primary fields
+          id: collegeData.id,
+          user_id: collegeData.user_id,
+          school_id: collegeData.collegeId, // Map collegeId to school_id for consistency
+          employee_id: collegeData.employeeId || '',
+          email: collegeData.email,
+          
+          // Personal Information (using snake_case field names)
+          first_name: collegeData.first_name || '',
+          last_name: collegeData.last_name || '',
+          phone_number: collegeData.phone || '',
+          dob: collegeData.date_of_birth || '',
+          gender: collegeData.gender || '',
+          address: collegeData.address || '',
+          city: '',
+          state: '',
+          country: '',
+          pincode: '',
+          photo_url: '',
+          
+          // Professional Information
+          specialization: collegeData.specialization || '',
+          qualification: collegeData.qualification || '',
+          experience_years: collegeData.experienceYears || 0,
+          designation: collegeData.designation || '',
+          department: collegeData.department || '',
+          date_of_joining: collegeData.dateOfJoining || '',
+          subjects_handled: [],
+          
+          // Documents
+          resume_url: '',
+          id_proof_url: collegeData.id_proof_url || '',
+          
+          // Verification & Status
+          account_status: collegeData.accountStatus || '',
+          verification_status: collegeData.verification_status || '',
+          verified_by: collegeData.verified_by || '',
+          verified_at: collegeData.verified_at || '',
+          
+          // Computed fields
+          school_name: collegeData.college?.name || '',
+          full_name: `${collegeData.first_name || ''} ${collegeData.last_name || ''}`.trim() || 'Educator',
+          
+          // Metadata
+          metadata: collegeData.metadata || {},
+        };
+
+        setProfile(profileData);
+        setFormData(profileData);
+        return;
+      }
+
+      // No educator data found
+      console.warn('⚠️ No educator data found for user:', user.id);
+      console.log('School error:', schoolError);
+      console.log('College error:', collegeError);
+      
+      // Create fallback profile
+      setProfile({
+        id: '',
+        email: email,
+        full_name: 'Educator',
+      });
     } catch (error) {
       console.error('💥 Failed to load profile:', error);
       // Create fallback profile
@@ -212,7 +290,7 @@ const ProfileFixed = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   // Initialize profile on mount
   useEffect(() => {
@@ -246,8 +324,9 @@ const ProfileFixed = () => {
     
     // Convert null strings to empty strings
     Object.keys(cleanedProfile).forEach(key => {
-      if (cleanedProfile[key] === null || cleanedProfile[key] === 'null') {
-        cleanedProfile[key] = '';
+      const typedKey = key as keyof typeof cleanedProfile;
+      if (cleanedProfile[typedKey] === null || cleanedProfile[typedKey] === 'null') {
+        (cleanedProfile as any)[typedKey] = '';
       }
     });
     
@@ -324,8 +403,9 @@ const ProfileFixed = () => {
 
       // Remove any undefined values
       Object.keys(updateData).forEach(key => {
-        if (updateData[key] === undefined) {
-          delete updateData[key];
+        const typedKey = key as keyof typeof updateData;
+        if (updateData[typedKey] === undefined) {
+          delete (updateData as any)[typedKey];
         }
       });
 
@@ -360,7 +440,7 @@ const ProfileFixed = () => {
       console.log('✅ Profile saved successfully');
     } catch (error) {
       console.error('💥 Save error:', error);
-      alert(`Failed to save: ${error.message}`);
+      alert(`Failed to save: ${(error as Error).message}`);
     } finally {
       setSaving(false);
     }
@@ -444,8 +524,11 @@ const ProfileFixed = () => {
                       // Fallback to icon if image fails to load
                       console.log('Photo failed to load, showing fallback');
                       e.currentTarget.style.display = 'none';
-                      const fallback = e.currentTarget.parentNode?.nextElementSibling as HTMLElement;
-                      if (fallback) fallback.style.display = 'block';
+                      const parent = e.currentTarget.parentNode;
+                      if (parent && parent.nextSibling) {
+                        const fallback = parent.nextSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'block';
+                      }
                     }}
                   />
                   {editing && (

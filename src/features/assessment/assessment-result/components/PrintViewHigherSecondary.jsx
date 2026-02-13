@@ -1221,7 +1221,10 @@ const EmployabilitySkillsSection = ({ employability }) => {
           </div>
           <div style={printStyles.twoCol}>
             {Object.entries(employability.skillScores).map(([skill, score]) => {
-              const percentage = Math.round((score / 5) * 100);
+              // Check if score is already a percentage (> 5) or a 0-5 scale
+              const isPercentage = score > 5;
+              const normalizedScore = isPercentage ? score / 20 : score; // If percentage, convert back to 0-5 scale
+              const percentage = isPercentage ? Math.round(score) : Math.round((score / 5) * 100);
               const scoreStyle = getScoreStyle(percentage);
               
               return (
@@ -1232,7 +1235,7 @@ const EmployabilitySkillsSection = ({ employability }) => {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <span style={{ fontSize: '9px', color: '#6b7280' }}>
-                        {score.toFixed(2)}/5
+                        {normalizedScore.toFixed(2)}/5
                       </span>
                       <span style={{
                         ...printStyles.badge,

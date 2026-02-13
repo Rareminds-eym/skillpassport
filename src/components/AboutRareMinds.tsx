@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { CheckCircle, Users, TrendingUp, ArrowRight, Check, Send, X } from 'lucide-react';
 import SEOHead from './SEO/SEOHead';
+import { SkillVerified } from './SkillVerified';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -477,10 +478,10 @@ function AboutRareMinds() {
             </div>
 
             {/* Right Image */}
-            <div className="relative fade-in-up delay-200">
+            <div className="relative fade-in-up delay-200 flex items-center justify-center">
               <div 
                 ref={heroImageRef}
-                className="relative transition-transform duration-300 ease-out"
+                className="relative transition-transform duration-300 ease-out w-full"
                 style={{
                   transform: `perspective(1000px) rotateX(${imageRotation.rotateX}deg) rotateY(${imageRotation.rotateY}deg)`,
                   transformStyle: 'preserve-3d'
@@ -491,7 +492,7 @@ function AboutRareMinds() {
                 <img 
                   src="/assets/About/Skillecosystem.png"
                   alt="Skill Ecosystem - Learning to Earning"
-                  className="w-full h-[600px] object-contain"
+                  className="w-full h-auto md:h-[600px] object-contain"
                 />
               </div>
             </div>
@@ -1033,22 +1034,7 @@ function AboutRareMinds() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
             {/* Left Side - Visual Card */}
             <div className="flex justify-center lg:justify-end order-2 lg:order-1">
-              <div className="w-full max-w-[420px] aspect-square bg-[#F5F5F0] rounded-3xl flex flex-col items-center justify-center p-12">
-                <div className="w-28 h-28 mb-8 flex items-center justify-center">
-                  <svg 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                    className="w-full h-full text-gray-400"
-                  >
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                </div>
-                <p className="text-gray-500 text-base font-medium tracking-wide">Verified Skills</p>
-              </div>
+              <SkillVerified />
             </div>
 
             {/* Right Side - Content */}

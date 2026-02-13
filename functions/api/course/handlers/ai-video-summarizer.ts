@@ -154,21 +154,24 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
 
         console.log(`Transcription complete: ${segments.length} segments, ${duration}s duration`);
 
-        // Step 2: Run AI generation tasks in parallel
-        const [summaryResult, notableQuotes, quizQuestions, flashcards] = await Promise.all([
-          generateVideoSummary(env as unknown as Record<string, any>, transcript, segments),
-          extractNotableQuotes(env as unknown as Record<string, any>, segments),
-          enableQuiz 
-            ? generateQuizQuestions(env as unknown as Record<string, any>, transcript, '', []).catch(() => [])
-            : Promise.resolve([]),
-          enableFlashcards 
-            ? generateFlashcards(env as unknown as Record<string, any>, transcript, [], []).catch(() => [])
-            : Promise.resolve([])
-        ]);
-        
+        // Step 2: Generate AI summary first
+        const summaryResult = await generateVideoSummary(env as unknown as Record<string, any>, transcript, segments);
         const { summary, keyPoints, chapters, topics } = summaryResult;
 
-        console.log(`AI generation complete: ${keyPoints.length} key points, ${chapters.length} chapters`);
+        console.log(`AI summary complete: ${keyPoints.length} key points, ${chapters.length} chapters`);
+
+        // Step 3: Generate quiz and flashcards using the summary data
+        const [notableQuotes, quizQuestions, flashcards] = await Promise.all([
+          extractNotableQuotes(env as unknown as Record<string, any>, segments),
+          enableQuiz 
+            ? generateQuizQuestions(env as unknown as Record<string, any>, transcript, summary, keyPoints).catch(err => { console.error('Quiz generation failed:', err); return []; })
+            : Promise.resolve([]),
+          enableFlashcards 
+            ? generateFlashcards(env as unknown as Record<string, any>, transcript, keyPoints, topics).catch(err => { console.error('Flashcards generation failed:', err); return []; })
+            : Promise.resolve([])
+        ]);
+
+        console.log(`Quiz and flashcards complete: ${quizQuestions.length} questions, ${flashcards.length} cards`);
 
         // Step 3: Generate subtitle formats
         const srtContent = generateSRT(segments);
