@@ -765,8 +765,8 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         });
       }
 
-      const growthPromises = months.map(async month => {
-        // Get all skills created up to this month
+      const growthPromises = months.map(async (month, index) => {
+        // Get all skills created up to this month (cumulative)
         const { data: skills } = await supabase
           .from('skills')
           .select('type, level')
@@ -779,7 +779,7 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         const technical = skills?.filter(s => s.type === 'technical') || [];
         const softSkills = skills?.filter(s => s.type === 'soft') || [];
         
-        // Estimate other categories based on available data
+        // Calculate averages (multiply by 20 to scale 1-5 to 0-100)
         const avgTechnical = technical.length 
           ? Math.round((technical.reduce((sum, s) => sum + (s.level || 0), 0) / technical.length) * 20)
           : 0;
@@ -791,13 +791,47 @@ export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
         return {
           month: month.label,
           technical: avgTechnical,
-          communication: avgSoft, // Using soft skills as communication proxy
-          leadership: Math.max(0, avgSoft - 5), // Derived metric
-          creativity: Math.max(0, avgTechnical - 10), // Derived metric
+          communication: avgSoft,
+          leadership: Math.max(0, avgSoft - 5),
+          creativity: Math.max(0, avgTechnical - 10),
         };
       });
 
-      const data = await Promise.all(growthPromises);
+      const rawData = await Promise.all(growthPromises);
+      
+      // Ensure continuous growth - fill gaps with interpolated values
+      const data = rawData.map((current, index) => {
+        // If current month has zero values, interpolate from previous and next non-zero values
+        if (current.technical === 0 && current.communication === 0) {
+          // Find previous non-zero value
+          let prevIndex = index - 1;
+          while (prevIndex >= 0 && rawData[prevIndex].technical === 0) prevIndex--;
+          
+          // Find next non-zero value
+          let nextIndex = index + 1;
+          while (nextIndex < rawData.length && rawData[nextIndex].technical === 0) nextIndex++;
+          
+          if (prevIndex >= 0 && nextIndex < rawData.length) {
+            // Interpolate between previous and next
+            const progress = (index - prevIndex) / (nextIndex - prevIndex);
+            return {
+              month: current.month,
+              technical: Math.round(rawData[prevIndex].technical + (rawData[nextIndex].technical - rawData[prevIndex].technical) * progress),
+              communication: Math.round(rawData[prevIndex].communication + (rawData[nextIndex].communication - rawData[prevIndex].communication) * progress),
+              leadership: Math.round(rawData[prevIndex].leadership + (rawData[nextIndex].leadership - rawData[prevIndex].leadership) * progress),
+              creativity: Math.round(rawData[prevIndex].creativity + (rawData[nextIndex].creativity - rawData[prevIndex].creativity) * progress),
+            };
+          } else if (prevIndex >= 0) {
+            // Use previous value
+            return { ...rawData[prevIndex], month: current.month };
+          } else if (nextIndex < rawData.length) {
+            // Use next value
+            return { ...rawData[nextIndex], month: current.month };
+          }
+        }
+        return current;
+      });
+
       setSkillGrowthData(data);
     } catch (error) {
       console.error('Error fetching skill growth data:', error);

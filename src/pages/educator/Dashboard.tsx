@@ -688,7 +688,7 @@ const Dashboard = () => {
 
           {/* Analytics Module */}
           <div
-            onClick={() => navigate('/educator/analytics')}
+            onClick={() => navigate('/educator/reports')}
             className="group bg-white rounded-lg border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-purple-200 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-4">
