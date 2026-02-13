@@ -84,11 +84,6 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
         selectedTrack.cluster?.title || ''
     );
 
-    // Log error for debugging
-    if (overviewError) {
-        console.warn('[CareerTrackModal] API error, using fallback data:', overviewError.message);
-    }
-
     // RAG-powered course matching - fetch when role is selected and platform courses are available
     useEffect(() => {
         const fetchAIMatchedCourses = async () => {
@@ -96,7 +91,6 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
             let coursesToMatch = results?.platformCourses;
             
             if (!coursesToMatch || coursesToMatch.length === 0) {
-                console.log('[CareerTrackModal] No courses in results, fetching from database...');
                 try {
                     const { data: courses, error } = await supabase
                         .from('courses')
@@ -106,24 +100,16 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                         .order('created_at', { ascending: false });
                     
                     if (error) {
-                        console.error('[CareerTrackModal] Failed to fetch courses:', error);
                         coursesToMatch = [];
                     } else {
-                        console.log(`[CareerTrackModal] Fetched ${courses?.length || 0} courses from database`);
                         coursesToMatch = courses || [];
                     }
                 } catch (err) {
-                    console.error('[CareerTrackModal] Error fetching courses:', err);
                     coursesToMatch = [];
                 }
             }
             
             if (!selectedRole || !coursesToMatch || coursesToMatch.length === 0) {
-                console.log('[CareerTrackModal] Skipping RAG matching:', {
-                    hasRole: !!selectedRole,
-                    hasPlatformCourses: !!coursesToMatch,
-                    courseCount: coursesToMatch?.length || 0
-                });
                 setAiMatchedCourses([]);
                 return;
             }
@@ -131,21 +117,10 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
             const roleName = getRoleName(selectedRole);
             const clusterTitle = selectedTrack.cluster?.title || '';
 
-            console.log('[CareerTrackModal] Starting course matching:', {
-                roleName,
-                clusterTitle,
-                roleObject: selectedRole
-            });
-
             setCourseMatchingLoading(true);
             setCourseMatchingError(null);
 
             try {
-                console.log(`[CareerTrackModal] Using RAG-based course matching for: ${roleName}`, {
-                    coursesAvailable: coursesToMatch.length,
-                    clusterTitle: clusterTitle
-                });
-
                 // Use RAG-based matching (vector similarity)
                 const matchedCourses = await matchCoursesForRoleRAG(
                     roleName, 
@@ -154,12 +129,8 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
                     4 // Request exactly 4 courses
                 );
 
-                console.log(`[CareerTrackModal] RAG matched ${matchedCourses.length} courses:`, 
-                    matchedCourses.map(c => ({ title: c.title, relevance: c.relevance_score }))
-                );
                 setAiMatchedCourses(matchedCourses);
             } catch (error) {
-                console.error('[CareerTrackModal] RAG course matching failed:', error);
                 setCourseMatchingError(error);
                 // Use fallback on error - still ensure 4 courses
                 const roleName = getRoleName(selectedRole);

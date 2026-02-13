@@ -140,9 +140,6 @@ const WorkPreferencesSection = ({ workPreferences }) => {
  * @returns {JSX.Element} - Print view component
  */
 const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, courseRecommendations, studentAcademicData, gradeLevel }) => {
-  // Debug: Log studentInfo to see what data is being passed
-  console.log('PrintViewCollege - studentInfo received:', studentInfo);
-  
   // Handle null results
   if (!results) {
     return (
@@ -170,8 +167,6 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
       Object.values(originalScores).some(score => score > 0);
     
     if (allZeros && hasOriginalScores) {
-      console.log('🔧 PDF PrintViewCollege: Normalizing RIASEC scores from _originalScores');
-      console.log('   Original scores found at:', results.riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
       normalizedResults = {
         ...results,
         riasec: {
@@ -191,9 +186,6 @@ const PrintViewCollege = ({ results, studentInfo, riasecNames, traitNames, cours
 
   // Safe student info with defaults
   const safeStudentInfo = getSafeStudentInfo(studentInfo);
-  
-  // Debug: Log safeStudentInfo to see what getSafeStudentInfo returns
-  console.log('PrintViewCollege - safeStudentInfo after getSafeStudentInfo:', safeStudentInfo);
 
   // Safe RIASEC names with defaults
   const safeRiasecNames = riasecNames || defaultRiasecNames;
@@ -383,7 +375,6 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
   let scores = riasec.scores || {};
   const allZeros = Object.values(scores).every(score => score === 0);
   if (allZeros && riasec._originalScores && Object.keys(riasec._originalScores).length > 0) {
-    console.log('🔧 PDF InterestProfile (College): Using _originalScores instead of zeros');
     scores = riasec._originalScores;
   }
 
@@ -1010,10 +1001,6 @@ const EmployabilityScoreSection = ({ employability }) => {
 const CareerFitAnalysisSection = ({ careerFit }) => {
   if (!careerFit || !careerFit.topCareers || careerFit.topCareers.length === 0) return null;
 
-  // Debug: Log careerFit data to see if tracks/roles/salary data exists
-  console.log('CareerFitAnalysisSection - careerFit data:', careerFit);
-  console.log('CareerFitAnalysisSection - checking for tracks:', careerFit.tracks || careerFit.careerTracks || careerFit.topTracks);
-
   // Extract career tracks if they exist
   const careerTracks = careerFit.tracks || careerFit.careerTracks || careerFit.topTracks || [];
 
@@ -1252,9 +1239,6 @@ const CareerFitAnalysisSection = ({ careerFit }) => {
 const SkillGapDevelopmentSection = ({ skillGap }) => {
   if (!skillGap) return null;
 
-  // Debug: Log skillGap data to verify it's correct
-  console.log('SkillGapDevelopmentSection - skillGap data:', skillGap);
-
   return (
     <>
       <h2 style={{ ...printStyles.sectionTitle, marginTop: '30px' }}>3. Skill Gap & Development Plan</h2>
@@ -1396,9 +1380,6 @@ const SkillGapDevelopmentSection = ({ skillGap }) => {
  */
 const DetailedCareerRoadmapSection = ({ roadmap }) => {
   if (!roadmap) return null;
-
-  // Debug: Log roadmap data to verify it's correct
-  console.log('DetailedCareerRoadmapSection - roadmap data:', roadmap);
 
   return (
     <>
@@ -1593,9 +1574,6 @@ const FinalRecommendationsSection = ({ overallSummary }) => {
  */
 const CourseRecommendationsSection = ({ courseRecommendations }) => {
   if (!courseRecommendations || courseRecommendations.length === 0) return null;
-
-  // Debug: Log courseRecommendations data to verify it's correct
-  console.log('CourseRecommendationsSection - courseRecommendations data:', courseRecommendations);
 
   // Take top 5 recommendations
   const topCourses = courseRecommendations.slice(0, 5);

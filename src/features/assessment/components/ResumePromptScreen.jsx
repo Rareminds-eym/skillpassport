@@ -54,30 +54,6 @@ const formatDate = (dateString) => {
  * Calculate progress percentage based on actual question counts
  */
 const calculateProgress = (attempt) => {
-  // Debug: Log the raw data to understand the structure
-  console.log('📊 [PROGRESS DEBUG] Raw attempt data:', {
-    gradeLevel: attempt.grade_level,
-    streamId: attempt.stream_id,
-    allResponsesCount: attempt.all_responses ? Object.keys(attempt.all_responses).length : 0,
-    restoredResponsesCount: attempt.restoredResponses ? Object.keys(attempt.restoredResponses).length : 0,
-    // NEW: Check for assessment_snapshot_v2 (college students)
-    hasSnapshotV2: !!attempt.assessment_snapshot_v2,
-    snapshotV2Sections: attempt.assessment_snapshot_v2 ? Object.keys(attempt.assessment_snapshot_v2.sections || {}) : [],
-    snapshotV2QuestionCount: attempt.assessment_snapshot_v2 
-      ? Object.values(attempt.assessment_snapshot_v2.sections || {}).reduce((acc, section) => acc + (section.questions?.length || 0), 0)
-      : 0,
-    currentSection: attempt.current_section_index,
-    currentQuestion: attempt.current_question_index,
-    // Show sample keys to debug
-    sampleRestoredKeys: attempt.restoredResponses ? Object.keys(attempt.restoredResponses).slice(0, 5) : [],
-    sampleAllResponsesKeys: attempt.all_responses ? Object.keys(attempt.all_responses).slice(0, 5) : [],
-    // IMPORTANT: Check adaptive progress data
-    adaptiveProgressExists: !!attempt.adaptiveProgress,
-    adaptiveQuestionsAnswered: attempt.adaptiveProgress?.questionsAnswered || 0,
-    adaptiveCurrentQuestionIndex: attempt.adaptiveProgress?.currentQuestionIndex || 0,
-    adaptiveStatus: attempt.adaptiveProgress?.status || 'none'
-  });
-
   // IMPORTANT: restoredResponses contains BOTH UUID and non-UUID responses combined
   // So we should use restoredResponses as the total count, not add them separately
   // However, if restoredResponses is empty, fallback to all_responses or assessment_snapshot_v2
@@ -89,14 +65,10 @@ const calculateProgress = (attempt) => {
     totalAnsweredQuestions = Object.values(sections).reduce((acc, section) => {
       return acc + (section.questions?.filter(q => q.answer?.value !== undefined && q.answer?.value !== null).length || 0);
     }, 0);
-    if (totalAnsweredQuestions > 0) {
-      console.log('✅ [COLLEGE] Using assessment_snapshot_v2 for question count:', totalAnsweredQuestions);
-    }
   }
   
   // Fallback: If restoredResponses is empty but all_responses has data, use all_responses
   if (totalAnsweredQuestions === 0 && attempt.all_responses) {
-    console.log('⚠️ [FALLBACK] restoredResponses is empty, using all_responses as fallback');
     totalAnsweredQuestions = Object.keys(attempt.all_responses).length;
   }
   
@@ -175,15 +147,6 @@ const calculateProgress = (attempt) => {
   
   const progressPercentage = Math.min(100, Math.round((answeredCount / estimatedTotal) * 100));
   
-  console.log('📊 [PROGRESS DEBUG] Final calculation:', {
-    totalAnsweredQuestions,
-    adaptiveQuestionsAnswered,
-    answeredCount,
-    estimatedTotal,
-    progressPercentage,
-    gradeLevel: attempt.grade_level
-  });
-  
   return progressPercentage;
 };
 
@@ -209,50 +172,21 @@ export const ResumePromptScreen = ({
   // restoredResponses already contains all responses (UUID + non-UUID combined)
   let totalAnsweredQuestions = Object.keys(pendingAttempt.restoredResponses || {}).length;
   
-  // Debug: Log the Questions Answered calculation
-  console.log('🔢 [QUESTIONS ANSWERED DEBUG] Raw data:', {
-    restoredResponsesExists: !!pendingAttempt.restoredResponses,
-    restoredResponsesCount: Object.keys(pendingAttempt.restoredResponses || {}).length,
-    restoredResponsesSample: pendingAttempt.restoredResponses ? Object.keys(pendingAttempt.restoredResponses).slice(0, 5) : [],
-    allResponsesExists: !!pendingAttempt.all_responses,
-    allResponsesCount: pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).length : 0,
-    allResponsesSample: pendingAttempt.all_responses ? Object.keys(pendingAttempt.all_responses).slice(0, 5) : [],
-    // NEW: Check assessment_snapshot_v2 for college students
-    hasSnapshotV2: !!pendingAttempt.assessment_snapshot_v2,
-    snapshotV2Sections: pendingAttempt.assessment_snapshot_v2 ? Object.keys(pendingAttempt.assessment_snapshot_v2.sections || {}) : [],
-    isCollegeStudent: pendingAttempt.grade_level === 'college',
-    adaptiveProgressExists: !!pendingAttempt.adaptiveProgress,
-    adaptiveQuestionsAnswered: pendingAttempt.adaptiveProgress?.questionsAnswered || 0
-  });
-  
   // NEW: For college students, check assessment_snapshot_v2 for comprehensive progress data
   if (totalAnsweredQuestions === 0 && pendingAttempt.grade_level === 'college' && pendingAttempt.assessment_snapshot_v2?.sections) {
     const sections = pendingAttempt.assessment_snapshot_v2.sections;
     totalAnsweredQuestions = Object.values(sections).reduce((acc, section) => {
       return acc + (section.questions?.filter(q => q.answer?.value !== undefined && q.answer?.value !== null).length || 0);
     }, 0);
-    if (totalAnsweredQuestions > 0) {
-      console.log('✅ [COLLEGE] Using assessment_snapshot_v2 for question count:', totalAnsweredQuestions);
-    }
   }
   
   // Fallback: If restoredResponses is empty but all_responses has data, use all_responses
   if (totalAnsweredQuestions === 0 && pendingAttempt.all_responses) {
-    console.log('⚠️ [QUESTIONS ANSWERED FALLBACK] restoredResponses is empty, using all_responses as fallback');
     totalAnsweredQuestions = Object.keys(pendingAttempt.all_responses).length;
   }
   
   const adaptiveQuestionsAnswered = pendingAttempt.adaptiveProgress?.questionsAnswered || 0;
   const answeredCount = totalAnsweredQuestions + adaptiveQuestionsAnswered;
-  
-  console.log('🔢 [QUESTIONS ANSWERED FINAL] Calculation result:', {
-    totalAnsweredQuestions,
-    adaptiveQuestionsAnswered,
-    finalAnsweredCount: answeredCount,
-    calculationMethod: totalAnsweredQuestions > 0 
-      ? (pendingAttempt.assessment_snapshot_v2 && pendingAttempt.grade_level === 'college' ? 'assessment_snapshot_v2' : 'restoredResponses')
-      : 'all_responses_fallback'
-  });
   
   const startedAt = formatDate(pendingAttempt.started_at);
 

@@ -84,8 +84,6 @@ const PrintViewHigherSecondary = ({
       Object.values(originalScores).some(score => score > 0);
     
     if (allZeros && hasOriginalScores) {
-      console.log('🔧 PDF PrintViewHigherSecondary: Normalizing RIASEC scores from _originalScores');
-      console.log('   Original scores found at:', results.riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
       normalizedResults = {
         ...results,
         riasec: {
@@ -274,7 +272,6 @@ const InterestProfileSection = ({ riasec, safeRiasecNames }) => {
   let scores = riasec.scores || {};
   const allZeros = Object.values(scores).every(score => score === 0);
   if (allZeros && riasec._originalScores && Object.keys(riasec._originalScores).length > 0) {
-    console.log('🔧 PDF InterestProfile (HigherSecondary): Using _originalScores instead of zeros');
     scores = riasec._originalScores;
   }
 

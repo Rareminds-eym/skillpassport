@@ -50,7 +50,6 @@ class CircuitBreaker {
       // Transition to half-open
       this.state.state = 'half-open';
       this.halfOpenCalls = 0;
-      console.log(`🔓 Circuit breaker entering HALF-OPEN state for ${operationName}`);
     }
 
     // Limit half-open calls
@@ -69,7 +68,6 @@ class CircuitBreaker {
       if (this.state.state === 'half-open') {
         this.state.state = 'closed';
         this.state.failures = 0;
-        console.log(`✅ Circuit breaker CLOSED for ${operationName}`);
       }
       
       return result;
@@ -85,7 +83,6 @@ class CircuitBreaker {
     
     if (this.state.failures >= this.failureThreshold) {
       this.state.state = 'open';
-      console.error(`🚫 Circuit breaker OPENED after ${this.state.failures} failures`);
     }
   }
 
@@ -161,11 +158,6 @@ async function withRetry<T>(
       );
       const jitter = Math.random() * 200; // Add up to 200ms jitter
       const totalDelay = delay + jitter;
-
-      console.warn(
-        `⚠️ ${operationName} failed (attempt ${attempt}/${config.maxAttempts}): ${error.message}. ` +
-        `Retrying in ${Math.round(totalDelay)}ms...`
-      );
 
       await new Promise(resolve => setTimeout(resolve, totalDelay));
     }
@@ -250,7 +242,6 @@ export async function saveResponseEnhanced(
   
   const cached = getCachedResult(idempotencyKey);
   if (cached) {
-    console.log('📋 Returning cached response save result');
     return { success: true, data: cached, fromCache: true };
   }
 
@@ -274,7 +265,6 @@ export async function saveResponseEnhanced(
           .single();
 
         if (error) {
-          console.error('❌ Database error saving response:', error);
           throw new Error(`Database error: ${error.message}`);
         }
 
@@ -296,8 +286,6 @@ export async function saveResponseEnhanced(
       circuitBreakerStatus: circuitBreakers.saveResponse.getStatus()
     };
   } catch (error: any) {
-    console.error('❌ Final error saving response:', error);
-    
     return {
       success: false,
       error: error.message,
@@ -322,7 +310,6 @@ async function updateAllResponses(
     .single();
 
   if (fetchError) {
-    console.warn('Could not fetch all_responses for update:', fetchError);
     return;
   }
 
@@ -341,7 +328,6 @@ async function updateAllResponses(
     .eq('id', attemptId);
 
   if (updateError) {
-    console.warn('Could not update all_responses:', updateError);
   }
 }
 
@@ -390,7 +376,6 @@ export async function completeAssessmentEnhanced(
             .maybeSingle();
           
           if (existingResult) {
-            console.log('✅ Assessment already completed, returning existing results');
             return { success: true, result: existingResult };
           }
         }
@@ -438,16 +423,13 @@ export async function completeAssessmentEnhanced(
 
         if (updateError) {
           // This is serious - we have results but couldn't mark attempt complete
-          console.error('❌ CRITICAL: Results saved but attempt not marked complete:', updateError);
           throw new Error(`Failed to update attempt status: ${updateError.message}`);
         }
 
-        console.log('✅ Assessment completed successfully');
         return { success: true, result: results };
       }, 'completeAssessment', { maxAttempts: 3, baseDelay: 1000 });
     }, 'completeAttempt');
   } catch (error: any) {
-    console.error('❌ Failed to complete assessment:', error);
     return { success: false, error: error.message };
   }
 }

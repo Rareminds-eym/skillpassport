@@ -614,17 +614,6 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
   // FINAL SCORE CALCULATION
   // ═══════════════════════════════════════════════════════════════════════════
   
-  // Log the score breakdown for debugging
-  console.log(`📊 Score Breakdown for ${courseProfile.name}:`, {
-    interest: scoreBreakdown.interest || 0,
-    academic: scoreBreakdown.academic || 0,
-    projects: scoreBreakdown.projects || 0,
-    experience: scoreBreakdown.experience || 0,
-    synergy: scoreBreakdown.synergy || 0,
-    future: scoreBreakdown.future || 0,
-    total: totalScore
-  });
-  
   // Remove minimum threshold to show accurate scores
   const finalScore = Math.min(100, Math.max(0, Math.round(totalScore)));
   
@@ -671,13 +660,6 @@ const calculateDetailedScore = (courseId, courseProfile, interestDNA, academicPr
  * @returns {Array} Sorted courses with match scores, reasons, and career paths
  */
 export const calculateCourseMatchScores = (courseRecommendations, riasecScores, academicData = {}, studentStream = null) => {
-  console.log('🚀 calculateCourseMatchScores called with:', {
-    courseCount: courseRecommendations?.length,
-    hasRiasec: !!riasecScores && Object.keys(riasecScores).length > 0,
-    studentStream: studentStream,
-    streamType: typeof studentStream
-  });
-  
   if (!courseRecommendations || courseRecommendations.length === 0) return courseRecommendations || [];
 
   const { subjectMarks = [], projects = [], experiences = [], education = [], _assessmentResults } = academicData;
@@ -689,15 +671,13 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
     
     // Skip filtering if stream is invalid/placeholder
     if (normalizedStream === 'n/a' || normalizedStream === '—' || normalizedStream === '') {
-      console.log('⚠️ Invalid stream value, skipping filter:', studentStream);
+      // Invalid stream value, skipping filter
     } 
     // Extract parent category from stream (e.g., science_pcmb → science)
     else {
       const streamCategory = extractStreamCategory(normalizedStream);
       
       if (streamCategory) {
-        console.log(`🎯 Filtering programs by stream category: ${streamCategory} (from ${studentStream})`);
-        
         filteredCourses = courseRecommendations.filter(course => {
           const courseId = course.courseId?.toLowerCase() || '';
           const courseProfile = COURSE_KNOWLEDGE_BASE[courseId];
@@ -707,29 +687,15 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
           const courseStream = courseProfile.stream?.toLowerCase();
           const matches = courseStream === streamCategory;
           
-          if (!matches) {
-            console.log(`   ❌ Filtered out: ${course.courseName} (${courseStream} ≠ ${streamCategory})`);
-          } else {
-            console.log(`   ✅ Keeping: ${course.courseName} (${courseStream} = ${streamCategory})`);
-          }
-          
           return matches;
         });
         
-        console.log(`   📊 Filtered from ${courseRecommendations.length} to ${filteredCourses.length} programs`);
-        
         // If no courses match the stream, return empty array
         if (filteredCourses.length === 0) {
-          console.log('   ⚠️ No programs match student stream category - returning empty array');
           return [];
         }
-      } else {
-        // Stream is a specific program name (like ANIMATION, B.Sc, BBA) - don't filter
-        console.log(`⚠️ Stream "${studentStream}" is not a valid category - skipping filter (showing all programs)`);
       }
     }
-  } else {
-    console.log('⚠️ No studentStream provided - showing all programs');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -749,8 +715,6 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
   
   // If no valid RIASEC data, return empty array - don't show fallback recommendations
   if (!hasValidRiasecData) {
-    console.log('⚠️ No valid RIASEC data - skipping course recommendations');
-    console.log('   RIASEC scores:', effectiveRiasecScores);
     return [];
   }
   
@@ -760,12 +724,12 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
   const experiencePattern = recognizeExperiencePatterns(experiences);
 
   // ENHANCED: Use assessment aptitude/knowledge for academic profile if missing
-  const enhancedAcademicProfile = academicProfile.hasData ? academicProfile : 
+  const enhancedAcademicProfile = academicProfile.hasData ? academicProfile :
     (hasAssessmentResults && _assessmentResults.aptitude ? {
       hasData: true,
       dominantStream: _assessmentResults.knowledge?.dominantArea || 'general',
       // Combine aptitude overall score with knowledge score for better accuracy
-      academicStrength: _assessmentResults.knowledge?.score 
+      academicStrength: _assessmentResults.knowledge?.score
         ? Math.round((_assessmentResults.aptitude.overallScore + _assessmentResults.knowledge.score) / 2)
         : _assessmentResults.aptitude.overallScore || 50,
       // Convert aptitude scores to subject scores for matching
@@ -781,17 +745,17 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
         spatial: _assessmentResults.aptitude.scores.spatial?.percentage || 0,
         // Estimate science subjects from logical/numerical + knowledge score boost
         physics: Math.round(
-          (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.6 + 
+          (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.6 +
           (_assessmentResults.aptitude.scores.numerical?.percentage || 0) * 0.3 +
           (_assessmentResults.knowledge?.score || 0) * 0.1
         ),
         chemistry: Math.round(
-          (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.5 + 
+          (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.5 +
           (_assessmentResults.aptitude.scores.numerical?.percentage || 0) * 0.4 +
           (_assessmentResults.knowledge?.score || 0) * 0.1
         ),
         biology: Math.round(
-          (_assessmentResults.aptitude.scores.verbal?.percentage || 0) * 0.4 + 
+          (_assessmentResults.aptitude.scores.verbal?.percentage || 0) * 0.4 +
           (_assessmentResults.aptitude.scores.logical?.percentage || 0) * 0.4 +
           (_assessmentResults.knowledge?.score || 0) * 0.2
         ),
@@ -801,17 +765,17 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
       streamAffinity: {
         // Boost stream affinity with knowledge score
         science: Math.round(
-          ((_assessmentResults.aptitude.scores?.numerical?.percentage || 0) + 
+          ((_assessmentResults.aptitude.scores?.numerical?.percentage || 0) +
            (_assessmentResults.aptitude.scores?.logical?.percentage || 0)) / 2 * 0.7 +
           (_assessmentResults.knowledge?.score || 0) * 0.3
         ),
         commerce: Math.round(
-          ((_assessmentResults.aptitude.scores?.numerical?.percentage || 0) + 
+          ((_assessmentResults.aptitude.scores?.numerical?.percentage || 0) +
            (_assessmentResults.aptitude.scores?.verbal?.percentage || 0)) / 2 * 0.7 +
           (_assessmentResults.knowledge?.score || 0) * 0.3
         ),
         arts: Math.round(
-          ((_assessmentResults.aptitude.scores?.verbal?.percentage || 0) + 
+          ((_assessmentResults.aptitude.scores?.verbal?.percentage || 0) +
            (_assessmentResults.aptitude.scores?.spatial?.percentage || 0)) / 2 * 0.7 +
           (_assessmentResults.knowledge?.score || 0) * 0.3
         )
@@ -824,21 +788,6 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
       // Add knowledge score info for logging
       knowledgeScore: _assessmentResults.knowledge?.score || 0
     } : academicProfile);
-
-  // Log analysis summary for debugging
-  console.log('🧠 AI Course Matching Engine v2.0');
-  console.log('├─ RIASEC Scores:', effectiveRiasecScores);
-  console.log('├─ Interest DNA:', interestDNA.hasData ? `${interestDNA.dominantTypes.join('-')} (strength: ${Math.round(interestDNA.strengthLevel)}%)` : 'No data');
-  console.log('├─ Academic Profile:', enhancedAcademicProfile.hasData ? `${enhancedAcademicProfile.dominantStream} stream (${enhancedAcademicProfile.academicStrength}% avg)` : 'No data');
-  if (enhancedAcademicProfile.knowledgeScore) {
-    console.log('│  └─ Stream Knowledge Score:', enhancedAcademicProfile.knowledgeScore + '%');
-  }
-  console.log('├─ Skill Signature:', skillSignature.hasData ? `${skillSignature.projectCount} projects, ${skillSignature.technologies.length} techs` : 'No data');
-  console.log('└─ Experience Pattern:', experiencePattern.hasData ? `${experiencePattern.experienceTypes.length} types, ${experiencePattern.verifiedCount} verified` : 'No data');
-  
-  if (hasAssessmentResults) {
-    console.log('✅ Using assessment results as data source - RIASEC scores:', Object.keys(_assessmentResults.riasec.scores || {}).length);
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 3: Calculate Scores for Each Course
@@ -883,11 +832,6 @@ export const calculateCourseMatchScores = (courseRecommendations, riasecScores, 
   // STEP 4: Sort by Match Score and Return
   // ═══════════════════════════════════════════════════════════════════════════
   const sortedCourses = scoredCourses.sort((a, b) => b.matchScore - a.matchScore);
-  
-  console.log('📊 Course Match Results:');
-  sortedCourses.slice(0, 5).forEach((c, i) => {
-    console.log(`   ${i + 1}. ${c.courseName || c.courseId}: ${c.matchScore}% (${c.matchLevel})`);
-  });
 
   return sortedCourses;
 };

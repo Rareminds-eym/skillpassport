@@ -36,8 +36,6 @@ export const validateRiasecTopThree = (riasec, geminiResults = null) => {
       Object.values(originalScores).some(score => score > 0);
     
     if (hasOriginalScores) {
-      console.log('🔧 validateRiasecTopThree: Using _originalScores instead of zeros');
-      console.log('   Found at:', riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
       scores = originalScores;
     }
   }
@@ -50,7 +48,6 @@ export const validateRiasecTopThree = (riasec, geminiResults = null) => {
   // Handle edge case: if all scores are 0, return empty arrays
   const hasAnyScore = Object.values(scores).some(score => score > 0);
   if (!hasAnyScore) {
-    console.warn('⚠️ All RIASEC scores are 0 - returning empty topThree');
     return {
       ...riasec,
       topThree: [],
@@ -71,13 +68,6 @@ export const validateRiasecTopThree = (riasec, geminiResults = null) => {
   const currentCode = riasec.code || currentTopThree.join('');
 
   const isCorrect = correctCode === currentCode;
-
-  if (!isCorrect) {
-    console.warn('⚠️ RIASEC topThree correction needed:');
-    console.warn(`   Current: ${currentCode} (${currentTopThree.join(', ')})`);
-    console.warn(`   Correct: ${correctCode} (${correctTopThree.join(', ')})`);
-    console.warn('   Scores:', scores);
-  }
 
   return {
     ...riasec,

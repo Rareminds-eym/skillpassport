@@ -19,10 +19,6 @@ import { normalizeAssessmentResults } from '../../../../utils/assessmentDataNorm
 
 // Normalize assessment results to fix data inconsistencies
 const normalizedResults = normalizeAssessmentResults(validatedResults);
-console.log('🔧 Assessment results normalized:', {
-    before: validatedResults.riasec?.scores,
-    after: normalizedResults.riasec?.scores
-});
 
 // Use normalized results instead of validated results
 setResults(normalizedResults);
@@ -51,10 +47,6 @@ const validatedResults = await applyValidation(geminiResults, attempt.all_respon
 
 // Normalize assessment results to fix data inconsistencies
 const normalizedResults = normalizeAssessmentResults(validatedResults);
-console.log('🔧 Assessment results normalized:', {
-    before: validatedResults.riasec?.scores,
-    after: normalizedResults.riasec?.scores
-});
 
 setResults(normalizedResults);
 */

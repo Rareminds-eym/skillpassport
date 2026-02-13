@@ -61,7 +61,6 @@ export const useAssessmentResults = () => {
         .single();
 
       if (resultError) {
-        console.error('Error fetching result:', resultError);
         throw new Error('Failed to fetch assessment results');
       }
 
@@ -69,20 +68,14 @@ export const useAssessmentResults = () => {
         throw new Error('Assessment result not found');
       }
 
-      console.log('📊 Raw database result:', dbResult);
-
-      // ✅ NEW: Transform database result to PDF-compatible format
-      console.log('🔄 Transforming result...');
+      // Transform database result to PDF-compatible format
       const transformedResult = transformAssessmentResults(dbResult);
-      console.log('✅ Transformed result:', transformedResult);
 
-      // ✅ NEW: Validate transformed result
+      // Validate transformed result
       const validation = validateTransformedResults(transformedResult);
-      console.log('🔍 Validation result:', validation);
 
       // Handle validation errors
       if (!validation.isValid) {
-        console.error('❌ Result validation failed:', validation.errors);
         setValidationWarnings([
           ...validation.errors,
           ...validation.warnings
@@ -91,11 +84,9 @@ export const useAssessmentResults = () => {
         // Still set results but show warnings
         setResults(transformedResult);
       } else if (validation.warnings.length > 0) {
-        console.warn('⚠️ Result validation warnings:', validation.warnings);
         setValidationWarnings(validation.warnings);
         setResults(transformedResult);
       } else {
-        console.log('✅ Result validation passed');
         setValidationWarnings([]);
         setResults(transformedResult);
       }
@@ -117,7 +108,6 @@ export const useAssessmentResults = () => {
       setLoading(false);
 
     } catch (err) {
-      console.error('Error in fetchResults:', err);
       setError(err.message);
       setLoading(false);
     }
@@ -150,7 +140,6 @@ export const useAssessmentResults = () => {
       await fetchResults();
 
     } catch (err) {
-      console.error('Error regenerating analysis:', err);
       setError(err.message);
     } finally {
       setRetrying(false);
@@ -248,7 +237,6 @@ export const generateAndStoreResult = async (attemptId) => {
     };
     
   } catch (error) {
-    console.error('Error generating result:', error);
     return {
       success: false,
       error: error.message

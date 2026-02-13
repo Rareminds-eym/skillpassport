@@ -57,16 +57,6 @@ const PrintViewMiddleHighSchool = ({
   // The normalizer moves _originalScores to riasec level, not gemini_results level
   let normalizedResults = { ...results };
   
-  console.log('🔍 PDF PrintViewMiddleHighSchool - Input data:', {
-    hasRiasec: !!results.riasec,
-    riasecScores: results.riasec?.scores,
-    hasRiasecOriginal: !!results.riasec?._originalScores,
-    riasecOriginal: results.riasec?._originalScores,
-    hasGeminiResults: !!results.gemini_results,
-    hasGeminiRiasec: !!results.gemini_results?.riasec,
-    geminiOriginal: results.gemini_results?.riasec?._originalScores
-  });
-  
   if (results.riasec) {
     const scores = results.riasec.scores || {};
     const allZeros = Object.values(scores).every(score => score === 0);
@@ -79,18 +69,7 @@ const PrintViewMiddleHighSchool = ({
     const hasOriginalScores = Object.keys(originalScores).length > 0 &&
       Object.values(originalScores).some(score => score > 0);
     
-    console.log('🔍 PDF PrintViewMiddleHighSchool - Normalization check:', {
-      allZeros,
-      hasOriginalScores,
-      originalScores,
-      foundAt: results.riasec._originalScores ? 'riasec._originalScores' : 
-               results.gemini_results?.riasec?._originalScores ? 'gemini_results.riasec._originalScores' : 
-               'NOT FOUND'
-    });
-    
     if (allZeros && hasOriginalScores) {
-      console.log('🔧 PDF PrintView: Normalizing RIASEC scores from _originalScores');
-      console.log('   Original scores found at:', results.riasec._originalScores ? 'riasec._originalScores' : 'gemini_results.riasec._originalScores');
       normalizedResults = {
         ...results,
         riasec: {
@@ -102,11 +81,6 @@ const PrintViewMiddleHighSchool = ({
                    24
         }
       };
-      console.log('✅ PDF PrintView - Normalized scores:', normalizedResults.riasec.scores);
-    } else {
-      console.log('⚠️ PDF PrintView - No normalization applied:', {
-        reason: !allZeros ? 'Scores are not all zeros' : 'No original scores found'
-      });
     }
   }
 
@@ -123,14 +97,6 @@ const PrintViewMiddleHighSchool = ({
     learningStyle = normalizedResults.learningStyle || normalizedResults.gemini_results?.learningStyle,
     adaptiveAptitudeResults = normalizedResults.adaptiveAptitudeResults || normalizedResults.gemini_results?.adaptiveAptitudeResults
   } = normalizedResults;
-
-  console.log('🔍 PDF PrintViewMiddleHighSchool - Extracted data:', {
-    hasCharacterStrengths: !!characterStrengths,
-    hasLearningStyle: !!learningStyle,
-    hasAdaptiveAptitude: !!adaptiveAptitudeResults,
-    adaptiveLevel: adaptiveAptitudeResults?.aptitude_level || adaptiveAptitudeResults?.aptitudeLevel,
-    hasCareerFit: !!careerFit
-  });
 
   // Determine if this is middle school (grades 6-8)
   // Middle school students should NOT see career exploration, skills, or roadmap sections
@@ -257,7 +223,6 @@ const InterestExplorerSection = ({ riasec, safeRiasecNames }) => {
   let scores = riasec.scores || {};
   const allZeros = Object.values(scores).every(score => score === 0);
   if (allZeros && riasec._originalScores && Object.keys(riasec._originalScores).length > 0) {
-    console.log('🔧 PDF InterestExplorer: Using _originalScores instead of zeros');
     scores = riasec._originalScores;
   }
 

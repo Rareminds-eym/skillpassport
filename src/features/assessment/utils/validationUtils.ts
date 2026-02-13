@@ -127,7 +127,6 @@ export const safeParseJSON = <T>(
   try {
     return JSON.parse(jsonString) as T;
   } catch (error) {
-    console.error('JSON parse error:', error);
     return fallback;
   }
 };

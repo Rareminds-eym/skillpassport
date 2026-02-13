@@ -10,12 +10,6 @@ const getScoreColor = (percentage) => {
 const ProfileSection = ({ results, riasecNames }) => {
     const { riasec, aptitude, bigFive, workValues, profileSnapshot } = results;
 
-    // Debug logging for aptitude data
-    console.log('=== ProfileSection Debug ===');
-    console.log('Aptitude object:', aptitude);
-    console.log('Aptitude scores:', aptitude?.scores);
-    console.log('ProfileSnapshot:', profileSnapshot);
-
     return (
         <div className="space-y-6">
             {/* Top Interests Summary */}

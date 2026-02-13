@@ -7,10 +7,6 @@ import { formatStreamId } from '../../../../utils/formatters';
 import { isCollegeStudent as checkIsCollegeStudent } from '../../../../utils/studentType';
 
 const ReportHeader = ({ studentInfo, gradeLevel }) => {
-    // Debug
-    console.log('ReportHeader gradeLevel:', gradeLevel);
-    console.log('ReportHeader studentInfo:', studentInfo);
-
     // Format stream display name
     const formatStreamDisplay = (stream) => {
         if (!stream || stream === '—') return '—';

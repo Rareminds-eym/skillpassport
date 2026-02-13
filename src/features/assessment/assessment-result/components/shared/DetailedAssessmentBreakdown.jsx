@@ -37,20 +37,6 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
 
     const { riasec, aptitude, bigFive, workValues, knowledge, employability } = results;
 
-    console.log('🔍 DetailedAssessmentBreakdown received:', {
-        hasRiasec: !!riasec,
-        riasecScores: riasec?.scores,
-        riasecOriginal: riasec?._originalScores,
-        hasGeminiResults: !!results.gemini_results,
-        geminiOriginal: results.gemini_results?.riasec?._originalScores,
-        hasAdaptiveAptitude: !!(results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults),
-        adaptiveAptitudeData: results.adaptiveAptitudeResults || results.adaptive_aptitude_results || results.gemini_results?.adaptiveAptitudeResults,
-        adaptiveFoundAt: results.adaptiveAptitudeResults ? 'results.adaptiveAptitudeResults' : 
-                        results.adaptive_aptitude_results ? 'results.adaptive_aptitude_results' : 
-                        results.gemini_results?.adaptiveAptitudeResults ? 'results.gemini_results.adaptiveAptitudeResults' : 
-                        'NOT FOUND'
-    });
-
     // 🔧 CRITICAL FIX: Check BOTH locations for _originalScores
     let safeRiasec = riasec;
     if (riasec) {
@@ -65,18 +51,7 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
         const hasOriginalScores = Object.keys(originalScores).length > 0 &&
             Object.values(originalScores).some(score => score > 0);
         
-        console.log('🔍 DetailedAssessmentBreakdown normalization check:', {
-            allZeros,
-            hasOriginalScores,
-            originalScores,
-            foundAt: riasec._originalScores ? 'riasec._originalScores' : 
-                    results.gemini_results?.riasec?._originalScores ? 'gemini_results.riasec._originalScores' : 
-                    'NOT FOUND'
-        });
-        
         if (allZeros && hasOriginalScores) {
-            console.log('🔧 DetailedAssessmentBreakdown: Fixing RIASEC scores from _originalScores');
-            console.log('   Using scores:', originalScores);
             safeRiasec = {
                 ...riasec,
                 scores: originalScores,
@@ -84,11 +59,6 @@ const DetailedAssessmentBreakdown = ({ results, riasecNames, gradeLevel }) => {
                          results.gemini_results?.riasec?.maxScore || 
                          24
             };
-            console.log('✅ DetailedAssessmentBreakdown: Fixed scores:', safeRiasec.scores);
-        } else {
-            console.log('⚠️ DetailedAssessmentBreakdown: No fix applied', {
-                reason: !allZeros ? 'Scores not all zeros' : 'No original scores found'
-            });
         }
     }
 

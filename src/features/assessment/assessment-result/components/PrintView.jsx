@@ -17,22 +17,17 @@ import PrintViewCollege from './PrintViewCollege';
  * @returns {string} - Grade level category ('middle', 'higher_secondary', or 'college')
  */
 const determineGradeLevel = (gradeLevel, results) => {
-  console.log('🔍 PrintView.determineGradeLevel - Input:', { gradeLevel, hasResults: !!results });
-  
   // Handle explicit gradeLevel prop - Requirements 5.1, 5.2, 5.3
   if (gradeLevel) {
     // Map gradeLevel values to component categories
     if (gradeLevel === 'middle' || gradeLevel === 'highschool') {
-      console.log('✅ PrintView: Routing to PrintViewMiddleHighSchool');
       return 'middle';
     }
     // 🔧 CRITICAL FIX: Map 'after10' to 'higher_secondary' component
     if (gradeLevel === 'after10' || gradeLevel === 'higher_secondary') {
-      console.log('✅ PrintView: Routing to PrintViewHigherSecondary (after10 or higher_secondary)');
       return 'higher_secondary';
     }
     if (gradeLevel === 'after12' || gradeLevel === 'college') {
-      console.log('✅ PrintView: Routing to PrintViewCollege');
       return 'college';
     }
   }
@@ -40,13 +35,11 @@ const determineGradeLevel = (gradeLevel, results) => {
   // Implement profileSnapshot inference - Requirement 5.4
   if (results?.profileSnapshot) {
     if (results.profileSnapshot.aptitudeStrengths || results.profileSnapshot.keyPatterns) {
-      console.log('✅ PrintView: Routing to PrintViewMiddleHighSchool (inferred from profileSnapshot)');
       return 'middle';
     }
   }
 
   // Default to college - Requirement 5.5
-  console.log('⚠️ PrintView: Defaulting to PrintViewCollege');
   return 'college';
 };
 

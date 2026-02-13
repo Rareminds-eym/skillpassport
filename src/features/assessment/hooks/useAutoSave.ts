@@ -92,7 +92,6 @@ export function useAutoSave(options: UseAutoSaveOptions): UseAutoSaveReturn {
       const err = error instanceof Error ? error : new Error('Save failed');
       setLastError(err);
       onSaveError?.(err);
-      console.error('[AutoSave] Save failed:', err);
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);

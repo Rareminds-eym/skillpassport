@@ -38,23 +38,8 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
   const urlParams = new URLSearchParams(window.location.search);
   const forceDebug = urlParams.get('debug') === 'true';
   const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development' || forceDebug;
-  
-  console.log('🔍 AssessmentDebugPanel:', {
-    isDevelopment,
-    forceDebug,
-    mode: import.meta.env.MODE,
-    dev: import.meta.env.DEV,
-    hasData: !!assessmentData,
-    hasContext: !!studentContext,
-    gradeLevel,
-    assessmentDataKeys: assessmentData ? Object.keys(assessmentData) : [],
-    riasecCount: assessmentData?.riasecAnswers ? Object.keys(assessmentData.riasecAnswers).length : 0,
-    attemptDataKeys: attemptData ? Object.keys(attemptData) : [],
-    resultDataKeys: resultData ? Object.keys(resultData) : []
-  });
 
   if (!isDevelopment) {
-    console.log('Debug panel hidden - not in development mode');
     return null;
   }
 
@@ -101,21 +86,6 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
                             resultData?.adaptive_aptitude_session_id ||
                             adaptiveResults?.sessionId ||
                             actualAssessmentData?.adaptive_aptitude_session_id;
-
-  console.log('🔍 Debug Panel Data Sources:', {
-    hasAssessmentData: !!assessmentData,
-    hasAttemptData: !!attemptData,
-    hasResultData: !!resultData,
-    attemptAllResponses: !!attemptData?.all_responses,
-    resultAllResponses: !!resultData?.all_responses,
-    actualDataUsed: actualAssessmentData ? 'found' : 'missing',
-    actualDataKeys: actualAssessmentData ? Object.keys(actualAssessmentData).slice(0, 10) : [],
-    riasecCount,
-    bigFiveCount,
-    knowledgeCount,
-    aptitudeCount,
-    adaptiveSessionId
-  });
 
   const tabs = [
     { id: 'flow', label: '🔄 Assessment Flow', count: 0 },

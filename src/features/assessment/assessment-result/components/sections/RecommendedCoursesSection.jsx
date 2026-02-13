@@ -28,11 +28,6 @@ const RecommendedCoursesSection = ({
                 
                 // Use coursesByType if available (new approach - courses fetched separately)
                 if (coursesByType?.technical?.length > 0 || coursesByType?.soft?.length > 0) {
-                    console.log('Using pre-fetched courses by type:', {
-                        technical: coursesByType.technical?.length || 0,
-                        soft: coursesByType.soft?.length || 0
-                    });
-                    
                     // Sort by relevance and take top 3 of each
                     const sortedTechnical = [...(coursesByType.technical || [])]
                         .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
@@ -49,7 +44,6 @@ const RecommendedCoursesSection = ({
                 
                 // Fallback: fetch skill_type from database for existing results
                 if (platformCourses.length > 0) {
-                    console.log('Fallback: fetching skill_type from database for', platformCourses.length, 'courses');
                     await classifyFromDatabase();
                     return;
                 }
@@ -58,7 +52,6 @@ const RecommendedCoursesSection = ({
                 setTechnicalCourses([]);
                 setSoftCourses([]);
             } catch (err) {
-                console.error('Error processing courses:', err);
                 setTechnicalCourses([]);
                 setSoftCourses([]);
             } finally {
@@ -93,7 +86,6 @@ const RecommendedCoursesSection = ({
                     .in('course_id', courseIds);
 
                 if (error) {
-                    console.error('Error fetching skill_type:', error);
                     // Fall back to simple classification
                     simpleClassify(allCourses);
                     return;
@@ -120,11 +112,9 @@ const RecommendedCoursesSection = ({
                 technical.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
                 soft.sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0));
 
-                console.log('Classified from DB:', { technical: technical.length, soft: soft.length });
                 setTechnicalCourses(technical.slice(0, 3));
                 setSoftCourses(soft.slice(0, 3));
             } catch (err) {
-                console.error('Error in classifyFromDatabase:', err);
                 simpleClassify(new Map());
             }
         };

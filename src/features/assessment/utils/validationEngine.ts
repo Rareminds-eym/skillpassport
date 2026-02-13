@@ -340,13 +340,6 @@ export async function validateAssessmentAttempt(
 
   // Log validation results for monitoring
   if (totalScore > 30) {
-    console.warn('⚠️ Assessment validation warnings:', {
-      attemptId: input.attemptId,
-      score: totalScore,
-      warningCount: allWarnings.length,
-      topIssues: allWarnings.slice(0, 3).map(w => w.code)
-    });
-
     // Store validation results for analytics
     await storeValidationResults(input.attemptId, allWarnings, totalScore);
   }
@@ -376,8 +369,7 @@ async function storeValidationResults(
       requires_review: score > 50
     });
   } catch (err) {
-    // Non-blocking - just log the error
-    console.error('Failed to store validation results:', err);
+    // Non-blocking - silently ignore storage errors
   }
 }
 

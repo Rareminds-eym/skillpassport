@@ -31,14 +31,11 @@ const getStudentRecordId = async (authUserId) => {
             .maybeSingle();
 
         if (error || !student) {
-            console.log(`⚠️ No student record found for auth user: ${authUserId}`);
             return null;
         }
 
-        console.log(`✅ Found student record: ${student.id} for auth user: ${authUserId}`);
         return student.id;
     } catch (err) {
-        console.error('Error looking up student record:', err);
         return null;
     }
 };
@@ -123,10 +120,8 @@ const fetchAIAptitudeQuestions = async (authUserId, answerKeys = []) => {
             }));
         }
 
-        console.log('No AI aptitude questions found in database');
         return [];
     } catch (err) {
-        console.error('Error fetching AI aptitude questions:', err);
         return [];
     }
 };
@@ -206,10 +201,8 @@ const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
             }));
         }
 
-        console.log('No AI knowledge questions found in database');
         return [];
     } catch (err) {
-        console.error('Error fetching AI knowledge questions:', err);
         return [];
     }
 };
@@ -219,9 +212,6 @@ const fetchAIKnowledgeQuestions = async (authUserId, answerKeys = []) => {
  * Database-only storage (localStorage removed for consistency)
  */
 export const useAssessmentResults = () => {
-    // 🔥 DEBUG: Verify new code is loaded
-    console.log('🔥🔥🔥 useAssessmentResults hook loaded - NEW CODE WITH TRANSFORMER 🔥🔥🔥');
-
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [results, setResultsInternal] = useState(null); // ✅ Renamed to internal
@@ -266,24 +256,8 @@ export const useAssessmentResults = () => {
             return;
         }
 
-        console.log('🔍 setResults called with data:', {
-            hasData: !!resultsData,
-            keys: Object.keys(resultsData || {}),
-            _transformed: resultsData._transformed,
-            hasGeminiResults: !!resultsData.gemini_results,
-            hasGeminiAnalysis: !!resultsData.gemini_analysis,
-            hasRiasec: !!resultsData.riasec,
-            hasRiasecScores: !!resultsData.riasec_scores,
-            // ✅ ADD MORE DEBUG INFO
-            geminiResultsType: resultsData.gemini_results ? typeof resultsData.gemini_results : 'undefined',
-            geminiResultsKeys: resultsData.gemini_results && typeof resultsData.gemini_results === 'object' ? Object.keys(resultsData.gemini_results) : null,
-            riasecScoresValue: resultsData.riasec_scores,
-            sampleData: resultsData.gemini_results?.riasec || resultsData.riasec || 'none'
-        });
-
         // Check if data is already transformed
         if (resultsData._transformed) {
-            console.log('✅ Results already transformed, using as-is');
             setResultsInternal(resultsData);
             return;
         }
@@ -298,36 +272,14 @@ export const useAssessmentResults = () => {
             resultsData.career_recommendations;
 
         if (isDatabaseFormat) {
-            console.log('🔄 Transforming database results to PDF format...');
-            console.log('   Input data structure:', {
-                hasGeminiAnalysis: !!resultsData.gemini_analysis,
-                hasAptitudeScores: !!resultsData.aptitude_scores,
-                hasRiasecScores: !!resultsData.riasec_scores,
-                hasCareerRecommendations: !!resultsData.career_recommendations
-            });
             try {
                 const transformed = transformAssessmentResults(resultsData);
-                console.log('✅ Transformation complete:', {
-                    hasAptitude: !!transformed.aptitude,
-                    hasCareerFit: !!transformed.careerFit,
-                    hasSkillGap: !!transformed.skillGap,
-                    hasLearningStyles: !!transformed.learningStyles,
-                    riasecScores: transformed.riasec?.scores
-                });
                 setResultsInternal(transformed);
             } catch (error) {
-                console.error('❌ Transformation failed, using original:', error);
-                console.error('   Error details:', error.message, error.stack);
                 setResultsInternal(resultsData);
             }
         } else {
             // Already in correct format (from Gemini API)
-            console.log('✅ Results already in correct format (no transformation needed)');
-            console.log('   Data structure:', {
-                hasRiasec: !!resultsData.riasec,
-                hasAptitude: !!resultsData.aptitude,
-                hasCareerFit: !!resultsData.careerFit
-            });
             setResultsInternal(resultsData);
         }
     }, []);
@@ -341,28 +293,21 @@ export const useAssessmentResults = () => {
         );
 
         if (warnings.length > 0) {
-            console.log('⚠️ Assessment validation warnings:', warnings);
             setValidationWarnings(warnings);
         }
 
         // Validate and correct RIASEC scores if we have the necessary data
         if (validatedResults.riasec && rawAnswers && Object.keys(rawAnswers).length > 0) {
             try {
-                console.log('🔍 Validating RIASEC scores...');
                 const correctedRiasec = validateRiasecScores(
                     validatedResults.riasec,
                     rawAnswers
                 );
 
                 if (correctedRiasec._corrected) {
-                    console.log('✅ RIASEC scores corrected');
-                    console.log('📊 Before:', validatedResults.riasec.scores);
-                    console.log('📊 After:', correctedRiasec.scores);
                     validatedResults.riasec = correctedRiasec;
-                    console.log('📊 Applied to validatedResults:', validatedResults.riasec.scores);
                 }
             } catch (error) {
-                console.error('❌ Error validating RIASEC scores:', error);
                 // Continue with original scores if validation fails
             }
         }
@@ -382,7 +327,6 @@ export const useAssessmentResults = () => {
                     const aptitudeQuestions = await fetchAIAptitudeQuestions(user.id, Object.keys(rawAnswers));
 
                     if (aptitudeQuestions && aptitudeQuestions.length > 0) {
-                        console.log('🔍 Validating aptitude scores with', aptitudeQuestions.length, 'questions');
                         const correctedAptitude = validateAptitudeScores(
                             validatedResults.aptitude,
                             rawAnswers,
@@ -390,17 +334,13 @@ export const useAssessmentResults = () => {
                         );
 
                         if (correctedAptitude._corrected) {
-                            console.log('✅ Aptitude scores corrected');
                             validatedResults.aptitude = correctedAptitude;
                         }
                     }
                 }
             } catch (error) {
-                console.error('❌ Error validating aptitude scores:', error);
                 // Continue with original scores if validation fails
             }
-        } else if (hasAdaptiveResults) {
-            console.log('✅ Skipping aptitude validation - using adaptive aptitude results');
         }
 
         return validatedResults;
@@ -427,19 +367,10 @@ export const useAssessmentResults = () => {
 
     // Fetch student profile data from Supabase
     const fetchStudentInfo = async () => {
-        console.log('🔍 ========== FETCH STUDENT INFO START ==========');
         try {
             const { data: { user } } = await supabase.auth.getUser();
 
-            console.log('👤 Authenticated User:', {
-                id: user?.id,
-                email: user?.email,
-                metadata: user?.user_metadata
-            });
-
             if (user) {
-                console.log('📊 Querying students table with user_id:', user.id);
-
                 // First, try to fetch student data with relationships
                 // Query students table - using actual database column names (mix of camelCase and snake_case)
                 let { data: studentData, error: fetchError } = await supabase
@@ -470,79 +401,41 @@ export const useAssessmentResults = () => {
                     .eq('user_id', user.id)
                     .maybeSingle();
 
-
-                console.log('📦 Student Data Query Result:', {
-                    hasData: !!studentData,
-                    hasError: !!fetchError,
-                    studentData: studentData,
-                    error: fetchError
-                });
-
-                if (fetchError) {
-                    console.error('❌ Error fetching student data:', fetchError);
-                    console.error('❌ Error details:', {
-                        message: fetchError.message,
-                        details: fetchError.details,
-                        hint: fetchError.hint,
-                        code: fetchError.code
-                    });
-                }
-
-                if (!studentData) {
-                    console.warn('⚠️ No student data found for user_id:', user.id);
-                    console.warn('⚠️ This could mean:');
-                    console.warn('   1. No student record exists with this user_id');
-                    console.warn('   2. RLS policy is blocking access');
-                    console.warn('   3. The user_id in students table doesn\'t match auth user');
-                }
-
                 // If we got student data, fetch related college/school names separately
                 if (studentData && !fetchError) {
-                    console.log('✅ Student data found! Fetching related organization data...');
-
                     if (studentData.college_id) {
-                        console.log('🏛️ Fetching college organization:', studentData.college_id);
-                        const { data: orgData, error: orgError } = await supabase
+                        const { data: orgData } = await supabase
                             .from('organizations')
                             .select('name')
                             .eq('id', studentData.college_id)
                             .maybeSingle();
-                        console.log('🏛️ College org result:', { orgData, orgError });
                         if (orgData) {
                             studentData.colleges = { name: orgData.name };
                         }
-                        console.log('📊 fetchStudentInfo - Fetched college name:', orgData?.name);
                     }
 
                     if (studentData.school_id) {
-                        console.log('🏫 Fetching school organization:', studentData.school_id);
-                        const { data: orgData, error: orgError } = await supabase
+                        const { data: orgData } = await supabase
                             .from('organizations')
                             .select('name')
                             .eq('id', studentData.school_id)
                             .maybeSingle();
-                        console.log('🏫 School org result:', { orgData, orgError });
                         if (orgData) {
                             studentData.schools = { name: orgData.name };
                         }
                     }
 
                     if (studentData.schoolClassId) {
-                        console.log('📚 Fetching school class:', studentData.schoolClassId);
-                        const { data: classData, error: classError } = await supabase
+                        const { data: classData } = await supabase
                             .from('school_classes')
                             .select('grade')
                             .eq('id', studentData.schoolClassId)
                             .maybeSingle();
-                        console.log('📚 School class result:', { classData, classError });
                         if (classData) {
                             studentData.school_classes = { grade: classData.grade };
                         }
                     }
                 }
-
-                console.log('Fetched student data:', studentData);
-                console.log('Student data keys:', studentData ? Object.keys(studentData) : 'null');
 
                 if (studentData) {
                     const rawName = studentData.name ||
@@ -571,8 +464,6 @@ export const useAssessmentResults = () => {
                     } else {
                         studentGrade = '—';
                     }
-
-                    console.log('Student grade:', studentGrade, 'from students.grade:', studentData.grade, 'from school_classes:', studentData.school_classes?.grade, 'year:', studentData.year, 'semester:', studentData.semester);
 
                     // Get institution name - show school OR college, not both
                     let institutionName = '—';
@@ -638,10 +529,6 @@ export const useAssessmentResults = () => {
                             }
                         }
                     }
-
-                    console.log('Institution detection - hasSchoolId:', hasSchoolId, 'hasCollegeId:', hasCollegeId, 'isSchoolGrade:', isSchoolGrade, 'isCollegeGrade:', isCollegeGrade, 'isSchoolStudent:', isSchoolStudent, 'isCollegeStudent:', isCollegeStudent, 'final school:', schoolName, 'final college:', collegeName);
-                    console.log('Roll numbers - enrollmentNumber:', studentData.enrollmentNumber, 'admission_number:', studentData.admission_number, 'roll_number:', studentData.roll_number);
-                    console.log('IDs - school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'schoolClassId:', studentData.schoolClassId);
 
                     // Determine which roll number to use and roll number type
                     let rollNumber = '—';
@@ -717,7 +604,6 @@ export const useAssessmentResults = () => {
                     if (!gradeLevelFromAttemptRef.current) {
                         setGradeLevel(derivedGradeLevel);
                     }
-                    console.log('Derived gradeLevel from student data:', derivedGradeLevel, 'grade:', studentGrade, 'school_id:', studentData.school_id, 'college_id:', studentData.college_id, 'schoolClassId:', studentData.schoolClassId);
 
                     // Derive stream from program, branch_field or course_name (database only)
                     let derivedStream = '—';
@@ -754,7 +640,6 @@ export const useAssessmentResults = () => {
                             derivedStream = 'College';
                         }
                         
-                        console.log('📚 College student - Level:', derivedStream, 'Program:', programName);
                         // Skip further stream derivation for college students - we already have the degree level
                     }
                     // Check if student has a program (from programs table) - for non-college students ONLY
@@ -791,8 +676,6 @@ export const useAssessmentResults = () => {
                             fieldText.includes('psychology') || fieldText.includes('literature')) {
                             derivedStream = 'ARTS';
                         }
-
-                        console.log('📚 Derived stream from program:', derivedStream, 'from program:', programName);
                     }
                     // Fallback: If we have course_name or branch_field, derive the stream
                     else if (studentData.course_name || studentData.branch_field) {
@@ -828,8 +711,6 @@ export const useAssessmentResults = () => {
                             fieldText.includes('psychology') || fieldText.includes('literature')) {
                             derivedStream = 'ARTS';
                         }
-
-                        console.log('📚 Derived stream from database:', derivedStream, 'from field:', fieldText);
                     }
 
                     setStudentInfo({
@@ -848,7 +729,6 @@ export const useAssessmentResults = () => {
                     if (studentData.grade_start_date) {
                         const months = calculateMonthsInGrade(studentData.grade_start_date);
                         setMonthsInGrade(months);
-                        console.log('Months in grade:', months, 'from grade_start_date:', studentData.grade_start_date);
                     } else if (studentData.school_classes?.academic_year) {
                         // Fallback: estimate from academic year (e.g., "2024-2025")
                         const yearMatch = studentData.school_classes.academic_year.match(/^(\d{4})/);
@@ -857,7 +737,6 @@ export const useAssessmentResults = () => {
                             const estimatedStartDate = `${startYear}-06-01`; // Assume June start
                             const months = calculateMonthsInGrade(estimatedStartDate);
                             setMonthsInGrade(months);
-                            console.log('Months in grade (estimated):', months, 'from academic_year:', studentData.school_classes.academic_year);
                         }
                     }
 
@@ -877,7 +756,6 @@ export const useAssessmentResults = () => {
                 }
             }
         } catch (err) {
-            console.error('Error fetching student info:', err);
             setStudentInfo({
                 name: '—',
                 regNo: '—',
@@ -913,14 +791,11 @@ export const useAssessmentResults = () => {
 
                 if (error) {
                     // Silently handle error - marks are optional for career assessment
-                    console.log('📊 Academic marks not available (this is normal for career assessments)');
-                    console.log('   Error:', error.message);
                 } else if (data) {
                     marksData = data;
                 }
             } catch (marksError) {
                 // Catch any thrown errors
-                console.log('📊 Academic marks query failed (this is normal for career assessments)');
             }
 
             // Fetch projects
@@ -952,15 +827,7 @@ export const useAssessmentResults = () => {
                 experiences: experiencesData || [],
                 education: educationData || []
             });
-
-            console.log('Fetched academic data:', {
-                marks: marksData?.length || 0,
-                projects: projectsData?.length || 0,
-                experiences: experiencesData?.length || 0,
-                education: educationData?.length || 0
-            });
         } catch (err) {
-            console.error('Error fetching academic data:', err);
             // Set empty data to prevent undefined errors
             setStudentAcademicData({
                 subjectMarks: [],
@@ -985,42 +852,24 @@ export const useAssessmentResults = () => {
 
         // Prevent redundant loops if already loading/loaded this attempt
         if (attemptId && loadedAttemptIdRef.current === attemptId && results && !loading) {
-            console.log('♻️ Results for attemptId', attemptId, 'already loaded - skipping redundancy');
             // Ensure loading is false just in case
             if (loading) setLoading(false);
             return;
         }
 
-
-
-        console.log('🔥 loadResults called with attemptId:', attemptId);
-        console.log('🔥 Full URL search params:', searchParams.toString());
-
         if (attemptId) {
             // Load results from database - ALWAYS prefer database over localStorage
             try {
                 // STEP 1: Try to find result by attempt_id first (most direct path)
-                console.log('🔍 STEP 1: Looking for result by attempt_id:', attemptId);
                 const { data: directResult, error: directError } = await supabase
                     .from('personal_assessment_results')
                     .select('*')
                     .eq('attempt_id', attemptId)
                     .maybeSingle();
 
-                console.log('   Direct result lookup:', {
-                    found: !!directResult,
-                    error: directError?.message || 'none',
-                    hasGeminiResults: !!directResult?.gemini_results,
-                    hasRiasecScores: !!directResult?.riasec_scores,
-                    hasAptitudeScores: !!directResult?.aptitude_scores,
-                    allKeys: directResult ? Object.keys(directResult) : []
-                });
-
                 // If we found a result directly, use it
                 if (directResult) {
-                    console.log('✅ Found result directly by attempt_id');
-
-                    // ✅ Fetch the attempt data to get all_responses
+                    // Fetch the attempt data to get all_responses
                     let attemptData = null;
                     const { data: fetchedAttempt, error: attemptError } = await supabase
                         .from('personal_assessment_attempts')
@@ -1029,29 +878,24 @@ export const useAssessmentResults = () => {
                         .maybeSingle();
 
                     if (fetchedAttempt && !attemptError) {
-                        console.log('✅ Found attempt data with all_responses');
                         attemptData = fetchedAttempt;
                     }
 
-                    // ✅ NEW: Fetch adaptive aptitude results if session ID exists
+                    // Fetch adaptive aptitude results if session ID exists
                     let adaptiveAptitudeResults = null;
                     if (directResult.adaptive_aptitude_session_id) {
-                        console.log('🔍 Fetching adaptive aptitude results for session:', directResult.adaptive_aptitude_session_id);
-                        const { data: adaptiveData, error: adaptiveError } = await supabase
+                        const { data: adaptiveData } = await supabase
                             .from('adaptive_aptitude_results')
                             .select('*')
                             .eq('session_id', directResult.adaptive_aptitude_session_id)
                             .maybeSingle();
 
-                        if (adaptiveData && !adaptiveError) {
-                            console.log('✅ Found adaptive aptitude results');
+                        if (adaptiveData) {
                             adaptiveAptitudeResults = adaptiveData;
-                        } else if (adaptiveError) {
-                            console.warn('⚠️ Error fetching adaptive results:', adaptiveError);
                         }
                     }
 
-                    // ✅ NEW: Check if data is in individual columns instead of gemini_results
+                    // Check if data is in individual columns instead of gemini_results
                     let geminiResults = directResult.gemini_results;
 
                     // CRITICAL FIX: If gemini_results AND individual columns are ALL NULL, trigger regeneration
@@ -1059,12 +903,6 @@ export const useAssessmentResults = () => {
                     const hasIndividualColumns = directResult.riasec_scores || directResult.aptitude_scores || directResult.career_fit;
                     
                     if ((!geminiResults || Object.keys(geminiResults).length === 0) && !hasIndividualColumns) {
-                        console.log('🔥 ========== AUTO-REGENERATION TRIGGERED ==========');
-                        console.log('   gemini_results is NULL AND individual columns are NULL');
-                        console.log('   Result ID:', directResult.id);
-                        console.log('   Attempt ID:', attemptId);
-                        console.log('   This means AI analysis never ran - will trigger regeneration');
-                        
                         // Set grade level before falling through to regeneration
                         if (directResult.grade_level) {
                             setGradeLevel(directResult.grade_level);
@@ -1077,7 +915,6 @@ export const useAssessmentResults = () => {
                     }
                     // If gemini_results is missing but we have individual score columns, reconstruct it
                     else if ((!geminiResults || Object.keys(geminiResults).length === 0) && hasIndividualColumns) {
-                        console.log('🔧 Reconstructing results from individual database columns...');
                         geminiResults = {
                             riasec: {
                                 scores: directResult.riasec_scores || {},
@@ -1111,11 +948,6 @@ export const useAssessmentResults = () => {
                             // Add adaptive aptitude results if they exist
                             adaptiveAptitudeResults: adaptiveAptitudeResults || undefined
                         };
-                        console.log('✅ Reconstructed results:', {
-                            hasRiasec: !!geminiResults.riasec,
-                            hasAptitude: !!geminiResults.aptitude,
-                            hasCareerFit: !!geminiResults.careerFit
-                        });
                     }
 
                     // Check if AI analysis exists and is valid
@@ -1130,10 +962,6 @@ export const useAssessmentResults = () => {
                         );
 
                         if (!hasValidRiasec) {
-                            console.log('⚠️ Result has gemini_results but RIASEC data is missing/invalid');
-                            console.log('   RIASEC data:', geminiResults.riasec);
-                            console.log('   Will regenerate AI analysis');
-
                             // Set grade level before falling through
                             if (directResult.grade_level) {
                                 setGradeLevel(directResult.grade_level);
@@ -1144,19 +972,7 @@ export const useAssessmentResults = () => {
                             // Fall through to regenerate
                         } else {
                             // Valid AI analysis exists - use it
-                            console.log('✅ [UNIFIED LOADER] AI analysis found in database!');
-                            console.log('✅ [UNIFIED LOADER] Results will display IMMEDIATELY');
-                            console.log('✅ [UNIFIED LOADER] No additional AI analysis needed');
-                            console.log('✅ [UNIFIED LOADER] Result ID:', directResult.id);
-                            
                             const validatedResults = await applyValidation(geminiResults, {});
-
-                            console.log('🔍 DEBUG - Before normalization (direct lookup):', {
-                                hasRiasec: !!validatedResults.riasec,
-                                riasecScores: validatedResults.riasec?.scores,
-                                hasGeminiResults: !!validatedResults.gemini_results,
-                                originalScores: validatedResults.gemini_results?.riasec?._originalScores
-                            });
 
                             // Normalize results to fix data inconsistencies
                             const normalizedResults = normalizeAssessmentResults(validatedResults);
@@ -1167,8 +983,7 @@ export const useAssessmentResults = () => {
                                 normalizedResults.adaptive_aptitude_results = adaptiveAptitudeResults;
                             }
                             
-                            // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
-                            // These fields are needed to show what's actually stored in the database
+                            // Preserve raw database fields for debug panel
                             normalizedResults._rawDatabaseFields = {
                                 id: directResult.id,
                                 attempt_id: directResult.attempt_id,
@@ -1193,14 +1008,6 @@ export const useAssessmentResults = () => {
                                 updated_at: directResult.updated_at
                             };
                             
-                            console.log('🔧 Assessment results normalized (direct lookup):', {
-                                before: validatedResults.riasec?.scores,
-                                after: normalizedResults.riasec?.scores,
-                                hasAttemptData: !!attemptData,
-                                hasAllResponses: !!attemptData?.all_responses,
-                                hasAdaptiveResults: !!adaptiveAptitudeResults,
-                                hasRawDatabaseFields: !!normalizedResults._rawDatabaseFields
-                            });
                             setResults(normalizedResults);
 
                             // Set grade level
@@ -1211,31 +1018,14 @@ export const useAssessmentResults = () => {
                             }
 
                             loadedAttemptIdRef.current = attemptId;
-                            console.log('✅ [UNIFIED LOADER] Results loaded successfully - hiding loader');
                             setLoading(false);
                             return;
                         }
                     } else {
                         // Result exists but no AI analysis - AUTO-GENERATE IT!
-                        console.log('🔥 ========== AUTO-RETRY TRIGGER DETECTED ==========');
-                        console.log('   Result exists but missing AI analysis');
-                        console.log('   Result ID:', directResult.id);
-                        console.log('   Attempt ID:', attemptId);
-                        console.log('   gemini_results:', directResult.gemini_results);
-                        console.log('   status:', directResult.status);
-                        console.log('   grade_level:', directResult.grade_level);
-                        
-                        console.log('⚠️ [UNIFIED LOADER] AI analysis missing from database!');
-                        console.log('⚠️ [UNIFIED LOADER] This should NOT happen with the new flow');
-                        console.log('⚠️ [UNIFIED LOADER] AI analysis should have been done during submission');
-                        console.log('⚠️ [UNIFIED LOADER] Possible causes:');
-                        console.log('   1. Old assessment (before unified loader implementation)');
-                        console.log('   2. AI analysis failed during submission');
-                        console.log('   3. Database save failed partially');
                         
                         // Set grade level
                         if (directResult.grade_level) {
-                            console.log('✅ Setting grade level from result:', directResult.grade_level);
                             setGradeLevel(directResult.grade_level);
                             setGradeLevelFromAttempt(true);
                             gradeLevelFromAttemptRef.current = true;
@@ -1246,46 +1036,26 @@ export const useAssessmentResults = () => {
                         const alreadyRetried = sessionStorage.getItem(retryKey);
 
                         if (retryCompleted || alreadyRetried) {
-                            console.log('⏭️ Skipping auto-retry - already completed/attempted');
-                            console.log('   retryCompleted:', retryCompleted);
-                            console.log('   alreadyRetried:', !!alreadyRetried);
                             setError(new Error("Unable to retrieve assessment report. Please click 'Retry' to regenerate."));
                             setLoading(false);
                             return;
                         }
 
                         // Trigger auto-retry
-                        console.log('🚀 Triggering auto-retry mechanism (fallback for old assessments)');
-                        console.log('   Setting autoRetry flag to TRUE');
-                        console.log('   Grade level will be passed to AI:', directResult.grade_level || gradeLevel);
                         setAutoRetry(true);
-                        console.log('✅ Auto-retry flag set - waiting for useEffect to trigger');
                         return;
                     }
                 }
 
                 // STEP 2: If direct lookup failed, try the old way (via attempt table)
-                console.log('🔍 STEP 2: Trying lookup via personal_assessment_attempts table');
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
-
-                console.log('🔥🔥🔥 ATTEMPT LOOKUP DEBUG 🔥🔥🔥');
-                console.log('   attempt exists:', !!attempt);
-                console.log('   attempt.results:', attempt?.results);
-                console.log('   attempt.results type:', Array.isArray(attempt?.results) ? 'array' : typeof attempt?.results);
-                console.log('   attempt.results[0]:', attempt?.results?.[0]);
-                console.log('   attempt.results length:', attempt?.results?.length);
 
                 // Check if we have a result record (even if AI analysis is missing)
                 // Supabase returns results as an ARRAY when using select with relationship
                 // BUT if the relationship is one-to-one, it might return an object instead
                 const result = Array.isArray(attempt?.results) ? attempt.results[0] : attempt?.results;
 
-                console.log('🔥 Result after normalization:', result);
-                console.log('🔥 Result exists:', !!result);
-
                 if (result && result.id) {
-                    console.log('🔥 Result found, checking AI analysis...');
-
                     // If AI analysis exists AND is valid, use it
                     if (result.gemini_results && typeof result.gemini_results === 'object' && Object.keys(result.gemini_results).length > 0) {
                         const geminiResults = result.gemini_results;
@@ -1299,11 +1069,6 @@ export const useAssessmentResults = () => {
                         );
 
                         if (!hasValidRiasec) {
-                            console.log('⚠️ Database result has gemini_results but RIASEC data is missing/invalid');
-                            console.log('   RIASEC data:', geminiResults.riasec);
-                            console.log('   Available gemini_results keys:', Object.keys(geminiResults));
-                            console.log('   Will regenerate AI analysis');
-
                             // Set grade level from attempt before falling through
                             if (attempt.grade_level) {
                                 setGradeLevel(attempt.grade_level);
@@ -1323,9 +1088,6 @@ export const useAssessmentResults = () => {
                             /*
                             // Check if courses are missing and regenerate if needed
                             if (!validatedResults.platformCourses || validatedResults.platformCourses.length === 0) {
-                                console.log('⚠️ Course recommendations missing - regenerating...');
-                                console.log('   Current result ID:', result.id);
-                                console.log('   Attempt ID:', attemptId);
                                 try {
                                     const { data: { user } } = await supabase.auth.getUser();
                                     let studentId = null;
@@ -1336,19 +1098,11 @@ export const useAssessmentResults = () => {
                                             .eq('user_id', user.id)
                                             .single();
                                         studentId = student?.id;
-                                        console.log('   Student ID:', studentId);
                                     }
                                     
-                                    console.log('   Calling addCourseRecommendations...');
                                     const resultsWithCourses = await addCourseRecommendations(validatedResults, studentId);
-                                    console.log('   ✅ Courses generated:', {
-                                        platformCourses: resultsWithCourses.platformCourses?.length || 0,
-                                        technical: resultsWithCourses.coursesByType?.technical?.length || 0,
-                                        soft: resultsWithCourses.coursesByType?.soft?.length || 0
-                                    });
                                     
                                     // Update database with new courses
-                                    console.log('   Saving to database...');
                                     const { error: updateError } = await supabase
                                         .from('personal_assessment_results')
                                         .update({
@@ -1360,34 +1114,24 @@ export const useAssessmentResults = () => {
                                         .eq('id', result.id);
                                     
                                     if (updateError) {
-                                        console.error('   ❌ Failed to save courses:', updateError);
-                                    } else {
-                                        console.log('   ✅ Courses saved to database successfully');
+                                        // Failed to save courses
                                     }
                                     
                                     setResults(resultsWithCourses);
                                 } catch (courseError) {
-                                    console.error('   ❌ Failed to regenerate courses:', courseError);
                                     setResults(validatedResults); // Use results without courses
                                 }
                             } else {
-                                console.log('✅ Courses already exist:', {
-                                    platformCourses: validatedResults.platformCourses?.length || 0,
-                                    technical: validatedResults.coursesByType?.technical?.length || 0,
-                                    soft: validatedResults.coursesByType?.soft?.length || 0
-                                });
                                 setResults(validatedResults);
                             }
                             */
 
                             // Set results without course generation
-                            console.log('📋 Loading assessment results (courses will be generated on-demand)');
 
                             // Normalize results to fix data inconsistencies
                             const normalizedResults = normalizeAssessmentResults(validatedResults);
                             
-                            // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
-                            // These fields are needed to show what's actually stored in the database
+                            // Preserve raw database fields for debug panel
                             normalizedResults._rawDatabaseFields = {
                                 id: result.id,
                                 attempt_id: result.attempt_id,
@@ -1412,11 +1156,6 @@ export const useAssessmentResults = () => {
                                 updated_at: result.updated_at
                             };
                             
-                            console.log('🔧 Assessment results normalized (attempt lookup):', {
-                                before: validatedResults.riasec?.scores,
-                                after: normalizedResults.riasec?.scores,
-                                hasRawDbFields: !!normalizedResults._rawDatabaseFields
-                            });
                             setResults(normalizedResults);
 
                             // Set grade level from attempt
@@ -1429,7 +1168,6 @@ export const useAssessmentResults = () => {
                             // Update studentInfo with actual stream_id from assessment result
                             if (attempt.stream_id || result.stream_id) {
                                 const actualStreamId = attempt.stream_id || result.stream_id;
-                                console.log('📚 Updating studentInfo.stream with actual stream_id:', actualStreamId);
                                 streamFromAssessmentRef.current = actualStreamId; // Set ref to prevent fetchStudentInfo from overwriting
                                 setStudentInfo(prev => ({
                                     ...prev,
@@ -1456,11 +1194,9 @@ export const useAssessmentResults = () => {
                                     }
                                 } catch (recError) {
                                     // Silently fail - recommendations may already exist
-                                    console.log('Recommendations sync:', recError.message);
                                 }
                             }
                             */
-
 
                             loadedAttemptIdRef.current = attemptId; // Mark as loaded
                             setLoading(false);
@@ -1482,15 +1218,9 @@ export const useAssessmentResults = () => {
                         // For newly created results, always generate (ignore session storage)
                         // For older results, check session storage to avoid infinite loops
                         if (!isNewlyCreated && (retryCompleted || alreadyRetried)) {
-                            console.log('⏭️ Skipping auto-retry - already completed/attempted');
-                            console.log('   Result age:', Math.round(ageInSeconds), 'seconds');
-                            console.log('   retryCompleted:', retryCompleted);
-                            console.log('   alreadyRetried:', !!alreadyRetried);
-
                             // If we're skipping but don't have results, set an error so the user can manually retry
                             // instead of showing a blank page
                             if (!result.gemini_results || Object.keys(result.gemini_results).length === 0) {
-                                console.log('❌ No results found after skip - setting error state');
                                 setError(new Error("Unable to retrieve assessment report. Please click 'Retry' to regenerate."));
                             }
 
@@ -1498,21 +1228,8 @@ export const useAssessmentResults = () => {
                             return;
                         }
 
-                        console.log('🔥🔥🔥 AUTO-GENERATING AI ANALYSIS 🔥🔥🔥');
-                        console.log('📊 Database result exists but missing AI analysis');
-                        console.log('   Result ID:', result.id);
-                        console.log('   Attempt ID:', attemptId);
-                        console.log('   Result age:', Math.round(ageInSeconds), 'seconds');
-                        console.log('   Is newly created:', isNewlyCreated);
-                        console.log('   gemini_results:', result.gemini_results);
-                        console.log('   status:', result.status || attempt.status);
-                        console.log('   grade_level:', attempt.grade_level);
-                        console.log('   retryCompleted:', retryCompleted);
-                        console.log('   🚀 Triggering auto-retry mechanism');
-
                         // Set grade level from attempt
                         if (attempt.grade_level) {
-                            console.log('✅ Setting grade level from attempt:', attempt.grade_level);
                             setGradeLevel(attempt.grade_level);
                             setGradeLevelFromAttempt(true);
                             gradeLevelFromAttemptRef.current = true;
@@ -1525,22 +1242,12 @@ export const useAssessmentResults = () => {
 
                         // Set flag to trigger auto-retry (will be handled by useEffect)
                         // Keep loading=true so user sees "Generating Your Report" screen
-                        console.log('🚀 Setting autoRetry flag to TRUE');
-                        console.log('   Grade level will be passed to AI:', attempt.grade_level || gradeLevel);
                         setAutoRetry(true);
-                        console.log('   ✅ autoRetry flag set to TRUE - waiting for useEffect to trigger');
                         // Don't set loading to false - keep showing loading screen
                         return;
                     }
                 } else {
                     // Attempt exists but no result record found
-                    console.log('🔥🔥🔥 CRITICAL: Attempt exists but NO result record found! 🔥🔥🔥');
-                    console.log('   Attempt ID:', attemptId);
-                    console.log('   Attempt status:', attempt?.status);
-                    console.log('   attempt.results type:', typeof attempt?.results);
-                    console.log('   attempt.results value:', attempt?.results);
-                    console.log('   This should NOT happen - attempt is completed but no result!');
-
                     // Set grade level from attempt
                     if (attempt?.grade_level) {
                         setGradeLevel(attempt.grade_level);
@@ -1554,8 +1261,6 @@ export const useAssessmentResults = () => {
                     return;
                 }
             } catch (e) {
-                console.error('🔥 Error in attemptId path:', e);
-                console.error('   This error was caught, execution will continue to latest result path');
                 // Don't return here - let it fall through to latest result path
             }
         }
@@ -1577,23 +1282,16 @@ export const useAssessmentResults = () => {
                     );
 
                     if (!hasValidRiasec) {
-                        console.log('⚠️ Latest result has gemini_results but RIASEC data is missing/invalid');
-                        console.log('   RIASEC data:', geminiResults.riasec);
-                        console.log('   Available gemini_results keys:', Object.keys(geminiResults));
-                        console.log('   Redirecting to assessment test...');
-
                         navigate('/student/assessment/test');
                         return;
                     } else {
-                        console.log('Loaded results from database');
                         // Apply validation to correct RIASEC topThree and detect aptitude patterns
                         const validatedResults = await applyValidation(geminiResults);
 
                         // Normalize results to fix data inconsistencies
                         const normalizedResults = normalizeAssessmentResults(validatedResults);
                         
-                        // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
-                        // These fields are needed to show what's actually stored in the database
+                        // Preserve raw database fields for debug panel
                         normalizedResults._rawDatabaseFields = {
                             id: latestResult.id,
                             attempt_id: latestResult.attempt_id,
@@ -1618,11 +1316,6 @@ export const useAssessmentResults = () => {
                             updated_at: latestResult.updated_at
                         };
                         
-                        console.log('🔧 Assessment results normalized (latest result):', {
-                            before: validatedResults.riasec?.scores,
-                            after: normalizedResults.riasec?.scores,
-                            hasRawDbFields: !!normalizedResults._rawDatabaseFields
-                        });
                         setResults(normalizedResults);
 
                         // Set grade level from result
@@ -1634,7 +1327,6 @@ export const useAssessmentResults = () => {
 
                         // Update studentInfo with actual stream_id from assessment result
                         if (latestResult.stream_id) {
-                            console.log('📚 Updating studentInfo.stream with actual stream_id:', latestResult.stream_id);
                             streamFromAssessmentRef.current = latestResult.stream_id; // Set ref to prevent fetchStudentInfo from overwriting
                             setStudentInfo(prev => ({
                                 ...prev,
@@ -1657,7 +1349,7 @@ export const useAssessmentResults = () => {
                                     'assessment'
                                 );
                             } catch (recError) {
-                                console.log('Recommendations sync:', recError.message);
+                                // Silently fail
                             }
                         }
                         */
@@ -1665,12 +1357,10 @@ export const useAssessmentResults = () => {
                         setLoading(false);
                         return;
                     }
-                } else {
-                    console.log('No valid database results found');
                 }
             }
         } catch (e) {
-            console.log('No database results found:', e.message);
+            // Continue to fallback
         }
 
         // Fallback to localStorage (legacy mode)
@@ -1682,34 +1372,27 @@ export const useAssessmentResults = () => {
         // CRITICAL FIX: If localStorage is empty, try to load answers from database
         // This handles cases where localStorage was cleared (refresh, different device, etc.)
         if (!answersJson && attemptId) {
-            console.log('📊 localStorage empty, attempting to load answers from database...');
             try {
                 const attempt = await assessmentService.getAttemptWithResults(attemptId);
                 if (attempt?.all_responses && Object.keys(attempt.all_responses).length > 0) {
                     answersJson = JSON.stringify(attempt.all_responses);
-                    console.log('✅ Loaded answers from database:', Object.keys(attempt.all_responses).length, 'answers');
 
                     // Also restore stream and grade level from attempt if not in localStorage
                     if (!stream && attempt.stream_id) {
                         stream = attempt.stream_id;
                         localStorage.setItem('assessment_stream', attempt.stream_id);
-                        console.log('✅ Restored stream from database:', attempt.stream_id);
                     }
                     if (!storedGradeLevel && attempt.grade_level) {
                         storedGradeLevel = attempt.grade_level;
                         localStorage.setItem('assessment_grade_level', attempt.grade_level);
-                        console.log('✅ Restored grade level from database:', attempt.grade_level);
                     }
-                } else {
-                    console.warn('⚠️ Database attempt has no answers in all_responses');
                 }
             } catch (dbError) {
-                console.error('❌ Error loading answers from database:', dbError);
+                // Silently fail - will redirect to test below
             }
         }
 
         if (!answersJson) {
-            console.error('❌ No answers found in localStorage or database');
             navigate('/student/assessment/test');
             return;
         }
@@ -1723,7 +1406,6 @@ export const useAssessmentResults = () => {
 
             // Check if max retry attempts reached (max 3 attempts)
             if (retryAttemptCount >= 3) {
-                console.error('❌ Max retry attempts (3) reached');
                 setError('Maximum retry attempts reached. Please try again later or contact support if the issue persists.');
                 setRetrying(false);
                 return;
@@ -1731,9 +1413,8 @@ export const useAssessmentResults = () => {
 
             // Increment retry attempt counter
             setRetryAttemptCount(prev => prev + 1);
-            console.log(`🔄 Retry attempt ${retryAttemptCount + 1} of 3`);
 
-            // ✅ Get answers from database instead of localStorage
+            // Get answers from database instead of localStorage
             const attemptId = searchParams.get('attemptId');
 
             if (!attemptId) {
@@ -1741,11 +1422,6 @@ export const useAssessmentResults = () => {
                 setRetrying(false);
                 return;
             }
-
-            console.log('🔄 ========== RETRY AI ANALYSIS START ==========');
-            console.log('   Attempt ID:', attemptId);
-            console.log('   Current gradeLevel state:', gradeLevel);
-            console.log('   gradeLevelFromAttempt:', gradeLevelFromAttempt);
 
             // Fetch the attempt with all responses
             const attempt = await assessmentService.getAttemptWithResults(attemptId);
@@ -1762,26 +1438,11 @@ export const useAssessmentResults = () => {
             const storedGradeLevel = attempt.grade_level || gradeLevel || 'after12';
             const sectionTimings = attempt.section_timings || {};
 
-            console.log('📊 Retry Analysis Context:');
-            console.log('   Grade Level (from attempt):', attempt.grade_level);
-            console.log('   Grade Level (from state):', gradeLevel);
-            console.log('   Grade Level (final):', storedGradeLevel);
-            console.log('   Stream ID:', stream);
-            console.log('   Total answers:', Object.keys(answers).length);
-
             if (!answers || !stream) {
-                console.error('❌ Assessment data is incomplete:');
-                console.error('   Has answers:', !!answers);
-                console.error('   Has stream:', !!stream);
                 setError('Assessment data is incomplete. Please retake the assessment.');
                 setRetrying(false);
                 return;
             }
-
-            console.log('✅ Assessment data validated');
-            console.log('   Answers count:', Object.keys(answers).length);
-            console.log('   Stream:', stream);
-            console.log('   Grade Level for AI analysis:', storedGradeLevel);
 
             // Check if this is an AI assessment that needs questions from database
             const isAIAssessment = ['after10', 'after12', 'college', 'higher_secondary'].includes(storedGradeLevel);
@@ -1806,64 +1467,25 @@ export const useAssessmentResults = () => {
                         // Fetch aptitude questions
                         const aptitudeAnswerKeys = answerKeys.filter(k => k.startsWith('aptitude_'));
                         if (aptitudeAnswerKeys.length > 0) {
-                            console.log('📡 Fetching AI aptitude questions for retry...');
                             const aiAptitudeQuestions = await fetchAIAptitudeQuestions(user.id, aptitudeAnswerKeys);
                             if (aiAptitudeQuestions.length > 0) {
                                 questionBanks.aptitudeQuestions = aiAptitudeQuestions;
-                                console.log(`✅ Loaded ${aiAptitudeQuestions.length} AI aptitude questions`);
                             }
                         }
 
                         // Fetch knowledge questions
                         const knowledgeAnswerKeys = answerKeys.filter(k => k.startsWith('knowledge_'));
                         if (knowledgeAnswerKeys.length > 0) {
-                            console.log('📡 Fetching AI knowledge questions for retry...');
                             const aiKnowledgeQuestions = await fetchAIKnowledgeQuestions(user.id, knowledgeAnswerKeys);
                             if (aiKnowledgeQuestions.length > 0) {
                                 questionBanks.streamKnowledgeQuestions = { [stream]: aiKnowledgeQuestions };
-                                console.log(`✅ Loaded ${aiKnowledgeQuestions.length} AI knowledge questions`);
                             }
                         }
                     }
                 } catch (fetchErr) {
-                    console.warn('Could not fetch AI questions for retry:', fetchErr.message);
+                    // Silently continue without AI questions
                 }
             }
-
-            console.log('=== REGENERATE: Starting AI analysis ===');
-            console.log('📚 Question bank counts:', {
-                riasec: questionBanks.riasecQuestions?.length || 0,
-                aptitude: questionBanks.aptitudeQuestions?.length || 0,
-                bigFive: questionBanks.bigFiveQuestions?.length || 0,
-                workValues: questionBanks.workValuesQuestions?.length || 0,
-                employability: questionBanks.employabilityQuestions?.length || 0,
-                knowledge: questionBanks.streamKnowledgeQuestions?.[stream]?.length || 0
-            });
-
-            // CRITICAL DEBUG: Check if questions have correct_answer field
-            if (questionBanks.aptitudeQuestions?.length > 0) {
-                const sampleAptQ = questionBanks.aptitudeQuestions[0];
-                console.log('📊 REGENERATE: Sample aptitude question structure:', {
-                    id: sampleAptQ.id,
-                    hasCorrectAnswer: !!sampleAptQ.correct_answer,
-                    hasCorrect: !!sampleAptQ.correct,
-                    hasCorrectAnswerField: !!sampleAptQ.correctAnswer,
-                    keys: Object.keys(sampleAptQ)
-                });
-            }
-
-            if (questionBanks.streamKnowledgeQuestions?.[stream]?.length > 0) {
-                const sampleKnowQ = questionBanks.streamKnowledgeQuestions[stream][0];
-                console.log('📚 REGENERATE: Sample knowledge question structure:', {
-                    id: sampleKnowQ.id,
-                    hasCorrectAnswer: !!sampleKnowQ.correct_answer,
-                    hasCorrect: !!sampleKnowQ.correct,
-                    hasCorrectAnswerField: !!sampleKnowQ.correctAnswer,
-                    keys: Object.keys(sampleKnowQ)
-                });
-            }
-
-            console.log('Sample answers:', JSON.stringify(answers).substring(0, 500));
 
             // Extract degree level from grade for better AI recommendations
             const extractDegreeLevel = (grade) => {
@@ -1894,10 +1516,8 @@ export const useAssessmentResults = () => {
             let studentContext = {};
 
             if (attempt.student_context && Object.keys(attempt.student_context).length > 0) {
-                console.log('✅ Using student context from attempt (stored during submission)');
                 studentContext = attempt.student_context;
             } else {
-                console.log('⚠️ No student context in attempt, building from studentInfo...');
                 // Fallback: Build from studentInfo that was fetched earlier
                 // Try multiple sources for program name with correct priority
                 // Priority: courseName (from studentInfo) > branchField > fetch from DB
@@ -1918,10 +1538,9 @@ export const useAssessmentResults = () => {
                                          studentData.program?.code || 
                                          studentData.course_name ||
                                          studentData.branch_field;
-                            console.log('📚 Fetched program name from student record:', programName);
                         }
                     } catch (err) {
-                        console.warn('Could not fetch program name:', err);
+                        // Silently continue without program name
                     }
                 }
                 
@@ -1933,51 +1552,33 @@ export const useAssessmentResults = () => {
                 };
             }
 
-            console.log('📚 Retry Student Context:', studentContext);
-            console.log('🎓 Degree level:', studentContext.degreeLevel);
-
-            // 🔧 CRITICAL FIX: Fetch adaptive aptitude results if session ID exists
+            // CRITICAL FIX: Fetch adaptive aptitude results if session ID exists
             // This ensures high school students get their adaptive test data included in AI analysis
             if (answers.adaptive_aptitude_session_id) {
-                console.log('🔍 Fetching adaptive aptitude results for AI analysis...');
-                console.log('   Session ID:', answers.adaptive_aptitude_session_id);
-
                 try {
-                    const { data: adaptiveData, error: adaptiveError } = await supabase
+                    const { data: adaptiveData } = await supabase
                         .from('adaptive_aptitude_results')
                         .select('*')
                         .eq('session_id', answers.adaptive_aptitude_session_id)
                         .maybeSingle();
 
-                    if (adaptiveData && !adaptiveError) {
-                        console.log('✅ Found adaptive aptitude results:', {
-                            level: adaptiveData.aptitude_level,
-                            accuracy: adaptiveData.overall_accuracy,
-                            confidence: adaptiveData.confidence_tag
-                        });
+                    if (adaptiveData) {
                         // Add to answers so AI can use it
                         answers.adaptive_aptitude_results = adaptiveData;
-                    } else if (adaptiveError) {
-                        console.warn('⚠️ Error fetching adaptive results:', adaptiveError);
-                    } else {
-                        console.warn('⚠️ No adaptive results found for session:', answers.adaptive_aptitude_session_id);
                     }
                 } catch (err) {
-                    console.error('❌ Failed to fetch adaptive results:', err);
+                    // Silently continue without adaptive results
                 }
             }
 
             // Force regenerate with AI - pass gradeLevel and student context
-            // 🔧 CRITICAL FIX: Pass pre-calculated aptitude scores from attempt
+            // CRITICAL FIX: Pass pre-calculated aptitude scores from attempt
             const preCalculatedScores = attempt.aptitude_scores ? {
                 aptitude: attempt.aptitude_scores
             } : null;
 
-            console.log('📊 Pre-calculated scores for regeneration:', preCalculatedScores);
-
-            // 🔧 CRITICAL FIX: Pass adaptive results as 8th parameter
+            // CRITICAL FIX: Pass adaptive results as 8th parameter
             const adaptiveResultsForAI = answers.adaptive_aptitude_results || null;
-            console.log('📊 Adaptive results for AI:', adaptiveResultsForAI ? 'Available' : 'Not available');
 
             const geminiResults = await analyzeAssessmentWithGemini(
                 answers,
@@ -1994,31 +1595,12 @@ export const useAssessmentResults = () => {
                 throw new Error('AI analysis returned no results');
             }
 
-            console.log('✅ AI analysis completed successfully');
-            console.log('   Has RIASEC:', !!geminiResults.riasec);
-            console.log('   Has aptitude:', !!geminiResults.aptitude);
-            console.log('   Has careerFit:', !!geminiResults.careerFit);
-
-            // ============================================================================
-            // CRITICAL DEBUG: Log AI response structure
-            // ============================================================================
-            console.log('🔍 === AI RESPONSE STRUCTURE (useAssessmentResults) ===');
-            console.log('🔍 Response keys:', Object.keys(geminiResults));
-            console.log('🔍 riasec.code:', geminiResults.riasec?.code);
-            console.log('🔍 riasec.scores:', JSON.stringify(geminiResults.riasec?.scores));
-            console.log('🔍 aptitude.scores:', JSON.stringify(geminiResults.aptitude?.scores));
-            console.log('🔍 aptitude.overallScore:', geminiResults.aptitude?.overallScore);
-            console.log('🔍 bigFive:', JSON.stringify(geminiResults.bigFive));
-            console.log('🔍 careerFit.clusters count:', geminiResults.careerFit?.clusters?.length);
-            console.log('🔍 === END AI RESPONSE STRUCTURE ===');
-
             // Apply validation to correct RIASEC topThree and detect aptitude patterns
             const validatedResults = await applyValidation(geminiResults, answers, sectionTimings);
 
-            // 🔧 CRITICAL FIX: Preserve adaptive results in validated results
+            // CRITICAL FIX: Preserve adaptive results in validated results
             // The AI might not include adaptive results in its response, so we need to add them manually
             if (answers.adaptive_aptitude_results && !validatedResults.adaptiveAptitudeResults) {
-                console.log('🔧 Adding adaptive results to validated results');
                 validatedResults.adaptiveAptitudeResults = answers.adaptive_aptitude_results;
                 validatedResults.adaptive_aptitude_results = answers.adaptive_aptitude_results;
             }
@@ -2039,7 +1621,6 @@ export const useAssessmentResults = () => {
                         // Include adaptive_aptitude_session_id if available from attempt
                         if (attempt?.adaptive_aptitude_session_id) {
                             updateData.adaptive_aptitude_session_id = attempt.adaptive_aptitude_session_id;
-                            console.log('✅ Including adaptive_aptitude_session_id in update:', attempt.adaptive_aptitude_session_id);
                         }
 
                         // Extract and store individual score components
@@ -2084,10 +1665,9 @@ export const useAssessmentResults = () => {
                             updateData.overall_summary = validatedResults.overallSummary;
                         }
 
-                        // 🔧 CRITICAL FIX: Ensure adaptive results are saved in gemini_results
+                        // CRITICAL FIX: Ensure adaptive results are saved in gemini_results
                         // This is needed for the validation check and display
                         if (validatedResults.adaptiveAptitudeResults || validatedResults.adaptive_aptitude_results) {
-                            console.log('✅ Including adaptive results in database save');
                             // Already in validatedResults, will be saved in gemini_results
                         }
 
@@ -2098,9 +1678,7 @@ export const useAssessmentResults = () => {
                             .eq('id', latestResult.id);
 
                         if (updateError) {
-                            console.warn('Could not update database result:', updateError.message);
-                        } else {
-                            console.log('✅ Database result updated with regenerated AI analysis');
+                            // Silently continue - data is still in memory
                         }
 
                         // DISABLED: Course recommendation saving
@@ -2116,21 +1694,21 @@ export const useAssessmentResults = () => {
                                     'assessment'
                                 );
                             } catch (recError) {
-                                console.log('Recommendations sync:', recError.message);
+                                // Silently continue
                             }
                         }
                         */
                     }
                 }
             } catch (dbError) {
-                console.log('Could not update database:', dbError.message);
+                // Silently continue - data is still in memory
             }
 
             // Update state with new results
             // Normalize results to fix data inconsistencies
             const normalizedResults = normalizeAssessmentResults(validatedResults);
             
-            // ✅ CRITICAL FIX: Preserve raw database fields for debug panel
+            // CRITICAL FIX: Preserve raw database fields for debug panel
             // Note: In retry, we don't have the full database record, so we'll use what we have
             normalizedResults._rawDatabaseFields = {
                 gemini_results: validatedResults.gemini_results || validatedResults,
@@ -2143,19 +1721,12 @@ export const useAssessmentResults = () => {
                 // Other fields may not be available in retry context
             };
             
-            console.log('🔧 Assessment results normalized (retry):', {
-                before: validatedResults.riasec?.scores,
-                after: normalizedResults.riasec?.scores,
-                hasRawDbFields: !!normalizedResults._rawDatabaseFields
-            });
             setResults(normalizedResults);
             setError(null); // Clear error only on success
             setRetryCompleted(true); // Mark retry as completed to prevent re-triggering
-            console.log('✅ AI analysis regenerated successfully');
 
             // Update studentInfo with actual stream_id from attempt
             if (stream) {
-                console.log('📚 Updating studentInfo.stream with actual stream_id:', stream);
                 streamFromAssessmentRef.current = stream; // Set ref to prevent fetchStudentInfo from overwriting
                 setStudentInfo(prev => ({
                     ...prev,
@@ -2164,8 +1735,6 @@ export const useAssessmentResults = () => {
             }
 
         } catch (e) {
-            console.error('Regeneration failed:', e);
-
             // Provide user-friendly error message based on retry attempt count
             let errorMessage = e.message || 'Failed to regenerate report. Please try again.';
 
@@ -2185,7 +1754,6 @@ export const useAssessmentResults = () => {
             if (attemptIdForMarker) {
                 // Use attemptId since result.id may not be available in all cases
                 sessionStorage.setItem(`auto_retry_done_attempt_${attemptIdForMarker}`, 'true');
-                console.log('📝 Marked retry as completed for attempt:', attemptIdForMarker);
             }
             setRetrying(false);
             setLoading(false); // Ensure loading screen is dismissed
@@ -2202,59 +1770,25 @@ export const useAssessmentResults = () => {
         if (autoRetry && !retrying && !retryCompleted && !autoRetryInProgressRef.current) {
             // Check if max retry attempts reached
             if (retryAttemptCount >= 3) {
-                console.error('❌ Auto-retry NOT triggered - max attempts (3) reached');
                 setError('Maximum retry attempts reached. Please refresh the page or contact support if the issue persists.');
                 setAutoRetry(false);
                 return;
             }
 
-            console.log('🤖 Auto-retry triggered - calling handleRetry...');
-            console.log('   autoRetry:', autoRetry);
-            console.log('   retrying:', retrying);
-            console.log('   retryCompleted:', retryCompleted);
-            console.log('   retryAttemptCount:', retryAttemptCount);
-            console.log('   autoRetryInProgressRef.current:', autoRetryInProgressRef.current);
-
-            // Record start time for timing measurement
-            const startTime = Date.now();
-            setAutoRetryStartTime(startTime);
-            console.log('⏱️ Auto-retry start time:', new Date(startTime).toISOString());
-
             // Set flag to prevent concurrent attempts
             autoRetryInProgressRef.current = true;
             setAutoRetry(false); // Reset flag immediately to prevent loops
 
-            // REMOVED TIMEOUT: Executing immediately to prevent cancellation on component unmount/update
-            // (common in React Strict Mode or when dependencies change rapidly)
-            console.log('🤖 Executing handleRetry immediately...');
+            // Execute handleRetry immediately
             if (typeof handleRetry === 'function') {
                 handleRetry().finally(() => {
                     // Reset the in-progress flag after retry completes (success or failure)
                     autoRetryInProgressRef.current = false;
-
-                    // Calculate and log timing
-                    const endTime = Date.now();
-                    const duration = (endTime - startTime) / 1000; // Convert to seconds
-                    console.log('⏱️ Auto-retry completed in', duration.toFixed(2), 'seconds');
-
-                    // Verify timing requirement (should trigger within 2 seconds)
-                    if (duration > 2) {
-                        console.warn('⚠️ Auto-retry took longer than 2 seconds:', duration.toFixed(2), 'seconds');
-                    } else {
-                        console.log('✅ Auto-retry timing verified: completed within 2 seconds');
-                    }
                 });
             } else {
-                console.error('❌ handleRetry is not a function');
                 setError('Internal error: Retry mechanism failed.');
                 autoRetryInProgressRef.current = false;
             }
-        } else if (autoRetry) {
-            console.log('⚠️ Auto-retry NOT triggered - conditions not met:');
-            console.log('   autoRetry:', autoRetry);
-            console.log('   retrying:', retrying);
-            console.log('   retryCompleted:', retryCompleted);
-            console.log('   autoRetryInProgressRef.current:', autoRetryInProgressRef.current);
         }
     }, [autoRetry, retrying, retryCompleted]); // Remove handleRetry from dependencies to prevent cleanup
 

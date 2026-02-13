@@ -610,34 +610,23 @@ const AssessmentResult = () => {
             }
         }
 
-        console.log('shouldShowProgramRecommendations check:', {
-            gradeLevel,
-            actualGrade,
-            actualGradeNum,
-            monthsInGrade
-        });
-
         // If we have actual grade from database, use it for the decision
         if (actualGradeNum !== null) {
             // Grade 6-8 (middle school) - DON'T show
             if (actualGradeNum >= 6 && actualGradeNum <= 8) {
-                console.log('Not showing recommendations: Middle school (Grade 6-8)');
                 return false;
             }
             // Grade 9-10 (high school) - DON'T show
             if (actualGradeNum >= 9 && actualGradeNum <= 10) {
-                console.log('Not showing recommendations: High school (Grade 9-10)');
                 return false;
             }
             // Grade 11 (After 10th) - only show if 6+ months in grade
             if (actualGradeNum === 11) {
                 const show = monthsInGrade !== null && monthsInGrade >= 6;
-                console.log(`Grade 11 with ${monthsInGrade} months: ${show ? 'showing' : 'not showing'} recommendations`);
                 return show;
             }
             // Grade 12 and above - always show
             if (actualGradeNum >= 12) {
-                console.log('Showing recommendations: Grade 12+');
                 return true;
             }
         }
@@ -671,26 +660,13 @@ const AssessmentResult = () => {
     // Only calculate for grade levels that should show recommendations
     // IMPORTANT: Use student's ACTUAL grade from database, not the assessment's grade_level
     const enhancedCourseRecommendations = useMemo(() => {
-        // DIAGNOSTIC: Check if we have results and RIASEC data
-        console.log('🔍 Course Recommendations - Initial Check:', {
-            'hasResults': !!results,
-            'loading': loading,
-            'retrying': retrying,
-            'hasRiasec': !!results?.riasec,
-            'hasScores': !!results?.riasec?.scores,
-            'scoresKeys': results?.riasec?.scores ? Object.keys(results.riasec.scores) : [],
-            'scoresValues': results?.riasec?.scores ? Object.values(results.riasec.scores) : []
-        });
-
         // Don't calculate if still loading or retrying
         if (loading || retrying) {
-            console.log('⏳ Skipping course recommendations - still loading/retrying');
             return [];
         }
 
         // Don't calculate if no results yet
         if (!results) {
-            console.log('⏳ Skipping course recommendations - no results yet');
             return [];
         }
 
@@ -744,36 +720,14 @@ const AssessmentResult = () => {
             }
         };
 
-        // DEBUG: Log RIASEC data structure
-        console.log('🔍 RIASEC Debug:', {
-            hasResults: !!results,
-            hasRiasec: !!results?.riasec,
-            riasecKeys: results?.riasec ? Object.keys(results.riasec) : [],
-            scores: results?.riasec?.scores,
-            fullRiasec: results?.riasec
-        });
-
         // STREAM FILTERING: Get student's stream from assessment results or profile
         // Priority: 1) Stream from current assessment, 2) Stream recommendation from after10, 3) Profile stream, 4) No filter
         let studentStream = null;
 
-        console.log('🔍 Stream Detection - Checking sources:', {
-            'results exists': !!results,
-            'results keys': results ? Object.keys(results) : [],
-            'has streamRecommendation': !!results?.streamRecommendation?.recommendedStream,
-            'streamRecommendation value': results?.streamRecommendation?.recommendedStream,
-            'studentInfo exists': !!studentInfo,
-            'studentInfo.stream': studentInfo?.stream,
-            'stream check': studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A',
-            'academicData.stream': studentAcademicData?.stream,
-            'gradeLevel': gradeLevel
-        });
-        
         // PRIORITY 1: Check if results contain stream information (for after12/higher_secondary/college)
         // The stream is stored in the assessment results when student selects it during assessment
         if (results?.stream || results?.streamId || results?.stream_id) {
             studentStream = results.stream || results.streamId || results.stream_id;
-            console.log('📚 Using stream from assessment results:', studentStream);
         }
         // PRIORITY 2: Check if student has completed after10 assessment and has stream recommendation
         // IMPORTANT: Validate that the stream recommendation is not a placeholder value
@@ -782,51 +736,14 @@ const AssessmentResult = () => {
                  results.streamRecommendation.recommendedStream !== '—' &&
                  results.streamRecommendation.recommendedStream !== '') {
             studentStream = results.streamRecommendation.recommendedStream;
-            console.log('📚 Using stream from after10 assessment:', studentStream);
         } 
         // PRIORITY 3: Check if student has stream in their profile (for after12/college students)
         else if (studentInfo?.stream && studentInfo.stream !== '—' && studentInfo.stream.toUpperCase() !== 'N/A') {
             studentStream = studentInfo.stream;
-            console.log('📚 Using stream from student profile:', studentStream);
         }
         // PRIORITY 4: Check academic data for stream indicators
         else if (studentAcademicData?.stream) {
             studentStream = studentAcademicData.stream;
-            console.log('📚 Using stream from academic data:', studentStream);
-        }
-        else {
-            console.log('⚠️ No valid stream found in any source!');
-            console.log('📋 Full results object:', results);
-        }
-
-        // Debug: Log all stream sources
-        console.log('🔍 Stream Detection Debug:', {
-            'results.streamRecommendation': results?.streamRecommendation?.recommendedStream,
-            'studentInfo.stream': studentInfo?.stream,
-            'academicData.stream': studentAcademicData?.stream,
-            'finalStream': studentStream
-        });
-
-        console.log('🎯 About to call calculateCourseMatchScores with stream:', studentStream);
-
-        // DIAGNOSTIC: Final check before calling calculateCourseMatchScores
-        const riasecScores = results?.riasec?.scores || {};
-        console.log('📊 Final RIASEC Check Before Calculation:', {
-            'riasecScores': riasecScores,
-            'hasKeys': Object.keys(riasecScores).length > 0,
-            'hasNonZeroValues': Object.values(riasecScores).some(s => s > 0),
-            'allValues': Object.values(riasecScores)
-        });
-
-        // Don't call if no valid RIASEC data
-        if (!riasecScores || Object.keys(riasecScores).length === 0) {
-            console.log('⚠️ Aborting calculateCourseMatchScores - no RIASEC scores');
-            return [];
-        }
-
-        if (!Object.values(riasecScores).some(s => s > 0)) {
-            console.log('⚠️ Aborting calculateCourseMatchScores - all RIASEC scores are zero');
-            return [];
         }
 
         return calculateCourseMatchScores(
@@ -874,7 +791,6 @@ const AssessmentResult = () => {
     const handlePrint = () => {
         const printContent = document.querySelector('.print-view');
         if (!printContent) {
-            console.error('Print view not found');
             window.print();
             return;
         }
@@ -971,9 +887,6 @@ const AssessmentResult = () => {
 
     // Loading state
     if (loading) {
-        console.log('📄 [AssessmentResult] LOADER 3 DISPLAYED - loading=true');
-        console.log('📄 [AssessmentResult] retrying:', retrying);
-        console.log('📄 [AssessmentResult] retryAttemptCount:', retryAttemptCount);
         return <LoadingState isAutoRetry={retrying} retryAttemptCount={retryAttemptCount} />;
     }
 
@@ -996,29 +909,12 @@ const AssessmentResult = () => {
     const missingFields = validateResults();
     const hasIncompleteData = missingFields.length > 0;
 
-    // Debug log for stream recommendation
-    console.log('AssessmentResult Debug:', {
-        gradeLevel,
-        hasStreamRecommendation: !!streamRecommendation,
-        streamRecommendation: streamRecommendation,
-        isAfter10: streamRecommendation?.isAfter10,
-        recommendedStream: streamRecommendation?.recommendedStream
-    });
-
     return (
         <>
             {/* Inject print styles */}
             <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
 
             {/* Print View - Simple document format for PDF */}
-            {/* Debug: Log what PrintView receives */}
-            {results && console.log('📄 AssessmentResult passing to PrintView:', {
-                hasRiasec: !!results.riasec,
-                riasecScores: results.riasec?.scores,
-                riasecOriginal: results.riasec?._originalScores,
-                geminiOriginal: results.gemini_results?.riasec?._originalScores,
-                gradeLevel
-            })}
             <PrintView
                 results={results}
                 studentInfo={studentInfo}
@@ -1703,45 +1599,6 @@ const AssessmentResult = () => {
                                                 const degreePrograms = results?.gemini_results?.careerFit?.degreePrograms || results?.careerFit?.degreePrograms;
                                                 const hasAIPrograms = degreePrograms && degreePrograms.length >= 3;
                                                 
-                                                // DEBUG: Log first program to check for new fields
-                                                if (degreePrograms && degreePrograms.length > 0) {
-                                                    console.log('🎓 DEGREE PROGRAM DEBUG - First Program:', degreePrograms[0]);
-                                                    console.log('📊 Field Check:', {
-                                                        programName: degreePrograms[0].programName,
-                                                        duration: degreePrograms[0].duration || '❌ MISSING',
-                                                        roleDescription: degreePrograms[0].roleDescription ? '✅ Present' : '❌ MISSING',
-                                                        topUniversities: degreePrograms[0].topUniversities ? `✅ ${degreePrograms[0].topUniversities.length} universities` : '❌ MISSING'
-                                                    });
-                                                }
-                                                
-                                                console.log('🔍 After12 Layout Check:', {
-                                                    hasGeminiResults: !!results?.gemini_results,
-                                                    hasCareerFit: !!(results?.gemini_results?.careerFit || results?.careerFit),
-                                                    hasDegreePrograms: !!degreePrograms,
-                                                    programCount: degreePrograms?.length || 0,
-                                                    willShowNewLayout: hasAIPrograms,
-                                                    willShowFallback: !hasAIPrograms && enhancedCourseRecommendations?.length > 0,
-                                                    dataSource: results?.gemini_results?.careerFit ? 'nested' : results?.careerFit ? 'flattened' : 'none',
-                                                    careerFitKeys: results?.careerFit ? Object.keys(results.careerFit) : 'no careerFit',
-                                                    firstProgramSample: degreePrograms?.[0] ? {
-                                                        programName: degreePrograms[0].programName,
-                                                        hasDuration: !!degreePrograms[0].duration,
-                                                        hasRoleDescription: !!degreePrograms[0].roleDescription,
-                                                        hasTopUniversities: !!degreePrograms[0].topUniversities,
-                                                        duration: degreePrograms[0].duration,
-                                                        universitiesCount: degreePrograms[0].topUniversities?.length || 0
-                                                    } : 'no programs'
-                                                });
-                                                
-                                                // DETAILED DEBUG - Show what's actually in careerFit
-                                                if (results?.careerFit && !degreePrograms) {
-                                                    console.log('⚠️ careerFit exists but NO degreePrograms!');
-                                                    console.log('   careerFit.clusters:', results.careerFit.clusters?.length || 0, 'items');
-                                                    console.log('   careerFit.specificOptions:', results.careerFit.specificOptions);
-                                                    console.log('   careerFit.degreePrograms:', results.careerFit.degreePrograms);
-                                                    console.log('   👉 You need to run: fix-career-fit-degree-programs.sql');
-                                                }
-                                                
                                                 return hasAIPrograms;
                                             })() ? (
                                                 // NEW LAYOUT: Single Card with 3 AI Programs (After10 Style)
@@ -2068,7 +1925,6 @@ const AssessmentResult = () => {
                                                             });
                                                         } catch (error) {
                                                             // Silently fallback to hardcoded paths - this is expected when Worker is not deployed
-                                                            console.log('[PROGRAM_CLICK] Using fallback career paths');
                                                             // Fallback to hardcoded paths on error
                                                             setSelectedTrack({
                                                                 cluster: {

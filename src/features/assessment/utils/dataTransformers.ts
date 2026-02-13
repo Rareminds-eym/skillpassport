@@ -260,7 +260,6 @@ export const generateCourseRecommendations = (
       .sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0))
       .slice(0, 5);
   } catch (error) {
-    console.error('Error generating course recommendations:', error);
     return [];
   }
 };
