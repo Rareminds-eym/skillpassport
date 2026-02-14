@@ -724,6 +724,9 @@ const AssessmentResult = () => {
         // Priority: 1) Stream from current assessment, 2) Stream recommendation from after10, 3) Profile stream, 4) No filter
         let studentStream = null;
 
+        // Get RIASEC scores from results for course matching
+        const riasecScores = results?.riasec?.scores || null;
+
         // PRIORITY 1: Check if results contain stream information (for after12/higher_secondary/college)
         // The stream is stored in the assessment results when student selects it during assessment
         if (results?.stream || results?.streamId || results?.stream_id) {

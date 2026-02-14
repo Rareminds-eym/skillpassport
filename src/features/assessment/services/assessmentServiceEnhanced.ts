@@ -270,7 +270,11 @@ export async function saveResponseEnhanced(
 
         // Also update all_responses in attempt record (for backward compatibility)
         if (sectionId) {
-          await updateAllResponses(attemptId, `${sectionId}_${questionId}`, responseValue);
+          // Avoid double prefixing if questionId already has section prefix
+          const responseKey = questionId.startsWith(`${sectionId}_`) 
+            ? questionId 
+            : `${sectionId}_${questionId}`;
+          await updateAllResponses(attemptId, responseKey, responseValue);
         }
 
         return data;

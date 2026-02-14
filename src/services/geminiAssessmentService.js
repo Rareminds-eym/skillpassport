@@ -38,7 +38,6 @@ const updateProgress = (stage, message) => {
   if (typeof window !== 'undefined' && window.setAnalysisProgress) {
     window.setAnalysisProgress(stage, message);
   }
-  console.log(`📊 Analysis Progress: ${stage} - ${message || ''}`);
 };
 
 // ============================================================================
@@ -53,37 +52,18 @@ const updateProgress = (stage, message) => {
  * @returns {Promise<Object>} - The analyzed results from AI
  */
 const callOpenRouterAssessment = async (assessmentData) => {
-  console.log('[FRONTEND] === CALLING ANALYZE-ASSESSMENT API ===');
-  console.log('[FRONTEND] Assessment data:', {
-    gradeLevel: assessmentData.gradeLevel,
-    stream: assessmentData.stream,
-    hasStudentContext: !!assessmentData.studentContext,
-    studentContext: assessmentData.studentContext,
-    hasAdaptiveResults: !!assessmentData.adaptiveAptitudeResults,
-    riasecAnswersCount: Object.keys(assessmentData.riasecAnswers || {}).length,
-    aptitudeScores: assessmentData.aptitudeScores
-  });
-
   const { getPagesApiUrl } = await import('../utils/pagesUrl');
   const API_URL = getPagesApiUrl('analyze-assessment');
-  console.log('[FRONTEND] API URL:', API_URL);
 
   // Get auth token
   updateProgress('sending', 'Authenticating...');
-  console.log('[FRONTEND] Getting auth session...');
   const { data: { session } } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
   const token = session?.access_token;
 
   if (!token) {
-    console.error('[FRONTEND] ❌ No auth token found');
     updateProgress('error', 'Authentication required');
     throw new Error('Authentication required for assessment analysis');
   }
-  console.log('[FRONTEND] ✅ Auth token obtained, length:', token.length);
-
-  console.log('[FRONTEND] 🤖 Sending assessment data to backend for analysis...');
-  console.log('[FRONTEND] 📊 Grade Level:', assessmentData.gradeLevel, 'Stream:', assessmentData.stream);
-  console.log('[FRONTEND] 🎯 STREAM CONTEXT: Student is in', assessmentData.stream, 'stream, AI should recommend careers from this stream');
 
   updateProgress('analyzing', 'AI is processing your responses...');
 
@@ -92,10 +72,8 @@ const callOpenRouterAssessment = async (assessmentData) => {
     // This bypasses Cloudflare edge cache to get the latest deployed version
     const cacheBuster = Date.now();
     const apiUrl = `${API_URL}?v=${cacheBuster}`;
-    console.log('[FRONTEND] 📤 Making POST request to:', apiUrl);
     
     const requestBody = { assessmentData };
-    console.log('[FRONTEND] 📦 Request body size:', JSON.stringify(requestBody).length, 'bytes');
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -106,28 +84,8 @@ const callOpenRouterAssessment = async (assessmentData) => {
       body: JSON.stringify(requestBody)
     });
 
-    console.log('[FRONTEND] 📡 Response received');
-    console.log('[FRONTEND] 📊 Response status:', response.status, response.statusText);
-    console.log('[FRONTEND] 📊 Response headers:', Object.fromEntries(response.headers.entries()));
-
     if (!response.ok) {
-      // ============================================================================
-      // ENHANCED ERROR LOGGING: Log API failure details (Requirement 4.3)
-      // ============================================================================
-      console.error('[FRONTEND] ❌ API request failed');
       const errorText = await response.text();
-      console.error('[FRONTEND] ❌ Error response:', errorText);
-      console.error('❌ === API CALL FAILED ===');
-      console.error('❌ Status Code:', response.status);
-      console.error('❌ Status Text:', response.statusText);
-      console.error('❌ Error Response:', errorText);
-      console.error('❌ Request Summary:');
-      console.error('   - API URL:', API_URL);
-      console.error('   - Grade Level:', assessmentData.gradeLevel);
-      console.error('   - Stream:', assessmentData.stream);
-      console.error('   - RIASEC Answers Count:', Object.keys(assessmentData.riasecAnswers || {}).length);
-      console.error('   - Aptitude Scores:', JSON.stringify(assessmentData.aptitudeScores));
-      console.error('❌ === END API CALL FAILED ===');
       
       let errorData;
       try {
@@ -142,68 +100,14 @@ const callOpenRouterAssessment = async (assessmentData) => {
     updateProgress('processing', 'Processing AI results...');
 
     const result = await response.json();
-    console.log('📦 API Response:', { success: result.success, hasData: !!result.data, error: result.error });
-    console.log('📦 Full API Response:', JSON.stringify(result).substring(0, 500));
 
     if (!result.success || !result.data) {
-      console.error('❌ Invalid response:', result);
-      console.error('❌ Response success:', result.success);
-      console.error('❌ Response data:', result.data);
-      console.error('❌ Response error:', result.error);
-      console.error('❌ Response details:', result.details);
       updateProgress('error', result.error || 'Invalid response from server');
       throw new Error(result.error || result.details || 'Invalid response from server');
-    }
-
-    console.log('✅ Assessment analysis successful');
-    console.log('📊 Response keys:', Object.keys(result.data));
-    
-    // Log seed for deterministic verification
-    if (result.data._metadata?.seed) {
-      console.log('🎲 DETERMINISTIC SEED:', result.data._metadata.seed);
-      console.log('🎲 Model used:', result.data._metadata.model);
-      console.log('🎲 Deterministic:', result.data._metadata.deterministic);
-      
-      // Log failure details if any models failed before success
-      if (result.data._metadata.failureDetails && result.data._metadata.failureDetails.length > 0) {
-        console.warn('⚠️ MODEL FAILURES BEFORE SUCCESS:');
-        result.data._metadata.failureDetails.forEach((failure, idx) => {
-          console.warn(`   ${idx + 1}. ❌ ${failure.model}`);
-          if (failure.status) {
-            console.warn(`      Status: ${failure.status}`);
-          }
-          console.warn(`      Error: ${failure.error}`);
-        });
-        console.log(`✅ Final success with: ${result.data._metadata.model}`);
-      }
-    } else {
-      console.warn('⚠️ NO SEED IN RESPONSE - Using old worker version?');
-    }
-    
-    // Debug: Log career clusters to verify stream alignment
-    if (result.data.careerFit?.clusters) {
-      console.log('🎯 AI CAREER CLUSTERS (from worker):');
-      result.data.careerFit.clusters.forEach((cluster, idx) => {
-        console.log(`   ${idx + 1}. ${cluster.title} (${cluster.fit} - ${cluster.matchScore}%)`);
-      });
     }
     
     return result.data;
   } catch (error) {
-    // ============================================================================
-    // ENHANCED ERROR LOGGING: Log complete error context (Requirement 4.3)
-    // ============================================================================
-    console.error('❌ === ASSESSMENT API CALL EXCEPTION ===');
-    console.error('❌ Error Message:', error.message);
-    console.error('❌ Error Stack:', error.stack);
-    console.error('❌ Request Context:');
-    console.error('   - Grade Level:', assessmentData.gradeLevel);
-    console.error('   - Stream:', assessmentData.stream);
-    console.error('   - RIASEC Answers:', Object.keys(assessmentData.riasecAnswers || {}).length);
-    console.error('   - BigFive Answers:', Object.keys(assessmentData.bigFiveAnswers || {}).length);
-    console.error('   - Aptitude Scores:', JSON.stringify(assessmentData.aptitudeScores));
-    console.error('❌ === END ASSESSMENT API CALL EXCEPTION ===');
-    
     updateProgress('error', error.message);
     throw error;
   }
@@ -242,9 +146,9 @@ const validateResults = (results) => {
   if (!results.profileSnapshot?.aptitudeStrengths?.length) missingFields.push('profileSnapshot.aptitudeStrengths');
   if (!results.overallSummary) missingFields.push('overallSummary');
 
-  // Optional but log if missing
+  // Optional: silently continue if timing analysis is missing
   if (!results.timingAnalysis?.overallPace) {
-    console.log('Note: timingAnalysis not included in response');
+    // timingAnalysis is optional
   }
 
   return {
@@ -268,7 +172,6 @@ const validateResults = (results) => {
  */
 export const addCourseRecommendations = async (assessmentResults, studentId = null) => {
   try {
-    console.log('=== Adding Course Recommendations ===');
     updateProgress('courses', 'Finding relevant courses...');
 
     // If studentId provided, fetch all past assessments to build comprehensive profile
@@ -276,7 +179,6 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
     
     if (studentId) {
       try {
-        console.log(`Fetching all past assessments for student: ${studentId}`);
         const { data: pastAssessments, error } = await supabase
           .from('personal_assessment_results')
           .select('riasec_scores, aptitude_scores, skill_gap, career_fit, stream_id, grade_level')
@@ -285,7 +187,6 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
           .limit(5); // Consider last 5 assessments
 
         if (!error && pastAssessments && pastAssessments.length > 0) {
-          console.log(`Found ${pastAssessments.length} past assessments`);
           
           // Aggregate skill gaps from all assessments
           const allSkillGaps = [];
@@ -309,11 +210,8 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
               allAssessments: pastAssessments.length
             }
           };
-
-          console.log(`Aggregated ${uniqueSkills.length} unique skills from ${pastAssessments.length} assessments`);
         }
       } catch (fetchError) {
-        console.warn('Failed to fetch past assessments:', fetchError.message);
         // Continue with current assessment only
       }
     }
@@ -324,21 +222,18 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
     try {
       // Fetch courses by type using aggregated profile
       coursesByType = await getRecommendedCoursesByType(aggregatedProfile, 5);
-      console.log(`Found ${coursesByType.technical.length} technical and ${coursesByType.soft.length} soft skill courses`);
 
       platformCourses = [...coursesByType.technical, ...coursesByType.soft];
 
       // Fallback to combined fetch if by-type returned nothing
       if (platformCourses.length === 0) {
         platformCourses = await getRecommendedCourses(aggregatedProfile);
-        console.log(`Fallback: Found ${platformCourses.length} platform course recommendations`);
       }
     } catch (error) {
-      console.warn('Failed to get platform course recommendations:', error.message);
       try {
         platformCourses = await getRecommendedCourses(aggregatedProfile);
       } catch (fallbackError) {
-        console.warn('Fallback also failed:', fallbackError.message);
+        // Both failed, continue with empty courses
       }
     }
 
@@ -348,10 +243,9 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
       const skillGaps = aggregatedProfile.skillGap?.priorityA || [];
       if (skillGaps.length > 0) {
         skillGapCourses = await getCoursesForMultipleSkillGaps(skillGaps);
-        console.log(`Mapped courses to ${Object.keys(skillGapCourses).length} skill gaps`);
       }
     } catch (error) {
-      console.warn('Failed to get skill gap course mappings:', error.message);
+      // Continue without skill gap courses
     }
 
     return {
@@ -361,7 +255,6 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
       skillGapCourses
     };
   } catch (error) {
-    console.error('Error adding course recommendations:', error);
     return {
       ...assessmentResults,
       platformCourses: [],

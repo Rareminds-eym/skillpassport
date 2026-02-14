@@ -207,11 +207,8 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
           ? Math.round((now.getTime() - currentQuestionStartTime.getTime()) / 1000)
           : 0;
         
-        // Extract section and question IDs
-        let sectionId = flow.currentSection.id;
-        let qId = questionId.includes('_') 
-          ? questionId.substring(questionId.indexOf('_') + 1)
-          : questionId;
+        // Use fully qualified question ID directly
+        const sectionId = flow.currentSection.id;
         
         // Store in ref for snapshot building
         answeredQuestionsRef.current.set(questionId, {
@@ -224,7 +221,7 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
         // Add to snapshot builder if available
         if (snapshotBuilder) {
           snapshotBuilder.addQuestion(sectionId, {
-            questionId: qId,
+            questionId: questionId,  // Use fully qualified ID
             question: flow.currentQuestion,
             sectionId,
             sequence: flow.currentQuestionIndex + 1,

@@ -19,9 +19,133 @@ import {
 } from '../../index';
 
 /**
- * Get the student record ID from auth user ID
- * Questions are saved with students.id, not auth.user.id
+ * Extract answers from assessment_snapshot_v2 for college students
+ * The snapshot stores answers in sections.riasec/questions, sections.bigfive/questions, etc.
+ * @param {Object} snapshot - assessment_snapshot_v2 object
+ * @returns {Object} - Flattened answers object like { "riasec_r1": 4, "bigfive_o1": 3, ... }
  */
+const extractAnswersFromSnapshot = (snapshot) => {
+    if (!snapshot || !snapshot.sections) {
+        return null;
+    }
+
+    const answers = {};
+    const sections = snapshot.sections;
+
+    // DEBUG: Log section structure
+    console.log('🔍 extractAnswersFromSnapshot - sections:', Object.keys(sections));
+
+    // Helper to extract answer value from various possible structures
+    const getAnswerValue = (q) => {
+        // Try different possible answer structures
+        if (q.answer?.value !== undefined && q.answer?.value !== null) {
+            return q.answer.value;
+        }
+        if (q.answer !== undefined && q.answer !== null && typeof q.answer !== 'object') {
+            return q.answer;
+        }
+        if (q.response !== undefined && q.response !== null) {
+            return q.response;
+        }
+        if (q.selected_option !== undefined && q.selected_option !== null) {
+            return q.selected_option;
+        }
+        return undefined;
+    };
+
+    // Extract RIASEC answers - keys are already "riasec_r1", "riasec_i1", etc.
+    if (sections.riasec?.questions) {
+        console.log(`🔍 RIASEC questions count: ${sections.riasec.questions.length}`);
+        let extractedCount = 0;
+        sections.riasec.questions.forEach((q) => {
+            const answerValue = getAnswerValue(q);
+            if (answerValue !== undefined && q.question_id) {
+                answers[q.question_id] = answerValue;
+                extractedCount++;
+            }
+        });
+        console.log(`🔍 RIASEC extracted: ${extractedCount}/${sections.riasec.questions.length}`);
+    }
+
+    // Extract BigFive answers - keys are already "bigfive_o1", "bigfive_c1", etc.
+    if (sections.bigfive?.questions) {
+        console.log(`🔍 BigFive questions count: ${sections.bigfive.questions.length}`);
+        let extractedCount = 0;
+        sections.bigfive.questions.forEach((q) => {
+            const answerValue = getAnswerValue(q);
+            if (answerValue !== undefined && q.question_id) {
+                answers[q.question_id] = answerValue;
+                extractedCount++;
+            }
+        });
+        console.log(`🔍 BigFive extracted: ${extractedCount}/${sections.bigfive.questions.length}`);
+    }
+
+    // Extract Work Values answers - keys are already "values_sec1", "values_aut1", etc.
+    if (sections.values?.questions) {
+        console.log(`🔍 WorkValues questions count: ${sections.values.questions.length}`);
+        let extractedCount = 0;
+        sections.values.questions.forEach((q) => {
+            const answerValue = getAnswerValue(q);
+            if (answerValue !== undefined && q.question_id) {
+                answers[q.question_id] = answerValue;
+                extractedCount++;
+            }
+        });
+        console.log(`🔍 WorkValues extracted: ${extractedCount}/${sections.values.questions.length}`);
+    }
+
+    // Extract Employability answers - keys are already "employability_com1", etc.
+    if (sections.employability?.questions) {
+        let extractedCount = 0;
+        sections.employability.questions.forEach((q) => {
+            const answerValue = getAnswerValue(q);
+            if (answerValue !== undefined && q.question_id) {
+                answers[q.question_id] = answerValue;
+                extractedCount++;
+            }
+        });
+        console.log(`🔍 Employability extracted: ${extractedCount}/${sections.employability.questions.length}`);
+    }
+
+    // Extract Aptitude answers
+    if (sections.aptitude?.questions) {
+        let extractedCount = 0;
+        sections.aptitude.questions.forEach((q, idx) => {
+            const answerValue = getAnswerValue(q);
+            if (answerValue !== undefined) {
+                const key = `aptitude_q${idx + 1}`;
+                answers[key] = answerValue;
+                extractedCount++;
+            }
+        });
+        console.log(`🔍 Aptitude extracted: ${extractedCount}/${sections.aptitude.questions.length}`);
+    }
+
+    // Extract Knowledge answers
+    if (sections.knowledge?.questions) {
+        let extractedCount = 0;
+        sections.knowledge.questions.forEach((q, idx) => {
+            const answerValue = getAnswerValue(q);
+            if (answerValue !== undefined) {
+                const key = `knowledge_q${idx + 1}`;
+                answers[key] = answerValue;
+                extractedCount++;
+            }
+        });
+        console.log(`🔍 Knowledge extracted: ${extractedCount}/${sections.knowledge.questions.length}`);
+    }
+
+    // Include adaptive aptitude session ID if present
+    if (sections.adaptive_aptitude?.session_id) {
+        answers.adaptive_aptitude_session_id = sections.adaptive_aptitude.session_id;
+    }
+
+    console.log(`🔍 extractAnswersFromSnapshot - total answers extracted: ${Object.keys(answers).length}`);
+    console.log(`🔍 Sample extracted keys:`, Object.keys(answers).slice(0, 10));
+
+    return Object.keys(answers).length > 0 ? answers : null;
+};
 const getStudentRecordId = async (authUserId) => {
     try {
         const { data: student, error } = await supabase
@@ -1432,7 +1556,22 @@ export const useAssessmentResults = () => {
                 return;
             }
 
-            const answers = attempt.all_responses;
+            // CRITICAL FIX: For college students, extract answers from assessment_snapshot_v2
+            // For non-college students, use all_responses
+            let answers;
+            if (attempt.assessment_snapshot_v2) {
+                // College student - extract from snapshot
+                const snapshotAnswers = extractAnswersFromSnapshot(attempt.assessment_snapshot_v2);
+                if (snapshotAnswers && Object.keys(snapshotAnswers).length > 0) {
+                    answers = snapshotAnswers;
+                } else {
+                    // Fallback to all_responses if snapshot extraction fails
+                    answers = attempt.all_responses;
+                }
+            } else {
+                // Non-college student - use all_responses
+                answers = attempt.all_responses;
+            }
             const stream = attempt.stream_id;
             // CRITICAL: Use grade level from attempt (source of truth), fallback to state, then default
             const storedGradeLevel = attempt.grade_level || gradeLevel || 'after12';

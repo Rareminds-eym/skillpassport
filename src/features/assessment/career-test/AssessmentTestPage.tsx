@@ -70,6 +70,7 @@ import {
   getGradeLevelFromGrade,
   getAdaptiveGradeLevel,
 } from '../../assessment';
+import { generateQuestionId } from '../../assessment/utils/answerUtils';
 
 // Question Data
 import {
@@ -305,12 +306,12 @@ const AssessmentTestPage: React.FC = () => {
       const currentSection = sections[flow.currentSectionIndex];
       if (currentSection && snapshotBuilder) {
         const sectionId = currentSection.id;
-        const qId = questionId.includes('_') 
-          ? questionId.substring(questionId.indexOf('_') + 1)
-          : questionId;
+        // CRITICAL: Use fully qualified question ID (e.g., "riasec_r1", "bigfive_o1")
+        // The questionId from flow is already in format "section_questionId"
+        const fullQuestionId = questionId;
         
         snapshotBuilder.addQuestion(sectionId, {
-          questionId: qId,
+          questionId: fullQuestionId,
           question: currentSection.questions?.[flow.currentQuestionIndex],
           sectionId,
           sequence: flow.currentQuestionIndex + 1,
@@ -1724,7 +1725,8 @@ const AssessmentTestPage: React.FC = () => {
   const autoFillAllAnswers = useCallback(async () => {
     sections.forEach(section => {
       section.questions?.forEach((question: any) => {
-        const questionId = `${section.id}_${question.id}`;
+        // Use generateQuestionId to avoid double prefixing
+        const questionId = generateQuestionId(section.id, question.id);
 
         // Handle SJT questions (best/worst)
         if (question.partType === 'sjt') {
@@ -1767,7 +1769,8 @@ const AssessmentTestPage: React.FC = () => {
     // Fill all previous sections with dummy answers
     sections.slice(0, sectionIndex).forEach(section => {
       section.questions?.forEach((question: any) => {
-        const questionId = `${section.id}_${question.id}`;
+        // Use generateQuestionId to avoid double prefixing
+        const questionId = generateQuestionId(section.id, question.id);
 
         // Handle SJT questions (best/worst)
         if (question.partType === 'sjt') {
@@ -2030,7 +2033,7 @@ const AssessmentTestPage: React.FC = () => {
           // For current section, count actual answered questions from flow.answers
           // This ensures progress is accurate after resume
           const sectionAnswerCount = section.questions?.filter((q: any) => {
-            const questionId = `${section.id}_${q.id}`;
+            const questionId = generateQuestionId(section.id, q.id);
             return flow.answers[questionId] !== undefined;
           }).length || 0;
 

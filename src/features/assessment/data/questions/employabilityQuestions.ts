@@ -30,52 +30,52 @@ export interface SJTQuestion {
 // Part A: Self-rating skills (25 items)
 export const selfRatingQuestions = {
   communication: [
-    { id: 'com1', text: 'I explain my ideas clearly.' },
-    { id: 'com2', text: 'I adjust my communication to the audience.' },
-    { id: 'com3', text: 'I listen actively without interrupting.' }
+    { id: 'employability_com1', text: 'I explain my ideas clearly.' },
+    { id: 'employability_com2', text: 'I adjust my communication to the audience.' },
+    { id: 'employability_com3', text: 'I listen actively without interrupting.' }
   ],
   teamwork: [
-    { id: 'tm1', text: 'I contribute reliably in group tasks.' },
-    { id: 'tm2', text: 'I handle disagreements respectfully.' },
-    { id: 'tm3', text: 'I help the team stay on track.' }
+    { id: 'employability_tm1', text: 'I contribute reliably in group tasks.' },
+    { id: 'employability_tm2', text: 'I handle disagreements respectfully.' },
+    { id: 'employability_tm3', text: 'I help the team stay on track.' }
   ],
   problemSolving: [
-    { id: 'ps1', text: 'I break problems into smaller parts.' },
-    { id: 'ps2', text: 'I generate multiple solutions.' },
-    { id: 'ps3', text: 'I choose solutions based on evidence.' }
+    { id: 'employability_ps1', text: 'I break problems into smaller parts.' },
+    { id: 'employability_ps2', text: 'I generate multiple solutions.' },
+    { id: 'employability_ps3', text: 'I choose solutions based on evidence.' }
   ],
   adaptability: [
-    { id: 'ad1', text: 'I stay calm when plans change.' },
-    { id: 'ad2', text: 'I learn new tools quickly.' },
-    { id: 'ad3', text: 'I handle uncertainty without freezing.' }
+    { id: 'employability_ad1', text: 'I stay calm when plans change.' },
+    { id: 'employability_ad2', text: 'I learn new tools quickly.' },
+    { id: 'employability_ad3', text: 'I handle uncertainty without freezing.' }
   ],
   leadership: [
-    { id: 'ld1', text: 'I take initiative when needed.' },
-    { id: 'ld2', text: 'I motivate peers toward deadlines.' },
-    { id: 'ld3', text: 'I delegate fairly.' }
+    { id: 'employability_ld1', text: 'I take initiative when needed.' },
+    { id: 'employability_ld2', text: 'I motivate peers toward deadlines.' },
+    { id: 'employability_ld3', text: 'I delegate fairly.' }
   ],
   digitalFluency: [
-    { id: 'df1', text: "I'm comfortable with new software." },
-    { id: 'df2', text: 'I use digital tools to organize work.' },
-    { id: 'df3', text: 'I can learn a tech skill from online resources.' }
+    { id: 'employability_df1', text: "I'm comfortable with new software." },
+    { id: 'employability_df2', text: 'I use digital tools to organize work.' },
+    { id: 'employability_df3', text: 'I can learn a tech skill from online resources.' }
   ],
   professionalism: [
-    { id: 'pr1', text: 'I manage time and deadlines well.' },
-    { id: 'pr2', text: 'I take feedback constructively.' },
-    { id: 'pr3', text: 'I communicate progress proactively.' }
+    { id: 'employability_pr1', text: 'I manage time and deadlines well.' },
+    { id: 'employability_pr2', text: 'I take feedback constructively.' },
+    { id: 'employability_pr3', text: 'I communicate progress proactively.' }
   ],
   careerReadiness: [
-    { id: 'cr1', text: 'I know how to write a strong CV.' },
-    { id: 'cr2', text: 'I can describe my strengths confidently.' },
-    { id: 'cr3', text: 'I seek internships/projects actively.' },
-    { id: 'cr4', text: 'I track my skill gaps and work on them.' }
+    { id: 'employability_cr1', text: 'I know how to write a strong CV.' },
+    { id: 'employability_cr2', text: 'I can describe my strengths confidently.' },
+    { id: 'employability_cr3', text: 'I seek internships/projects actively.' },
+    { id: 'employability_cr4', text: 'I track my skill gaps and work on them.' }
   ]
 };
 
 // Part B: Situational Judgement Test (6 scenarios)
 export const sjtQuestions: SJTQuestion[] = [
   {
-    id: 'sjt1',
+    id: 'employability_sjt1',
     scenario: 'Team member not contributing',
     text: 'Your teammate misses tasks repeatedly. You:',
     options: [
@@ -88,7 +88,7 @@ export const sjtQuestions: SJTQuestion[] = [
     worst: 'd'
   },
   {
-    id: 'sjt2',
+    id: 'employability_sjt2',
     scenario: 'Client changes requirements late',
     text: 'Client changes requirements late. You:',
     options: [
@@ -101,7 +101,7 @@ export const sjtQuestions: SJTQuestion[] = [
     worst: 'd'
   },
   {
-    id: 'sjt3',
+    id: 'employability_sjt3',
     scenario: 'You made an error in a submission',
     text: 'You made an error in a submission. You:',
     options: [
@@ -114,7 +114,7 @@ export const sjtQuestions: SJTQuestion[] = [
     worst: 'a'
   },
   {
-    id: 'sjt4',
+    id: 'employability_sjt4',
     scenario: 'Two teammates are in conflict',
     text: 'Two teammates are in conflict. You:',
     options: [
@@ -127,7 +127,7 @@ export const sjtQuestions: SJTQuestion[] = [
     worst: 'c'
   },
   {
-    id: 'sjt5',
+    id: 'employability_sjt5',
     scenario: "You're assigned a task you don't know",
     text: "You're assigned a task you don't know. You:",
     options: [
@@ -140,7 +140,7 @@ export const sjtQuestions: SJTQuestion[] = [
     worst: 'd'
   },
   {
-    id: 'sjt6',
+    id: 'employability_sjt6',
     scenario: 'Presentation anxiety before placement talk',
     text: 'Presentation anxiety before placement talk. You:',
     options: [

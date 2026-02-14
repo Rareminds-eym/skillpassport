@@ -164,10 +164,21 @@ export const useAssessmentFlow = ({
   const currentSection = sections[currentSectionIndex] || null;
   const currentQuestion = currentSection?.questions?.[currentQuestionIndex] || null;
 
-  // Question ID
-  const questionId = currentSection && currentQuestion
-    ? `${currentSection.id}_${currentQuestion.id}`
-    : '';
+  // Question ID - avoid double prefixing if question ID already has section prefix
+  const questionId = useMemo(() => {
+    if (!currentSection || !currentQuestion) return '';
+    
+    const sectionId = currentSection.id;
+    const qId = currentQuestion.id;
+    
+    // Check if question ID already starts with section prefix (e.g., "employability_com1")
+    if (qId.startsWith(`${sectionId}_`)) {
+      return qId; // Already has prefix, use as-is
+    }
+    
+    // Otherwise, add the section prefix
+    return `${sectionId}_${qId}`;
+  }, [currentSection, currentQuestion]);
 
   // Computed values
   const isLastSection = currentSectionIndex === sections.length - 1;

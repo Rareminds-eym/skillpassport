@@ -59,8 +59,9 @@ interface UseAIQuestionsResult {
 
 /**
  * Normalize AI question format to match UI expectations
+ * Adds section prefix to question IDs (e.g., "aptitude_" or "knowledge_")
  */
-const normalizeAIQuestion = (q: any): AIQuestion => {
+const normalizeAIQuestion = (q: any, sectionPrefix: string): AIQuestion => {
   // Ensure options is always an array
   let normalizedOptions = q.options;
   if (q.options && typeof q.options === 'object' && !Array.isArray(q.options)) {
@@ -68,8 +69,23 @@ const normalizeAIQuestion = (q: any): AIQuestion => {
     normalizedOptions = Object.values(q.options);
   }
 
+  // Ensure question ID has section prefix
+  let questionId = q.id;
+  if (questionId && !String(questionId).startsWith(`${sectionPrefix}_`)) {
+    // Check if it's a UUID or already has some prefix
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(questionId));
+    if (isUUID) {
+      // Keep UUID as-is (for AI-generated questions)
+      questionId = `${sectionPrefix}_${questionId}`;
+    } else if (!String(questionId).includes('_')) {
+      // Add section prefix if no prefix exists
+      questionId = `${sectionPrefix}_${questionId}`;
+    }
+  }
+
   return {
     ...q,
+    id: questionId,
     text: q.question || q.text,
     correct: q.correct_answer || q.correct,
     options: normalizedOptions || []
@@ -222,8 +238,8 @@ export const useAIQuestions = ({
       // Use empty array (not null) for failed sections so the UI can distinguish
       // "failed to load" ([]) from "not yet loaded" (null)
       const normalizedQuestions: AIQuestionsState = {
-        aptitude: questions.aptitude?.map(normalizeAIQuestion) || [],
-        knowledge: questions.knowledge?.map(normalizeAIQuestion) || []
+        aptitude: questions.aptitude?.map((q: any) => normalizeAIQuestion(q, 'aptitude')) || [],
+        knowledge: questions.knowledge?.map((q: any) => normalizeAIQuestion(q, 'knowledge')) || []
       };
 
       setAiQuestions(normalizedQuestions);

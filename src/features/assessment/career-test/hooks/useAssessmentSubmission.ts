@@ -565,7 +565,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
                 streamKnowledgeQuestions
               },
               finalTimings,
-              gradeLevel || 'after12',
+              gradeLevel,
               null, // preCalculatedScores
               studentContext,
               adaptiveResults

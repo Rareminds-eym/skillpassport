@@ -124,15 +124,24 @@ export class AssessmentSnapshotBuilder {
   startSection(sectionId: string, sectionData?: { questions?: any[]; title?: string; description?: string }): void {
     const config = SECTION_CONFIGS[sectionId];
     if (!config) {
+      console.warn(`[SnapshotBuilder] No config found for section: ${sectionId}`);
       return;
     }
 
+    console.log(`[SnapshotBuilder] Starting section: ${sectionId} with ${sectionData?.questions?.length || 0} questions`);
+
     // Pre-populate questions from section data if provided
+    // CRITICAL: Use fully qualified question IDs (e.g., "riasec_r1", "bigfive_o1")
     const initialQuestions: QuestionContext[] = [];
     if (sectionData?.questions && Array.isArray(sectionData.questions)) {
       sectionData.questions.forEach((q, idx) => {
+        // Use fully qualified ID directly - no extraction needed
+        const questionId = q.id || `${sectionId}_q${idx}`;
+        
+        console.log(`[SnapshotBuilder] Pre-populating question: ${questionId}`);
+        
         initialQuestions.push({
-          questionId: q.id || `${sectionId}_q${idx}`,
+          questionId,
           question: q,
           sectionId,
           sequence: idx + 1,
@@ -155,16 +164,21 @@ export class AssessmentSnapshotBuilder {
       started_at: new Date().toISOString(),
       duration_seconds: 0
     };
+    
+    console.log(`[SnapshotBuilder] Section ${sectionId} started with ${initialQuestions.length} pre-populated questions`);
   }
 
   addQuestion(sectionId: string, context: QuestionContext): void {
     const section = this.sections.get(sectionId);
     if (!section) {
+      console.warn(`[SnapshotBuilder] addQuestion: Section ${sectionId} not found`);
       return;
     }
 
     // Check if question already exists (by questionId)
     const existingIndex = section.questions.findIndex(q => q.questionId === context.questionId);
+    
+    console.log(`[SnapshotBuilder] addQuestion: section=${sectionId}, qId=${context.questionId}, existing=${existingIndex >= 0}, totalQuestions=${section.questions.length}`);
     
     if (existingIndex >= 0) {
       // UPDATE existing question with new answer data
@@ -172,9 +186,11 @@ export class AssessmentSnapshotBuilder {
       existing.answer = context.answer;
       existing.answeredAt = context.answeredAt;
       existing.timeSpentSeconds = context.timeSpentSeconds;
+      console.log(`[SnapshotBuilder] Updated question ${context.questionId} with answer:`, context.answer);
     } else {
       // ADD new question
       section.questions.push(context);
+      console.log(`[SnapshotBuilder] Added new question ${context.questionId}, total now: ${section.questions.length}`);
     }
   }
 
@@ -315,10 +331,14 @@ export class AssessmentSnapshotBuilder {
     let skillTested: string | undefined;
     
     if (sectionId === 'riasec') {
-      const letter = context.questionId.split('_')[1]?.charAt(0).toLowerCase();
+      // Extract letter from fully qualified ID like "riasec_r1" -> "r"
+      const parts = context.questionId.split('_');
+      const letter = parts.length >= 2 ? parts[1].charAt(0).toLowerCase() : '';
       category = RIASEC_CATEGORIES[letter] || letter;
     } else if (sectionId === 'bigfive') {
-      const letter = context.questionId.split('_')[1]?.charAt(0).toLowerCase();
+      // Extract letter from fully qualified ID like "bigfive_o1" -> "o"
+      const parts = context.questionId.split('_');
+      const letter = parts.length >= 2 ? parts[1].charAt(0).toLowerCase() : '';
       trait = BIGFIVE_TRAITS[letter] || letter;
     } else if (sectionId === 'aptitude' || sectionId === 'knowledge') {
       skillTested = question.skillTested || question.topic || 'general';
@@ -425,7 +445,9 @@ export class AssessmentSnapshotBuilder {
     };
 
     questions.forEach(q => {
-      const letter = q.questionId.split('_')[1]?.charAt(0).toLowerCase();
+      // Extract letter from fully qualified ID like "riasec_r1" -> "r"
+      const parts = q.questionId.split('_');
+      const letter = parts.length >= 2 ? parts[1].charAt(0).toLowerCase() : '';
       const category = RIASEC_CATEGORIES[letter];
       if (category && typeof q.answer === 'number') {
         scores[category].push(q.answer);
@@ -456,7 +478,9 @@ export class AssessmentSnapshotBuilder {
     };
 
     questions.forEach(q => {
-      const letter = q.questionId.split('_')[1]?.charAt(0).toLowerCase();
+      // Extract letter from fully qualified ID like "bigfive_o1" -> "o"
+      const parts = q.questionId.split('_');
+      const letter = parts.length >= 2 ? parts[1].charAt(0).toLowerCase() : '';
       const trait = BIGFIVE_TRAITS[letter];
       if (trait && typeof q.answer === 'number') {
         // Handle reverse scoring

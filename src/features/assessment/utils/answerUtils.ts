@@ -37,9 +37,15 @@ export const isQuestionAnswered = (
 
 /**
  * Generate question ID from section and question
+ * Avoids double prefixing if question ID already starts with section prefix
  */
 export const generateQuestionId = (sectionId: string, questionId: string | number): string => {
-  return `${sectionId}_${questionId}`;
+  const qId = String(questionId);
+  // Check if question ID already starts with section prefix (e.g., "employability_com1")
+  if (qId.startsWith(`${sectionId}_`)) {
+    return qId; // Already has prefix, use as-is
+  }
+  return `${sectionId}_${qId}`;
 };
 
 /**

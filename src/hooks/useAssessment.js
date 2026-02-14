@@ -210,7 +210,10 @@ export const useAssessment = () => {
       return { success: false, error: 'No active attempt' };
     }
 
-    const responseKey = `${sectionName}_${questionId}`;
+    // Avoid double prefixing if questionId already has section prefix
+    const responseKey = questionId.startsWith(`${sectionName}_`)
+      ? questionId
+      : `${sectionName}_${questionId}`;
     
     // Update local state immediately (optimistic update)
     setResponses(prev => ({
