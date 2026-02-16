@@ -276,6 +276,14 @@ interface SubmissionOptions {
   timeRemaining: number | null;
   elapsedTime: number;
   selectedCategory?: string | null;
+  // Anti-cheating monitoring report
+  antiCheatingReport?: {
+    totalEvents: number;
+    events: Array<{ type: string; timestamp: number; details?: string }>;
+    tabSwitches: number;
+    devToolsDetections: number;
+    copyAttempts: number;
+  };
 }
 
 interface UseAssessmentSubmissionResult {
