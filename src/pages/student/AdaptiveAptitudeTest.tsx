@@ -39,6 +39,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAntiCheating } from '../../hooks/useAntiCheating';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '../../types/adaptiveAptitude';
+import { getGradeLevelFromGrade, getAdaptiveGradeLevel } from '../../features/assessment/utils/gradeUtils';
 
 // =============================================================================
 // DEBUG MODE
@@ -75,6 +76,13 @@ const DIFFICULTY_LABELS: Record<DifficultyLevel, string> = {
   5: 'Expert',
 };
 
+/** Grade level display names */
+const GRADE_LEVEL_DISPLAY_NAMES: Record<GradeLevel, string> = {
+  middle_school: 'Middle School (6-8)',
+  high_school: 'High School (9-10)',
+  higher_secondary: 'Higher Secondary (11-12)',
+};
+
 /** Confidence tag colors */
 const CONFIDENCE_COLORS: Record<ConfidenceTag, { bg: string; text: string; border: string }> = {
   high: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
@@ -97,11 +105,14 @@ const AdaptiveAptitudeTest = () => {
   const location = useLocation();
   const { user } = useAuth();
   
-  // Get grade level from navigation state or default to high_school
-  const gradeLevel: GradeLevel = location.state?.gradeLevel || 'high_school';
-  
   // Get student data
   const { studentData, loading: studentLoading } = useStudentDataByEmail(user?.email || '', false);
+  
+  // Auto-detect grade level from student's database record, with fallbacks
+  const detectedLevel = studentData?.grade ? getGradeLevelFromGrade(studentData.grade) : null;
+  const gradeLevel: GradeLevel = (detectedLevel ? getAdaptiveGradeLevel(detectedLevel) : null)
+    || location.state?.gradeLevel
+    || 'high_school';
   
   // Local state
   const [selectedAnswer, setSelectedAnswer] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
@@ -249,7 +260,7 @@ const AdaptiveAptitudeTest = () => {
               <p className="text-lg font-bold text-blue-600">Adaptive Aptitude Test</p>
             </div>
             <p className="text-sm text-gray-500 mt-1">
-              Grade Level: {gradeLevel === 'middle_school' ? 'Middle School' : 'High School'}
+              Grade Level: {GRADE_LEVEL_DISPLAY_NAMES[gradeLevel]}
             </p>
           </div>
           <p className="text-sm text-gray-400">This may take a few seconds...</p>
@@ -581,7 +592,7 @@ const AdaptiveAptitudeTest = () => {
             <div>
               <h2 className="text-lg font-bold text-gray-900">Adaptive Aptitude Test</h2>
               <p className="text-sm text-gray-600">
-                {gradeLevel === 'middle_school' ? 'Middle School' : 'High School'} Level
+                {GRADE_LEVEL_DISPLAY_NAMES[gradeLevel]} Level
               </p>
             </div>
           </div>

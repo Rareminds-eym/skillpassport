@@ -659,10 +659,19 @@ const AssessmentTestPage: React.FC = () => {
         flow.setCurrentQuestionIndex(0);
         flow.setShowSectionIntro(false);
         flow.setCurrentScreen('assessment'); // Show assessment screen with loading state
+      } else if (pendingAttempt?.adaptive_aptitude_session_id && !adaptiveAptitude.error) {
+        console.log('⏳ [ADAPTIVE RESUME] Questions not yet available but resume was attempted, showing loading state...');
+        // Resume was attempted and no error — React state may not have flushed yet.
+        // Show assessment screen with loading indicator; the auto-start
+        // CASE 2 will pick up once currentQuestion is set, and CASE 3
+        // (30-second timeout) acts as a safety net.
+        flow.setCurrentQuestionIndex(0);
+        flow.setShowSectionIntro(false);
+        flow.setCurrentScreen('assessment');
       } else {
-        console.error('❌ [ADAPTIVE RESUME] No questions loaded and not loading - session resume may have failed');
-        // Session resume failed or no questions available
-        flow.setError('Failed to resume adaptive test. Please refresh and try again.');
+        console.warn('⚠️ [ADAPTIVE RESUME] No questions loaded and no session ID - showing section intro');
+        flow.setCurrentQuestionIndex(0);
+        flow.setShowSectionIntro(true);
         flow.setCurrentScreen('section_intro');
       }
 
@@ -714,7 +723,7 @@ const AssessmentTestPage: React.FC = () => {
     }
 
 
-  }, [sections.length, pendingAttempt, flow.currentScreen, adaptiveAptitude.currentQuestion, adaptiveAptitude.loading]);
+  }, [sections.length, pendingAttempt, flow.currentScreen, adaptiveAptitude.currentQuestion, adaptiveAptitude.loading, adaptiveAptitude.error]);
 
   // Timer effects
   useEffect(() => {
@@ -861,15 +870,32 @@ const AssessmentTestPage: React.FC = () => {
       return;
     }
     
+    // CASE 4: Safety net for resume race condition — questions arrived while stuck on section_intro
+    if (
+      currentSection?.isAdaptive &&
+      flow.showSectionIntro &&
+      flow.currentScreen === 'section_intro' &&
+      !adaptiveStartPendingRef.current &&
+      !adaptiveAptitude.loading &&
+      adaptiveAptitude.currentQuestion &&
+      adaptiveAptitude.session?.id
+    ) {
+      console.log('✅ [ADAPTIVE RESUME] Questions became available while on section intro, transitioning to assessment');
+      flow.setShowSectionIntro(false);
+      flow.setCurrentScreen('assessment');
+      return;
+    }
+
     // CASE 3: Safety timeout - If adaptive test is stuck loading for more than 30 seconds, show error
+    // Also catches: assessment screen shown but no question arrived and not loading (e.g., resume returned null question)
     if (
       currentSection?.isAdaptive &&
       (flow.showSectionIntro || flow.currentScreen === 'assessment') &&
-      (adaptiveStartPendingRef.current || adaptiveAptitude.loading) &&
-      adaptiveAptitude.loading
+      (adaptiveStartPendingRef.current || adaptiveAptitude.loading || 
+       (flow.currentScreen === 'assessment' && !adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading))
     ) {
       const timeoutId = setTimeout(() => {
-        if (adaptiveAptitude.loading) {
+        if (adaptiveAptitude.loading || (!adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading)) {
           console.error('❌ [ADAPTIVE] Timeout: Questions failed to load after 30 seconds');
           adaptiveStartPendingRef.current = false;
           flow.setError('Adaptive test initialization timed out. Please refresh the page and try again.');
@@ -878,7 +904,7 @@ const AssessmentTestPage: React.FC = () => {
       
       return () => clearTimeout(timeoutId);
     }
-  }, [adaptiveAptitude.loading, adaptiveAptitude.currentQuestion, flow.showSectionIntro, flow.currentScreen, flow.currentSectionIndex, flow.currentQuestionIndex, sections, flow]);
+  }, [adaptiveAptitude.loading, adaptiveAptitude.currentQuestion, adaptiveAptitude.session?.id, flow.showSectionIntro, flow.currentScreen, flow.currentSectionIndex, flow.currentQuestionIndex, sections, flow]);
 
   // Link adaptive aptitude session to assessment attempt when session is created
   useEffect(() => {
@@ -1117,6 +1143,7 @@ const AssessmentTestPage: React.FC = () => {
 
 
     // FIX 1: Resume adaptive aptitude session if exists
+    let adaptiveResumeSucceeded = false;
     if (pendingAttempt.adaptive_aptitude_session_id) {
       console.log('🔄 [ADAPTIVE RESUME] Found adaptive session ID, attempting to resume:', pendingAttempt.adaptive_aptitude_session_id);
       
@@ -1130,6 +1157,7 @@ const AssessmentTestPage: React.FC = () => {
       if (adaptiveSession?.status === 'completed') {
         console.log('✅ [ADAPTIVE RESUME] Adaptive session already completed, skipping resume');
         console.log('✅ [ADAPTIVE RESUME] Will show section complete screen');
+        adaptiveResumeSucceeded = true;
         // Don't try to resume - the section is already complete
         // Check if we're currently on the adaptive section
         const adaptiveSectionIndex = sections.findIndex(s => s.isAdaptive);
@@ -1144,11 +1172,11 @@ const AssessmentTestPage: React.FC = () => {
         try {
           await adaptiveAptitude.resumeTest(pendingAttempt.adaptive_aptitude_session_id);
           console.log('✅ [ADAPTIVE RESUME] Session resumed successfully');
+          adaptiveResumeSucceeded = true;
         } catch (err) {
           console.error('❌ [ADAPTIVE RESUME] Failed to resume adaptive session:', err);
-          // Show error to user but allow them to continue
-          flow.setError('Could not resume adaptive test session. The section will restart from the beginning.');
-          // Continue with regular resume - adaptive section will restart if needed
+          // Don't set flow.setError here - we'll show section intro for retry instead
+          console.warn('⚠️ [ADAPTIVE RESUME] Will show section intro so user can restart the section');
         }
       }
     } else {
@@ -1221,13 +1249,18 @@ const AssessmentTestPage: React.FC = () => {
             flow.setCurrentQuestionIndex(0);
             flow.setShowSectionIntro(false);
             flow.setCurrentScreen('section_complete');
-          } else {
+          } else if (adaptiveResumeSucceeded) {
             console.log('✅ [ADAPTIVE RESUME] Adaptive session exists and in progress, resuming to assessment screen');
             // Adaptive session was already resumed above
             // Just set to question 0 and let adaptive hook take over
             flow.setCurrentQuestionIndex(0);
             flow.setShowSectionIntro(false);
             flow.setCurrentScreen('assessment');
+          } else {
+            console.warn('⚠️ [ADAPTIVE RESUME] Resume did not succeed, showing section intro for retry');
+            flow.setCurrentQuestionIndex(0);
+            flow.setShowSectionIntro(true);
+            flow.setCurrentScreen('section_intro');
           }
         }
 
@@ -1402,7 +1435,8 @@ const AssessmentTestPage: React.FC = () => {
     }
 
     // Initialize adaptive test
-    if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
+    // Also reinitialize if session exists but has no current question (partial resume failure)
+    if (currentSection?.isAdaptive && (!adaptiveAptitude.session || (!adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading))) {
       console.log('🚀 [ADAPTIVE] Starting adaptive test...');
       // Initialize adaptive timer based on section config
       setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);

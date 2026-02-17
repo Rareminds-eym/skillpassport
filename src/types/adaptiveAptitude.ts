@@ -448,3 +448,110 @@ export const TEST_PHASES_ORDER: TestPhase[] = [
   'adaptive_core',
   'stability_confirmation',
 ];
+
+// =============================================================================
+// DATABASE QUESTION BANK TYPES
+// =============================================================================
+
+/**
+ * Question from the pre-existing question bank database
+ * These questions are NOT AI-generated but stored in Supabase
+ */
+export interface AptitudeQuestionBank {
+  /** Unique identifier (e.g., G6_Q1) */
+  id: string;
+  
+  /** Batch identifier (e.g., ADAPT_G6-8_BANK_400) */
+  batch_id: string;
+  
+  /** Grade level (e.g., '6', '7', '8') */
+  grade: string;
+  
+  /** Dimension code (e.g., 'QRA' for Quantitative Reasoning Aptitude) */
+  dimension: string;
+  
+  /** Band identifier */
+  band: string;
+  
+  /** Difficulty rank (1-5) */
+  difficulty_rank: DifficultyLevel;
+  
+  /** Template family (e.g., 'arith_add', 'logic_pattern') */
+  template_family: string;
+  
+  /** The question text */
+  question_text: string;
+  
+  /** Option A */
+  option_a: string;
+  
+  /** Option B */
+  option_b: string;
+  
+  /** Option C */
+  option_c: string;
+  
+  /** Option D */
+  option_d: string;
+  
+  /** Correct answer (A, B, C, or D) */
+  correct_answer: 'A' | 'B' | 'C' | 'D';
+  
+  /** Step 1 of explanation */
+  explanation_step_1?: string;
+  
+  /** Step 2 of explanation */
+  explanation_step_2?: string;
+  
+  /** Step 3 of explanation */
+  explanation_step_3?: string;
+  
+  /** Final answer value */
+  final_answer?: string;
+  
+  /** Target time in seconds */
+  time_target_sec?: number;
+  
+  /** Solution type (e.g., 'arithmetic', 'logical') */
+  solution_type?: string;
+  
+  /** Solution data in key=value format */
+  solution_data?: string;
+  
+  /** Full explanation text */
+  explanation?: string;
+  
+  /** Created timestamp */
+  created_at?: string;
+  
+  /** Updated timestamp */
+  updated_at?: string;
+}
+
+/**
+ * Maps database question to test question format
+ */
+export function mapBankQuestionToTestQuestion(
+  bankQuestion: AptitudeQuestionBank,
+  phase: TestPhase,
+  gradeLevel: GradeLevel,
+  subtag: Subtag
+): Question {
+  return {
+    id: bankQuestion.id,
+    text: bankQuestion.question_text,
+    options: {
+      A: bankQuestion.option_a,
+      B: bankQuestion.option_b,
+      C: bankQuestion.option_c,
+      D: bankQuestion.option_d,
+    },
+    correctAnswer: bankQuestion.correct_answer,
+    difficulty: bankQuestion.difficulty_rank,
+    subtag: subtag,
+    gradeLevel: gradeLevel,
+    phase: phase,
+    explanation: bankQuestion.explanation,
+    createdAt: bankQuestion.created_at,
+  };
+}

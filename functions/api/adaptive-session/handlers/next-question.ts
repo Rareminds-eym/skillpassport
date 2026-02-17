@@ -13,6 +13,8 @@ import { DEFAULT_ADAPTIVE_TEST_CONFIG, ALL_SUBTAGS } from '../types';
 import { validateExclusionListComplete, validateQuestionNotDuplicate } from '../utils/validation';
 import { dbResponseToResponse } from '../utils/converters';
 import { AdaptiveEngine } from '../utils/adaptive-engine';
+import { extractNumericGrade } from '../utils/grade';
+import { fetchSingleQuestion, fetchAdaptiveQuestions, fetchStabilityQuestions } from '../../question-bank/core';
 
 /**
  * Gets the next question for the current session
@@ -51,6 +53,16 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         404
       );
     }
+
+    // Look up the student's exact grade for precise question filtering
+    const { data: studentRecord } = await supabase
+      .from('students')
+      .select('grade')
+      .eq('id', sessionData.student_id)
+      .single();
+
+    const studentGrade = extractNumericGrade(studentRecord?.grade);
+    console.log('📋 [NextQuestionHandler] Student grade:', { raw: studentRecord?.grade, numeric: studentGrade });
 
     console.log('📊 [NextQuestionHandler] Session data:', {
       status: sessionData.status,
@@ -155,150 +167,149 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         adaptiveCoreQuestionNumber: adaptiveCoreQuestionsAnswered + 1,
       });
 
-      // Call question generation API
-      const questionGenUrl = new URL('/api/question-generation/generate/single', request.url);
-      const questionGenResponse = await fetch(questionGenUrl.toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gradeLevel,
-          phase: 'adaptive_core',
-          difficulty: currentDifficulty,
-          subtag: selectedSubtag,
-          count: 1,
-          excludeQuestionIds: allExcludeIds,
-          excludeQuestionTexts: allExcludeTexts,
-          studentCourse: sessionData.student_course || null,
-        }),
+      // Fetch question directly from question bank (no HTTP round-trip)
+      const questionResult = await fetchSingleQuestion(supabase, {
+        gradeLevel,
+        difficulty: currentDifficulty,
+        subtag: selectedSubtag,
+        excludeQuestionIds: allExcludeIds,
+        studentGrade,
       });
 
-      if (questionGenResponse.ok) {
-        const questionResult = await questionGenResponse.json();
+      if (questionResult.questions && questionResult.questions.length > 0) {
+        let newQuestion = questionResult.questions[0];
+        let retryCount = 0;
+        const maxRetries = 3;
 
-        if (questionResult.questions && questionResult.questions.length > 0) {
-          let newQuestion = questionResult.questions[0];
-          let retryCount = 0;
-          const maxRetries = 3;
+        // Validate question is not a duplicate
+        let validation = validateQuestionNotDuplicate(newQuestion, allExcludeIds, allExcludeTexts);
 
-          // Validate question is not a duplicate
-          let validation = validateQuestionNotDuplicate(newQuestion, allExcludeIds, allExcludeTexts);
+        while (!validation.isValid && retryCount < maxRetries) {
+          console.warn(`⚠️ [NextQuestionHandler] Generated question is duplicate (attempt ${retryCount + 1}/${maxRetries}): ${validation.reason}`);
+          console.warn(`⚠️ [NextQuestionHandler] Question ID: ${newQuestion.id}`);
+          console.warn(`⚠️ [NextQuestionHandler] Question text: ${newQuestion.text.substring(0, 100)}...`);
+          console.warn(`⚠️ [NextQuestionHandler] Attempting retry with updated exclusions...`);
 
-          while (!validation.isValid && retryCount < maxRetries) {
-            console.warn(`⚠️ [NextQuestionHandler] Generated question is duplicate (attempt ${retryCount + 1}/${maxRetries}): ${validation.reason}`);
-            console.warn(`⚠️ [NextQuestionHandler] Question ID: ${newQuestion.id}`);
-            console.warn(`⚠️ [NextQuestionHandler] Question text: ${newQuestion.text.substring(0, 100)}...`);
-            console.warn(`⚠️ [NextQuestionHandler] Attempting retry with updated exclusions...`);
+          const retryExcludeIds = [...allExcludeIds, newQuestion.id];
+          const retryExcludeTexts = [...allExcludeTexts, newQuestion.text];
+          retryCount++;
 
-            const retryExcludeIds = [...allExcludeIds, newQuestion.id];
-            const retryExcludeTexts = [...allExcludeTexts, newQuestion.text];
-            retryCount++;
+          // Retry with updated exclusions
+          const retryResult = await fetchSingleQuestion(supabase, {
+            gradeLevel,
+            difficulty: currentDifficulty,
+            subtag: selectedSubtag,
+            excludeQuestionIds: retryExcludeIds,
+            studentGrade,
+          });
 
-            // Retry with updated exclusions
-            const retryResponse = await fetch(questionGenUrl.toString(), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                gradeLevel,
-                phase: 'adaptive_core',
-                difficulty: currentDifficulty,
-                subtag: selectedSubtag,
-                count: 1,
-                excludeQuestionIds: retryExcludeIds,
-                excludeQuestionTexts: retryExcludeTexts,
-              }),
-            });
+          if (retryResult.questions && retryResult.questions.length > 0) {
+            newQuestion = retryResult.questions[0];
+            validation = validateQuestionNotDuplicate(newQuestion, allExcludeIds, allExcludeTexts);
 
-            if (retryResponse.ok) {
-              const retryResult = await retryResponse.json();
-              if (retryResult.questions && retryResult.questions.length > 0) {
-                newQuestion = retryResult.questions[0];
-                validation = validateQuestionNotDuplicate(newQuestion, allExcludeIds, allExcludeTexts);
+            if (validation.isValid) {
+              console.log(`✅ [NextQuestionHandler] Retry ${retryCount} successful`);
+              console.log(`✅ [NextQuestionHandler] New question ID: ${newQuestion.id}`);
+              break;
+            } else {
+              console.error(`❌ [NextQuestionHandler] Retry ${retryCount} also returned duplicate: ${validation.reason}`);
+              console.error(`❌ [NextQuestionHandler] Retry question ID: ${newQuestion.id}`);
+            }
+          } else {
+            console.error(`❌ [NextQuestionHandler] Retry ${retryCount} returned no questions`);
+            break;
+          }
+        }
 
-                if (validation.isValid) {
-                  console.log(`✅ [NextQuestionHandler] Retry ${retryCount} successful`);
-                  console.log(`✅ [NextQuestionHandler] New question ID: ${newQuestion.id}`);
-                  break;
-                } else {
-                  console.error(`❌ [NextQuestionHandler] Retry ${retryCount} also returned duplicate: ${validation.reason}`);
-                  console.error(`❌ [NextQuestionHandler] Retry question ID: ${newQuestion.id}`);
-                }
-              } else {
-                console.error(`❌ [NextQuestionHandler] Retry ${retryCount} returned no questions`);
-                break;
-              }
+        if (!validation.isValid) {
+          console.error(`❌ [NextQuestionHandler] All retries exhausted with subtag ${selectedSubtag}`);
+          console.error(`❌ [NextQuestionHandler] Attempting fallback with different subtag...`);
+          
+          // Try one more time with a completely different subtag
+          const fallbackSubtags = ALL_SUBTAGS.filter(s => s !== selectedSubtag && s !== lastSubtag);
+          const fallbackSubtag = fallbackSubtags[Math.floor(Math.random() * fallbackSubtags.length)];
+          
+          console.log(`🔄 [NextQuestionHandler] Fallback attempt with subtag: ${fallbackSubtag}`);
+          
+          const fallbackResult = await fetchSingleQuestion(supabase, {
+            gradeLevel,
+            difficulty: currentDifficulty,
+            subtag: fallbackSubtag,
+            excludeQuestionIds: [...allExcludeIds, newQuestion.id],
+            studentGrade,
+          });
+          
+          if (fallbackResult.questions && fallbackResult.questions.length > 0) {
+            const fallbackQuestion = fallbackResult.questions[0];
+            const fallbackValidation = validateQuestionNotDuplicate(fallbackQuestion, allExcludeIds, allExcludeTexts);
+            
+            if (fallbackValidation.isValid) {
+              console.log(`✅ [NextQuestionHandler] Fallback successful with different subtag`);
+              newQuestion = fallbackQuestion;
+              validation = fallbackValidation;
+            } else {
+              console.warn(`⚠️ [NextQuestionHandler] Fallback also returned similar question`);
+              console.warn(`⚠️ [NextQuestionHandler] Allowing question to proceed to avoid blocking test`);
+              newQuestion = fallbackQuestion;
+              validation = { isValid: true, reason: 'Allowed with warning after all retries' };
             }
           }
-
+          
+          // If we still have a duplicate after fallback, allow it with warning
           if (!validation.isValid) {
-            console.error(`❌ [NextQuestionHandler] All retries exhausted with subtag ${selectedSubtag}`);
-            console.error(`❌ [NextQuestionHandler] Attempting fallback with different subtag...`);
-            
-            // Try one more time with a completely different subtag
-            const fallbackSubtags = ALL_SUBTAGS.filter(s => s !== selectedSubtag && s !== lastSubtag);
-            const fallbackSubtag = fallbackSubtags[Math.floor(Math.random() * fallbackSubtags.length)];
-            
-            console.log(`🔄 [NextQuestionHandler] Fallback attempt with subtag: ${fallbackSubtag}`);
-            
-            const fallbackResponse = await fetch(questionGenUrl.toString(), {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                gradeLevel,
-                phase: 'adaptive_core',
-                difficulty: currentDifficulty,
-                subtag: fallbackSubtag,
-                count: 1,
-                excludeQuestionIds: [...allExcludeIds, newQuestion.id],
-                excludeQuestionTexts: [...allExcludeTexts, newQuestion.text],
-              }),
-            });
-            
-            if (fallbackResponse.ok) {
-              const fallbackResult = await fallbackResponse.json();
-              if (fallbackResult.questions && fallbackResult.questions.length > 0) {
-                const fallbackQuestion = fallbackResult.questions[0];
-                const fallbackValidation = validateQuestionNotDuplicate(fallbackQuestion, allExcludeIds, allExcludeTexts);
-                
-                if (fallbackValidation.isValid) {
-                  console.log(`✅ [NextQuestionHandler] Fallback successful with different subtag`);
-                  newQuestion = fallbackQuestion;
-                  validation = fallbackValidation;
-                } else {
-                  console.warn(`⚠️ [NextQuestionHandler] Fallback also returned similar question`);
-                  console.warn(`⚠️ [NextQuestionHandler] Allowing question to proceed to avoid blocking test`);
-                  // CHANGED: Allow the question to proceed with a warning instead of blocking
-                  newQuestion = fallbackQuestion;
-                  validation = { isValid: true, reason: 'Allowed with warning after all retries' };
-                }
-              }
-            }
-            
-            // If we still have a duplicate after fallback, allow it with warning
-            if (!validation.isValid) {
-              console.warn(`⚠️ [NextQuestionHandler] Using best available question after all attempts`);
-              console.warn(`⚠️ [NextQuestionHandler] Question may be similar to previous questions`);
-              // CHANGED: Allow the test to continue instead of returning error
-              validation = { isValid: true, reason: 'Allowed with warning - best available after retries' };
-            }
+            console.warn(`⚠️ [NextQuestionHandler] Using best available question after all attempts`);
+            console.warn(`⚠️ [NextQuestionHandler] Question may be similar to previous questions`);
+            validation = { isValid: true, reason: 'Allowed with warning - best available after retries' };
           }
+        }
 
-          // Update session with the new question
-          const updatedPhaseQuestions = [...currentPhaseQuestions, newQuestion];
+        // Update session with the new question
+        const updatedPhaseQuestions = [...currentPhaseQuestions, newQuestion];
+        await supabase
+          .from('adaptive_aptitude_sessions')
+          .update({ current_phase_questions: updatedPhaseQuestions })
+          .eq('id', sessionId);
+
+        console.log('✅ [NextQuestionHandler] Generated adaptive question:', {
+          questionId: newQuestion.id,
+          difficulty: newQuestion.difficulty,
+          subtag: newQuestion.subtag,
+          sessionDifficulty: currentDifficulty,
+          match: newQuestion.difficulty === currentDifficulty ? '✅' : '❌ MISMATCH!',
+        });
+
+        const result: NextQuestionResult = {
+          question: newQuestion,
+          isTestComplete: false,
+          currentPhase,
+          progress: {
+            questionsAnswered: sessionData.questions_answered,
+            currentQuestionIndex,
+            totalQuestionsInPhase: updatedPhaseQuestions.length,
+          },
+        };
+        return jsonResponse(result);
+      } else {
+        // Last-resort: try without studentGrade and without subtag → widest possible search
+        console.warn('⚠️ [NextQuestionHandler] Primary fetch empty, attempting last-resort question fetch...');
+        const lastResortResult = await fetchSingleQuestion(supabase, {
+          gradeLevel,
+          difficulty: currentDifficulty,
+          excludeQuestionIds: allExcludeIds,
+        });
+
+        if (lastResortResult.questions && lastResortResult.questions.length > 0) {
+          const lastResortQuestion = lastResortResult.questions[0];
+          console.log('✅ [NextQuestionHandler] Last-resort fetch succeeded:', { id: lastResortQuestion.id, difficulty: lastResortQuestion.difficulty });
+
+          const updatedPhaseQuestions = [...currentPhaseQuestions, lastResortQuestion];
           await supabase
             .from('adaptive_aptitude_sessions')
             .update({ current_phase_questions: updatedPhaseQuestions })
             .eq('id', sessionId);
 
-          console.log('✅ [NextQuestionHandler] Generated adaptive question:', {
-            questionId: newQuestion.id,
-            difficulty: newQuestion.difficulty,
-            subtag: newQuestion.subtag,
-            sessionDifficulty: currentDifficulty,
-            match: newQuestion.difficulty === currentDifficulty ? '✅' : '❌ MISMATCH!',
-          });
-
           const result: NextQuestionResult = {
-            question: newQuestion,
+            question: lastResortQuestion,
             isTestComplete: false,
             currentPhase,
             progress: {
@@ -308,26 +319,13 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
             },
           };
           return jsonResponse(result);
-        } else {
-          // No questions returned - this is an error, don't fall through to phase transition
-          console.error('❌ [NextQuestionHandler] Question generation returned empty array');
-          return jsonResponse(
-            {
-              error: 'Failed to generate question',
-              message: 'Question generation returned no questions'
-            },
-            500
-          );
         }
-      } else {
-        // Question generation failed - return error instead of falling through
-        const errorData = await questionGenResponse.json().catch(() => ({}));
-        console.error('❌ [NextQuestionHandler] Question generation failed:', errorData);
+
+        console.error('❌ [NextQuestionHandler] All question fetch attempts exhausted (including last-resort)');
         return jsonResponse(
           {
-            error: 'Failed to generate question',
-            message: errorData.message || 'Question generation API returned error',
-            details: errorData
+            error: 'Failed to fetch question',
+            message: 'Question bank returned no questions for the current difficulty/grade after all fallback attempts'
           },
           500
         );
@@ -413,56 +411,28 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         })
         .eq('id', sessionId);
 
-      // Call question generation API for adaptive core
-      const questionGenUrl = new URL('/api/question-generation/generate/adaptive', request.url);
-      const questionGenResponse = await fetch(questionGenUrl.toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gradeLevel,
-          startingDifficulty: tierResult.startingDifficulty,
-          count: 10,
-          excludeQuestionIds: existingQuestionIds,
-          excludeQuestionTexts: existingQuestionTexts,
-          studentCourse: sessionData.student_course || null,
-        }),
+      // Fetch adaptive core questions directly from question bank
+      const questionResult = await fetchAdaptiveQuestions(supabase, {
+        gradeLevel,
+        startingDifficulty: tierResult.startingDifficulty,
+        count: 10,
+        excludeQuestionIds: existingQuestionIds,
+        studentGrade,
       });
-
-      if (!questionGenResponse.ok) {
-        throw new Error('Failed to generate adaptive core questions');
-      }
-
-      const questionResult = await questionGenResponse.json();
       newQuestions = questionResult.questions;
     } else {
       // Stability confirmation phase
       const band = provisionalBand || currentDifficulty;
 
-      const questionGenUrl = new URL('/api/question-generation/generate/stability', request.url);
-      const questionGenResponse = await fetch(questionGenUrl.toString(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gradeLevel,
-          provisionalBand: band,  // Fixed: was 'difficulty', should be 'provisionalBand'
-          count: 6,  // 6 questions for stability confirmation phase
-          excludeQuestionIds: existingQuestionIds,
-          excludeQuestionTexts: existingQuestionTexts,
-          studentCourse: sessionData.student_course || null,
-        }),
+      // Fetch stability questions directly from question bank
+      const questionResult = await fetchStabilityQuestions(supabase, {
+        gradeLevel,
+        provisionalBand: band,
+        count: 6,
+        excludeQuestionIds: existingQuestionIds,
+        studentGrade,
       });
 
-      if (!questionGenResponse.ok) {
-        const errorText = await questionGenResponse.text();
-        console.error('❌ [NextQuestionHandler] Stability generation failed:', {
-          status: questionGenResponse.status,
-          statusText: questionGenResponse.statusText,
-          error: errorText
-        });
-        throw new Error(`Failed to generate stability confirmation questions: ${questionGenResponse.statusText}`);
-      }
-
-      const questionResult = await questionGenResponse.json();
       console.log('📊 [NextQuestionHandler] Stability generation result:', {
         questionsReceived: questionResult.questions?.length || 0,
         expectedCount: 6,
@@ -475,7 +445,6 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         throw new Error('Stability generation returned no questions');
       }
       
-      // Log warning if fewer than 6 questions but continue with what we have
       if (questionResult.questions.length < 6) {
         console.warn(`⚠️ [NextQuestionHandler] Expected 6 stability questions but got ${questionResult.questions.length}`);
         console.warn(`⚠️ [NextQuestionHandler] Test will complete with ${questionResult.questions.length} stability questions`);

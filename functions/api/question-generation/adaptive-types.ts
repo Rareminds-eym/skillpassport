@@ -40,7 +40,7 @@ export interface QuestionGenerationResult {
   fromCache: boolean;
   generatedCount: number;
   cachedCount: number;
-  generatedBy?: 'ai' | 'fallback';
+  generatedBy?: 'ai' | 'fallback' | 'question_bank';
   modelUsed?: string;
 }
 

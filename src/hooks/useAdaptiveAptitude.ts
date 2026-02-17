@@ -508,6 +508,7 @@ export function useAdaptiveAptitude(
       ));
     } catch (err) {
       handleError(err, 'Failed to resume test');
+      throw err;
     } finally {
       setLoading(false);
     }

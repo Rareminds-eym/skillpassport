@@ -11,6 +11,8 @@ import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabas
 import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
 import { authenticateUser } from '../../shared/auth';
+import { extractNumericGrade } from '../utils/grade';
+import { fetchDiagnosticQuestions } from '../../question-bank/core';
 
 /**
  * Initializes a new adaptive aptitude test session
@@ -53,10 +55,10 @@ export const initializeHandler: PagesFunction = async (context) => {
     // Create Supabase admin client for verification
     const supabase = createSupabaseAdminClient(env);
 
-    // Look up the student record for the authenticated user
+    // Look up the student record for the authenticated user (include grade for exact filtering)
     const { data: studentData, error: studentError } = await supabase
       .from('students')
-      .select('id, user_id')
+      .select('id, user_id, grade')
       .eq('user_id', auth.user.id)
       .single();
 
@@ -69,7 +71,8 @@ export const initializeHandler: PagesFunction = async (context) => {
     }
 
     const studentId = studentData.id;
-    console.log('✅ [InitializeHandler] Found student record:', studentId);
+    const studentGrade = extractNumericGrade(studentData.grade);
+    console.log('✅ [InitializeHandler] Found student record:', studentId, '| grade:', studentData.grade, '| numericGrade:', studentGrade);
 
     // Validate gradeLevel
     const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
@@ -82,25 +85,15 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel });
 
-    // Generate diagnostic screener questions by calling the question generation API
-    console.log('📝 [InitializeHandler] Generating diagnostic screener questions...');
+    // Fetch diagnostic screener questions directly from the question bank
+    console.log('📝 [InitializeHandler] Fetching diagnostic screener questions from question bank...');
     
-    const questionGenUrl = new URL('/api/question-generation/generate/diagnostic', request.url);
-    const questionGenResponse = await fetch(questionGenUrl.toString(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ gradeLevel, studentCourse }),
+    const questionResult = await fetchDiagnosticQuestions(supabase, {
+      gradeLevel,
+      studentGrade,
     });
 
-    if (!questionGenResponse.ok) {
-      console.error('❌ [InitializeHandler] Question generation failed:', questionGenResponse.status);
-      throw new Error(`Failed to generate diagnostic screener questions: ${questionGenResponse.statusText}`);
-    }
-
-    const questionResult = await questionGenResponse.json();
-    console.log('📋 [InitializeHandler] Question generation result:', {
+    console.log('📋 [InitializeHandler] Question bank result:', {
       questionsCount: questionResult.questions?.length || 0,
       fromCache: questionResult.fromCache,
       generatedCount: questionResult.generatedCount,
@@ -108,8 +101,8 @@ export const initializeHandler: PagesFunction = async (context) => {
     });
 
     if (!questionResult.questions || questionResult.questions.length === 0) {
-      console.error('❌ [InitializeHandler] No questions generated!');
-      throw new Error('Failed to generate diagnostic screener questions');
+      console.error('❌ [InitializeHandler] No questions returned from question bank!');
+      throw new Error('Failed to fetch diagnostic screener questions from question bank');
     }
 
     // Create session in database (reuse supabase client from earlier)
