@@ -23,6 +23,7 @@ import {
   NextQuestionResult,
   ResumeTestResult,
 } from '../services/adaptiveAptitudeService';
+import * as AdaptiveAptitudeApiService from '../services/adaptiveAptitudeApiService';
 
 // =============================================================================
 // TYPES

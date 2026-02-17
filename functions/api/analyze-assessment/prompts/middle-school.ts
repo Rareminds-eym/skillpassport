@@ -198,23 +198,6 @@ function processAdaptiveResults(results: AdaptiveAptitudeResults): {
     .slice(0, 2)
     .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
 
-  // Career mapping based on cognitive strengths
-  const careerMapping: Record<string, string[]> = {
-    'numerical reasoning': ['Data Scientist', 'Financial Analyst', 'Actuary', 'Quantitative Researcher', 'ISRO Scientist', 'Algorithmic Trader'],
-    'logical reasoning': ['Software Engineer', 'AI/ML Engineer', 'Lawyer', 'Management Consultant', 'IAS Officer', 'Game Developer'],
-    'verbal reasoning': ['Content Creator', 'Journalist', 'Lawyer', 'Diplomat (IFS)', 'Professor', 'Podcast Host', 'Screenwriter'],
-    'spatial reasoning': ['Architect', 'Game Designer', 'VR/AR Developer', 'Surgeon', 'Aerospace Engineer', '3D Artist', 'Film Director'],
-    'pattern recognition': ['Data Scientist', 'Cybersecurity Expert', 'Researcher', 'Cryptographer', 'Music Producer', 'AI Artist'],
-    'data interpretation': ['Business Analyst', 'Market Researcher', 'Economist', 'Policy Analyst', 'Statistician', 'Sports Analyst']
-  };
-
-  // Get recommended careers based on top strengths
-  const recommendedCareers = new Set<string>();
-  sortedSubtags.slice(0, 2).forEach(s => {
-    const careers = careerMapping[s.name.toLowerCase()] || [];
-    careers.forEach(c => recommendedCareers.add(c));
-  });
-
   const section = `
 ## ADAPTIVE APTITUDE TEST RESULTS (Pre-Analyzed):
 - **Aptitude Level**: ${level}/5 (${levelLabels[level] || 'Unknown'})
@@ -228,19 +211,13 @@ ${topStrengths.length > 0 ? topStrengths.map(s => `- ${s}`).join('\n') : '- No s
 **AREAS FOR GROWTH**:
 ${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No significant weak areas'}
 
-**RECOMMENDED CAREER DIRECTIONS** (based on cognitive profile):
-${Array.from(recommendedCareers).slice(0, 6).map(c => `- ${c}`).join('\n')}
-
-${isHighAptitude ? `
-**⭐ HIGH-APTITUDE STUDENT DETECTED** (Level ${level}, ${Math.round(accuracy)}% accuracy)
-MUST include these prestigious career paths:
-- Government: IAS, IPS, IFS, IRS Officers (UPSC pathway)
-- Defence: Army/Navy/Air Force Officer, DRDO/ISRO Scientist
-- Medical: Surgeon, Specialist Doctor (NEET pathway)
-- Engineering Elite: IIT Professor, Research Scientist (JEE Advanced pathway)
-- Legal: Supreme Court Advocate, Judge (CLAT pathway)
-- Finance: Investment Banker, CA, CFA
-` : ''}`;
+**INSTRUCTIONS FOR CAREER RECOMMENDATIONS:**
+- Analyze the student's cognitive strengths above
+- Match careers that require these specific cognitive abilities
+- For high aptitude students (Level 4-5), consider prestigious career paths that demand strong cognitive skills
+- For developing students (Level 1-2), focus on careers with lower cognitive barriers and growth opportunities
+- Always personalize based on BOTH cognitive profile AND RIASEC interests (50/50 weight)
+`;
 
   return { section, isHighAptitude, topStrengths, weakAreas };
 }
@@ -342,40 +319,37 @@ export function buildMiddleSchoolPrompt(assessmentData: AssessmentData, answersH
 
 **Your RIASEC Profile:** ${hollandCode} (${first}: ${riasecPercentages[first]}%, ${second}: ${riasecPercentages[second]}%, ${third}: ${riasecPercentages[third]}%)
 
-**Suggested Cluster Titles (PERSONALIZE THESE):**
+**CRITICAL INSTRUCTIONS FOR CLUSTER GENERATION:**
 
-**Cluster 1 (Highest Match - ${riasecPercentages[first]}%):** ${suggestedCluster}
-- Combines your TOP TWO interests: ${first} + ${second}
-- This should be the most prominent career direction
-- Example personalization: Make it specific to modern careers (e.g., "AI & Creative Technology" instead of just "Technology")
+1. **Analyze the student's unique combination:**
+   - Top RIASEC type: ${first} (${riasecPercentages[first]}%)
+   - Second RIASEC type: ${second} (${riasecPercentages[second]}%)
+   - Third RIASEC type: ${third} (${riasecPercentages[third]}%)
+   - Cognitive strengths from adaptive aptitude (see above)
 
-**Cluster 2 (Medium Match - ${riasecPercentages[second]}%):** ${suggestedCluster2}
-- Emphasizes your SECOND and THIRD interests: ${second} + ${third}
-- This offers an alternative path that still aligns with your profile
-- Example personalization: Show how these interests complement each other
+2. **Create 3 personalized cluster titles:**
+   - **Cluster 1**: Combine ${first} + ${second} interests with strongest cognitive abilities
+   - **Cluster 2**: Combine ${second} + ${third} interests with secondary cognitive abilities
+   - **Cluster 3**: Explore ${first} + ${third} OR pure ${third} careers with available cognitive skills
 
-**Cluster 3 (Explore - ${riasecPercentages[third]}%):** ${suggestedCluster3}
-- Explores the ${first} + ${third} combination OR pure ${third} careers
-- This is for exploration and discovering new possibilities
-- Can be more adventurous or emerging career fields
+3. **Generate careers dynamically:**
+   - Match careers to BOTH interests AND cognitive abilities
+   - Consider aptitude level when suggesting career complexity
+   - Use modern, exciting language for middle schoolers
+   - NO predefined lists - create based on THIS student's profile
 
-**IMPORTANT - CREATE PERSONALIZED CLUSTER TITLES:**
-- Don't just copy these suggestions - make them SPECIFIC to this student
-- Consider their adaptive aptitude strengths when naming clusters
-- Use modern, exciting language that middle schoolers relate to
-- Combine interests creatively to show unique career paths
+4. **Examples of dynamic thinking (DO NOT COPY THESE):**
+   - R+I RIASEC + High Spatial + Medium Logical → "Robotics & Engineering Design"
+   - A+S RIASEC + High Verbal + Low Numerical → "Creative Storytelling & Communication"
+   - E+I RIASEC + High Numerical + High Logical → "Business Analytics & Strategy"
+   - S+A RIASEC + Medium Verbal + High Pattern Recognition → "Art Therapy & Creative Wellness"
 
-**Examples of GOOD personalized titles:**
-- "Creative Technology & Game Design" (for R+A with high scores in both)
-- "Healthcare Science & Research" (for I+S with strong investigative and social interests)
-- "Business Innovation & Entrepreneurship" (for E+I with leadership and analytical strengths)
-- "Social Media & Digital Marketing" (for A+E with creative and enterprising talents)
-- "Environmental Engineering & Sustainability" (for R+I with practical and scientific interests)
+5. **Match score calculation:**
+   - Calculate based on RIASEC alignment (50%) + Aptitude alignment (50%)
+   - Higher aptitude = higher match scores for cognitively demanding careers
+   - Lower aptitude = focus on careers with lower cognitive barriers
 
-**Examples of BAD generic titles:**
-- "Engineering & Technology" (too generic, doesn't show personality)
-- "Science & Research" (boring, doesn't reflect the student's unique combination)
-- "Art & Design" (misses the opportunity to show how interests combine)
+**YOU MUST CREATE UNIQUE RECOMMENDATIONS - NO TEMPLATES OR PREDEFINED LISTS**
 `;
   };
 
@@ -414,18 +388,43 @@ ${generateClusterSuggestions()}`}
 
 **⚠️ CRITICAL RULES:**
 
-**MATCH SCORE CALCULATION (MANDATORY - DO NOT USE FIXED VALUES):**
-Calculate matchScore dynamically using this formula:
-- **RIASEC alignment: 50% weight** - How well top 3 RIASEC codes match career requirements
-- **Adaptive Aptitude: 50% weight** - Cognitive strengths (numerical, logical, verbal, spatial, pattern recognition) alignment with career demands
+**MATCH SCORE CALCULATION (MANDATORY - MUST BE UNIQUE FOR EACH STUDENT):**
 
-**Example calculations:**
-- Student with high I+R RIASEC + high logical/numerical aptitude → Science/Research = 90% (45% RIASEC + 45% aptitude)
-- Student with high I+R RIASEC + medium aptitude → Science/Research = 73% (45% RIASEC + 28% aptitude)
-- Student with high A RIASEC + high verbal/creative aptitude → Creative Arts = 88% (42% RIASEC + 46% aptitude)
-- Student with high A RIASEC + low verbal aptitude → Creative Arts = 68% (42% RIASEC + 26% aptitude)
+**STEP 1: Calculate RIASEC Alignment (50% weight)**
+- Cluster 1 (uses top 2 RIASEC types): (Type1% + Type2%) / 2 = RIASEC score
+- Cluster 2 (uses 2nd + 3rd types): (Type2% + Type3%) / 2 = RIASEC score  
+- Cluster 3 (uses 1st + 3rd OR pure 3rd): (Type1% + Type3%) / 2 OR Type3% = RIASEC score
 
-**YOU MUST CALCULATE UNIQUE SCORES FOR EACH STUDENT - DO NOT USE 85, 75, 65 FOR EVERY ASSESSMENT**
+**STEP 2: Calculate Aptitude Alignment (50% weight)**
+- High aptitude careers (requires 60%+ accuracy): Full aptitude score
+- Medium aptitude careers (requires 40-60%): 70% of aptitude score
+- Low aptitude careers (requires <40%): 50% of aptitude score
+
+**STEP 3: Final Match Score = (RIASEC score × 0.5) + (Aptitude score × 0.5)**
+
+**REAL CALCULATION EXAMPLES (DO NOT COPY - CALCULATE FOR THIS STUDENT):**
+
+Example 1: Student with R=85%, I=70%, A=45%, Aptitude=75%
+- Cluster 1 (R+I, high aptitude career): ((85+70)/2 × 0.5) + (75 × 0.5) = 38.75 + 37.5 = 76%
+- Cluster 2 (I+A, medium aptitude): ((70+45)/2 × 0.5) + (75×0.7 × 0.5) = 28.75 + 26.25 = 55%
+- Cluster 3 (R+A, low aptitude): ((85+45)/2 × 0.5) + (75×0.5 × 0.5) = 32.5 + 18.75 = 51%
+
+Example 2: Student with S=90%, E=80%, A=60%, Aptitude=45%
+- Cluster 1 (S+E, medium aptitude): ((90+80)/2 × 0.5) + (45×0.7 × 0.5) = 42.5 + 15.75 = 58%
+- Cluster 2 (E+A, medium aptitude): ((80+60)/2 × 0.5) + (45×0.7 × 0.5) = 35 + 15.75 = 51%
+- Cluster 3 (S+A, low aptitude): ((90+60)/2 × 0.5) + (45×0.5 × 0.5) = 37.5 + 11.25 = 49%
+
+**CRITICAL REQUIREMENTS:**
+1. **NEVER use 85, 75, 65 for every student** - these are just examples
+2. **CALCULATE using the formula above** with THIS student's actual RIASEC percentages and aptitude level
+3. **Match scores MUST be different** for each student based on their unique profile
+4. **Round to nearest whole number** (e.g., 76.3% → 76%)
+5. **Scores typically range 45-90%** depending on alignment strength
+
+**VERIFICATION CHECK:**
+- If all 3 clusters have scores 85, 75, 65 → YOU FAILED - recalculate using the formula
+- If scores don't reflect student's actual RIASEC + aptitude → YOU FAILED - recalculate
+- Scores must be mathematically derived from their data, not guessed
 
 ${hasValidRiasec ? `
 - You MUST create PERSONALIZED cluster titles based on BOTH the student's RIASEC combination AND cognitive aptitude strengths

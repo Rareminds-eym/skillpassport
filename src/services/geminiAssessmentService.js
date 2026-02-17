@@ -1636,7 +1636,7 @@ export const analyzeAssessmentWithOpenRouter = async (
     // Call the Cloudflare Worker (handles prompt building and AI call)
     let parsedResults = await callOpenRouterAssessment(assessmentData);
 
-    // Validate stream recommendation for After 10th students
+    // Validate stream recommendation for After 10th students (no fallback, just validation)
     if (gradeLevel === 'after10') {
       const { validateStreamRecommendation } = await import('./assessmentService');
       parsedResults = validateStreamRecommendation(parsedResults);
