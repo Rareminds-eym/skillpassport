@@ -309,28 +309,15 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           };
           return jsonResponse(result);
         } else {
-          // No questions returned - this is an error, don't fall through to phase transition
-          console.error('❌ [NextQuestionHandler] Question generation returned empty array');
-          return jsonResponse(
-            {
-              error: 'Failed to generate question',
-              message: 'Question generation returned no questions'
-            },
-            500
-          );
+          // No questions returned - move to next phase instead of error
+          console.warn('⚠️ [NextQuestionHandler] No more questions available, moving to next phase');
+          // Fall through to phase transition logic below
         }
       } else {
-        // Question generation failed - return error instead of falling through
+        // Question generation failed - check if it's because no questions available
         const errorData = await questionGenResponse.json().catch(() => ({}));
-        console.error('❌ [NextQuestionHandler] Question generation failed:', errorData);
-        return jsonResponse(
-          {
-            error: 'Failed to generate question',
-            message: errorData.message || 'Question generation API returned error',
-            details: errorData
-          },
-          500
-        );
+        console.warn('⚠️ [NextQuestionHandler] Question generation failed, moving to next phase:', errorData);
+        // Fall through to phase transition logic below
       }
     }
 

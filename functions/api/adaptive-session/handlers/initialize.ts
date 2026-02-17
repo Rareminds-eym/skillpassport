@@ -71,16 +71,28 @@ export const initializeHandler: PagesFunction = async (context) => {
     const studentId = studentData.id;
     console.log('✅ [InitializeHandler] Found student record:', studentId);
 
-    // Validate gradeLevel
-    const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
-    if (!validGradeLevels.includes(gradeLevel)) {
+    // Validate and map gradeLevel for question generation
+    const gradeLevelForQuestions: Record<string, GradeLevel> = {
+      'middle_school': 'grade6-8',
+      'high_school': 'grade9-10',
+      'higher_secondary': 'after10',
+      'grade6-8': 'grade6-8',
+      'grade9-10': 'grade9-10',
+      'after10': 'after10',
+      'after12': 'after12',
+      'college': 'college',
+      'postgraduate': 'postgraduate'
+    };
+
+    const mappedGradeLevelForQuestions = gradeLevelForQuestions[gradeLevel];
+    if (!mappedGradeLevelForQuestions) {
       return jsonResponse(
-        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary' },
+        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, grade6-8, grade9-10, after10, after12, college, postgraduate' },
         400
       );
     }
 
-    console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel });
+    console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel, mappedForQuestions: mappedGradeLevelForQuestions });
 
     // Generate diagnostic screener questions by calling the question generation API
     console.log('📝 [InitializeHandler] Generating diagnostic screener questions...');
@@ -91,7 +103,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ gradeLevel, studentCourse }),
+      body: JSON.stringify({ gradeLevel: mappedGradeLevelForQuestions, studentCourse }),
     });
 
     if (!questionGenResponse.ok) {
@@ -118,7 +130,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       .from('adaptive_aptitude_sessions')
       .insert({
         student_id: studentId,
-        grade_level: gradeLevel,
+        grade_level: gradeLevel, // Use original gradeLevel for database
         student_course: studentCourse || null,
         current_phase: 'diagnostic_screener',
         current_difficulty: 3, // Default starting difficulty

@@ -8,6 +8,7 @@ import type { AssessmentData, AnalysisResult } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
+import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { getSystemMessage } from '../prompts';
 import { buildHighSchoolPrompt } from '../prompts/high-school';
 import { buildMiddleSchoolPrompt } from '../prompts/middle-school';
@@ -805,6 +806,62 @@ export async function handleAnalyzeAssessment(
     });
   }
   console.log('[ASSESSMENT-API] Has Adaptive Results:', !!assessmentData.adaptiveAptitudeResults);
+
+  // ============================================================================
+  // FETCH STUDENT PROFILE DATA
+  // Fetch skills, projects, certificates, internships, education from database
+  // ============================================================================
+  console.log('[ASSESSMENT-API] === FETCHING STUDENT PROFILE DATA ===');
+  try {
+    const supabase = createSupabaseAdminClient(env);
+    
+    // Fetch all profile data in parallel
+    const [skillsData, projectsData, certificatesData, internshipsData, educationData] = await Promise.all([
+      supabase.from('student_skills').select('*').eq('student_id', studentId).eq('is_deleted', false),
+      supabase.from('student_projects').select('*').eq('student_id', studentId).eq('is_deleted', false),
+      supabase.from('student_certificates').select('*').eq('student_id', studentId).eq('is_deleted', false),
+      supabase.from('student_experience').select('*').eq('student_id', studentId).eq('is_deleted', false).eq('experience_type', 'internship'),
+      supabase.from('student_education').select('*').eq('student_id', studentId).eq('is_deleted', false)
+    ]);
+
+    const profileData: any = {};
+    
+    if (skillsData.data && skillsData.data.length > 0) {
+      profileData.skills = skillsData.data;
+      console.log('[ASSESSMENT-API] ✅ Found', skillsData.data.length, 'skills');
+    }
+    
+    if (projectsData.data && projectsData.data.length > 0) {
+      profileData.projects = projectsData.data;
+      console.log('[ASSESSMENT-API] ✅ Found', projectsData.data.length, 'projects');
+    }
+    
+    if (certificatesData.data && certificatesData.data.length > 0) {
+      profileData.certificates = certificatesData.data;
+      console.log('[ASSESSMENT-API] ✅ Found', certificatesData.data.length, 'certificates');
+    }
+    
+    if (internshipsData.data && internshipsData.data.length > 0) {
+      profileData.internships = internshipsData.data;
+      console.log('[ASSESSMENT-API] ✅ Found', internshipsData.data.length, 'internships');
+    }
+    
+    if (educationData.data && educationData.data.length > 0) {
+      profileData.education = educationData.data;
+      console.log('[ASSESSMENT-API] ✅ Found', educationData.data.length, 'education records');
+    }
+
+    // Add profile data to assessment data
+    if (Object.keys(profileData).length > 0) {
+      assessmentData.studentProfile = profileData;
+      console.log('[ASSESSMENT-API] ✅ Student profile data added to assessment');
+    } else {
+      console.log('[ASSESSMENT-API] ℹ️ No profile data found for student');
+    }
+  } catch (profileError) {
+    console.error('[ASSESSMENT-API] ⚠️ Failed to fetch profile data:', profileError);
+    // Continue without profile data - it's optional
+  }
 
   // Check environment variables
   console.log('[ASSESSMENT-API] === ENVIRONMENT CHECK ===');

@@ -2,7 +2,7 @@
  * Test OpenRouter chat API to confirm the key is invalid
  */
 
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || 'your-key-here';
 
 async function testOpenRouterChat() {
   console.log('=== Testing OpenRouter Chat API ===\n');

@@ -651,7 +651,11 @@ const AssessmentTestPage: React.FC = () => {
       }
       
       // Adaptive session exists, check if it was successfully resumed and questions are loaded
-      if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
+      if (adaptiveAptitude.isTestComplete) {
+        console.log('✅ [ADAPTIVE RESUME] Test is complete, showing results');
+        // Test is complete, show results
+        flow.setCurrentScreen('results');
+      } else if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
         console.log('✅ [ADAPTIVE RESUME] Questions loaded, starting section immediately');
         // Adaptive session was already resumed in handleResumeAssessment
         // Questions are loaded, so we can start immediately
@@ -666,10 +670,13 @@ const AssessmentTestPage: React.FC = () => {
         flow.setShowSectionIntro(false);
         flow.setCurrentScreen('assessment'); // Show assessment screen with loading state
       } else {
-        console.error('❌ [ADAPTIVE RESUME] No questions loaded and not loading - session resume may have failed');
-        // Session resume failed or no questions available
-        flow.setError('Failed to resume adaptive test. Please refresh and try again.');
-        flow.setCurrentScreen('section_intro');
+        console.warn('⚠️ [ADAPTIVE RESUME] No current question and not loading - phase may need transition');
+        // No current question but not loading - this means resume completed but no question available
+        // This can happen when transitioning between phases
+        // Show loading state and the resume hook will fetch the next question
+        flow.setCurrentQuestionIndex(0);
+        flow.setShowSectionIntro(false);
+        flow.setCurrentScreen('assessment'); // Show loading state
       }
 
     } else {
