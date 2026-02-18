@@ -1667,6 +1667,35 @@ const StudentDashboard = () => {
                     <div className="flex gap-0.5 mb-3">
                       {renderStars(skill.level)}
                     </div>
+
+                    {/* Edit Button + Eye Icon */}
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveModal("skills")}
+                        className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      
+                      {/* Eye icon - only show for verified/approved skills */}
+                      {(skill.approval_status === 'verified' || skill.approval_status === 'approved') && !skill._hasPendingEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleTechnicalSkillEnabled(skill.id)}
+                          className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          title={skill.enabled !== false ? "Hide from profile" : "Show on profile"}
+                        >
+                          {skill.enabled !== false ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
             </div>
@@ -2392,6 +2421,35 @@ const StudentDashboard = () => {
                     {/* Star Rating */}
                     <div className="flex gap-0.5 mb-3">
                       {renderStars(skill.level)}
+                    </div>
+
+                    {/* Edit Button + Eye Icon */}
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveModal("softSkills")}
+                        className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      
+                      {/* Eye icon - only show for verified/approved skills */}
+                      {(skill.approval_status === 'verified' || skill.approval_status === 'approved') && !skill._hasPendingEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleSoftSkillEnabled(skill.id)}
+                          className="p-2 h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                          title={skill.enabled !== false ? "Hide from profile" : "Show on profile"}
+                        >
+                          {skill.enabled !== false ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

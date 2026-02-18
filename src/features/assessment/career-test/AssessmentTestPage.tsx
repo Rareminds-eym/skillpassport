@@ -89,9 +89,6 @@ import {
 } from '../../assessment/data/questions';
 import { supabase } from '@/lib/supabaseClient';
 
-// Tour context to detect when tour is running
-import { useTour } from '../../../components/Tours/TourProvider';
-
 /**
  * Get icon image path for a section based on section ID
  */
@@ -262,9 +259,6 @@ const buildSectionsWithQuestions = (
 const AssessmentTestPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  
-  // Tour hook - check if tour is running to pause timers
-  const { isTourRunning } = useTour();
 
   // Environment flags
   const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
@@ -651,11 +645,7 @@ const AssessmentTestPage: React.FC = () => {
       }
       
       // Adaptive session exists, check if it was successfully resumed and questions are loaded
-      if (adaptiveAptitude.isTestComplete) {
-        console.log('✅ [ADAPTIVE RESUME] Test is complete, showing results');
-        // Test is complete, show results
-        flow.setCurrentScreen('results');
-      } else if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
+      if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
         console.log('✅ [ADAPTIVE RESUME] Questions loaded, starting section immediately');
         // Adaptive session was already resumed in handleResumeAssessment
         // Questions are loaded, so we can start immediately
@@ -679,13 +669,10 @@ const AssessmentTestPage: React.FC = () => {
         flow.setShowSectionIntro(false);
         flow.setCurrentScreen('assessment');
       } else {
-        console.warn('⚠️ [ADAPTIVE RESUME] No current question and not loading - phase may need transition');
-        // No current question but not loading - this means resume completed but no question available
-        // This can happen when transitioning between phases
-        // Show loading state and the resume hook will fetch the next question
+        console.warn('⚠️ [ADAPTIVE RESUME] No questions loaded and no session ID - showing section intro');
         flow.setCurrentQuestionIndex(0);
-        flow.setShowSectionIntro(false);
-        flow.setCurrentScreen('assessment'); // Show loading state
+        flow.setShowSectionIntro(true);
+        flow.setCurrentScreen('section_intro');
       }
 
     } else {
@@ -740,8 +727,7 @@ const AssessmentTestPage: React.FC = () => {
 
   // Timer effects
   useEffect(() => {
-    // Pause timer when tour is running
-    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting || isTourRunning) {
+    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting) {
       return;
     }
 
@@ -786,7 +772,7 @@ const AssessmentTestPage: React.FC = () => {
     if (currentSection.isTimed && flow.timeRemaining === 0) {
       handleNextQuestion();
     }
-  }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections, isTourRunning]);
+  }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections]);
 
   // Aptitude and Knowledge per-question timer
   useEffect(() => {
@@ -795,8 +781,7 @@ const AssessmentTestPage: React.FC = () => {
     const hasIndividualTimer = (currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge;
 
     if (!hasIndividualTimer) return;
-    // Pause timer when tour is running
-    if (flow.showSectionIntro || flow.showSectionComplete || isTourRunning) return;
+    if (flow.showSectionIntro || flow.showSectionComplete) return;
 
     if (flow.aptitudeQuestionTimer > 0) {
       const interval = setInterval(() => {
@@ -807,14 +792,13 @@ const AssessmentTestPage: React.FC = () => {
       // Auto-advance when individual question time runs out
       handleNextQuestion();
     }
-  }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections, isTourRunning]);
+  }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
 
   // Adaptive aptitude per-question timer (90 seconds)
   useEffect(() => {
     const currentSection = sections[flow.currentSectionIndex];
     if (!currentSection?.isAdaptive) return;
-    // Pause timer when tour is running
-    if (flow.showSectionIntro || flow.showSectionComplete || isTourRunning) return;
+    if (flow.showSectionIntro || flow.showSectionComplete) return;
     if (adaptiveAptitude.loading || adaptiveAptitude.submitting) return;
     if (!adaptiveAptitude.currentQuestion) return;
 

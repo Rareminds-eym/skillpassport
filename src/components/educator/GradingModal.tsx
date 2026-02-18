@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { getAssignmentStudents, gradeAssignment } from '../../services/educator/assignmentsService';
 import { supabase } from '../../lib/supabaseClient';
-import { getPagesApiUrl } from '../../utils/pagesUrl';
 import {
     ChatBubbleBottomCenterTextIcon,
     XMarkIcon,
@@ -24,6 +23,7 @@ const extractFileKey = (fileUrl: string): string | null => {
 
 // Helper function to generate accessible file URL
 const getAccessibleFileUrl = (fileUrl: string) => {
+  const { getPagesApiUrl } = require('../../utils/pagesUrl');
   const storageApiUrl = getPagesApiUrl('storage');
   
   // Extract file key and use key parameter for better reliability
@@ -38,9 +38,22 @@ const getAccessibleFileUrl = (fileUrl: string) => {
 };
 
 // Helper function to open file with error handling
-const openFile = (fileUrl: string, fileName: string = 'file') => {
-  const accessibleUrl = getAccessibleFileUrl(fileUrl);
-  window.open(accessibleUrl, '_blank');
+const openFile = async (fileUrl: string, fileName: string = 'file') => {
+  try {
+    const accessibleUrl = getAccessibleFileUrl(fileUrl);
+    
+    // Test if the URL is accessible
+    const testResponse = await fetch(accessibleUrl, { method: 'HEAD' });
+    
+    if (testResponse.ok) {
+      window.open(accessibleUrl, '_blank');
+    } else {
+      window.open(fileUrl, '_blank');
+    }
+  } catch (error) {
+    // Fallback to direct URL
+    window.open(fileUrl, '_blank');
+  }
 };
 
 interface Student {

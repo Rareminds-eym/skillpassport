@@ -71,8 +71,14 @@ export const SubscriptionProvider = ({ children }) => {
   // Check if the subscription query can run
   const isQueryEnabled = !!user && !!session?.access_token;
 
-  // Note: We don't invalidate on every route change to avoid infinite loops
-  // The staleTime configuration handles cache freshness appropriately
+  // Force refresh subscription check on route changes to protected routes
+  // This ensures revoked licenses are detected immediately when navigating
+  useEffect(() => {
+    if (isQueryEnabled && location.pathname.match(/^\/(student|educator|recruitment|school-admin|college-admin|university-admin)\//)) {
+      console.log('[SubscriptionContext] Route change detected, invalidating subscription cache');
+      queryClient.invalidateQueries({ queryKey: [SUBSCRIPTION_ACCESS_KEY, user?.id] });
+    }
+  }, [location.pathname, isQueryEnabled, queryClient, user?.id]);
 
   // Fetch subscription access from Cloudflare Worker
   const {
@@ -104,12 +110,12 @@ export const SubscriptionProvider = ({ children }) => {
       return result;
     },
     enabled: isQueryEnabled,
-    staleTime: 5 * 60 * 1000, // 5 minuutes - data is fresh for 5 minutes
+    staleTime: STALE_TIME,
     gcTime: CACHE_TIME,
-    refetchOnWindowFocus: false, // Don't refetch on window focus to reduce API calls
-    refetchOnMount: false, // Don't always refetch on mount - use cached data
-    refetchInterval: false, // Disable automatic polling - only refetch manually when needed
-    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true, // Re-check subscription when user returns to tab (detects revoked licenses)
+    refetchOnMount: 'always', // Always check on mount to detect license changes
+    refetchInterval: 60 * 1000, // Check every 60 seconds for license changes
+    refetchIntervalInBackground: false, // Don't refetch when tab is not visible
     retry: 2,
     retryDelay: 1000,
   });

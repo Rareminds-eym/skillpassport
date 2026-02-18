@@ -670,7 +670,6 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
           assignment_id,
           title,
           description,
-          instructions,
           course_name,
           course_code,
           due_date,

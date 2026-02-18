@@ -406,23 +406,3 @@ export class AdaptiveAptitudeApiService {
 }
 
 export default AdaptiveAptitudeApiService;
-
-/**
- * Links an adaptive aptitude session to a personal assessment attempt
- * 
- * @param attemptId - The personal assessment attempt ID
- * @param sessionId - The adaptive aptitude session ID
- */
-export async function linkSessionToAttempt(
-  attemptId: string,
-  sessionId: string
-): Promise<void> {
-  console.log('🔗 [AdaptiveAptitudeApiService] linkSessionToAttempt:', { attemptId, sessionId });
-  
-  await apiRequest(`/link-to-attempt`, {
-    method: 'POST',
-    body: JSON.stringify({ attemptId, sessionId }),
-  });
-  
-  console.log('✅ [AdaptiveAptitudeApiService] Session linked to attempt successfully');
-}

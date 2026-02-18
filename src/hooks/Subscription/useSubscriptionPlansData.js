@@ -2,7 +2,7 @@
  * Hook to fetch subscription plans from Cloudflare Workers backend
  * Uses payments-api worker endpoints instead of direct Supabase calls
  */
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 
 // Payments API URL - uses environment variable or default
 const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
@@ -33,15 +33,7 @@ export function useSubscriptionPlansData(options = {}) {
   const [showingAllFeatures, setShowingAllFeatures] = useState(false);
   const hasFetchedAll = useRef(false); // Track if we've already fetched all features
 
-  // Memoize parameters to prevent unnecessary refetches
-  const fetchParams = useMemo(() => ({
-    businessType,
-    entityType,
-    roleType,
-    featuresLimit
-  }), [businessType, entityType, roleType, featuresLimit]);
-
-  const fetchPlans = useCallback(async (limit = fetchParams.featuresLimit, isLoadingMore = false) => {
+  const fetchPlans = useCallback(async (limit = featuresLimit, isLoadingMore = false) => {
     // Use appropriate loading state
     if (isLoadingMore) {
       setLoadingMore(true);
@@ -52,9 +44,9 @@ export function useSubscriptionPlansData(options = {}) {
 
     try {
       const params = new URLSearchParams({
-        businessType: fetchParams.businessType,
-        entityType: fetchParams.entityType,
-        roleType: fetchParams.roleType
+        businessType,
+        entityType,
+        roleType
       });
       
       // Add featuresLimit if specified
@@ -106,10 +98,7 @@ export function useSubscriptionPlansData(options = {}) {
         setLoading(false);
       }
     }
-  }, [fetchParams]);
-
-  // Track if initial fetch has been done
-  const hasFetchedInitial = useRef(false);
+  }, [businessType, entityType, roleType, featuresLimit]);
 
   // Fetch all features (no limit) - call this when user clicks "Show more"
   const fetchAllFeatures = useCallback(async () => {
@@ -132,8 +121,6 @@ export function useSubscriptionPlansData(options = {}) {
 
   useEffect(() => {
     fetchPlans();
-    // Reset the hasFetchedAll flag when parameters change
-    hasFetchedAll.current = false;
   }, [fetchPlans]);
 
   return {

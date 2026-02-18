@@ -500,11 +500,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       let studentRecordId: string | null = null;
       if (userId) {
         studentRecordId = await getStudentRecordId(userId);
-        // If no student record exists, use the auth user_id directly
-        // This allows non-student users (e.g., general users) to take assessments
         if (!studentRecordId) {
-          console.warn('⚠️ No student record found, using auth user_id directly');
-          studentRecordId = userId;
+          throw new Error('Student record not found. Please ensure your account is properly set up.');
         }
       }
 

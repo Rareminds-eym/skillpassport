@@ -76,20 +76,20 @@ const ProductWalkthrough = () => {
         </div>
 
         {/* Video Container */}
-        <div className="relative max-w-5xl mx-auto mb-0">
+        <div className={`relative max-w-5xl mx-auto mb-0 transition-all duration-1000 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           {/* Decorative ring */}
           <div className="absolute -inset-4 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-400 rounded-3xl blur-2xl opacity-20 -z-10" />
           
-          <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-gray-900 ring-1 ring-gray-900/5">
+          <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-black ring-1 ring-gray-900/5">
             {/* 16:9 Aspect Ratio Container */}
-            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+            <div className="relative pt-[56.25%]">
               <iframe
-                className="absolute top-0 left-0 w-full h-full"
-                src="https://www.youtube.com/embed/E5WHb_lKgwg?autoplay=1&mute=1&loop=1&playlist=E5WHb_lKgwg&controls=1&rel=0&modestbranding=1&vq=hd1080"
-                title="YouTube video player"
+                className="absolute inset-0 w-full h-full"
+                src={`https://www.youtube.com/embed/E5WHb_lKgwg?${shouldAutoplay ? 'autoplay=1&mute=1' : ''}`}
+                title="From Card to Career: Skill Passport Walkthrough"
+                frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
-                style={{ border: 0 }}
               />
             </div>
           </div>

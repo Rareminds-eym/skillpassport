@@ -8,7 +8,6 @@ import type { AssessmentData, AnalysisResult } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
 import { getSystemMessage } from '../prompts';
 import { buildHighSchoolPrompt } from '../prompts/high-school';
 import { buildMiddleSchoolPrompt } from '../prompts/middle-school';
@@ -194,25 +193,6 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
             console.warn('[VALIDATION] ⚠️', warning);
           }
         });
-        
-        // Validate matchScore is a number, not a string placeholder
-        if (cluster.matchScore !== undefined) {
-          if (typeof cluster.matchScore === 'string') {
-            const error = `Cluster ${clusterNum} matchScore must be a number, got string: "${cluster.matchScore}"`;
-            errors.push(error);
-            console.error('[VALIDATION] ❌', error);
-          } else if (typeof cluster.matchScore !== 'number') {
-            const error = `Cluster ${clusterNum} matchScore must be a number, got ${typeof cluster.matchScore}`;
-            errors.push(error);
-            console.error('[VALIDATION] ❌', error);
-          } else if (cluster.matchScore === 85 || cluster.matchScore === 75 || cluster.matchScore === 65) {
-            const warning = `⚠️ SUSPICIOUS: Cluster ${clusterNum} has hardcoded matchScore (${cluster.matchScore}) - should be calculated dynamically`;
-            warnings.push(warning);
-            console.warn('[VALIDATION]', warning);
-          } else {
-            console.log(`[VALIDATION] ✅ Cluster ${clusterNum} matchScore is valid: ${cluster.matchScore}`);
-          }
-        }
         
         if (missingClusterFields.length === 0) {
           console.log(`[VALIDATION] ✅ Cluster ${clusterNum} has all required fields`);
@@ -496,84 +476,139 @@ async function analyzeAssessment(
       console.log(`[ASSESSMENT] 📊 Result keys:`, Object.keys(result).join(', '));
       
       // ============================================================================
-      // ADAPTIVE APTITUDE FIX: Override AI's scores with adaptive aptitude results
-      // Always use adaptive results when available (more accurate than AI interpretation)
+      // ADAPTIVE APTITUDE FIX: Override AI's zero scores with pre-calculated scores
+      // If adaptive aptitude results exist and AI returned zeros, use pre-calculated scores
+      // This fixes the issue where AI ignores pre-calculated scores in the prompt
       // ============================================================================
-      console.log('[ASSESSMENT] 🔍 Checking for adaptive aptitude results...');
+      console.log('[ASSESSMENT] 🔍 Checking for adaptive aptitude fix...');
       console.log('[ASSESSMENT] 🔍 Has adaptiveAptitudeResults:', !!assessmentData.adaptiveAptitudeResults);
       console.log('[ASSESSMENT] 🔍 Has result.aptitude:', !!result.aptitude);
+      console.log('[ASSESSMENT] 🔍 Has result.aptitude.scores:', !!result.aptitude?.scores);
       
-      if (assessmentData.adaptiveAptitudeResults && result.aptitude) {
+      if (assessmentData.adaptiveAptitudeResults && result.aptitude && result.aptitude.scores) {
         const adaptiveResults = assessmentData.adaptiveAptitudeResults;
+        const aiScores = result.aptitude.scores;
         
-        console.log('[ASSESSMENT] 🔧 ALWAYS using adaptive results (more accurate than AI)');
+        console.log('[ASSESSMENT] 🔍 AI returned scores:', JSON.stringify(aiScores));
         console.log('[ASSESSMENT] 🔍 Adaptive results:', JSON.stringify(adaptiveResults));
         
-        // Convert adaptive results to standard format
-        const accuracyBySubtag = (adaptiveResults as any).accuracyBySubtag || (adaptiveResults as any).accuracy_by_subtag || {};
+        // Check if AI returned all zeros (indicates it ignored pre-calculated scores)
+        const allZeros = Object.values(aiScores).every((score: any) => 
+          score && score.percentage === 0
+        );
         
-        console.log('[ASSESSMENT] 🔍 accuracyBySubtag:', JSON.stringify(accuracyBySubtag));
+        console.log('[ASSESSMENT] 🔍 All zeros check:', allZeros);
         
-        // Calculate converted scores
-        const verbalTotal = accuracyBySubtag.verbal_reasoning?.total || 0;
-        const verbalCorrect = accuracyBySubtag.verbal_reasoning?.correct || 0;
-        const verbal = verbalTotal > 0 ? (verbalCorrect / verbalTotal * 100) : 0;
+        if (allZeros) {
+          console.warn('[ASSESSMENT] ⚠️ AI returned all zero aptitude scores despite adaptive results existing');
+          console.log('[ASSESSMENT] 🔧 Applying backend fix: Converting adaptive results to standard format');
+          
+          // Convert adaptive results to standard format
+          // Handle both camelCase (from frontend) and snake_case (from database)
+          const accuracyBySubtag = (adaptiveResults as any).accuracyBySubtag || (adaptiveResults as any).accuracy_by_subtag || {};
+          
+          console.log('[ASSESSMENT] 🔍 accuracyBySubtag keys:', Object.keys(accuracyBySubtag));
+          console.log('[ASSESSMENT] 🔍 accuracyBySubtag data:', JSON.stringify(accuracyBySubtag));
+          
+          // Calculate converted scores
+          const verbal = accuracyBySubtag.verbal_reasoning?.accuracy || 0;
+          
+          // Numerical = average of numerical_reasoning and data_interpretation
+          const numericalTotal = (accuracyBySubtag.numerical_reasoning?.total || 0) + 
+                                 (accuracyBySubtag.data_interpretation?.total || 0);
+          const numericalCorrect = (accuracyBySubtag.numerical_reasoning?.correct || 0) + 
+                                   (accuracyBySubtag.data_interpretation?.correct || 0);
+          const numerical = numericalTotal > 0 ? (numericalCorrect / numericalTotal * 100) : 0;
+          
+          // Abstract = average of logical_reasoning and pattern_recognition
+          const abstractTotal = (accuracyBySubtag.logical_reasoning?.total || 0) + 
+                                (accuracyBySubtag.pattern_recognition?.total || 0);
+          const abstractCorrect = (accuracyBySubtag.logical_reasoning?.correct || 0) + 
+                                  (accuracyBySubtag.pattern_recognition?.correct || 0);
+          const abstract = abstractTotal > 0 ? (abstractCorrect / abstractTotal * 100) : 0;
+          
+          // Spatial = spatial_reasoning
+          const spatial = accuracyBySubtag.spatial_reasoning?.accuracy || 0;
+          
+          // Override AI's scores with converted scores
+          result.aptitude.scores = {
+            verbal: {
+              total: accuracyBySubtag.verbal_reasoning?.total || 0,
+              correct: accuracyBySubtag.verbal_reasoning?.correct || 0,
+              percentage: Math.round(verbal)
+            },
+            numerical: {
+              total: numericalTotal,
+              correct: numericalCorrect,
+              percentage: Math.round(numerical)
+            },
+            abstract: {
+              total: abstractTotal,
+              correct: abstractCorrect,
+              percentage: Math.round(abstract)
+            },
+            spatial: {
+              total: accuracyBySubtag.spatial_reasoning?.total || 0,
+              correct: accuracyBySubtag.spatial_reasoning?.correct || 0,
+              percentage: Math.round(spatial)
+            },
+            clerical: {
+              total: 0,
+              correct: 0,
+              percentage: 0
+            }
+          };
+          
+          // Calculate overall aptitude score
+          // Handle both camelCase and snake_case
+          const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
+          const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
+          result.aptitude.overall = totalQuestions > 0 ? 
+            Math.round((totalCorrect / totalQuestions) * 100) : 0;
+          
+          console.log('[ASSESSMENT] ✅ Backend fix applied successfully');
+          console.log('[ASSESSMENT] 📊 Converted scores:', {
+            verbal: Math.round(verbal),
+            numerical: Math.round(numerical),
+            abstract: Math.round(abstract),
+            spatial: Math.round(spatial),
+            overall: result.aptitude.overall
+          });
+        } else {
+          console.log('[ASSESSMENT] ✅ AI correctly used pre-calculated aptitude scores (not all zeros)');
+        }
         
-        // Numerical = numerical_reasoning (if exists) or data_interpretation
-        const numericalTotal = accuracyBySubtag.numerical_reasoning?.total || accuracyBySubtag.data_interpretation?.total || 0;
-        const numericalCorrect = accuracyBySubtag.numerical_reasoning?.correct || accuracyBySubtag.data_interpretation?.correct || 0;
-        const numerical = numericalTotal > 0 ? (numericalCorrect / numericalTotal * 100) : 0;
+        // ============================================================================
+        // ADAPTIVE APTITUDE OVERALL SCORE FIX
+        // Even if individual scores are correct, AI sometimes returns overall = 0
+        // Always set overall score from adaptive results when available
+        // Set both 'overall' and 'overallScore' for compatibility
+        // Check BOTH fields since AI might set one but not the other
+        // ============================================================================
+        const needsOverallFix = result.aptitude && (
+          !result.aptitude.overall || 
+          result.aptitude.overall === 0 ||
+          !result.aptitude.overallScore ||
+          result.aptitude.overallScore === 0
+        );
         
-        // Abstract = logical_reasoning + pattern_recognition
-        const logicalTotal = accuracyBySubtag.logical_reasoning?.total || 0;
-        const logicalCorrect = accuracyBySubtag.logical_reasoning?.correct || 0;
-        const patternTotal = accuracyBySubtag.pattern_recognition?.total || 0;
-        const patternCorrect = accuracyBySubtag.pattern_recognition?.correct || 0;
-        const abstractTotal = logicalTotal + patternTotal;
-        const abstractCorrect = logicalCorrect + patternCorrect;
-        const abstract = abstractTotal > 0 ? (abstractCorrect / abstractTotal * 100) : 0;
-        
-        // Spatial = spatial_reasoning
-        const spatialTotal = accuracyBySubtag.spatial_reasoning?.total || 0;
-        const spatialCorrect = accuracyBySubtag.spatial_reasoning?.correct || 0;
-        const spatial = spatialTotal > 0 ? (spatialCorrect / spatialTotal * 100) : 0;
-        
-        // Override AI's scores with adaptive results
-        result.aptitude.scores = {
-          verbal: {
-            total: verbalTotal,
-            correct: verbalCorrect,
-            percentage: Math.round(verbal)
-          },
-          numerical: {
-            total: numericalTotal,
-            correct: numericalCorrect,
-            percentage: Math.round(numerical)
-          },
-          abstract: {
-            total: abstractTotal,
-            correct: abstractCorrect,
-            percentage: Math.round(abstract)
-          },
-          spatial: {
-            total: spatialTotal,
-            correct: spatialCorrect,
-            percentage: Math.round(spatial)
-          },
-          clerical: {
-            total: 0,
-            correct: 0,
-            percentage: 0
-          }
-        };
-        
-        // Calculate overall score
-        const totalQuestions = verbalTotal + numericalTotal + abstractTotal + spatialTotal;
-        const totalCorrect = verbalCorrect + numericalCorrect + abstractCorrect + spatialCorrect;
-        result.aptitude.overallScore = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-        
-        console.log('[ASSESSMENT] ✅ Aptitude scores updated from adaptive results:', JSON.stringify(result.aptitude.scores));
-        console.log('[ASSESSMENT] ✅ Overall score:', result.aptitude.overallScore);
+        if (needsOverallFix) {
+          const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
+          const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
+          const calculatedOverall = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+          
+          console.log('[ASSESSMENT] 🔧 Fixing overall aptitude score:');
+          console.log('[ASSESSMENT]    AI returned overall:', result.aptitude.overall);
+          console.log('[ASSESSMENT]    AI returned overallScore:', result.aptitude.overallScore);
+          console.log('[ASSESSMENT]    Calculated from adaptive:', calculatedOverall);
+          console.log('[ASSESSMENT]    Total questions:', totalQuestions, 'Total correct:', totalCorrect);
+          
+          // Set both fields for compatibility
+          result.aptitude.overall = calculatedOverall;
+          result.aptitude.overallScore = calculatedOverall;
+          console.log('[ASSESSMENT] ✅ Overall aptitude score fixed to:', calculatedOverall);
+          console.log('[ASSESSMENT] ✅ Both overall and overallScore now set to:', calculatedOverall);
+        }
       }
       
       // ============================================================================
@@ -770,62 +805,6 @@ export async function handleAnalyzeAssessment(
     });
   }
   console.log('[ASSESSMENT-API] Has Adaptive Results:', !!assessmentData.adaptiveAptitudeResults);
-
-  // ============================================================================
-  // FETCH STUDENT PROFILE DATA
-  // Fetch skills, projects, certificates, internships, education from database
-  // ============================================================================
-  console.log('[ASSESSMENT-API] === FETCHING STUDENT PROFILE DATA ===');
-  try {
-    const supabase = createSupabaseAdminClient(env);
-    
-    // Fetch all profile data in parallel
-    const [skillsData, projectsData, certificatesData, internshipsData, educationData] = await Promise.all([
-      supabase.from('student_skills').select('*').eq('student_id', studentId).eq('is_deleted', false),
-      supabase.from('student_projects').select('*').eq('student_id', studentId).eq('is_deleted', false),
-      supabase.from('student_certificates').select('*').eq('student_id', studentId).eq('is_deleted', false),
-      supabase.from('student_experience').select('*').eq('student_id', studentId).eq('is_deleted', false).eq('experience_type', 'internship'),
-      supabase.from('student_education').select('*').eq('student_id', studentId).eq('is_deleted', false)
-    ]);
-
-    const profileData: any = {};
-    
-    if (skillsData.data && skillsData.data.length > 0) {
-      profileData.skills = skillsData.data;
-      console.log('[ASSESSMENT-API] ✅ Found', skillsData.data.length, 'skills');
-    }
-    
-    if (projectsData.data && projectsData.data.length > 0) {
-      profileData.projects = projectsData.data;
-      console.log('[ASSESSMENT-API] ✅ Found', projectsData.data.length, 'projects');
-    }
-    
-    if (certificatesData.data && certificatesData.data.length > 0) {
-      profileData.certificates = certificatesData.data;
-      console.log('[ASSESSMENT-API] ✅ Found', certificatesData.data.length, 'certificates');
-    }
-    
-    if (internshipsData.data && internshipsData.data.length > 0) {
-      profileData.internships = internshipsData.data;
-      console.log('[ASSESSMENT-API] ✅ Found', internshipsData.data.length, 'internships');
-    }
-    
-    if (educationData.data && educationData.data.length > 0) {
-      profileData.education = educationData.data;
-      console.log('[ASSESSMENT-API] ✅ Found', educationData.data.length, 'education records');
-    }
-
-    // Add profile data to assessment data
-    if (Object.keys(profileData).length > 0) {
-      assessmentData.studentProfile = profileData;
-      console.log('[ASSESSMENT-API] ✅ Student profile data added to assessment');
-    } else {
-      console.log('[ASSESSMENT-API] ℹ️ No profile data found for student');
-    }
-  } catch (profileError) {
-    console.error('[ASSESSMENT-API] ⚠️ Failed to fetch profile data:', profileError);
-    // Continue without profile data - it's optional
-  }
 
   // Check environment variables
   console.log('[ASSESSMENT-API] === ENVIRONMENT CHECK ===');

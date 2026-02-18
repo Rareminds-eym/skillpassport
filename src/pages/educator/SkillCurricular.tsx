@@ -16,8 +16,14 @@ import {
     Clock,
     MapPin,
     User,
+    Star,
+    Award,
+    Activity,
+    TrendingUp,
     Eye,
+    Settings,
     CheckCircle,
+    AlertCircle,
     Info,
     ChevronLeft,
     ChevronRight,
@@ -27,7 +33,8 @@ import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import * as clubsService from "../../services/clubsService";
 import * as competitionsService from "../../services/competitionsService";
 import * as XLSX from 'xlsx';
-
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 const categories = [
     { id: "all", label: "All Categories" },
     { id: "arts", label: "Arts" },
@@ -64,7 +71,7 @@ const competitionCategories = [
     { id: "literature", label: "Literature" },
 ];
 
-function formatDate(d: string | Date | null | undefined): string {
+function formatDate(d) {
     if (!d) return 'TBD';
     try {
         const dd = new Date(d);
@@ -75,7 +82,7 @@ function formatDate(d: string | Date | null | undefined): string {
     }
 }
 
-function downloadCSV(filename: string, rows: Record<string, any>[]): void {
+function downloadCSV(filename, rows) {
     if (!rows || !rows.length) {
         console.warn('No data available for CSV export');
         return;
@@ -85,7 +92,7 @@ function downloadCSV(filename: string, rows: Record<string, any>[]): void {
         const header = Object.keys(rows[0]);
         const csv = [header.join(",")]
             .concat(
-                rows.map((r: Record<string, any>) => header.map((h) => {
+                rows.map((r) => header.map((h) => {
                     const value = (r[h] ?? "").toString().replace(/"/g, '""');
                     // Wrap in quotes if contains comma, newline, or quote
                     return value.includes(',') || value.includes('\n') || value.includes('"') 
@@ -104,211 +111,95 @@ function downloadCSV(filename: string, rows: Record<string, any>[]): void {
         link.remove();
         
         console.log(`✅ CSV exported successfully: ${filename}`);
-    } catch (error: any) {
+    } catch (error) {
         console.error('❌ Error exporting CSV:', error);
         throw new Error('Failed to export CSV file');
     }
 }
 
-interface ClubCardProps {
-    club: Club;
-    isJoined: boolean;
-    onJoin: (club: Club) => void;
-    onLeave: (club: Club) => void;
-    onOpenDetails: (club: Club) => void;
-    onEdit: (club: Club) => void;
-    onDelete: (club: Club) => void;
+function exportTableAsPrint(htmlString, title = "Report") {
+    const w = window.open("", "_blank", "noopener,noreferrer");
+    if (!w) return alert("Unable to open export window. Please allow popups.");
+    w.document.write(`
+    <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: Arial, Helvetica, sans-serif; padding: 20px; }
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #ddd; padding: 8px; }
+          th { background: #f4f4f4; }
+        </style>
+      </head>
+      <body>
+        <h2>${title}</h2>
+        ${htmlString}
+      </body>
+    </html>
+  `);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 500);
 }
 
-function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDelete }: ClubCardProps) {
+function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDelete }) {
     const memberCount = club.members?.length ?? 0;
     const full = memberCount >= club.capacity;
-    const [showMenu, setShowMenu] = React.useState(false);
-    const [showFullDescription, setShowFullDescription] = React.useState(false);
-    const menuRef = React.useRef<HTMLDivElement>(null);
-
-    // Check if description is long (more than 100 characters)
-    const isLongDescription = club.description && club.description.length > 100;
-    const displayDescription = showFullDescription || !isLongDescription 
-        ? club.description 
-        : club.description?.substring(0, 100) + '...';
-
-    // Close menu when clicking outside
-    React.useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setShowMenu(false);
-            }
-        };
-
-        if (showMenu) {
-            document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }
-    }, [showMenu]);
 
     return (
         <div className="group bg-white rounded-xl hover:shadow-lg transition-all duration-300 overflow-hidden shadow-sm">
             {/* Header with gradient */}
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
                 <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3 flex-1">
+                    <div className="flex items-center gap-3">
                         <div className="bg-white rounded-lg p-2 shadow-sm">
-                            <Users size={22} className="text-blue-600" />
+                            <Users size={20} className="text-blue-600" />
                         </div>
-                        <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 text-xl">{club.name}</h3>
+                        <div>
+                            <h3 className="font-semibold text-gray-900 text-lg">{club.name}</h3>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700 capitalize">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 capitalize">
                                     {club.category}
                                 </span>
                             </div>
                         </div>
                     </div>
-                    
-                    {/* Three-dot menu */}
-                    <div className="relative" ref={menuRef}>
-                        <button
-                            onClick={() => setShowMenu(!showMenu)}
-                            className="p-2 hover:bg-white/50 rounded-lg transition-colors"
-                            title="More actions"
-                        >
-                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" className="text-gray-600">
-                                <circle cx="10" cy="4" r="1.5" />
-                                <circle cx="10" cy="10" r="1.5" />
-                                <circle cx="10" cy="16" r="1.5" />
-                            </svg>
-                        </button>
-
-                        {/* Dropdown menu */}
-                        {showMenu && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
-                                <button
-                                    onClick={() => {
-                                        onOpenDetails(club);
-                                        setShowMenu(false);
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                >
-                                    <Eye size={14} />
-                                    View Details
-                                </button>
-                                
-                                {!isJoined ? (
-                                    <button
-                                        disabled={full}
-                                        onClick={() => {
-                                            onJoin(club);
-                                            setShowMenu(false);
-                                        }}
-                                        className={`w-full text-left px-4 py-2 text-sm flex items-center gap-2 ${
-                                            full 
-                                                ? "text-gray-400 cursor-not-allowed" 
-                                                : "text-blue-600 hover:bg-blue-50"
-                                        }`}
-                                    >
-                                        <UserPlus size={14} />
-                                        {full ? 'Full' : 'Manage Members'}
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={() => {
-                                            onLeave(club);
-                                            setShowMenu(false);
-                                        }}
-                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                    >
-                                        <X size={14} />
-                                        Leave Club
-                                    </button>
-                                )}
-                                
-                                <div className="border-t border-gray-100 my-1"></div>
-                                
-                                <button
-                                    onClick={() => {
-                                        onEdit(club);
-                                        setShowMenu(false);
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                >
-                                    <Edit size={14} />
-                                    Edit Club
-                                </button>
-                                
-                                <button
-                                    onClick={() => {
-                                        onDelete(club);
-                                        setShowMenu(false);
-                                    }}
-                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                >
-                                    <Trash2 size={14} />
-                                    Delete Club
-                                </button>
-                            </div>
-                        )}
+                    <div className="text-right">
+                        <div className="text-sm font-semibold text-gray-900">{memberCount}/{club.capacity}</div>
+                        <div className="text-xs text-gray-500">Members</div>
+                        <div className="w-16 bg-gray-200 rounded-full h-1.5 mt-1">
+                            <div 
+                                className="bg-blue-500 h-1.5 rounded-full transition-all duration-300" 
+                                style={{ width: `${Math.min((memberCount / club.capacity) * 100, 100)}%` }}
+                            ></div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Content */}
             <div className="p-4">
-                <div className="mb-3">
-                    <p className="text-base text-gray-600 leading-relaxed">
-                        {displayDescription}
-                    </p>
-                    {isLongDescription && (
-                        <button
-                            onClick={() => setShowFullDescription(!showFullDescription)}
-                            className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1"
-                        >
-                            {showFullDescription ? 'View less' : 'View more'}
-                        </button>
-                    )}
-                </div>
-
-                {/* Member Count Section */}
-                <div className="p-2.5 mb-3">
-                    <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-sm font-medium text-gray-700">Club Members</span>
-                        <span className="text-base font-semibold text-gray-900">{memberCount}/{club.capacity}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                            className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${Math.min((memberCount / club.capacity) * 100, 100)}%` }}
-                        ></div>
-                    </div>
-                    <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-sm text-gray-500">
-                            {memberCount === 0 ? 'No members yet' : `${memberCount} enrolled`}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                            {club.capacity - memberCount} spots left
-                        </span>
-                    </div>
-                </div>
+                <p className="text-sm text-gray-600 leading-relaxed mb-4">{club.description}</p>
 
                 {/* Meeting Info */}
                 {(club.meeting_day || club.meeting_time || club.location) && (
-                    <div className="p-2.5 mb-3 space-y-1.5">
-                        <div className="text-sm font-medium text-gray-700 mb-1.5">Meeting Details</div>
+                    <div className="bg-gray-50 rounded-lg p-3 mb-4 space-y-2">
+                        <div className="text-xs font-medium text-gray-700 mb-2">Meeting Details</div>
                         {club.meeting_day && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <Calendar size={14} />
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <Calendar size={12} />
                                 <span>{club.meeting_day}</span>
                             </div>
                         )}
                         {club.meeting_time && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <Clock size={14} />
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <Clock size={12} />
                                 <span>{club.meeting_time}</span>
                             </div>
                         )}
                         {club.location && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <MapPin size={14} />
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <MapPin size={12} />
                                 <span>{club.location}</span>
                             </div>
                         )}
@@ -316,28 +207,72 @@ function ClubCard({ club, isJoined, onJoin, onLeave, onOpenDetails, onEdit, onDe
                 )}
 
                 {club.upcomingCompetitions?.length ? (
-                    <div className="mb-2">
+                    <div className="mb-4">
                         <span className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-medium">
                             <Trophy size={12} /> 
-                            {club.upcomingCompetitions.length} Upcoming Competition{club.upcomingCompetitions.length > 1 ? 's' : ''}
+                            {club.upcomingCompetitions.length} Upcoming
                         </span>
                     </div>
                 ) : null}
+
+                {/* Action Buttons */}
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => onOpenDetails(club)}
+                            className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                        >
+                            <Eye size={14} />
+                            View Details
+                        </button>
+
+                        {!isJoined ? (
+                            <button
+                                disabled={full}
+                                onClick={() => onJoin(club)}
+                                className={`flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 rounded-lg transition-colors ${
+                                    full 
+                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
+                                        : "bg-blue-600 text-white hover:bg-blue-700"
+                                }`}
+                            >
+                                <UserPlus size={14} />
+                                {full ? 'Full' : 'Manage'}
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => onLeave(club)}
+                                className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-colors"
+                            >
+                                <X size={14} />
+                                Leave
+                            </button>
+                        )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => onEdit(club)}
+                            className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-2 border border-blue-200 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                        >
+                            <Edit size={14} />
+                            Edit
+                        </button>
+                        <button
+                            onClick={() => onDelete(club)}
+                            className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-2 border border-red-200 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                        >
+                            <Trash2 size={14} />
+                            Delete
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
 
-interface PaginationProps {
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-    itemsPerPage: number;
-    totalItems: number;
-    itemType: string;
-}
-
-function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems, itemType }: PaginationProps) {
+function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, totalItems, itemType }) {
     if (totalPages <= 1) return null;
 
     const getPageNumbers = () => {
@@ -429,14 +364,7 @@ function Pagination({ currentPage, totalPages, onPageChange, itemsPerPage, total
     );
 }
 
-interface ModalProps {
-    open: boolean;
-    onClose: () => void;
-    title: string;
-    children: React.ReactNode;
-}
-
-function Modal({ open, onClose, title, children }: ModalProps) {
+function Modal({ open, onClose, title, children }) {
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -460,13 +388,12 @@ interface Club {
     category: string;
     description: string;
     capacity: number;
-    members?: string[];
+    members: string[];
     meeting_day?: string;
     meeting_time?: string;
     location?: string;
     upcomingCompetitions?: any[];
     avgAttendance?: number;
-    is_active?: boolean;
 }
 
 interface Competition {
@@ -507,6 +434,7 @@ export default function ClubsActivitiesPage() {
 
     const [clubs, setClubs] = useState<Club[]>([]);
     const [competitions, setCompetitions] = useState<Competition[]>([]);
+    const [loading, setLoading] = useState(true);
     
     // Tab state
     const [activeTab, setActiveTab] = useState("clubs");
@@ -526,7 +454,7 @@ export default function ClubsActivitiesPage() {
     const ITEMS_PER_PAGE = 6; // 3x3 grid
 
     // Enhanced tab switching with keyboard support
-    const handleTabSwitch = (tab: string) => {
+    const handleTabSwitch = (tab) => {
         setActiveTab(tab);
         // Reset pagination when switching tabs
         if (tab === "clubs") {
@@ -538,7 +466,7 @@ export default function ClubsActivitiesPage() {
 
     // Keyboard navigation for tabs
     useEffect(() => {
-        const handleKeyPress = (e: KeyboardEvent) => {
+        const handleKeyPress = (e) => {
             if (e.ctrlKey || e.metaKey) {
                 if (e.key === '1') {
                     e.preventDefault();
@@ -556,8 +484,8 @@ export default function ClubsActivitiesPage() {
 
     // Close filter dropdown when clicking outside
     useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+        const handleClickOutside = (event) => {
+            if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
                 setShowCompetitionFilters(false);
             }
         };
@@ -604,19 +532,22 @@ export default function ClubsActivitiesPage() {
     }, []);
 
     // Get educator's school information with class assignments
-    const { school: educatorSchool, college: educatorCollege, educatorType, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
+    const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
     useEffect(() => {
         const fetchData = async () => {
             try {
+                setLoading(true);
                 const [clubsData, competitionsData] = await Promise.all([
                     clubsService.fetchClubs(),
                     competitionsService.fetchCompetitions()
                 ]);
                 setClubs(clubsData);
                 setCompetitions(competitionsData);
-            } catch (error: any) {
+            } catch (error) {
                 console.error('Error fetching data:', error);
                 // Silently handle error - don't show notice to user
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -670,7 +601,7 @@ export default function ClubsActivitiesPage() {
 
                 console.log('🔍 [SkillCurricular] Fetching students for educator type:', educatorType);
                 
-                let students: Student[] = [];
+                let students = [];
                 
                 if (educatorType === 'school' && educatorSchool) {
                     // For school educators, filter by assigned classes
@@ -687,7 +618,7 @@ export default function ClubsActivitiesPage() {
                         if (error) {
                             console.error('❌ [SkillCurricular] Error fetching students:', error);
                         } else {
-                            students = (data || []) as any[];
+                            students = data || [];
                         }
                     } else {
                         // Fallback for admins or educators without class assignments
@@ -702,7 +633,7 @@ export default function ClubsActivitiesPage() {
                         if (error) {
                             console.error('❌ [SkillCurricular] Error fetching students:', error);
                         } else {
-                            students = (data || []) as any[];
+                            students = data || [];
                         }
                     }
                 } else if (educatorType === 'college' && educatorCollege) {
@@ -718,7 +649,7 @@ export default function ClubsActivitiesPage() {
                     if (error) {
                         console.error('❌ [SkillCurricular] Error fetching college students:', error);
                     } else {
-                        students = (data || []) as any[];
+                        students = data || [];
                     }
                 }
 
@@ -730,7 +661,7 @@ export default function ClubsActivitiesPage() {
                 }
 
                 // Map students to the format we need (using user_id as primary ID, consistent with other educator pages)
-                const mappedStudents: Student[] = students.map((student: any) => ({
+                const mappedStudents = students.map(student => ({
                     id: student.user_id || student.id, // Use user_id as primary identifier
                     user_id: student.user_id,
                     email: student.email,
@@ -738,7 +669,7 @@ export default function ClubsActivitiesPage() {
                     grade: student.grade || 'N/A',
                     section: student.section || '',
                     rollNumber: student.roll_number || '',
-                    school_id: student.school_id || student.college_id || '',
+                    school_id: student.school_id || student.college_id,
                     school_class_id: student.school_class_id
                 }));
                 
@@ -776,8 +707,6 @@ export default function ClubsActivitiesPage() {
         meeting_time: "",
         location: ""
     });
-    const [clubFormErrors, setClubFormErrors] = useState<Record<string, string>>({});
-    
     const [registrationForm, setRegistrationForm] = useState({
         studentEmail: "",
         teamMembers: "",
@@ -793,11 +722,10 @@ export default function ClubsActivitiesPage() {
         description: "",
         category: "",
         status: "upcoming",
-        results: [] as any[],
         participatingClubs: [] as string[]
     });
-    const [compFormErrors, setCompFormErrors] = useState<Record<string, string>>({});
     const [competitionRegistrations, setCompetitionRegistrations] = useState<any[]>([]);
+    const [loadingRegistrations, setLoadingRegistrations] = useState(false);
     const [editingRegistration, setEditingRegistration] = useState<any>(null);
     const [registrationTab, setRegistrationTab] = useState("individual"); // "individual" or "bulk"
     const [bulkUploadFile, setBulkUploadFile] = useState<File | null>(null);
@@ -850,35 +778,34 @@ export default function ClubsActivitiesPage() {
         setCurrentCompetitionPage(1);
     }, [competitionSearchQuery, competitionStatusFilter, competitionCategoryFilter, competitionLevelFilter]);
 
-    const enrollStudent = (club: Club) => {
+    const enrollStudent = (club) => {
         setStudentDrawer({ open: true, club: club });
     };
 
-    const leaveClub = async (_selectedClub: Club) => {
+    const leaveClub = async (club) => {
         // This function is not used in educator interface since educators manage students, not join clubs
         // But keeping it for consistency - would need currentStudent.email if used
         setNotice({ type: "info", text: "Educators manage student memberships through the 'Manage' button." });
     };
 
-    const openDetails = (club: Club) => {
+    const openDetails = (club) => {
         setSelectedClub(club);
         setDetailsOpen(true);
     };
 
-    const openAttendanceModal = (selectedClub: Club) => {
-        setAttendanceModal({ open: true, club: selectedClub });
+    const openAttendanceModal = (club) => {
+        setAttendanceModal({ open: true, club });
         setAttendanceDate(new Date().toISOString().split('T')[0]);
         setAttendanceTopic("");
         // Initialize attendance records for all club members (using email as key)
-        const records: Record<string, string> = {};
-        const members = selectedClub.members || [];
-        members.forEach((memberEmail: string) => {
+        const records = {};
+        club.members.forEach(memberEmail => {
             records[memberEmail] = 'present'; // Default to present
         });
         setAttendanceRecords(records);
     };
 
-    const handleAttendanceStatusChange = (studentId: string, status: string) => {
+    const handleAttendanceStatusChange = (studentId, status) => {
         setAttendanceRecords(prev => ({
             ...prev,
             [studentId]: status
@@ -894,11 +821,11 @@ export default function ClubsActivitiesPage() {
         try {
             const attendanceRecordsArray = Object.entries(attendanceRecords).map(([studentEmail, status]) => ({
                 student_email: studentEmail,
-                status: status as "present" | "absent" | "late" | "excused"
+                status: status
             }));
 
             await clubsService.markAttendance(
-                attendanceModal.club?.club_id || '',
+                attendanceModal.club?.club_id,
                 attendanceDate,
                 attendanceTopic,
                 attendanceRecordsArray
@@ -914,7 +841,7 @@ export default function ClubsActivitiesPage() {
             
             setAttendanceModal({ open: false, club: null });
             setAttendanceRecords({});
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error saving attendance:', error);
             
             // Provide specific error messages
@@ -929,7 +856,7 @@ export default function ClubsActivitiesPage() {
             setNotice({ type: "error", text: errorMessage });
         }
     };
-   const handleStudentEnroll = async (studentId: string, club: Club) => {
+   const handleStudentEnroll = async (studentId, club) => {
         // Find the student to get their email first
         const student = allStudents.find(s => s.id === studentId);
         if (!student) {
@@ -937,7 +864,7 @@ export default function ClubsActivitiesPage() {
             return;
         }
 
-        if ((club.members?.length ?? 0) >= club.capacity) {
+        if ((club.members.length ?? 0) >= club.capacity) {
             setNotice({ type: "error", text: "Club is full. Cannot join." });
             return;
         }
@@ -964,14 +891,14 @@ export default function ClubsActivitiesPage() {
             }
 
             // Check if student is already enrolled (using email, not ID) - local check
-            if (club.members?.includes(student.email)) {
+            if (club.members.includes(student.email)) {
                 console.log('⚠️ Student already enrolled (found in local state)');
                 setNotice({ type: "warning", text: `${student.name} is already enrolled in this club.` });
                 return;
             }
 
             // Check how many clubs this student is already enrolled in
-            const studentClubCount = clubs.filter(c => (c.members || []).includes(student.email)).length;
+            const studentClubCount = clubs.filter(c => c.members.includes(student.email)).length;
             
             if (studentClubCount >= 5) {
                 setNotice({ 
@@ -991,18 +918,18 @@ export default function ClubsActivitiesPage() {
             // Only update local state after successful database operation
             const updated = clubs.map((c) => 
                 c.club_id === club.club_id 
-                    ? { ...c, members: [...(c.members || []), student.email] } 
+                    ? { ...c, members: [...c.members, student.email] } 
                     : c
             );
             setClubs(updated);
             
             // Refresh the student drawer with updated club data
-            const updatedClub = updated.find(c => c.club_id === club.club_id) || null;
+            const updatedClub = updated.find(c => c.club_id === club.club_id);
             setStudentDrawer({ open: true, club: updatedClub });
             
             setNotice({ type: "success", text: `${student.name} enrolled in ${club?.name || 'club'}` });
             
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error enrolling student:', error);
             
             // Check for specific error messages from the backend
@@ -1018,7 +945,7 @@ export default function ClubsActivitiesPage() {
                     console.log('🔄 Refreshing club data due to duplicate key error');
                     const refreshedClubs = await clubsService.fetchClubs();
                     setClubs(refreshedClubs);
-                } catch (refreshError: any) {
+                } catch (refreshError) {
                     console.error('Error refreshing club data:', refreshError);
                 }
                 
@@ -1030,7 +957,7 @@ export default function ClubsActivitiesPage() {
                     console.log('🔄 Refreshing club data due to duplicate key error');
                     const refreshedClubs = await clubsService.fetchClubs();
                     setClubs(refreshedClubs);
-                } catch (refreshError: any) {
+                } catch (refreshError) {
                     console.error('Error refreshing club data:', refreshError);
                 }
                 
@@ -1042,7 +969,7 @@ export default function ClubsActivitiesPage() {
         }
     };
 
-const handleStudentLeave = async (studentId: string, club: Club) => {
+const handleStudentLeave = async (studentId, club) => {
     try {
         // Find the student to get their email
         const student = allStudents.find(s => s.id === studentId);
@@ -1052,7 +979,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         }
 
         // Check if student is actually a member (by email, not ID)
-        if (!(club.members || []).includes(student.email)) {
+        if (!club.members.includes(student.email)) {
             setNotice({ type: "warning", text: `${student.name} is not a member of this club.` });
             return;
         }
@@ -1061,13 +988,13 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         
         const updated = clubs.map((c) => 
             c.club_id === club.club_id 
-                ? { ...c, members: (c.members || []).filter((m) => m !== student.email) } 
+                ? { ...c, members: c.members.filter((m) => m !== student.email) } 
                 : c
         );
         setClubs(updated);
-        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) || null });
+        setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
         setNotice({ type: "info", text: `${student.name} removed from ${club?.name || 'club'}` });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Error removing student:', error);
         setNotice({ type: "error", text: "Failed to remove student. Please try again." });
     }
@@ -1213,7 +1140,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             } else {
                 setNotice({ type: "error", text: "No club data available to export" });
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('❌ Export clubs CSV error:', error);
             setNotice({ type: "error", text: "Failed to export clubs data. Please try again." });
         } finally {
@@ -1232,9 +1159,89 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             } else {
                 setNotice({ type: "error", text: "No competition data available to export" });
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('❌ Export competitions CSV error:', error);
             setNotice({ type: "error", text: "Failed to export competitions data. Please try again." });
+        } finally {
+            setShowExportMenu(false);
+        }
+    };
+
+    const exportClubsPDF = async () => {
+        try {
+            setNotice({ type: "info", text: "Preparing clubs PDF export..." });
+            const rows = await buildClubParticipationRows();
+            
+            if (rows && rows.length > 0) {
+                const headers = Object.keys(rows[0]);
+                const html = `
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                        <thead>
+                            <tr style="background-color: #f8f9fa;">
+                                ${headers.map((h) => `<th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">${h}</th>`).join("")}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map((r) => `
+                                <tr>
+                                    ${headers.map((h) => `<td style="border: 1px solid #ddd; padding: 8px;">${r[h] || 'N/A'}</td>`).join("")}
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 20px; font-size: 12px; color: #666;">
+                        <p>Report generated on: ${new Date().toLocaleString()}</p>
+                        <p>Total clubs: ${rows.length}</p>
+                    </div>
+                `;
+                exportTableAsPrint(html, "Club Participation Report");
+                setNotice({ type: "success", text: `Successfully exported ${rows.length} club records to PDF!` });
+            } else {
+                setNotice({ type: "error", text: "No club data available to export" });
+            }
+        } catch (error) {
+            console.error('❌ Export clubs PDF error:', error);
+            setNotice({ type: "error", text: "Failed to export clubs PDF. Please try again." });
+        } finally {
+            setShowExportMenu(false);
+        }
+    };
+
+    const exportCompetitionsPDF = async () => {
+        try {
+            setNotice({ type: "info", text: "Preparing competitions PDF export..." });
+            const rows = await buildCompetitionPerformanceRows();
+            
+            if (rows && rows.length > 0) {
+                const headers = Object.keys(rows[0]);
+                const html = `
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                        <thead>
+                            <tr style="background-color: #f8f9fa;">
+                                ${headers.map((h) => `<th style="border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: bold;">${h}</th>`).join("")}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map((r) => `
+                                <tr>
+                                    ${headers.map((h) => `<td style="border: 1px solid #ddd; padding: 8px;">${r[h] || 'N/A'}</td>`).join("")}
+                                </tr>
+                            `).join("")}
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 20px; font-size: 12px; color: #666;">
+                        <p>Report generated on: ${new Date().toLocaleString()}</p>
+                        <p>Total competitions: ${rows.length}</p>
+                    </div>
+                `;
+                exportTableAsPrint(html, "Competition Performance Report");
+                setNotice({ type: "success", text: `Successfully exported ${rows.length} competition records to PDF!` });
+            } else {
+                setNotice({ type: "error", text: "No competition data available to export" });
+            }
+        } catch (error) {
+            console.error('❌ Export competitions PDF error:', error);
+            setNotice({ type: "error", text: "Failed to export competitions PDF. Please try again." });
         } finally {
             setShowExportMenu(false);
         }
@@ -1251,18 +1258,18 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Club Participation");
                 
                 // Auto-size columns
-                const maxWidth: Record<string, number> = rows.reduce((w: Record<string, number>, r: any) => {
+                const maxWidth = rows.reduce((w, r) => {
                     return Object.keys(r).reduce((acc, key) => {
-                        const value = (r as any)[key]?.toString() || '';
+                        const value = r[key]?.toString() || '';
                         acc[key] = Math.max(acc[key] || 10, Math.min(value.length + 2, 50));
                         return acc;
                     }, w);
                 }, {});
                 
-                worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: (maxWidth as any)[key] }));
+                worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: maxWidth[key] }));
                 
                 // Add header styling
-                const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+                const headerRange = XLSX.utils.decode_range(worksheet['!ref']);
                 for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
                     const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
                     if (!worksheet[cellAddress]) continue;
@@ -1278,7 +1285,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             } else {
                 setNotice({ type: "error", text: "No club data available to export" });
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('❌ Export clubs Excel error:', error);
             setNotice({ type: "error", text: "Failed to export clubs Excel. Please try again." });
         } finally {
@@ -1297,18 +1304,18 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Competition Performance");
                 
                 // Auto-size columns
-                const maxWidth: Record<string, number> = rows.reduce((w: Record<string, number>, r: any) => {
+                const maxWidth = rows.reduce((w, r) => {
                     return Object.keys(r).reduce((acc, key) => {
-                        const value = (r as any)[key]?.toString() || '';
+                        const value = r[key]?.toString() || '';
                         acc[key] = Math.max(acc[key] || 10, Math.min(value.length + 2, 50));
                         return acc;
                     }, w);
                 }, {});
                 
-                worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: (maxWidth as any)[key] }));
+                worksheet['!cols'] = Object.keys(maxWidth).map(key => ({ wch: maxWidth[key] }));
                 
                 // Add header styling
-                const headerRange = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+                const headerRange = XLSX.utils.decode_range(worksheet['!ref']);
                 for (let col = headerRange.s.c; col <= headerRange.e.c; col++) {
                     const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
                     if (!worksheet[cellAddress]) continue;
@@ -1324,7 +1331,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             } else {
                 setNotice({ type: "error", text: "No competition data available to export" });
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('❌ Export competitions Excel error:', error);
             setNotice({ type: "error", text: "Failed to export competitions Excel. Please try again." });
         } finally {
@@ -1332,206 +1339,44 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         }
     };
 
-    const validateClubName = (name: string): string | null => {
-        const trimmedName = name.trim();
-        
-        if (!trimmedName) {
-            return "Club name is required";
-        }
-        
-        if (trimmedName.length < 3) {
-            return "Club name must be at least 3 characters long";
-        }
-        
-        if (trimmedName.length > 100) {
-            return "Club name must not exceed 100 characters";
-        }
-        
-        // Allow only letters, numbers, spaces, hyphens, and apostrophes
-        const validNamePattern = /^[a-zA-Z0-9\s\-']+$/;
-        if (!validNamePattern.test(trimmedName)) {
-            return "Club name can only contain letters, numbers, spaces, hyphens, and apostrophes";
-        }
-        
-        return null;
-    };
-
-    const validateClubDescription = (description: string): string | null => {
-        const trimmedDesc = description.trim();
-        
-        if (!trimmedDesc) {
-            return "Club description is required";
-        }
-        
-        if (trimmedDesc.length < 10) {
-            return "Club description must be at least 10 characters long";
-        }
-        
-        if (trimmedDesc.length > 500) {
-            return "Club description must not exceed 500 characters";
-        }
-        
-        return null;
-    };
-
-    const validateClubCapacity = (capacity: number, currentMemberCount?: number): string | null => {
-        if (!capacity || isNaN(capacity)) {
-            return "Capacity is required and must be a number";
-        }
-        
-        if (!Number.isInteger(capacity)) {
-            return "Capacity must be a whole number";
-        }
-        
-        if (capacity < 1) {
-            return "Capacity must be at least 1";
-        }
-        
-        if (capacity > 200) {
-            return "Capacity cannot exceed 200 members";
-        }
-        
-        if (currentMemberCount !== undefined && capacity < currentMemberCount) {
-            return `Capacity cannot be less than current member count (${currentMemberCount})`;
-        }
-        
-        return null;
-    };
-
-    const validateMeetingDay = (day: string): string | null => {
-        if (!day || !day.trim()) {
-            return null; // Optional field
-        }
-        
-        const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-        const normalizedDay = day.trim().toLowerCase();
-        
-        if (!validDays.includes(normalizedDay)) {
-            return "Meeting day must be a valid day of the week (e.g., Monday, Tuesday)";
-        }
-        
-        return null;
-    };
-
-    const validateMeetingTime = (time: string): string | null => {
-        if (!time || !time.trim()) {
-            return null; // Optional field
-        }
-        
-        // Validate HH:MM format
-        const timePattern = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-        if (!timePattern.test(time.trim())) {
-            return "Meeting time must be in HH:MM format (e.g., 14:30)";
-        }
-        
-        // Check if time is within school hours (7:00 AM - 6:00 PM)
-        const [hours, minutes] = time.split(':').map(Number);
-        const timeInMinutes = hours * 60 + minutes;
-        const schoolStartTime = 7 * 60; // 7:00 AM
-        const schoolEndTime = 18 * 60; // 6:00 PM
-        
-        if (timeInMinutes < schoolStartTime || timeInMinutes > schoolEndTime) {
-            return "Meeting time should be within school hours (7:00 AM - 6:00 PM)";
-        }
-        
-        return null;
-    };
-
-    const validateLocation = (location: string): string | null => {
-        if (!location || !location.trim()) {
-            return null; // Optional field
-        }
-        
-        if (location.trim().length > 100) {
-            return "Location must not exceed 100 characters";
-        }
-        
-        return null;
-    };
-
-    const checkDuplicateClubName = (name: string, excludeClubId?: string): boolean => {
-        const trimmedName = name.trim().toLowerCase();
-        return clubs.some(club => 
-            club.name.toLowerCase() === trimmedName && 
-            club.club_id !== excludeClubId
-        );
-    };
-
     const handleAddClub = async () => {
-        // Clear previous errors
-        setClubFormErrors({});
-        const errors: Record<string, string> = {};
-
-        // Validate club name
-        const nameError = validateClubName(newClubForm.name);
-        if (nameError) {
-            errors.name = nameError;
+        if (!newClubForm.name.trim()) {
+            setNotice({ type: "error", text: "Club name is required" });
+            return;
         }
 
-        // Check for duplicate name
-        if (!nameError && checkDuplicateClubName(newClubForm.name)) {
-            errors.name = "A club with this name already exists in your school";
+        if (!newClubForm.description.trim()) {
+            setNotice({ type: "error", text: "Club description is required" });
+            return;
         }
 
-        // Validate description
-        const descError = validateClubDescription(newClubForm.description);
-        if (descError) {
-            errors.description = descError;
-        }
-
-        // Validate capacity
-        const capacityError = validateClubCapacity(newClubForm.capacity);
-        if (capacityError) {
-            errors.capacity = capacityError;
-        }
-
-        // Validate meeting day
-        const dayError = validateMeetingDay(newClubForm.meeting_day);
-        if (dayError) {
-            errors.meeting_day = dayError;
-        }
-
-        // Validate meeting time
-        const timeError = validateMeetingTime(newClubForm.meeting_time);
-        if (timeError) {
-            errors.meeting_time = timeError;
-        }
-
-        // Validate location
-        const locationError = validateLocation(newClubForm.location);
-        if (locationError) {
-            errors.location = locationError;
-        }
-
-        // If there are any errors, set them and return
-        if (Object.keys(errors).length > 0) {
-            setClubFormErrors(errors);
+        if (newClubForm.capacity < 1) {
+            setNotice({ type: "error", text: "Capacity must be at least 1" });
             return;
         }
 
         try {
             const createdClub = await clubsService.createClub({
-                name: newClubForm.name.trim(),
+                name: newClubForm.name,
                 category: newClubForm.category,
-                description: newClubForm.description.trim(),
-                capacity: Number(newClubForm.capacity),
-                meeting_day: newClubForm.meeting_day.trim() || undefined,
-                meeting_time: newClubForm.meeting_time.trim() || undefined,
-                location: newClubForm.location.trim() || undefined
+                description: newClubForm.description,
+                capacity: parseInt(newClubForm.capacity),
+                meeting_day: newClubForm.meeting_day || null,
+                meeting_time: newClubForm.meeting_time || null,
+                location: newClubForm.location || null
             });
 
             setClubs([...clubs, createdClub]);
             setNotice({ type: "success", text: `${createdClub?.name || 'Club'} has been created successfully!` });
             setAddClubModal(false);
             setNewClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
-            setClubFormErrors({});
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error creating club:', error);
-            setClubFormErrors({ submit: "Failed to create club. Please try again." });
+            setNotice({ type: "error", text: "Failed to create club. Please try again." });
         }
     };
 
-    const handleEditClub = (club: Club) => {
+    const handleEditClub = (club) => {
         setEditClubForm({
             name: club.name,
             category: club.category,
@@ -1545,79 +1390,35 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
     };
 
     const handleUpdateClub = async () => {
-        if (!editClubModal) {
-            setNotice({ type: "error", text: "No club selected for editing" });
+        if (!editClubForm.name.trim()) {
+            setNotice({ type: "error", text: "Club name is required" });
             return;
         }
 
-        // Clear previous errors
-        setClubFormErrors({});
-        const errors: Record<string, string> = {};
-
-        // Validate club name
-        const nameError = validateClubName(editClubForm.name);
-        if (nameError) {
-            errors.name = nameError;
+        if (!editClubForm.description.trim()) {
+            setNotice({ type: "error", text: "Club description is required" });
+            return;
         }
 
-        // Check for duplicate name (excluding current club)
-        if (!nameError && checkDuplicateClubName(editClubForm.name, editClubModal.club_id)) {
-            errors.name = "A club with this name already exists in your school";
-        }
-
-        // Validate description
-        const descError = validateClubDescription(editClubForm.description);
-        if (descError) {
-            errors.description = descError;
-        }
-
-        // Get current member count
-        const currentMemberCount = editClubModal.members?.length || 0;
-
-        // Validate capacity (with current member count check)
-        const capacityError = validateClubCapacity(editClubForm.capacity, currentMemberCount);
-        if (capacityError) {
-            errors.capacity = capacityError;
-        }
-
-        // Validate meeting day
-        const dayError = validateMeetingDay(editClubForm.meeting_day);
-        if (dayError) {
-            errors.meeting_day = dayError;
-        }
-
-        // Validate meeting time
-        const timeError = validateMeetingTime(editClubForm.meeting_time);
-        if (timeError) {
-            errors.meeting_time = timeError;
-        }
-
-        // Validate location
-        const locationError = validateLocation(editClubForm.location);
-        if (locationError) {
-            errors.location = locationError;
-        }
-
-        // If there are any errors, set them and return
-        if (Object.keys(errors).length > 0) {
-            setClubFormErrors(errors);
+        if (editClubForm.capacity < 1) {
+            setNotice({ type: "error", text: "Capacity must be at least 1" });
             return;
         }
 
         try {
             await clubsService.updateClub(editClubModal.club_id, {
-                name: editClubForm.name.trim(),
+                name: editClubForm.name,
                 category: editClubForm.category,
-                description: editClubForm.description.trim(),
-                capacity: Number(editClubForm.capacity),
-                meeting_day: editClubForm.meeting_day.trim() || undefined,
-                meeting_time: editClubForm.meeting_time.trim() || undefined,
-                location: editClubForm.location.trim() || undefined
+                description: editClubForm.description,
+                capacity: parseInt(editClubForm.capacity),
+                meeting_day: editClubForm.meeting_day || null,
+                meeting_time: editClubForm.meeting_time || null,
+                location: editClubForm.location || null
             });
 
             const updatedClubs = clubs.map(c => 
                 c.club_id === editClubModal.club_id 
-                    ? { ...c, ...editClubForm, capacity: Number(editClubForm.capacity) }
+                    ? { ...c, ...editClubForm, capacity: parseInt(editClubForm.capacity) }
                     : c
             );
             setClubs(updatedClubs);
@@ -1625,14 +1426,13 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             setNotice({ type: "success", text: `${editClubForm?.name || 'Club'} has been updated successfully!` });
             setEditClubModal(null);
             setEditClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
-            setClubFormErrors({});
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error updating club:', error);
-            setClubFormErrors({ submit: "Failed to update club. Please try again." });
+            setNotice({ type: "error", text: "Failed to update club. Please try again." });
         }
     };
 
-    const handleDeleteClub = async (club: Club) => {
+    const handleDeleteClub = async (club) => {
         if (!confirm(`Are you sure you want to delete "${club?.name || 'this club'}"? This action cannot be undone.`)) {
             return;
         }
@@ -1644,7 +1444,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             setClubs(updatedClubs);
             
             setNotice({ type: "success", text: `${club?.name || 'Club'} has been deleted successfully!` });
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error deleting club:', error);
             setNotice({ type: "error", text: "Failed to delete club. Please try again." });
         }
@@ -1657,14 +1457,17 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         }
     }, [registerCompModal]);
 
-    const loadCompetitionRegistrations = async (compId: string) => {
+    const loadCompetitionRegistrations = async (compId) => {
         try {
+            setLoadingRegistrations(true);
             console.log('🔍 [Educator] Loading registrations for competition:', compId);
             const registrations = await competitionsService.getCompetitionRegistrations(compId);
             console.log('📋 [Educator] Loaded registrations:', registrations.length, registrations);
             setCompetitionRegistrations(registrations);
-        } catch (error: any) {
+        } catch (error) {
             console.error('❌ [Educator] Error loading registrations:', error);
+        } finally {
+            setLoadingRegistrations(false);
         }
     };
 
@@ -1678,11 +1481,6 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         const student = allStudents.find(s => s.email === registrationForm.studentEmail);
         if (!student) {
             setNotice({ type: "error", text: "Student not found" });
-            return;
-        }
-
-        if (!registerCompModal) {
-            setNotice({ type: "error", text: "No competition selected" });
             return;
         }
 
@@ -1720,7 +1518,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             }
 
             // Update competition status if changed
-            if (registerCompModal && registrationForm.status && registrationForm.status !== registerCompModal?.status) {
+            if (registrationForm.status && registrationForm.status !== registerCompModal?.status) {
                 await competitionsService.updateCompetition(registerCompModal.comp_id, {
                     status: registrationForm.status
                 });
@@ -1740,13 +1538,13 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             // Reset form
             setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
             setEditingRegistration(null);
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error registering for competition:', error);
             setNotice({ type: "error", text: error.message || "Failed to register. Please try again." });
         }
     };
 
-    const handleEditRegistration = (registration: any) => {
+    const handleEditRegistration = (registration) => {
         setEditingRegistration(registration);
         setRegistrationForm({
             studentEmail: registration.student_email,
@@ -1756,7 +1554,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         });
     };
 
-    const handleDeleteRegistration = async (registrationId: string) => {
+    const handleDeleteRegistration = async (registrationId) => {
         if (!confirm('Are you sure you want to delete this registration?')) {
             return;
         }
@@ -1764,8 +1562,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         try {
             await competitionsService.deleteCompetitionRegistration(registrationId);
             setNotice({ type: "success", text: "Registration deleted successfully" });
-            await loadCompetitionRegistrations(registerCompModal?.comp_id || '');
-        } catch (error: any) {
+            await loadCompetitionRegistrations(registerCompModal.comp_id);
+        } catch (error) {
             console.error('Error deleting registration:', error);
             setNotice({ type: "error", text: "Failed to delete registration" });
         }
@@ -1934,209 +1732,25 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         XLSX.writeFile(workbook, `${registerCompModal?.name || 'competition'}_registration_template.xlsx`);
         setNotice({ type: "success", text: "Template downloaded successfully!" });
     };
-    const validateCompetitionName = (name: string): string | null => {
-        const trimmedName = name.trim();
-        
-        if (!trimmedName) {
-            return "Competition name is required";
-        }
-        
-        if (trimmedName.length < 3) {
-            return "Competition name must be at least 3 characters long";
-        }
-        
-        if (trimmedName.length > 150) {
-            return "Competition name must not exceed 150 characters";
-        }
-        
-        return null;
-    };
-
-    const validateCompetitionDate = (date: string, isNewCompetition: boolean = true): string | null => {
-        if (!date || !date.trim()) {
-            return "Competition date is required";
-        }
-        
-        const competitionDate = new Date(date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        if (isNaN(competitionDate.getTime())) {
-            return "Invalid date format";
-        }
-        
-        // For new competitions, date cannot be in the past
-        if (isNewCompetition && competitionDate < today) {
-            return "Competition date cannot be in the past";
-        }
-        
-        // Check if date is within reasonable future range (2 years)
-        const twoYearsFromNow = new Date();
-        twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
-        
-        if (competitionDate > twoYearsFromNow) {
-            return "Competition date should be within the next 2 years";
-        }
-        
-        return null;
-    };
-
-    const validateCompetitionLevel = (level: string): string | null => {
-        if (!level || !level.trim()) {
-            return "Competition level is required";
-        }
-        
-        const validLevels = ['intraschool', 'interschool', 'district', 'state', 'national', 'international'];
-        if (!validLevels.includes(level.toLowerCase())) {
-            return "Invalid competition level selected";
-        }
-        
-        return null;
-    };
-
-    const validateCompetitionCategory = (category: string): string | null => {
-        if (!category || !category.trim()) {
-            return null; // Optional field
-        }
-        
-        const validCategories = ['arts', 'sports', 'robotics', 'science', 'literature'];
-        if (!validCategories.includes(category.toLowerCase())) {
-            return "Invalid competition category selected";
-        }
-        
-        return null;
-    };
-
-    const validateCompetitionStatus = (status: string): string | null => {
-        if (!status || !status.trim()) {
-            return "Competition status is required";
-        }
-        
-        const validStatuses = ['upcoming', 'ongoing', 'completed', 'cancelled'];
-        if (!validStatuses.includes(status.toLowerCase())) {
-            return "Invalid competition status. Must be one of: upcoming, ongoing, completed, cancelled";
-        }
-        
-        return null;
-    };
-
-    const validateCompetitionDescription = (description: string): string | null => {
-        if (!description || !description.trim()) {
-            return null; // Optional field
-        }
-        
-        if (description.trim().length > 1000) {
-            return "Competition description must not exceed 1000 characters";
-        }
-        
-        return null;
-    };
-
-    const checkDuplicateCompetitionName = (name: string, date: string, excludeCompId?: string): boolean => {
-        const trimmedName = name.trim().toLowerCase();
-        const competitionDate = new Date(date);
-        
-        // Check for competitions with same name within 7 days of the date
-        return competitions.some(comp => {
-            if (comp.comp_id === excludeCompId) return false;
-            
-            const compDate = new Date(comp.competition_date || comp.date || '');
-            const daysDifference = Math.abs((competitionDate.getTime() - compDate.getTime()) / (1000 * 60 * 60 * 24));
-            
-            return comp.name.toLowerCase() === trimmedName && daysDifference <= 7;
-        });
-    };
-
-    const autoUpdateCompetitionStatus = (date: string, currentStatus: string): string => {
-        const competitionDate = new Date(date);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        
-        // Don't auto-update if manually set to cancelled
-        if (currentStatus === 'cancelled') {
-            return currentStatus;
-        }
-        
-        // If competition date has passed, mark as completed
-        if (competitionDate < today) {
-            return 'completed';
-        }
-        
-        // If competition is today, mark as ongoing
-        if (competitionDate.getTime() === today.getTime()) {
-            return 'ongoing';
-        }
-        
-        // If competition is in the future, mark as upcoming
-        return 'upcoming';
-    };
-
     const handleAddCompetition = async () => {
-        // Clear previous errors
-        setCompFormErrors({});
-        const errors: Record<string, string> = {};
-
-        // Validate competition name
-        const nameError = validateCompetitionName(newCompForm.name);
-        if (nameError) {
-            errors.name = nameError;
-        }
-
-        // Validate competition date
-        const dateError = validateCompetitionDate(newCompForm.date, true);
-        if (dateError) {
-            errors.date = dateError;
-        }
-
-        // Check for duplicate name within date range
-        if (!nameError && !dateError && checkDuplicateCompetitionName(newCompForm.name, newCompForm.date)) {
-            errors.name = "A competition with this name already exists around the same date";
-        }
-
-        // Validate level
-        const levelError = validateCompetitionLevel(newCompForm.level);
-        if (levelError) {
-            errors.level = levelError;
-        }
-
-        // Validate category (optional)
-        const categoryError = validateCompetitionCategory(newCompForm.category);
-        if (categoryError) {
-            errors.category = categoryError;
-        }
-
-        // Validate status
-        const statusError = validateCompetitionStatus(newCompForm.status);
-        if (statusError) {
-            errors.status = statusError;
-        }
-
-        // Validate description (optional)
-        const descError = validateCompetitionDescription(newCompForm.description);
-        if (descError) {
-            errors.description = descError;
-        }
-
-        // If there are any errors, set them and return
-        if (Object.keys(errors).length > 0) {
-            setCompFormErrors(errors);
+        if (!newCompForm.name.trim()) {
+            setNotice({ type: "error", text: "Competition name is required" });
             return;
         }
 
-        // Auto-update status based on date
-        const autoStatus = autoUpdateCompetitionStatus(newCompForm.date, newCompForm.status);
+        if (!newCompForm.date) {
+            setNotice({ type: "error", text: "Competition date is required" });
+            return;
+        }
 
         try {
             const createdCompetition = await competitionsService.createCompetition({
-                name: newCompForm.name.trim(),
+                name: newCompForm.name,
                 level: newCompForm.level,
                 date: newCompForm.date,
-                description: newCompForm.description.trim() || undefined,
-                category: newCompForm.category.trim() || undefined,
-                status: autoStatus,
+                description: newCompForm.description,
+                category: newCompForm.category,
+                status: newCompForm.status,
                 participatingClubs: newCompForm.participatingClubs
             });
 
@@ -2151,104 +1765,66 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 description: "",
                 category: "",
                 status: "upcoming",
-                results: [],
                 participatingClubs: []
             });
-            setCompFormErrors({});
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error creating competition:', error);
-            setCompFormErrors({ submit: "Failed to create competition. Please try again." });
+            
+            // Provide more specific error messages
+            let errorMessage = "Failed to create competition. Please try again.";
+            
+            if (error?.code === '23505') {
+                errorMessage = "A competition with similar details already exists.";
+            } else if (error?.message?.includes('duplicate key')) {
+                errorMessage = "Duplicate entry detected. Please check your data and try again.";
+            } else if (error?.message?.includes('constraint')) {
+                errorMessage = "Database constraint violation. Please check your data and try again.";
+            } else if (error?.message) {
+                errorMessage = `Creation failed: ${error.message}`;
+            }
+            
+            setNotice({ type: "error", text: errorMessage });
         }
     };
 
-    const handleEditCompetition = (comp: Competition) => {
+    const handleEditCompetition = (comp) => {
         setEditCompForm({
             name: comp.name,
             level: comp.level,
-            date: comp.competition_date || comp.date || '',
+            date: comp.competition_date || comp.date,
             description: comp.description || "",
             category: comp.category || "",
             status: comp.status || "upcoming",
-            results: [],
             participatingClubs: comp.participatingClubs || []
         });
         setEditCompModal(comp);
     };
 
     const handleUpdateCompetition = async () => {
-        if (!editCompModal) {
-            setNotice({ type: "error", text: "No competition selected for editing" });
+        if (!editCompForm.name.trim()) {
+            setNotice({ type: "error", text: "Competition name is required" });
             return;
         }
 
-        // Clear previous errors
-        setCompFormErrors({});
-        const errors: Record<string, string> = {};
-
-        // Validate competition name
-        const nameError = validateCompetitionName(editCompForm.name);
-        if (nameError) {
-            errors.name = nameError;
-        }
-
-        // Validate competition date (allow past dates for editing existing competitions)
-        const dateError = validateCompetitionDate(editCompForm.date, false);
-        if (dateError) {
-            errors.date = dateError;
-        }
-
-        // Check for duplicate name within date range (excluding current competition)
-        if (!nameError && !dateError && checkDuplicateCompetitionName(editCompForm.name, editCompForm.date, editCompModal.comp_id)) {
-            errors.name = "A competition with this name already exists around the same date";
-        }
-
-        // Validate level
-        const levelError = validateCompetitionLevel(editCompForm.level);
-        if (levelError) {
-            errors.level = levelError;
-        }
-
-        // Validate category (optional)
-        const categoryError = validateCompetitionCategory(editCompForm.category);
-        if (categoryError) {
-            errors.category = categoryError;
-        }
-
-        // Validate status
-        const statusError = validateCompetitionStatus(editCompForm.status);
-        if (statusError) {
-            errors.status = statusError;
-        }
-
-        // Validate description (optional)
-        const descError = validateCompetitionDescription(editCompForm.description);
-        if (descError) {
-            errors.description = descError;
-        }
-
-        // If there are any errors, set them and return
-        if (Object.keys(errors).length > 0) {
-            setCompFormErrors(errors);
+        if (!editCompForm.date) {
+            setNotice({ type: "error", text: "Competition date is required" });
             return;
         }
-
-        // Auto-update status based on date (unless manually set to cancelled)
-        const autoStatus = autoUpdateCompetitionStatus(editCompForm.date, editCompForm.status);
 
         try {
             await competitionsService.updateCompetition(editCompModal.comp_id, {
-                name: editCompForm.name.trim(),
+                name: editCompForm.name,
                 level: editCompForm.level,
                 date: editCompForm.date,
-                description: editCompForm.description.trim() || undefined,
-                category: editCompForm.category.trim() || undefined,
-                status: autoStatus,
+                description: editCompForm.description,
+                category: editCompForm.category,
+                status: editCompForm.status,
                 participatingClubs: editCompForm.participatingClubs
             });
 
             const updatedCompetitions = competitions.map(c => 
                 c.comp_id === editCompModal.comp_id 
-                    ? { ...c, ...editCompForm, competition_date: editCompForm.date, status: autoStatus }
+                    ? { ...c, ...editCompForm, competition_date: editCompForm.date }
                     : c
             );
             setCompetitions(updatedCompetitions);
@@ -2262,17 +1838,29 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 description: "",
                 category: "",
                 status: "upcoming",
-                results: [],
                 participatingClubs: []
             });
-            setCompFormErrors({});
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error updating competition:', error);
-            setCompFormErrors({ submit: "Failed to update competition. Please try again." });
+            
+            // Provide more specific error messages
+            let errorMessage = "Failed to update competition. Please try again.";
+            
+            if (error?.code === '23505') {
+                errorMessage = "There was a conflict updating the competition clubs. Please try again.";
+            } else if (error?.message?.includes('duplicate key')) {
+                errorMessage = "Duplicate entry detected. Please refresh the page and try again.";
+            } else if (error?.message?.includes('constraint')) {
+                errorMessage = "Database constraint violation. Please check your data and try again.";
+            } else if (error?.message) {
+                errorMessage = `Update failed: ${error.message}`;
+            }
+            
+            setNotice({ type: "error", text: errorMessage });
         }
     };
 
-    const handleDeleteCompetition = async (comp: Competition) => {
+    const handleDeleteCompetition = async (comp) => {
         if (!confirm(`Are you sure you want to delete "${comp?.name || 'this competition'}"? This action cannot be undone.`)) {
             return;
         }
@@ -2284,7 +1872,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             setCompetitions(updatedCompetitions);
             
             setNotice({ type: "success", text: `${comp?.name || 'Competition'} has been deleted successfully!` });
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error deleting competition:', error);
             setNotice({ type: "error", text: "Failed to delete competition. Please try again." });
         }
@@ -2309,7 +1897,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Users size={16} className="text-green-600" />
-                                    <span>{clubs.reduce((acc, club) => acc + (club.members?.length || 0), 0)} Total Members</span>
+                                    <span>{clubs.reduce((acc, club) => acc + club.members.length, 0)} Total Members</span>
                                 </div>
                             </div>
                         </div>
@@ -2452,7 +2040,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                         </div>
                         
                         {/* Enhanced Add Button with Animation */}
-                        {/* <button
+                        <button
                             onClick={() => activeTab === "clubs" ? setAddClubModal(true) : setAddCompModal(true)}
                             className={`group flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                                 activeTab === "clubs"
@@ -2462,7 +2050,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                         >
                             <Plus size={16} className="transition-transform duration-300 group-hover:rotate-90" />
                             <span>Add {activeTab === "clubs" ? "Club" : "Competition"}</span>
-                        </button> */}
+                        </button>
                     </div>
 
                     {/* Tab Content Indicator */}
@@ -2770,7 +2358,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                         <section className="mb-10 animate-fadeIn">
                             <div className="flex items-center justify-between mb-6">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-gray-900">Clubs</h2>
+                                    <h2 className="text-2xl font-bold text-gray-900">Active Clubs</h2>
                                     <p className="text-gray-600 mt-1">Manage and monitor club activities</p>
                                 </div>
                                 <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
@@ -2835,7 +2423,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                                                             <Users size={16} className="text-blue-600" />
                                                                         </div>
                                                                         <div>
-                                                                            <div className="font-semibold text-gray-900">{club.name}</div>
+                                                                            <div className="font-medium text-gray-900">{club.name}</div>
                                                                             {club.description && (
                                                                                 <div className="text-sm text-gray-500 line-clamp-1">{club.description}</div>
                                                                             )}
@@ -2862,7 +2450,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                                                     </div>
                                                                 </td>
                                                                 <td className="px-6 py-4">
-                                                                    <div className="text-base text-gray-900">
+                                                                    <div className="text-sm text-gray-900">
                                                                         {club.meeting_day && club.meeting_time ? (
                                                                             <div>
                                                                                 <div>{club.meeting_day}</div>
@@ -2989,194 +2577,94 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     {/* Grid View */}
                                     {competitionViewMode === "grid" && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                            {paginatedCompetitions.map((comp) => {
-                                                const CompetitionCard = () => {
-                                                    const [showCompMenu, setShowCompMenu] = React.useState(false);
-                                                    const [showFullDescription, setShowFullDescription] = React.useState(false);
-                                                    const compMenuRef = React.useRef<HTMLDivElement>(null);
-
-                                                    // Check if description is long (more than 100 characters)
-                                                    const isLongDescription = comp.description && comp.description.length > 100;
-                                                    const displayDescription = showFullDescription || !isLongDescription 
-                                                        ? comp.description 
-                                                        : comp.description?.substring(0, 100) + '...';
-
-                                                    // Close menu when clicking outside
-                                                    React.useEffect(() => {
-                                                        const handleClickOutside = (event: MouseEvent) => {
-                                                            if (compMenuRef.current && !compMenuRef.current.contains(event.target as Node)) {
-                                                                setShowCompMenu(false);
-                                                            }
-                                                        };
-
-                                                        if (showCompMenu) {
-                                                            document.addEventListener('mousedown', handleClickOutside);
-                                                            return () => document.removeEventListener('mousedown', handleClickOutside);
-                                                        }
-                                                    }, [showCompMenu]);
-
-                                                    return (
-                                                        <div className="bg-white rounded-xl hover:shadow-lg transition-all duration-300 overflow-hidden shadow-sm">
-                                                            {/* Competition Header */}
-                                                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
-                                                                <div className="flex items-start justify-between">
-                                                                    <div className="flex items-center gap-3 flex-1">
-                                                                        <div className="bg-white rounded-lg p-2 shadow-sm">
-                                                                            <Trophy size={20} className="text-blue-600" />
-                                                                        </div>
-                                                                        <div className="flex-1">
-                                                                            <h3 className="font-semibold text-gray-900">{comp.name}</h3>
-                                                                        </div>
-                                                                    </div>
-                                                                    
-                                                                    {/* Three-dot menu */}
-                                                                    <div className="relative" ref={compMenuRef}>
-                                                                        <button
-                                                                            onClick={() => setShowCompMenu(!showCompMenu)}
-                                                                            className="p-2 hover:bg-white/50 rounded-lg transition-colors"
-                                                                            title="More actions"
-                                                                        >
-                                                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" className="text-gray-600">
-                                                                                <circle cx="10" cy="4" r="1.5" />
-                                                                                <circle cx="10" cy="10" r="1.5" />
-                                                                                <circle cx="10" cy="16" r="1.5" />
-                                                                            </svg>
-                                                                        </button>
-
-                                                                        {/* Dropdown menu */}
-                                                                        {showCompMenu && (
-                                                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-50 py-1">
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        setViewComp(comp);
-                                                                                        setShowCompMenu(false);
-                                                                                    }}
-                                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                                                >
-                                                                                    <Eye size={14} />
-                                                                                    View Details
-                                                                                </button>
-                                                                                
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        setRegisterCompModal(comp);
-                                                                                        setShowCompMenu(false);
-                                                                                    }}
-                                                                                    className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2"
-                                                                                >
-                                                                                    <UserPlus size={14} />
-                                                                                    Register Students
-                                                                                </button>
-                                                                                
-                                                                                <div className="border-t border-gray-100 my-1"></div>
-                                                                                
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        handleEditCompetition(comp);
-                                                                                        setShowCompMenu(false);
-                                                                                    }}
-                                                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-                                                                                >
-                                                                                    <Edit size={14} />
-                                                                                    Edit Competition
-                                                                                </button>
-                                                                                
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        handleDeleteCompetition(comp);
-                                                                                        setShowCompMenu(false);
-                                                                                    }}
-                                                                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                                                                                >
-                                                                                    <Trash2 size={14} />
-                                                                                    Delete Competition
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
+                                            {paginatedCompetitions.map((comp) => (
+                                                <div key={comp.comp_id} className="bg-white rounded-xl hover:shadow-lg transition-all duration-300 overflow-hidden shadow-sm">
+                                                    {/* Competition Header */}
+                                                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4">
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="bg-white rounded-lg p-2 shadow-sm">
+                                                                    <Trophy size={20} className="text-blue-600" />
                                                                 </div>
-                                                            </div>
-
-                                                            {/* Competition Content */}
-                                                            <div className="p-4">
-                                                                {/* 2-Column Grid Layout */}
-                                                                <div className="grid grid-cols-2 gap-3 mb-4">
-                                                                    {/* Status */}
-                                                                    <div>
-                                                                        <div className="text-xs text-gray-500 mb-1">Status</div>
-                                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                                                                            comp.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
-                                                                            comp.status === 'ongoing' ? 'bg-green-100 text-green-700' :
-                                                                            comp.status === 'completed' ? 'bg-gray-100 text-gray-700' :
-                                                                            'bg-red-100 text-red-700'
-                                                                        }`}>
-                                                                            {comp.status === 'upcoming' ? 'Upcoming' :
-                                                                             comp.status === 'ongoing' ? 'Ongoing' :
-                                                                             comp.status === 'completed' ? 'Completed' :
-                                                                             'Cancelled'}
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* Category */}
-                                                                    <div>
-                                                                        <div className="text-xs text-gray-500 mb-1">Category</div>
-                                                                        {comp.category ? (
-                                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 capitalize">
-                                                                                {comp.category}
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span className="text-xs text-gray-400">Not specified</span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Level */}
-                                                                    <div>
-                                                                        <div className="text-xs text-gray-500 mb-1">Level</div>
-                                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
-                                                                            {comp.level}
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* Date */}
-                                                                    <div>
-                                                                        <div className="text-xs text-gray-500 mb-1">Date</div>
-                                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                                                                            {formatDate(comp.competition_date || comp.date)}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Description */}
-                                                                {comp.description && (
-                                                                    <div className="mb-3">
-                                                                        <p className="text-sm text-gray-600 leading-relaxed">
-                                                                            {displayDescription}
-                                                                        </p>
-                                                                        {isLongDescription && (
-                                                                            <button
-                                                                                onClick={() => setShowFullDescription(!showFullDescription)}
-                                                                                className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1"
-                                                                            >
-                                                                                {showFullDescription ? 'View less' : 'View more'}
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Participating Clubs */}
-                                                                <div className="pt-3 border-t border-gray-100">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <span className="text-xs text-gray-500">Participating Clubs</span>
-                                                                        <span className="text-sm font-semibold text-gray-900">{comp.participatingClubs?.length ?? 0}</span>
+                                                                <div>
+                                                                    <h3 className="font-semibold text-gray-900">{comp.name}</h3>
+                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                        <span className="text-xs text-gray-500 capitalize">{comp.level}</span>
+                                                                        <span className="text-xs text-gray-400">•</span>
+                                                                        <span className="text-xs text-gray-500">{formatDate(comp.competition_date || comp.date)}</span>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    );
-                                                };
+                                                    </div>
 
-                                                return <CompetitionCard key={comp.comp_id} />;
-                                            })}
+                                                    {/* Competition Content */}
+                                                    <div className="p-4">
+                                                        <div className="mb-4">
+                                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                                comp.status === 'upcoming' ? 'bg-blue-100 text-blue-700' :
+                                                                comp.status === 'ongoing' ? 'bg-green-100 text-green-700' :
+                                                                comp.status === 'completed' ? 'bg-gray-100 text-gray-700' :
+                                                                'bg-red-100 text-red-700'
+                                                            }`}>
+                                                                {comp.status === 'upcoming' ? 'Upcoming' :
+                                                                 comp.status === 'ongoing' ? 'Ongoing' :
+                                                                 comp.status === 'completed' ? 'Completed' :
+                                                                 'Cancelled'}
+                                                            </span>
+                                                        </div>
+
+                                                        {comp.category && (
+                                                            <div className="mb-3">
+                                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 capitalize">
+                                                                    {comp.category}
+                                                                </span>
+                                                            </div>
+                                                        )}
+
+                                                        {comp.description && (
+                                                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{comp.description}</p>
+                                                        )}
+
+                                                        <p className="text-sm text-gray-600 mb-4">Participating Clubs: {comp.participatingClubs?.length ?? 0}</p>
+
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                                                                    onClick={() => setViewComp(comp)}
+                                                                >
+                                                                    <Eye size={14} />
+                                                                    View
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => setRegisterCompModal(comp)}
+                                                                    className="flex items-center justify-center gap-2 flex-1 text-sm px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                                                                >
+                                                                    <UserPlus size={14} />
+                                                                    Register
+                                                                </button>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <button
+                                                                    onClick={() => handleEditCompetition(comp)}
+                                                                    className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-2 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                                                >
+                                                                    <Edit size={14} />
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteCompetition(comp)}
+                                                                    className="flex-1 flex items-center justify-center gap-1 text-sm px-3 py-2 rounded-lg bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 transition-colors"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                    Delete
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
 
@@ -3304,10 +2792,10 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <div className="mb-3 text-sm">{selectedClub.description}</div>
 
                             <div className="mb-4">
-                                <div className="text-xs text-slate-500 mb-2">Members ({selectedClub.members?.length || 0}/{selectedClub.capacity})</div>
+                                <div className="text-xs text-slate-500 mb-2">Members ({selectedClub.members.length}/{selectedClub.capacity})</div>
                                 <div className="flex gap-2 mt-2 flex-wrap">
-                                    {(selectedClub.members?.length || 0) > 0 ? (
-                                        selectedClub.members?.map((m, index) => (
+                                    {selectedClub.members.length > 0 ? (
+                                        selectedClub.members.map((m, index) => (
                                             <div key={typeof m === 'string' ? m : `member-${index}`} className="px-2 py-1 bg-gray-100 rounded-full text-xs">{m}</div>
                                         ))
                                     ) : (
@@ -3343,7 +2831,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                         setDetailsOpen(false); 
                                     }} 
                                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-                                    disabled={(selectedClub.members?.length || 0) === 0}
+                                    disabled={selectedClub.members.length === 0}
                                 >
                                     Mark Attendance
                                 </button>
@@ -3354,14 +2842,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                     ) : null}
                 </Modal>
 
-                <Modal open={addClubModal} onClose={() => { setAddClubModal(false); setClubFormErrors({}); }} title="Add New Club">
+                <Modal open={addClubModal} onClose={() => setAddClubModal(false)} title="Add New Club">
                     <div className="space-y-4">
-                        {clubFormErrors.submit && (
-                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                                {clubFormErrors.submit}
-                            </div>
-                        )}
-                        
                         <div>
                             <label className="block text-sm font-medium mb-1">Club Name *</label>
                             <input
@@ -3369,15 +2851,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 value={newClubForm.name}
                                 onChange={(e) => setNewClubForm({ ...newClubForm, name: e.target.value })}
                                 placeholder="Enter club name"
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                    clubFormErrors.name 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                            {clubFormErrors.name && (
-                                <p className="mt-1 text-sm text-red-600">{clubFormErrors.name}</p>
-                            )}
                         </div>
 
                         <div>
@@ -3402,15 +2877,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 onChange={(e) => setNewClubForm({ ...newClubForm, description: e.target.value })}
                                 placeholder="Enter club description"
                                 rows={3}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                    clubFormErrors.description 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                            {clubFormErrors.description && (
-                                <p className="mt-1 text-sm text-red-600">{clubFormErrors.description}</p>
-                            )}
                         </div>
 
                         <div>
@@ -3418,33 +2886,42 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <input
                                 type="number"
                                 value={newClubForm.capacity}
-                                onChange={(e) => setNewClubForm({ ...newClubForm, capacity: Number(e.target.value) })}
+                                onChange={(e) => setNewClubForm({ ...newClubForm, capacity: e.target.value })}
                                 min="1"
                                 placeholder="Maximum members"
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                    clubFormErrors.capacity 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                            {clubFormErrors.capacity && (
-                                <p className="mt-1 text-sm text-red-600">{clubFormErrors.capacity}</p>
-                            )}
                         </div>
 
                         <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                             <div className="text-sm font-medium text-blue-900 mb-3">Meeting Details</div>
                             
+                            {/* <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
+                                <input
+                                    type="text"
+                                    value={newClubForm.meeting_day}
+                                    onChange={(e) => setNewClubForm({ ...newClubForm, meeting_day: e.target.value })}
+                                    placeholder="e.g., Monday, Wednesday"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">🕐 Meeting Time</label>
+                                <input
+                                    type="time"
+                                    value={newClubForm.meeting_time}
+                                    onChange={(e) => setNewClubForm({ ...newClubForm, meeting_time: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div> */}
                             <div className="mb-3">
                                 <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
                                 <select
                                     value={newClubForm.meeting_day}
                                     onChange={(e) => setNewClubForm({ ...newClubForm, meeting_day: e.target.value })}
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                        clubFormErrors.meeting_day 
-                                            ? 'border-red-300 focus:ring-red-500' 
-                                            : 'border-gray-300 focus:ring-blue-500'
-                                    }`}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     <option value="">Select a day</option>
                                     <option value="Monday">Monday</option>
@@ -3455,9 +2932,6 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     <option value="Saturday">Saturday</option>
                                     <option value="Sunday">Sunday</option>
                                 </select>
-                                {clubFormErrors.meeting_day && (
-                                    <p className="mt-1 text-sm text-red-600">{clubFormErrors.meeting_day}</p>
-                                )}
                             </div>
 
                             <div className="mb-3">
@@ -3466,15 +2940,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     type="time"
                                     value={newClubForm.meeting_time}
                                     onChange={(e) => setNewClubForm({ ...newClubForm, meeting_time: e.target.value })}
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                        clubFormErrors.meeting_time 
-                                            ? 'border-red-300 focus:ring-red-500' 
-                                            : 'border-gray-300 focus:ring-blue-500'
-                                    }`}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                {clubFormErrors.meeting_time && (
-                                    <p className="mt-1 text-sm text-red-600">{clubFormErrors.meeting_time}</p>
-                                )}
                             </div>
 
                             <div className="mb-3">
@@ -3484,15 +2951,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     value={newClubForm.location}
                                     onChange={(e) => setNewClubForm({ ...newClubForm, location: e.target.value })}
                                     placeholder="e.g., Room 101, Auditorium"
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                        clubFormErrors.location 
-                                            ? 'border-red-300 focus:ring-red-500' 
-                                            : 'border-gray-300 focus:ring-blue-500'
-                                    }`}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                {clubFormErrors.location && (
-                                    <p className="mt-1 text-sm text-red-600">{clubFormErrors.location}</p>
-                                )}
                             </div>
                         </div>
 
@@ -3504,7 +2964,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 Create Club
                             </button>
                             <button
-                                onClick={() => { setAddClubModal(false); setClubFormErrors({}); }}
+                                onClick={() => setAddClubModal(false)}
                                 className="px-4 py-2 border rounded-md hover:bg-gray-50"
                             >
                                 Cancel
@@ -3514,14 +2974,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 </Modal>
 
                 {/* Edit Club Modal */}
-                <Modal open={!!editClubModal} onClose={() => { setEditClubModal(null); setClubFormErrors({}); }} title="Edit Club">
+                <Modal open={!!editClubModal} onClose={() => setEditClubModal(null)} title="Edit Club">
                     <div className="space-y-4">
-                        {clubFormErrors.submit && (
-                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                                {clubFormErrors.submit}
-                            </div>
-                        )}
-                        
                         <div>
                             <label className="block text-sm font-medium mb-1">Club Name *</label>
                             <input
@@ -3529,15 +2983,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 value={editClubForm.name}
                                 onChange={(e) => setEditClubForm({ ...editClubForm, name: e.target.value })}
                                 placeholder="Enter club name"
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                    clubFormErrors.name 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                            {clubFormErrors.name && (
-                                <p className="mt-1 text-sm text-red-600">{clubFormErrors.name}</p>
-                            )}
                         </div>
 
                         <div>
@@ -3562,15 +3009,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 onChange={(e) => setEditClubForm({ ...editClubForm, description: e.target.value })}
                                 placeholder="Enter club description"
                                 rows={3}
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                    clubFormErrors.description 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                            {clubFormErrors.description && (
-                                <p className="mt-1 text-sm text-red-600">{clubFormErrors.description}</p>
-                            )}
                         </div>
 
                         <div>
@@ -3578,33 +3018,42 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <input
                                 type="number"
                                 value={editClubForm.capacity}
-                                onChange={(e) => setEditClubForm({ ...editClubForm, capacity: Number(e.target.value) })}
+                                onChange={(e) => setEditClubForm({ ...editClubForm, capacity: e.target.value })}
                                 min="1"
                                 placeholder="Maximum members"
-                                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                    clubFormErrors.capacity 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
-                            {clubFormErrors.capacity && (
-                                <p className="mt-1 text-sm text-red-600">{clubFormErrors.capacity}</p>
-                            )}
                         </div>
 
                         <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                             <div className="text-sm font-medium text-blue-900 mb-3">Meeting Details</div>
                             
+                            {/* <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
+                                <input
+                                    type="text"
+                                    value={editClubForm.meeting_day}
+                                    onChange={(e) => setEditClubForm({ ...editClubForm, meeting_day: e.target.value })}
+                                    placeholder="e.g., Monday, Wednesday"
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div className="mb-3">
+                                <label className="block text-sm font-medium mb-1">🕐 Meeting Time</label>
+                                <input
+                                    type="time"
+                                    value={editClubForm.meeting_time}
+                                    onChange={(e) => setEditClubForm({ ...editClubForm, meeting_time: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div> */}
                              <div className="mb-3">
                                 <label className="block text-sm font-medium mb-1">📅 Meeting Day</label>
                                 <select
                                     value={editClubForm.meeting_day}
                                     onChange={(e) => setEditClubForm({ ...editClubForm, meeting_day: e.target.value })}
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                        clubFormErrors.meeting_day 
-                                            ? 'border-red-300 focus:ring-red-500' 
-                                            : 'border-gray-300 focus:ring-blue-500'
-                                    }`}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     <option value="">Select a day</option>
                                     <option value="Monday">Monday</option>
@@ -3615,9 +3064,6 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     <option value="Saturday">Saturday</option>
                                     <option value="Sunday">Sunday</option>
                                 </select>
-                                {clubFormErrors.meeting_day && (
-                                    <p className="mt-1 text-sm text-red-600">{clubFormErrors.meeting_day}</p>
-                                )}
                             </div>
 
                             <div className="mb-3">
@@ -3626,15 +3072,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     type="time"
                                     value={editClubForm.meeting_time}
                                     onChange={(e) => setEditClubForm({ ...editClubForm, meeting_time: e.target.value })}
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                        clubFormErrors.meeting_time 
-                                            ? 'border-red-300 focus:ring-red-500' 
-                                            : 'border-gray-300 focus:ring-blue-500'
-                                    }`}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                {clubFormErrors.meeting_time && (
-                                    <p className="mt-1 text-sm text-red-600">{clubFormErrors.meeting_time}</p>
-                                )}
                             </div>
                             <div className="mb-3">
                                 <label className="block text-sm font-medium mb-1">📍 Location</label>
@@ -3643,15 +3082,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     value={editClubForm.location}
                                     onChange={(e) => setEditClubForm({ ...editClubForm, location: e.target.value })}
                                     placeholder="e.g., Room 101, Auditorium"
-                                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                                        clubFormErrors.location 
-                                            ? 'border-red-300 focus:ring-red-500' 
-                                            : 'border-gray-300 focus:ring-blue-500'
-                                    }`}
+                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                {clubFormErrors.location && (
-                                    <p className="mt-1 text-sm text-red-600">{clubFormErrors.location}</p>
-                                )}
                             </div>
                         </div>
 
@@ -3663,7 +3095,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 Update Club
                             </button>
                             <button
-                                onClick={() => { setEditClubModal(null); setClubFormErrors({}); }}
+                                onClick={() => setEditClubModal(null)}
                                 className="px-4 py-2 border rounded-md hover:bg-gray-50"
                             >
                                 Cancel
@@ -4011,31 +3443,18 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 {/* Edit Competition Modal */}
                 <Modal
                     open={!!editCompModal}
-                    onClose={() => { setEditCompModal(null); setCompFormErrors({}); }}
+                    onClose={() => setEditCompModal(null)}
                     title="Edit Competition"
                 >
                     <div className="space-y-3">
-                        {compFormErrors.submit && (
-                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                                {compFormErrors.submit}
-                            </div>
-                        )}
-                        
                         <div>
                             <label className="text-sm font-medium">Competition Name *</label>
                             <input
                                 value={editCompForm.name}
                                 onChange={(e) => setEditCompForm({ ...editCompForm, name: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.name 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                                 placeholder="Enter Competition Name"
                             />
-                            {compFormErrors.name && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.name}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4043,17 +3462,10 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <textarea
                                 value={editCompForm.description}
                                 onChange={(e) => setEditCompForm({ ...editCompForm, description: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.description 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                                 placeholder="Enter competition description"
                                 rows={2}
                             />
-                            {compFormErrors.description && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.description}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4061,16 +3473,9 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <input
                                 value={editCompForm.category}
                                 onChange={(e) => setEditCompForm({ ...editCompForm, category: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.category 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                                 placeholder="e.g., Science, Sports, Arts"
                             />
-                            {compFormErrors.category && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.category}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4078,11 +3483,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <select
                                 value={editCompForm.level}
                                 onChange={(e) => setEditCompForm({ ...editCompForm, level: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.level 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                             >
                                 <option value="intraschool">Intra-School</option>
                                 <option value="interschool">Inter-School</option>
@@ -4091,9 +3492,6 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 <option value="national">National</option>
                                 <option value="international">International</option>
                             </select>
-                            {compFormErrors.level && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.level}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4102,15 +3500,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 type="date"
                                 value={editCompForm.date}
                                 onChange={(e) => setEditCompForm({ ...editCompForm, date: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.date 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                             />
-                            {compFormErrors.date && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.date}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4146,7 +3537,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 Update Competition
                             </button>
                             <button
-                                onClick={() => { setEditCompModal(null); setCompFormErrors({}); }}
+                                onClick={() => setEditCompModal(null)}
                                 className="px-4 py-2 border rounded-lg hover:bg-gray-50"
                             >
                                 Cancel
@@ -4180,8 +3571,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
 
                             <button
                                 onClick={() => {
-                                    const comp = competitions.find(c => c.comp_id === viewComp?.comp_id);
-                                    if (comp) setRegisterCompModal(comp);
+                                    setRegisterCompModal(viewComp.comp_id);
                                     setViewComp(null);
                                 }}
                                 className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -4193,16 +3583,10 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 </Modal>
                 <Modal
                     open={addCompModal}
-                    onClose={() => { setAddCompModal(false); setCompFormErrors({}); }}
+                    onClose={() => setAddCompModal(false)}
                     title="Add New Competition"
                 >
                     <div className="space-y-3">
-                        {compFormErrors.submit && (
-                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                                {compFormErrors.submit}
-                            </div>
-                        )}
-                        
                         <div className="bg-green-50 p-3 rounded-lg mb-4 text-sm">
                             <div className="flex items-center gap-2 text-green-900">
                                 <span className="font-semibold">ℹ️ Note:</span>
@@ -4215,16 +3599,9 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <input
                                 value={newCompForm.name}
                                 onChange={(e) => setNewCompForm({ ...newCompForm, name: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.name 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                                 placeholder="Enter Competition Name"
                             />
-                            {compFormErrors.name && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.name}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4232,17 +3609,10 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <textarea
                                 value={newCompForm.description}
                                 onChange={(e) => setNewCompForm({ ...newCompForm, description: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.description 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                                 placeholder="Enter competition description"
                                 rows={2}
                             />
-                            {compFormErrors.description && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.description}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4250,16 +3620,9 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <input
                                 value={newCompForm.category}
                                 onChange={(e) => setNewCompForm({ ...newCompForm, category: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.category 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                                 placeholder="e.g., Science, Sports, Arts"
                             />
-                            {compFormErrors.category && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.category}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4267,11 +3630,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                             <select
                                 value={newCompForm.level}
                                 onChange={(e) => setNewCompForm({ ...newCompForm, level: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.level 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                             >
                                 <option value="intraschool">Intra-School</option>
                                 <option value="interschool">Inter-School</option>
@@ -4280,9 +3639,6 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 <option value="national">National</option>
                                 <option value="international">International</option>
                             </select>
-                            {compFormErrors.level && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.level}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4291,15 +3647,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 type="date"
                                 value={newCompForm.date}
                                 onChange={(e) => setNewCompForm({ ...newCompForm, date: e.target.value })}
-                                className={`w-full px-3 py-2 rounded-md border mt-1 ${
-                                    compFormErrors.date 
-                                        ? 'border-red-300 focus:ring-red-500' 
-                                        : 'border-gray-300 focus:ring-blue-500'
-                                }`}
+                                className="w-full px-3 py-2 rounded-md border mt-1"
                             />
-                            {compFormErrors.date && (
-                                <p className="mt-1 text-sm text-red-600">{compFormErrors.date}</p>
-                            )}
                         </div>
 
                         <div>
@@ -4335,7 +3684,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 Create Competition
                             </button>
                             <button
-                                onClick={() => { setAddCompModal(false); setCompFormErrors({}); }}
+                                onClick={() => setAddCompModal(false)}
                                 className="px-4 py-2 border rounded-lg hover:bg-gray-50"
                             >
                                 Cancel
@@ -4369,7 +3718,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     <div>
                                         <label className="block text-xs font-medium text-blue-900 mb-1">Total Members</label>
                                         <div className="px-3 py-2 bg-white border rounded-md text-sm font-semibold">
-                                            {attendanceModal.club?.members?.length || 0}
+                                            {attendanceModal.club.members.length}
                                         </div>
                                     </div>
                                 </div>
@@ -4421,8 +3770,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => {
-                                                const records: Record<string, string> = {};
-                                                attendanceModal.club?.members?.forEach(memberEmail => records[memberEmail] = 'present');
+                                                const records = {};
+                                                attendanceModal.club.members.forEach(memberEmail => records[memberEmail] = 'present');
                                                 setAttendanceRecords(records);
                                             }}
                                             className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
@@ -4431,8 +3780,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                         </button>
                                         <button
                                             onClick={() => {
-                                                const records: Record<string, string> = {};
-                                                attendanceModal.club?.members?.forEach(memberEmail => records[memberEmail] = 'absent');
+                                                const records = {};
+                                                attendanceModal.club.members.forEach(memberEmail => records[memberEmail] = 'absent');
                                                 setAttendanceRecords(records);
                                             }}
                                             className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
@@ -4443,8 +3792,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                 </div>
 
                                 <div className="max-h-80 overflow-y-auto space-y-2 border rounded-lg p-3 bg-gray-50">
-                                    {(attendanceModal.club?.members?.length || 0) > 0 ? (
-                                        attendanceModal.club?.members?.map((memberEmail, index) => {
+                                    {attendanceModal.club.members.length > 0 ? (
+                                        attendanceModal.club.members.map((memberEmail, index) => {
                                             const student = allStudents.find(s => s.email === memberEmail);
                                             const studentName = student?.name || memberEmail;
                                             const studentGrade = student?.grade || 'N/A';
@@ -4545,7 +3894,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
     {studentDrawer.club && (
         <div className="space-y-3">
             <div className="text-sm text-slate-600 mb-4">
-                Current Members: {studentDrawer.club?.members?.length || 0} / {studentDrawer.club?.capacity || 0}
+                Current Members: {studentDrawer.club.members.length} / {studentDrawer.club.capacity}
             </div>
 
             {/* Search Bar */}
@@ -4610,8 +3959,8 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 return (
                     <div className="max-h-96 overflow-y-auto space-y-2">
                         {filteredStudents.map((student) => {
-                            const isEnrolled = studentDrawer.club?.members?.includes(student.email) || false;
-                            const isFull = (studentDrawer.club?.members?.length || 0) >= (studentDrawer.club?.capacity || 0);
+                            const isEnrolled = studentDrawer.club.members.includes(student.email);
+                            const isFull = studentDrawer.club.members.length >= studentDrawer.club.capacity;
 
                             return (
                                 <div
@@ -4625,7 +3974,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
 
                                     {isEnrolled ? (
                                         <button
-                                            onClick={() => studentDrawer.club && handleStudentLeave(student.id, studentDrawer.club)}
+                                            onClick={() => handleStudentLeave(student.id, studentDrawer.club)}
                                             className="flex items-center gap-1 px-3 py-1 text-sm bg-red-50 text-red-600 rounded-md border border-red-100 hover:bg-red-100"
                                         >
                                             <X size={14} />
@@ -4634,7 +3983,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                                     ) : (
                                         <button
                                             disabled={isFull}
-                                            onClick={() => studentDrawer.club && handleStudentEnroll(student.id, studentDrawer.club)}
+                                            onClick={() => handleStudentEnroll(student.id, studentDrawer.club)}
                                             className={`flex items-center gap-1 px-3 py-1 text-sm rounded-md ${
                                                 isFull
                                                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"

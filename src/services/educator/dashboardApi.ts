@@ -220,8 +220,7 @@ export const dashboardApi = {
       let studentsQuery = supabase
         .from('students')
         .select('id, user_id')
-        .eq('is_deleted', false)
-        .not('student_id', 'is', null);  // Exclude students without student_id
+        .eq('is_deleted', false);
 
       console.log('👥 Building students query for:', educatorType);
 
@@ -231,16 +230,13 @@ export const dashboardApi = {
         if (educatorData.role === 'admin') {
           console.log('👑 School admin - querying all students in school:', educatorData.school_id);
           // School admins can see all students in their school
-          studentsQuery = studentsQuery
-            .eq('school_id', educatorData.school_id)
-            .is('college_id', null);  // Exclude college students
+          studentsQuery = studentsQuery.eq('school_id', educatorData.school_id);
         } else if (assignedClassIds.length > 0) {
           console.log('📚 Regular educator - querying students in assigned classes:', assignedClassIds);
           // Regular educators can only see students in their assigned classes
           studentsQuery = studentsQuery
             .eq('school_id', educatorData.school_id)
-            .in('school_class_id', assignedClassIds)
-            .is('college_id', null);  // Exclude college students
+            .in('school_class_id', assignedClassIds);
         }
       } else if (educatorType === 'college') {
         console.log('🎓 College educator - using exact program section filtering (program_id + semester + section) to match student management');
@@ -261,7 +257,7 @@ export const dashboardApi = {
         }
 
         if (!sections || sections.length === 0) {
-          console.log('  No program sections found - returning zeros');
+          console.log('� No program sections found - returning zeros');
           return {
             totalStudents: 0,
             activeStudents: 0,
@@ -279,8 +275,7 @@ export const dashboardApi = {
         let studentsQuery = supabase
           .from('students')
           .select('id, user_id, name, email, college_id, program_id, semester, section')
-          .eq('is_deleted', false)
-          .not('student_id', 'is', null);  // Exclude students without student_id
+          .eq('is_deleted', false);
 
         // Apply filtering for each program section combination
         // Build a complex OR condition: (program_id=X AND semester=Y AND section=Z) OR (program_id=A AND semester=B AND section=C)
@@ -344,12 +339,10 @@ export const dashboardApi = {
           supabase.from('projects').select('approval_status').in('student_id', studentUserIds),
           supabase.from('trainings').select('approval_status').in('student_id', studentUserIds),
           supabase.from('certificates').select('approval_status').in('student_id', studentUserIds),
-          // Use college_attendance_records for college educators
-          supabase.from('college_attendance_records').select('status, student_id, date, college_id').in('student_id', studentIds),
+          supabase.from('attendance_records').select('status').in('student_id', studentIds),
           supabase.from('personal_assessment_results').select('status').in('student_id', studentUserIds).eq('status', 'completed'),
           supabase.from('student_assignments').select('status').in('student_id', studentIds).in('status', ['submitted', 'graded']),
-          // For college educators, use college_lecturer_id
-          supabase.from('mentor_notes').select('id').eq('college_lecturer_id', (educatorData as any).id).in('student_id', studentIds)
+          supabase.from('mentor_notes').select('id').eq('educator_id', user.id).in('student_id', studentIds)
         ]);
 
         console.log('📊 Activities found:', {
@@ -360,13 +353,6 @@ export const dashboardApi = {
           assessments: assessmentData.data?.length || 0,
           assignments: assignmentData.data?.length || 0,
           mentorNotes: mentorNotesData.data?.length || 0
-        });
-
-        console.log('🔍 Attendance query details:', {
-          studentIds: studentIds.slice(0, 5),
-          totalStudentIds: studentIds.length,
-          attendanceRecords: attendanceData.data?.slice(0, 3),
-          attendanceError: attendanceData.error
         });
 
         // Combine all activities for verification metrics (excluding assignments - they have separate grading workflow)
@@ -407,8 +393,6 @@ export const dashboardApi = {
       }
 
       console.log('🔍 Executing students query...');
-      // At this point, we know educatorType is 'school' because college returned early
-      const currentEducatorType = educatorType as 'school';
       const { data: studentsData, error: studentsError } = await studentsQuery;
 
       console.log('📊 Students query result:', { 
@@ -431,7 +415,7 @@ export const dashboardApi = {
       console.log("total students", totalStudents);
       console.log('👥 Students with user_id:', studentUserIds.length, 'out of', totalStudents);
       console.log('👥 Students with valid IDs:', studentIds.length);
-      console.log("  Total students found:", totalStudents);
+      console.log("� Total students found:", totalStudents);
 
       if (totalStudents === 0) {
         console.log('⚠️ No students found - returning zeros');
@@ -465,10 +449,7 @@ export const dashboardApi = {
         supabase.from('attendance_records').select('status').in('student_id', studentIds),
         supabase.from('personal_assessment_results').select('status').in('student_id', studentUserIds).eq('status', 'completed'),
         supabase.from('student_assignments').select('status').in('student_id', studentIds).in('status', ['submitted', 'graded']),
-        // Use correct educator column based on type
-        currentEducatorType === 'school' 
-          ? supabase.from('mentor_notes').select('id').eq('school_educator_id', (educatorData as any).id).in('student_id', studentIds)
-          : supabase.from('mentor_notes').select('id').eq('college_lecturer_id', (educatorData as any).id).in('student_id', studentIds)
+        supabase.from('mentor_notes').select('id').eq('educator_id', user.id).in('student_id', studentIds)
       ]);
 
       console.log('📊 Activities found:', {
@@ -570,7 +551,7 @@ export const dashboardApi = {
       const studentIdMap: { [key: string]: string } = {};
       
       console.log('🎓 Found students:', studentsData?.length || 0);
-      console.log('  Valid student user IDs:', studentUserIds.length);
+      console.log('� Valid student user IDs:', studentUserIds.length);
       console.log('👥 Valid student IDs:', studentIds.length);
       
       studentsData?.forEach(student => {

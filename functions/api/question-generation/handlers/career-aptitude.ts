@@ -12,47 +12,6 @@ import { STREAM_CONTEXTS } from '../stream-contexts';
 
 // All utility functions are now imported from centralized ai-config.ts
 
-/**
- * Calculate similarity between two strings using Levenshtein distance
- */
-function calculateSimilarity(str1: string, str2: string): number {
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
-    
-    if (longer.length === 0) return 1.0;
-    
-    const editDistance = levenshteinDistance(longer, shorter);
-    return (longer.length - editDistance) / longer.length;
-}
-
-function levenshteinDistance(str1: string, str2: string): number {
-    const matrix: number[][] = [];
-    
-    for (let i = 0; i <= str2.length; i++) {
-        matrix[i] = [i];
-    }
-    
-    for (let j = 0; j <= str1.length; j++) {
-        matrix[0][j] = j;
-    }
-    
-    for (let i = 1; i <= str2.length; i++) {
-        for (let j = 1; j <= str1.length; j++) {
-            if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-                matrix[i][j] = matrix[i - 1][j - 1];
-            } else {
-                matrix[i][j] = Math.min(
-                    matrix[i - 1][j - 1] + 1,
-                    matrix[i][j - 1] + 1,
-                    matrix[i - 1][j] + 1
-                );
-            }
-        }
-    }
-    
-    return matrix[str2.length][str1.length];
-}
-
 // Categories with specific question counts to match UI expectations (total: 50)
 const APTITUDE_CATEGORIES = [
     { id: 'verbal', name: 'Verbal Reasoning', description: 'Language comprehension, vocabulary, analogies', count: 8 },
@@ -219,25 +178,12 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
     for (const q of allGeneratedQuestions) {
         const normalizedText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
         
-        // Check for duplicate question text (exact match)
+        // Check for duplicate question text
         if (!normalizedText || seenTexts.has(normalizedText)) {
             console.warn(`⚠️ Filtered duplicate question: "${normalizedText.substring(0, 50)}..."`);
             filteredCount++;
             continue;
         }
-        
-        // Check for similar questions (80% similarity threshold)
-        let isSimilar = false;
-        for (const seenText of seenTexts) {
-            const similarity = calculateSimilarity(normalizedText, seenText);
-            if (similarity > 0.80) {
-                console.warn(`⚠️ Filtered similar question (${(similarity * 100).toFixed(0)}% match): "${normalizedText.substring(0, 50)}..."`);
-                filteredCount++;
-                isSimilar = true;
-                break;
-            }
-        }
-        if (isSimilar) continue;
         
         // Check for image references
         const imageKeywords = [
@@ -321,46 +267,6 @@ Before responding, verify you have EXACTLY ${batchTotal} questions. Generate ONL
                 console.warn(`   Options: ${JSON.stringify(options)}`);
                 filteredCount++;
                 continue;
-            }
-            
-            // AUTO-CORRECT: Check if explanation matches a different option better
-            const explanation = q.explanation || '';
-            const explanationNumbers = explanation.match(/=\s*(\d+\.?\d*)/g);
-            
-            if (explanationNumbers && explanationNumbers.length > 0) {
-                const explanationFinalAnswer = explanationNumbers[explanationNumbers.length - 1].replace(/[=\s]/g, '');
-                const explanationNum = parseFloat(explanationFinalAnswer);
-                
-                if (!isNaN(explanationNum)) {
-                    let bestMatchOption: string | null = null;
-                    let bestMatchDiff = Infinity;
-                    
-                    for (const [optKey, optVal] of Object.entries(options)) {
-                        const optNumbers = String(optVal).match(/\d+\.?\d*/g);
-                        if (optNumbers && optNumbers.length > 0) {
-                            const optNum = parseFloat(optNumbers[0]);
-                            if (!isNaN(optNum)) {
-                                const diff = Math.abs(explanationNum - optNum);
-                                if (diff < bestMatchDiff) {
-                                    bestMatchDiff = diff;
-                                    bestMatchOption = optKey;
-                                }
-                            }
-                        }
-                    }
-                    
-                    if (bestMatchOption && bestMatchOption !== correctAnswer && bestMatchDiff <= 1) {
-                        console.warn(`🔧 [Auto-Correct] Fixing wrong answer letter mapping`);
-                        console.warn(`   Explanation calculates: ${explanationFinalAnswer}`);
-                        console.warn(`   Was marked as: ${correctAnswer} = "${correctAnswerValue}"`);
-                        console.warn(`   Auto-correcting to: ${bestMatchOption} = "${options[bestMatchOption]}"`);
-                        
-                        q.correct_answer = bestMatchOption;
-                        q.correctAnswer = bestMatchOption;
-                        
-                        console.log(`✅ [Auto-Correct] Question corrected successfully`);
-                    }
-                }
             }
         }
         

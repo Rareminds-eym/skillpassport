@@ -14,16 +14,7 @@
 /**
  * Grade level for the test - determines question complexity and context
  */
-export type GradeLevel = 
-  | 'middle_school' 
-  | 'high_school' 
-  | 'higher_secondary'
-  | 'grade6-8'
-  | 'grade9-10'
-  | 'after10'
-  | 'after12'
-  | 'college'
-  | 'postgraduate';
+export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary';
 
 /**
  * Test phases in the adaptive aptitude test flow

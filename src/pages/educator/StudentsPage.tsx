@@ -110,6 +110,10 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
   onToggleSelect?: (studentId: string) => void;
   educatorType?: 'school' | 'college' | null;
 }) => {
+  // Determine what to show based on student type
+  const displayInfo = student.school_id 
+    ? `${student.school_class_name || 'N/A'} • Grade ${student.school_class_grade || student.grade || 'N/A'} • Section ${student.school_class_section || student.section || 'N/A'}`
+    : student.dept;
 
   return (
     <div 
@@ -150,7 +154,7 @@ const StudentCard = ({ student, onViewProfile, onEdit, onDelete, onMessage, isSe
         <div className="flex items-start justify-between mb-3 pr-8">
           <div className="flex-1 min-w-0">
             <h3 className="font-medium text-gray-900 truncate">{student.name}</h3>
-            <p className="text-sm text-gray-500 truncate">{student.dept}</p>
+            <p className="text-sm text-gray-500 truncate">{displayInfo}</p>
             <p className="text-xs text-gray-400 truncate">{student.college} • {student.location}</p>
           </div>
           <div className="flex flex-col items-end ml-3 flex-shrink-0">
@@ -286,7 +290,7 @@ const StudentsPage = () => {
     collegeId: educatorCollege?.id,
     classIds: (educatorType === 'school' && educatorRole !== 'admin') || (educatorType === 'college' && educatorRole !== 'admin') ? assignedClassIds : undefined,
     educatorType: educatorType,
-    userId: educatorType === 'college' ? (user as any)?.id : undefined
+    userId: educatorType === 'college' ? user?.id : undefined
   });
 
   // Reset to page 1 when filters or search change
@@ -297,57 +301,18 @@ const StudentsPage = () => {
   // Dynamically generate filter options from actual data
   const skillOptions = useMemo(() => {
     const skillCounts: Record<string, number> = {};
-    
-    // Apply search filter and other active filters (except skills) to get base filtered students
-    let baseFilteredStudents = [...students];
-    
-    // Apply search query
-    if (searchQuery && searchQuery.trim() !== '') {
-      const query = searchQuery.toLowerCase().trim();
-      baseFilteredStudents = baseFilteredStudents.filter(student => {
-        if (student.name?.toLowerCase().includes(query)) return true;
-        if (student.email?.toLowerCase().includes(query)) return true;
-        if (student.dept?.toLowerCase().includes(query)) return true;
-        if (student.college?.toLowerCase().includes(query)) return true;
-        if (student.location?.toLowerCase().includes(query)) return true;
-        if (student.skills?.some(skill => {
-          const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
-          return skillName?.toLowerCase().includes(query);
-        })) return true;
-        return false;
-      });
-    }
-    
-    // Apply AI score filter
-    baseFilteredStudents = baseFilteredStudents.filter(student => {
-      const score = student.ai_score_overall || 0;
-      return score >= filters.minScore && score <= filters.maxScore;
-    });
-    
-    // Count how many students would match each skill filter
-    const skillStudentSets: Record<string, Set<string>> = {};
-    
-    baseFilteredStudents.forEach(student => {
+    students.forEach(student => {
       const skillsToCheck = student.skills;
       if (skillsToCheck && Array.isArray(skillsToCheck)) {
         skillsToCheck.forEach(skill => {
           const skillName = typeof skill === 'string' ? skill : (skill && typeof skill === 'object' && 'name' in skill) ? skill.name : undefined;
           if (skillName) {
             const normalizedSkill = skillName.toLowerCase();
-            if (!skillStudentSets[normalizedSkill]) {
-              skillStudentSets[normalizedSkill] = new Set();
-            }
-            skillStudentSets[normalizedSkill].add(student.id);
+            skillCounts[normalizedSkill] = (skillCounts[normalizedSkill] || 0) + 1;
           }
         });
       }
     });
-    
-    // Convert to counts
-    Object.entries(skillStudentSets).forEach(([skill, studentIds]) => {
-      skillCounts[skill] = studentIds.size;
-    });
-    
     return Object.entries(skillCounts)
       .map(([skill, count]) => ({
         value: skill,
@@ -356,7 +321,7 @@ const StudentsPage = () => {
       }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 20);
-  }, [students, searchQuery, filters.minScore, filters.maxScore]);
+  }, [students]);
 
   // Enhanced filter and sort with comprehensive search
   const filteredAndSortedStudents = useMemo(() => {
@@ -386,11 +351,10 @@ const StudentsPage = () => {
 
     // Apply filters
     result = result.filter(student => {
-      // Skill filters - OR logic: student must have at least ONE of the selected skills
+      // Skill filters
       if (filters.skills.length > 0) {
         const studentSkills = student.skills?.map(s => (typeof s === 'string' ? s : s.name)?.toLowerCase()) ?? [];
-        const hasAnySkill = filters.skills.some(fs => studentSkills.includes(fs.toLowerCase()));
-        if (!hasAnySkill) {
+        if (!filters.skills.every(fs => studentSkills.includes(fs.toLowerCase()))) {
           return false;
         }
       }
@@ -801,7 +765,13 @@ const StudentsPage = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedStudents.map((student) => (
+                    {paginatedStudents.map((student) => {
+                      // Determine what to show based on student type
+                      const displayInfo = student.school_id 
+                        ? `${student.school_class_name || 'N/A'} • Grade ${student.school_class_grade || student.grade || 'N/A'} • Section ${student.school_class_section || student.section || 'N/A'}`
+                        : student.dept;
+                      
+                      return (
                       <tr key={student.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -810,7 +780,7 @@ const StudentsPage = () => {
                                 {student.name}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {student.dept}
+                                {displayInfo}
                               </div>
                               <BadgeComponent badges={student.badges} />
                             </div>
@@ -883,7 +853,7 @@ const StudentsPage = () => {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>

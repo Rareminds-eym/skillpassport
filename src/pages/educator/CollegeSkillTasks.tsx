@@ -3,7 +3,7 @@ import {
   Search, Users, Calendar, Trophy, Plus, X, 
   Edit, UserPlus, 
   Clock, Star, Activity, 
-  Eye, CheckCircle, Download,
+  Eye, CheckCircle, 
   Paperclip as PaperClipIcon,
   Tag as TagIcon,
   BookOpen as BookOpenIcon,
@@ -15,7 +15,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import toast from "react-hot-toast";
 import * as collegeAssignmentService from "../../services/collegeAssignmentService";
-import { getDocumentUrl, uploadMultipleFiles, deleteFile } from "../../services/fileUploadService";
+import { getDocumentUrl } from "../../services/fileUploadService";
 
 // Types
 interface Department {
@@ -67,7 +67,6 @@ interface TaskAssignment {
     assignment_id: string;
     title: string;
     description: string;
-    instructions?: string;
     course_name: string;
     course_code: string;
     due_date: string;
@@ -133,11 +132,6 @@ export default function CollegeSkillTasks() {
     const [editTaskModal, setEditTaskModal] = useState(false);
     const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
     
-    // Form mode and attachment states
-    const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
-    const [removeExistingFile, setRemoveExistingFile] = useState(false);
-    const [confirmRemoveFileModal, setConfirmRemoveFileModal] = useState(false);
-    
     // Form states
     const [taskForm, setTaskForm] = useState({
         title: "",
@@ -170,40 +164,6 @@ export default function CollegeSkillTasks() {
     
     // Get educator information
     const { college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool();
-
-    // Form reset effect based on modal mode
-    useEffect(() => {
-        if (createTaskModal || editTaskModal) {
-            if (formMode === 'create') {
-                // Reset to empty form template
-                setTaskForm({
-                    title: "",
-                    description: "",
-                    instructions: "",
-                    course_name: "",
-                    course_code: "",
-                    department_id: "",
-                    program_id: "",
-                    section_id: "",
-                    assignment_type: "homework",
-                    total_points: 100,
-                    skill_outcomes: [],
-                    due_date: "",
-                    available_from: "",
-                    allow_late_submission: true,
-                    document_pdf: "",
-                    instruction_files: []
-                });
-                setRemoveExistingFile(false);
-                setConfirmRemoveFileModal(false);
-            } else if (formMode === 'edit' && selectedAssignment) {
-                // Map selected task into form
-                setTaskForm(mapTaskToFormState(selectedAssignment));
-                setRemoveExistingFile(false);
-                setConfirmRemoveFileModal(false);
-            }
-        }
-    }, [createTaskModal, editTaskModal, formMode, selectedAssignment]);
 
     // Fetch initial data
     useEffect(() => {
@@ -574,7 +534,7 @@ export default function CollegeSkillTasks() {
     };
 
     const handleSectionChange = async (sectionId: string) => {
-        console.log('  COcMPONENT: Section changed to:', sectionId);
+        console.log('� COcMPONENT: Section changed to:', sectionId);
         setTaskForm(prev => ({
             ...prev,
             section_id: sectionId
@@ -582,7 +542,7 @@ export default function CollegeSkillTasks() {
         
         // Fetch students for this section
         if (sectionId) {
-            console.log('  COMPOnNENT: Fetching students for section:', sectionId);
+            console.log('� COMPOnNENT: Fetching students for section:', sectionId);
             await fetchStudentsForSection(sectionId);
         } else {
             console.log('⚠️ COMPONENT: No section ID provided, clearing students');
@@ -722,81 +682,26 @@ export default function CollegeSkillTasks() {
         setOpenMenuId(null);
     };
 
-    // Mapper function to convert task object to form state
-    const mapTaskToFormState = (assignment: TaskAssignment) => {
-        // Convert due_date to datetime-local format (YYYY-MM-DDTHH:MM)
-        const formatDateTimeLocal = (dateString: string) => {
-            if (!dateString) return "";
-            const date = new Date(dateString);
-            // Get local timezone offset and adjust
-            const offset = date.getTimezoneOffset();
-            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
-            return localDate.toISOString().slice(0, 16); // YYYY-MM-DDTHH:MM
-        };
-
-        // Find department_id from the program sections
-        const findDepartmentId = () => {
-            if (!assignment.program_section_id) return "";
-            const section = programSections.find(s => s.id === assignment.program_section_id);
-            return section?.department_id || "";
-        };
-
-        // Find program_id from the program sections
-        const findProgramId = () => {
-            if (!assignment.program_section_id) return "";
-            const section = programSections.find(s => s.id === assignment.program_section_id);
-            return section?.program_id || "";
-        };
-
-        // Extract skill outcomes from skill tags
-        const extractSkillOutcomes = (skills: any) => {
-            if (!skills || !Array.isArray(skills)) return [];
-            return skills.map(skill => {
-                if (typeof skill === 'string') {
-                    // Return the skill name directly since we use defaultSkills array
-                    return skill;
-                }
-                if (typeof skill === 'object' && skill.name) {
-                    return skill.name; // Extract name from skill object
-                }
-                if (typeof skill === 'object' && skill.id) {
-                    // If it's an ID, try to find the corresponding skill name in defaultSkills
-                    return skill.id;
-                }
-                return skill;
-            }).filter(Boolean); // Remove any null/undefined values
-        };
-
-        // Extract instruction files reference URL
-        const extractReferenceDocumentUrl = (files: any) => {
-            if (!files || !Array.isArray(files) || files.length === 0) return "";
-            // Return the first file's URL as reference_document_url
-            return files[0].url || "";
-        };
-
-        return {
-            title: assignment.title || "",
-            description: assignment.description || "",
-            instructions: assignment.instructions || "",
-            course_name: assignment.course_name || "",
-            course_code: assignment.course_code || "",
-            department_id: findDepartmentId(),
-            program_id: findProgramId(),
-            section_id: assignment.program_section_id || "",
-            assignment_type: assignment.assignment_type || "homework",
-            total_points: assignment.total_points || 100,
-            skill_outcomes: extractSkillOutcomes(assignment.skill_outcomes),
-            due_date: formatDateTimeLocal(assignment.due_date),
-            available_from: "", // Not available in task object
-            allow_late_submission: true, // Default value, not in task object
-            document_pdf: extractReferenceDocumentUrl(assignment.instruction_files),
-            instruction_files: [] as File[] // Reset to empty for new uploads
-        };
-    };
-
     const handleEditTask = (assignment: TaskAssignment) => {
         setSelectedAssignment(assignment);
-        setFormMode('edit');
+        setTaskForm({
+            title: assignment.title,
+            description: assignment.description,
+            instructions: "",
+            course_name: assignment.course_name,
+            course_code: assignment.course_code,
+            department_id: "",
+            program_id: "",
+            section_id: assignment.program_section_id || "",
+            assignment_type: assignment.assignment_type,
+            total_points: assignment.total_points,
+            skill_outcomes: assignment.skill_outcomes || [],
+            due_date: assignment.due_date,
+            available_from: "",
+            allow_late_submission: true,
+            document_pdf: "",
+            instruction_files: []
+        });
         setEditTaskModal(true);
         setOpenMenuId(null);
     };
@@ -817,7 +722,6 @@ export default function CollegeSkillTasks() {
             const updateData: any = {
                 title: taskForm.title.trim(),
                 description: taskForm.description,
-                instructions: taskForm.instructions,
                 course_name: taskForm.course_name,
                 course_code: taskForm.course_code,
                 total_points: taskForm.total_points,
@@ -827,55 +731,7 @@ export default function CollegeSkillTasks() {
                 allow_late_submission: taskForm.allow_late_submission
             };
 
-            // Handle file operations
-            let newInstructionFiles = selectedAssignment.instruction_files || [];
-
-            // If removing existing file
-            if (removeExistingFile && selectedAssignment.instruction_files && selectedAssignment.instruction_files.length > 0) {
-                try {
-                    // Delete the old file from storage
-                    const oldFileUrl = selectedAssignment.instruction_files[0].url;
-                    await deleteFile(oldFileUrl);
-                    newInstructionFiles = [];
-                } catch (error) {
-                    console.error('Error deleting old file:', error);
-                    // Continue with update even if file deletion fails
-                }
-            }
-
-            // If new files are selected, upload them
-            if (taskForm.instruction_files.length > 0) {
-                try {
-                    const uploadResults = await uploadMultipleFiles(
-                        taskForm.instruction_files,
-                        `college_assignments_tasks/${selectedAssignment.assignment_id}`
-                    );
-
-                    // Check if all uploads were successful
-                    const failedUploads = uploadResults.filter(result => !result.success);
-                    if (failedUploads.length > 0) {
-                        toast.error(`Failed to upload ${failedUploads.length} file(s)`);
-                        return;
-                    }
-
-                    // Create new instruction files array
-                    newInstructionFiles = uploadResults.map((result, index) => ({
-                        name: taskForm.instruction_files[index].name,
-                        url: result.url!,
-                        size: taskForm.instruction_files[index].size,
-                        type: taskForm.instruction_files[index].type
-                    }));
-                } catch (error) {
-                    console.error('Error uploading files:', error);
-                    toast.error('Failed to upload instruction files');
-                    return;
-                }
-            }
-
-            // Add instruction files to update data
-            updateData.instruction_files = newInstructionFiles;
-
-            // Only add document_pdf if it has a value (for backward compatibility)
+            // Only add document_pdf if it has a value
             if (taskForm.document_pdf) {
                 updateData.document_pdf = taskForm.document_pdf;
             }
@@ -895,8 +751,6 @@ export default function CollegeSkillTasks() {
             toast.success('Task updated successfully');
             setEditTaskModal(false);
             setSelectedAssignment(null);
-            setRemoveExistingFile(false);
-            setConfirmRemoveFileModal(false);
             
             // Reset form
             setTaskForm({
@@ -982,10 +836,7 @@ export default function CollegeSkillTasks() {
                             <p className="text-gray-600 mt-1">Create, manage, and evaluate skill-based assignments</p>
                         </div>
                         <button
-                            onClick={() => {
-                                setFormMode('create');
-                                setCreateTaskModal(true);
-                            }}
+                            onClick={() => setCreateTaskModal(true)}
                             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                         >
                             <Plus size={20} />
@@ -1122,10 +973,7 @@ export default function CollegeSkillTasks() {
                                 <p className="mt-1 text-sm text-gray-500">Get started by creating a new task.</p>
                                 <div className="mt-6">
                                     <button
-                                        onClick={() => {
-                                            setFormMode('create');
-                                            setCreateTaskModal(true);
-                                        }}
+                                        onClick={() => setCreateTaskModal(true)}
                                         className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                                     >
                                         <Plus className="-ml-1 mr-2 h-5 w-5" />
@@ -1691,38 +1539,21 @@ export default function CollegeSkillTasks() {
             {/* View Details Modal */}
             {viewDetailsModal && selectedAssignment && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4 py-8">
+                    <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
                         <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setViewDetailsModal(false)} />
-                        <div 
-                            className="relative w-full max-w-3xl bg-white rounded-lg px-4 pt-5 pb-4 text-left shadow-xl transform transition-all max-h-[90vh] flex flex-col"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex items-center justify-between mb-6 flex-shrink-0 p-6 pb-0">
+                        <div className="inline-block w-full max-w-3xl align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6">
+                            <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-semibold text-gray-900">Task Details</h2>
-                                <button 
-                                    type="button"
-                                    onClick={() => setViewDetailsModal(false)} 
-                                    className="text-gray-400 hover:text-gray-600"
-                                >
+                                <button onClick={() => setViewDetailsModal(false)} className="text-gray-400 hover:text-gray-600">
                                     <X size={24} />
                                 </button>
                             </div>
 
-                            <div className="space-y-6 flex-1 overflow-y-auto px-6 pr-4">
+                            <div className="space-y-6">
                                 <div>
                                     <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedAssignment.title}</h3>
                                     <p className="text-gray-600">{selectedAssignment.description}</p>
                                 </div>
-
-                                {/* Instructions Section */}
-                                {selectedAssignment.instructions && selectedAssignment.instructions.trim() && (
-                                    <div>
-                                        <h4 className="text-lg font-medium text-gray-900 mb-3">Instructions</h4>
-                                        <div className="bg-gray-50 p-4 rounded-lg">
-                                            <p className="text-gray-700 whitespace-pre-wrap">{selectedAssignment.instructions}</p>
-                                        </div>
-                                    </div>
-                                )}
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-gray-50 p-4 rounded-lg">
@@ -1768,6 +1599,19 @@ export default function CollegeSkillTasks() {
                                 )}
 
                                 {/* Instruction Files Display */}
+                                {/* DEBUG INFO - Remove this after testing */}
+                                <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg mb-4">
+                                    <h4 className="text-sm font-bold text-yellow-800 mb-2">🐛 DEBUG INFO:</h4>
+                                    <pre className="text-xs text-yellow-900 overflow-auto">
+                                        {JSON.stringify({
+                                            has_instruction_files: !!selectedAssignment.instruction_files,
+                                            is_array: Array.isArray(selectedAssignment.instruction_files),
+                                            length: selectedAssignment.instruction_files?.length || 0,
+                                            data: selectedAssignment.instruction_files
+                                        }, null, 2)}
+                                    </pre>
+                                </div>
+                                
                                 {selectedAssignment.instruction_files && selectedAssignment.instruction_files.length > 0 && (
                                     <div>
                                         <h4 className="text-sm font-medium text-gray-700 mb-3">Instruction Files</h4>
@@ -1777,15 +1621,12 @@ export default function CollegeSkillTasks() {
                                                 const accessUrl = getDocumentUrl(file.url, 'inline');
                                                 
                                                 return (
-                                                    <button
+                                                    <a
                                                         key={idx}
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            e.preventDefault();
-                                                            window.open(accessUrl, '_blank', 'noopener,noreferrer');
-                                                        }}
-                                                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group w-full text-left"
+                                                        href={accessUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
                                                     >
                                                         <div className="flex items-center gap-3 flex-1 min-w-0">
                                                             <PaperClipIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
@@ -1796,8 +1637,8 @@ export default function CollegeSkillTasks() {
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <Download className="w-4 h-4 text-gray-400 group-hover:text-blue-600 flex-shrink-0" />
-                                                    </button>
+                                                        <Eye className="w-4 h-4 text-gray-400 group-hover:text-blue-600 flex-shrink-0" />
+                                                    </a>
                                                 );
                                             })}
                                         </div>
@@ -1805,9 +1646,8 @@ export default function CollegeSkillTasks() {
                                 )}
                             </div>
 
-                            <div className="mt-6 flex items-center justify-end flex-shrink-0 px-6 pb-2">
+                            <div className="mt-6 flex items-center justify-end">
                                 <button
-                                    type="button"
                                     onClick={() => setViewDetailsModal(false)}
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                                 >
@@ -1857,23 +1697,91 @@ export default function CollegeSkillTasks() {
                 </div>
             )}
 
+            {/* View Details Modal */}
+            {viewDetailsModal && selectedAssignment && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setViewDetailsModal(false)} />
+                        <div className="inline-block w-full max-w-3xl align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-semibold text-gray-900">Task Details</h2>
+                                <button onClick={() => setViewDetailsModal(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{selectedAssignment.title}</h3>
+                                    <p className="text-gray-600">{selectedAssignment.description}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Course</p>
+                                        <p className="font-medium text-gray-900">{selectedAssignment.course_name}</p>
+                                        <p className="text-sm text-gray-500">{selectedAssignment.course_code}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Due Date</p>
+                                        <p className="font-medium text-gray-900">{new Date(selectedAssignment.due_date).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Total Points</p>
+                                        <p className="font-medium text-gray-900">{selectedAssignment.total_points}</p>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-sm text-gray-500 mb-1">Type</p>
+                                        <p className="font-medium text-gray-900 capitalize">{selectedAssignment.assignment_type}</p>
+                                    </div>
+                                </div>
+
+                                {selectedAssignment.skill_outcomes && selectedAssignment.skill_outcomes.length > 0 && (
+                                    <div>
+                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Skill Outcomes</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {selectedAssignment.skill_outcomes.map((skill, index) => (
+                                                <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                                    {skill}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedAssignment.program_name && (
+                                    <div className="bg-blue-50 p-4 rounded-lg">
+                                        <p className="text-sm text-blue-600 mb-1">Program</p>
+                                        <p className="font-medium text-blue-900">{selectedAssignment.program_name}</p>
+                                        {selectedAssignment.semester && selectedAssignment.section && (
+                                            <p className="text-sm text-blue-700">Semester {selectedAssignment.semester} - Section {selectedAssignment.section}</p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-6 flex items-center justify-end">
+                                <button
+                                    onClick={() => setViewDetailsModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Edit Task Modal */}
             {editTaskModal && selectedAssignment && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => {
-                            setEditTaskModal(false);
-                            setRemoveExistingFile(false);
-                            setConfirmRemoveFileModal(false);
-                        }} />
+                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setEditTaskModal(false)} />
                         <div className="inline-block w-full max-w-4xl align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6 max-h-[90vh] overflow-y-auto">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-xl font-semibold text-gray-900">Edit Task</h2>
-                                <button onClick={() => {
-                                    setEditTaskModal(false);
-                                    setRemoveExistingFile(false);
-                                    setConfirmRemoveFileModal(false);
-                                }} className="text-gray-400 hover:text-gray-600">
+                                <button onClick={() => setEditTaskModal(false)} className="text-gray-400 hover:text-gray-600">
                                     <X size={24} />
                                 </button>
                             </div>
@@ -1957,94 +1865,14 @@ export default function CollegeSkillTasks() {
                                         </div>
                                         
                                         <div className="md:col-span-3">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Instruction Files</label>
-                                            
-                                            {/* Show existing attachment if present and not marked for removal */}
-                                            {selectedAssignment?.instruction_files && 
-                                             selectedAssignment.instruction_files.length > 0 && 
-                                             !removeExistingFile && (
-                                                <div className="mb-4">
-                                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <PaperClipIcon className="w-5 h-5 text-blue-600" />
-                                                                <div>
-                                                                    <p className="text-sm font-medium text-blue-900">
-                                                                        Current attachment: {selectedAssignment.instruction_files[0].name}
-                                                                    </p>
-                                                                    <p className="text-xs text-blue-700">
-                                                                        {(selectedAssignment.instruction_files[0].size / 1024).toFixed(0)} KB
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setConfirmRemoveFileModal(true)}
-                                                                className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
-                                                            >
-                                                                <X size={16} />
-                                                                Remove
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            
-                                            {/* Show file upload input if no existing file or marked for removal */}
-                                            {(!selectedAssignment?.instruction_files || 
-                                              selectedAssignment.instruction_files.length === 0 || 
-                                              removeExistingFile) && (
-                                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors">
-                                                    <input
-                                                        type="file"
-                                                        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-                                                        onChange={(e) => handleFileUpload(e.target.files)}
-                                                        className="hidden"
-                                                        id="edit-instruction-files"
-                                                    />
-                                                    <label htmlFor="edit-instruction-files" className="cursor-pointer">
-                                                        <PaperClipIcon className="mx-auto h-8 w-8 text-gray-400" />
-                                                        <div className="mt-2">
-                                                            <p className="text-sm font-medium text-gray-900">
-                                                                {removeExistingFile ? 'Upload new file' : 'Upload instruction file'}
-                                                            </p>
-                                                            <p className="text-xs text-gray-500 mt-1">
-                                                                Click to browse files
-                                                            </p>
-                                                            <p className="text-xs text-gray-400 mt-1">
-                                                                Supports: PDF, DOC, DOCX, TXT, JPG, PNG (Max 5MB)
-                                                            </p>
-                                                        </div>
-                                                    </label>
-                                                </div>
-                                            )}
-                                            
-                                            {/* Show newly selected files */}
-                                            {taskForm.instruction_files.length > 0 && (
-                                                <div className="mt-4 space-y-2">
-                                                    <h4 className="text-sm font-medium text-gray-700">New file selected:</h4>
-                                                    {taskForm.instruction_files.map((file, index) => (
-                                                        <div key={index} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                                                            <div className="flex items-center space-x-3">
-                                                                <PaperClipIcon className="h-5 w-5 text-green-600" />
-                                                                <div>
-                                                                    <p className="text-sm font-medium text-green-900">{file.name}</p>
-                                                                    <p className="text-xs text-green-700">
-                                                                        {(file.size / 1024 / 1024).toFixed(2)} MB
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removeFile(index)}
-                                                                className="text-red-500 hover:text-red-700"
-                                                            >
-                                                                <X size={16} />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Reference Document URL</label>
+                                            <input
+                                                type="url"
+                                                value={taskForm.document_pdf}
+                                                onChange={(e) => handleTaskFormChange('document_pdf', e.target.value)}
+                                                placeholder="https://..."
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            />
                                         </div>
                                     </div>
                                     
@@ -2086,11 +1914,7 @@ export default function CollegeSkillTasks() {
 
                             <div className="mt-8 flex items-center justify-end space-x-3">
                                 <button
-                                    onClick={() => {
-                                        setEditTaskModal(false);
-                                        setRemoveExistingFile(false);
-                                        setConfirmRemoveFileModal(false);
-                                    }}
+                                    onClick={() => setEditTaskModal(false)}
                                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                                 >
                                     Cancel
@@ -2100,52 +1924,6 @@ export default function CollegeSkillTasks() {
                                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
                                 >
                                     Update Task
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Remove File Confirmation Modal */}
-            {confirmRemoveFileModal && selectedAssignment && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setConfirmRemoveFileModal(false)} />
-                        <div className="inline-block w-full max-w-md align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:p-6">
-                            <div className="flex items-center justify-center mb-4">
-                                <div className="bg-red-100 rounded-full p-3">
-                                    <X className="w-6 h-6 text-red-600" />
-                                </div>
-                            </div>
-                            
-                            <div className="text-center mb-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-2">Remove Attachment</h3>
-                                <p className="text-sm text-gray-600">
-                                    Are you sure you want to remove the current attachment? This action will be applied when you save the task.
-                                </p>
-                                {selectedAssignment.instruction_files && selectedAssignment.instruction_files.length > 0 && (
-                                    <p className="text-sm font-medium text-gray-800 mt-2">
-                                        "{selectedAssignment.instruction_files[0].name}"
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-end space-x-3">
-                                <button
-                                    onClick={() => setConfirmRemoveFileModal(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setRemoveExistingFile(true);
-                                        setConfirmRemoveFileModal(false);
-                                    }}
-                                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700"
-                                >
-                                    Remove Attachment
                                 </button>
                             </div>
                         </div>

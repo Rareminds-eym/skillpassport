@@ -505,93 +505,43 @@ const MarkAttendance: React.FC = () => {
 
     const isSubmitted = !!(existingRecords && existingRecords.length > 0);
 
-    // Parse class_id - handle both old format (names) and new format (UUIDs)
+    // Parse class_id format: "department-program-semester-section"
     const classParts = slot.class_id.split('-');
-    
-    let semester: number;
-    let section: string;
-    let program_id: string;
-    
-    // Check if this is the old format (names) or new format (UUIDs)
-    // Old format: "Department Name-Program Name-1-A" (4 parts)
-    // New format: "college_id-department_id-program_id-semester-section" (multiple UUID parts)
-    
-    // Simple heuristic: if the second-to-last part is a number, it's likely old format
-    const secondToLast = classParts[classParts.length - 2];
-    const isOldFormat = !isNaN(parseInt(secondToLast)) && secondToLast.length <= 2;
-    
-    if (isOldFormat) {
-      // Old format: "Department Name-Program Name-1-A"
-      console.log('🎓 [startCollegeAttendanceSession] Detected OLD format (names)');
-      section = classParts[classParts.length - 1];
-      semester = parseInt(classParts[classParts.length - 2]);
-      
-      // Program name is everything except the last 2 parts and first part (department)
-      const programNameParts = classParts.slice(1, classParts.length - 2);
-      const programName = programNameParts.join('-');
-      
-      console.log('🎓 [startCollegeAttendanceSession] Parsed OLD format:', {
-        programName,
-        semester,
-        section,
-        originalClassId: slot.class_id
-      });
-      
-      // Look up program by name instead of ID
-      const { data: programData, error: programError } = await supabase
-        .from("programs")
-        .select("id, name, departments(name)")
-        .eq("name", programName)
-        .maybeSingle();
-      
-      if (programError || !programData) {
-        console.error('❌ [startCollegeAttendanceSession] Failed to find program by name:', programError);
-        throw new Error(`Failed to find program: ${programName}`);
-      }
-      
-      program_id = programData.id;
-      
-      console.log('🎓 [startCollegeAttendanceSession] Found program ID:', program_id);
-    } else {
-      // New format: UUID-based
-      console.log('🎓 [startCollegeAttendanceSession] Detected NEW format (UUIDs)');
-      section = classParts[classParts.length - 1];
-      semester = parseInt(classParts[classParts.length - 2]);
-      
-      // Extract program_id (5 parts before semester-section)
-      const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
-      program_id = programIdParts.join('-');
-      
-      console.log('🎓 [startCollegeAttendanceSession] Parsed NEW format:', {
-        program_id,
-        semester,
-        section,
-        originalClassId: slot.class_id
-      });
-    }
+    const department = classParts[0];
+    const program = classParts[1];
+    const semester = parseInt(classParts[2]);
+    const section = classParts[3];
 
-    // Get program and department names from program_sections
-    console.log('🎓 [startCollegeAttendanceSession] Looking up program details...');
+    console.log('🎓 [startCollegeAttendanceSession] Parsed class info:', {
+      department,
+      program,
+      semester,
+      section,
+      originalClassId: slot.class_id
+    });
+
+    // Get the actual program_id from program_sections table
+    console.log('🎓 [startCollegeAttendanceSession] Looking up program_id from program_sections...');
     
     const { data: programSections, error: programError } = await supabase
       .from("program_sections")
-      .select("program_id, id, programs(name, departments(name))")
-      .eq("program_id", program_id)
+      .select("program_id, id")
       .eq("semester", semester)
-      .eq("section", section);
+      .eq("section", section)
+      .eq("faculty_id", educatorUserId); // Use the current faculty's user_id
 
     console.log('🎓 [startCollegeAttendanceSession] Program section lookup result:', {
       programSections,
       error: programError,
       query: {
-        program_id,
         semester,
-        section
+        section,
+        faculty_id: educatorUserId
       }
     });
 
     if (programError) {
-      console.error('❌ [startCollegeAttendanceSession] Failed to get program details:', programError);
+      console.error('❌ [startCollegeAttendanceSession] Failed to get program_id:', programError);
       throw new Error('Failed to find program information for this session');
     }
 
@@ -829,11 +779,9 @@ const MarkAttendance: React.FC = () => {
       throw new Error("Invalid slot information detected. Please refresh and try again.");
     }
 
-    const { error: insertError } = await supabase
+    const { error } = await supabase
       .from("attendance_records")
       .insert(recordsToInsert);
-
-    if (insertError) throw insertError;
 
     // alert(activeSession.isSubmitted ? "Attendance updated successfully!" : "Attendance submitted successfully!");
     setActiveSession({
@@ -857,37 +805,19 @@ const MarkAttendance: React.FC = () => {
         .eq("date", selectedDate);
     }
 
-    // Parse class_id format: "college_id-department_id-program_id-semester-section"
+    // Parse class information from slot
     const classParts = activeSession.slot.class_id.split('-');
-    
-    // Extract the last two parts (semester and section)
-    const section = classParts[classParts.length - 1];
-    const semester = parseInt(classParts[classParts.length - 2]);
-    
-    // Extract program_id (5 parts before semester-section)
-    const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
-    const program_id = programIdParts.join('-');
-
-    // Get program and department names
-    const { data: programData } = await supabase
-      .from("programs")
-      .select("name, department_id, departments(name)")
-      .eq("id", program_id)
-      .single();
-
-    const programName = programData?.name || "Unknown Program";
-    const departmentName = (programData?.departments as any)?.name || "Unknown Department";
+    const department = classParts[0];
+    const program = classParts[1];
+    const semester = parseInt(classParts[2]);
+    const section = classParts[3];
 
     // Get faculty name
-    const { data: facultyData, error: facultyError } = await supabase
+    const { data: facultyData } = await supabase
       .from("college_lecturers")
       .select("first_name, last_name")
       .eq("id", educatorId)
       .single();
-
-    if (facultyError) {
-      console.error('Failed to get faculty name:', facultyError);
-    }
 
     const facultyName = facultyData ? `${facultyData.first_name} ${facultyData.last_name}` : "Unknown Faculty";
 
@@ -897,8 +827,8 @@ const MarkAttendance: React.FC = () => {
       student_id: record.student_id,
       student_name: activeSession.students.find(s => s.id === record.student_id)?.name || "Unknown",
       roll_number: activeSession.students.find(s => s.id === record.student_id)?.roll_number || "N/A",
-      department_name: departmentName,
-      program_name: programName,
+      department_name: department,
+      program_name: program,
       semester: semester,
       section: section,
       date: selectedDate,
@@ -924,17 +854,13 @@ const MarkAttendance: React.FC = () => {
     if (recordsError) throw recordsError;
 
     // Update session status to completed
-    const { error: sessionUpdateError } = await supabase
+    const { error: sessionError } = await supabase
       .from("college_attendance_sessions")
       .update({
         status: 'completed',
         updated_at: new Date().toISOString()
       })
       .eq("id", activeSession.slot.id);
-
-    if (sessionUpdateError) {
-      console.error('Failed to update session status:', sessionUpdateError);
-    }
 
     // alert(activeSession.isSubmitted ? "Attendance updated successfully!" : "Attendance submitted successfully!");
     setActiveSession({

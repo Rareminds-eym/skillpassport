@@ -18,7 +18,6 @@ import {
   Star
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { supabase } from '../../lib/supabaseClient';
 import SchoolClassHeader, { SchoolClassInfo } from './common/SchoolClassHeader';
@@ -180,20 +179,27 @@ const SchoolMyClass: React.FC = () => {
   };
 
   // Helper function to open file with error handling
-  const openFile = (fileUrl: string, fileName: string = 'file') => {
-    console.log(`Opening ${fileName}:`, fileUrl);
-    
-    const storageApiUrl = getPagesApiUrl('storage');
-    
-    // Generate proxy URL
-    const accessibleUrl = fileUrl.includes('/document-access') 
-      ? fileUrl 
-      : `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
-    
-    console.log('Opening URL:', accessibleUrl);
-    
-    // Open directly without testing
-    window.open(accessibleUrl, '_blank');
+  const openFile = async (fileUrl: string, fileName: string = 'file') => {
+    try {
+      console.log(`Opening ${fileName}:`, fileUrl);
+
+      const accessibleUrl = getAccessibleFileUrl(fileUrl);
+      console.log('Generated accessible URL:', accessibleUrl);
+
+      // Test if the URL is accessible
+      const testResponse = await fetch(accessibleUrl, { method: 'HEAD' });
+      console.log('File accessibility test status:', testResponse.status);
+
+      if (testResponse.ok) {
+        window.open(accessibleUrl, '_blank');
+      } else {
+        console.warn('File not accessible via proxy, trying direct URL');
+        window.open(fileUrl, '_blank');
+      }
+    } catch (error) {
+      // Fallback to direct URL
+      window.open(fileUrl, '_blank');
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -677,12 +683,12 @@ const SchoolMyClass: React.FC = () => {
     }
 
     const fileKey = extractFileKey(fileUrl);
-    if (fileKey) {
-      return `${storageApiUrl}/document-access?key=${encodeURIComponent(fileKey)}&mode=inline`;
-    } else {
-      // Fallback to URL parameter
-      return `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
+    if (!fileKey) {
+      console.error('Could not extract file key from URL:', fileUrl);
+      return fileUrl; // Fallback to direct URL
     }
+
+    return `${storageApiUrl}/file/${encodeURIComponent(fileKey)}`;
   };
 
   const handlePageChange = (page: number) => {

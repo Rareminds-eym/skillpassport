@@ -1628,13 +1628,9 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
   const apiUrl = getPagesApiUrl('question-generation');
   const maxRetries = 3;
   
-  // Request extra questions to account for validation failures and duplicates
-  // We'll filter down to exactly questionCount after validation
-  const requestCount = Math.ceil(questionCount * 1.4); // Request 40% more
-  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`📡 Calling Knowledge API (attempt ${attempt}/${maxRetries}) - requesting ${requestCount} to get ${questionCount} valid`);
+      console.log(`📡 Calling Knowledge API (attempt ${attempt}/${maxRetries})`);
       
       const response = await fetch(`${apiUrl}/career-assessment/generate-knowledge`, {
         method: 'POST',
@@ -1643,7 +1639,7 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
           streamId: effectiveStreamId,
           streamName: effectiveStreamName,
           topics: effectiveTopics, // null for college students - AI will determine
-          questionCount: requestCount, // Request more than needed
+          questionCount,
           studentId,
           attemptId,
           gradeLevel,
@@ -1704,10 +1700,11 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
       }
       
       // STRICT: Must have EXACTLY the expected count
-      if (validQuestions.length < questionCount) {
-        console.warn(`⚠️ Insufficient questions: ${validQuestions.length}/${questionCount} knowledge questions`);
+      if (validQuestions.length !== questionCount) {
+        console.warn(`⚠️ Question count mismatch: ${validQuestions.length}/${questionCount} knowledge questions`);
         
         if (attempt < maxRetries) {
+          const needed = questionCount - validQuestions.length;
           console.log(`🔄 Retrying to get exactly ${questionCount} knowledge questions (attempt ${attempt + 1}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
           continue;
@@ -1715,12 +1712,6 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
           console.error(`❌ Failed to get exactly ${questionCount} knowledge questions after ${maxRetries} attempts. Got ${validQuestions.length}.`);
           return null; // Reject - must be exactly 20
         }
-      }
-      
-      // If we have more than needed, trim to exact count
-      if (validQuestions.length > questionCount) {
-        console.log(`✂️ Trimming ${validQuestions.length} questions down to exactly ${questionCount}`);
-        validQuestions = validQuestions.slice(0, questionCount);
       }
       
       console.log(`✅ Validation passed: Exactly ${questionCount} valid unique knowledge questions`);

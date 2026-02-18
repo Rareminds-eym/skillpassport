@@ -604,7 +604,6 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         // For after10/after12/college: questions have a 'type' field (R, I, A, S, E, C)
         // This is the RIASEC category directly
         riasecAnswers[questionId] = {
-          questionId: questionId, // Add question ID for mapping lookup
           question: question.text,
           answer: value,
           riasecType: question.type, // Use the type field as RIASEC category
@@ -617,14 +616,13 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         // Middle/high school questions have categoryMapping in the question bank, so we need the question
         // For now, extract the answer and let the AI analyze it
         riasecAnswers[questionId] = {
-          questionId: questionId, // Add question ID for hardcoded mapping lookup
           question: `Interest question ${questionId}`,
           answer: value,
-          questionType: 'multiselect', // Middle school uses multiselect
-          categoryMapping: null, // Will use hardcoded mapping in backend
+          questionType: 'rating', // Middle/high school use rating scale
+          categoryMapping: null, // Will be analyzed by AI
           riasecType: null // Unknown without question bank
         };
-        console.log(`  ⚠️ Extracted without question bank (fallback): ${questionId} = ${JSON.stringify(value).substring(0, 100)}`);
+        console.log(`  ⚠️ Extracted without question bank (fallback): ${questionId} = ${value}`);
       }
     }
   });
@@ -1636,7 +1634,7 @@ export const analyzeAssessmentWithOpenRouter = async (
     // Call the Cloudflare Worker (handles prompt building and AI call)
     let parsedResults = await callOpenRouterAssessment(assessmentData);
 
-    // Validate stream recommendation for After 10th students (no fallback, just validation)
+    // Validate stream recommendation for After 10th students
     if (gradeLevel === 'after10') {
       const { validateStreamRecommendation } = await import('./assessmentService');
       parsedResults = validateStreamRecommendation(parsedResults);

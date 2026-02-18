@@ -24,7 +24,6 @@ import NotificationModal from '../../components/ui/NotificationModal';
 import { useAuth } from '../../context/AuthContext';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 import { supabase } from '../../lib/supabaseClient';
-import { getPagesApiUrl } from '../../utils/pagesUrl';
 import {
     assignToStudents,
     createAssignmentsForClasses,
@@ -1577,9 +1576,13 @@ const Assessments = () => {
                                                     </div>
                                                     {file.file_url && (
                                                         <a
-                                                            href={file.file_url.includes('/document-access') 
-                                                              ? file.file_url 
-                                                              : `${getPagesApiUrl('storage')}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`}
+                                                            href={(() => {
+                                                              const { getPagesApiUrl } = require('../../utils/pagesUrl');
+                                                              const storageApiUrl = getPagesApiUrl('storage');
+                                                              return file.file_url.includes('/document-access') 
+                                                                ? file.file_url 
+                                                                : `${storageApiUrl}/document-access?url=${encodeURIComponent(file.file_url)}&mode=inline`;
+                                                            })()}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="p-1 hover:bg-blue-200 rounded transition-colors"

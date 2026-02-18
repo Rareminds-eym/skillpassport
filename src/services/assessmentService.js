@@ -4,10 +4,11 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { calculateStreamRecommendations } from '../features/assessment/assessment-result/utils/streamMatchingEngine';
 
 /**
- * Validate stream recommendation for After 10th students
- * Just validates that AI provided the recommendation - no fallback generation
+ * Validate and enhance stream recommendation for After 10th students
+ * Uses rule-based engine to verify AI recommendation
  */
 export const validateStreamRecommendation = (results) => {
   if (results.gradeLevel !== 'after10') return results;
@@ -15,19 +16,73 @@ export const validateStreamRecommendation = (results) => {
   try {
     console.log('🔍 Validating stream recommendation for After 10th student...');
 
-    const aiStream = results.streamRecommendation?.recommendedStream;
+    // Calculate rule-based recommendation
+    const ruleBasedStream = calculateStreamRecommendations(
+      { riasec: { scores: results.riasec?.scores || {} } },
+      { subjectMarks: [], projects: [], experiences: [] }
+    );
 
-    // If streamRecommendation is missing, log error but don't generate fallback
+    const aiStream = results.streamRecommendation?.recommendedStream;
+    const ruleStream = ruleBasedStream.recommendedStream;
+    const ruleConfidence = ruleBasedStream.confidenceScore;
+
+    // If streamRecommendation is missing or invalid, generate it from rule-based engine
     if (!aiStream || aiStream === 'N/A' || aiStream === 'null' || aiStream === null) {
-      console.error('❌ streamRecommendation missing from AI response!');
-      console.error('   AI must provide complete stream recommendation');
-      // Return as-is, let the error surface
+      console.warn('⚠️ streamRecommendation missing from AI response!');
+      console.warn('   Generating from rule-based engine...');
+
+      results.streamRecommendation = {
+        ...ruleBasedStream,
+        isAfter10: true,
+        source: 'rule-based-fallback',
+        reason: 'AI response did not include streamRecommendation',
+        aiSuggestion: null
+      };
+
+      console.log('✅ Generated streamRecommendation:', results.streamRecommendation.recommendedStream);
       return results;
     }
 
-    console.log('✅ AI provided stream recommendation:', aiStream);
+    console.log('AI Recommendation:', aiStream);
+    console.log('Rule-Based Recommendation:', ruleStream, `(${ruleConfidence}% confidence)`);
+
+    // If AI and rule-based differ significantly, use rule-based if confidence is high
+    if (aiStream !== ruleStream && ruleConfidence >= 75) {
+      console.warn('⚠️ Stream recommendation mismatch detected!');
+      console.warn('   AI suggested:', aiStream);
+      console.warn('   Rule-based suggests:', ruleStream, `(${ruleConfidence}% confidence)`);
+
+      // Use rule-based if confidence is high
+      if (ruleConfidence >= 80) {
+        console.log('✅ Using rule-based recommendation due to high confidence');
+        results.streamRecommendation = {
+          ...results.streamRecommendation,
+          ...ruleBasedStream,
+          aiSuggestion: aiStream,
+          source: 'rule-based-override',
+          overrideReason: `Rule-based algorithm has ${ruleConfidence}% confidence vs AI suggestion`
+        };
+      } else {
+        // Add rule-based as alternative
+        results.streamRecommendation = {
+          ...results.streamRecommendation,
+          ruleBasedAlternative: ruleStream,
+          ruleBasedConfidence: ruleConfidence,
+          source: 'ai-with-rule-based-alternative'
+        };
+      }
+    } else {
+      console.log('✅ AI and rule-based recommendations agree:', aiStream);
+      results.streamRecommendation = {
+        ...results.streamRecommendation,
+        ruleBasedConfirmation: ruleStream,
+        ruleBasedConfidence: ruleConfidence,
+        source: 'ai-confirmed-by-rules'
+      };
+    }
   } catch (error) {
     console.error('❌ Error validating stream recommendation:', error);
+    // Continue with AI recommendation if validation fails
   }
 
   return results;
@@ -550,58 +605,6 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
 
   const adaptiveAptitudeSessionId = attemptData?.adaptive_aptitude_session_id || null;
   console.log('📊 [completeAttempt] Adaptive Session ID from attempt:', adaptiveAptitudeSessionId);
-  
-  // ============================================================================
-  // FETCH ADAPTIVE APTITUDE RESPONSES AND ADD TO all_responses
-  // ============================================================================
-  let adaptiveResponses = {};
-  if (adaptiveAptitudeSessionId) {
-    console.log('📥 [completeAttempt] Fetching adaptive aptitude responses...');
-    const { data: responses, error: responsesError } = await supabase
-      .from('adaptive_aptitude_responses')
-      .select('question_id, selected_answer, is_correct, response_time_ms, difficulty_at_time, subtag, phase, sequence_number')
-      .eq('session_id', adaptiveAptitudeSessionId)
-      .order('sequence_number', { ascending: true });
-    
-    if (responsesError) {
-      console.error('❌ [completeAttempt] Error fetching adaptive responses:', responsesError);
-    } else if (responses && responses.length > 0) {
-      console.log(`✅ [completeAttempt] Found ${responses.length} adaptive responses`);
-      // Add each response to adaptiveResponses object with key format: adaptive_q{sequence}
-      responses.forEach(r => {
-        adaptiveResponses[`adaptive_q${r.sequence_number}`] = {
-          question_id: r.question_id,
-          selected_answer: r.selected_answer,
-          is_correct: r.is_correct,
-          response_time_ms: r.response_time_ms,
-          difficulty_at_time: r.difficulty_at_time,
-          subtag: r.subtag,
-          phase: r.phase
-        };
-      });
-      
-      // Update all_responses in the attempt
-      const { data: currentAttempt } = await supabase
-        .from('personal_assessment_attempts')
-        .select('all_responses')
-        .eq('id', attemptId)
-        .single();
-      
-      const mergedResponses = {
-        ...(currentAttempt?.all_responses || {}),
-        ...adaptiveResponses
-      };
-      
-      await supabase
-        .from('personal_assessment_attempts')
-        .update({ all_responses: mergedResponses })
-        .eq('id', attemptId);
-      
-      console.log('✅ [completeAttempt] Adaptive responses added to all_responses');
-    } else {
-      console.log('ℹ️ [completeAttempt] No adaptive responses found');
-    }
-  }
   
   // CRITICAL FIX: Verify that adaptive results exist before using the session ID
   // The foreign key constraint requires that adaptive_aptitude_results.session_id exists

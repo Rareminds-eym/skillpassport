@@ -51,40 +51,39 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
     <div className="w-full">
       {/* Navbar-style Progress Stats - Full Width */}
       <div className="bg-white border-b border-gray-200 shadow-sm w-full">
-        <div className="max-w-7xl mx-auto py-2 px-3 sm:px-4 lg:px-6">
-          <div className="flex justify-between items-center gap-2 sm:gap-4">
+        <div className="max-w-7xl mx-auto py-1">
+          <div className="flex justify-between items-center relative">
             {/* Left: Logo */}
-            <div className="flex items-center flex-shrink-0">
-              <div className="h-8 sm:h-10 px-2 sm:px-3 rounded-lg bg-blue-50 flex items-center justify-center">
-                <img src="/RareMinds ISO Logo-01.png" alt="RareMinds Logo" className="h-6 sm:h-8 w-auto object-contain" />
+            <div className="flex items-center">
+              <div className="h-10 px-3 rounded-lg bg-blue-50 flex items-center justify-center">
+                <img src="/RareMinds ISO Logo-01.png" alt="RareMinds Logo" className="h-8 w-auto object-contain" />
               </div>
             </div>
 
-            {/* Center: Title - Hidden on mobile, shown on tablet+ */}
-            <div className="hidden md:block flex-1 text-center">
-              <span className="text-sm lg:text-base font-semibold text-gray-800">Career Assessment</span>
+            {/* Center: Title */}
+            <div className="absolute left-1/2 transform -translate-x-1/2">
+              <span className="text-base font-semibold text-gray-800">Career Assessment</span>
             </div>
 
             {/* Right: Test Mode and Progress */}
-            <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
+            <div className="flex items-center gap-4">
               {/* Test Mode Toggle - Only in dev mode */}
               {isDevMode && !testMode && onEnableTestMode && (
                 <button
                   onClick={onEnableTestMode}
-                  className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-200 transition-all flex items-center gap-1 sm:gap-2 border border-amber-200"
+                  className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-semibold hover:bg-amber-200 transition-all flex items-center gap-2 border border-amber-200"
                   title="Enable Test Mode for quick testing"
                 >
-                  <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Test Mode</span>
-                  <span className="sm:hidden">Test</span>
+                  <Zap className="w-4 h-4" />
+                  Test Mode
                 </button>
               )}
 
               {/* Progress Badge */}
-              <div className="flex items-center gap-2 sm:gap-3 bg-indigo-50 px-2 sm:px-3 py-1 rounded-lg border border-indigo-100" data-tour="progress-percentage">
-                <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-indigo-500 animate-pulse" />
-                <span className="text-xs font-semibold text-indigo-700 whitespace-nowrap">
-                  {Math.round(progress)}%
+              <div className="flex items-center gap-3 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100" data-tour="progress-percentage">
+                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse" />
+                <span className="text-xs font-semibold text-indigo-700">
+                  {Math.round(progress)}% Complete
                 </span>
               </div>
             </div>
@@ -93,7 +92,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
       </div>
 
       {/* Section Steps - Below Navbar */}
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 mt-4 sm:mt-6 mb-4 sm:mb-6" data-tour="section-progress">
+      <div className="max-w-4xl mx-auto px-4 mt-6 mb-6" data-tour="section-progress">
         {/* Circles and Lines Row */}
         <div className="flex items-center">
           {sections.map((section, idx) => {
@@ -118,9 +117,9 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
 
             return (
               <div key={section.id} className={`flex items-center ${idx < sections.length - 1 ? 'flex-1' : ''}`}>
-                {/* Step Circle with Glassmorphism - Responsive sizes */}
+                {/* Step Circle with Glassmorphism */}
                 <div className={`
-                  w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 relative overflow-hidden
+                  w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 shrink-0 relative overflow-hidden
                   ${isCompleted ? 'backdrop-blur-xl bg-green-500/80 border border-green-400/50 text-white shadow-lg' : ''}
                   ${isCurrent ? 'backdrop-blur-xl bg-indigo-600/90 border border-indigo-500/50 text-white shadow-xl ring-2 ring-indigo-400/30 relative z-10' : ''}
                   ${isUpcoming ? 'backdrop-blur-xl bg-white/40 border border-gray-300/50 text-gray-400' : ''}
@@ -142,15 +141,15 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent rounded-full pointer-events-none" />
 
                   {isCompleted ? (
-                    <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 relative z-10" />
+                    <CheckCircle2 className="w-4 h-4 relative z-10" />
                   ) : (
-                    <span className="text-[10px] sm:text-xs font-bold relative z-10">{idx + 1}</span>
+                    <span className="text-xs font-bold relative z-10">{idx + 1}</span>
                   )}
                 </div>
 
-                {/* Connector Line - Minimalist, responsive spacing */}
+                {/* Connector Line - Minimalist */}
                 {idx < sections.length - 1 && (
-                  <div className="flex-1 h-px rounded-full bg-gray-200 overflow-hidden mx-2 sm:mx-3 lg:mx-4">
+                  <div className="flex-1 h-px rounded-full bg-gray-200 overflow-hidden mx-4">
                     <motion.div
                       className={`h-full rounded-full ${idx < currentSectionIndex
                           ? 'bg-green-500'
@@ -169,8 +168,8 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
           })}
         </div>
 
-        {/* Labels Row - Responsive text sizes and visibility */}
-        <div className="hidden sm:flex items-start mt-2 sm:mt-3 gap-2 sm:gap-3 lg:gap-4">
+        {/* Labels Row - Full Text */}
+        <div className="hidden sm:flex items-start mt-3 gap-4">
           {sections.map((section, idx) => {
             const isCompleted = idx < currentSectionIndex;
             const isCurrent = idx === currentSectionIndex;
@@ -179,7 +178,7 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
             return (
               <div key={`label-${section.id}`} className={`${idx < sections.length - 1 ? 'flex-1' : ''} flex justify-start`}>
                 <span className={`
-                  text-[9px] sm:text-[10px] lg:text-xs font-semibold leading-tight
+                  text-[10px] font-semibold leading-tight
                   ${isCompleted ? 'text-green-700' : ''}
                   ${isCurrent ? 'text-indigo-700' : ''}
                   ${isUpcoming ? 'text-gray-500' : ''}
@@ -189,13 +188,6 @@ export const ProgressHeader: React.FC<ProgressHeaderProps> = ({
               </div>
             );
           })}
-        </div>
-
-        {/* Mobile: Current Section Label Only */}
-        <div className="sm:hidden mt-2 text-center">
-          <span className="text-xs font-semibold text-indigo-700">
-            {sections[currentSectionIndex]?.title}
-          </span>
         </div>
       </div>
     </div>

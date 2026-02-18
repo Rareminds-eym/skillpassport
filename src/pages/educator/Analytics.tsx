@@ -70,15 +70,18 @@ const Analytics = () => {
   // Get analytics data from hook - filtered by school and class assignments
   const {
     loading,
+    refreshing,
     kpiData,
     skillSummary,
     attendanceData,
     skillGrowthData,
     leaderboard,
+    activityHeatmap,
     certificateStats,
     assignmentStats,
     assignmentDetails,
     topSkills,
+    fetchAnalyticsData,
     exportAsCSV,
     exportAsPDF,
   } = useAnalytics({ 
@@ -140,6 +143,60 @@ const Analytics = () => {
   ], [kpiData]);
 
   // Chart Options
+  const skillDistributionOptions: ApexOptions = {
+    chart: {
+      type: 'donut',
+      fontFamily: 'Inter, sans-serif',
+    },
+    labels: skillSummary.map((s) => s.category),
+    colors: ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4'],
+    legend: {
+      position: 'bottom',
+      fontSize: '14px',
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '65%',
+          labels: {
+            show: true,
+            name: {
+              show: true,
+              fontSize: '16px',
+              fontWeight: 600,
+            },
+            value: {
+              show: true,
+              fontSize: '24px',
+              fontWeight: 700,
+              color: '#1F2937',
+            },
+            total: {
+              show: true,
+              label: 'Total Activities',
+              fontSize: '14px',
+              color: '#6B7280',
+              formatter: () => {
+                const total = skillSummary.reduce((sum, s) => sum + s.totalActivities, 0);
+                return total.toString();
+              },
+            },
+          },
+        },
+      },
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    tooltip: {
+      y: {
+        formatter: (val) => `${val} activities`,
+      },
+    },
+  };
+
+  const skillDistributionSeries = skillSummary.map((s) => s.totalActivities);
+
   const skillGrowthOptions: ApexOptions = {
     chart: {
       type: 'line',
@@ -547,6 +604,14 @@ const Analytics = () => {
     },
   ];
 
+  const getHeatmapColor = (count: number) => {
+    if (count === 0) return 'bg-gray-100';
+    if (count <= 3) return 'bg-green-200';
+    if (count <= 6) return 'bg-green-300';
+    if (count <= 9) return 'bg-green-400';
+    return 'bg-green-500';
+  };
+
   const getGradeBadgeClass = (grade: number): string => {
     if (grade >= 80) return 'bg-green-100 text-green-800';
     if (grade >= 70) return 'bg-yellow-100 text-yellow-800';
@@ -563,49 +628,6 @@ const Analytics = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-200 border-t-blue-500 mx-auto mb-4"></div>
           <p className="text-slate-600 font-medium">Loading analytics data...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Check if educator has no organization assigned
-  if (educatorType === 'college' && !educatorCollege) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6 mb-4">
-            <svg className="w-16 h-16 text-yellow-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">College Not Assigned</h2>
-            <p className="text-gray-600 mb-4">
-              Your account is not associated with a college. Please contact your administrator to assign you to a college.
-            </p>
-            <p className="text-sm text-gray-500">
-              Analytics data cannot be displayed without a college assignment.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (educatorType === 'school' && !educatorSchool) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6 mb-4">
-            <svg className="w-16 h-16 text-yellow-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">School Not Assigned</h2>
-            <p className="text-gray-600 mb-4">
-              Your account is not associated with a school. Please contact your administrator to assign you to a school.
-            </p>
-            <p className="text-sm text-gray-500">
-              Analytics data cannot be displayed without a school assignment.
-            </p>
-          </div>
         </div>
       </div>
     );

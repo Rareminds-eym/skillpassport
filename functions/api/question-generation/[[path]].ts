@@ -26,7 +26,7 @@ import {
   generateAdaptiveCoreQuestions,
   generateStabilityConfirmationQuestions,
   generateSingleQuestion
-} from './handlers/adaptive-bank';
+} from './handlers/adaptive';
 import { generateAssessment } from './handlers/course-assessment';
 import { handleStreamingAptitude } from './handlers/streaming';
 
@@ -169,8 +169,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/adaptive' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, startingDifficulty, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
-        const result = await generateAdaptiveCoreQuestions(env, gradeLevel, startingDifficulty, excludeQuestionIds, excludeQuestionTexts, studentCourse);
+        const { gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
+        const result = await generateAdaptiveCoreQuestions(env, gradeLevel, startingDifficulty, count, excludeQuestionIds, excludeQuestionTexts, studentCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Adaptive generation error:', error);
@@ -181,8 +181,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
     if (path === '/generate/stability' && request.method === 'POST') {
       try {
         const body = await request.json() as any;
-        const { gradeLevel, provisionalBand, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
-        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, excludeQuestionIds, excludeQuestionTexts, studentCourse);
+        const { gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
+        const result = await generateStabilityConfirmationQuestions(env, gradeLevel, provisionalBand, count, excludeQuestionIds, excludeQuestionTexts, studentCourse);
         return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Stability generation error:', error);
@@ -194,11 +194,8 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
       try {
         const body = await request.json() as any;
         const { gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, studentCourse } = body;
-        console.log('🎯 [Router] /generate/single called with:', { gradeLevel, phase, difficulty, subtag, excludeCount: excludeQuestionIds?.length || 0 });
-        const result = await generateSingleQuestion(env, gradeLevel, phase || 'adaptive_core', difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, studentCourse);
-        console.log('✅ [Router] Single question generated:', { questionId: result.id, difficulty: result.difficulty });
-        // Wrap in array format expected by next-question handler
-        return jsonResponse({ questions: [result] });
+        const result = await generateSingleQuestion(env, gradeLevel, phase, difficulty, subtag, excludeQuestionIds, excludeQuestionTexts, studentCourse);
+        return jsonResponse(result);
       } catch (error: any) {
         console.error('❌ Single question generation error:', error);
         return jsonResponse({ error: error.message }, 500);

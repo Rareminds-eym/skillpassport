@@ -275,8 +275,6 @@ const EducatorAssessmentResults: React.FC = () => {
       // Get current user's email and id
       const userEmail = user?.email;
       const userId = user?.id;
-      console.log('📊 [Assessment Results] Starting fetch for user:', { userId, userEmail });
-      
       if (!userEmail || !userId) {
         setError('User not authenticated');
         setLoading(false);
@@ -376,49 +374,31 @@ const EducatorAssessmentResults: React.FC = () => {
         }
 
         if (collegeLecturerData?.collegeId) {
-          // College lecturer - check for program section assignments
+          // College lecturer - check for course assignments
           schoolId = collegeLecturerData.collegeId;
-          console.log('📚 [Assessment Results] College lecturer found:', { 
-            lecturerId: collegeLecturerData.id, 
-            collegeId: schoolId,
-            department: collegeLecturerData.department 
-          });
           
-          // Check if lecturer has any program section assignments using program_sections table
-          const { data: programSections, error: programSectionsError } = await supabase
-            .from('program_sections')
-            .select('program_id, semester, section')
-            .eq('faculty_id', userId)
-            .eq('status', 'active');
+          // Check if lecturer has any course assignments
+          const { data: courseAssignments, error: courseAssignError } = await supabase
+            .from('college_lecturer_course_assignments')
+            .select('courseId')
+            .eq('lecturerId', collegeLecturerData.id);
 
-          console.log('📋 [Assessment Results] Program sections:', { 
-            count: programSections?.length || 0, 
-            error: programSectionsError 
-          });
-
-          if (!programSectionsError && programSections && programSections.length > 0) {
-            // Lecturer has program section assignments - filter students by those sections
-            // Build OR conditions for each program section combination
-            const orConditions = programSections.map(ps => 
-              `and(program_id.eq.${ps.program_id},semester.eq.${ps.semester},section.eq.${ps.section})`
-            ).join(',');
-            
-            console.log('🔍 [Assessment Results] Filtering students by program sections:', orConditions);
-            
+          if (!courseAssignError && courseAssignments && courseAssignments.length > 0) {
+            // Lecturer has course assignments - filter students by those courses
+            const assignedCourseIds = courseAssignments.map(a => a.courseId);
             studentsQuery = studentsQuery
               .eq('college_id', schoolId)
-              .or(orConditions);
+              .in('collegeCourseId', assignedCourseIds);
           } else {
-            // No program section assignments - check if admin
+            // No course assignments - lecturer should see no students
+            // (unless they are an admin, which we check via metadata or role)
             const isCollegeAdmin = collegeLecturerData.department === 'Administration';
             
             if (isCollegeAdmin) {
               // College admin can see all students in their college
-              console.log('👑 [Assessment Results] College admin - showing all students');
               studentsQuery = studentsQuery.eq('college_id', schoolId);
             } else {
               // Regular lecturer with no assignments - return empty results
-              console.log('❌ [Assessment Results] No program sections assigned - returning empty');
               setResults([]);
               setSchoolName('');
               
@@ -456,16 +436,6 @@ const EducatorAssessmentResults: React.FC = () => {
       // Get students based on the filtered query
       const { data: studentsData, error: studentsError } = await studentsQuery;
 
-      console.log('👥 [Assessment Results] Students query result:', { 
-        count: studentsData?.length || 0, 
-        error: studentsError,
-        sampleStudents: studentsData?.slice(0, 3).map(s => ({ 
-          name: s.name, 
-          user_id: s.user_id,
-          email: s.email 
-        }))
-      });
-
       if (studentsError) throw studentsError;
 
       if (!studentsData || studentsData.length === 0) {
@@ -476,12 +446,6 @@ const EducatorAssessmentResults: React.FC = () => {
 
       // Filter out students with null user_id to avoid UUID parsing errors
       const validStudents = studentsData.filter((s) => s.user_id != null);
-      
-      console.log('✅ [Assessment Results] Valid students (with user_id):', { 
-        total: studentsData.length,
-        valid: validStudents.length,
-        invalid: studentsData.length - validStudents.length
-      });
       
       if (validStudents.length === 0) {
         setResults([]);
@@ -518,17 +482,6 @@ const EducatorAssessmentResults: React.FC = () => {
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
 
-      console.log('📊 [Assessment Results] Assessment results query:', { 
-        count: data?.length || 0, 
-        error: fetchError,
-        sampleResults: data?.slice(0, 2).map(r => ({ 
-          id: r.id, 
-          student_id: r.student_id,
-          status: r.status,
-          stream_id: r.stream_id
-        }))
-      });
-
       if (fetchError) throw fetchError;
 
       const enrichedResults = (data || []).map((r) => {
@@ -562,16 +515,6 @@ const EducatorAssessmentResults: React.FC = () => {
       });
 
       setResults(enrichedResults as unknown as AssessmentResult[]);
-      console.log('✅ [Assessment Results] Final results set:', { 
-        count: enrichedResults.length,
-        sampleEnriched: enrichedResults.slice(0, 2).map(r => ({
-          id: r.id,
-          student_name: r.student_name,
-          student_email: r.student_email,
-          stream_id: r.stream_id,
-          status: r.status
-        }))
-      });
     } catch (err: any) {
       console.error('Error fetching assessment results:', err);
       setError(err?.message || 'Failed to load assessment results');

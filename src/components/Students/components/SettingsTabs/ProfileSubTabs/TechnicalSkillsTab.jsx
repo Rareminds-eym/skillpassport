@@ -98,13 +98,13 @@ const TechnicalSkillsTab = ({
             <Plus className="w-4 h-4" />
             Add Technical Skill
           </Button>
-          {/* <button
+          <button
             className="p-2 rounded-md hover:bg-blue-100 transition-colors"
             title="View All Technical Skills"
             onClick={() => setShowTechnicalSkillsModal(true)}
           >
             <Eye className="w-5 h-5 text-blue-600" />
-          </button> */}
+          </button>
         </div>
       </div>
 
