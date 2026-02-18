@@ -10,6 +10,18 @@ import { ALL_SUBTAGS } from '../adaptive-constants';
 import { createClient } from '@supabase/supabase-js';
 
 /**
+ * Map database dimension to frontend subtag
+ */
+const DIMENSION_TO_SUBTAG: Record<string, Subtag> = {
+    'QR': 'numerical_reasoning',
+    'LR': 'logical_reasoning',
+    'SR': 'spatial_reasoning',
+    'PAR': 'pattern_recognition',
+    'DI': 'data_interpretation',
+    'AA': 'pattern_recognition', // Abstract/Analytical maps to pattern recognition
+};
+
+/**
  * Generate questions from CSV question bank
  */
 async function generateQuestionsFromBank(
@@ -150,7 +162,8 @@ async function generateQuestionsFromBank(
 
     // Transform to Question format
     const formattedQuestions: Question[] = selected.map((q, idx) => {
-        const assignedSubtag = subtags[idx % subtags.length] || 'logical_reasoning';
+        // Use the actual dimension from the database and map it to subtag
+        const subtag = DIMENSION_TO_SUBTAG[q.dimension] || 'logical_reasoning';
         
         return {
             id: q.id,
@@ -164,7 +177,7 @@ async function generateQuestionsFromBank(
             correctAnswer: q.correct_answer,
             explanation: q.explanation || `${q.explanation_step_1} ${q.explanation_step_2}`.trim(),
             difficulty: difficulty,
-            subtag: assignedSubtag,
+            subtag: subtag, // Now using actual dimension from database
             gradeLevel: gradeLevel,
             phase: phase as any,
             createdAt: new Date().toISOString()

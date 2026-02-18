@@ -195,6 +195,25 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
           }
         });
         
+        // Validate matchScore is a number, not a string placeholder
+        if (cluster.matchScore !== undefined) {
+          if (typeof cluster.matchScore === 'string') {
+            const error = `Cluster ${clusterNum} matchScore must be a number, got string: "${cluster.matchScore}"`;
+            errors.push(error);
+            console.error('[VALIDATION] ❌', error);
+          } else if (typeof cluster.matchScore !== 'number') {
+            const error = `Cluster ${clusterNum} matchScore must be a number, got ${typeof cluster.matchScore}`;
+            errors.push(error);
+            console.error('[VALIDATION] ❌', error);
+          } else if (cluster.matchScore === 85 || cluster.matchScore === 75 || cluster.matchScore === 65) {
+            const warning = `⚠️ SUSPICIOUS: Cluster ${clusterNum} has hardcoded matchScore (${cluster.matchScore}) - should be calculated dynamically`;
+            warnings.push(warning);
+            console.warn('[VALIDATION]', warning);
+          } else {
+            console.log(`[VALIDATION] ✅ Cluster ${clusterNum} matchScore is valid: ${cluster.matchScore}`);
+          }
+        }
+        
         if (missingClusterFields.length === 0) {
           console.log(`[VALIDATION] ✅ Cluster ${clusterNum} has all required fields`);
         }

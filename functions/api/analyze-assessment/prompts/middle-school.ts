@@ -425,6 +425,10 @@ Example 2: Student with S=90%, E=80%, A=60%, Aptitude=45%
 - If all 3 clusters have scores 85, 75, 65 → YOU FAILED - recalculate using the formula
 - If scores don't reflect student's actual RIASEC + aptitude → YOU FAILED - recalculate
 - Scores must be mathematically derived from their data, not guessed
+- **FOR THIS STUDENT:** RIASEC top 3 are ${topThreeTypes.join(', ')} with percentages ${topThreeTypes.map(t => `${t}=${riasecPercentages[t]}%`).join(', ')}
+- **FOR THIS STUDENT:** Aptitude level is ${assessmentData.adaptiveAptitudeResults?.aptitude_level || 'unknown'} with ${assessmentData.adaptiveAptitudeResults?.overall_accuracy || 0}% accuracy
+- **FOR THIS STUDENT:** Profile data status: ${assessmentData.studentProfile ? 'HAS verified achievements' : 'NO profile data'}
+- **CALCULATE MATCH SCORES USING THESE EXACT VALUES - DO NOT USE 85, 75, 65**
 
 ${hasValidRiasec ? `
 - You MUST create PERSONALIZED cluster titles based on BOTH the student's RIASEC combination AND cognitive aptitude strengths
@@ -522,17 +526,28 @@ ${assessmentData.studentProfile ? `
 ## STUDENT PROFILE DATA (REAL EXPERIENCE & ACHIEVEMENTS)
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**CRITICAL: This is REAL data about what the student has actually done. Use this to:**
+**CRITICAL: This is REAL data about what the student has actually done. Use this as PRIMARY evidence:**
 1. **Validate aptitude scores** - Projects/certificates confirm cognitive strengths
 2. **Personalize recommendations** - Suggest careers aligned with existing experience
 3. **Identify skill gaps** - Compare what they have vs what they need
 4. **Provide evidence** - Reference specific projects/skills in career recommendations
+5. **Calculate match scores** - Use verified achievements for accurate career fit
+6. **Build credibility** - Ground recommendations in proven accomplishments
+
+**PROFILE DATA ANALYSIS REQUIREMENTS:**
+- Count total verified items in each category
+- Identify skill proficiency levels (beginner/intermediate/advanced/expert)
+- Analyze project complexity and relevance
+- Check certificate authority and recognition
+- Evaluate experience duration and relevance
+- Connect profile data to specific career recommendations
 
 ${assessmentData.studentProfile.skills && assessmentData.studentProfile.skills.length > 0 ? `
 ### Skills (${assessmentData.studentProfile.skills.length} total):
 ${JSON.stringify(assessmentData.studentProfile.skills, null, 2)}
 
 **How to use**: Match skills to career requirements. High proficiency = stronger fit.
+**CRITICAL: Only use VERIFIED/APPROVED skills (approval_status = 'approved'). Ignore pending/unverified skills.**
 ` : ''}
 
 ${assessmentData.studentProfile.projects && assessmentData.studentProfile.projects.length > 0 ? `
@@ -540,6 +555,7 @@ ${assessmentData.studentProfile.projects && assessmentData.studentProfile.projec
 ${JSON.stringify(assessmentData.studentProfile.projects, null, 2)}
 
 **How to use**: Projects show applied skills. Reference specific projects when explaining career fit.
+**CRITICAL: Only use VERIFIED/APPROVED projects (approval_status = 'approved'). Ignore pending/unverified projects.**
 Example: "Your game development project demonstrates strong spatial reasoning and creative problem-solving, perfect for Animation & Game Design careers."
 ` : ''}
 
@@ -548,6 +564,7 @@ ${assessmentData.studentProfile.certificates && assessmentData.studentProfile.ce
 ${JSON.stringify(assessmentData.studentProfile.certificates, null, 2)}
 
 **How to use**: Certificates validate skills and show commitment. Prioritize verified certificates.
+**CRITICAL: Only use VERIFIED/APPROVED certificates (approval_status = 'approved'). Ignore pending/unverified certificates.**
 ` : ''}
 
 ${assessmentData.studentProfile.internships && assessmentData.studentProfile.internships.length > 0 ? `
@@ -555,6 +572,7 @@ ${assessmentData.studentProfile.internships && assessmentData.studentProfile.int
 ${JSON.stringify(assessmentData.studentProfile.internships, null, 2)}
 
 **How to use**: Real work experience is the strongest predictor. Recommend careers aligned with their experience.
+**CRITICAL: Only use VERIFIED/APPROVED experience (approval_status = 'approved'). Ignore pending/unverified experience.**
 ` : ''}
 
 ${assessmentData.studentProfile.education && assessmentData.studentProfile.education.length > 0 ? `
@@ -562,19 +580,131 @@ ${assessmentData.studentProfile.education && assessmentData.studentProfile.educa
 ${JSON.stringify(assessmentData.studentProfile.education, null, 2)}
 
 **How to use**: Academic background shows preparation level and interests.
+**CRITICAL: Only use VERIFIED/APPROVED education records (approval_status = 'approved'). Ignore pending/unverified records.**
 ` : ''}
 
-**WEIGHTING FORMULA WITH PROFILE DATA:**
-- RIASEC (interests): 35%
-- Adaptive Aptitude (cognitive): 35%
-- Profile Data (experience): 30%
+**WEIGHTING FORMULA WITH PROFILE DATA (UPDATED - PRIORITIZE REAL EXPERIENCE):**
+- Profile Data (skills, projects, education, certificates, internships): 50%
+- Adaptive Aptitude (cognitive abilities): 30%
+- RIASEC (interests): 20%
 
-**If student has NO profile data, use original 50/50 split (RIASEC 50% + Aptitude 50%)**
+**CRITICAL: Profile data is the STRONGEST predictor of career success:**
+1. **Skills** show what they can actually do (highest weight)
+2. **Projects** demonstrate applied knowledge and initiative
+3. **Certificates** validate competencies and commitment
+4. **Internships/Experience** prove real-world capability
+5. **Education** shows academic preparation
+6. **Courses** show continuous learning and skill development
+
+**DYNAMIC WEIGHTING BASED ON AVAILABLE DATA:**
+
+**If student HAS profile data (skills/projects/certificates/internships):**
+- Profile Data: 50%
+- Adaptive Aptitude: 30%
+- RIASEC: 20%
+
+**If student has NO profile data (like THIS student):**
+- Adaptive Aptitude: 50% (primary indicator of capability)
+- RIASEC: 50% (interests guide direction)
+- DO NOT use fixed 60/40 - adjust based on data quality:
+  - If aptitude confidence is HIGH: Weight aptitude 60%, RIASEC 40%
+  - If aptitude confidence is MEDIUM: Weight aptitude 50%, RIASEC 50%
+  - If aptitude confidence is LOW: Weight aptitude 40%, RIASEC 60% (rely more on interests)
+
+**FOR THIS STUDENT:**
+- Has Profile Data: ${assessmentData.studentProfile ? 'YES' : 'NO'}
+- Aptitude Confidence: ${assessmentData.adaptiveAptitudeResults?.confidence_tag || 'unknown'}
+- **Recommended Weighting:** ${assessmentData.studentProfile ? 'Profile 50%, Aptitude 30%, RIASEC 20%' : assessmentData.adaptiveAptitudeResults?.confidence_tag === 'high' ? 'Aptitude 60%, RIASEC 40%' : assessmentData.adaptiveAptitudeResults?.confidence_tag === 'low' ? 'Aptitude 40%, RIASEC 60%' : 'Aptitude 50%, RIASEC 50%'}
+
+**CRITICAL: ADJUST RECOMMENDATIONS BASED ON APTITUDE LEVEL:**
+
+**FOR LOW APTITUDE STUDENTS (Level 1-2, <40% accuracy):**
+- Focus on careers with LOWER cognitive barriers
+- Emphasize hands-on, practical skills over abstract thinking
+- Suggest vocational training and skill-based careers
+- Avoid careers requiring high analytical/logical reasoning
+- Examples: Skilled trades, creative arts, customer service, retail, hospitality
+- DO NOT suggest: Engineering, Data Science, Research, Complex Analysis roles
+
+**FOR MEDIUM APTITUDE STUDENTS (Level 3, 40-60% accuracy):**
+- Balance between cognitive and practical careers
+- Suggest careers with moderate learning curves
+- Include both technical and non-technical options
+
+**FOR HIGH APTITUDE STUDENTS (Level 4-5, >60% accuracy):**
+- Include cognitively demanding careers
+- Suggest competitive exam pathways (UPSC, JEE, NEET)
+- Recommend research, engineering, medicine, law
+
+**FOR THIS SPECIFIC STUDENT:**
+- Aptitude Level: ${assessmentData.adaptiveAptitudeResults?.aptitude_level || 0}
+- Overall Accuracy: ${assessmentData.adaptiveAptitudeResults?.overall_accuracy || 0}%
+- Cognitive Strengths: ${assessmentData.adaptiveAptitudeResults?.accuracy_by_subtag ? Object.entries(assessmentData.adaptiveAptitudeResults.accuracy_by_subtag).filter(([_, data]: [string, any]) => data.accuracy >= 40).map(([name, data]: [string, any]) => `${name} (${Math.round(data.accuracy)}%)`).join(', ') || 'None above 40%' : 'No data'}
+- Cognitive Weaknesses: ${assessmentData.adaptiveAptitudeResults?.accuracy_by_subtag ? Object.entries(assessmentData.adaptiveAptitudeResults.accuracy_by_subtag).filter(([_, data]: [string, any]) => data.accuracy < 30).map(([name, data]: [string, any]) => `${name} (${Math.round(data.accuracy)}%)`).join(', ') || 'None below 30%' : 'No data'}
+- **YOU MUST recommend careers that match THIS aptitude level - NOT generic high-level careers**
+
+**MATCH SCORE CALCULATION WITH PROFILE DATA:**
+- Base score from RIASEC + Aptitude (as calculated above)
+- Add +15 points if they have relevant VERIFIED skills (approval_status = 'approved')
+- Add +15 points if they have relevant VERIFIED projects (approval_status = 'approved')
+- Add +10 points if they have relevant VERIFIED certificates (approval_status = 'approved')
+- Add +20 points if they have relevant VERIFIED internship/work experience (approval_status = 'approved')
+- Add +10 points if they have relevant VERIFIED education/coursework (approval_status = 'approved')
+- Add +10 points if they have completed relevant courses (from course enrollment data)
+- Maximum match score: 100%
+
+**ADVANCED SCORING RULES:**
+1. **Skill Proficiency Multiplier**: 
+   - Expert level: Full +15 points
+   - Advanced level: +12 points
+   - Intermediate level: +8 points
+   - Beginner level: +5 points
+
+2. **Project Complexity Multiplier**:
+   - Complex/Advanced projects: Full +15 points
+   - Medium complexity: +10 points
+   - Simple/Beginner projects: +7 points
+
+3. **Experience Duration Multiplier**:
+   - 1+ year experience: Full +20 points
+   - 6-12 months: +15 points
+   - 3-6 months: +10 points
+   - <3 months: +7 points
+
+4. **Certificate Authority Multiplier**:
+   - Industry-recognized (Google, Microsoft, AWS, etc.): Full +10 points
+   - Educational institution: +8 points
+   - Online platform (Coursera, Udemy): +6 points
+   - Self-issued: +3 points
+
+**CRITICAL: Only count VERIFIED/APPROVED data:**
+- Check approval_status field - must be 'approved' or 'verified'
+- Unverified/pending data should NOT contribute to match scores
+- This ensures recommendations are based on validated achievements only
+
+**Example:** Student with R+I RIASEC (70%), High Aptitude (80%), has VERIFIED Expert Python skill + VERIFIED Complex Robotics project + VERIFIED Google certificate + VERIFIED 6-month internship + VERIFIED STEM coursework + Completed 3 AI courses
+- Base: (70 × 0.2) + (80 × 0.3) = 14% + 24% = 38%
+- Profile bonus: +15 (expert Python) + 15 (complex project) + 10 (Google cert) + 15 (6-month internship) + 10 (STEM education) + 10 (completed courses) = +75 points
+- Profile contribution: 75 × 0.5 = 37.5%
+- Final: 38% + 37.5% = 75.5% → Round to 76% match for Engineering careers
+
+**EVIDENCE-BASED RECOMMENDATIONS:**
+- Reference specific verified skills, projects, certificates in career explanations
+- Use project titles and descriptions to show career fit
+- Mention certificate names to validate expertise
+- Cite internship roles to demonstrate experience
+- Connect coursework to career requirements
 ` : ''}
 
 **CRITICAL INSTRUCTIONS - NO FALLBACK VALUES ALLOWED:**
 1. You MUST generate COMPLETE, PERSONALIZED information for EVERY field
 2. NEVER use placeholder text like "Career name 1", "Brief description", "Example text"
+3. NEVER use template match scores (85, 75, 65) - CALCULATE using the formula with THIS student's data
+4. **MATCH SCORE CALCULATION REMINDER:**
+   - Student RIASEC: ${topThreeTypes.map(t => `${t}=${riasecPercentages[t]}%`).join(', ')}
+   - Student Aptitude: ${assessmentData.adaptiveAptitudeResults?.overall_accuracy || 0}% (Level ${assessmentData.adaptiveAptitudeResults?.aptitude_level || 0})
+   - Profile Data: ${assessmentData.studentProfile ? 'YES - add bonuses' : 'NO - use fallback'}
+   - Each cluster MUST have DIFFERENT scores based on RIASEC alignment + Aptitude fit + Profile bonuses
 3. NEVER use generic descriptions - make everything specific to THIS student's results
 4. ALL role overviews, descriptions, and evidence MUST be fully generated based on their assessment
 5. If you cannot generate complete information, the response is INVALID
@@ -604,19 +734,19 @@ ${JSON.stringify(assessmentData.studentProfile.education, null, 2)}
       "spatial": { "correct": 0, "total": 0, "percentage": 0 },
       "clerical": { "correct": 0, "total": 0, "percentage": 0 }
     },
-    "overallScore": 0,
+    "overallScore": ${assessmentData.adaptiveAptitudeResults?.overall_accuracy || 0},
     "adaptiveTest": {
-      "numerical_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their math and number skills based on test results"},
-      "logical_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their problem-solving ability based on test results"},
-      "verbal_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their language and word skills based on test results"},
-      "spatial_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their visual thinking based on test results"},
-      "data_interpretation": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their ability to analyze and understand data based on test results"},
-      "pattern_recognition": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their pattern-finding ability based on test results"}
+      "numerical_reasoning": {"accuracy": ${assessmentData.adaptiveAptitudeResults?.accuracy_by_subtag?.numerical_reasoning?.accuracy || 0}, "description": "MUST BE PERSONALIZED - Describe their math and number skills based on test results"},
+      "logical_reasoning": {"accuracy": ${assessmentData.adaptiveAptitudeResults?.accuracy_by_subtag?.logical_reasoning?.accuracy || 0}, "description": "MUST BE PERSONALIZED - Describe their problem-solving ability based on test results"},
+      "verbal_reasoning": {"accuracy": ${assessmentData.adaptiveAptitudeResults?.accuracy_by_subtag?.verbal_reasoning?.accuracy || 0}, "description": "MUST BE PERSONALIZED - Describe their language and word skills based on test results"},
+      "spatial_reasoning": {"accuracy": ${assessmentData.adaptiveAptitudeResults?.accuracy_by_subtag?.spatial_reasoning?.accuracy || 0}, "description": "MUST BE PERSONALIZED - Describe their visual thinking based on test results"},
+      "data_interpretation": {"accuracy": ${assessmentData.adaptiveAptitudeResults?.accuracy_by_subtag?.data_interpretation?.accuracy || 0}, "description": "MUST BE PERSONALIZED - Describe their ability to analyze and understand data based on test results"},
+      "pattern_recognition": {"accuracy": ${assessmentData.adaptiveAptitudeResults?.accuracy_by_subtag?.pattern_recognition?.accuracy || 0}, "description": "MUST BE PERSONALIZED - Describe their pattern-finding ability based on test results"}
     },
     "topStrengths": ["MUST BE REAL STRENGTHS - List 2-3 cognitive strengths from their adaptive test results (e.g., 'Strong numerical reasoning (85%)', 'Excellent pattern recognition (92%)')"],
     "cognitiveProfile": "MUST BE PERSONALIZED - Explain how they think and solve problems based on their adaptive test performance",
-    "adaptiveLevel": 0,
-    "adaptiveConfidence": "high/medium/low"
+    "adaptiveLevel": ${assessmentData.adaptiveAptitudeResults?.aptitude_level || 0},
+    "adaptiveConfidence": "${assessmentData.adaptiveAptitudeResults?.confidence_tag || 'low'}"
   },
   "characterStrengths": {
     "topStrengths": ["MUST BE REAL STRENGTHS - List their top 3-4 character strengths from assessment (e.g., Curiosity, Creativity, Perseverance, Leadership)"],
@@ -652,7 +782,7 @@ ${JSON.stringify(assessmentData.studentProfile.education, null, 2)}
     "clusters": [
       {
         "title": "MUST BE SPECIFIC - Name the actual career area based on their RIASEC top 3 (e.g., 'Music & Entertainment', 'Healthcare & Medicine', 'Technology & Engineering')",
-        "matchScore": 85,
+        "matchScore": "<CALCULATE: (RIASEC_avg × 0.5) + (Aptitude × 0.5) - DO NOT USE 85>",
         "fit": "High",
         "description": "MUST BE PERSONALIZED - Write 2-3 sentences explaining WHY this specific career area matches THEIR interests AND adaptive aptitude results. Reference their actual RIASEC scores and cognitive strengths.",
         "examples": ["MUST BE REAL JOBS - List 4-5 actual, specific job titles in this career area that a middle schooler can understand (NOT 'Job 1', 'Job 2')"],
@@ -671,7 +801,7 @@ ${JSON.stringify(assessmentData.studentProfile.education, null, 2)}
       },
       {
         "title": "MUST BE SPECIFIC - Name the second career area based on their profile",
-        "matchScore": 75,
+        "matchScore": "<CALCULATE: (RIASEC_avg × 0.5) + (Aptitude × 0.5) - DO NOT USE 75>",
         "fit": "Medium",
         "description": "MUST BE PERSONALIZED - Explain how THEIR specific assessment results AND adaptive aptitude connect to this career path",
         "examples": ["MUST BE REAL JOBS - List 3-4 actual, specific job titles"],
@@ -690,7 +820,7 @@ ${JSON.stringify(assessmentData.studentProfile.education, null, 2)}
       },
       {
         "title": "MUST BE SPECIFIC - Name the third career area to explore",
-        "matchScore": 65,
+        "matchScore": "<CALCULATE: (RIASEC_avg × 0.5) + (Aptitude × 0.5) - DO NOT USE 65>",
         "fit": "Explore",
         "description": "MUST BE PERSONALIZED - Explain why this could be interesting to explore based on THEIR specific results",
         "examples": ["MUST BE REAL JOBS - List 3-4 actual jobs to consider"],

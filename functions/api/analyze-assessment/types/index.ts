@@ -195,7 +195,7 @@ export interface AdaptiveAptitudeResults {
   confidenceTag: string;
   tier: string;
   overallAccuracy: number;
-  accuracyBySubtag: Record<string, number>;
+  accuracyBySubtag: Record<string, { correct: number; total: number; accuracy: number }>;
   pathClassification: string;
 }
 
