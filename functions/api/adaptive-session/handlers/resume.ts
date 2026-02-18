@@ -11,9 +11,14 @@ import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src
 import type { 
   TestSession, 
   Question,
-  GradeLevel
+  GradeLevel,
+  TestPhase,
+  DifficultyLevel,
+  Subtag
 } from '../types';
+import { ALL_SUBTAGS } from '../types';
 import { dbSessionToTestSession, dbResponseToResponse } from '../utils/converters';
+import { fetchAdaptiveQuestion, extractGradeNumber } from '../utils/question-bank';
 
 /**
  * Result of resuming a test
@@ -129,6 +134,50 @@ export const resumeHandler: PagesFunction = async (context) => {
         index: currentQuestionIndex,
         questionId: currentQuestion.id,
       });
+    } else if (sessionData.current_phase === 'adaptive_core' && currentPhaseQuestions.length === 0) {
+      // Special case: adaptive_core with empty questions array - fetch first question
+      console.log('🔄 [ResumeHandler] Adaptive core with no questions - fetching first question...');
+      
+      // Extract specific grade from student_course if available
+      const specificGrade = extractGradeNumber(sessionData.student_course as string | null);
+      console.log('🎯 [ResumeHandler] Using specific grade:', specificGrade || 'fallback to range');
+      
+      // Get all previously answered question IDs
+      const { data: allResponses } = await supabase
+        .from('adaptive_aptitude_responses')
+        .select('question_id')
+        .eq('session_id', sessionId);
+      
+      const excludeIds = (allResponses || []).map(r => r.question_id);
+      
+      // Select a random subtag
+      const selectedSubtag = ALL_SUBTAGS[Math.floor(Math.random() * ALL_SUBTAGS.length)];
+      
+      // Fetch question from database
+      currentQuestion = await fetchAdaptiveQuestion(
+        supabase,
+        sessionData.grade_level as GradeLevel,
+        sessionData.current_difficulty as DifficultyLevel,
+        selectedSubtag,
+        excludeIds,
+        specificGrade || undefined
+      );
+      
+      if (currentQuestion) {
+        // Add to session's current_phase_questions
+        const updatedQuestions = [currentQuestion];
+        await supabase
+          .from('adaptive_aptitude_sessions')
+          .update({ current_phase_questions: updatedQuestions })
+          .eq('id', sessionId);
+        
+        console.log('✅ [ResumeHandler] Fetched first adaptive question:', currentQuestion.id);
+        
+        // Update session object
+        session.currentPhaseQuestions = updatedQuestions;
+      } else {
+        console.error('❌ [ResumeHandler] Failed to fetch adaptive question');
+      }
     } else {
       console.log('⚠️ [ResumeHandler] No current question available (may need phase transition)');
     }
