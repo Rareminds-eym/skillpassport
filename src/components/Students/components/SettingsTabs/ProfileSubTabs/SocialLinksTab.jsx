@@ -24,14 +24,14 @@ const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, i
 
   return (
     <div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <h3 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
         <Globe className="w-5 h-5 text-blue-600" />
         Social Links
       </h3>
 
       {/* Bio Section */}
       <div className="mb-8">
-        <h4 className="text-md font-semibold text-gray-800 mb-4">
+        <h4 className="text-md font-semibold text-black mb-4">
           Bio
         </h4>
         <div className="space-y-2">
@@ -49,7 +49,7 @@ const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, i
 
       {/* Social Links */}
       <div className="pt-6 border-t border-slate-100">
-        <h4 className="text-md font-semibold text-gray-800 mb-4">
+        <h4 className="text-md font-semibold text-black mb-4">
           Social Media & Portfolio Links
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

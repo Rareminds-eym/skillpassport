@@ -96,7 +96,7 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
               onChange={(e) =>
                 handleProfileChange("gapYears", parseInt(e.target.value) || 0)
               }
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              className="w-full px-4 py-2.5  text-black  bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               placeholder="Enter number of gap years"
             />
           </div>
@@ -149,7 +149,7 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
             onChange={(e) =>
               handleProfileChange("currentBacklogs", parseInt(e.target.value) || 0)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 text-black  bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             placeholder="Number of current pending backlogs"
           />
         </div>

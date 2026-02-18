@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { User, FileText, Briefcase, Shield, Globe, Upload, Save, CheckCircle, Award, FolderGit2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import DemoModal from "../../../common/DemoModal";
 
 // Import sub-components
 import PersonalInfoTab from "./ProfileSubTabs/PersonalInfoTab";
@@ -85,6 +86,7 @@ const ProfileTab = ({
   const [profileActiveTab, setProfileActiveTab] = useState("personal");
   const [showLeftIndicator, setShowLeftIndicator] = useState(false);
   const [showRightIndicator, setShowRightIndicator] = useState(true);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const scrollContainerRef = useRef(null);
 
   // Check scroll position to show/hide indicators
@@ -275,6 +277,7 @@ const ProfileTab = ({
   };
 
   return (
+    <>
     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm">
@@ -291,7 +294,12 @@ const ProfileTab = ({
             
             {/* Upload Resume Button */}
             <Button
-              onClick={() => setShowResumeParser(true)}
+              onClick={(e) => {
+                e.preventDefault();
+                setShowDemoModal(true);
+                // Original code (commented for demo):
+                // setShowResumeParser(true);
+              }}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2 text-sm sm:text-base"
             >
               <Upload className="w-4 h-4" />
@@ -368,6 +376,14 @@ const ProfileTab = ({
         {renderActiveTab()}
       </CardContent>
     </Card>
+
+    {/* Demo Modal */}
+    <DemoModal 
+      isOpen={showDemoModal} 
+      onClose={() => setShowDemoModal(false)}
+      message="This feature is for demo purposes only."
+    />
+    </>
   );
 };
 

@@ -19,10 +19,12 @@ import {
   Sparkles,
   Users
 } from 'lucide-react';
+import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
+import DemoModal from '../common/DemoModal';
 
 /**
  * Get the base path for subscription routes based on current location
@@ -46,6 +48,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
   const { subscriptionData, loading } = useSubscriptionQuery();
   const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscriptionContext() || {};
   useAuth(); // Hook called for potential future use
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   // Get the base path for subscription routes
   const basePath = getSubscriptionBasePath(location.pathname);
@@ -203,7 +206,12 @@ export function SubscriptionSettingsSection({ className = '' }) {
         {/* Action Buttons */}
         <div className="space-y-2 pt-2">
           <button
-            onClick={() => navigate(`${basePath}/subscription/manage`)}
+            onClick={(e) => {
+              e.preventDefault();
+              setShowDemoModal(true);
+              // Original code (commented for demo):
+              // navigate(`${basePath}/subscription/manage`);
+            }}
             className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -214,7 +222,12 @@ export function SubscriptionSettingsSection({ className = '' }) {
           </button>
 
           <button
-            onClick={() => navigate(`${basePath}/subscription/add-ons`)}
+            onClick={(e) => {
+              e.preventDefault();
+              setShowDemoModal(true);
+              // Original code (commented for demo):
+              // navigate(`${basePath}/subscription/add-ons`);
+            }}
             className="w-full flex items-center justify-between px-4 py-3 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 transition-colors group"
           >
             <div className="flex items-center gap-3">
@@ -293,6 +306,13 @@ export function SubscriptionSettingsSection({ className = '' }) {
           </div>
         )}
       </div>
+
+      {/* Demo Modal */}
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is for demo purposes only."
+      />
     </div>
   );
 }

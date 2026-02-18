@@ -1,7 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Award, BookOpen, CheckCircle, Clock, Play, RotateCcw, Users, X } from 'lucide-react';
+import { useState } from 'react';
+import DemoModal from '../../common/DemoModal';
 
 const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress }) => {
+  const [showDemoModal, setShowDemoModal] = useState(false);
   if (!isOpen || !course) return null;
 
   // Get progress for this course
@@ -61,11 +64,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
 
             {/* Status Badge */}
             <div className="absolute top-4 left-4 flex gap-2">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                course.status === 'Active'
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${course.status === 'Active'
                   ? 'bg-emerald-500 text-white'
                   : 'bg-blue-500 text-white'
-              }`}>
+                }`}>
                 {course.status}
               </span>
               {isCompleted && (
@@ -94,11 +96,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
               <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   style={{ width: `${progress.progress}%` }}
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    isCompleted 
-                      ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
+                  className={`h-full rounded-full transition-all duration-500 ${isCompleted
+                      ? 'bg-gradient-to-r from-emerald-500 to-green-500'
                       : 'bg-gradient-to-r from-indigo-500 to-purple-500'
-                  }`}
+                    }`}
                 />
               </div>
             </div>
@@ -238,10 +239,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                   {isCompleted
                     ? 'You have completed this course'
                     : isInProgress
-                    ? 'Continue where you left off'
-                    : course.status === 'Active'
-                    ? 'Start learning now'
-                    : 'Available soon'}
+                      ? 'Continue where you left off'
+                      : course.status === 'Active'
+                        ? 'Start learning now'
+                        : 'Available soon'}
                 </p>
               </div>
               <div className="flex gap-3">
@@ -252,17 +253,20 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                   Close
                 </button>
                 <button
-                  onClick={() => onStartCourse(course)}
+                  // onClick={() => onStartCourse(course)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowDemoModal(true);
+                  }}
                   disabled={buttonContent.disabled}
-                  className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                    buttonContent.disabled
+                  className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${buttonContent.disabled
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : isCompleted
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                      : isInProgress
-                      ? 'bg-amber-500 text-white hover:bg-amber-600'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                        ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                        : isInProgress
+                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    }`}
                 >
                   <ButtonIcon className="w-5 h-5" />
                   {buttonContent.text}
@@ -271,6 +275,13 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
             </div>
           </div>
         </motion.div>
+
+        {/* Demo Modal */}
+        <DemoModal
+          isOpen={showDemoModal}
+          onClose={() => setShowDemoModal(false)}
+          message="This feature is for demo purposes only."
+        />
       </div>
     </AnimatePresence>
   );

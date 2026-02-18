@@ -103,14 +103,14 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
 
   return (
     <div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <h3 className="text-lg font-semibold text-black mb-4 flex items-center gap-2">
         <User className="w-5 h-5 text-blue-600" />
         Personal Information
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Name */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-semibold text-black">
             Full Name <span className="text-red-500">*</span>
           </label>
           <input
@@ -119,27 +119,27 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             onChange={(e) =>
               handleProfileChange("name", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 bg-white border text-black border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             placeholder="Enter your full name"
           />
         </div>
 
         {/* Email */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-semibold text-black">
             Email Address <span className="text-red-500">*</span>
           </label>
           <input
             type="email"
             value={profileData.email}
             disabled
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
+            className="w-full px-4 py-2.5 bg-slate-50 border text-black  border-slate-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
           />
         </div>
 
         {/* Phone */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-semibold text-black">
             Phone Number <span className="text-red-500">*</span>
           </label>
           <input
@@ -148,7 +148,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             onChange={(e) =>
               handleValidatedChange("phone", e.target.value)
             }
-            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+            className={`w-full px-4 py-2.5 text-black  bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
               errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
             }`}
             placeholder="Enter 10-digit phone number"
@@ -164,7 +164,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
 
         {/* Alternate Phone */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-semibold text-black">
             Alternate Phone
           </label>
           <input
@@ -173,7 +173,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             onChange={(e) =>
               handleValidatedChange("alternatePhone", e.target.value)
             }
-            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+            className={`w-full px-4 py-2.5 text-black  bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
               errors.alternatePhone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
             }`}
             placeholder="Enter 10-digit alternate phone number"
@@ -189,7 +189,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
 
         {/* Date of Birth */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-semibold text-black">
             Date of Birth
           </label>
           <input
@@ -198,7 +198,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             onChange={(e) =>
               handleValidatedChange("dateOfBirth", e.target.value)
             }
-            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+            className={`w-full px-4 py-2.5 bg-white text-black  border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
               errors.dateOfBirth ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
             }`}
             max={new Date().toISOString().split('T')[0]} // Prevent future dates
@@ -213,7 +213,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
 
         {/* Gender */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-semibold text-black">
             Gender
           </label>
           <select
@@ -221,7 +221,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             onChange={(e) =>
               handleProfileChange("gender", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 text-black py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
           >
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
@@ -232,7 +232,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
 
         {/* Blood Group */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-semibold text-black">
             Blood Group
           </label>
           <select
@@ -240,7 +240,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             onChange={(e) =>
               handleProfileChange("bloodGroup", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
           >
             <option value="">Select Blood Group</option>
             <option value="A+">A+</option>
@@ -257,14 +257,14 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
 
       {/* Address Information */}
       <div className="pt-6 border-t border-slate-100 mt-8">
-        <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+        <h4 className="text-md font-semibold text-black mb-4 flex items-center gap-2">
           <MapPin className="w-4 h-4 text-blue-500" />
           Address Information
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Address */}
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-semibold text-black">
               Address
             </label>
             <textarea
@@ -273,14 +273,14 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
                 handleProfileChange("address", e.target.value)
               }
               rows={3}
-              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+              className="w-full px-4 text-black py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
               placeholder="Enter your full address"
             />
           </div>
 
           {/* City */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-semibold text-black">
               City <span className="text-red-500">*</span>
             </label>
             <input
@@ -289,14 +289,14 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
               onChange={(e) =>
                 handleProfileChange("location", e.target.value)
               }
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               placeholder="Enter city"
             />
           </div>
 
           {/* State */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-semibold text-black">
               State <span className="text-red-500">*</span>
             </label>
             <input
@@ -305,14 +305,14 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
               onChange={(e) =>
                 handleProfileChange("state", e.target.value)
               }
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               placeholder="Enter state"
             />
           </div>
 
           {/* Country */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-semibold text-black">
               Country
             </label>
             <input
@@ -321,14 +321,14 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
               onChange={(e) =>
                 handleProfileChange("country", e.target.value)
               }
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               placeholder="Enter country"
             />
           </div>
 
           {/* Pincode */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-semibold text-black">
               Pincode
             </label>
             <input
@@ -337,7 +337,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
               onChange={(e) =>
                 handleValidatedChange("pincode", e.target.value)
               }
-              className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+              className={`w-full px-4 py-2.5 text-black bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
                 errors.pincode ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
               }`}
               placeholder="Enter 6-digit pincode"

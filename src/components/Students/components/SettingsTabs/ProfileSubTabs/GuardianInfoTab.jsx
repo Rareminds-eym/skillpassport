@@ -91,7 +91,7 @@ const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             onChange={(e) =>
               handleProfileChange("guardianName", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             placeholder="Enter guardian name"
           />
         </div>
@@ -106,7 +106,7 @@ const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             onChange={(e) =>
               handleProfileChange("guardianRelation", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
           >
             <option value="">Select Relation</option>
             <option value="Father">Father</option>
@@ -129,7 +129,7 @@ const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             value={profileData.guardianPhone}
             onChange={(e) => handleFieldChange("guardianPhone", e.target.value)}
             onBlur={(e) => handleFieldBlur("guardianPhone", e.target.value)}
-            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+            className={`w-full px-4 py-2.5 text-black bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
               phoneError ? 'border-red-500' : 'border-slate-200'
             }`}
             placeholder="Enter 10 digit phone number"
@@ -149,7 +149,7 @@ const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
             value={profileData.guardianEmail}
             onChange={(e) => handleFieldChange("guardianEmail", e.target.value)}
             onBlur={(e) => handleFieldBlur("guardianEmail", e.target.value)}
-            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
+            className={`w-full px-4 py-2.5 text-black bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
               emailError ? 'border-red-500' : 'border-slate-200'
             }`}
             placeholder="Enter guardian email"

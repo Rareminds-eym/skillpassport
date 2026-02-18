@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Lock, Mail, Eye, EyeOff } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import DemoModal from "../../../common/DemoModal";
 
 const SecurityTab = ({
   passwordData,
@@ -13,8 +14,10 @@ const SecurityTab = ({
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   return (
+    <>
     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl shadow-slate-200/50">
       <CardHeader className="border-b border-slate-100 pb-5">
         <CardTitle className="flex items-center gap-3">
@@ -126,7 +129,12 @@ const SecurityTab = ({
 
         <div className="flex justify-end pt-6 border-t border-slate-100">
           <Button
-            onClick={handleSavePassword}
+            onClick={(e) => {
+              e.preventDefault();
+              setShowDemoModal(true);
+              // Original code (commented for demo):
+              // handleSavePassword();
+            }}
             disabled={
               isSaving ||
               !passwordData.currentPassword ||
@@ -149,7 +157,16 @@ const SecurityTab = ({
           </Button>
         </div>
       </CardContent>
+
+     
     </Card>
+     {/* Demo Modal */}
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is for demo purposes only."
+      />
+      </>
   );
 };
 
