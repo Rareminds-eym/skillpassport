@@ -245,12 +245,58 @@ const ProfileSection = ({ results, riasecNames }) => {
                     <div className="w-12 h-12 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
                         <img src="/assets/HomePage/Ai Logo.png" alt="AI" className="w-10 h-10 object-contain" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                             <Sparkles className="w-4 h-4 text-yellow-400" />
                             <h4 className="font-bold text-white text-2xl">Your Career Direction</h4>
                         </div>
-                        <p className="text-gray-300 text-base leading-relaxed">{results.overallSummary}</p>
+                        <p className="text-gray-300 text-base leading-relaxed mb-4">{results.overallSummary}</p>
+                        
+                        {/* Key Assessment Data */}
+                        <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-white/10">
+                            {/* RIASEC Top 3 */}
+                            {riasec?.scores && (
+                                <div className="bg-white/5 rounded-lg p-3">
+                                    <div className="text-xs text-gray-400 mb-2 font-semibold">Top Interest Areas</div>
+                                    {Object.entries(riasec.scores)
+                                        .sort(([, a], [, b]) => b - a)
+                                        .slice(0, 3)
+                                        .map(([code, score], idx) => (
+                                            <div key={code} className="text-sm text-white mb-1">
+                                                {idx + 1}. {riasecNames[code]} ({Math.round(score)}%)
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
+                            
+                            {/* Adaptive Aptitude */}
+                            {(results.adaptiveAptitudeResults?.aptitude_level || results.adaptiveAptitudeResults?.aptitudeLevel || 
+                              results.adaptiveAptitudeResults?.overall_accuracy || results.adaptiveAptitudeResults?.overallAccuracy) && (
+                                <div className="bg-white/5 rounded-lg p-3">
+                                    <div className="text-xs text-gray-400 mb-2 font-semibold">Cognitive Aptitude</div>
+                                    {(results.adaptiveAptitudeResults?.aptitude_level || results.adaptiveAptitudeResults?.aptitudeLevel) && (
+                                        <div className="text-sm text-white mb-1">
+                                            Level: {results.adaptiveAptitudeResults?.aptitude_level || results.adaptiveAptitudeResults?.aptitudeLevel}/5
+                                        </div>
+                                    )}
+                                    {(results.adaptiveAptitudeResults?.overall_accuracy || results.adaptiveAptitudeResults?.overallAccuracy) && (
+                                        <div className="text-sm text-white">
+                                            Accuracy: {Math.round(results.adaptiveAptitudeResults?.overall_accuracy || results.adaptiveAptitudeResults?.overallAccuracy)}%
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            
+                            {/* Profile Status */}
+                            <div className="bg-white/5 rounded-lg p-3">
+                                <div className="text-xs text-gray-400 mb-2 font-semibold">Profile Data</div>
+                                <div className="text-sm text-white">
+                                    {(profileSnapshot?.aptitudeStrengths?.length > 0 || profileSnapshot?.interestHighlights?.length > 0) 
+                                        ? '✓ Verified achievements included' 
+                                        : 'Based on assessment only'}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
