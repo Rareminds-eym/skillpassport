@@ -116,7 +116,7 @@ export const validateStreamRecommendation = (
 };
 
 /**
- * Safe parse JSON with fallback
+ * Safe parse JSON - returns null if parsing fails
  */
 export const safeParseJSON = <T>(
   jsonString: string | null,

@@ -9,6 +9,67 @@ export interface StudentContext {
   degreeLevel?: 'postgraduate' | 'undergraduate' | 'diploma' | null;
 }
 
+export interface StudentProfileData {
+  skills?: StudentSkill[];
+  projects?: StudentProject[];
+  certificates?: StudentCertificate[];
+  internships?: StudentInternship[];
+  education?: StudentEducation[];
+  academicMarks?: AcademicMarks;
+}
+
+export interface StudentSkill {
+  skill_name: string;
+  proficiency_level?: string;
+  years_of_experience?: number;
+  category?: string;
+}
+
+export interface StudentProject {
+  title: string;
+  description?: string;
+  technologies_used?: string[];
+  start_date?: string;
+  end_date?: string;
+  project_url?: string;
+  is_verified?: boolean;
+}
+
+export interface StudentCertificate {
+  certificate_name: string;
+  issuing_organization?: string;
+  issue_date?: string;
+  expiry_date?: string;
+  credential_id?: string;
+  is_verified?: boolean;
+}
+
+export interface StudentInternship {
+  company_name: string;
+  role: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+  is_current?: boolean;
+  is_verified?: boolean;
+}
+
+export interface StudentEducation {
+  institution_name: string;
+  degree?: string;
+  field_of_study?: string;
+  start_date?: string;
+  end_date?: string;
+  grade?: string;
+  is_current?: boolean;
+}
+
+export interface AcademicMarks {
+  currentGrade?: string;
+  overallPercentage?: number;
+  subjectMarks?: Record<string, number>;
+}
+
 export interface AssessmentData {
   stream: string;
   gradeLevel: 'middle' | 'highschool' | 'higher_secondary' | 'after12' | 'after10';
@@ -24,6 +85,7 @@ export interface AssessmentData {
   sectionTimings: SectionTimings;
   adaptiveAptitudeResults?: AdaptiveAptitudeResults;
   studentContext?: StudentContext;
+  studentProfile?: StudentProfileData;
 }
 
 export interface RiasecAnswer {
@@ -133,7 +195,7 @@ export interface AdaptiveAptitudeResults {
   confidenceTag: string;
   tier: string;
   overallAccuracy: number;
-  accuracyBySubtag: Record<string, number>;
+  accuracyBySubtag: Record<string, { correct: number; total: number; accuracy: number }>;
   pathClassification: string;
 }
 

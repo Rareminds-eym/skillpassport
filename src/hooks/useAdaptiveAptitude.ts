@@ -23,6 +23,7 @@ import {
   NextQuestionResult,
   ResumeTestResult,
 } from '../services/adaptiveAptitudeService';
+import * as AdaptiveAptitudeApiService from '../services/adaptiveAptitudeApiService';
 
 // =============================================================================
 // TYPES
@@ -299,15 +300,7 @@ export function useAdaptiveAptitude(
         console.log('🔗 [useAdaptiveAptitude] Attempt ID:', attemptId);
         
         try {
-          // Import assessmentService dynamically to avoid circular dependencies
-          console.log('📦 [useAdaptiveAptitude] Importing assessmentService...');
-          const assessmentService = await import('../services/assessmentService');
-          console.log('📦 [useAdaptiveAptitude] assessmentService imported successfully');
-          
-          console.log('🔗 [useAdaptiveAptitude] Calling updateAttemptAdaptiveSession...');
-          const linkResult = await assessmentService.updateAttemptAdaptiveSession(attemptId, initResult.session.id);
-          console.log('🔗 [useAdaptiveAptitude] updateAttemptAdaptiveSession returned:', linkResult);
-          
+          await AdaptiveAptitudeApiService.linkSessionToAttempt(attemptId, initResult.session.id);
           console.log('✅✅✅ [useAdaptiveAptitude] SESSION LINKED TO ATTEMPT SUCCESSFULLY!');
           console.log('✅ [useAdaptiveAptitude] The session ID should now be in personal_assessment_attempts table');
         } catch (linkError) {
@@ -457,7 +450,27 @@ export function useAdaptiveAptitude(
           isTestComplete: nextQuestionResult.isTestComplete,
           currentPhase: nextQuestionResult.currentPhase,
         });
-        updateStateFromNextQuestion(nextQuestionResult, answerResult.updatedSession);
+        
+        // Check if test completed during next question fetch
+        if (nextQuestionResult.isTestComplete) {
+          console.log('🏁 [useAdaptiveAptitude] Test completed during next question fetch');
+          try {
+            const testResults = await AdaptiveAptitudeService.completeTest(session.id);
+            setResults(testResults);
+            setIsTestComplete(true);
+            setCurrentQuestion(null);
+            setQuestionStartTime(null);
+            onTestComplete?.(testResults);
+          } catch (completeError) {
+            console.error('❌ [useAdaptiveAptitude] completeTest API FAILED:', completeError);
+            setIsTestComplete(true);
+            setCurrentQuestion(null);
+            setQuestionStartTime(null);
+            handleError(completeError, 'Failed to save test results');
+          }
+        } else {
+          updateStateFromNextQuestion(nextQuestionResult, answerResult.updatedSession);
+        }
       }
 
       return answerResult;
@@ -487,17 +500,50 @@ export function useAdaptiveAptitude(
       // Update state
       setSession(resumeResult.session);
       sessionIdRef.current = resumeResult.session.id;
-      setCurrentQuestion(resumeResult.currentQuestion);
       setPhase(resumeResult.session.currentPhase);
       setIsTestComplete(resumeResult.isTestComplete);
-      setQuestionStartTime(resumeResult.currentQuestion ? Date.now() : null);
 
       // If test is complete, fetch results
       if (resumeResult.isTestComplete) {
         const testResults = await AdaptiveAptitudeService.getTestResults(sessionId);
         setResults(testResults);
+        setCurrentQuestion(null);
+        setQuestionStartTime(null);
       } else {
         setResults(null);
+        
+        // If no current question, fetch the next one
+        if (!resumeResult.currentQuestion) {
+          console.log('🔄 [useAdaptiveAptitude] No current question on resume, fetching next...');
+          try {
+            const nextResult = await AdaptiveAptitudeService.getNextQuestion(sessionId);
+            
+            if (nextResult.isTestComplete) {
+              console.log('✅ [useAdaptiveAptitude] Test completed after fetching next question');
+              setIsTestComplete(true);
+              const testResults = await AdaptiveAptitudeService.getTestResults(sessionId);
+              setResults(testResults);
+              setCurrentQuestion(null);
+              setQuestionStartTime(null);
+            } else if (nextResult.question) {
+              console.log('✅ [useAdaptiveAptitude] Next question fetched successfully');
+              setCurrentQuestion(nextResult.question);
+              setQuestionStartTime(Date.now());
+            } else {
+              console.warn('⚠️ [useAdaptiveAptitude] No question returned but test not complete');
+              setCurrentQuestion(null);
+              setQuestionStartTime(null);
+            }
+          } catch (nextErr) {
+            console.error('❌ [useAdaptiveAptitude] Failed to fetch next question:', nextErr);
+            // Set a placeholder to show error state
+            setCurrentQuestion(null);
+            throw nextErr;
+          }
+        } else {
+          setCurrentQuestion(resumeResult.currentQuestion);
+          setQuestionStartTime(Date.now());
+        }
       }
 
       // Calculate progress

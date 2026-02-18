@@ -74,16 +74,28 @@ export const initializeHandler: PagesFunction = async (context) => {
     const studentGrade = extractNumericGrade(studentData.grade);
     console.log('✅ [InitializeHandler] Found student record:', studentId, '| grade:', studentData.grade, '| numericGrade:', studentGrade);
 
-    // Validate gradeLevel
-    const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
-    if (!validGradeLevels.includes(gradeLevel)) {
+    // Validate and map gradeLevel for question generation
+    const gradeLevelForQuestions: Record<string, GradeLevel> = {
+      'middle_school': 'grade6-8',
+      'high_school': 'grade9-10',
+      'higher_secondary': 'after10',
+      'grade6-8': 'grade6-8',
+      'grade9-10': 'grade9-10',
+      'after10': 'after10',
+      'after12': 'after12',
+      'college': 'college',
+      'postgraduate': 'postgraduate'
+    };
+
+    const mappedGradeLevelForQuestions = gradeLevelForQuestions[gradeLevel];
+    if (!mappedGradeLevelForQuestions) {
       return jsonResponse(
-        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary' },
+        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, grade6-8, grade9-10, after10, after12, college, postgraduate' },
         400
       );
     }
 
-    console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel });
+    console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel, mappedForQuestions: mappedGradeLevelForQuestions });
 
     // Fetch diagnostic screener questions directly from the question bank
     console.log('📝 [InitializeHandler] Fetching diagnostic screener questions from question bank...');
@@ -111,7 +123,7 @@ export const initializeHandler: PagesFunction = async (context) => {
       .from('adaptive_aptitude_sessions')
       .insert({
         student_id: studentId,
-        grade_level: gradeLevel,
+        grade_level: gradeLevel, // Use original gradeLevel for database
         student_course: studentCourse || null,
         current_phase: 'diagnostic_screener',
         current_difficulty: 3, // Default starting difficulty

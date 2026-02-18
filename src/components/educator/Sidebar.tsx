@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -150,8 +151,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     : [
         // School/College educators see all items
         { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
-        { name: "Analytics", path: "/educator/analytics", icon: ChartBarIcon },
-        { name: "Reports", path: "/educator/reports", icon: DocumentChartBarIcon },
+        { name: "Reports & Analytics", path: "/educator/reports", icon: DocumentChartBarIcon },
         { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
         // { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
         { 
