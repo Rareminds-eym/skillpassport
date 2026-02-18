@@ -2,7 +2,8 @@ import { supabase } from '../lib/supabaseClient';
 
 export interface Competition {
     comp_id: string;
-    school_id: string;
+    school_id?: string;
+    college_id?: string;
     name: string;
     description?: string;
     level: 'intraschool' | 'interschool' | 'district' | 'state' | 'national' | 'international';
@@ -46,7 +47,7 @@ export interface CompetitionResult {
     certificate_issued: boolean;
 }
 
-// Get current user's school_id
+// Get current user's school_id or college_id
 async function getCurrentUserSchoolId(): Promise<string | null> {
     try {
         // First check localStorage for school admin
@@ -64,7 +65,7 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
         }
 
         const userEmail = localStorage.getItem('userEmail');
-        console.log('🔍 [CompetitionsService] Getting school ID for user:', userEmail);
+        console.log('🔍 [CompetitionsService] Getting institution ID for user:', userEmail);
 
         // Get current Supabase user
         const { data: { user } } = await supabase.auth.getUser();
@@ -97,6 +98,24 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
             }
         }
 
+        // Try college_lecturers table
+        if (user) {
+            const { data: lecturerData, error: lecturerError } = await supabase
+                .from('college_lecturers')
+                .select('collegeId')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (lecturerError) {
+                console.error('❌ [CompetitionsService] Lecturer query error:', lecturerError);
+            }
+
+            if (lecturerData?.collegeId) {
+                console.log('✅ [CompetitionsService] Found college ID from college_lecturers:', lecturerData.collegeId);
+                return lecturerData.collegeId;
+            }
+        }
+
         // Try organizations table (for admins)
         if (user || userEmail) {
             const { data: orgData } = await supabase
@@ -112,10 +131,10 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
             }
         }
 
-        console.log('❌ [CompetitionsService] No school ID found for user');
+        console.log('❌ [CompetitionsService] No institution ID found for user');
         return null;
     } catch (error) {
-        console.error('❌ [CompetitionsService] Error getting school_id:', error);
+        console.error('❌ [CompetitionsService] Error getting institution_id:', error);
         return null;
     }
 }
@@ -156,21 +175,55 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
     }
 }
 
-// Fetch all competitions for current school
+// Helper function to check if current user is a college lecturer
+async function isCollegeLecturer(): Promise<boolean> {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        const { data: lecturerData } = await supabase
+            .from('college_lecturers')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        return !!lecturerData;
+    } catch (error) {
+        console.error('Error checking college lecturer status:', error);
+        return false;
+    }
+}
+
+// Fetch all competitions for current school or college
 export async function fetchCompetitions(): Promise<Competition[]> {
     try {
-        const schoolId = await getCurrentUserSchoolId();
-        if (!schoolId) {
-            throw new Error('School ID not found');
+        const institutionId = await getCurrentUserSchoolId();
+        if (!institutionId) {
+            throw new Error('Institution ID not found');
         }
 
-        const { data, error } = await supabase
+        console.log('🔍 [CompetitionsService] Fetching competitions for institution:', institutionId);
+
+        const isCollege = await isCollegeLecturer();
+
+        let query = supabase
             .from('competitions')
             .select('*')
-            .eq('school_id', schoolId)
             .order('competition_date', { ascending: true });
 
+        if (isCollege) {
+            console.log('� [CompetitionsService] Fetching college competitions');
+            query = query.eq('college_id', institutionId);
+        } else {
+            console.log('🏫 [CompetitionsService] Fetching school competitions');
+            query = query.eq('school_id', institutionId);
+        }
+
+        const { data, error } = await query;
+
         if (error) throw error;
+
+        console.log('📋 [CompetitionsService] Found', data?.length || 0, 'competitions');
 
         // Fetch participating clubs for each competition
         const competitionsWithClubs = await Promise.all(
@@ -211,15 +264,16 @@ export async function createCompetition(competitionData: {
     status?: string;
 }): Promise<Competition> {
     try {
-        const schoolId = await getCurrentUserSchoolId();
+        const institutionId = await getCurrentUserSchoolId();
         const userInfo = await getCurrentUserInfo();
 
-        if (!schoolId || !userInfo) {
+        if (!institutionId || !userInfo) {
             throw new Error('User authentication failed');
         }
 
-        const newCompetition = {
-            school_id: schoolId,
+        const isCollege = await isCollegeLecturer();
+
+        const newCompetition: any = {
             name: competitionData.name,
             level: competitionData.level,
             competition_date: competitionData.date,
@@ -234,6 +288,13 @@ export async function createCompetition(competitionData: {
                 : { created_by_admin_id: userInfo.id }
             )
         };
+
+        // Set either school_id or college_id
+        if (isCollege) {
+            newCompetition.college_id = institutionId;
+        } else {
+            newCompetition.school_id = institutionId;
+        }
 
         const { data, error } = await supabase
             .from('competitions')

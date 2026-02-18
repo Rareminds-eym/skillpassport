@@ -2,7 +2,8 @@ import { supabase } from '../lib/supabaseClient';
 
 export interface Club {
     club_id: string;
-    school_id: string;
+    school_id?: string;
+    college_id?: string;
     name: string;
     category: 'arts' | 'sports' | 'robotics' | 'science' | 'literature';
     description: string;
@@ -49,64 +50,56 @@ export interface ClubAttendanceRecord {
     remarks?: string;
 }
 
-// Get current user's school_id using the same logic as students
+// Get current user's institution (school OR college)
 async function getCurrentUserSchoolId(): Promise<string | null> {
     try {
-        console.log('🚀 [Clubs Service] Fetching school_id with school filtering...');
-        
-        let schoolId: string | null = null;
+        console.log("🚀 Detecting institution...");
 
-        // First, check if user is logged in via AuthContext (for school admins)
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            try {
-                const userData = JSON.parse(storedUser);
-                console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
-                if (userData.role === 'school_admin' && userData.schoolId) {
-                    schoolId = userData.schoolId;
-                    console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
-                }
-            } catch (e) {
-                console.error('Error parsing stored user:', e);
-            }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+            console.log("❌ No authenticated user");
+            return null;
         }
 
-        // If not found in localStorage, try Supabase Auth (for educators/teachers)
-        if (!schoolId) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-                console.log('🔍 Checking Supabase auth user:', user.email);
-                
-                // Check school_educators table
-                const { data: educator } = await supabase
-                    .from('school_educators')
-                    .select('school_id')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
+        console.log("🔍 Logged-in user ID:", user.id);
 
-                if (educator?.school_id) {
-                    schoolId = educator.school_id;
-                    console.log('✅ Found school_id in school_educators:', schoolId);
-                } else {
-                    // Check organizations table by email
-                    const { data: org } = await supabase
-                        .from('organizations')
-                        .select('id')
-                        .eq('organization_type', 'school')
-                        .eq('email', user.email)
-                        .maybeSingle();
-                    
-                    schoolId = org?.id || null;
-                    if (schoolId) {
-                        console.log('✅ Found school_id in organizations table:', schoolId);
-                    }
-                }
-            }
+        // 🎓 Try COLLEGE LECTURER first
+        const { data: lecturer, error: lecturerError } = await supabase
+            .from("college_lecturers")
+            .select("collegeId")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+        if (lecturerError) {
+            console.error("❌ Lecturer query error:", lecturerError);
+        } else if (lecturer?.collegeId) {
+            console.log("✅ Found collegeId:", lecturer.collegeId);
+            return lecturer.collegeId;
+        } else {
+            console.log("ℹ️ No college lecturer record found");
         }
 
-        return schoolId;
+        // 🏫 Try SCHOOL EDUCATOR as fallback
+        const { data: educator, error: educatorError } = await supabase
+            .from("school_educators")
+            .select("school_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+        if (educatorError) {
+            console.error("❌ School educator query error:", educatorError);
+        } else if (educator?.school_id) {
+            console.log("✅ Found school_id:", educator.school_id);
+            return educator.school_id;
+        } else {
+            console.log("ℹ️ No school educator record found");
+        }
+
+        console.log("🏫 Institution ID: null");
+        return null;
+
     } catch (error) {
-        console.error('Error getting school_id:', error);
+        console.error("❌ Error getting institution id:", error);
         return null;
     }
 }
@@ -114,10 +107,23 @@ async function getCurrentUserSchoolId(): Promise<string | null> {
 // Get current user info for created_by fields
 async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: string } | null> {
     try {
-        const userEmail = localStorage.getItem('userEmail');
-        if (!userEmail) return null;
+        // Try to get email from localStorage
+        let userEmail = localStorage.getItem('userEmail');
+        
+        // If not in localStorage, get from Supabase auth
+        if (!userEmail) {
+            const { data: { user } } = await supabase.auth.getUser();
+            userEmail = user?.email || null;
+        }
+        
+        if (!userEmail) {
+            console.log('❌ No user email found');
+            return null;
+        }
 
-        // Check if educator
+        console.log('🔍 Looking up user with email:', userEmail);
+
+        // Check if school educator
         const { data: educatorData } = await supabase
             .from('school_educators')
             .select('id')
@@ -125,7 +131,23 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
             .maybeSingle();
 
         if (educatorData?.id) {
+            console.log('✅ Found school educator:', educatorData.id);
             return { type: 'educator', id: educatorData.id };
+        }
+
+        // Check if college lecturer
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            const { data: lecturerData } = await supabase
+                .from('college_lecturers')
+                .select('id')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (lecturerData?.id) {
+                console.log('✅ Found college lecturer:', lecturerData.id);
+                return { type: 'educator', id: lecturerData.id };
+            }
         }
 
         // Check if admin in organizations table
@@ -137,44 +159,66 @@ async function getCurrentUserInfo(): Promise<{ type: 'educator' | 'admin', id: s
             .maybeSingle();
 
         if (orgData?.id) {
+            console.log('✅ Found admin:', orgData.id);
             return { type: 'admin', id: orgData.id };
         }
 
+        console.log('❌ No user info found for email:', userEmail);
         return null;
     } catch (error) {
-        console.error('Error getting user info:', error);
+        console.error('❌ Error getting user info:', error);
         return null;
     }
 }
 
-// Fetch all clubs for current school
+
+
+// Fetch all clubs for current school or college
 export async function fetchClubs(): Promise<Club[]> {
     try {
         console.log('🔍 [clubsService.fetchClubs] Starting fetch...');
-        const schoolId = await getCurrentUserSchoolId();
-        console.log('🏫 [clubsService.fetchClubs] Using school_id:', schoolId);
-        
-        if (!schoolId) {
-            console.log('❌ [clubsService.fetchClubs] School ID not found');
-            throw new Error('School ID not found');
+
+        const institutionId = await getCurrentUserSchoolId();
+        console.log('🏫 Institution ID:', institutionId);
+
+        if (!institutionId) {
+            console.log('❌ Institution ID not found');
+            throw new Error('Institution ID not found');
         }
 
-        console.log('📡 [clubsService.fetchClubs] Querying clubs table...');
-        const { data, error } = await supabase
+        const { data: { user } } = await supabase.auth.getUser();
+
+        // 🔍 Detect educator type (school or college)
+        const { data: schoolEducator } = await supabase
+            .from('school_educators')
+            .select('id')
+            .eq('user_id', user?.id)
+            .maybeSingle();
+
+        let query = supabase
             .from('clubs')
             .select('*')
-            .eq('school_id', schoolId)
             .eq('is_active', true)
             .order('name');
 
+        if (schoolEducator) {
+            console.log('🏫 Fetching SCHOOL clubs');
+            query = query.eq('school_id', institutionId);
+        } else {
+            console.log('🎓 Fetching COLLEGE clubs');
+            query = query.eq('college_id', institutionId);
+        }
+
+        const { data, error } = await query;
+
         if (error) {
-            console.error('❌ [clubsService.fetchClubs] Database error:', error);
+            console.error('❌ Database error:', error);
             throw error;
         }
 
-        console.log('📦 [clubsService.fetchClubs] Found', data?.length || 0, 'clubs');
+        console.log('📦 Found', data?.length || 0, 'clubs');
 
-        // Fetch member counts for each club
+        // ✅ Fetch member counts for each club
         const clubsWithMembers = await Promise.all(
             (data || []).map(async (club) => {
                 const { count } = await supabase
@@ -183,14 +227,13 @@ export async function fetchClubs(): Promise<Club[]> {
                     .eq('club_id', club.club_id)
                     .eq('status', 'active');
 
-                // Fetch member emails
                 const { data: memberships } = await supabase
                     .from('club_memberships')
                     .select('student_email')
                     .eq('club_id', club.club_id)
                     .eq('status', 'active');
 
-                console.log(`👥 [clubsService.fetchClubs] Club "${club.name}" has ${count || 0} members`);
+                console.log(`👥 Club "${club.name}" has ${count || 0} members`);
 
                 return {
                     ...club,
@@ -200,10 +243,12 @@ export async function fetchClubs(): Promise<Club[]> {
             })
         );
 
-        console.log('✅ [clubsService.fetchClubs] Successfully fetched clubs with members');
+        console.log('✅ Successfully fetched clubs with members');
+
         return clubsWithMembers;
+
     } catch (error) {
-        console.error('❌ [clubsService.fetchClubs] Error fetching clubs:', error);
+        console.error('❌ Error fetching clubs:', error);
         throw error;
     }
 }
@@ -228,15 +273,15 @@ export async function createClub(clubData: {
         console.log('📝 [createClub] Input data:', clubData);
         
         // Use provided school_id or fetch it
-        const schoolId = clubData.school_id || await getCurrentUserSchoolId();
-        console.log('🏫 [createClub] School ID:', schoolId);
+        const institutionId = clubData.school_id || await getCurrentUserSchoolId();
+        console.log('🏫 [createClub] Institution ID:', institutionId);
         
         const userInfo = await getCurrentUserInfo();
         console.log('👤 [createClub] User info:', userInfo);
 
-        if (!schoolId) {
-            console.error('❌ [createClub] No school ID found');
-            throw new Error('School ID not found. Please ensure you are logged in as a school admin or educator.');
+        if (!institutionId) {
+            console.error('❌ [createClub] No institution ID found');
+            throw new Error('Institution ID not found. Please ensure you are logged in as a school admin or educator.');
         }
 
         if (!userInfo) {
@@ -244,8 +289,17 @@ export async function createClub(clubData: {
             throw new Error('User authentication failed. Please ensure you are logged in.');
         }
 
-        console.log('🏫 [createClub] Creating club with school_id:', schoolId);
-        console.log('📝 [createClub] Club data:', clubData);
+        // Determine if user is college or school
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: schoolEducator } = await supabase
+            .from('school_educators')
+            .select('id')
+            .eq('user_id', user?.id)
+            .maybeSingle();
+
+        const isSchool = !!schoolEducator;
+
+        console.log('🏫 [createClub] Creating club for:', isSchool ? 'SCHOOL' : 'COLLEGE');
 
         // Try to find mentor educator if email is provided
         let mentorType = clubData.mentor_type || null;
@@ -258,7 +312,7 @@ export async function createClub(clubData: {
                 .from('school_educators')
                 .select('id')
                 .eq('email', clubData.mentor_email)
-                .eq('school_id', schoolId)
+                .eq('school_id', institutionId)
                 .maybeSingle();
 
             if (educatorData?.id) {
@@ -266,13 +320,12 @@ export async function createClub(clubData: {
                 mentorEducatorId = educatorData.id;
                 console.log('✅ Found educator, linking as mentor:', educatorData.id);
             } else {
-                console.log('ℹ️ No educator found with that email, storing name only');
+                console.log('ℹ️ No educator found with that email');
             }
         }
 
-        // Build the club object - exclude mentor_name if it might not exist in schema
+        // Build the club object
         const newClub: any = {
-            school_id: schoolId,
             name: clubData.name,
             category: clubData.category,
             description: clubData.description,
@@ -293,9 +346,14 @@ export async function createClub(clubData: {
             } : {})
         };
 
-        // Only add mentor_name if it's provided and we're sure the column exists
-        // For now, we'll skip this field to avoid database errors
-        // The mentor_name field doesn't exist in the current database schema
+        // Set either school_id or college_id (explicitly set the other to null)
+        if (isSchool) {
+            newClub.school_id = institutionId;
+            newClub.college_id = null;
+        } else {
+            newClub.school_id = null;
+            newClub.college_id = institutionId;
+        }
 
         console.log('💾 [createClub] Inserting club into database:', newClub);
 
@@ -307,16 +365,11 @@ export async function createClub(clubData: {
 
         if (error) {
             console.error('❌ [createClub] Database error:', error);
-            console.error('❌ [createClub] Error code:', error.code);
-            console.error('❌ [createClub] Error message:', error.message);
-            console.error('❌ [createClub] Error details:', error.details);
-            console.error('❌ [createClub] Error hint:', error.hint);
             
-            // Provide more specific error messages
             if (error.code === '23505') {
-                throw new Error(`A club named "${clubData.name}" already exists in your school.`);
+                throw new Error(`A club named "${clubData.name}" already exists in your institution.`);
             } else if (error.code === '23503') {
-                throw new Error('Invalid reference: Please check school ID or mentor information.');
+                throw new Error('Invalid reference: Please check institution ID or mentor information.');
             } else {
                 throw new Error(`Failed to create club: ${error.message || 'Unknown database error'}`);
             }

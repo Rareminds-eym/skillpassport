@@ -204,6 +204,7 @@ const EducatorCommunication = lazy(() =>
 );
 const EducatorMessages = lazy(() => import("../pages/educator/Messages"));
 const SkillCurriculars = lazy(() => import("../pages/educator/SkillCurricular"))
+const EducatorBadges = lazy(() => import("../pages/educator/Badges"))
 const EducatorAnalytics = lazy(() => import("../pages/educator/Analytics"));
 const EducatorActivities = lazy(() => import("../pages/educator/Activities"));
 const EducatorReports = lazy(() => import("../pages/educator/Reports"));
@@ -1072,6 +1073,7 @@ const AppRoutes = () => {
           <Route path="my-timetable" element={<MyTimetable />} />
           <Route path="mark-attendance" element={<MarkAttendance />} />
           <Route path="clubs" element={<SkillCurriculars />} />
+          <Route path="badges" element={<EducatorBadges />} />
           <Route
             path=""
             element={<Navigate to="/educator/dashboard" replace />}
