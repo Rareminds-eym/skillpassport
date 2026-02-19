@@ -2,7 +2,7 @@ import React from "react";
 import { Shield, Globe, Briefcase, Lock, Mail, Phone, MapPin, Save } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { useDemoModeWithModal } from "../../../common/DemoButton";
+import { usePermissions } from "../../../../context/PermissionsContext";
 
 const PrivacyTab = ({
   privacySettings,
@@ -10,7 +10,7 @@ const PrivacyTab = ({
   handleSavePrivacy,
   isSaving,
 }) => {
-  const { handleDemoClick, DemoModalComponent } = useDemoModeWithModal();
+  const { canSavePrivacySettings } = usePermissions();
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl shadow-slate-200/50">
       <CardHeader className="border-b border-slate-100 pb-5">
@@ -232,8 +232,8 @@ const PrivacyTab = ({
 
         <div className="flex justify-end pt-6 border-t border-slate-100">
           <Button
-            onClick={handleDemoClick}
-            disabled={isSaving}
+            onClick={() => canSavePrivacySettings && handleSavePrivacy()}
+            disabled={!canSavePrivacySettings || isSaving}
             className={`
               inline-flex items-center gap-2
               bg-blue-600 hover:bg-blue-700 active:bg-blue-800
@@ -252,7 +252,6 @@ const PrivacyTab = ({
             {isSaving ? "Saving..." : "Save Settings"}
           </Button>
         </div>
-        <DemoModalComponent />
       </CardContent>
     </Card>
   );

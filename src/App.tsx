@@ -6,7 +6,9 @@ import { ToastProvider } from './components/Recruiter/components/Toast';
 import { Toaster } from './components/Students/components/ui/toaster';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
 import TourWrapper from './components/Tours/TourWrapper';
+import { AbilityProvider } from './context/AbilityContext';
 import { AuthProvider } from './context/AuthContext';
+import { PermissionsProvider } from './context/PermissionsContext';
 import { SearchProvider } from './context/SearchContext';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
@@ -34,43 +36,47 @@ function App() {
       <BrowserRouter>
         <SupabaseAuthProvider>
           <AuthProvider>
-            <SupabaseAuthBridgeProvider>
-              <SubscriptionProvider>
-                <SearchProvider>
-                  <ToastProvider>
-                    <TourWrapper>
-                      <SubscriptionPrefetch />
-                      <AppRoutes />
-                      <Toaster />
-                    <HotToaster 
-                      position="top-right"
-                      toastOptions={{
-                        duration: 5000,
-                        style: {
-                          background: '#fff',
-                          color: '#363636',
-                        },
-                        success: {
-                          duration: 3000,
-                          iconTheme: {
-                            primary: '#10b981',
-                            secondary: '#fff',
-                          },
-                        },
-                        error: {
-                          duration: 4000,
-                          iconTheme: {
-                            primary: '#ef4444',
-                            secondary: '#fff',
-                          },
-                        },
-                      }}
-                    />
-                    </TourWrapper>
-                  </ToastProvider>
-                </SearchProvider>
-              </SubscriptionProvider>
-            </SupabaseAuthBridgeProvider>
+            <AbilityProvider>
+              <PermissionsProvider>
+                <SupabaseAuthBridgeProvider>
+                  <SubscriptionProvider>
+                    <SearchProvider>
+                      <ToastProvider>
+                        <TourWrapper>
+                          <SubscriptionPrefetch />
+                          <AppRoutes />
+                          <Toaster />
+                          <HotToaster 
+                            position="top-right"
+                            toastOptions={{
+                              duration: 5000,
+                              style: {
+                                background: '#fff',
+                                color: '#363636',
+                              },
+                              success: {
+                                duration: 3000,
+                                iconTheme: {
+                                  primary: '#10b981',
+                                  secondary: '#fff',
+                                },
+                              },
+                              error: {
+                                duration: 4000,
+                                iconTheme: {
+                                  primary: '#ef4444',
+                                  secondary: '#fff',
+                                },
+                              },
+                            }}
+                          />
+                        </TourWrapper>
+                      </ToastProvider>
+                    </SearchProvider>
+                  </SubscriptionProvider>
+                </SupabaseAuthBridgeProvider>
+              </PermissionsProvider>
+            </AbilityProvider>
           </AuthProvider>
         </SupabaseAuthProvider>
       </BrowserRouter>

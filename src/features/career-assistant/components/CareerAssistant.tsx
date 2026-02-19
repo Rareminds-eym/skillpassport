@@ -15,6 +15,8 @@ import { streamCareerChat } from '../services/careerWorkerService';
 import { useAuth } from '../../../context/AuthContext';
 import { useCareerConversations, ConversationMessage } from '../hooks/useCareerConversations';
 import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';
+import { useUsageTracking } from '../../../hooks/useUsageTracking';
+import { usePermissions } from '../../../context/PermissionsContext';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import { EnhancedAIResponse } from '../types/interactive';
@@ -35,6 +37,9 @@ const CareerAssistant: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
   
+  // RBAC permission check
+  const { canAccessCareerAI } = usePermissions();
+  
   const {
     conversations,
     currentConversation,
@@ -54,6 +59,19 @@ const CareerAssistant: React.FC = () => {
     getFeedback,
     isLoading: isFeedbackLoading
   } = useAIFeedback();
+
+  // Usage tracking hook
+  const {
+    usageCount,
+    usageLimit,
+    remaining,
+    isLimitReached,
+    isUnlimited,
+    checkAndIncrement,
+    reload: reloadUsage,
+    getResetDateFormatted,
+    loading: usageLoading
+  } = useUsageTracking('career_ai');
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -182,6 +200,21 @@ const CareerAssistant: React.FC = () => {
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
+
+    // Check usage limit before sending
+    const usageCheck = await checkAndIncrement();
+    
+    if (!usageCheck.allowed) {
+      // Show limit reached message
+      const limitMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `⚠️ **Usage Limit Reached**\n\nYou've used ${usageCheck.usageCount}/${usageCheck.usageLimit} messages this month.\n\nYour limit will reset ${getResetDateFormatted()}. Upgrade your plan for unlimited access!`,
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, limitMessage]);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -390,7 +423,7 @@ const CareerAssistant: React.FC = () => {
                 </motion.p>
               </div>
 
-              <CareerAIToolsGrid onAction={handleQuickAction} variant="full" animated={true} />
+              <CareerAIToolsGrid onAction={handleQuickAction} variant="full" animated={true} disabled={isLimitReached || !canAccessCareerAI} />
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
                 💡 Click a card above or type your question below to get started
@@ -401,7 +434,7 @@ const CareerAssistant: React.FC = () => {
               {selectedChips.length === 0 && messages.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
                   <p className="text-sm text-gray-500 mb-3 text-center">Quick Actions:</p>
-                  <CareerAIToolsGrid onAction={handleQuickAction} variant="compact" animated={true} />
+                  <CareerAIToolsGrid onAction={handleQuickAction} variant="compact" animated={true} disabled={isLimitReached || !canAccessCareerAI} />
                 </motion.div>
               )}
 
@@ -545,24 +578,40 @@ const CareerAssistant: React.FC = () => {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                placeholder={showWelcome ? "Ask me anything about your career..." : "Type your message..."}
-                disabled={loading || isTyping}
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && !isLimitReached && canAccessCareerAI && handleSend()}
+                placeholder={
+                  !canAccessCareerAI 
+                    ? "🔒 Career AI access disabled for your role" 
+                    : isLimitReached 
+                    ? "Usage limit reached. Resets " + getResetDateFormatted() 
+                    : showWelcome 
+                    ? "Ask me anything about your career..." 
+                    : "Type your message..."
+                }
+                disabled={loading || isTyping || isLimitReached || !canAccessCareerAI}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
               
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Attach file">
+                <button 
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                  title="Attach file"
+                  disabled={!canAccessCareerAI}
+                >
                   <Paperclip className="w-5 h-5" />
                 </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Voice message">
+                <button 
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                  title="Voice message"
+                  disabled={!canAccessCareerAI}
+                >
                   <Mic className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleSend}
-                  disabled={loading || isTyping || !input.trim()}
+                  disabled={loading || isTyping || !input.trim() || isLimitReached || !canAccessCareerAI}
                   className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
-                  title="Send message"
+                  title={!canAccessCareerAI ? "Access disabled" : isLimitReached ? "Usage limit reached" : "Send message"}
                 >
                   <Send className="w-5 h-5" />
                 </button>
@@ -570,9 +619,23 @@ const CareerAssistant: React.FC = () => {
             </div>
 
             <div className="mt-2 px-2">
-              <p className="text-xs text-gray-500">
-                Career AI may generate inaccurate information. Please verify important details.
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500">
+                  Career AI may generate inaccurate information. Please verify important details.
+                </p>
+                {!isUnlimited && !usageLoading && (
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${isLimitReached ? 'text-red-600' : remaining <= 1 ? 'text-amber-600' : 'text-gray-600'}`}>
+                      {remaining}/{usageLimit} messages left
+                    </span>
+                    {isLimitReached && (
+                      <span className="text-xs text-red-600">
+                        (Resets {getResetDateFormatted()})
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -9,6 +9,7 @@ import SelectCourseModal from "../../components/Students/components/SelectCourse
 import { Button } from "../../components/Students/components/ui/button";
 import { Card, CardContent } from "../../components/Students/components/ui/card";
 import { useAuth } from "../../context/AuthContext";
+import { usePermissions } from "../../context/PermissionsContext";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
@@ -118,8 +119,9 @@ const ContinueLearningSection = ({ course, onContinue }) => {
             
             <div className="flex-shrink-0">
               <button
-                onClick={() => onContinue?.(course)}
-                className="group flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white font-semibold rounded-lg sm:rounded-xl transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 text-sm"
+                onClick={() => canManageLearning && onContinue?.(course)}
+                disabled={!canManageLearning}
+                className="group flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-white/15 hover:bg-white/25 backdrop-blur-sm text-white font-semibold rounded-lg sm:rounded-xl transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
               >
                 <span className="hidden sm:inline">Continue</span>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -135,6 +137,7 @@ const ContinueLearningSection = ({ course, onContinue }) => {
 const MyLearning = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { canManageLearning } = usePermissions();
   const userEmail = user?.email;
   const { studentData, updateTraining, updateSingleTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
   const studentId = studentData?.id;
@@ -338,7 +341,8 @@ const MyLearning = () => {
             <div className="flex justify-center sm:justify-end flex-shrink-0">
               <Button 
                 onClick={() => setActiveModal("learning")} 
-                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 text-sm sm:text-base"
+                disabled={!canManageLearning}
+                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-blue-600"
               >
                 <Plus className="w-4 sm:w-5 h-4 sm:h-5 mr-1.5 sm:mr-2" />
                 Add Learning
@@ -644,6 +648,7 @@ const MyLearning = () => {
                           expandedSkills={expandedSkills} 
                           onToggleSkills={toggleSkillExpand}
                           viewMode={viewMode}
+                          canManage={canManageLearning}
                         />
                       ))}
                     </div>

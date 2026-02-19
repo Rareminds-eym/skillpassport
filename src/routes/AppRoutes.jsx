@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
+import { PermissionGate } from "../components/RBAC/PermissionGate";
 import ScrollToTop from "../components/ScrollToTop";
 import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 import OrganizationGuard from "../components/organization/OrganizationGuard";
@@ -879,9 +880,9 @@ const AppRoutes = () => {
         >
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="dashboard/:id" element={<Profile />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="profile/:email" element={<Profile />} />
-          <Route path="my-skills" element={<MySkills />} />
+          <Route path="profile" element={<PermissionGate action="read" subject="Profile"><Profile /></PermissionGate>} />
+          <Route path="profile/:email" element={<PermissionGate action="read" subject="Profile"><Profile /></PermissionGate>} />
+          <Route path="my-skills" element={<PermissionGate action="read" subject="Skills"><MySkills /></PermissionGate>} />
           <Route path="my-learning" element={<MyLearning />} />
           <Route path="my-training" element={<MyLearning />} /> {/* Redirect old route */}
           <Route path="my-experience" element={<MyExperience />} />
@@ -889,10 +890,10 @@ const AppRoutes = () => {
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
           <Route path="opportunities" element={<Opportunities />} />
           <Route path="saved-jobs" element={<SavedJobs />} />
-          <Route path="applications" element={<Applications />} />
+          <Route path="applications" element={<PermissionGate action="read" subject="Applications"><Applications /></PermissionGate>} />
           <Route path="applied-jobs" element={<AppliedJobs />} />
           <Route path="browse-jobs" element={<BrowseJobs />} />
-          <Route path="messages" element={<Messages />} />
+          <Route path="messages" element={<PermissionGate action="read" subject="Messages"><Messages /></PermissionGate>} />
           <Route path="career-ai" element={<CareerAI />} />
           <Route path="settings" element={<Settings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
@@ -903,14 +904,14 @@ const AppRoutes = () => {
           <Route path="clubs" element={<Clubs />} />
           <Route path="timeline" element={<TimelinePage />} />
           <Route path="achievements" element={<AchievementsPage />} />
-          <Route path="assessment-report" element={<AssessmentTestPage />} /> {/* Updated to use new modular component */}
-          <Route path="assessment/test" element={<AssessmentTestPage />} /> {/* Updated to use new modular component */}
-          <Route path="assessment/result" element={<AssessmentResult />} />
-          <Route path="assessment/platform" element={<AssessmentStart />} />
-          <Route path="assessment/dynamic" element={<DynamicAssessment />} />
-          <Route path="adaptive-aptitude-test" element={<AdaptiveAptitudeTest />} />
-          <Route path="assessment/start" element={<TestProvider><AssessmentTestPage /></TestProvider>} />
-          <Route path="assessment/results" element={<TestProvider><AssessmentResults /></TestProvider>} />
+          <Route path="assessment-report" element={<PermissionGate action="read" subject="Assessment"><AssessmentTestPage /></PermissionGate>} />
+          <Route path="assessment/test" element={<PermissionGate action="read" subject="Assessment"><AssessmentTestPage /></PermissionGate>} />
+          <Route path="assessment/result" element={<PermissionGate action="view" subject="AssessmentResults"><AssessmentResult /></PermissionGate>} />
+          <Route path="assessment/platform" element={<PermissionGate action="read" subject="Assessment"><AssessmentStart /></PermissionGate>} />
+          <Route path="assessment/dynamic" element={<PermissionGate action="read" subject="Assessment"><DynamicAssessment /></PermissionGate>} />
+          <Route path="adaptive-aptitude-test" element={<PermissionGate action="read" subject="Assessment"><AdaptiveAptitudeTest /></PermissionGate>} />
+          <Route path="assessment/start" element={<PermissionGate action="read" subject="Assessment"><TestProvider><AssessmentTestPage /></TestProvider></PermissionGate>} />
+          <Route path="assessment/results" element={<PermissionGate action="view" subject="AssessmentResults"><TestProvider><AssessmentResults /></TestProvider></PermissionGate>} />
 
           {/* Digital Portfolio routes with required providers */}
           <Route

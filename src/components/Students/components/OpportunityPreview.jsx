@@ -464,6 +464,7 @@ import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, Trend
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { usePermissions } from '../../../context/PermissionsContext';
 
 // Application Confirmation Modal Component
 const ApplicationConfirmationModal = ({ 
@@ -675,6 +676,9 @@ const OpportunityPreview = ({
   navigate,
   studentData
 }) => {
+  // RBAC permission check from centralized context
+  const { canApplyToOpportunities, canSaveOpportunities } = usePermissions();
+  
   // State for expanding sections
   const [showAllRequirements, setShowAllRequirements] = React.useState(false);
   const [showAllResponsibilities, setShowAllResponsibilities] = React.useState(false);
@@ -1375,7 +1379,10 @@ const OpportunityPreview = ({
                 {/* Primary Apply Button */}
                 <button 
                   onClick={() => {
-                    if (hasCurrentBacklogs && !isApplied) {
+                    if (!canApplyToOpportunities) {
+                      // Don't allow application if user doesn't have permission
+                      return;
+                    } else if (hasCurrentBacklogs && !isApplied) {
                       // Don't allow application if student has current backlogs
                       return;
                     } else if (needsProfileCompletion && !isApplied) {
@@ -1387,12 +1394,14 @@ const OpportunityPreview = ({
                       setShowApplicationModal(true);
                     }
                   }}
-                  disabled={isApplied || isApplying || hasCurrentBacklogs}
+                  disabled={isApplied || isApplying || hasCurrentBacklogs || !canApplyToOpportunities}
                   className={`flex-1 relative overflow-hidden font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-md group ${
                     isApplied
                       ? 'bg-green-600 text-white cursor-not-allowed'
                       : isApplying
                       ? 'bg-gray-400 text-white cursor-wait'
+                      : !canApplyToOpportunities
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
                       : hasCurrentBacklogs
                       ? 'bg-red-600 text-white cursor-not-allowed'
                       : needsProfileCompletion
@@ -1401,7 +1410,7 @@ const OpportunityPreview = ({
                   }`}
                 >
                   {/* Shine Effect */}
-                  {!isApplied && !isApplying && !hasCurrentBacklogs && (
+                  {!isApplied && !isApplying && !hasCurrentBacklogs && canApplyToOpportunities && (
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 group-hover:translate-x-full transition-all duration-500 -translate-x-full"></div>
                   )}
                   
@@ -1415,6 +1424,11 @@ const OpportunityPreview = ({
                       <>
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                         Submitting...
+                      </>
+                    ) : !canApplyToOpportunities ? (
+                      <>
+                        <X className="w-5 h-5" />
+                        Apply Disabled
                       </>
                     ) : hasCurrentBacklogs ? (
                       <>
@@ -1447,7 +1461,7 @@ const OpportunityPreview = ({
                 )}
 
                 {/* Save Button */}
-                {onToggleSave && (
+                {onToggleSave && canSaveOpportunities && (
                   <button 
                     onClick={() => onToggleSave(opportunity)}
                     className="w-12 h-12 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 rounded-xl transition-all flex items-center justify-center group"
@@ -1466,6 +1480,8 @@ const OpportunityPreview = ({
               <p className="text-xs text-gray-500 text-center mt-3">
                 {isApplied 
                   ? '✓ Track your application in the Applications tab' 
+                  : !canApplyToOpportunities
+                  ? '🔒 You do not have permission to apply to opportunities'
                   : hasCurrentBacklogs
                   ? '❌ Clear your current backlogs to become eligible for job applications'
                   : needsProfileCompletion 

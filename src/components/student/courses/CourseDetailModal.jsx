@@ -1,10 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Award, BookOpen, CheckCircle, Clock, Play, RotateCcw, Users, X } from 'lucide-react';
-import { useState } from 'react';
-import DemoModal from '../../common/DemoModal';
+import { usePermissions } from '../../../context/PermissionsContext';
 
 const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress }) => {
-  const [showDemoModal, setShowDemoModal] = useState(false);
+  const { canStartCourses } = usePermissions();
   if (!isOpen || !course) return null;
 
   // Get progress for this course
@@ -17,6 +16,9 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
   const getButtonContent = () => {
     if (course.status !== 'Active') {
       return { text: 'Coming Soon', icon: Play, disabled: true };
+    }
+    if (!canStartCourses) {
+      return { text: 'Start Learning', icon: Play, disabled: true };
     }
     if (isCompleted) {
       return { text: 'Review Course', icon: RotateCcw, disabled: false };
@@ -253,11 +255,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                   Close
                 </button>
                 <button
-                  // onClick={() => onStartCourse(course)}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowDemoModal(true);
-                  }}
+                  onClick={() => canStartCourses && onStartCourse(course)}
                   disabled={buttonContent.disabled}
                   className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${buttonContent.disabled
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -275,13 +273,6 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
             </div>
           </div>
         </motion.div>
-
-        {/* Demo Modal */}
-        <DemoModal
-          isOpen={showDemoModal}
-          onClose={() => setShowDemoModal(false)}
-          message="This feature is for demo purposes only."
-        />
       </div>
     </AnimatePresence>
   );

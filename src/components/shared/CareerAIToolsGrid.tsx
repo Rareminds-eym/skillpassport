@@ -38,6 +38,7 @@ interface CareerAIToolsGridProps {
   variant?: 'full' | 'compact';
   animated?: boolean;
   navigateOnClick?: boolean;
+  disabled?: boolean;
 }
 
 const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
@@ -45,10 +46,12 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
   variant = 'full',
   animated = true,
   navigateOnClick = false,
+  disabled = false,
 }) => {
   const navigate = useNavigate();
 
   const handleClick = (action: CareerAIAction) => {
+    if (disabled) return;
     if (onAction) {
       onAction(action.prompt, action.label);
     } else if (navigateOnClick) {
@@ -84,17 +87,18 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
           key={action.id}
           {...getButtonProps(index)}
           onClick={() => handleClick(action)}
+          disabled={disabled}
           className={`flex items-center gap-4 bg-white border border-gray-200 rounded-2xl text-left transition-all duration-200 hover:shadow-md hover:border-gray-300 group ${
             isCompact ? 'px-3 py-2.5' : 'px-4 py-3'
-          }`}
+          } ${disabled ? 'opacity-50 cursor-not-allowed hover:shadow-none hover:border-gray-200' : ''}`}
         >
-          <div className={`${action.iconBg} ${isCompact ? 'w-10 h-10' : 'w-11 h-11'} rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
+          <div className={`${action.iconBg} ${isCompact ? 'w-10 h-10' : 'w-11 h-11'} rounded-xl flex items-center justify-center flex-shrink-0 ${disabled ? '' : 'group-hover:scale-110'} transition-transform`}>
             <action.icon className={`${isCompact ? 'w-5 h-5' : 'w-5 h-5'} ${action.iconColor}`} />
           </div>
           <span className={`font-medium text-gray-800 flex-1 ${isCompact ? 'text-sm' : 'text-sm'}`}>
             {action.label}
           </span>
-          <div className={`${isCompact ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-white border border-gray-300 flex items-center justify-center flex-shrink-0 group-hover:border-gray-400 transition-colors`}>
+          <div className={`${isCompact ? 'w-7 h-7' : 'w-8 h-8'} rounded-full bg-white border border-gray-300 flex items-center justify-center flex-shrink-0 ${disabled ? '' : 'group-hover:border-gray-400'} transition-colors`}>
             <Plus className={`${isCompact ? 'w-3.5 h-3.5' : 'w-4 h-4'} text-gray-900`} />
           </div>
         </Wrapper>

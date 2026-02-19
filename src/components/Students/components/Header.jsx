@@ -10,7 +10,6 @@ import {
   Cog6ToothIcon,
   EnvelopeIcon,
   HomeIcon,
-  PencilIcon,
   RocketLaunchIcon,
   UserCircleIcon,
   XMarkIcon
@@ -243,8 +242,8 @@ const Header = ({ activeTab, setActiveTab }) => {
           </nav>
 
           {/* Right: Actions */}
-                 <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
-            
+          <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
+
             {/* Digital Portfolio Menu Button - Only show on portfolio page */}
             {/* {location.pathname === '/student/digital-portfolio/portfolio' && (
               <button

@@ -37,6 +37,8 @@
     "embed-courses": "node scripts/embedCourses.js"
   },
   "dependencies": {
+    "@casl/ability": "^6.8.0",
+    "@casl/react": "^5.0.1",
     "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",
     "@leenguyen/react-flip-clock-countdown": "^1.7.2",

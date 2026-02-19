@@ -21,6 +21,7 @@ import {
     Github,
     GraduationCap,
     Lightbulb,
+    Lock,
     MapPin,
     Medal,
     MoreVertical,
@@ -88,6 +89,7 @@ import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { supabase } from "../../lib/supabaseClient";
 import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
+import { useAbility } from '../../hooks/useAbility';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -96,6 +98,7 @@ import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { can } = useAbility();
 
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
@@ -1276,30 +1279,63 @@ const StudentDashboard = () => {
 
           <div className="flex justify-center py-4">
             {hasAssessment ? (
-              <Button
-                onClick={() => navigate(latestAttemptId ? `/student/assessment/result?attemptId=${latestAttemptId}` : "/student/assessment/result")}
-                className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-              >
-                <Eye className="w-5 h-5 mr-2" />
-                View Results
-              </Button>
+              can('view', 'AssessmentResults') ? (
+                <Button
+                  onClick={() => navigate(latestAttemptId ? `/student/assessment/result?attemptId=${latestAttemptId}` : "/student/assessment/result")}
+                  className="w-auto bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+                >
+                  <Eye className="w-5 h-5 mr-2" />
+                  View Results
+                </Button>
+              ) : (
+                <Button
+                  disabled
+                  className="w-auto bg-gray-300 text-gray-500 cursor-not-allowed opacity-60 font-semibold text-sm py-4"
+                  title="You don't have permission to view assessment results"
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Results Locked
+                </Button>
+              )
             ) : hasInProgressAssessment ? (
-              <Button
-                onClick={() => navigate("/student/assessment/test")}
-                className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-              >
-                <Clock className="w-5 h-5 mr-2" />
-                Continue Assessment
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </Button>
+              can('continue', 'Assessment') ? (
+                <Button
+                  onClick={() => navigate("/student/assessment/test")}
+                  className="w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+                >
+                  <Clock className="w-5 h-5 mr-2" />
+                  Continue Assessment
+                  <ChevronRight className="w-5 h-5 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  disabled
+                  className="w-auto bg-gray-300 text-gray-500 cursor-not-allowed opacity-60 font-semibold text-sm py-4"
+                  title="You don't have permission to continue assessments"
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Assessment Locked
+                </Button>
+              )
             ) : (
-              <Button
-                onClick={() => navigate("/student/assessment/test")}
-                className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
-              >
-                Start Assessment
-                <ChevronRight className="w-5 h-5 ml-2" />
-              </Button>
+              can('start', 'Assessment') ? (
+                <Button
+                  onClick={() => navigate("/student/assessment/test")}
+                  className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-4"
+                >
+                  Start Assessment
+                  <ChevronRight className="w-5 h-5 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  disabled
+                  className="w-auto bg-gray-300 text-gray-500 cursor-not-allowed opacity-60 font-semibold text-sm py-4"
+                  title="You don't have permission to start assessments"
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Assessment Locked
+                </Button>
+              )
             )}
           </div>
 
@@ -1343,95 +1379,103 @@ const StudentDashboard = () => {
                 <Rocket className="w-5 h-5 text-blue-600" />
                 Career AI Tools
               </h3>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => navigate("/student/career-ai", { state: { query: 'What jobs match my skills and experience?' } })}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-                >
-                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Briefcase className="w-5 h-5" />
-                  </div>
-                  <span className="font-semibold text-sm flex-1">Find Jobs</span>
-                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </button>
+              {can('access', 'CareerAITools') ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => navigate("/student/career-ai", { state: { query: 'What jobs match my skills and experience?' } })}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                  >
+                    <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <Briefcase className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-sm flex-1">Find Jobs</span>
+                    <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
 
-                <button
-                  onClick={() => navigate("/student/career-ai", { state: { query: 'Analyze my skill gaps for my target career' } })}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-                >
-                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Target className="w-5 h-5" />
-                  </div>
-                  <span className="font-semibold text-sm flex-1">Skill Gap Analysis</span>
-                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </button>
+                  <button
+                    onClick={() => navigate("/student/career-ai", { state: { query: 'Analyze my skill gaps for my target career' } })}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                  >
+                    <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <Target className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-sm flex-1">Skill Gap Analysis</span>
+                    <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
 
-                <button
-                  onClick={() => navigate("/student/career-ai", { state: { query: 'Help me prepare for upcoming interviews' } })}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-                >
-                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <BookOpen className="w-5 h-5" />
-                  </div>
-                  <span className="font-semibold text-sm flex-1">Interview Prep</span>
-                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </button>
+                  <button
+                    onClick={() => navigate("/student/career-ai", { state: { query: 'Help me prepare for upcoming interviews' } })}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                  >
+                    <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <BookOpen className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-sm flex-1">Interview Prep</span>
+                    <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
 
-                <button
-                  onClick={() => navigate("/student/career-ai", { state: { query: 'Review my resume and suggest improvements?' } })}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-                >
-                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <span className="font-semibold text-sm flex-1">Resume Review</span>
-                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </button>
+                  <button
+                    onClick={() => navigate("/student/career-ai", { state: { query: 'Review my resume and suggest improvements?' } })}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                  >
+                    <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-sm flex-1">Resume Review</span>
+                    <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
 
-                <button
-                  onClick={() => navigate("/student/career-ai", { state: { query: 'Create a learning roadmap for my career goals' } })}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-                >
-                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <GraduationCap className="w-5 h-5" />
-                  </div>
-                  <span className="font-semibold text-sm flex-1">Learning Path</span>
-                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </button>
+                  <button
+                    onClick={() => navigate("/student/career-ai", { state: { query: 'Create a learning roadmap for my career goals' } })}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                  >
+                    <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <GraduationCap className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-sm flex-1">Learning Path</span>
+                    <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
 
-                <button
-                  onClick={() => navigate("/student/career-ai", { state: { query: 'What career paths are best suited for me?' } })}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-                >
-                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <span className="font-semibold text-sm flex-1">Career Guidance</span>
-                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </button>
+                  <button
+                    onClick={() => navigate("/student/career-ai", { state: { query: 'What career paths are best suited for me?' } })}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                  >
+                    <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-sm flex-1">Career Guidance</span>
+                    <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
 
-                <button
-                  onClick={() => navigate("/student/career-ai", { state: { query: 'Give me networking strategies for my field' } })}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-                >
-                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Users2 className="w-5 h-5" />
-                  </div>
-                  <span className="font-semibold text-sm flex-1">Networking Tips</span>
-                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </button>
+                  <button
+                    onClick={() => navigate("/student/career-ai", { state: { query: 'Give me networking strategies for my field' } })}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                  >
+                    <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <Users2 className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-sm flex-1">Networking Tips</span>
+                    <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
 
-                <button
-                  onClick={() => navigate("/student/career-ai", { state: { query: 'I need career advice and guidance' } })}
-                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
-                >
-                  <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <Lightbulb className="w-5 h-5" />
-                  </div>
-                  <span className="font-semibold text-sm flex-1">Career Advice</span>
-                  <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-                </button>
-              </div>
+                  <button
+                    onClick={() => navigate("/student/career-ai", { state: { query: 'I need career advice and guidance' } })}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg p-4 text-left transition-all duration-200 shadow-sm hover:shadow-md group flex items-center gap-2"
+                  >
+                    <div className="bg-blue-100 w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                      <Lightbulb className="w-5 h-5" />
+                    </div>
+                    <span className="font-semibold text-sm flex-1">Career Advice</span>
+                    <ChevronRight className="w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 p-8 text-center">
+                  <Lock className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium text-sm">Career AI Tools are currently locked</p>
+                  <p className="text-gray-400 text-xs mt-1">Contact your administrator to enable this feature</p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -1581,13 +1625,25 @@ const StudentDashboard = () => {
                             </div>
                           )}
 
-                          <Button
-                            size="sm"
-                            onClick={() => navigate('/student/opportunities', { state: { selectedOpportunityId: opp.id } })}
-                            className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                          >
-                            Apply
-                          </Button>
+                          {can('apply', 'Opportunities') ? (
+                            <Button
+                              size="sm"
+                              onClick={() => navigate('/student/opportunities', { state: { selectedOpportunityId: opp.id } })}
+                              className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
+                            >
+                              Apply
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              disabled
+                              className="w-auto bg-gray-300 text-gray-500 cursor-not-allowed opacity-60 font-semibold px-5 py-2 text-sm rounded-lg"
+                              title="You don't have permission to apply to opportunities"
+                            >
+                              <Lock className="w-3.5 h-3.5 mr-1.5" />
+                              Apply
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );

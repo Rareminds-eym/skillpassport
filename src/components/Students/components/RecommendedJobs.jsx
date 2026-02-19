@@ -15,6 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useAIJobMatching } from '../../../hooks/useAIJobMatching';
 import { FeatureGate } from '../../Subscription/FeatureGate';
+import { usePermissions } from '../../../context/PermissionsContext';
 
 /**
  * RecommendedJobs - AI-powered job recommendations with industrial-grade caching
@@ -37,6 +38,9 @@ const RecommendedJobsContent = ({
 }) => {
   const [showAnimation, setShowAnimation] = useState(true);
   const [isDismissed, setIsDismissed] = useState(false);
+  
+  // RBAC permission check from centralized context
+  const { canApplyToOpportunities } = usePermissions();
 
   // Use the industrial-grade caching hook
   const {
@@ -266,8 +270,8 @@ const RecommendedJobsContent = ({
     );
   }
 
-  // Don't render if no data
-  if (!recommendations || recommendations.length === 0) {
+  // Don't render if no data (after loading completes)
+  if (!loading && !showAnimation && (!recommendations || recommendations.length === 0)) {
     return null;
   }
 
@@ -434,6 +438,11 @@ const RecommendedJobsContent = ({
                       <div className="flex-1 bg-green-50 text-green-700 border border-green-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
                         <CheckCircle className="w-4 h-4" />
                         Applied
+                      </div>
+                    ) : !canApplyToOpportunities ? (
+                      <div className="flex-1 bg-gray-400 text-white border border-gray-400 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1 cursor-not-allowed">
+                        <X className="w-4 h-4" />
+                        Apply Disabled
                       </div>
                     ) : (studentProfile?.currentBacklogs || 0) > 0 ? (
                       <div className="flex-1 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">

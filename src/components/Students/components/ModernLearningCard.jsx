@@ -24,7 +24,7 @@ import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { supabase } from "../../../lib/supabaseClient";
 import { downloadCertificate, getCertificateProxyUrl } from "../../../services/certificateService";
 import { checkAssessmentStatus } from "../../../services/externalAssessmentService";
-import DemoModal from "../../common/DemoModal";
+import { usePermissions } from "../../../context/PermissionsContext";
 
 /**
  * Modern Learning Card Component - Completely Redesigned
@@ -35,17 +35,18 @@ const ModernLearningCard = ({
   item,
   onEdit,
   onDelete,
-  viewMode = 'grid'
+  viewMode = 'grid',
+  canManage = true
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { canStartAssessment } = usePermissions();
   const [isHovered, setIsHovered] = useState(false);
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const [assessmentScore, setAssessmentScore] = useState(null);
   const [checkingAssessment, setCheckingAssessment] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [certificateUrl, setCertificateUrl] = useState(item.certificateUrl || '');
-  const [showDemoModal, setShowDemoModal] = useState(false);
 
   // Update certificate URL when item.certificateUrl changes
   useEffect(() => {
@@ -308,19 +309,20 @@ const ModernLearningCard = ({
     <button
       onClick={(e) => {
         e.preventDefault();
-        setShowDemoModal(true);
-        // Original navigation code (commented for demo):
-        // navigate("/student/assessment/platform", {
-        //   state: {
-        //     courseName: item.course || item.title,
-        //     certificateName: item.course || item.title,
-        //     level: item.level || 'Intermediate',
-        //     courseId: item.id,
-        //     useDynamicGeneration: true
-        //   }
-        // })
+        if (canStartAssessment) {
+          navigate("/student/assessment/platform", {
+            state: {
+              courseName: item.course || item.title,
+              certificateName: item.course || item.title,
+              level: item.level || 'Intermediate',
+              courseId: item.id,
+              useDynamicGeneration: true
+            }
+          });
+        }
       }}
-      className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105"
+      disabled={!canStartAssessment}
+      className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
     >
       <Target className="w-4 h-4" />
       <span>Take Assessment</span>
@@ -415,19 +417,20 @@ const ModernLearningCard = ({
     <button
       onClick={(e) => {
         e.preventDefault();
-        setShowDemoModal(true);
-        // Original navigation code (commented for demo):
-        // navigate("/student/assessment/platform", {
-        //   state: {
-        //     courseName: item.course || item.title,
-        //     certificateName: item.course || item.title,
-        //     level: item.level || 'Intermediate',
-        //     courseId: item.id,
-        //     useDynamicGeneration: true
-        //   }
-        // })
+        if (canStartAssessment) {
+          navigate("/student/assessment/platform", {
+            state: {
+              courseName: item.course || item.title,
+              certificateName: item.course || item.title,
+              level: item.level || 'Intermediate',
+              courseId: item.id,
+              useDynamicGeneration: true
+            }
+          });
+        }
       }}
-      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105"
+      disabled={!canStartAssessment}
+      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
     >
       <Target className="w-4 h-4" />
       <span className="hidden xs:inline">Take Assessment</span>
@@ -742,7 +745,7 @@ const ModernLearningCard = ({
                 {renderListActionButton()}
 
                 {/* Edit button and 3-dots menu for external courses */}
-                {isExternalCourse && !isCourseEnrollment && (
+                {isExternalCourse && !isCourseEnrollment && canManage && (
                   <button
                     onClick={() => onEdit?.(item)}
                     className="p-2.5 sm:p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl sm:rounded-2xl transition-all duration-200 hover:scale-105 self-center"
@@ -794,7 +797,7 @@ const ModernLearningCard = ({
                             {isDownloading ? 'Downloading...' : 'Download Certificate'}
                           </button>
                         )}
-                        {isExternalCourse && onDelete && (
+                        {isExternalCourse && onDelete && canManage && (
                           <>
                             <div className="border-t border-slate-100 my-1" />
                             <button
@@ -818,13 +821,6 @@ const ModernLearningCard = ({
             </div>
           </div>
         </div>
-
-        {/* Demo Modal */}
-        <DemoModal
-          isOpen={showDemoModal}
-          onClose={() => setShowDemoModal(false)}
-          message="This feature is for demo purposes only."
-        />
       </>
     );
   }
@@ -874,7 +870,7 @@ const ModernLearningCard = ({
             )}
 
             {/* Edit button for external courses */}
-            {isExternalCourse && !isCourseEnrollment && (
+            {isExternalCourse && !isCourseEnrollment && canManage && (
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => onEdit?.(item)}
@@ -937,7 +933,7 @@ const ModernLearningCard = ({
                         {isDownloading ? 'Downloading...' : 'Download Certificate'}
                       </button>
                     )}
-                    {isExternalCourse && onDelete && (
+                    {isExternalCourse && onDelete && canManage && (
                       <>
                         <div className="border-t border-slate-100 my-1" />
                         <button
@@ -1227,12 +1223,6 @@ const ModernLearningCard = ({
         </div>
       </div>
  </div>
-      {/* Demo Modal */}
-      <DemoModal
-        isOpen={showDemoModal}
-        onClose={() => setShowDemoModal(false)}
-        message="This feature is for demo purposes only."
-      />
     </>
   );
 };

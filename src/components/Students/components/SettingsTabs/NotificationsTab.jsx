@@ -2,7 +2,7 @@ import React from "react";
 import { Bell, Save } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { useDemoModeWithModal } from "../../../common/DemoButton";
+import { usePermissions } from "../../../../context/PermissionsContext";
 
 const NotificationsTab = ({
   notificationSettings,
@@ -10,7 +10,7 @@ const NotificationsTab = ({
   handleSaveNotifications,
   isSaving,
 }) => {
-  const { handleDemoClick, DemoModalComponent } = useDemoModeWithModal();
+  const { canSaveNotificationPreferences } = usePermissions();
   return (
     <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl shadow-slate-200/50">
       <CardHeader className="border-b border-slate-100 pb-5">
@@ -81,8 +81,8 @@ const NotificationsTab = ({
 
         <div className="flex justify-end pt-6 border-t border-slate-100">
           <Button
-            onClick={handleDemoClick}
-            disabled={isSaving}
+            onClick={() => canSaveNotificationPreferences && handleSaveNotifications()}
+            disabled={!canSaveNotificationPreferences || isSaving}
             className={`
               inline-flex items-center gap-2
               bg-blue-600 hover:bg-blue-700 active:bg-blue-800
@@ -99,7 +99,6 @@ const NotificationsTab = ({
             {isSaving ? "Saving..." : "Save Preferences"}
           </Button>
         </div>
-        <DemoModalComponent />
       </CardContent>
     </Card>
   );
