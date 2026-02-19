@@ -24,6 +24,7 @@ import DeleteConversationModal from '../../components/messaging/DeleteConversati
 import NewAdminConversationModal from '../../components/messaging/NewAdminConversationModal';
 import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
 import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
+import DemoModal from '../../components/common/DemoModal';
 import { useAuth } from '../../context/AuthContext';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
@@ -65,6 +66,7 @@ const Messages = () => {
   const [showTabDropdown, setShowTabDropdown] = useState(false);
   const [showNewEducatorDropdown, setShowNewEducatorDropdown] = useState(false);
   const [isTabSwitching, setIsTabSwitching] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const messagesEndRef = useRef(null);
   const markedAsReadRef = useRef(new Set());
   const menuRef = useRef(null);
@@ -912,6 +914,10 @@ console.log('🔍 Checking online for educator:', {
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (messageInput.trim() && currentChat && studentId) {
+      // Show demo modal instead of sending
+      setShowDemoModal(true);
+      return;
+      
       try {
         if (activeTab === 'recruiters') {
           // Send message to recruiter
@@ -2190,6 +2196,13 @@ console.log('🔍 Checking online for educator:', {
             toast.error(errorMessage);
           }
         }}
+      />
+
+      {/* Demo Modal */}
+      <DemoModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is for demo purposes only."
       />
     </div>
   );

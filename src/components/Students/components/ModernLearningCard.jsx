@@ -329,7 +329,11 @@ const ModernLearningCard = ({
 
   const renderListContinueButton = () => (
     <button
-      onClick={handleContinue}
+    // onClick={handleContinue}
+      onClick={(e) => {
+        e.preventDefault();
+        setShowDemoModal(true);
+      }}
       className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-blue-500/25"
     >
       <Play className="w-4 h-4" />
@@ -438,7 +442,11 @@ const ModernLearningCard = ({
   // Helper function to render continue/start button
   const renderContinueButton = () => (
     <button
-      onClick={handleContinue}
+    // onClick={handleContinue}
+      onClick={(e) => {
+        e.preventDefault();
+        setShowDemoModal(true);
+      }}
       className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-300 hover:scale-105 shadow-md shadow-blue-500/25"
     >
       <Play className="w-4 sm:w-5 h-4 sm:h-5" />

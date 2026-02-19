@@ -14,6 +14,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
+import DemoModal from '../../common/DemoModal';
 
 // Menu item interface
 interface SideDrawerMenuItem {
@@ -27,15 +28,15 @@ interface SideDrawerMenuItem {
 const mainMenuItems: SideDrawerMenuItem[] = [
   { id: 'portfolio', label: 'Portfolio Mode', icon: User, path: '/student/digital-portfolio/portfolio' },
   { id: 'passport', label: 'Passport Mode', icon: BookOpen, path: '/student/digital-portfolio/passport' },
-  // { id: 'video', label: 'Video Portfolio', icon: Video, path: '/student/digital-portfolio/video' },
+  { id: 'video', label: 'Video Portfolio', icon: Video, path: '/student/digital-portfolio/video' },
 ];
 
 // Settings menu items
 const settingsMenuItems: SideDrawerMenuItem[] = [
   { id: 'theme', label: 'Theme Settings', icon: Palette, path: '/student/digital-portfolio/settings/theme' },
   { id: 'layout', label: 'Portfolio Layout', icon: Layout, path: '/student/digital-portfolio/settings/layout' },
-  // { id: 'export', label: 'Export', icon: Download, path: '/student/digital-portfolio/settings/export' },
-  // { id: 'sharing', label: 'Sharing', icon: Share2, path: '/student/digital-portfolio/settings/sharing' },
+  { id: 'export', label: 'Export', icon: Download, path: '/student/digital-portfolio/settings/export' },
+  { id: 'sharing', label: 'Sharing', icon: Share2, path: '/student/digital-portfolio/settings/sharing' },
 ];
 
 interface DigitalPortfolioSideDrawerProps {
@@ -51,6 +52,9 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Demo modal state
+  const [showDemoModal, setShowDemoModal] = useState(false);
   
   // Local dark mode state (synced with document class)
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -93,8 +97,20 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  //   const handleNavigate = (path: string) => {
+  //   navigate(path);
+  //   onClose();
+  // };
+
   // Handle navigation
-  const handleNavigate = (path: string) => {
+  const handleNavigate = (path: string, itemId: string) => {
+    // Show demo modal for specific items
+    if (itemId === 'video' || itemId === 'export' || itemId === 'sharing') {
+      setShowDemoModal(true);
+      onClose();
+      return;
+    }
+    
     navigate(path);
     onClose();
   };
@@ -107,7 +123,8 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
     return (
       <button
         key={item.id}
-        onClick={() => handleNavigate(item.path)}
+        // onClick={() => handleNavigate(item.path)}
+        onClick={() => handleNavigate(item.path, item.id)}
         className={`flex items-center w-full px-4 py-3 text-sm rounded-lg transition-colors ${
           isItemActive
             ? 'bg-indigo-50 text-indigo-600'
@@ -220,6 +237,13 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Demo Modal */}
+      <DemoModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is for demo purposes only."
+      />
     </>,
     document.body
   );

@@ -19,6 +19,7 @@ import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import { EnhancedAIResponse } from '../types/interactive';
 import CareerAIToolsGrid from '../../../components/shared/CareerAIToolsGrid';
+import DemoModal from '../../../components/common/DemoModal';
 
 interface Message {
   id: string;
@@ -63,6 +64,7 @@ const CareerAssistant: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [autoSendQuery, setAutoSendQuery] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   // Start with sidebar expanded on desktop, collapsed on mobile
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -182,6 +184,10 @@ const CareerAssistant: React.FC = () => {
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
+
+    // Show demo modal instead of sending
+    setShowDemoModal(true);
+    return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -577,6 +583,13 @@ const CareerAssistant: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Demo Modal */}
+      <DemoModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is for demo purposes only."
+      />
     </div>
   );
 };
