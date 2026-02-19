@@ -200,6 +200,8 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
       }
     },
     onAnswerChange: (questionId, answer) => {
+      console.log(`[AssessmentContext.onAnswerChange] qId=${questionId}, answer=`, answer, 'hasSection=', !!flow.currentSection, 'hasQuestion=', !!flow.currentQuestion, 'hasBuilder=', !!snapshotBuilder);
+      
       // Track question with full context for snapshot
       if (flow.currentSection && flow.currentQuestion) {
         const now = new Date();
@@ -229,7 +231,11 @@ export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children
             answeredAt: now.toISOString(),
             timeSpentSeconds: timeSpent
           });
+        } else {
+          console.warn(`[AssessmentContext.onAnswerChange] No snapshotBuilder available for section=${sectionId}`);
         }
+      } else {
+        console.warn(`[AssessmentContext.onAnswerChange] Missing currentSection or currentQuestion - answer not saved to snapshot`);
       }
       
       // Auto-save to database if enabled

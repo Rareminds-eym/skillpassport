@@ -178,7 +178,7 @@ export class AssessmentSnapshotBuilder {
     // Check if question already exists (by questionId)
     const existingIndex = section.questions.findIndex(q => q.questionId === context.questionId);
     
-    console.log(`[SnapshotBuilder] addQuestion: section=${sectionId}, qId=${context.questionId}, existing=${existingIndex >= 0}, totalQuestions=${section.questions.length}`);
+    console.log(`[SnapshotBuilder] addQuestion: section=${sectionId}, qId=${context.questionId}, existing=${existingIndex >= 0}, answer=`, context.answer, `totalQuestions=${section.questions.length}`);
     
     if (existingIndex >= 0) {
       // UPDATE existing question with new answer data

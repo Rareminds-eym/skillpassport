@@ -75,6 +75,98 @@ const callOpenRouterAssessment = async (assessmentData) => {
     
     const requestBody = { assessmentData };
     
+    // ============================================================================
+    // VERIFICATION: Log exactly what's being sent to the AI
+    // ============================================================================
+    console.log('🔍 === API PAYLOAD VERIFICATION ===');
+    console.log('📊 Total sections being sent:', Object.keys(assessmentData).filter(k => 
+      ['riasecAnswers', 'aptitudeAnswers', 'bigFiveAnswers', 'workValuesAnswers', 'employabilityAnswers', 'knowledgeAnswers'].includes(k)
+    ).length);
+    
+    // Verify each section
+    const sections = {
+      'RIASEC': assessmentData.riasecAnswers,
+      'BigFive': assessmentData.bigFiveAnswers,
+      'WorkValues': assessmentData.workValuesAnswers,
+      'Employability': assessmentData.employabilityAnswers,
+      'Knowledge': assessmentData.knowledgeAnswers,
+      'Aptitude': assessmentData.aptitudeAnswers,
+      'Adaptive Aptitude': assessmentData.adaptiveAptitudeResults
+    };
+    
+    Object.entries(sections).forEach(([name, data]) => {
+      if (!data) {
+        console.log(`❌ ${name}: MISSING - not in payload`);
+        return;
+      }
+      
+      if (name === 'Aptitude') {
+        const total = Object.values(data).reduce((sum, arr) => sum + arr.length, 0);
+        console.log(`✅ ${name}: ${total} questions`);
+        // Sample first question to verify structure
+        const firstCategory = Object.values(data).find(arr => arr.length > 0);
+        if (firstCategory?.[0]) {
+          const q = firstCategory[0];
+          console.log(`   Sample: question="${q.question?.substring(0, 50)}...", studentAnswer="${q.studentAnswer}", correctAnswer="${q.correctAnswer}", hasOptions=${!!q.options}`);
+        }
+      } else if (name === 'Adaptive Aptitude') {
+        const subtags = data.accuracy_by_subtag || {};
+        const totalQuestions = Object.values(subtags).reduce((sum, tag) => sum + (tag.total || 0), 0);
+        const totalCorrect = Object.values(subtags).reduce((sum, tag) => sum + (tag.correct || 0), 0);
+        console.log(`✅ ${name}: ${totalCorrect}/${totalQuestions} correct across ${Object.keys(subtags).length} subtags`);
+        console.log(`   Subtags: ${Object.keys(subtags).join(', ')}`);
+        console.log(`   Sample accuracy:`, Object.entries(subtags).slice(0, 2).map(([k, v]) => `${k}: ${v.accuracy?.toFixed(1)}%`).join(', '));
+      } else if (name === 'Employability') {
+        const sjtCount = data.sjt?.length || 0;
+        const selfRatingCount = Object.values(data.selfRating || {}).reduce((sum, arr) => sum + arr.length, 0);
+        console.log(`✅ ${name}: ${sjtCount} SJT + ${selfRatingCount} self-rating = ${sjtCount + selfRatingCount} total`);
+        if (data.sjt?.[0]) {
+          const q = data.sjt[0];
+          console.log(`   SJT Sample: scenario="${q.scenario?.substring(0, 40)}...", studentBest="${q.studentBestChoice}", hasOptions=${!!q.options}`);
+        }
+      } else {
+        const count = Object.keys(data).length;
+        console.log(`✅ ${name}: ${count} questions`);
+        const firstKey = Object.keys(data)[0];
+        if (firstKey && data[firstKey]) {
+          const q = data[firstKey];
+          console.log(`   Sample: question="${q.question?.substring(0, 50)}...", answer="${q.answer || q.studentAnswer}", hasOptions=${!!q.options}`);
+        }
+      }
+    });
+    
+    // Verify student context
+    console.log('📊 Student Context:', {
+      gradeLevel: assessmentData.gradeLevel,
+      stream: assessmentData.stream,
+      rawGrade: assessmentData.studentContext?.rawGrade,
+      programName: assessmentData.studentContext?.programName,
+      degreeLevel: assessmentData.studentContext?.degreeLevel
+    });
+    
+    // Verify timings
+    console.log('📊 Section Timings:', assessmentData.sectionTimings);
+    
+    // Verify adaptive results
+    if (assessmentData.adaptiveAptitudeResults) {
+      console.log('✅ Adaptive Aptitude Results: INCLUDED');
+      console.log('   Accuracy by subtag:', Object.keys(assessmentData.adaptiveAptitudeResults.accuracy_by_subtag || {}));
+    } else {
+      console.log('⚠️ Adaptive Aptitude Results: NOT INCLUDED');
+    }
+    
+    // Log full payload size
+    const payloadSize = JSON.stringify(requestBody).length;
+    console.log(`📦 Payload size: ${payloadSize} bytes (${(payloadSize/1024).toFixed(2)} KB)`);
+    
+    // Save full payload for inspection
+    window.lastApiPayload = requestBody;
+    console.log('💾 Full payload saved to: window.lastApiPayload');
+    console.log('   To view: console.log(JSON.stringify(window.lastApiPayload, null, 2))');
+    
+    console.log('🔍 === END VERIFICATION ===');
+    // ============================================================================
+    
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -460,6 +552,41 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('📊 Total answers received:', Object.keys(answers).length);
   console.log('📊 Sample answer keys (first 10):', Object.keys(answers).slice(0, 10));
   console.log('📊 Sample answer entries (first 3):', Object.entries(answers).slice(0, 3));
+  
+  // ============================================================================
+  // CRITICAL FIX: Normalize malformed answer keys
+  // Some keys have erroneous "riasec_" prefix when they should have proper section prefix
+  // e.g., "riasec_bigfive_o1" should become "bigfive_o1"
+  // e.g., "riasec_riasec_r1" should become "riasec_r1"
+  // ============================================================================
+  const normalizedAnswers = {};
+  Object.entries(answers).forEach(([key, value]) => {
+    let normalizedKey = key;
+    
+    // Handle double-prefixed keys like "riasec_riasec_r1", "riasec_bigfive_o1", etc.
+    if (key.startsWith('riasec_')) {
+      const remainder = key.substring(7); // Remove "riasec_"
+      
+      // Check if remainder starts with another section prefix
+      const sectionPrefixes = ['riasec_', 'bigfive_', 'values_', 'employability_', 'aptitude_', 'knowledge_', 'adaptive_'];
+      const hasProperPrefix = sectionPrefixes.some(prefix => remainder.startsWith(prefix));
+      
+      if (hasProperPrefix) {
+        // Strip the erroneous first prefix, keep the rest
+        normalizedKey = remainder;
+        console.log(`🔧 Normalized key: ${key} → ${normalizedKey}`);
+      }
+      // If remainder doesn't have a proper prefix (e.g., just "r1"), keep as riasec_r1
+    }
+    
+    normalizedAnswers[normalizedKey] = value;
+  });
+  
+  // Use normalized answers for all extractions
+  answers = normalizedAnswers;
+  
+  console.log('📊 Normalized answer count:', Object.keys(answers).length);
+  console.log('📊 Sample normalized keys (first 10):', Object.keys(answers).slice(0, 10));
   
   // Log section prefixes that will be used for extraction
   console.log('📊 Section Prefixes for extraction:');

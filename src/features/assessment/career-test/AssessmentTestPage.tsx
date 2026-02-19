@@ -1535,6 +1535,7 @@ const AssessmentTestPage: React.FC = () => {
             return; // Early return for non-critical saves
           } else {
             // LIGHT SAVE: Try to save, block if it fails
+            // CRITICAL FIX: Include actual answers instead of empty object
             const currentSection = sections[flow.currentSectionIndex];
             const timerRemaining = currentSection?.isTimed ? flow.timeRemaining : null;
             const saveResult = await updateProgress(
@@ -1543,7 +1544,7 @@ const AssessmentTestPage: React.FC = () => {
               {}, // Empty section timings for light save
               timerRemaining,
               flow.elapsedTime,
-              {}, // Empty answers for light save
+              updatedAnswers, // ✅ FIXED: Include actual answers!
               attemptId // Pass attemptId explicitly for resume case (7th param)
             );
 
@@ -1599,17 +1600,39 @@ const AssessmentTestPage: React.FC = () => {
 
       if (useDatabase && currentAttempt?.id) {
         try {
-          // Fetch the latest attempt data with all_responses and section_timings
+          // Fetch the latest attempt data with all_responses, assessment_snapshot_v2, and section_timings
           const { data: attemptData, error: fetchError } = await supabase
             .from('personal_assessment_attempts')
-            .select('all_responses, section_timings')
+            .select('all_responses, assessment_snapshot_v2, section_timings')
             .eq('id', currentAttempt.id)
             .single();
 
           if (!fetchError && attemptData) {
-            if (attemptData.all_responses) {
+            // For college students, prioritize assessment_snapshot_v2
+            if (attemptData.assessment_snapshot_v2?.sections) {
+              // Extract answers from snapshot for college students
+              const snapshotAnswers: Record<string, any> = {};
+              const sections = attemptData.assessment_snapshot_v2.sections;
+              
+              Object.entries(sections).forEach(([sectionId, sectionData]: [string, any]) => {
+                const questions = sectionData.questions || [];
+                questions.forEach((q: any) => {
+                  if (q.question_id && q.answer?.value !== undefined && q.answer?.value !== null) {
+                    const key = `${sectionId}_${q.question_id}`;
+                    snapshotAnswers[key] = q.answer.value;
+                  }
+                });
+              });
+              
+              // Merge snapshot answers with all_responses (snapshot takes precedence)
+              answersToSubmit = {
+                ...attemptData.all_responses,
+                ...snapshotAnswers
+              };
+            } else if (attemptData.all_responses) {
               answersToSubmit = attemptData.all_responses;
             }
+            
             if (attemptData.section_timings) {
               timingsToSubmit = attemptData.section_timings;
             }
@@ -1637,6 +1660,12 @@ const AssessmentTestPage: React.FC = () => {
       }
 
       // Submit assessment with the correct answers and timings
+      // DEBUG: Log answer counts before submission
+      console.log('🔍 SUBMISSION DEBUG:');
+      console.log('   - flow.answers count:', Object.keys(flow.answers).length);
+      console.log('   - answersToSubmit count:', Object.keys(answersToSubmit).length);
+      console.log('   - Sample answer keys:', Object.keys(answersToSubmit).slice(0, 10));
+      
       submission.submit({
         answers: answersToSubmit,
         sections,
@@ -1708,6 +1737,8 @@ const AssessmentTestPage: React.FC = () => {
   const handleAnswerChange = useCallback((value: any) => {
     const currentSection = sections[flow.currentSectionIndex];
     const qId = flow.questionId; // Capture questionId at the time of answer
+
+    console.log(`[handleAnswerChange] section=${currentSection?.id}, qId=${qId}, value=`, value);
 
     if (currentSection?.isAdaptive) {
       setAdaptiveAptitudeAnswer(value);
