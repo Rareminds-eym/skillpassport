@@ -11,6 +11,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, Sparkles, Code, Zap, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../../../../components/Students/components/ui/button';
+import DemoModal from '../../../../../components/common/DemoModal';
 import type { GradeLevel } from '../../config/sections';
 
 interface SectionIntroScreenProps {
@@ -51,6 +52,8 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
   gradeLevel = null,
   onStart
 }) => {
+  const [showDemoModal, setShowDemoModal] = React.useState(false);
+  
   // Format time limit for display
   const formatTimeLimit = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -231,7 +234,8 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
         whileTap={{ scale: isLoading ? 1 : 0.98 }}
       >
         <Button
-          onClick={onStart}
+        // onClick={onStart}
+          onClick={() => setShowDemoModal(true)}
           disabled={isLoading}
           className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-6 px-10 rounded-xl disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
         >
@@ -251,6 +255,13 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
           )}
         </Button>
       </motion.div>
+
+      {/* Demo Modal */}
+      <DemoModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </motion.div>
   );
 };

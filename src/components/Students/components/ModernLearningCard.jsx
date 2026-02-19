@@ -831,7 +831,7 @@ const ModernLearningCard = ({
         <DemoModal
           isOpen={showDemoModal}
           onClose={() => setShowDemoModal(false)}
-          message="This feature is for demo purposes only."
+          message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
         />
       </>
     );
@@ -1239,7 +1239,7 @@ const ModernLearningCard = ({
       <DemoModal
         isOpen={showDemoModal}
         onClose={() => setShowDemoModal(false)}
-        message="This feature is for demo purposes only."
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
       />
     </>
   );

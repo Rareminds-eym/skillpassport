@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Info, X } from 'lucide-react';
 
-const DemoModal = ({ isOpen, onClose, message = "This feature is for demo purposes only." }) => {
+const DemoModal = ({ isOpen, onClose, message = "This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access." }) => {
   if (!isOpen) return null;
 
   return (
