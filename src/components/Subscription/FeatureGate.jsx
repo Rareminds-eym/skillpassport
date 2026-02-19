@@ -9,6 +9,7 @@ import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { clearFeatureAccessCache, useFeatureGate } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
+import { useDemoModeWithModal } from '../common/DemoButton';
 
 export function FeatureGate({
   featureKey,
@@ -22,14 +23,15 @@ export function FeatureGate({
   const { hasAccess, isLoading, requiredAddOn, upgradePrice } = useFeatureGate(featureKey);
   const { purchaseAddOn, isPurchasing } = useSubscriptionContext();
   const [showModal, setShowModal] = useState(false);
+  const { handleDemoClick, DemoModalComponent } = useDemoModeWithModal();
 
   const handleUpgradeClick = useCallback(() => {
     if (onUpgradeClick) {
       onUpgradeClick(featureKey, requiredAddOn);
     } else {
-      setShowModal(true);
+      handleDemoClick();
     }
-  }, [onUpgradeClick, featureKey, requiredAddOn]);
+  }, [onUpgradeClick, featureKey, requiredAddOn, handleDemoClick]);
 
   if (isLoading) {
     return (
@@ -57,6 +59,7 @@ export function FeatureGate({
             <LockedCard featureKey={featureKey} addOn={requiredAddOn} upgradePrice={upgradePrice} showUpgradePrompt={showUpgradePrompt} onUpgradeClick={handleUpgradeClick} />
           </div>
         </div>
+        <DemoModalComponent />
         {showModal && <PurchaseModal addOn={requiredAddOn} upgradePrice={upgradePrice} onClose={() => setShowModal(false)} onPurchase={purchaseAddOn} isPurchasing={isPurchasing} />}
       </div>
     );
@@ -72,6 +75,7 @@ export function FeatureGate({
       <div className="flex-1 flex items-center justify-center">
         <LockedCard featureKey={featureKey} addOn={requiredAddOn} upgradePrice={upgradePrice} showUpgradePrompt={showUpgradePrompt} onUpgradeClick={handleUpgradeClick} />
       </div>
+      <DemoModalComponent />
       {showModal && <PurchaseModal addOn={requiredAddOn} upgradePrice={upgradePrice} onClose={() => setShowModal(false)} onPurchase={purchaseAddOn} isPurchasing={isPurchasing} />}
     </div>
   );

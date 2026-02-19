@@ -1,0 +1,19 @@
+{
+  "demoButtons": [
+    {
+      "id": "upgrade-to-pro",
+      "selector": "button:contains('Upgrade to Pro')",
+      "message": "This feature is for demo purposes only."
+    },
+    {
+      "id": "save-settings",
+      "selector": "button:contains('Save Settings')",
+      "message": "This feature is for demo purposes only."
+    },
+    {
+      "id": "save-preferences",
+      "selector": "button:contains('Save Preferences')",
+      "message": "This feature is for demo purposes only."
+    }
+  ]
+}
