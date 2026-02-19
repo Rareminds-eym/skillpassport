@@ -117,7 +117,7 @@ const InstitutionDetailsTab = ({
                 onChange={(e) =>
                   handleInstitutionChange("schoolId", e.target.value)
                 }
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                 disabled={!!profileData.universityId || showCustomUniversity || !!customUniversityName || !!profileData.universityCollegeId || showCustomCollege || !!customCollegeName}
               >
                 <option value="">
@@ -150,7 +150,7 @@ const InstitutionDetailsTab = ({
                   // handleProfileChange("college", schoolName);
                 }}
                 placeholder="Enter your school name"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                className="w-full text-black px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
               <button
                 type="button"
@@ -178,7 +178,7 @@ const InstitutionDetailsTab = ({
                 onChange={(e) =>
                   handleInstitutionChange("schoolClassId", e.target.value)
                 }
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                 disabled={(!profileData.schoolId && !showCustomSchool && !customSchoolName) || !!profileData.universityId || showCustomUniversity || !!customUniversityName}
               >
                 <option value="">
@@ -211,7 +211,7 @@ const InstitutionDetailsTab = ({
                   setCustomSchoolClassName(className);
                 }}
                 placeholder="Enter class/section (e.g., Grade 10-A)"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                className="w-full px-4 text-black py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
               <button
                 type="button"
@@ -239,7 +239,7 @@ const InstitutionDetailsTab = ({
                 onChange={(e) =>
                   handleInstitutionChange("universityId", e.target.value)
                 }
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                 disabled={!!profileData.schoolId || showCustomSchool || !!customSchoolName || !!profileData.schoolClassId || showCustomSchoolClass || !!customSchoolClassName}
               >
                 <option value="">
@@ -272,7 +272,7 @@ const InstitutionDetailsTab = ({
                   handleInstitutionChange('university', universityName);
                 }}
                 placeholder="Enter your university name"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                className="w-full px-4 text-black py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
               <button
                 type="button"
@@ -301,7 +301,7 @@ const InstitutionDetailsTab = ({
                 onChange={(e) =>
                   handleInstitutionChange("universityCollegeId", e.target.value)
                 }
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                 disabled={(!profileData.universityId && !showCustomUniversity && !customUniversityName) || !!profileData.schoolId || showCustomSchool || !!customSchoolName}
               >
                 <option value="">
@@ -336,7 +336,7 @@ const InstitutionDetailsTab = ({
                   handleInstitutionChange('college', collegeName);
                 }}
                 placeholder="Enter your college name"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
               <button
                 type="button"
@@ -365,7 +365,7 @@ const InstitutionDetailsTab = ({
                 onChange={(e) =>
                   handleInstitutionChange("programId", e.target.value)
                 }
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                 disabled={(!profileData.universityCollegeId && !showCustomCollege && !customCollegeName) || !!profileData.schoolId || showCustomSchool || !!customSchoolName}
               >
                 <option value="">
@@ -398,7 +398,7 @@ const InstitutionDetailsTab = ({
                   handleInstitutionChange('branch', programName);
                 }}
                 placeholder="Enter program name (e.g., B.Tech Computer Science)"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
               <button
                 type="button"
@@ -427,7 +427,7 @@ const InstitutionDetailsTab = ({
                 onChange={(e) =>
                   handleInstitutionChange("programSectionId", e.target.value)
                 }
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 bg-white text-black border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                 disabled={!profileData.programId && !showCustomProgram}
               >
                 <option value="">
@@ -462,7 +462,7 @@ const InstitutionDetailsTab = ({
                   handleInstitutionChange('section', semesterText);
                 }}
                 placeholder="Enter semester/section (e.g., Semester 3, 5th Sem)"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                className="w-full text-black px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
               <button
                 type="button"

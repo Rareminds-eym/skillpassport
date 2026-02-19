@@ -27,15 +27,15 @@ interface SideDrawerMenuItem {
 const mainMenuItems: SideDrawerMenuItem[] = [
   { id: 'portfolio', label: 'Portfolio Mode', icon: User, path: '/student/digital-portfolio/portfolio' },
   { id: 'passport', label: 'Passport Mode', icon: BookOpen, path: '/student/digital-portfolio/passport' },
-  { id: 'video', label: 'Video Portfolio', icon: Video, path: '/student/digital-portfolio/video' },
+  // { id: 'video', label: 'Video Portfolio', icon: Video, path: '/student/digital-portfolio/video' },
 ];
 
 // Settings menu items
 const settingsMenuItems: SideDrawerMenuItem[] = [
   { id: 'theme', label: 'Theme Settings', icon: Palette, path: '/student/digital-portfolio/settings/theme' },
   { id: 'layout', label: 'Portfolio Layout', icon: Layout, path: '/student/digital-portfolio/settings/layout' },
-  { id: 'export', label: 'Export', icon: Download, path: '/student/digital-portfolio/settings/export' },
-  { id: 'sharing', label: 'Sharing', icon: Share2, path: '/student/digital-portfolio/settings/sharing' },
+  // { id: 'export', label: 'Export', icon: Download, path: '/student/digital-portfolio/settings/export' },
+  // { id: 'sharing', label: 'Sharing', icon: Share2, path: '/student/digital-portfolio/settings/sharing' },
 ];
 
 interface DigitalPortfolioSideDrawerProps {

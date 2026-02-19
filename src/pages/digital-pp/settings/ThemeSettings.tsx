@@ -157,7 +157,7 @@ const ThemeSettings: React.FC = () => {
             </div>
 
             {/* Animation Settings */}
-            <div>
+            {/* <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                 Animation Style
               </label>
@@ -195,7 +195,7 @@ const ThemeSettings: React.FC = () => {
                   </label>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* Font Size */}
             <div>

@@ -175,7 +175,7 @@ const CertificatesTab = ({
                         )}
                         
                         {displayCert.level && (
-                          <Badge variant="outline" className="text-xs px-2 py-1">
+                          <Badge variant="outline" className="text-xs px-2 py-1 dark:bg-black">
                             {displayCert.level}
                           </Badge>
                         )}
@@ -199,7 +199,7 @@ const CertificatesTab = ({
                             variant="outline"
                             size="sm"
                             onClick={() => window.open(displayCert.link, '_blank')}
-                            className="text-xs px-3 py-1 h-7 flex items-center gap-1"
+                            className="text-xs px-3 py-1 h-7 flex items-center gap-1 dark:bg-black"
                           >
                             <ExternalLink className="w-3 h-3" />
                             View Credential

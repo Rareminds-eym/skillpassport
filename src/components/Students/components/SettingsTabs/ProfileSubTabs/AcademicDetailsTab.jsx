@@ -49,7 +49,7 @@ const AcademicDetailsTab = ({
             onChange={(e) =>
               handleProfileChange("registrationNumber", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full text-black px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             placeholder="Enter registration number"
           />
         </div>
@@ -65,7 +65,7 @@ const AcademicDetailsTab = ({
             onChange={(e) =>
               handleProfileChange("enrollmentNumber", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 text-black  py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
             placeholder="Enter enrollment number"
           />
         </div>
@@ -95,7 +95,7 @@ const AcademicDetailsTab = ({
             onChange={(e) =>
               handleProfileChange("grade", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 text-black bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
           >
             <option value="">Select Grade/Class</option>
             <option value="Grade 6">Grade 6</option>
@@ -127,7 +127,7 @@ const AcademicDetailsTab = ({
             onChange={(e) =>
               handleProfileChange("gradeStartDate", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 text-black  bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
           />
         </div>
       </div>
