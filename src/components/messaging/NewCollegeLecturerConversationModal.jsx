@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import toast from 'react-hot-toast';
+import DemoModal from '../common/DemoModal';
 
 // Small Message Modal Component
 const MessageModal = ({ student, isOpen, onClose, onSend, isLoading }) => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -16,15 +18,16 @@ const MessageModal = ({ student, isOpen, onClose, onSend, isLoading }) => {
   }, [isOpen, student]);
 
   const handleSend = () => {
-    if (message.trim() && subject.trim()) {
-      onSend({
-        studentId: student.id,
-        collegeLecturerId: student.collegeLecturerId,
-        programSectionId: student.programSectionId,
-        subject: subject.trim(),
-        initialMessage: message.trim()
-      });
-    }
+    setShowDemoModal(true);
+    //   if (message.trim() && subject.trim()) {
+    //   onSend({
+    //     studentId: student.id,
+    //     collegeLecturerId: student.collegeLecturerId,
+    //     programSectionId: student.programSectionId,
+    //     subject: subject.trim(),
+    //     initialMessage: message.trim()
+    //   });
+    // }
   };
 
   if (!isOpen || !student) return null;
@@ -160,6 +163,11 @@ const MessageModal = ({ student, isOpen, onClose, onSend, isLoading }) => {
           </button>
         </div>
       </div>
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

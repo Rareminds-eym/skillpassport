@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
+import DemoModal from '../common/DemoModal';
 
 // Small Message Modal Component
 const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('');
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -16,12 +18,13 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
 
   const handleSend = () => {
     if (message.trim()) {
-      onSend({
-        educatorId: educator.id,
-        educatorType: educator.type,
-        subject: educator.type === 'school_educator' ? 'General Discussion' : subject,
-        initialMessage: message.trim()
-      });
+      setShowDemoModal(true);
+      // onSend({
+      //   educatorId: educator.id,
+      //   educatorType: educator.type,
+      //   subject: educator.type === 'school_educator' ? 'General Discussion' : subject,
+      //   initialMessage: message.trim()
+      // });
     }
   };
 
@@ -163,6 +166,13 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
             )}
           </button>
         </div>
+
+        {/* Demo Modal */}
+        <DemoModal
+          isOpen={showDemoModal}
+          onClose={() => setShowDemoModal(false)}
+          message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+        />
       </div>
     </div>
   );

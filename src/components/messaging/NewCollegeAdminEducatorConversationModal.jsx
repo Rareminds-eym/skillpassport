@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, GraduationCap, MessageCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import toast from 'react-hot-toast';
+import DemoModal from '../common/DemoModal';
 
 // Small Message Modal Component
 const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
   const [message, setMessage] = useState('');
   const [subject, setSubject] = useState('General Discussion');
   const [customSubject, setCustomSubject] = useState('');
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   // Predefined subjects for college admin-educator conversations
   const subjects = [
@@ -32,16 +34,17 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
   }, [isOpen, educator]);
 
   const handleSend = () => {
-    const finalSubject = subject === 'Other' ? customSubject.trim() : subject.trim();
-    if (message.trim() && finalSubject) {
-      onSend({
-        adminId: educator.adminId,
-        educatorId: educator.id,
-        collegeId: educator.collegeId,
-        subject: finalSubject,
-        initialMessage: message.trim()
-      });
-    }
+    // const finalSubject = subject === 'Other' ? customSubject.trim() : subject.trim();
+    // if (message.trim() && finalSubject) {
+    //   onSend({
+    //     adminId: educator.adminId,
+    //     educatorId: educator.id,
+    //     collegeId: educator.collegeId,
+    //     subject: finalSubject,
+    //     initialMessage: message.trim()
+    //   });
+    // }
+    setShowDemoModal(true);
   };
 
   if (!isOpen || !educator) return null;
@@ -200,6 +203,11 @@ const MessageModal = ({ educator, isOpen, onClose, onSend, isLoading }) => {
           </button>
         </div>
       </div>
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };
