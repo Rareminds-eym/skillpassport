@@ -45,7 +45,9 @@ export const AbilityProvider = ({ children }) => {
   // Load user permissions from database
   const loadUserPermissions = async (userId) => {
     try {
+      console.log('[RBAC] Loading permissions for user ID:', userId);
       const permissions = await rbacService.getUserPermissions(userId);
+      console.log('[RBAC] Received permissions from service:', permissions);
       const newAbility = buildAbilityFromPermissions(permissions);
       setAbility(newAbility);
       setIsDemoMode(false);
@@ -76,6 +78,12 @@ export const AbilityProvider = ({ children }) => {
   const buildAbilityFromPermissions = (permissions) => {
     const { can, cannot, build } = new AbilityBuilder(createMongoAbility);
 
+    console.log('[RBAC] Building ability from', permissions.length, 'permissions');
+    
+    // Log assessment permissions specifically
+    const assessmentPerms = permissions.filter(p => p.permission_key?.includes('assessment'));
+    console.log('[RBAC] Assessment permissions:', assessmentPerms);
+
     permissions.forEach(perm => {
       if (perm.is_granted) {
         if (perm.field) {
@@ -92,7 +100,13 @@ export const AbilityProvider = ({ children }) => {
       }
     });
 
-    return build();
+    const ability = build();
+    
+    // Test assessment permissions
+    console.log('[RBAC] Can start Assessment:', ability.can('start', 'Assessment'));
+    console.log('[RBAC] Can continue Assessment:', ability.can('continue', 'Assessment'));
+    
+    return ability;
   };
 
   // Switch to demo mode with a specific role

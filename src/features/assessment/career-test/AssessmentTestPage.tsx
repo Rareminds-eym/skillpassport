@@ -28,6 +28,8 @@ import { useAdaptiveAptitude } from '../../../hooks/useAdaptiveAptitude';
 import * as assessmentService from '../../../services/assessmentService';
 // @ts-ignore - JS service
 import { normalizeStreamId } from '../../../services/careerAssessmentAIService';
+// @ts-ignore - JS context
+import { usePermissions } from '../../../context/PermissionsContext';
 
 // Hooks
 import { useAssessmentFlow } from './hooks/useAssessmentFlow';
@@ -259,6 +261,7 @@ const buildSectionsWithQuestions = (
 const AssessmentTestPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { canTakeAdaptiveTest } = usePermissions();
 
   // Environment flags
   const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
@@ -1437,6 +1440,12 @@ const AssessmentTestPage: React.FC = () => {
     // Initialize adaptive test
     // Also reinitialize if session exists but has no current question (partial resume failure)
     if (currentSection?.isAdaptive && (!adaptiveAptitude.session || (!adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading))) {
+      // Check permission first
+      if (!canTakeAdaptiveTest) {
+        flow.setError('You do not have permission to take the Adaptive Aptitude Test');
+        return;
+      }
+      
       console.log('🚀 [ADAPTIVE] Starting adaptive test...');
       // Initialize adaptive timer based on section config
       setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);
@@ -2339,6 +2348,7 @@ const AssessmentTestPage: React.FC = () => {
                 (currentSection.id === 'knowledge' && questionsLoading)
               }
               onStart={handleStartSection}
+              canStart={!currentSection.isAdaptive || canTakeAdaptiveTest}
             />
           )}
 

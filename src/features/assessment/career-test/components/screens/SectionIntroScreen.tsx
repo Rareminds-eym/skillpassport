@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ChevronRight, Sparkles, Code, Zap, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, Sparkles, Code, Zap, CheckCircle2, Lock } from 'lucide-react';
 import { Button } from '../../../../../components/Students/components/ui/button';
 import type { GradeLevel } from '../../config/sections';
 
@@ -29,6 +29,7 @@ interface SectionIntroScreenProps {
   isLoading?: boolean;
   gradeLevel?: GradeLevel | null;
   onStart: () => void;
+  canStart?: boolean;
 }
 
 /**
@@ -49,7 +50,8 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
   showAIPoweredBadge = false,
   isLoading = false,
   gradeLevel = null,
-  onStart
+  onStart,
+  canStart = true
 }) => {
   // Format time limit for display
   const formatTimeLimit = (seconds: number) => {
@@ -232,7 +234,7 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
       >
         <Button
           onClick={onStart}
-          disabled={isLoading}
+          disabled={isLoading || !canStart}
           className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 py-6 px-10 rounded-xl disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
         >
           {isLoading ? (
@@ -242,6 +244,11 @@ export const SectionIntroScreen: React.FC<SectionIntroScreenProps> = ({
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               Loading Questions...
+            </>
+          ) : !canStart ? (
+            <>
+              <Lock className="w-5 h-5 mr-2" />
+              Start Section
             </>
           ) : (
             <>

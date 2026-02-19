@@ -145,8 +145,12 @@ export const AuthProvider = ({ children }) => {
         if (!mounted) return;
 
         if (session?.user) {
-          // Session exists - load user data from localStorage or create from session
-          const userData = restoreUserFromStorage(session.user);
+          // Session exists - use auth user ID from session, not from localStorage
+          const userData = {
+            id: session.user.id, // Always use auth user ID from session
+            email: session.user.email,
+            role: session.user.user_metadata?.user_role || session.user.user_metadata?.role || 'user',
+          };
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
         } else {
