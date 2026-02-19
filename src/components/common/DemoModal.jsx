@@ -1,10 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Info, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 const DemoModal = ({ isOpen, onClose, message = "This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access." }) => {
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <motion.div
@@ -51,7 +52,8 @@ const DemoModal = ({ isOpen, onClose, message = "This feature is available in th
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

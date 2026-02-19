@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle, Clock, Save } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 import { useFormValidation } from "../../../../../hooks/useFormValidation";
 import FormField from "../FormField";
+import DemoModal from "../../../../common/DemoModal";
 
 const AcademicDetailsTab = ({ 
   profileData, 
@@ -15,6 +16,7 @@ const AcademicDetailsTab = ({
   handleSaveProfile,
   isSaving, 
 }) => {
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const { validateSingleField, touchField, getFieldError } = useFormValidation();
 
   const handleFieldChange = (field, value) => {
@@ -299,7 +301,8 @@ const AcademicDetailsTab = ({
       {/* Save Button */}
       <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
         <Button
-          onClick={handleSaveProfile}
+        // onClick={handleSaveProfile}
+          onClick={() => setShowDemoModal(true)}
           disabled={isSaving}
           className={`
             inline-flex items-center gap-2
@@ -317,6 +320,11 @@ const AcademicDetailsTab = ({
           {isSaving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

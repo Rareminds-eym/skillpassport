@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Shield, Save } from "lucide-react";
 import { Button } from "../../ui/button";
 import { useFormValidation } from "../../../../../hooks/useFormValidation";
 import FormField from "../FormField";
+import DemoModal from "../../../../common/DemoModal";
 
 const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const { validateSingleField, touchField, getFieldError } = useFormValidation();
   const [phoneError, setPhoneError] = React.useState('');
   const [emailError, setEmailError] = React.useState('');
@@ -163,7 +165,7 @@ const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
       {/* Save Button */}
       <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
         <Button
-          onClick={handleSaveProfile}
+          onClick={() => setShowDemoModal(true)}
           disabled={isSaving || phoneError || emailError}
           className={`
             inline-flex items-center gap-2
@@ -181,6 +183,11 @@ const GuardianInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
           {isSaving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { FileText, Save, AlertCircle } from "lucide-react";
 import { Button } from "../../ui/button";
 import { useFormValidation } from "../../../../../hooks/useFormValidation";
 import FormField from "../FormField";
+import DemoModal from "../../../../common/DemoModal";
 
 const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const {
     validateSingleField,
     touchField,
@@ -180,7 +182,7 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
           </div>
         )}
         <Button
-          onClick={handleSaveWithValidation}
+          onClick={() => setShowDemoModal(true)}
           disabled={isSaving || hasErrors()}
           className={`
             inline-flex items-center gap-2
@@ -198,6 +200,11 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
           {isSaving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

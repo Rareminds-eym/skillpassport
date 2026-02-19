@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react";
 import { Globe, Save } from "lucide-react";
 import { Button } from "../../ui/button";
 import { useFormValidation } from "../../../../../hooks/useFormValidation";
 import FormField from "../FormField";
+import DemoModal from "../../../../common/DemoModal";
 
 const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const { validateSingleField, touchField, getFieldError } = useFormValidation();
 
   const handleFieldChange = (field, value) => {
@@ -103,7 +105,7 @@ const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, i
       {/* Save Button */}
       <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
         <Button
-          onClick={handleSaveProfile}
+          onClick={() => setShowDemoModal(true)}
           disabled={isSaving}
           className={`
             inline-flex items-center gap-2
@@ -121,6 +123,11 @@ const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, i
           {isSaving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

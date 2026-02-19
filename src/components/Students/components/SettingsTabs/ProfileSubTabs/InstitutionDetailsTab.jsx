@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { Briefcase, Save } from "lucide-react";
 import { Badge } from "../../ui/badge";
 import { Button } from "../../ui/button";
+import DemoModal from "../../../../common/DemoModal";
 
 const InstitutionDetailsTab = ({
   profileData,
@@ -41,6 +42,8 @@ const InstitutionDetailsTab = ({
   handleSaveProfile,
   isSaving,
 }) => {
+  const [showDemoModal, setShowDemoModal] = useState(false);
+  
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -483,7 +486,7 @@ const InstitutionDetailsTab = ({
       {/* Save Button */}
       <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
         <Button
-          onClick={handleSaveProfile}
+          onClick={() => setShowDemoModal(true)}
           disabled={isSaving}
           className={`
             inline-flex items-center gap-2
@@ -501,6 +504,11 @@ const InstitutionDetailsTab = ({
           {isSaving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

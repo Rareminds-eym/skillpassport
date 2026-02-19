@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import { User, MapPin, AlertCircle, Save } from "lucide-react";
 import { Button } from "../../ui/button";
+import DemoModal from "../../../../common/DemoModal";
 
 const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const [errors, setErrors] = useState({});
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   // Validation functions
   const validatePhone = (phone) => {
@@ -356,7 +358,7 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
       {/* Save Button */}
       <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
         <Button
-          onClick={handleSaveProfile}
+          onClick={() => setShowDemoModal(true)}
           disabled={isSaving}
           className={`
             inline-flex items-center gap-2
@@ -374,6 +376,11 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
           {isSaving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };
