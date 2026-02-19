@@ -464,6 +464,7 @@ import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, Trend
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import DemoModal from '../../common/DemoModal';
 
 // Application Confirmation Modal Component
 const ApplicationConfirmationModal = ({ 
@@ -474,11 +475,13 @@ const ApplicationConfirmationModal = ({
   isApplying 
 }) => {
   const [applicationStatus, setApplicationStatus] = React.useState('confirm'); // 'confirm', 'applying', 'success'
+  const [showDemoModal, setShowDemoModal] = React.useState(false);
   
   // Reset status when modal opens/closes
   React.useEffect(() => {
     if (isOpen) {
       setApplicationStatus('confirm');
+      setShowDemoModal(false);
     }
   }, [isOpen]);
 
@@ -611,14 +614,19 @@ const ApplicationConfirmationModal = ({
               Cancel
             </button>
             <button
-              onClick={async () => {
-                setApplicationStatus('applying');
-                await onConfirm();
-                setApplicationStatus('success');
-                // Auto-close after 2 seconds
-                setTimeout(() => {
-                  onClose();
-                }, 2000);
+            // onClick={async () => {
+            //     setApplicationStatus('applying');
+            //     await onConfirm();
+            //     setApplicationStatus('success');
+            //     // Auto-close after 2 seconds
+            //     setTimeout(() => {
+            //       onClose();
+            //     }, 2000);
+            //   }}
+              onClick={
+                () => {
+                // Show demo modal instead of actually applying
+                setShowDemoModal(true);
               }}
               disabled={isApplying || applicationStatus === 'applying' || applicationStatus === 'success'}
               className={`flex-1 px-4 py-3 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${
@@ -656,6 +664,16 @@ const ApplicationConfirmationModal = ({
             }
           </p>
         </div>
+
+        {/* Demo Modal */}
+        <DemoModal
+          isOpen={showDemoModal}
+          onClose={() => {
+            setShowDemoModal(false);
+            onClose();
+          }}
+          message="This is a demo feature. In the live version, your application would be submitted to the employer with your profile information."
+        />
       </div>
     </div>,
     document.body
