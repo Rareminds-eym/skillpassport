@@ -5,9 +5,12 @@ import { createPortal } from 'react-dom';
 const DemoModal = ({ isOpen, onClose, message = "This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access." }) => {
   if (!isOpen) return null;
 
-  return createPortal(
+  // Check if we're on the settings page
+  const isSettingsPage = window.location.pathname.includes('/student/settings');
+
+  const modalContent = (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -52,9 +55,11 @@ const DemoModal = ({ isOpen, onClose, message = "This feature is available in th
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>,
-    document.body
+    </AnimatePresence>
   );
+
+  // Use portal only for settings page, normal rendering for others
+  return isSettingsPage ? createPortal(modalContent, document.body) : modalContent;
 };
 
 export default DemoModal;
