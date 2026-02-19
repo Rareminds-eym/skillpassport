@@ -25,6 +25,8 @@ import {
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 // @ts-ignore - JS module without types
 import DatePicker from '../../components/Subscription/shared/DatePicker';
+// @ts-ignore - JS module without types
+import DemoModal from '../../components/common/DemoModal';
 import { supabase } from '../../lib/supabaseClient';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
@@ -258,6 +260,7 @@ const UnifiedSignup = () => {
   const [states, setStates] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const countryCodeRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -403,6 +406,11 @@ const UnifiedSignup = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
+    // Show demo modal instead of submitting
+    setShowDemoModal(true);
+    return;
+    
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
@@ -935,6 +943,13 @@ const UnifiedSignup = () => {
           </p>
         </div>
       </div>
+
+      {/* Demo Modal */}
+      <DemoModal
+        isOpen={showDemoModal}
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

@@ -9,6 +9,7 @@ import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { clearFeatureAccessCache, useFeatureGate } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
+import DemoModal from '../common/DemoModal';
 
 export function FeatureGate({
   featureKey,
@@ -229,6 +230,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   const [billing, setBilling] = useState('annual'); // Default to annual for better value
   const [error, setError] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const { refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
 
   // Check if user already owns this add-on (including cancelled but not expired)
@@ -465,7 +467,8 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
               )}
 
               <button
-                onClick={handlePurchase}
+              // onClick={handlePurchase}
+                onClick={() => setShowDemoModal(true)}
                 disabled={isPurchasing || isVerifying}
                 className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 disabled:from-indigo-400 disabled:to-indigo-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 flex items-center justify-center gap-2"
               >
@@ -498,6 +501,13 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
             </>
           )}
         </div>
+
+        {/* Demo Modal */}
+        <DemoModal
+          isOpen={showDemoModal}
+          onClose={() => setShowDemoModal(false)}
+          message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+        />
       </div>
     </div>
   );
