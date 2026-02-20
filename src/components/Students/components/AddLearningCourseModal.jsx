@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
+import DemoModal from '../../common/DemoModal';
 
 // Platform icon components
 const PlatformIcon = ({ platformId, className = "w-8 h-8" }) => {
@@ -133,6 +134,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
   const [extracting, setExtracting] = useState(false);
   const [extractionSuccess, setExtractionSuccess] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const verificationStatusRef = useRef(null);
   const errorRef = useRef(null);
   const totalSteps = 5;
@@ -267,111 +269,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
 
 
   const handleSubmit = async () => {
-    setError('');
-    setLoading(true);
-
-    try {
-      // Check for duplicate certificate
-      if (formData.certificate_url || formData.certificate_id) {
-        let existingCert = null;
-
-        // Check by URL first (URL is globally unique)
-        if (formData.certificate_url) {
-          const { data } = await supabase
-            .from('certificates')
-            .select('id, title')
-            .eq('student_id', studentId)
-            .eq('link', formData.certificate_url)
-            .maybeSingle();
-          existingCert = data;
-        }
-
-        // Check by credential_id + platform combination (credential ID is unique per platform)
-        if (!existingCert && formData.certificate_id && selectedPlatform?.id) {
-          const { data } = await supabase
-            .from('certificates')
-            .select('id, title')
-            .eq('student_id', studentId)
-            .eq('credential_id', formData.certificate_id)
-            .eq('platform', selectedPlatform.id)
-            .maybeSingle();
-          existingCert = data;
-        }
-
-        if (existingCert) {
-          setError(`This certificate has already been added: "${existingCert.title}"`);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const { data: training, error: trainingError } = await supabase
-        .from('trainings')
-        .insert({
-          student_id: studentId,
-          title: formData.title,
-          organization: formData.organization || selectedPlatform?.name,
-          start_date: null,
-          end_date: formData.completion_date || null,
-          status: 'completed',
-          completed_modules: 0,
-          total_modules: 0,
-          hours_spent: 0,
-          description: formData.description,
-          approval_status: 'approved',
-          source: 'external_course'
-        })
-        .select()
-        .single();
-
-      if (trainingError) throw trainingError;
-
-      if (formData.certificate_url || formData.certificate_id) {
-        await supabase.from('certificates').insert({
-          student_id: studentId,
-          training_id: training.id,
-          title: formData.title,
-          issuer: formData.organization || selectedPlatform?.name,
-          issued_on: formData.completion_date || new Date().toISOString().split('T')[0],
-          link: formData.certificate_url,
-          credential_id: formData.certificate_id,
-          level: formData.difficulty || null,
-          description: formData.description || null,
-          approval_status: 'approved',
-          enabled: true,
-          platform: selectedPlatform?.id || null,
-          instructor: formData.instructor || null,
-          category: formData.category || null
-        });
-      }
-
-      if (skillTags.length > 0) {
-        const levelMap = { beginner: 1, intermediate: 2, advanced: 3, expert: 4 };
-        await supabase.from('skills').insert(
-          skillTags.map(skill => ({
-            student_id: studentId,
-            training_id: training.id,
-            name: skill,
-            type: 'technical',
-            level: levelMap[formData.difficulty] || 2,
-            approval_status: 'pending',
-            enabled: true,
-            source: 'external_certificate',
-            platform: selectedPlatform?.id
-          }))
-        );
-      }
-
-      // Embedding regeneration handled by database triggers on trainings/certificates/skills tables
-
-      onSuccess?.();
-      onClose();
-      resetForm();
-    } catch (err) {
-      setError(err.message || 'Failed to add learning course');
-    } finally {
-      setLoading(false);
-    }
+    setShowDemoModal(true);
   };
 
   const resetForm = () => {
@@ -767,6 +665,13 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
           </div>
         </div>
       </div>
+      
+      {/* Demo Modal */}
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 }

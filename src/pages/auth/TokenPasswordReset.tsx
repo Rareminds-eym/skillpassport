@@ -10,6 +10,7 @@ import {
   Eye, 
   EyeOff
 } from 'lucide-react';
+import DemoModal from '../../components/common/DemoModal';
 
 interface TokenPasswordResetState {
   step: 'loading' | 'email-input' | 'reset' | 'success' | 'error';
@@ -21,6 +22,7 @@ interface TokenPasswordResetState {
   error: string;
   showPassword: boolean;
   showConfirmPassword: boolean;
+  showDemoModal: boolean;
 }
 
 const TokenPasswordReset = () => {
@@ -37,7 +39,8 @@ const TokenPasswordReset = () => {
     loading: false,
     error: '',
     showPassword: false,
-    showConfirmPassword: false
+    showConfirmPassword: false,
+    showDemoModal: false
   });
 
   // Validate token on component mount
@@ -78,62 +81,7 @@ const TokenPasswordReset = () => {
 
   const handleSendResetLink = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!state.email) {
-      setState(prev => ({ ...prev, error: 'Please enter your email address' }));
-      return;
-    }
-
-    setState(prev => ({ ...prev, loading: true, error: '' }));
-
-    try {
-      console.log('🔐 Sending password reset request for:', state.email);
-      
-      // Use user-api to send reset link
-      const userApiUrl = import.meta.env.VITE_USER_API_URL || 'http://localhost:3001';
-      console.log('📡 User API URL:', userApiUrl);
-      
-      const response = await fetch(`${userApiUrl}/reset-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'send',
-          email: state.email
-        })
-      });
-
-      console.log('📡 Response status:', response.status);
-      const result = await response.json();
-      console.log('📡 Response data:', result);
-
-      if (!response.ok || !result.success) {
-        console.error('❌ Failed to send reset link:', result.error);
-        setState(prev => ({
-          ...prev,
-          loading: false,
-          error: result.error || 'Failed to send reset link'
-        }));
-        return;
-      }
-
-      console.log('✅ Reset link sent successfully');
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        step: 'success',
-        email: state.email
-      }));
-
-    } catch (error) {
-      console.error('❌ Send reset link error:', error);
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: 'An unexpected error occurred. Please try again'
-      }));
-    }
+    setState(prev => ({ ...prev, showDemoModal: true }));
   };
 
   const handlePasswordReset = async (e: FormEvent<HTMLFormElement>) => {
@@ -483,6 +431,12 @@ const TokenPasswordReset = () => {
           </p>
         </div>
       </div>
+      
+      <DemoModal 
+        isOpen={state.showDemoModal} 
+        onClose={() => setState(prev => ({ ...prev, showDemoModal: false }))}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </div>
   );
 };

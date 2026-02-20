@@ -8,6 +8,7 @@ import { TrainingEditModal } from "../../components/Students/components/ProfileE
 import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
 import { Button } from "../../components/Students/components/ui/button";
 import { Card, CardContent } from "../../components/Students/components/ui/card";
+import DemoModal from "../../components/common/DemoModal";
 import { useAuth } from "../../context/AuthContext";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
@@ -158,6 +159,7 @@ const MyLearning = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   const { trainings = [], loading: trainingsLoading, stats = { total: 0, completed: 0, ongoing: 0 }, refetch: refetchTrainings } = useStudentTrainings(studentId, {
     sortBy, sortDirection, status: statusFilter, approvalStatus: approvalFilter, searchTerm,
@@ -246,40 +248,9 @@ const MyLearning = () => {
   const handleDeleteItem = (item) => { setDeletingItem(item); setActiveModal("delete"); };
   
   const confirmDelete = async () => {
-    if (!deletingItem) return;
-    
-    setIsDeleting(true);
-    try {
-      // Delete from certificates table first (if exists)
-      await supabase
-        .from('certificates')
-        .delete()
-        .eq('training_id', deletingItem.id);
-      
-      // Delete from skills table (if exists)
-      await supabase
-        .from('skills')
-        .delete()
-        .eq('training_id', deletingItem.id);
-      
-      // Delete from trainings table
-      const { error } = await supabase
-        .from('trainings')
-        .delete()
-        .eq('id', deletingItem.id);
-      
-      if (error) throw error;
-      
-      // Refresh the list
-      await refresh();
-    } catch (error) {
-      console.error('Error deleting certificate:', error);
-      alert('Failed to delete certificate. Please try again.');
-    } finally {
-      setIsDeleting(false);
-      setDeletingItem(null);
-      setActiveModal(null);
-    }
+    setShowDemoModal(true);
+    setDeletingItem(null);
+    setActiveModal(null);
   };
   
   const toggleSortDirection = () => handleFilterChange('sortDirection', sortDirection === 'asc' ? 'desc' : 'asc');
@@ -773,6 +744,13 @@ const MyLearning = () => {
             </div>
           </div>
         )}
+        
+        {/* Demo Modal */}
+        <DemoModal 
+          isOpen={showDemoModal} 
+          onClose={() => setShowDemoModal(false)}
+          message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+        />
       </div>
     </div>
   );

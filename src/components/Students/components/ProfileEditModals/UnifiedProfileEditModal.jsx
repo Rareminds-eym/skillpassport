@@ -577,65 +577,7 @@ const UnifiedProfileEditModal = ({
   };
 
   const saveAndClose = async () => {
-    if (!validateForm()) return;
-
-    setIsSaving(true);
-    const processedData = processFormData();
-    
-    console.log('🔧 UnifiedProfileEditModal saveAndClose: formData before processing:', formData);
-    console.log('🔧 UnifiedProfileEditModal saveAndClose: processedData after processing:', processedData);
-
-    try {
-      // Get the existing item to preserve its id and other fields
-      const existingItem = items[editingIndex] || {};
-      
-      // Ensure id is preserved - use existingItem.id or formData.id as fallback
-      const itemId = existingItem.id || formData.id || processedData.id;
-      
-      const updatedItem = { 
-        ...existingItem, 
-        ...processedData,
-        id: itemId, // Explicitly ensure id is set
-        updated_at: new Date().toISOString() 
-      };
-      
-      console.log('🔧 UnifiedProfileEditModal saveAndClose: existingItem:', existingItem);
-      console.log('🔧 UnifiedProfileEditModal saveAndClose: updatedItem being saved:', updatedItem);
-      console.log('🔧 UnifiedProfileEditModal saveAndClose: ID check:', {
-        existingItemId: existingItem.id,
-        formDataId: formData.id,
-        processedDataId: processedData.id,
-        finalId: itemId
-      });
-
-      if (!updatedItem.id) {
-        console.error('❌ CRITICAL: No ID found for item!');
-        console.error('❌ existingItem:', existingItem);
-        console.error('❌ formData:', formData);
-        console.error('❌ processedData:', processedData);
-        toast({
-          title: "Error",
-          description: "Cannot save: Missing item ID. Please try again.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Save directly to database
-      await onSave([updatedItem]);
-      
-      toast({ title: "Saved!", description: `${config.title} saved successfully.` });
-      
-      // Close modal after a brief delay to allow refresh to complete
-      setTimeout(() => {
-        onClose();
-      }, 300);
-    } catch (error) {
-      console.error("Error saving:", error);
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
-    } finally {
-      setIsSaving(false);
-    }
+    setShowDemoModal(true);
   };
 
   const deleteItem = async (index) => {
@@ -1316,16 +1258,17 @@ const UnifiedProfileEditModal = ({
   // Render single edit mode - clean form-only UI
   if (singleEditMode) {
     return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              {Icon && <Icon className="w-5 h-5 text-blue-600" />}
-              Edit {config.title}
-            </DialogTitle>
-          </DialogHeader>
+      <>
+        <Dialog open={isOpen} onOpenChange={onClose}>
+          <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+            <DialogHeader className="flex-shrink-0">
+              <DialogTitle className="flex items-center gap-2 text-lg">
+                {Icon && <Icon className="w-5 h-5 text-blue-600" />}
+                Edit {config.title}
+              </DialogTitle>
+            </DialogHeader>
 
-          {/* Scrollable Content Area */}
+            {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto pr-2 -mr-2">
             <div className="space-y-5 pt-2">
               {/* Form Fields */}
@@ -1397,6 +1340,13 @@ const UnifiedProfileEditModal = ({
           </div>
         </DialogContent>
       </Dialog>
+      
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
+      </>
     );
   }
 
