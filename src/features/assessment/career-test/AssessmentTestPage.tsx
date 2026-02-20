@@ -29,7 +29,7 @@ import * as assessmentService from '../../../services/assessmentService';
 // @ts-ignore - JS service
 import { normalizeStreamId } from '../../../services/careerAssessmentAIService';
 // @ts-ignore - JS context
-import { usePermissions } from '../../../context/PermissionsContext';
+import { usePermissions } from '../../../rbac/context/PermissionsContext';
 
 // Hooks
 import { useAssessmentFlow } from './hooks/useAssessmentFlow';

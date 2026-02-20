@@ -289,12 +289,9 @@ const Header = ({ hasBanner = false }) => {
               </div>
 
               {/* Signup Button */}
-              <Link
-                to="/signup"
-                className="signup-button px-5 py-2 text-sm font-extrabold text-red-600 border-2 border-red-300 rounded-full transition-all duration-200"
-              >
+              <span className="signup-button px-5 py-2 text-sm font-extrabold text-gray-400 border-2 border-gray-300 rounded-full cursor-not-allowed">
                 Sign Up
-              </Link>
+              </span>
 
               {/* Login Button */}
               <Link 

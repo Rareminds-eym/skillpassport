@@ -24,7 +24,7 @@ import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { supabase } from "../../../lib/supabaseClient";
 import { downloadCertificate, getCertificateProxyUrl } from "../../../services/certificateService";
 import { checkAssessmentStatus } from "../../../services/externalAssessmentService";
-import { usePermissions } from "../../../context/PermissionsContext";
+import { usePermissions } from "../../../rbac/context/PermissionsContext";
 
 /**
  * Modern Learning Card Component - Completely Redesigned
@@ -40,7 +40,7 @@ const ModernLearningCard = ({
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canStartAssessment } = usePermissions();
+  const { canViewCourseAssessment } = usePermissions();
   const [isHovered, setIsHovered] = useState(false);
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const [assessmentScore, setAssessmentScore] = useState(null);
@@ -309,7 +309,7 @@ const ModernLearningCard = ({
     <button
       onClick={(e) => {
         e.preventDefault();
-        if (canStartAssessment) {
+        if (canViewCourseAssessment) {
           navigate("/student/assessment/platform", {
             state: {
               courseName: item.course || item.title,
@@ -321,7 +321,7 @@ const ModernLearningCard = ({
           });
         }
       }}
-      disabled={!canStartAssessment}
+      disabled={!canViewCourseAssessment}
       className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
     >
       <Target className="w-4 h-4" />
@@ -417,7 +417,7 @@ const ModernLearningCard = ({
     <button
       onClick={(e) => {
         e.preventDefault();
-        if (canStartAssessment) {
+        if (canViewCourseAssessment) {
           navigate("/student/assessment/platform", {
             state: {
               courseName: item.course || item.title,
@@ -429,7 +429,7 @@ const ModernLearningCard = ({
           });
         }
       }}
-      disabled={!canStartAssessment}
+      disabled={!canViewCourseAssessment}
       className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm border-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
     >
       <Target className="w-4 h-4" />

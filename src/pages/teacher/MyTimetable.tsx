@@ -19,7 +19,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 import SwapRequestModal from "../../components/teacher/SwapRequestModal";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
-import { usePermission } from "../../hooks/usePermissions";
+import { usePermission } from "../../rbac/hooks/usePermissions";
 import {
     createSwapRequest,
     getAvailableSlotsForSwap,

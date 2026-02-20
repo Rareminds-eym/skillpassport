@@ -2,7 +2,7 @@ import React from "react";
 import { Bell, Save } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { usePermissions } from "../../../../context/PermissionsContext";
+import { usePermissions } from "../../../../rbac/context/PermissionsContext";
 
 const NotificationsTab = ({
   notificationSettings,

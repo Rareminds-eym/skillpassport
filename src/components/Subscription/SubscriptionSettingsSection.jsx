@@ -23,7 +23,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
-import { usePermissions } from '../../context/PermissionsContext';
+import { usePermissions } from '../../rbac/context/PermissionsContext';
 
 /**
  * Get the base path for subscription routes based on current location

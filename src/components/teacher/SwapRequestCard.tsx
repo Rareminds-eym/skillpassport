@@ -13,7 +13,7 @@ import {
   User
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { usePermission } from '../../hooks/usePermissions';
+import { usePermission } from '../../rbac/hooks/usePermissions';
 import type { ClassSwapRequestWithDetails } from '../../types/classSwap';
 
 interface SwapRequestCardProps {

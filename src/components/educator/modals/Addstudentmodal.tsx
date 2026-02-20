@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabaseClient'
 import storageService from '../../../services/storageService'
 import userApiService from '../../../services/userApiService'
-import { usePermission } from '../../../hooks/usePermissions'
+import { usePermission } from '../../../rbac/hooks/usePermissions'
 
 interface DocumentUploadProgress {
   file: string

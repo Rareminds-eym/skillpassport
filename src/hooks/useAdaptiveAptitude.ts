@@ -46,6 +46,8 @@ export interface TestProgress {
   estimatedTotalQuestions: number;
   /** Percentage completion estimate */
   completionPercentage: number;
+  /** Usage limit for this user (if applicable) */
+  usageLimit?: number;
 }
 
 /**
@@ -139,7 +141,8 @@ const QUESTION_TIME_LIMIT_SECONDS = 90;
 function calculateProgress(
   session: TestSession | null,
   currentQuestionIndex: number,
-  totalQuestionsInPhase: number
+  totalQuestionsInPhase: number,
+  usageLimit?: number | null
 ): TestProgress | null {
   if (!session) return null;
 
@@ -147,9 +150,12 @@ function calculateProgress(
   const currentPhase = session.currentPhase;
   const currentDifficulty = session.currentDifficulty;
 
+  // Use usage limit if available, otherwise use default 50
+  const totalQuestions = usageLimit || ESTIMATED_TOTAL_QUESTIONS;
+
   // Calculate completion percentage based on questions answered
   const completionPercentage = Math.min(
-    Math.round((questionsAnswered / ESTIMATED_TOTAL_QUESTIONS) * 100),
+    Math.round((questionsAnswered / totalQuestions) * 100),
     100
   );
 
@@ -159,8 +165,9 @@ function calculateProgress(
     totalQuestionsInPhase,
     currentPhase,
     currentDifficulty,
-    estimatedTotalQuestions: ESTIMATED_TOTAL_QUESTIONS,
+    estimatedTotalQuestions: totalQuestions,
     completionPercentage,
+    usageLimit: usageLimit || undefined,
   };
 }
 
@@ -190,6 +197,7 @@ export function useAdaptiveAptitude(
   const [session, setSession] = useState<TestSession | null>(null);
   const [progress, setProgress] = useState<TestProgress | null>(null);
   const [phase, setPhase] = useState<TestPhase | null>(null);
+  const [usageLimit, setUsageLimit] = useState<number | null>(null);
   
   // Loading states
   const [loading, setLoading] = useState(false);
@@ -235,9 +243,10 @@ export function useAdaptiveAptitude(
     setProgress(calculateProgress(
       currentSession,
       result.progress.currentQuestionIndex,
-      result.progress.totalQuestionsInPhase
+      result.progress.totalQuestionsInPhase,
+      usageLimit
     ));
-  }, []);
+  }, [usageLimit]);
 
   /**
    * Handles errors consistently
@@ -269,6 +278,25 @@ export function useAdaptiveAptitude(
       attemptIdType: typeof attemptId
     });
     setLoading(true);
+
+    // Fetch usage limit from Supabase
+    try {
+      const { supabase } = await import('../lib/supabaseClient');
+      const { data: usageData } = await supabase
+        .from('rbac_feature_usage')
+        .select('usage_limit')
+        .eq('user_id', studentId)
+        .eq('feature_key', 'adaptive_aptitude_questions')
+        .single();
+      
+      if (usageData?.usage_limit) {
+        console.log('📊 [useAdaptiveAptitude] Usage limit found:', usageData.usage_limit);
+        setUsageLimit(usageData.usage_limit);
+      }
+    } catch (err) {
+      console.warn('⚠️ [useAdaptiveAptitude] Could not fetch usage limit:', err);
+      // Continue without limit
+    }
     setError(null);
     
     try {
@@ -338,7 +366,8 @@ export function useAdaptiveAptitude(
       setProgress(calculateProgress(
         initResult.session,
         0,
-        initResult.session.currentPhaseQuestions.length
+        initResult.session.currentPhaseQuestions.length,
+        usageLimit
       ));
       console.log('✅ [useAdaptiveAptitude] Step 3 Complete: State updated successfully');
       console.log('🚀🚀🚀 [useAdaptiveAptitude] ========== START TEST COMPLETE ==========');
@@ -416,6 +445,42 @@ export function useAdaptiveAptitude(
         console.log('🏁 [useAdaptiveAptitude] Test complete, calling completeTest API...');
         console.log('🏁 [useAdaptiveAptitude] Session ID:', session.id);
         
+        // Check if limit was reached
+        if (answerResult.limitReached) {
+          console.log('⚠️ [useAdaptiveAptitude] Test completed due to usage limit');
+          // Mark test as complete without calling completeTest API
+          // The session is already marked as completed in the backend
+          setIsTestComplete(true);
+          setCurrentQuestion(null);
+          setQuestionStartTime(null);
+          
+          // Create a mock result for the limited test
+          const limitedResults = {
+            id: session.id,
+            sessionId: session.id,
+            studentId: session.studentId,
+            aptitudeLevel: session.currentDifficulty,
+            confidenceTag: 'low' as const,
+            tier: session.tier || 'M' as const,
+            totalQuestions: answerResult.updatedSession.questionsAnswered,
+            totalCorrect: answerResult.updatedSession.correctAnswers,
+            overallAccuracy: (answerResult.updatedSession.correctAnswers / answerResult.updatedSession.questionsAnswered) * 100,
+            accuracyByDifficulty: {} as any,
+            accuracyBySubtag: {} as any,
+            difficultyPath: answerResult.updatedSession.difficultyPath,
+            pathClassification: 'incomplete' as any,
+            averageResponseTimeMs: 0,
+            gradeLevel: session.gradeLevel,
+            completedAt: new Date().toISOString(),
+            limitReached: true,
+            limitMessage: answerResult.stopCondition?.message || 'Question limit reached'
+          };
+          
+          setResults(limitedResults as any);
+          onTestComplete?.(limitedResults as any);
+          return answerResult;
+        }
+        
         try {
           // Complete the test and get results
           const testResults = await AdaptiveAptitudeService.completeTest(session.id);
@@ -480,6 +545,25 @@ export function useAdaptiveAptitude(
     setLoading(true);
     setError(null);
 
+    // Fetch usage limit from Supabase
+    try {
+      const { supabase } = await import('../lib/supabaseClient');
+      const { data: usageData } = await supabase
+        .from('rbac_feature_usage')
+        .select('usage_limit')
+        .eq('user_id', studentId)
+        .eq('feature_key', 'adaptive_aptitude_questions')
+        .single();
+      
+      if (usageData?.usage_limit) {
+        console.log('📊 [useAdaptiveAptitude] Usage limit found:', usageData.usage_limit);
+        setUsageLimit(usageData.usage_limit);
+      }
+    } catch (err) {
+      console.warn('⚠️ [useAdaptiveAptitude] Could not fetch usage limit:', err);
+      // Continue without limit
+    }
+
     try {
       // Resume the session
       const resumeResult: ResumeTestResult = await AdaptiveAptitudeService.resumeTest(sessionId);
@@ -504,7 +588,8 @@ export function useAdaptiveAptitude(
       setProgress(calculateProgress(
         resumeResult.session,
         resumeResult.session.currentQuestionIndex,
-        resumeResult.session.currentPhaseQuestions.length
+        resumeResult.session.currentPhaseQuestions.length,
+        usageLimit
       ));
     } catch (err) {
       handleError(err, 'Failed to resume test');
@@ -512,7 +597,7 @@ export function useAdaptiveAptitude(
     } finally {
       setLoading(false);
     }
-  }, [handleError]);
+  }, [handleError, usageLimit]);
 
   /**
    * Checks for and resumes any in-progress session for the student

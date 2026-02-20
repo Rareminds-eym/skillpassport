@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Award, BookOpen, CheckCircle, Clock, Play, RotateCcw, Users, X } from 'lucide-react';
-import { usePermissions } from '../../../context/PermissionsContext';
+import { usePermissions } from '../../../rbac/context/PermissionsContext';
 
 const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress }) => {
   const { canStartCourses } = usePermissions();

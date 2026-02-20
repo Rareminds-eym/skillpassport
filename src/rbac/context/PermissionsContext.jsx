@@ -64,6 +64,7 @@ export const PermissionsProvider = ({ children }) => {
     canStartAssessment: can('start', 'Assessment'),
     canContinueAssessment: can('continue', 'Assessment'),
     canTakeAdaptiveTest: can('take', 'AdaptiveTest'),
+    canViewCourseAssessment: can('view', 'CourseAssessment'),
     
     // Career AI permissions
     canAccessCareerAI: can('access', 'CareerAI'),

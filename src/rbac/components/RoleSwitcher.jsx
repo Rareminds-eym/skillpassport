@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAbility } from '../../hooks/useAbility';
-import { rbacService } from '../../services/rbacService';
+import { useAbility } from '../hooks/useAbility';
+import { rbacService } from '../services/rbacService';
 import { Users, X, ChevronDown } from 'lucide-react';
 
 export const RoleSwitcher = () => {

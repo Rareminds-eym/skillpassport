@@ -18,7 +18,7 @@ import Pagination from "../../components/educator/Pagination"
 import { useAuth } from "../../context/AuthContext"
 import { ProgramSection } from "../../services/programService"
 import ManageProgramStudentsModal from "../../components/educator/ManageProgramStudentsModal"
-import { usePermission } from "../../hooks/usePermissions"
+import { usePermission } from "../../rbac/hooks/usePermissions"
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, string> = {

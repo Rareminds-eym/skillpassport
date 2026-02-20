@@ -112,6 +112,70 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       );
     }
 
+    // Check feature usage limit for adaptive aptitude questions
+    const { data: usageData, error: usageError } = await supabase
+      .from('rbac_feature_usage')
+      .select('usage_count, usage_limit')
+      .eq('user_id', auth.user.id)
+      .eq('feature_key', 'adaptive_aptitude_questions')
+      .single();
+
+    if (usageData && usageData.usage_count >= usageData.usage_limit) {
+      console.warn('⚠️ [SubmitAnswerHandler] Usage limit reached', {
+        userId: auth.user.id,
+        usageCount: usageData.usage_count,
+        usageLimit: usageData.usage_limit
+      });
+      
+      // Mark session as completed when limit is reached
+      await supabase
+        .from('adaptive_aptitude_sessions')
+        .update({
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+      
+      // Fetch updated session
+      const { data: completedSessionData } = await supabase
+        .from('adaptive_aptitude_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .single();
+      
+      // Fetch all responses for the session
+      const { data: allSessionResponses } = await supabase
+        .from('adaptive_aptitude_responses')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('sequence_number', { ascending: true });
+      
+      const completedSession = dbSessionToTestSession(
+        completedSessionData!,
+        (allSessionResponses || []).map(dbResponseToResponse),
+        []
+      );
+      
+      // Return a result that marks test as complete
+      return jsonResponse({
+        isCorrect: false,
+        previousDifficulty: sessionData.current_difficulty,
+        newDifficulty: sessionData.current_difficulty,
+        difficultyChange: 'unchanged',
+        phaseComplete: true,
+        nextPhase: null,
+        testComplete: true,
+        stopCondition: {
+          met: true,
+          reason: 'usage_limit',
+          message: `You have reached the maximum of ${usageData.usage_limit} questions for this test.`
+        },
+        updatedSession: completedSession,
+        limitReached: true
+      });
+    }
+
     console.log('📊 [SubmitAnswerHandler] Session state before update:', {
       currentQuestionIndex: sessionData.current_question_index,
       questionsAnswered: sessionData.questions_answered,
@@ -191,6 +255,24 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     if (responseError) {
       console.error('❌ [SubmitAnswerHandler] Failed to record response:', responseError);
       throw new Error(`Failed to record response: ${responseError.message}`);
+    }
+
+    // Increment usage count for adaptive aptitude questions
+    if (usageData) {
+      await supabase
+        .from('rbac_feature_usage')
+        .update({ 
+          usage_count: usageData.usage_count + 1,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', auth.user.id)
+        .eq('feature_key', 'adaptive_aptitude_questions');
+      
+      console.log('📊 [SubmitAnswerHandler] Usage count incremented:', {
+        userId: auth.user.id,
+        newCount: usageData.usage_count + 1,
+        limit: usageData.usage_limit
+      });
     }
 
     // Update session

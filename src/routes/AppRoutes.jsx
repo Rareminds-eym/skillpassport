@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
-import { PermissionGate } from "../components/RBAC/PermissionGate";
+import { PermissionGate } from "../rbac/components/PermissionGate";
 import ScrollToTop from "../components/ScrollToTop";
 import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 import OrganizationGuard from "../components/organization/OrganizationGuard";

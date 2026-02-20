@@ -89,7 +89,7 @@ import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { supabase } from "../../lib/supabaseClient";
 import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
-import { useAbility } from '../../hooks/useAbility';
+import { useAbility } from '../../rbac/hooks/useAbility';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally

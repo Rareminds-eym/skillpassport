@@ -16,7 +16,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { useCareerConversations, ConversationMessage } from '../hooks/useCareerConversations';
 import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';
 import { useUsageTracking } from '../../../hooks/useUsageTracking';
-import { usePermissions } from '../../../context/PermissionsContext';
+import { usePermissions } from '../../../rbac/context/PermissionsContext';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import { EnhancedAIResponse } from '../types/interactive';

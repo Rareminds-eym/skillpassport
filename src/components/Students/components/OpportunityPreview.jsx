@@ -464,7 +464,7 @@ import { MapPin, Briefcase, X, ExternalLink, Star, Bookmark, Clock, Users, Trend
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { usePermissions } from '../../../context/PermissionsContext';
+import { usePermissions } from '../../../rbac/context/PermissionsContext';
 
 // Application Confirmation Modal Component
 const ApplicationConfirmationModal = ({ 

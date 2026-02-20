@@ -29,7 +29,7 @@ import {
   type Permission,
   type ModuleAccess,
   type ScopeRule
-} from "../../../services/settingsService";
+} from "../../../rbac/services/settingsService";
 import { useAuth } from "../../../context/AuthContext";
 import toast from 'react-hot-toast';
 
@@ -38,7 +38,7 @@ import toast from 'react-hot-toast';
    ============================== */
 
 // Re-export types from service for backward compatibility
-export type { Role, ModuleAccess, ScopeRule } from "../../../services/settingsService";
+export type { Role, ModuleAccess, ScopeRule } from "../../../rbac/services/settingsService";
 
 /* ==============================
    MODAL WRAPPER

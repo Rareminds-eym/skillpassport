@@ -1,7 +1,7 @@
 import { createContext, useEffect, useState } from 'react';
 import { createMongoAbility, AbilityBuilder } from '@casl/ability';
 import { rbacService } from '../services/rbacService';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 export const AbilityContext = createContext();
 

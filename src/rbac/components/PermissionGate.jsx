@@ -1,4 +1,4 @@
-import { useAbility } from '../../hooks/useAbility';
+import { useAbility } from '../hooks/useAbility';
 import { useNavigate } from 'react-router-dom';
 import { Lock, ArrowLeft } from 'lucide-react';
 

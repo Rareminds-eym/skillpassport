@@ -18,7 +18,7 @@ import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
 import { useAuth } from '../../context/AuthContext';
-import { usePermission } from '../../hooks/usePermissions';
+import { usePermission } from '../../rbac/hooks/usePermissions';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);

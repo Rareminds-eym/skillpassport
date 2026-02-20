@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { XMarkIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ProgramSection, ProgramStudent, getStudentsByProgramSection, getAvailableStudentsForProgram, addStudentToProgram, removeStudentFromProgram } from '../../services/programService'
 import { useEducatorSchool } from '../../hooks/useEducatorSchool'
-import { usePermission } from '../../hooks/usePermissions'
+import { usePermission } from '../../rbac/hooks/usePermissions'
 import toast from 'react-hot-toast'
 
 interface ManageProgramStudentsModalProps {

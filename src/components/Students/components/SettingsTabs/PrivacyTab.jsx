@@ -2,7 +2,7 @@ import React from "react";
 import { Shield, Globe, Briefcase, Lock, Mail, Phone, MapPin, Save } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { usePermissions } from "../../../../context/PermissionsContext";
+import { usePermissions } from "../../../../rbac/context/PermissionsContext";
 
 const PrivacyTab = ({
   privacySettings,

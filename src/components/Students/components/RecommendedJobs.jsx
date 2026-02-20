@@ -15,7 +15,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useAIJobMatching } from '../../../hooks/useAIJobMatching';
 import { FeatureGate } from '../../Subscription/FeatureGate';
-import { usePermissions } from '../../../context/PermissionsContext';
+import { usePermissions } from '../../../rbac/context/PermissionsContext';
 
 /**
  * RecommendedJobs - AI-powered job recommendations with industrial-grade caching

@@ -5,7 +5,7 @@
  * Manages permissions, roles, and user access control
  */
 
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../../lib/supabaseClient';
 
 class RBACService {
   /**

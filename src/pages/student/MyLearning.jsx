@@ -9,7 +9,7 @@ import SelectCourseModal from "../../components/Students/components/SelectCourse
 import { Button } from "../../components/Students/components/ui/button";
 import { Card, CardContent } from "../../components/Students/components/ui/card";
 import { useAuth } from "../../context/AuthContext";
-import { usePermissions } from "../../context/PermissionsContext";
+import { usePermissions } from "../../rbac/context/PermissionsContext";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";

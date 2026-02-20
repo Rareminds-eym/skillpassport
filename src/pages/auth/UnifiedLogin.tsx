@@ -356,9 +356,8 @@ const UnifiedLogin = () => {
                 <div className="flex items-center justify-end">
                   <button
                     type="button"
-                    onClick={handleForgotPassword}
-                    disabled={state.loading}
-                    className="text-sm font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500 disabled:text-gray-400"
+                    disabled={true}
+                    className="text-sm font-medium text-gray-400 cursor-not-allowed"
                   >
                     Forgot password?
                   </button>
@@ -385,9 +384,9 @@ const UnifiedLogin = () => {
               <div className="mt-6 text-center">
                 <p className="text-sm text-white lg:text-gray-600">
                   Don't have an account?{' '}
-                  <Link to="/signup" className="font-medium text-white lg:text-blue-600 hover:text-white/80 lg:hover:text-blue-500">
+                  <span className="font-medium text-gray-400 cursor-not-allowed">
                     Sign up
-                  </Link>
+                  </span>
                 </p>
               </div>
             </div>

@@ -287,11 +287,17 @@ export interface PhaseConstraints {
  * Result of checking stop conditions during adaptive core
  */
 export interface StopConditionResult {
+  /** Whether stop condition was met */
+  met?: boolean;
+  
   /** Whether the test should stop */
   shouldStop: boolean;
   
   /** Reason for stopping (if applicable) */
-  reason: 'minimum_reached' | 'stability_achieved' | 'maximum_reached' | null;
+  reason: 'minimum_reached' | 'stability_achieved' | 'maximum_reached' | 'usage_limit' | null;
+  
+  /** Message explaining the stop condition */
+  message?: string;
   
   /** Whether minimum questions (16) have been completed */
   minimumQuestionsCompleted: boolean;
@@ -342,6 +348,9 @@ export interface AnswerResult {
   
   /** Updated session state */
   updatedSession: TestSession;
+  
+  /** Whether usage limit was reached (optional) */
+  limitReached?: boolean;
 }
 
 // =============================================================================
