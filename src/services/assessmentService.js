@@ -1543,42 +1543,7 @@ export const abandonAttempt = async (attemptId) => {
   if (error) throw error;
 };
 
-/**
- * Transform database questions to match existing frontend format
- * This helps maintain backward compatibility with the existing UI
- */
-export const transformQuestionsForUI = (dbQuestions, sectionName) => {
-  return dbQuestions.map(q => {
-    const base = {
-      id: q.id,
-      text: q.question_text,
-      type: q.subtype,
-      moduleTitle: q.module_title
-    };
-
-    // Add options for MCQ questions
-    if (q.question_type === 'mcq' && q.options) {
-      base.options = q.options;
-      base.correct = q.correct_answer;
-    }
-
-    // Add SJT-specific fields
-    if (q.question_type === 'sjt') {
-      base.partType = 'sjt';
-      base.scenario = q.scenario;
-      base.options = q.options;
-      base.bestAnswer = q.best_answer;
-      base.worstAnswer = q.worst_answer;
-    }
-
-    // Add self-rating fields
-    if (q.part_type === 'selfRating') {
-      base.partType = 'selfRating';
-    }
-
-    return base;
-  });
-};
+// transformQuestionsForUI removed - was never called, referenced unused columns (subtype, module_title, part_type)
 
 /**
  * Calculate aptitude scores from answers and questions
@@ -1607,7 +1572,8 @@ export const calculateAptitudeScores = (answers, questions) => {
   questions.forEach(q => {
     questionMap.set(q.id, {
       correct_answer: q.correct_answer,
-      subtype: q.subtype || q.category || 'verbal'
+      // Note: subtype column removed from DB, using category or dimension instead
+      subtype: q.category || q.dimension || 'verbal'
     });
   });
 
@@ -2059,7 +2025,6 @@ export default {
   getLatestResult,
   getInProgressAttempt,
   abandonAttempt,
-  transformQuestionsForUI,
   canTakeAssessment,
   calculateAptitudeScores,
   calculateKnowledgeScores,

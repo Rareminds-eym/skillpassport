@@ -690,10 +690,10 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
             questionId,
             question: question.text,
             rating: value,
-            taskType: question.taskType || question.task_type,
+            taskType: question.taskType || question.task_type || question.metadata?.task_type,
             type: question.type
           };
-          const taskCategory = (question.taskType || question.task_type || 'verbal').toLowerCase();
+          const taskCategory = (question.taskType || question.task_type || question.metadata?.task_type || 'verbal').toLowerCase();
           if (aptitudeAnswers[taskCategory]) {
             aptitudeAnswers[taskCategory].push(answerData);
           }

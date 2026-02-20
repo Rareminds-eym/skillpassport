@@ -378,11 +378,13 @@ export interface AdaptiveTestConfig {
 /**
  * Default configuration for the adaptive aptitude test
  * 
- * Question Pattern (EXACTLY 50 QUESTIONS):
+ * Question Pattern (9-45 QUESTIONS):
  * - Phase 1 (Diagnostic Screener): Q1-Q8 all at Level 3 (baseline) - 8 questions
- * - Phase 2 (Adaptive Core): Q9-Q44 truly adaptive based on performance - 36 questions (FIXED, not variable)
- * - Phase 3 (Stability Confirmation): Q45-Q50 at final level - 6 questions
- * Total: EXACTLY 50 questions (8 + 36 + 6)
+ * - Phase 2 (Adaptive Core): Q9-Q39 truly adaptive based on performance - 1-31 questions (VARIABLE)
+ * - Phase 3 (Stability Confirmation): Q40-Q45 at final level - 6 questions
+ * 
+ * Minimum: 9 questions (8 diagnostic + 1 adaptive)
+ * Maximum: 45 questions (8 diagnostic + 31 adaptive + 6 stability)
  */
 export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
   phases: {
@@ -400,8 +402,8 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     },
     adaptive_core: {
       phase: 'adaptive_core',
-      minQuestions: 36,
-      maxQuestions: 36,  // Exactly 36 questions for adaptive core (not a range)
+      minQuestions: 1,
+      maxQuestions: 31,  // Variable 1-31 questions based on performance
       maxConsecutiveSameSubtag: 3,
       maxConsecutiveSameDirectionJumps: 3,
     },
@@ -417,8 +419,8 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     M: 3,
     H: 4,
   },
-  minimumQuestionsForStop: 40,  // Not used - always complete exactly 36 adaptive core questions
-  consistencyWindowSize: 8,     // Used for analytics only
+  minimumQuestionsForStop: 9,  // Minimum 9 total questions (8 diagnostic + 1 adaptive)
+  consistencyWindowSize: 8,     // Check last 8 questions for consistency
   maxDirectionChangesForHighConfidence: 2,
   maxDirectionChangesForMediumConfidence: 4,
 };

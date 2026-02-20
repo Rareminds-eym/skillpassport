@@ -638,10 +638,10 @@ const AssessmentTest = () => {
         scenario: dbQ.scenario,
         bestAnswer: dbQ.best_answer,
         worstAnswer: dbQ.worst_answer,
-        maxSelections: dbQ.max_selections,       // For multiselect questions
+        maxSelections: dbQ.metadata?.max_selections || dbQ.max_selections,       // For multiselect questions
         categoryMapping: dbQ.category_mapping,   // Maps options to RIASEC types (R,I,A,S,E,C)
-        strengthType: dbQ.strength_type,         // For character strengths questions
-        taskType: dbQ.task_type,                 // For aptitude task categorization
+        strengthType: dbQ.metadata?.strength_type || dbQ.strength_type,         // For character strengths questions
+        taskType: dbQ.metadata?.task_type || dbQ.task_type,                 // For aptitude task categorization
         placeholder: dbQ.placeholder             // For text input questions
     });
 

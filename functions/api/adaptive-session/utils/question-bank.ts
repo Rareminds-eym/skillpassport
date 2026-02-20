@@ -4,14 +4,16 @@
  * 
  * Database Schema:
  * - id: uuid (primary key)
- * - grade: integer (6, 7, 8)
- * - dimension: text (QR, LR, SR, PAR, DI, AA)
- * - difficulty_rank: integer (1-5)
  * - question_text: text
  * - options: jsonb {A, B, C, D}
  * - correct_answer: varchar
  * - description: text (explanation)
- * - time_target_sec: integer
+ * - metadata: jsonb {
+ *     grade: integer (6, 7, 8),
+ *     dimension: text (QR, LR, SR, PAR, DI, AA),
+ *     difficulty_rank: integer (1-5),
+ *     time_target_sec: integer
+ *   }
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -89,7 +91,8 @@ function shuffle<T>(array: T[]): T[] {
  * Convert database row to Question type
  */
 function mapToQuestion(row: any, phase: TestPhase, gradeLevel: GradeLevel): Question {
-  const subtag = DIMENSION_TO_SUBTAG[row.dimension] || 'logical_reasoning';
+  const dimension = row.metadata?.dimension || row.dimension;
+  const subtag = DIMENSION_TO_SUBTAG[dimension] || 'logical_reasoning';
   
   return {
     id: row.id,
@@ -97,7 +100,7 @@ function mapToQuestion(row: any, phase: TestPhase, gradeLevel: GradeLevel): Ques
     options: row.options, // Already in {A, B, C, D} format
     correctAnswer: row.correct_answer,
     explanation: row.description || 'No explanation available',
-    difficulty: row.difficulty_rank as DifficultyLevel,
+    difficulty: (row.metadata?.difficulty_rank || row.difficulty_rank) as DifficultyLevel,
     subtag,
     gradeLevel,
     phase,
@@ -131,10 +134,10 @@ export async function fetchDiagnosticQuestions(
   for (const dimension of dimensions) {
     let query = supabase
       .from('personal_assessment_questions')
-      .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-      .in('grade', grades)
-      .eq('difficulty_rank', 3)
-      .eq('dimension', dimension)
+      .select('id, metadata, question_text, options, correct_answer, description')
+      .contains('metadata', { grade: grades[0] })
+      .eq('metadata->>difficulty_rank', '3')
+      .eq('metadata->>dimension', dimension)
       .limit(questionsPerDimension * 3); // Fetch extra for randomization
     
     if (excludeIds.length > 0) {
@@ -165,9 +168,9 @@ export async function fetchDiagnosticQuestions(
     
     let fillQuery = supabase
       .from('personal_assessment_questions')
-      .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-      .in('grade', grades)
-      .eq('difficulty_rank', 3)
+      .select('id, metadata, question_text, options, correct_answer, description')
+      .contains('metadata', { grade: grades[0] })
+      .eq('metadata->>difficulty_rank', '3')
       .limit(8 - allQuestions.length);
     
     if (usedIds.length > 0) {
@@ -191,7 +194,8 @@ export async function fetchDiagnosticQuestions(
   
   console.log(`✅ [QuestionBank] Returning ${finalQuestions.length} diagnostic questions with dimension distribution:`, 
     finalQuestions.reduce((acc, q) => {
-      acc[q.dimension] = (acc[q.dimension] || 0) + 1;
+      const dim = q.metadata?.dimension || q.dimension;
+      acc[dim] = (acc[dim] || 0) + 1;
       return acc;
     }, {} as Record<string, number>)
   );
@@ -226,10 +230,10 @@ export async function fetchAdaptiveQuestion(
   if (dimension) {
     let query = supabase
       .from('personal_assessment_questions')
-      .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-      .in('grade', grades)
-      .eq('difficulty_rank', difficulty)
-      .eq('dimension', dimension)
+      .select('id, metadata, question_text, options, correct_answer, description')
+      .contains('metadata', { grade: grades[0] })
+      .eq('metadata->>difficulty_rank', difficulty.toString())
+      .eq('metadata->>dimension', dimension)
       .limit(20);
     
     if (excludeIds.length > 0) {
@@ -252,9 +256,9 @@ export async function fetchAdaptiveQuestion(
   console.log(`🔄 [QuestionBank] Trying difficulty ${difficulty}, any dimension...`);
   let fallbackQuery = supabase
     .from('personal_assessment_questions')
-    .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-    .in('grade', grades)
-    .eq('difficulty_rank', difficulty)
+    .select('id, metadata, question_text, options, correct_answer, description')
+    .contains('metadata', { grade: grades[0] })
+    .eq('metadata->>difficulty_rank', difficulty.toString())
     .limit(20);
   
   if (excludeIds.length > 0) {
@@ -266,7 +270,7 @@ export async function fetchAdaptiveQuestion(
   if (!fallbackError && fallbackData && fallbackData.length > 0) {
     const shuffled = shuffle(fallbackData);
     const selected = shuffled[0];
-    console.log(`✅ [QuestionBank] Found at difficulty ${difficulty}: ${selected.id} (${selected.dimension})`);
+    console.log(`✅ [QuestionBank] Found at difficulty ${difficulty}: ${selected.id} (${selected.metadata?.dimension || 'unknown'})`);
     return mapToQuestion(selected, 'adaptive_core', gradeLevel);
   }
   
@@ -281,9 +285,9 @@ export async function fetchAdaptiveQuestion(
     
     let adjQuery = supabase
       .from('personal_assessment_questions')
-      .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-      .in('grade', grades)
-      .eq('difficulty_rank', adjDiff)
+      .select('id, metadata, question_text, options, correct_answer, description')
+      .contains('metadata', { grade: grades[0] })
+      .eq('metadata->>difficulty_rank', adjDiff.toString())
       .limit(20);
     
     if (excludeIds.length > 0) {
@@ -295,7 +299,7 @@ export async function fetchAdaptiveQuestion(
     if (!adjError && adjData && adjData.length > 0) {
       const shuffled = shuffle(adjData);
       const selected = shuffled[0];
-      console.log(`✅ [QuestionBank] Found at difficulty ${adjDiff}: ${selected.id} (${selected.dimension})`);
+      console.log(`✅ [QuestionBank] Found at difficulty ${adjDiff}: ${selected.id} (${selected.metadata?.dimension || 'unknown'})`);
       return mapToQuestion(selected, 'adaptive_core', gradeLevel);
     }
   }
@@ -309,10 +313,9 @@ export async function fetchAdaptiveQuestion(
     
     let expandedQuery = supabase
       .from('personal_assessment_questions')
-      .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-      .in('grade', [...grades, ...expandedGrades])
-      .gte('difficulty_rank', Math.max(1, difficulty - 1))
-      .lte('difficulty_rank', Math.min(5, difficulty + 1))
+      .select('id, metadata, question_text, options, correct_answer, description')
+      .gte('metadata->>difficulty_rank', Math.max(1, difficulty - 1).toString())
+      .lte('metadata->>difficulty_rank', Math.min(5, difficulty + 1).toString())
       .limit(20);
     
     if (excludeIds.length > 0) {
@@ -324,7 +327,7 @@ export async function fetchAdaptiveQuestion(
     if (!expandedError && expandedData && expandedData.length > 0) {
       const shuffled = shuffle(expandedData);
       const selected = shuffled[0];
-      console.log(`✅ [QuestionBank] Found with expanded grades: ${selected.id} (grade ${selected.grade}, ${selected.dimension}, difficulty ${selected.difficulty_rank})`);
+      console.log(`✅ [QuestionBank] Found with expanded grades: ${selected.id} (grade ${selected.metadata?.grade}, ${selected.metadata?.dimension}, difficulty ${selected.metadata?.difficulty_rank})`);
       return mapToQuestion(selected, 'adaptive_core', gradeLevel);
     }
   }
@@ -333,8 +336,7 @@ export async function fetchAdaptiveQuestion(
   console.log(`🔄 [QuestionBank] Last resort: trying any available question...`);
   let lastResortQuery = supabase
     .from('personal_assessment_questions')
-    .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-    .in('grade', allMiddleSchoolGrades)
+    .select('id, metadata, question_text, options, correct_answer, description')
     .limit(50);
   
   if (excludeIds.length > 0) {
@@ -346,7 +348,7 @@ export async function fetchAdaptiveQuestion(
   if (!lastResortError && lastResortData && lastResortData.length > 0) {
     const shuffled = shuffle(lastResortData);
     const selected = shuffled[0];
-    console.log(`✅ [QuestionBank] Last resort found: ${selected.id} (grade ${selected.grade}, ${selected.dimension}, difficulty ${selected.difficulty_rank})`);
+    console.log(`✅ [QuestionBank] Last resort found: ${selected.id} (grade ${selected.metadata?.grade}, ${selected.metadata?.dimension}, difficulty ${selected.metadata?.difficulty_rank})`);
     return mapToQuestion(selected, 'adaptive_core', gradeLevel);
   }
   
@@ -381,10 +383,10 @@ export async function fetchStabilityQuestions(
   for (const dimension of dimensions) {
     let query = supabase
       .from('personal_assessment_questions')
-      .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-      .in('grade', grades)
-      .eq('difficulty_rank', difficulty)
-      .eq('dimension', dimension)
+      .select('id, metadata, question_text, options, correct_answer, description')
+      .contains('metadata', { grade: grades[0] })
+      .eq('metadata->>difficulty_rank', difficulty.toString())
+      .eq('metadata->>dimension', dimension)
       .limit(questionsPerDimension * 3); // Fetch extra for randomization
     
     if (excludeIds.length > 0) {
@@ -414,9 +416,9 @@ export async function fetchStabilityQuestions(
     
     let fillQuery = supabase
       .from('personal_assessment_questions')
-      .select('id, grade, dimension, difficulty_rank, question_text, options, correct_answer, description, time_target_sec')
-      .in('grade', grades)
-      .eq('difficulty_rank', difficulty)
+      .select('id, metadata, question_text, options, correct_answer, description')
+      .contains('metadata', { grade: grades[0] })
+      .eq('metadata->>difficulty_rank', difficulty.toString())
       .limit(6 - allQuestions.length);
     
     if (usedIds.length > 0) {
@@ -440,7 +442,8 @@ export async function fetchStabilityQuestions(
   
   console.log(`✅ [QuestionBank] Returning ${finalQuestions.length} stability questions with dimension distribution:`, 
     finalQuestions.reduce((acc, q) => {
-      acc[q.dimension] = (acc[q.dimension] || 0) + 1;
+      const dim = q.metadata?.dimension || q.dimension;
+      acc[dim] = (acc[dim] || 0) + 1;
       return acc;
     }, {} as Record<string, number>)
   );

@@ -454,7 +454,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                                 className="text-xs font-bold uppercase mb-3 tracking-wider"
                                                 style={{ color: config.accentLight }}
                                             >
-                                                TOP ROLES & SALARY
+                                                Top Roles & Salary
                                             </h5>
                                             <div className="space-y-2">
                                                 {specificRoles.slice(0, 3).map((role, idx) => {
