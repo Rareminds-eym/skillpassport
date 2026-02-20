@@ -2,6 +2,7 @@ import { createContext, useEffect, useState } from 'react';
 import { createMongoAbility, AbilityBuilder } from '@casl/ability';
 import { rbacService } from '../services/rbacService';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
 
 export const AbilityContext = createContext();
 
@@ -10,6 +11,7 @@ export const AbilityProvider = ({ children }) => {
   const [ability, setAbility] = useState(() => createMongoAbility([]));
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoRole, setDemoRole] = useState(null);
+  const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Load user permissions from database
@@ -34,6 +36,7 @@ export const AbilityProvider = ({ children }) => {
         setAbility(createMongoAbility([]));
         setIsDemoMode(false);
         setDemoRole(null);
+        setUserRole(null);
       }
       
       setLoading(false);
@@ -42,10 +45,49 @@ export const AbilityProvider = ({ children }) => {
     loadPermissions();
   }, [user]);
 
+  // Set up realtime subscription for role changes
+  useEffect(() => {
+    if (!user?.id || isDemoMode) return;
+
+    const realtimeChannel = supabase
+      .channel(`user_role_changes_${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rbac_user_roles',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('[RBAC Realtime] Role change detected');
+          loadUserPermissions(user.id);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(realtimeChannel);
+    };
+  }, [user?.id, isDemoMode]);
+
   // Load user permissions from database
   const loadUserPermissions = async (userId) => {
     try {
       console.log('[RBAC] Loading permissions for user ID:', userId);
+      
+      // Get user's role
+      const { data: userRoleData } = await supabase
+        .from('rbac_user_roles')
+        .select('role_id, rbac_roles(role_key, name)')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .single();
+      
+      const roleKey = userRoleData?.rbac_roles?.role_key;
+      setUserRole(roleKey);
+      console.log('[RBAC] User role:', roleKey);
+      
       const permissions = await rbacService.getUserPermissions(userId);
       console.log('[RBAC] Received permissions from service:', permissions);
       const newAbility = buildAbilityFromPermissions(permissions);
@@ -56,6 +98,7 @@ export const AbilityProvider = ({ children }) => {
     } catch (error) {
       console.error('[RBAC] Error loading user permissions:', error);
       setAbility(createMongoAbility([]));
+      setUserRole(null);
     }
   };
 
@@ -67,6 +110,7 @@ export const AbilityProvider = ({ children }) => {
       setAbility(newAbility);
       setIsDemoMode(true);
       setDemoRole(roleKey);
+      setUserRole(roleKey);
       console.log('[RBAC] Loaded', permissions.length, 'permissions for demo role:', roleKey);
     } catch (error) {
       console.error('[RBAC] Error loading demo permissions:', error);
@@ -126,6 +170,7 @@ export const AbilityProvider = ({ children }) => {
       setAbility(createMongoAbility([]));
       setIsDemoMode(false);
       setDemoRole(null);
+      setUserRole(null);
     }
   };
 
@@ -133,6 +178,7 @@ export const AbilityProvider = ({ children }) => {
     ability,
     isDemoMode,
     demoRole,
+    userRole,
     loading,
     switchToDemo,
     exitDemo,

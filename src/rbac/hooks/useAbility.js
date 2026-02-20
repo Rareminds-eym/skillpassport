@@ -27,6 +27,7 @@ export const useAbility = () => {
     cannot,
     isDemoMode: context.isDemoMode,
     demoRole: context.demoRole,
+    userRole: context.userRole,
     loading: context.loading,
     switchToDemo: context.switchToDemo,
     exitDemo: context.exitDemo,

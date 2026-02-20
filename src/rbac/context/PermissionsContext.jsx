@@ -62,6 +62,7 @@ export const PermissionsProvider = ({ children }) => {
     canReadAssessment: can('read', 'Assessment'),
     canViewAssessmentResults: can('view', 'AssessmentResults'),
     canStartAssessment: can('start', 'Assessment'),
+    canStartAssessmentSection: can('start', 'AssessmentSection'),
     canContinueAssessment: can('continue', 'Assessment'),
     canTakeAdaptiveTest: can('take', 'AdaptiveTest'),
     canViewCourseAssessment: can('view', 'CourseAssessment'),

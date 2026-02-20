@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getUserRole } from '../../services/roleLookupService';
 import { signIn, UserRole } from '../../services/unifiedAuthService';
 import { redirectToRoleDashboard } from '../../utils/roleBasedRouter';
+import { supabase } from '../../lib/supabaseClient';
 
 interface LoginState {
   email: string;
@@ -164,9 +165,23 @@ const UnifiedLogin = () => {
 
       login(userData);
 
-      // Step 5: Check for return URL (invitation flow) or redirect to role-specific dashboard
+      // Check if user has restricted role (for students only)
+      if (state.selectedRole === 'student') {
+        const { data: userRoleData } = await supabase
+          .from('rbac_user_roles')
+          .select('role_id, rbac_roles!inner(role_key)')
+          .eq('user_id', authResult.user.id)
+          .eq('is_active', true)
+          .single();
+        
+        if (userRoleData?.rbac_roles?.role_key === 'demo_restricted') {
+          navigate('/restricted-access', { replace: true });
+          return;
+        }
+      }
+
+      // Check for return URL or redirect to dashboard
       if (returnUrl) {
-        // Clear the stored return URL
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
       } else {

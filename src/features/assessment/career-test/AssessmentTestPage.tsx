@@ -261,7 +261,7 @@ const buildSectionsWithQuestions = (
 const AssessmentTestPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { canTakeAdaptiveTest } = usePermissions();
+  const { canTakeAdaptiveTest, canStartAssessmentSection } = usePermissions();
 
   // Environment flags
   const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
@@ -2348,7 +2348,7 @@ const AssessmentTestPage: React.FC = () => {
                 (currentSection.id === 'knowledge' && questionsLoading)
               }
               onStart={handleStartSection}
-              canStart={!currentSection.isAdaptive || canTakeAdaptiveTest}
+              canStart={canStartAssessmentSection && (!currentSection.isAdaptive || canTakeAdaptiveTest)}
             />
           )}
 

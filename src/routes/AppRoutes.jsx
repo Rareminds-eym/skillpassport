@@ -5,6 +5,7 @@ import { PermissionGate } from "../rbac/components/PermissionGate";
 import ScrollToTop from "../components/ScrollToTop";
 import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 import OrganizationGuard from "../components/organization/OrganizationGuard";
+import RestrictedAccessGuard from "../components/RestrictedAccessGuard";
 
 import AdminLayout from "../layouts/AdminLayout";
 import EducatorLayout from "../layouts/EducatorLayout";
@@ -152,6 +153,7 @@ const RecruiterMessages = lazy(() => import("../pages/recruiter/Messages"));
 const ProjectHiringWithNav = lazy(() => import("../pages/recruiter/ProjectHiringWithNav"));
 
 const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
+const RestrictedAccess = lazy(() => import("../pages/RestrictedAccess"));
 const Profile = lazy(() => import("../pages/student/Profile"));
 const MySkills = lazy(() => import("../pages/student/MySkills"));
 const MyLearning = lazy(() => import("../pages/student/MyLearning"));
@@ -554,6 +556,9 @@ const AppRoutes = () => {
           <Route path="/password-reset" element={<TokenPasswordReset />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/debug-roles" element={<DebugRoles />} />
+          
+          {/* Restricted Access Page */}
+          <Route path="/restricted-access" element={<RestrictedAccess />} />
 
           {/* Deprecated login routes - redirect to unified login */}
           <Route path="/login/student" element={<Navigate to="/login" replace />} />
@@ -869,13 +874,15 @@ const AppRoutes = () => {
         <Route
           path="/student/*"
           element={
-            <SubscriptionProtectedRoute
-              allowedRoles={STUDENT_ROLES}
-              requireSubscription={true}
-              subscriptionFallbackPath="/subscription/plans?type=student"
-            >
-              <StudentLayout />
-            </SubscriptionProtectedRoute>
+            <RestrictedAccessGuard>
+              <SubscriptionProtectedRoute
+                allowedRoles={STUDENT_ROLES}
+                requireSubscription={true}
+                subscriptionFallbackPath="/subscription/plans?type=student"
+              >
+                <StudentLayout />
+              </SubscriptionProtectedRoute>
+            </RestrictedAccessGuard>
           }
         >
           <Route path="dashboard" element={<StudentDashboard />} />
