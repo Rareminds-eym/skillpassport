@@ -108,15 +108,6 @@ const RestrictedAccess = () => {
               </div>
             </div>
 
-            {/* Sign Out Button */}
-            <div className="pt-4">
-              <button
-                onClick={handleSignOut}
-                className="w-full py-3 px-6 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-semibold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                Sign Out
-              </button>
-            </div>
           </div>
         </div>
 
