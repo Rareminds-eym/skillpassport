@@ -271,7 +271,10 @@ const ModernLearningCard = ({
   const renderListCertificateButtons = () => (
     <div className="flex items-center gap-2 flex-wrap">
       <button
-        onClick={handleContinue}
+        onClick={(e) => {
+          e.preventDefault();
+          setShowDemoModal(true);
+        }}
         className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl sm:rounded-2xl font-semibold text-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/25"
       >
         <Play className="w-4 h-4" />
@@ -376,7 +379,10 @@ const ModernLearningCard = ({
     <div className="space-y-2">
       {/* View Course Button */}
       <button
-        onClick={handleContinue}
+        onClick={(e) => {
+          e.preventDefault();
+          setShowDemoModal(true);
+        }}
         className="flex items-center justify-center gap-2 w-full py-3 rounded-xl sm:rounded-2xl font-bold text-sm bg-gradient-to-r from-indigo-500 to-indigo-600 text-white hover:from-indigo-600 hover:to-indigo-700 transition-all duration-300 hover:scale-105 shadow-lg shadow-indigo-500/25"
       >
         <Play className="w-4 sm:w-5 h-4 sm:h-5" />

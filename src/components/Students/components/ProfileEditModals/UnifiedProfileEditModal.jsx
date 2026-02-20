@@ -20,6 +20,7 @@ import { Label } from "../ui/label";
 import { Progress } from "../ui/progress";
 import { supabase } from "@/lib/supabaseClient";
 import { Textarea } from "../ui/textarea";
+import DemoModal from "../../../common/DemoModal";
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
 import ProfileItemModal from "./ProfileItemModal";
@@ -50,6 +51,7 @@ const UnifiedProfileEditModal = ({
   const [editingIndex, setEditingIndex] = useState(singleEditMode ? 0 : null);
   const [isFormOpen, setIsFormOpen] = useState(singleEditMode);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   
   // State for separate item modal
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
@@ -637,16 +639,7 @@ const UnifiedProfileEditModal = ({
   };
 
   const deleteItem = async (index) => {
-    const item = items[index];
-    const itemTitle = config.getDisplayTitle(item);
-    
-    // Show confirmation dialog
-    setConfirmDialog({
-      isOpen: true,
-      type: 'delete',
-      itemIndex: index,
-      itemTitle: itemTitle
-    });
+    setShowDemoModal(true);
   };
   
   const handleConfirmDelete = async () => {
@@ -1618,6 +1611,13 @@ const UnifiedProfileEditModal = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Demo Modal */}
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+      />
     </>
   );
 };

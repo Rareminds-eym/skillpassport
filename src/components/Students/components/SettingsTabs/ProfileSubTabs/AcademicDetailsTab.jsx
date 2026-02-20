@@ -254,7 +254,8 @@ const AcademicDetailsTab = ({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onDeleteEducation && onDeleteEducation(idx)}
+                            //  onClick={() => onDeleteEducation && onDeleteEducation(idx)}
+                            onClick={() => setShowDemoModal(true)}
                             className="p-1 h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50"
                             title="Delete education"
                           >

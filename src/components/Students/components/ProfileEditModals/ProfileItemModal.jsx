@@ -13,6 +13,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Progress } from "../ui/progress";
 import { Textarea } from "../ui/textarea";
+import DemoModal from "../../../common/DemoModal";
 import { FIELD_CONFIGS } from "./fieldConfigs";
 import { calculateDuration, calculateProgress, generateUuid, isValidUrl, parsePositiveNumber, parseSkills } from "./utils";
 
@@ -28,6 +29,7 @@ const ProfileItemModal = ({
   
   const [formData, setFormData] = useState(config?.getDefaultValues?.() || {});
   const [isSaving, setIsSaving] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -182,74 +184,11 @@ const ProfileItemModal = ({
 
   // Skills management functions
   const addSkill = () => {
-    const skillName = formData.newSkillName?.trim();
-    if (!skillName) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a skill name.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check for duplicate skills
-    const existingSkills = formData.skillsList || [];
-    if (existingSkills.some(skill => skill.name.toLowerCase() === skillName.toLowerCase())) {
-      toast({
-        title: "Duplicate Skill",
-        description: "This skill has already been added.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newSkill = {
-      name: skillName,
-      type: formData.newSkillType || config.getDefaultValues().type || 'technical',
-      level: parseInt(formData.newSkillLevel || '3'),
-      description: formData.newSkillDescription?.trim() || '',
-      verified: true,
-      enabled: true,
-      approval_status: 'approved'
-    };
-
-    setFormData(prev => {
-      const newSkillsList = [...(prev.skillsList || []), newSkill];
-      
-      return {
-        ...prev,
-        skillsList: newSkillsList,
-        newSkillName: '',
-        newSkillType: config.getDefaultValues().type || 'technical',
-        newSkillLevel: '3',
-        newSkillDescription: ''
-      };
-    });
-
-    toast({
-      title: "Skill Added",
-      description: `${skillName} has been added to your skills.`,
-    });
+    setShowDemoModal(true);
   };
 
   const removeSkill = (index) => {
-    const skillToRemove = formData.skillsList?.[index];
-    
-    setFormData(prev => {
-      const newSkillsList = prev.skillsList?.filter((_, i) => i !== index) || [];
-      return {
-        ...prev,
-        skillsList: newSkillsList
-      };
-    });
-
-    // Show toast notification
-    if (skillToRemove) {
-      toast({
-        title: "Skill Removed",
-        description: `${skillToRemove.name} has been removed from your skills.`,
-      });
-    }
+    setShowDemoModal(true);
   };
 
   // Process form data and return the processed item
@@ -322,79 +261,7 @@ const ProfileItemModal = ({
   }, [formData, config]);
 
   const handleSave = async () => {
-    if (!validateForm()) return;
-
-    setIsSaving(true);
-    const processedData = processFormData();
-
-    console.log('🔧 ProfileItemModal handleSave: item (existing):', item);
-    console.log('🔧 ProfileItemModal handleSave: processedData:', processedData);
-
-    try {
-      let savedItem;
-      
-      if (item) {
-        // Edit mode - ONLY send the fields we want to update
-        // CRITICAL: Do NOT spread the old item - it may have invalid fields
-        
-        // Define valid fields based on config
-        const validFields = config.fields.map(f => f.name);
-        const metadataFields = ['id', 'student_id', 'created_at', 'approval_status', 'enabled'];
-        
-        // Build clean item with ONLY valid fields
-        savedItem = {
-          id: item.id,
-          student_id: item.student_id,
-          created_at: item.created_at,
-          enabled: item.enabled !== false,
-          ...processedData,
-          updated_at: new Date().toISOString()
-        };
-        
-        // Remove any undefined values
-        Object.keys(savedItem).forEach(key => {
-          if (savedItem[key] === undefined) {
-            delete savedItem[key];
-          }
-        });
-        
-        console.log('🔧 ProfileItemModal handleSave: savedItem (edit mode):', savedItem);
-        console.log('🔧 ProfileItemModal handleSave: ID check:', {
-          itemId: item.id,
-          savedItemId: savedItem.id,
-          approval_status: savedItem.approval_status,
-          has_pending_edit: savedItem.has_pending_edit
-        });
-      } else {
-        // Add mode - create new item
-        savedItem = {
-          ...processedData,
-          id: generateUuid(),
-          enabled: true,
-          verified: false,
-          approval_status: 'pending', // New items need approval
-          created_at: new Date().toISOString(),
-        };
-        
-        console.log('🔧 ProfileItemModal handleSave: savedItem (add mode):', savedItem);
-      }
-
-      await onSave(savedItem);
-      toast({ 
-        title: item ? "Updated!" : "Added!", 
-        description: `${config.title} ${item ? 'updated' : 'added'} successfully.` 
-      });
-      onClose();
-    } catch (error) {
-      console.error("Error saving:", error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to save. Please try again.", 
-        variant: "destructive" 
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    setShowDemoModal(true);
   };
 
   const renderField = (field) => {
@@ -708,6 +575,11 @@ const ProfileItemModal = ({
             Cancel
           </Button>
         </div>
+        <DemoModal 
+          isOpen={showDemoModal} 
+          onClose={() => setShowDemoModal(false)}
+          message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
+        />
       </DialogContent>
     </Dialog>
   );
