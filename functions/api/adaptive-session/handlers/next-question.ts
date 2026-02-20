@@ -145,13 +145,15 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         console.error('❌ [NextQuestionHandler] Exclusion list validation failed:', exclusionValidation.reason);
       }
 
-      // Select a subtag that maintains balance
+      // Select a random subtag (avoiding last used to prevent sequential repeats)
       const lastSubtag = currentPhaseQuestions.length > 0
         ? currentPhaseQuestions[currentPhaseQuestions.length - 1]?.subtag
         : null;
 
       const availableSubtags = ALL_SUBTAGS.filter(s => s !== lastSubtag);
-      const selectedSubtag = availableSubtags[Math.floor(Math.random() * availableSubtags.length)] || ALL_SUBTAGS[0];
+      const selectedSubtag = availableSubtags.length > 0
+        ? availableSubtags[Math.floor(Math.random() * availableSubtags.length)]
+        : ALL_SUBTAGS[Math.floor(Math.random() * ALL_SUBTAGS.length)];
 
       console.log('🎯 [NextQuestionHandler] Fetching adaptive question from database:', {
         difficulty: currentDifficulty,

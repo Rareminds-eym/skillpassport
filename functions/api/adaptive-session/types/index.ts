@@ -18,9 +18,9 @@ export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary';
 
 /**
  * Test phases in the adaptive aptitude test flow
- * - diagnostic_screener: Initial 8 questions to classify student tier (L/M/H)
- * - adaptive_core: Exactly 36 questions with adaptive difficulty adjustment
- * - stability_confirmation: Final 6 questions to confirm final aptitude level
+ * - diagnostic_screener: Initial 8 questions (Q1-Q8) to classify student tier (L/M/H) - all at difficulty 3
+ * - adaptive_core: 36 questions (Q9-Q44) with adaptive difficulty adjustment (+1 correct, -1 wrong)
+ * - stability_confirmation: Final 6 questions (Q45-Q50) to confirm final aptitude level - fixed at provisional difficulty
  */
 export type TestPhase = 'diagnostic_screener' | 'adaptive_core' | 'stability_confirmation';
 
@@ -378,13 +378,12 @@ export interface AdaptiveTestConfig {
 /**
  * Default configuration for the adaptive aptitude test
  * 
- * Question Pattern (9-45 QUESTIONS):
+ * Question Pattern (50 QUESTIONS TOTAL):
  * - Phase 1 (Diagnostic Screener): Q1-Q8 all at Level 3 (baseline) - 8 questions
- * - Phase 2 (Adaptive Core): Q9-Q39 truly adaptive based on performance - 1-31 questions (VARIABLE)
- * - Phase 3 (Stability Confirmation): Q40-Q45 at final level - 6 questions
+ * - Phase 2 (Adaptive Core): Q9-Q44 truly adaptive based on performance - 36 questions (FIXED)
+ * - Phase 3 (Stability Confirmation): Q45-Q50 at final level - 6 questions
  * 
- * Minimum: 9 questions (8 diagnostic + 1 adaptive)
- * Maximum: 45 questions (8 diagnostic + 31 adaptive + 6 stability)
+ * Total: 50 questions (8 diagnostic + 36 adaptive + 6 stability)
  */
 export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
   phases: {
@@ -402,15 +401,15 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     },
     adaptive_core: {
       phase: 'adaptive_core',
-      minQuestions: 1,
-      maxQuestions: 31,  // Variable 1-31 questions based on performance
+      minQuestions: 36,
+      maxQuestions: 36,  // FIXED 36 questions for adaptive core (Q9-Q44)
       maxConsecutiveSameSubtag: 3,
       maxConsecutiveSameDirectionJumps: 3,
     },
     stability_confirmation: {
       phase: 'stability_confirmation',
       minQuestions: 6,
-      maxQuestions: 6,  // 6 questions for stability
+      maxQuestions: 6,  // 6 questions for stability (Q45-Q50)
       maxConsecutiveSameSubtag: 2,
     },
   },
@@ -419,7 +418,7 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     M: 3,
     H: 4,
   },
-  minimumQuestionsForStop: 9,  // Minimum 9 total questions (8 diagnostic + 1 adaptive)
+  minimumQuestionsForStop: 44,  // Minimum 44 total questions (8 diagnostic + 36 adaptive)
   consistencyWindowSize: 8,     // Check last 8 questions for consistency
   maxDirectionChangesForHighConfidence: 2,
   maxDirectionChangesForMediumConfidence: 4,

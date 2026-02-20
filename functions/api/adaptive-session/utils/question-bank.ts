@@ -21,14 +21,15 @@ import type { GradeLevel, DifficultyLevel, Subtag, Question, TestPhase } from '.
 
 /**
  * Maps dimension codes to subtags
+ * Database dimensions: AR, DI, LR, PS, QR, ST
  */
 const DIMENSION_TO_SUBTAG: Record<string, Subtag> = {
-  'QR': 'numerical_reasoning',
-  'LR': 'logical_reasoning',
-  'SR': 'spatial_reasoning',
-  'PAR': 'pattern_recognition',
-  'DI': 'data_interpretation',
-  'AA': 'verbal_reasoning',
+  'QR': 'numerical_reasoning',      // Quantitative Reasoning
+  'LR': 'logical_reasoning',         // Logical Reasoning
+  'ST': 'spatial_reasoning',         // Spatial Thinking
+  'AR': 'pattern_recognition',       // Abstract Reasoning
+  'DI': 'data_interpretation',       // Data Interpretation
+  'PS': 'verbal_reasoning',          // Problem Solving (mapped to verbal)
 };
 
 /**
@@ -110,7 +111,7 @@ function mapToQuestion(row: any, phase: TestPhase, gradeLevel: GradeLevel): Ques
 
 /**
  * Fetch diagnostic screener questions (8 questions at difficulty 3)
- * Ensures balanced coverage across all cognitive dimensions
+ * Fully randomized selection with no sequential dimension repeats
  */
 export async function fetchDiagnosticQuestions(
   supabase: SupabaseClient,
@@ -126,81 +127,71 @@ export async function fetchDiagnosticQuestions(
     excludeCount: excludeIds.length
   });
   
-  // Fetch questions grouped by dimension for balanced coverage
-  const dimensions = ['QR', 'LR', 'SR', 'PAR', 'DI', 'AA'];
-  const questionsPerDimension = Math.ceil(8 / dimensions.length); // ~2 per dimension
-  const allQuestions: any[] = [];
+  // Fetch all available questions at difficulty 3
+  let query = supabase
+    .from('personal_assessment_questions')
+    .select('id, metadata, question_text, options, correct_answer, description')
+    .contains('metadata', { grade: grades[0] })
+    .eq('metadata->>difficulty_rank', '3')
+    .limit(100); // Fetch large pool for randomization
   
-  for (const dimension of dimensions) {
-    let query = supabase
-      .from('personal_assessment_questions')
-      .select('id, metadata, question_text, options, correct_answer, description')
-      .contains('metadata', { grade: grades[0] })
-      .eq('metadata->>difficulty_rank', '3')
-      .eq('metadata->>dimension', dimension)
-      .limit(questionsPerDimension * 3); // Fetch extra for randomization
-    
-    if (excludeIds.length > 0) {
-      query = query.not('id', 'in', `(${excludeIds.join(',')})`);
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.warn(`⚠️ [QuestionBank] Error fetching ${dimension} questions:`, error);
-      continue;
-    }
-    
-    if (data && data.length > 0) {
-      const shuffled = shuffle(data);
-      allQuestions.push(...shuffled.slice(0, questionsPerDimension));
-      console.log(`✅ [QuestionBank] Fetched ${Math.min(data.length, questionsPerDimension)} ${dimension} questions`);
-    } else {
-      console.warn(`⚠️ [QuestionBank] No ${dimension} questions available`);
-    }
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
   }
   
-  // If we don't have enough questions, fill with any available at difficulty 3
-  if (allQuestions.length < 8) {
-    console.warn(`⚠️ [QuestionBank] Only ${allQuestions.length} dimension-specific questions, fetching additional...`);
-    
-    const usedIds = [...excludeIds, ...allQuestions.map(q => q.id)];
-    
-    let fillQuery = supabase
-      .from('personal_assessment_questions')
-      .select('id, metadata, question_text, options, correct_answer, description')
-      .contains('metadata', { grade: grades[0] })
-      .eq('metadata->>difficulty_rank', '3')
-      .limit(8 - allQuestions.length);
-    
-    if (usedIds.length > 0) {
-      fillQuery = fillQuery.not('id', 'in', `(${usedIds.join(',')})`);
-    }
-    
-    const { data: fillData } = await fillQuery;
-    
-    if (fillData && fillData.length > 0) {
-      allQuestions.push(...fillData);
-      console.log(`✅ [QuestionBank] Added ${fillData.length} fill questions`);
-    }
-  }
+  const { data, error } = await query;
   
-  if (allQuestions.length === 0) {
+  if (error || !data || data.length === 0) {
     throw new Error(`No diagnostic questions available for grades ${grades.join(', ')}`);
   }
   
-  // Final shuffle and select exactly 8 (or less if not enough available)
-  const finalQuestions = shuffle(allQuestions).slice(0, 8);
+  // Shuffle all questions
+  const shuffled = shuffle(data);
   
-  console.log(`✅ [QuestionBank] Returning ${finalQuestions.length} diagnostic questions with dimension distribution:`, 
-    finalQuestions.reduce((acc, q) => {
+  // Select 8 questions ensuring no consecutive same dimensions
+  const selected: any[] = [];
+  let lastDimension: string | null = null;
+  
+  for (const question of shuffled) {
+    const dimension = question.metadata?.dimension || question.dimension;
+    
+    // Skip if same as last dimension
+    if (dimension === lastDimension) {
+      continue;
+    }
+    
+    selected.push(question);
+    lastDimension = dimension;
+    
+    if (selected.length === 8) {
+      break;
+    }
+  }
+  
+  // If we couldn't get 8 without repeats, fill remaining with any available
+  if (selected.length < 8) {
+    const usedIds = selected.map(q => q.id);
+    for (const question of shuffled) {
+      if (!usedIds.includes(question.id)) {
+        selected.push(question);
+        if (selected.length === 8) break;
+      }
+    }
+  }
+  
+  if (selected.length === 0) {
+    throw new Error(`No diagnostic questions available for grades ${grades.join(', ')}`);
+  }
+  
+  console.log(`✅ [QuestionBank] Returning ${selected.length} diagnostic questions with dimension distribution:`, 
+    selected.reduce((acc, q) => {
       const dim = q.metadata?.dimension || q.dimension;
       acc[dim] = (acc[dim] || 0) + 1;
       return acc;
     }, {} as Record<string, number>)
   );
   
-  return finalQuestions.map(row => mapToQuestion(row, 'diagnostic_screener', gradeLevel));
+  return selected.map(row => mapToQuestion(row, 'diagnostic_screener', gradeLevel));
 }
 
 /**
@@ -358,7 +349,7 @@ export async function fetchAdaptiveQuestion(
 
 /**
  * Fetch stability confirmation questions (6 questions at provisional difficulty)
- * Ensures balanced coverage across cognitive dimensions
+ * Fully randomized selection with no sequential dimension repeats
  */
 export async function fetchStabilityQuestions(
   supabase: SupabaseClient,
@@ -375,78 +366,69 @@ export async function fetchStabilityQuestions(
     excludeCount: excludeIds.length
   });
   
-  // Fetch questions grouped by dimension for balanced coverage
-  const dimensions = ['QR', 'LR', 'SR', 'PAR', 'DI', 'AA'];
-  const questionsPerDimension = 1; // 1 per dimension = 6 total
-  const allQuestions: any[] = [];
+  // Fetch all available questions at this difficulty
+  let query = supabase
+    .from('personal_assessment_questions')
+    .select('id, metadata, question_text, options, correct_answer, description')
+    .contains('metadata', { grade: grades[0] })
+    .eq('metadata->>difficulty_rank', difficulty.toString())
+    .limit(100); // Fetch large pool for randomization
   
-  for (const dimension of dimensions) {
-    let query = supabase
-      .from('personal_assessment_questions')
-      .select('id, metadata, question_text, options, correct_answer, description')
-      .contains('metadata', { grade: grades[0] })
-      .eq('metadata->>difficulty_rank', difficulty.toString())
-      .eq('metadata->>dimension', dimension)
-      .limit(questionsPerDimension * 3); // Fetch extra for randomization
-    
-    if (excludeIds.length > 0) {
-      query = query.not('id', 'in', `(${excludeIds.join(',')})`);
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.warn(`⚠️ [QuestionBank] Error fetching ${dimension} stability questions:`, error);
-      continue;
-    }
-    
-    if (data && data.length > 0) {
-      const shuffled = shuffle(data);
-      allQuestions.push(...shuffled.slice(0, questionsPerDimension));
-    } else {
-      console.warn(`⚠️ [QuestionBank] No ${dimension} stability questions available`);
-    }
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
   }
   
-  // If we don't have enough questions, fill with any available at this difficulty
-  if (allQuestions.length < 6) {
-    console.warn(`⚠️ [QuestionBank] Only ${allQuestions.length} dimension-specific questions, fetching additional...`);
-    
-    const usedIds = [...excludeIds, ...allQuestions.map(q => q.id)];
-    
-    let fillQuery = supabase
-      .from('personal_assessment_questions')
-      .select('id, metadata, question_text, options, correct_answer, description')
-      .contains('metadata', { grade: grades[0] })
-      .eq('metadata->>difficulty_rank', difficulty.toString())
-      .limit(6 - allQuestions.length);
-    
-    if (usedIds.length > 0) {
-      fillQuery = fillQuery.not('id', 'in', `(${usedIds.join(',')})`);
-    }
-    
-    const { data: fillData } = await fillQuery;
-    
-    if (fillData && fillData.length > 0) {
-      allQuestions.push(...fillData);
-      console.log(`✅ [QuestionBank] Added ${fillData.length} fill questions`);
-    }
-  }
+  const { data, error } = await query;
   
-  if (allQuestions.length === 0) {
+  if (error || !data || data.length === 0) {
     throw new Error(`No stability questions available for grades ${grades.join(', ')} at difficulty ${difficulty}`);
   }
   
-  // Final shuffle and select exactly 6 (or less if not enough available)
-  const finalQuestions = shuffle(allQuestions).slice(0, 6);
+  // Shuffle all questions
+  const shuffled = shuffle(data);
   
-  console.log(`✅ [QuestionBank] Returning ${finalQuestions.length} stability questions with dimension distribution:`, 
-    finalQuestions.reduce((acc, q) => {
+  // Select 6 questions ensuring no consecutive same dimensions
+  const selected: any[] = [];
+  let lastDimension: string | null = null;
+  
+  for (const question of shuffled) {
+    const dimension = question.metadata?.dimension || question.dimension;
+    
+    // Skip if same as last dimension
+    if (dimension === lastDimension) {
+      continue;
+    }
+    
+    selected.push(question);
+    lastDimension = dimension;
+    
+    if (selected.length === 6) {
+      break;
+    }
+  }
+  
+  // If we couldn't get 6 without repeats, fill remaining with any available
+  if (selected.length < 6) {
+    const usedIds = selected.map(q => q.id);
+    for (const question of shuffled) {
+      if (!usedIds.includes(question.id)) {
+        selected.push(question);
+        if (selected.length === 6) break;
+      }
+    }
+  }
+  
+  if (selected.length === 0) {
+    throw new Error(`No stability questions available for grades ${grades.join(', ')} at difficulty ${difficulty}`);
+  }
+  
+  console.log(`✅ [QuestionBank] Returning ${selected.length} stability questions with dimension distribution:`, 
+    selected.reduce((acc, q) => {
       const dim = q.metadata?.dimension || q.dimension;
       acc[dim] = (acc[dim] || 0) + 1;
       return acc;
     }, {} as Record<string, number>)
   );
   
-  return finalQuestions.map(row => mapToQuestion(row, 'stability_confirmation', gradeLevel));
+  return selected.map(row => mapToQuestion(row, 'stability_confirmation', gradeLevel));
 }
