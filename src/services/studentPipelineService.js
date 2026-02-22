@@ -167,7 +167,10 @@ export class StudentPipelineService {
               mode,
               department,
               recruiter_id,
-              experience_level
+              experience_level,
+              status,
+              openings_count,
+              is_active
             )
           `)
           .eq('student_id', studentId)

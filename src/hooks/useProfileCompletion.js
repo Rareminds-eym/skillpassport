@@ -85,9 +85,7 @@ export const useProfileCompletion = (studentId, enabled = true) => {
   };
 
   // Check if profile meets minimum requirements for job applications
-  const canApplyToJobs = () => {
-    return profileStatus.isComplete || profileStatus.completionPercentage >= 80;
-  };
+  const canApplyToJobs = profileStatus.isComplete || profileStatus.completionPercentage >= 80;
 
   return {
     ...profileStatus,
