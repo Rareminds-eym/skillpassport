@@ -74,10 +74,10 @@ export const initializeHandler: PagesFunction = async (context) => {
     console.log('✅ [InitializeHandler] Found student record:', { studentId, grade: studentGradeString });
 
     // Validate gradeLevel
-    const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
+    const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary', 'after_12', 'undergraduate', 'postgraduate'];
     if (!validGradeLevels.includes(gradeLevel)) {
       return jsonResponse(
-        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary' },
+        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, after_12, undergraduate, postgraduate' },
         400
       );
     }

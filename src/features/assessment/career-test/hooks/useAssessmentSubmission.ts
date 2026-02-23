@@ -410,8 +410,31 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
           if (!studentError && student) {
             // Extract degree level from grade or program
-            const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null): string | null => {
+            const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null, programName?: string | null): string | null => {
               if (programDegreeLevel) return programDegreeLevel;
+              
+              // Try to extract from program name first
+              if (programName) {
+                const programLower = programName.toLowerCase();
+                if (programLower.includes('bachelor') || programLower.includes('b.tech') || 
+                    programLower.includes('btech') || programLower.includes('bca') || 
+                    programLower.includes('b.sc') || programLower.includes('bsc') ||
+                    programLower.includes('b.com') || programLower.includes('bcom') || 
+                    programLower.includes('ba ') || programLower.includes('bba')) {
+                  return 'undergraduate';
+                }
+                if (programLower.includes('master') || programLower.includes('m.tech') || 
+                    programLower.includes('mtech') || programLower.includes('mca') || 
+                    programLower.includes('mba') || programLower.includes('m.sc') || 
+                    programLower.includes('msc')) {
+                  return 'postgraduate';
+                }
+                if (programLower.includes('diploma')) {
+                  return 'diploma';
+                }
+              }
+              
+              // Fallback to grade string
               if (!grade) return null;
               const gradeStr = grade.toLowerCase();
               if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') ||
@@ -441,13 +464,33 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             const programCode = (student.programs as any)?.code || null;
             const degreeLevel = extractDegreeLevel(
               student.grade,
-              (student.programs as any)?.degree_level
+              (student.programs as any)?.degree_level,
+              programName
             );
 
+            // ✅ FIX: For college students with null grade, derive from program name
+            let enhancedGrade = student.grade;
+            if (!enhancedGrade && programName) {
+              // Extract degree level from program name if grade is null
+              const programLower = programName.toLowerCase();
+              if (programLower.includes('bachelor') || programLower.includes('b.tech') || 
+                  programLower.includes('bca') || programLower.includes('b.sc') || 
+                  programLower.includes('b.com') || programLower.includes('bba')) {
+                enhancedGrade = 'UG - ' + programName;
+              } else if (programLower.includes('master') || programLower.includes('m.tech') || 
+                         programLower.includes('mca') || programLower.includes('mba') || 
+                         programLower.includes('m.sc')) {
+                enhancedGrade = 'PG - ' + programName;
+              } else if (programLower.includes('diploma')) {
+                enhancedGrade = 'Diploma - ' + programName;
+              } else {
+                enhancedGrade = programName; // Fallback to program name
+              }
+            }
+            
             // ✅ FIX: For higher_secondary, include the selected stream in rawGrade
             // This ensures AI knows if student is in Arts/Science/Commerce
-            let enhancedGrade = student.grade;
-            if (gradeLevel === 'higher_secondary' && studentStream) {
+            if (gradeLevel === 'higher_secondary' && studentStream && enhancedGrade) {
               // Map stream ID to readable name
               const streamMap: Record<string, string> = {
                 'science': 'Science',
@@ -455,7 +498,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
                 'arts': 'Arts'
               };
               const streamName = streamMap[studentStream] || studentStream;
-              enhancedGrade = `${student.grade} - ${streamName}`;
+              enhancedGrade = `${enhancedGrade} - ${streamName}`;
               console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}"`);
             }
 
@@ -469,6 +512,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
               selectedCategory: derivedCategory // Include the category (arts/science/commerce)
             };
 
+            console.log('✅ [STUDENT-CONTEXT] Built student context:', JSON.stringify(studentContext, null, 2));
 
           } else {
             console.warn('⚠️ Could not fetch student context:', studentError?.message);
@@ -533,24 +577,49 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
       // ✅ CRITICAL FIX: Store studentContext in the attempt for later use
       // This ensures the AI analysis can access program information when generating career clusters
-      if (attemptId && Object.keys(studentContext).length > 0) {
-        try {
+      console.log('📝 [STUDENT-CONTEXT] Pre-update check:', {
+        hasAttemptId: !!attemptId,
+        attemptId: attemptId,
+        contextKeys: Object.keys(studentContext),
+        contextLength: Object.keys(studentContext).length,
+        contextData: studentContext
+      });
 
-          const { error: contextError } = await supabase
-            .from('personal_assessment_attempts')
-            .update({
-              student_context: studentContext
-            })
-            .eq('id', attemptId);
+      if (attemptId) {
+        // Check if studentContext has any meaningful data (not just null/undefined values)
+        const hasMeaningfulData = Object.values(studentContext).some(val => val !== null && val !== undefined && val !== '');
+        
+        console.log('📝 [STUDENT-CONTEXT] Has meaningful data:', hasMeaningfulData);
 
-          if (contextError) {
-            console.warn('⚠️ Could not store student context:', contextError.message);
-          } else {
+        if (hasMeaningfulData) {
+          try {
+            console.log('📝 [STUDENT-CONTEXT] Updating attempt with context:', {
+              attemptId,
+              contextData: JSON.stringify(studentContext, null, 2)
+            });
 
+            const { data: updateData, error: contextError } = await supabase
+              .from('personal_assessment_attempts')
+              .update({
+                student_context: studentContext
+              })
+              .eq('id', attemptId)
+              .select();
+
+            if (contextError) {
+              console.error('❌ [STUDENT-CONTEXT] Failed to store student context:', contextError);
+            } else {
+              console.log('✅ [STUDENT-CONTEXT] Successfully stored student context in attempt');
+              console.log('✅ [STUDENT-CONTEXT] Updated record:', updateData);
+            }
+          } catch (contextUpdateError) {
+            console.error('❌ [STUDENT-CONTEXT] Exception storing student context:', contextUpdateError);
           }
-        } catch (contextUpdateError) {
-          console.error('❌ Error storing student context:', contextUpdateError);
+        } else {
+          console.warn('⚠️ [STUDENT-CONTEXT] Skipping update - no meaningful data in context');
         }
+      } else {
+        console.error('❌ [STUDENT-CONTEXT] No attemptId available for context update');
       }
 
       // Save completion to database

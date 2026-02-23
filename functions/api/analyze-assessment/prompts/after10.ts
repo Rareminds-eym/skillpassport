@@ -15,8 +15,9 @@ function processAdaptiveResults(results: AdaptiveAptitudeResults): {
   section: string;
   isHighAptitude: boolean;
 } {
-  const level = results.aptitudeLevel;
-  const accuracy = results.overallAccuracy;
+  // Fix 3: Add null guards for adaptive results
+  const level = results.aptitudeLevel ?? 2; // default to 2 if undefined
+  const accuracy = results.overallAccuracy ?? 50; // default to 50% if undefined
   const isHighAptitude = level >= 4 || accuracy >= 75;
   
   const levelLabels: Record<number, string> = {
@@ -27,6 +28,7 @@ function processAdaptiveResults(results: AdaptiveAptitudeResults): {
     5: 'Exceptional'
   };
   
+  // Fix 3: Add null guard for subtags
   const subtags = results.accuracyBySubtag || {};
   const sortedSubtags = Object.entries(subtags)
     .map(([name, data]: [string, any]) => ({
@@ -69,12 +71,257 @@ Consider competitive pathways:
 - Any Stream → UPSC preparation (start early), NDA, CLAT
 ` : ''}
 
-**IMPORTANT**: Use these adaptive test results to recommend the most suitable stream and career paths.`;
+**IMPORTANT**: Use these adaptive test results to recommend the most suitable stream and career paths.
+
+## ═══════════════════════════════════════════════════════════════════════════
+## YOUR ANALYTICAL THINKING PROCESS (Complete this BEFORE generating output)
+## ═══════════════════════════════════════════════════════════════════════════
+
+Before recommending ANY stream, you MUST complete this internal reasoning:
+
+### THINK STEP 1: Analyze Adaptive Aptitude Results (HIGHEST PRIORITY)
+- Look at aptitude_level (1-5), overall_accuracy (%), confidence_tag, path_classification
+- Check performance at each difficulty level - especially difficulty 3 (mid-level)
+- Ask yourself: "Is this student's cognitive performance STABLE or FLUCTUATING?"
+- Ask yourself: "Can this student handle sustained academic pressure for 2 years?"
+- **CRITICAL DECISION RULES**:
+  * IF aptitude_level ≤ 2 OR confidence = "low" OR path = "fluctuating" OR difficulty 3 accuracy < 40%:
+    → This student needs a MANAGEABLE stream, NOT the most demanding one
+    → **PCMB is OFF THE TABLE** (highest cognitive load - requires level 4+, 75%+ accuracy, high confidence)
+    → **PCM/PCB are RISKY** (high cognitive load - mark as "Moderate Fit" at best)
+    → **Commerce or Arts are SAFER** (moderate cognitive load - mark as "High Fit")
+
+### THINK STEP 2: Calculate RIASEC Scores Precisely
+- Go through every question, apply categoryMapping, compute exact scores
+- Identify top 3 RIASEC types with exact scores and percentages
+- Form the 3-letter RIASEC code (e.g., "IRA", "ASE", "ECS")
+- Ask yourself: "What SPECIFIC activities did this student choose?" (not just letters)
+
+### THINK STEP 3: Map Cognitive Strengths to Stream Requirements
+**Stream Requirements (Academic Survivability):**
+- **Science PCM**: Numerical 65%+, Abstract 60%+, Stable performance, Confidence NOT low, Level 3+
+- **Science PCB**: Verbal 60%+, Numerical 55%+, Memory stability, Confidence NOT low, Level 3+
+- **Science PCMB**: Numerical 70%+, Abstract 70%+, Verbal 65%+, Level 4+, Confidence HIGH, Stable/Ascending path
+- **Commerce**: Numerical 55%+, Verbal 55%+, Stable attention, Level 2+ OK
+- **Arts/Humanities**: Any aptitude profile, Verbal/Creative strengths preferred, Level 2+ OK
+
+Ask yourself for EACH stream:
+- "Does this student MEET the threshold?" (Yes/No)
+- "Does this student have STABLE performance?" (Yes/No)
+- "Does this student have CONFIDENCE?" (Yes/No)
+- "Can this student SUSTAIN this for 2 years?" (Yes/No)
+
+If ANY answer is "No" → That stream is RISKY or OFF THE TABLE
+
+### THINK STEP 4: Match Interests to Streams (AFTER aptitude check)
+**RIASEC to Stream Mapping (Use as GUIDE, not absolute rule):**
+- High I + R → Science (PCM) IF aptitude supports it
+- High I + S → Science (PCB) IF aptitude supports it
+- High I + R + S → Science (PCMB) IF aptitude is EXCEPTIONAL (level 4+, 75%+, high confidence)
+- High E + C → Commerce IF aptitude supports it
+- High A + S → Arts/Humanities (always safe)
+- High A + E → Arts/Commerce hybrid
+
+**CRITICAL**: Interests show what they WANT. Aptitude shows what they CAN HANDLE.
+If interests say Science but aptitude says No → Recommend Commerce/Arts with STEM electives
+
+### THINK STEP 5: Make Final Stream Decision Using This Decision Tree
+
+**CRITICAL: Follow this decision tree EXACTLY. Do NOT skip steps.**
+
+**STEP 5A: Check Adaptive Aptitude Stability (HIGHEST PRIORITY)**
+
+**CRITICAL: Aptitude LEVEL takes precedence over confidence/path when level is 3+**
+
+IF (aptitude_level ≤ 2) OR (overall_accuracy < 50%):
+  → **Student has GENUINELY LOW aptitude**
+  → **PCMB is FORBIDDEN** (requires level 4+, 75%+ accuracy)
+  → **PCM/PCB are RISKY** (require level 3+, stable performance)
+  → **Commerce or Arts are RECOMMENDED** (manageable cognitive load)
+  → Decision logic:
+    * IF High E (Enterprising) OR High C (Conventional) → **Commerce (High Fit)**
+    * IF High A (Artistic) OR High S (Social) → **Arts/Humanities (High Fit)**
+    * ELSE → **Commerce (High Fit)** (safer default for low aptitude)
+  → Explanation: "Your aptitude profile shows [specific issue: low accuracy/level 2]. Starting with a manageable stream will help you build confidence and succeed. You can still pursue science/tech careers through alternative pathways like BCA, BSc IT, or Commerce with Computer Science."
+  → **STOP HERE - Do NOT proceed to Step 5B**
+
+ELSE IF (aptitude_level = 3) AND (confidence = "low" OR path = "fluctuating") AND (overall_accuracy < 60%):
+  → **Student has MODERATE aptitude but UNSTABLE performance**
+  → **PCMB is FORBIDDEN** (requires level 4+, high confidence)
+  → **PCM/PCB are RISKY** (require stable performance)
+  → **Commerce is RECOMMENDED** (manageable cognitive load, good career prospects)
+  → Decision logic:
+    * IF High E (Enterprising) OR High C (Conventional) OR Numerical ≥ 55% → **Commerce (High Fit)**
+    * IF High A (Artistic) OR High S (Social) → **Arts/Humanities (High Fit)** OR **Commerce (High Fit)** (choose based on numerical aptitude)
+    * ELSE → **Commerce (High Fit)** (safer default)
+  → Explanation: "Your aptitude level is moderate (level 3), but your performance shows [low confidence/fluctuating pattern]. Commerce offers a balanced path with strong career prospects while being more manageable than Science streams. You can still explore tech/analytical careers through Commerce with Computer Science or pursue BCA/BSc IT after 12th."
+  → **STOP HERE - Do NOT proceed to Step 5B**
+
+ELSE IF (aptitude_level ≥ 4) AND (confidence = "low" OR path = "fluctuating"):
+  → **Student has HIGH aptitude but UNSTABLE confidence/performance**
+  → **This is likely test anxiety or inconsistent preparation, NOT lack of ability**
+  → **PCMB is RISKY** (requires both high aptitude AND high confidence)
+  → **PCM/PCB are VIABLE** (aptitude level 4+ can handle it with support)
+  → **Commerce is SAFE** (leverages aptitude without overwhelming pressure)
+  → Decision logic:
+    * Check RIASEC interests FIRST (they have the ability, so follow their interests):
+      - IF High I (Investigative) AND (High R OR High E) AND Numerical ≥ 65% AND Abstract ≥ 60% → **Science PCM (High Fit)** + mention "Your aptitude level 4 shows strong capability. Focus on building consistency and managing test anxiety."
+      - IF High I (Investigative) AND High S (Social) AND Verbal ≥ 60% AND Numerical ≥ 55% → **Science PCB (High Fit)** + mention "Your aptitude level 4 shows strong capability. Focus on building consistency and managing test anxiety."
+      - IF High E (Enterprising) OR High C (Conventional) OR Numerical ≥ 55% → **Commerce (High Fit)** + mention "Your aptitude level 4 means you can excel in Commerce with less pressure than Science. This is a strategic choice, not a limitation."
+      - IF High A (Artistic) AND High S (Social) AND Low I (< 50%) → **Arts/Humanities (High Fit)** + mention "Your aptitude level 4 means you can excel in any stream. Arts aligns with your creative and social interests."
+    * **CRITICAL**: For aptitude level 4+, low confidence is NOT a reason to avoid their interest area - it's a reason to provide support and encouragement
+  → **STOP HERE - Do NOT proceed to Step 5B**
+
+**STEP 5B: For Stable Aptitude Students (level 3+, confidence NOT low, NOT fluctuating)**
+
+IF aptitude_level = 3 AND (confidence = "medium" OR "high") AND (path = "stable" OR "ascending"):
+  → **Student has MODERATE aptitude - can handle ONE demanding stream**
+  → Check numerical and abstract scores:
+    * IF Numerical ≥ 65% AND Abstract ≥ 60% AND (High I OR High R) → **Science PCM (Moderate Fit)** + mention "requires consistent effort and support"
+    * IF Verbal ≥ 60% AND Numerical ≥ 55% AND (High I OR High S) → **Science PCB (Moderate Fit)** + mention "requires consistent effort and support"
+    * IF Numerical ≥ 55% AND (High E OR High C) → **Commerce (High Fit)**
+    * ELSE → **Arts/Humanities (High Fit)**
+  → **PCMB is still OFF THE TABLE** (requires level 4+)
+
+**STEP 5C: For High Aptitude Students (level 4-5, confidence high, stable/ascending)**
+
+IF aptitude_level ≥ 4 AND confidence = "high" AND (path = "stable" OR "ascending"):
+  → **Student has STRONG aptitude - can handle demanding streams**
+  → Check for PCMB eligibility FIRST:
+    * IF Numerical ≥ 70% AND Abstract ≥ 70% AND Verbal ≥ 65% AND (High I+R+S combination) → **Science PCMB (High Fit)**
+    * ELSE check for PCM:
+      - IF Numerical ≥ 65% AND Abstract ≥ 60% AND (High I OR High R) → **Science PCM (High Fit)**
+    * ELSE check for PCB:
+      - IF Verbal ≥ 60% AND Numerical ≥ 55% AND (High I OR High S) → **Science PCB (High Fit)**
+    * ELSE check for Commerce:
+      - IF Numerical ≥ 55% AND (High E OR High C) → **Commerce (High Fit)**
+    * ELSE → **Arts/Humanities (High Fit)**
+
+**STEP 5D: Final Validation**
+- Confirm the recommended stream matches BOTH aptitude AND interests
+- If there's a mismatch (e.g., interests say Science but aptitude says Commerce), PRIORITIZE APTITUDE
+- Explain the mismatch clearly: "While you're interested in [X], your aptitude profile suggests [Y] would be more manageable. You can still pursue [X-related careers] through alternative pathways."
+
+**REMEMBER: NEVER recommend PCMB unless aptitude_level ≥ 4 AND Numerical ≥ 70% AND Abstract ≥ 70% AND Verbal ≥ 65% AND confidence = "high" AND path = "stable" or "ascending"**
+
+### THINK STEP 6: Derive Career Tracks from Student Profile (DO NOT SELECT FROM LISTS)
+
+**CRITICAL: You MUST derive careers from the student's actual profile, NOT select from the career tracks sections below.**
+
+The career tracks sections below are EXAMPLES ONLY to show you what types of careers exist in each stream. You MUST:
+
+1. **First, confirm which stream you recommended** in Step 5 (Science PCM/PCB/PCMB, Commerce, or Arts)
+2. **Analyze the student's top 3 RIASEC types** - What specific activities and interests do they show?
+3. **Review their cognitive strengths** - Which aptitude areas are strongest? (numerical, verbal, abstract, spatial)
+4. **Consider their personality traits** - Are they creative, analytical, people-oriented, detail-oriented?
+5. **Derive 3 career clusters** that sit at the intersection of:
+   - Their RIASEC interests (what they WANT to do)
+   - Their aptitude strengths (what they CAN do well)
+   - Their personality traits (HOW they work best)
+   - The recommended stream (what's ACCESSIBLE through this educational path)
+
+**DERIVATION RULES:**
+- **DO NOT copy job titles from the career tracks sections** - Use them as inspiration only
+- **DO NOT mix streams** - If you recommended Science PCM, derive ONLY Engineering/Tech/Research careers
+- **DO NOT show Arts careers if you recommended Science** - This is a critical error
+- **Each career cluster MUST pass the 3-check filter**:
+  1. Interest Check: Aligns with their top RIASEC types (cite specific scores)
+  2. Aptitude Check: Matches their cognitive strengths (cite specific accuracy %)
+  3. Personality Check: Fits their work style (cite specific traits)
+
+**EXAMPLE OF CORRECT DERIVATION:**
+- Student profile: RIASEC = IRA (Investigative 85%, Realistic 75%, Artistic 65%), Numerical 88%, Abstract 82%, High Openness 4.2, High Conscientiousness 4.0
+- Recommended stream: Science PCM
+- Derived Cluster 1: "Computational Design & Engineering" (NOT just "Technology & Innovation")
+  - Why: Combines I (analytical problem-solving) + R (building/creating) + A (creative design) + strong numerical/abstract aptitude + high openness
+  - Careers: Computational Designer, Algorithm Engineer, Data Visualization Specialist, Simulation Engineer
+  - Evidence: "Your Investigative score of 85% shows strong analytical thinking, Realistic 75% indicates hands-on problem-solving, and Artistic 65% suggests creative approach. Your numerical aptitude of 88% and abstract reasoning of 82% support complex computational work."
+
+**The career tracks sections below are REFERENCE MATERIAL ONLY - DO NOT copy from them directly.**
+
+## ═══════════════════════════════════════════════════════════════════════════
+
+**⚠️ CRITICAL DECISION RULE ⚠️**
+When recommending a stream, you MUST follow this priority order:
+
+**1. ADAPTIVE STABILITY CHECK (HIGHEST PRIORITY)**
+If adaptive aptitude results show:
+- confidence_tag = "low" 
+- path_classification = "fluctuating"
+- aptitude_level ≤ 2
+- accuracy at difficulty 3 < 40%
+
+Then:
+→ **AVOID recommending the most demanding streams (PCMB)**
+→ **Prefer stable pathways**: PCM or Commerce (based on interests)
+→ **Mention**: "This stream is achievable with consistent effort and structured support. Time management and conceptual clarity will be critical."
+→ **DO NOT recommend PCMB** - it has the highest cognitive load
+
+**2. PCMB SHOULD ONLY BE RECOMMENDED IF:**
+- aptitude_level ≥ 4 (Strong or Exceptional)
+- overall_accuracy ≥ 75%
+- numerical ≥ 70%
+- abstract ≥ 70%
+- confidence_tag = "high" or "medium"
+- path_classification = "consistent" or "ascending"
+
+**3. STREAM FIT SCORING (Use this, not just thresholds):**
+
+**Science PCM Fit:**
+- Numerical ≥ 65% AND Abstract ≥ 60%
+- Confidence NOT "low"
+- Stable performance across difficulty levels
+- If aptitude_level ≤ 2: Mark as "Moderate Fit" not "High Fit"
+
+**Science PCB Fit:**
+- Verbal ≥ 60% AND Numerical ≥ 55%
+- Memory & recall stability
+- If aptitude_level ≤ 2: Mark as "Moderate Fit"
+
+**Commerce Fit:**
+- Numerical ≥ 55% AND Verbal ≥ 55%
+- Stable attention and clerical skills
+- **SAFE CHOICE for aptitude_level ≤ 2**
+
+**Arts/Humanities Fit:**
+- Any aptitude profile works
+- Verbal or creative strengths preferred
+- **SAFE CHOICE for low aptitude or fluctuating performance**
+
+**4. INTERESTS SECOND (After aptitude stability check)**
+- Use RIASEC to choose between streams they CAN handle
+- Never recommend a stream if aptitude is insufficient or unstable
+
+**5. NEVER recommend a stream if:**
+- Aptitude is below threshold AND confidence is low
+- Performance is fluctuating AND stream is demanding
+- Student will likely struggle and burn out
+
+Example: If RIASEC shows High I+R (Science interests) BUT aptitude_level = 2, confidence = "low", fluctuating:
+→ Recommend Commerce or Arts with STEM electives
+→ Explain: "While you enjoy science, your current aptitude profile suggests starting with a less demanding stream. You can pursue science careers through alternative pathways."`;
 
   return { section, isHighAptitude };
 }
 
 export function buildAfter10Prompt(assessmentData: AssessmentData, answersHash: number): string {
+  // Fix 4: Pre-compute stream hint to reduce LLM guessing
+  const aptitude = assessmentData.aptitudeScores;
+  const numerical = aptitude?.numerical?.percentage ?? 0;
+  const abstract = aptitude?.abstract?.percentage ?? 0;
+  const verbal = aptitude?.verbal?.percentage ?? 0;
+  
+  let streamHint = "Commerce"; // Safe default
+  if (numerical >= 65 && abstract >= 60) {
+    streamHint = "Science (PCM)";
+  } else if (verbal >= 60 && numerical >= 55) {
+    streamHint = "Science (PCB)";
+  } else if (numerical >= 55) {
+    streamHint = "Commerce";
+  } else if (verbal >= 55) {
+    streamHint = "Arts/Humanities";
+  }
+  
   // Pre-process adaptive results for efficiency
   const adaptiveData = assessmentData.adaptiveAptitudeResults 
     ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
@@ -88,6 +335,20 @@ export function buildAfter10Prompt(assessmentData: AssessmentData, answersHash: 
 Session ID: ${answersHash}
 
 ## ═══════════════════════════════════════════════════════════════════════════
+## PRE-COMPUTED HINT (Verify and use this as starting point)
+## ═══════════════════════════════════════════════════════════════════════════
+
+**Aptitude-based stream hint**: ${streamHint}
+- Numerical: ${numerical}%
+- Abstract: ${abstract}%
+- Verbal: ${verbal}%
+
+**INSTRUCTION**: Use this hint as your starting point. Override ONLY if:
+1. RIASEC interests STRONGLY contradict (e.g., high A+S but numerical is 70%+)
+2. AND adaptive aptitude results support the override
+3. Otherwise, TRUST the aptitude-based hint
+
+## ═══════════════════════════════════════════════════════════════════════════
 ## YOUR PRIMARY GOAL: RECOMMEND THE BEST STREAM FOR 11TH-12TH
 ## ═══════════════════════════════════════════════════════════════════════════
 
@@ -98,12 +359,30 @@ Session ID: ${answersHash}
 4. **Commerce**: Accountancy, Business Studies, Economics → Business, Finance, Management
 5. **Arts/Humanities**: Psychology, Sociology, Political Science, Economics → Creative, Social Sciences, Law
 
+## ═══════════════════════════════════════════════════════════════════════════
+## YOUR PRIMARY GOAL: RECOMMEND THE BEST STREAM FOR 11TH-12TH
+## ═══════════════════════════════════════════════════════════════════════════
+
+**STREAM OPTIONS:**
+1. **Science (PCM)**: Physics, Chemistry, Mathematics → Engineering, Technology, Research
+2. **Science (PCB)**: Physics, Chemistry, Biology → Medicine, Healthcare, Life Sciences
+3. **Science (PCMB)**: All four subjects → Maximum flexibility (Engineering OR Medical)
+4. **Commerce**: Accountancy, Business Studies, Economics → Business, Finance, Management
+5. **Arts/Humanities**: Psychology, Sociology, Political Science, Economics → Creative, Social Sciences, Law
+
+**CRITICAL: YOUR RECOMMENDATION MUST BE BASED ON BOTH INTERESTS AND APTITUDE**
+
 **YOUR TASK:**
-- Analyze their RIASEC interests, aptitudes, personality, and values
-- Recommend the BEST stream based on their complete profile
-- Provide 3 career clusters aligned with the recommended stream
-- Explain WHY this stream fits them better than alternatives
-- Address concerns about alternative streams they might be considering
+1. Calculate RIASEC scores from the interest answers below
+2. Review the adaptive aptitude test results (already calculated and provided)
+3. **MOST IMPORTANT**: Match the student's aptitude scores to stream requirements:
+   - Science PCM requires: Numerical 65%+, Abstract 60%+
+   - Science PCB requires: Verbal 60%+, Numerical 55%+
+   - Commerce requires: Numerical 55%+, Verbal 55%+
+   - Arts/Humanities: Any aptitude profile works, but consider strengths
+4. If interests suggest one stream but aptitude suggests another, PRIORITIZE APTITUDE
+5. Provide 3 career clusters aligned with the recommended stream
+6. Explain WHY this stream fits them better than alternatives (using BOTH interests AND aptitude)
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## SECTION 1: CAREER INTERESTS (RIASEC)
@@ -132,8 +411,9 @@ ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
 1. For each question with categoryMapping, look up the RIASEC type for the student's answer
 2. Add 2 points for each answer to the corresponding RIASEC type
 3. Calculate percentage: (score / maxScore) × 100
-4. Identify top 3 types by score
-5. Use the mapping above to recommend the best stream
+4. Identify top 3 types by score (MUST be exactly 3 types, even if some scores are 0)
+5. The RIASEC code is the top 3 types as a 3-letter string (e.g., "ASE", "IES", "RIC") - MUST be exactly 3 letters
+6. Use the mapping above as a STARTING POINT, but ALWAYS consider aptitude scores before finalizing stream recommendation
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## SECTION 2: PERSONALITY (BIG FIVE)
@@ -202,6 +482,8 @@ Calculate overall readiness score and identify strengths and gaps.
 Pre-calculated aptitude scores:
 ${JSON.stringify(assessmentData.aptitudeScores, null, 2)}
 
+**NOTE**: If clerical shows 0/0, it means no clerical questions were asked (not a weakness). Do not penalize for this.
+
 **APTITUDE TO STREAM MAPPING:**
 - **High Numerical + Abstract** → Science (PCM) - Engineering, Technology
 - **High Verbal + Numerical** → Science (PCB) or Commerce - Medicine or Business
@@ -227,26 +509,77 @@ Total questions: ${assessmentData.totalKnowledgeQuestions}
 ${adaptiveSection}
 
 ## ═══════════════════════════════════════════════════════════════════════════
-## STREAM RECOMMENDATION FRAMEWORK
+## CAREER DERIVATION RULES (CRITICAL - READ CAREFULLY)
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**YOU MUST RECOMMEND ONE PRIMARY STREAM AND EXPLAIN WHY:**
+**⚠️ CRITICAL WARNING ⚠️**
+The career tracks sections below (Science PCM, Science PCB, Commerce, Arts) contain EXAMPLE careers to show you what types of roles exist in each stream. These are REFERENCE MATERIAL ONLY.
 
-1. **Analyze all 6 sections** to determine the best-fit stream
-2. **Provide 3 career clusters** aligned with the recommended stream
-3. **Explain WHY this stream** is better than alternatives
-4. **Address concerns** about other streams they might be considering
-5. **Provide a clear action plan** for 11th-12th preparation
+**YOU MUST NOT:**
+- Copy job titles directly from these sections
+- Use the hardcoded salary ranges as-is
+- Select careers just because they're listed under the recommended stream
+- Mix streams (e.g., showing Arts careers when you recommended Science)
 
-**STREAM-SPECIFIC CAREER CLUSTERS:**
+**YOU MUST:**
+- DERIVE careers from the student's unique profile intersection
+- Analyze their specific RIASEC scores, aptitude strengths, and personality traits
+- Create career clusters that match THEIR specific combination
+- Provide evidence from THEIR actual assessment data
+- Calculate match scores based on THEIR profile, not generic percentages
 
-**CRITICAL INSTRUCTION FOR AI:**
-When recommending career clusters, you MUST:
-1. **Analyze the student's top 3 RIASEC types** (e.g., if they are "ASE" = Artistic, Social, Enterprising)
-2. **Match them to the appropriate career tracks** from the sections below
-3. **DO NOT default to "Creative & Design" for all Arts students** - use the specific tracks that match their RIASEC profile
-4. **For Arts/Humanities students**: Look at their RIASEC combination and choose the 3 tracks that best match (e.g., if they're "SEI" = Social, Enterprising, Investigative, recommend HR/Marketing tracks, NOT creative design tracks)
-5. **Provide evidence** from their RIASEC scores, aptitude results, and personality traits for why each track fits
+**DERIVATION PROCESS (Follow this for EVERY career cluster):**
+
+1. **Identify the intersection**: What sits at the overlap of their top 2-3 RIASEC types + their strongest aptitude area + their dominant personality trait?
+
+2. **Ask yourself**: "What careers require THIS specific combination of interests, abilities, and work style?"
+
+3. **Validate with 3-check filter**:
+   - Interest Check: Does this career involve activities they chose in the assessment? (cite specific RIASEC scores)
+   - Aptitude Check: Does this career require cognitive skills they demonstrated? (cite specific accuracy %)
+   - Personality Check: Does this career's work environment match their traits? (cite specific ratings)
+
+4. **Provide transparent derivation**: In the "derivation" field, show your analytical reasoning:
+   - "Your combination of [specific RIASEC types with scores] + [specific cognitive strengths with accuracy %] + [specific character traits with ratings] points toward careers where you [specific activities]."
+
+5. **Be specific, not generic**: Instead of "Technology & Innovation", derive something like "Data-Driven Problem Solving" or "Computational Design & Engineering" based on their unique profile.
+
+**EXAMPLE OF CORRECT DERIVATION:**
+Student: RIASEC = ASE (Artistic 80%, Social 70%, Enterprising 65%), Verbal 75%, Numerical 60%, High Openness 4.3, High Extraversion 4.1
+Recommended Stream: Arts/Humanities
+
+Derived Cluster 1: "Creative Communication & Brand Strategy"
+- Derivation: "Your Artistic score of 80% shows strong creative expression, Social 70% indicates people-oriented work, and Enterprising 65% suggests leadership potential. Your verbal aptitude of 75% supports communication-heavy roles, and your high Openness (4.3) and Extraversion (4.1) indicate you thrive in dynamic, collaborative environments. This points toward careers that blend creative content creation with strategic communication and audience engagement."
+- Careers: Brand Storyteller, Content Strategist, Creative Communications Manager, Social Impact Designer
+- NOT just: "Graphic Designer, UI/UX Designer, Fashion Designer" (too generic, doesn't match their specific SE combination)
+
+**REMEMBER**: The career tracks sections are EXAMPLES to show you what's possible. You must DERIVE careers that match THIS student's unique profile.
+
+**REMEMBER**: The career tracks sections are EXAMPLES to show you what's possible. You must DERIVE careers that match THIS student's unique profile.
+
+## ═══════════════════════════════════════════════════════════════════════════
+## CAREER TRACKS REFERENCE SECTIONS (EXAMPLES ONLY - DO NOT COPY DIRECTLY)
+## ═══════════════════════════════════════════════════════════════════════════
+
+**⚠️ FINAL WARNING BEFORE YOU READ THE CAREER TRACKS ⚠️**
+
+The sections below show example careers for each stream. These are REFERENCE MATERIAL to help you understand what types of careers exist in each field.
+
+**DO NOT:**
+- Copy job titles verbatim from these sections
+- Use these as a checklist to select from
+- Assume these are the only careers available
+- Mix careers from different streams
+
+**DO:**
+- Use these as inspiration to understand career domains
+- Derive careers that match the student's SPECIFIC profile
+- Create unique career clusters based on their RIASEC + aptitude + personality intersection
+- Provide evidence from THEIR assessment data, not generic descriptions
+
+**If you find yourself copying "Graphic Designer₹3L - ₹8L" or "Software Engineer₹6-18L" directly, STOP. You are not deriving from the student's profile.**
+
+---
 
 ### SCIENCE (PCM) - For High I+R, Strong Numerical+Abstract Aptitude
 
@@ -522,6 +855,25 @@ When recommending career clusters, you MUST:
 ## OUTPUT FORMAT
 ## ═══════════════════════════════════════════════════════════════════════════
 
+## ⚠️ STREAM GUARD — READ BEFORE WRITING JSON ⚠️
+
+**CRITICAL**: Before writing the careerFit section, you MUST:
+
+1. **Identify the stream you recommended** in the recommendedStream section above
+2. **ALL THREE career clusters MUST come from that stream ONLY**
+
+**Stream-to-Career Mapping (STRICT):**
+- If stream = "Science (PCM)" → ONLY show Engineering/Tech/Research careers
+- If stream = "Science (PCB)" → ONLY show Medicine/Healthcare/Life Sciences careers  
+- If stream = "Science (PCMB)" → Mix of Engineering AND Medical careers
+- If stream = "Commerce" → ONLY show Business/Finance/Management careers
+- If stream = "Arts/Humanities" → ONLY show Creative/Social Sciences/Law careers
+
+**NEVER default to Arts careers unless you explicitly recommended Arts/Humanities.**
+
+If you recommended Science PCM but show "Content Writer" or "Graphic Designer" → YOU FAILED.
+If you recommended Commerce but show "Teacher" or "Social Worker" → YOU FAILED.
+
 **IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure:
 
 {
@@ -546,6 +898,7 @@ When recommending career clusters, you MUST:
     "preparationAdvice": "Specific advice for preparing for this stream in 11th-12th"
   },
   "riasec": {
+    "code": "ABC",
     "topThree": ["Top 3 RIASEC codes"],
     "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
@@ -722,25 +1075,25 @@ When recommending career clusters, you MUST:
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "Job Title 1 from TRACK 1 (e.g., Software Engineer for Science PCM, Doctor for Science PCB, Chartered Accountant for Commerce, Graphic Designer for Arts)", "salary": {"min": 6, "max": 15}, "description": "Primary career role with highest match to student's profile. Requires strong foundation in recommended stream subjects."},
-        {"name": "Job Title 2 from TRACK 1 (e.g., Data Scientist for Science PCM, Surgeon for Science PCB, Financial Analyst for Commerce, UI/UX Designer for Arts)", "salary": {"min": 7, "max": 20}, "description": "High-demand role with excellent growth prospects. Aligns with student's top RIASEC types and aptitude strengths."},
-        {"name": "Job Title 3 from TRACK 1 (e.g., AI/ML Engineer for Science PCM, Dentist for Science PCB, Investment Banker for Commerce, Fashion Designer for Arts)", "salary": {"min": 8, "max": 25}, "description": "Specialized role requiring advanced skills. Offers premium compensation and career advancement opportunities."},
-        {"name": "Job Title 4 from TRACK 1 (e.g., Full Stack Developer for Science PCM, Pharmacist for Science PCB, Portfolio Manager for Commerce, Interior Designer for Arts)", "salary": {"min": 6, "max": 18}, "description": "Versatile career path with multiple specialization options. Strong job market demand and stability."},
-        {"name": "Job Title 5 from TRACK 1 (e.g., Cloud Architect for Science PCM, Medical Researcher for Science PCB, Risk Analyst for Commerce, Brand Designer for Arts)", "salary": {"min": 10, "max": 25}, "description": "Senior-level career trajectory with leadership opportunities. Combines technical expertise with strategic thinking."},
-        {"name": "Job Title 6 from TRACK 1 (e.g., Cybersecurity Analyst for Science PCM, Biotechnologist for Science PCB, Business Analyst for Commerce, Animator for Arts)", "salary": {"min": 6, "max": 15}, "description": "Emerging field with rapid growth. Ideal for students with strong analytical and problem-solving skills."}
+        {"name": "Actual Job Title from TRACK 1 based on student's stream and RIASEC profile", "salary": {"min": 6, "max": 15}, "description": "Primary career role with highest match to student's profile. Requires strong foundation in recommended stream subjects."},
+        {"name": "Actual Job Title from TRACK 1 based on student's stream and RIASEC profile", "salary": {"min": 7, "max": 20}, "description": "High-demand role with excellent growth prospects. Aligns with student's top RIASEC types and aptitude strengths."},
+        {"name": "Actual Job Title from TRACK 1 based on student's stream and RIASEC profile", "salary": {"min": 8, "max": 25}, "description": "Specialized role requiring advanced skills. Offers premium compensation and career advancement opportunities."},
+        {"name": "Actual Job Title from TRACK 1 based on student's stream and RIASEC profile", "salary": {"min": 6, "max": 18}, "description": "Versatile career path with multiple specialization options. Strong job market demand and stability."},
+        {"name": "Actual Job Title from TRACK 1 based on student's stream and RIASEC profile", "salary": {"min": 10, "max": 25}, "description": "Senior-level career trajectory with leadership opportunities. Combines technical expertise with strategic thinking."},
+        {"name": "Actual Job Title from TRACK 1 based on student's stream and RIASEC profile", "salary": {"min": 6, "max": 15}, "description": "Emerging field with rapid growth. Ideal for students with strong analytical and problem-solving skills."}
       ],
       "mediumFit": [
-        {"name": "Job Title 1 from TRACK 2 (e.g., Mechanical Engineer for Science PCM, Biotechnologist for Science PCB, Business Manager for Commerce, Journalist for Arts)", "salary": {"min": 4, "max": 10}, "description": "Solid alternative career path with good growth potential. Aligns with secondary RIASEC interests."},
-        {"name": "Job Title 2 from TRACK 2 (e.g., Civil Engineer for Science PCM, Geneticist for Science PCB, Operations Manager for Commerce, Content Writer for Arts)", "salary": {"min": 3, "max": 8}, "description": "Stable career option with consistent demand. Suitable for students with balanced aptitude profile."},
-        {"name": "Job Title 3 from TRACK 2 (e.g., Aerospace Engineer for Science PCM, Microbiologist for Science PCB, Strategy Consultant for Commerce, PR Manager for Arts)", "salary": {"min": 6, "max": 15}, "description": "Specialized field requiring focused skill development. Offers unique career opportunities and challenges."},
-        {"name": "Job Title 4 from TRACK 2 (e.g., Robotics Engineer for Science PCM, Clinical Research Associate for Science PCB, Product Manager for Commerce, Social Media Manager for Arts)", "salary": {"min": 5, "max": 12}, "description": "Growing field with innovation opportunities. Combines technical knowledge with practical application."},
-        {"name": "Job Title 5 from TRACK 2 (e.g., Electrical Engineer for Science PCM, Bioinformatics Specialist for Science PCB, Marketing Manager for Commerce, Video Editor for Arts)", "salary": {"min": 4, "max": 10}, "description": "Versatile career with multiple industry applications. Good work-life balance and job security."}
+        {"name": "Actual Job Title from TRACK 2 based on student's stream", "salary": {"min": 4, "max": 10}, "description": "Solid alternative career path with good growth potential. Aligns with secondary RIASEC interests."},
+        {"name": "Actual Job Title from TRACK 2 based on student's stream", "salary": {"min": 3, "max": 8}, "description": "Stable career option with consistent demand. Suitable for students with balanced aptitude profile."},
+        {"name": "Actual Job Title from TRACK 2 based on student's stream", "salary": {"min": 6, "max": 15}, "description": "Specialized field requiring focused skill development. Offers unique career opportunities and challenges."},
+        {"name": "Actual Job Title from TRACK 2 based on student's stream", "salary": {"min": 5, "max": 12}, "description": "Growing field with innovation opportunities. Combines technical knowledge with practical application."},
+        {"name": "Actual Job Title from TRACK 2 based on student's stream", "salary": {"min": 4, "max": 10}, "description": "Versatile career with multiple industry applications. Good work-life balance and job security."}
       ],
       "exploreLater": [
-        {"name": "Job Title 1 from TRACK 3 (e.g., Research Scientist for Science PCM, Physiotherapist for Science PCB, Entrepreneur for Commerce, Lawyer for Arts)", "salary": {"min": 5, "max": 12}, "description": "Alternative career path worth exploring. May require additional skill development or interest cultivation."},
-        {"name": "Job Title 2 from TRACK 3 (e.g., PhD Scholar for Science PCM, Nutritionist for Science PCB, Digital Marketing Manager for Commerce, Psychologist for Arts)", "salary": {"min": 3, "max": 8}, "description": "Long-term career option with academic or specialized focus. Suitable as backup plan or future consideration."},
-        {"name": "Job Title 3 from TRACK 3 (e.g., Professor for Science PCM, Medical Lab Technician for Science PCB, E-commerce Manager for Commerce, Civil Services Officer for Arts)", "salary": {"min": 6, "max": 15}, "description": "Career path requiring patience and dedication. Offers stability and social impact opportunities."},
-        {"name": "Job Title 4 from TRACK 3 (e.g., Data Analyst for Science PCM, Radiologist Technician for Science PCB, Business Consultant for Commerce, Social Worker for Arts)", "salary": {"min": 4, "max": 10}, "description": "Practical career option with steady growth. Good entry point for exploring the field before specialization."}
+        {"name": "Actual Job Title from TRACK 3 based on student's stream", "salary": {"min": 5, "max": 12}, "description": "Alternative career path worth exploring. May require additional skill development or interest cultivation."},
+        {"name": "Actual Job Title from TRACK 3 based on student's stream", "salary": {"min": 3, "max": 8}, "description": "Long-term career option with academic or specialized focus. Suitable as backup plan or future consideration."},
+        {"name": "Actual Job Title from TRACK 3 based on student's stream", "salary": {"min": 6, "max": 15}, "description": "Career path requiring patience and dedication. Offers stability and social impact opportunities."},
+        {"name": "Actual Job Title from TRACK 3 based on student's stream", "salary": {"min": 4, "max": 10}, "description": "Practical career option with steady growth. Good entry point for exploring the field before specialization."}
       ]
     }
   },
@@ -834,35 +1187,50 @@ When recommending career clusters, you MUST:
 ## ═══════════════════════════════════════════════════════════════════════════
 
 **STREAM RECOMMENDATION RULES:**
-1. **Be decisive**: Recommend ONE primary stream with high confidence
-2. **Use ALL 6 sections**: Interest, Aptitude, Personality, Values, Employability, Knowledge
-3. **Prioritize aptitude**: Cognitive abilities are the strongest predictor of academic success
-4. **Consider interests**: But don't let interests override weak aptitude (e.g., don't recommend Science PCM if numerical aptitude is <40%)
-5. **Address alternatives**: Explain why other streams are less suitable
-6. **Be realistic**: If aptitude is weak in all areas, recommend the stream with best interest-aptitude balance
-7. **High Artistic (A) students**: If A is in top 3 RIASEC, consider Arts stream or creative career paths within their chosen stream
+1. **Check adaptive stability FIRST** - If level ≤ 2 or confidence = "low" or fluctuating → Avoid PCMB, prefer stable streams
+2. **Use scoring, not just thresholds** - Consider stability, confidence, and difficulty performance
+3. **Be realistic about academic load** - PCM/PCB are demanding, PCMB is most demanding, Commerce/Arts are more manageable
+4. **Interests guide choice within capability** - Don't let interests override cognitive readiness
+5. **Provide honest guidance** - If they're borderline, say "Moderate Fit" and mention support needs
+6. **Consider survivability** - Academic success requires sustained performance, not just threshold scores
 
 **CAREER CLUSTER RULES:**
-1. **Align with recommended stream**: All 3 clusters must be achievable through the recommended stream
-2. **Provide evidence from ALL 6 sections**: Interest, Aptitude, Personality, Values, Employability, Knowledge
-3. **Include "subjectsToFocusIn11th12th"**: Specific subjects they should excel in for each career path
-4. **Be specific**: Provide concrete career titles, not vague categories
-5. **Include salary ranges**: Realistic Indian market salaries (in LPA)
-6. **Show progression**: Entry → Mid → Senior career paths
+1. **CRITICAL: Align with recommended stream** - All 3 clusters MUST be achievable through the recommended stream
+   - If you recommend Science PCM → Show Engineering/Tech/Research tracks ONLY
+   - If you recommend Science PCB → Show Medical/Healthcare/Biotech tracks ONLY
+   - If you recommend Science PCMB → Show Biomedical/Healthcare Tech tracks ONLY
+   - If you recommend Commerce → Show Business/Finance/Management tracks ONLY
+   - If you recommend Arts/Humanities → Show Creative/Media/Social Science tracks ONLY
+2. **DO NOT mix streams** - If you recommend Science, do NOT show Arts careers
+3. **Provide evidence from ALL 6 sections**: Interest, Aptitude, Personality, Values, Employability, Knowledge
+4. **Include "subjectsToFocusIn11th12th"**: Specific subjects they should excel in for each career path
+5. **Be specific**: Provide concrete career titles, not vague categories
+6. **Include salary ranges**: Realistic Indian market salaries (in LPA)
+7. **Show progression**: Entry → Mid → Senior career paths
 
 **VALIDATION CHECKLIST:**
 - [ ] ONE primary stream recommended with clear reasoning
 - [ ] Evidence from ALL 6 sections for stream recommendation
+- [ ] Stream recommendation considers BOTH interests AND aptitude (aptitude takes priority)
+- [ ] **CRITICAL: Followed the decision tree in Step 5 - if aptitude_level ≤ 2 OR confidence = "low" OR fluctuating, did NOT recommend Science streams**
+- [ ] If recommending Arts/Humanities, explain why despite moderate/strong numerical aptitude
 - [ ] EXACTLY 3 career clusters aligned with recommended stream
-- [ ] Each cluster title uses "TRACK X - [Name]" format (e.g., "TRACK 1 - Technology & Innovation")
+- [ ] **CRITICAL: Career clusters are DERIVED from student's unique profile, NOT copied from the career tracks sections**
+- [ ] **CRITICAL: Career clusters MATCH the recommended stream** (Science → Engineering/Medical, Commerce → Business, Arts → Creative/Media)
+- [ ] **CRITICAL: NO MIXING STREAMS**: If Science recommended, do NOT show Arts/Commerce careers
+- [ ] **CRITICAL: Each cluster has a "derivation" field showing analytical reasoning from student's specific data**
+- [ ] Each cluster title is SPECIFIC to the student's profile (NOT generic like "Technology & Innovation")
 - [ ] Each cluster has trackNumber field (1, 2, or 3)
-- [ ] Each cluster has evidence from ALL 6 sections
+- [ ] Each cluster has evidence from ALL 6 sections with ACTUAL scores/percentages from THIS student
 - [ ] Each cluster has "subjectsToFocusIn11th12th" field
 - [ ] Each cluster has "entranceExams" field with relevant exams
 - [ ] "whyNotOtherStreams" explains why alternatives are less suitable
 - [ ] Entrance exams relevant to recommended stream included in roadmap
 - [ ] Roadmap covers: Before 11th, 11th Grade, 12th Grade
 - [ ] Response is valid JSON (no markdown, no truncation)
+- [ ] riasec.code is EXACTLY a 3-letter string (e.g., "ASE"), NOT 2 letters, NOT an array
+- [ ] **CRITICAL: specificOptions contains ACTUAL job titles from the student's recommended stream, NOT placeholder text**
+- [ ] **CRITICAL: No hardcoded career examples like "Graphic Designer₹3L - ₹8L" - all careers must be derived from student profile**
 
 **CRITICAL: CAREER NAMING CONVENTION:**
 - **TRACK 1** = High Fit (85-95% match) - Best career path for their profile
@@ -870,6 +1238,22 @@ When recommending career clusters, you MUST:
 - **TRACK 3** = Explore (65-74% match) - Worth exploring as backup
 
 **CRITICAL: specificOptions MUST BE POPULATED WITH ACTUAL ROLES FROM THE RECOMMENDED STREAM:**
+
+**⚠️ DO NOT COPY THE PLACEHOLDER TEXT ⚠️**
+The "name" fields below say "Actual Job Title from TRACK X based on student's stream" - you MUST replace these with real job titles from the career tracks sections above that match the student's recommended stream.
+
+**INSTRUCTIONS:**
+1. Look at which stream you recommended (Science PCM/PCB/PCMB, Commerce, or Arts)
+2. Go to that stream's career tracks section above
+3. Extract actual job titles from TRACK 1, TRACK 2, and TRACK 3
+4. Use those real job titles in the specificOptions below
+5. Match the salary ranges to the actual roles
+
+**Example of CORRECT output:**
+- If you recommended Science PCM and TRACK 1 is "Technology & Innovation":
+  - highFit: [{"name": "Software Engineer", "salary": {"min": 6, "max": 15}}, {"name": "Data Scientist", "salary": {"min": 8, "max": 20}}]
+- If you recommended Arts and TRACK 1 is "Creative & Design":
+  - highFit: [{"name": "Graphic Designer", "salary": {"min": 3, "max": 8}}, {"name": "UI/UX Designer", "salary": {"min": 5, "max": 15}}]
 
 The AI MUST replace the example job titles with ACTUAL roles from the student's recommended stream:
 
@@ -941,9 +1325,15 @@ The AI MUST replace the example job titles with ACTUAL roles from the student's 
 - exploreLater: Civil Services (IAS/IPS/IFS), Political Advisor, International Relations Specialist
 
 **DEFAULT (Balanced RIASEC or unclear profile):**
-- highFit: Content Writer, Journalist, Teacher, HR Coordinator, Marketing Coordinator, Communications Specialist
-- mediumFit: Administrative Manager, Office Manager, Customer Relations, Public Relations Coordinator
-- exploreLater: General Management, Operations Coordinator, Project Coordinator
+→ **DO NOT use generic defaults.** Instead:
+1. **Check aptitude scores** — highest scoring area determines stream
+   - If Numerical ≥ 65% AND Abstract ≥ 60% → Science (PCM)
+   - If Numerical ≥ 55% → Commerce
+   - If Verbal ≥ 55% → Arts/Humanities
+2. **If aptitude is also balanced** → recommend Commerce (safest universal choice)
+3. **Commerce highFit careers**: Business Analyst, Operations Manager, Financial Analyst, Accountant, Marketing Manager, HR Manager
+4. **Commerce mediumFit careers**: Administrative Manager, Office Manager, Customer Relations, Sales Manager
+5. **Commerce exploreLater careers**: Chartered Accountant (CA), Company Secretary (CS), Management Consultant
 
 **EXAMPLES OF CORRECT TRACK TITLES (WITHOUT "TRACK X -" PREFIX):**
 - Science (PCM): "Technology & Innovation", "Engineering & Core Industries", "Research & Academia"

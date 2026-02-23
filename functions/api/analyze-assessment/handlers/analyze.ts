@@ -752,6 +752,17 @@ export async function handleAnalyzeAssessment(
     });
   }
   console.log('[ASSESSMENT-API] Has Adaptive Results:', !!assessmentData.adaptiveAptitudeResults);
+  
+  // Log all assessment sections
+  console.log('[ASSESSMENT-API] === ASSESSMENT SECTIONS CHECK ===');
+  console.log('[ASSESSMENT-API] Has riasecAnswers:', !!assessmentData.riasecAnswers, 'Count:', Object.keys(assessmentData.riasecAnswers || {}).length);
+  console.log('[ASSESSMENT-API] Has bigFiveAnswers:', !!assessmentData.bigFiveAnswers, 'Count:', Object.keys(assessmentData.bigFiveAnswers || {}).length);
+  console.log('[ASSESSMENT-API] Has workValuesAnswers:', !!assessmentData.workValuesAnswers, 'Count:', Object.keys(assessmentData.workValuesAnswers || {}).length);
+  console.log('[ASSESSMENT-API] Has employabilityAnswers:', !!assessmentData.employabilityAnswers);
+  console.log('[ASSESSMENT-API] Has aptitudeScores:', !!assessmentData.aptitudeScores);
+  console.log('[ASSESSMENT-API] Has knowledgeAnswers:', !!assessmentData.knowledgeAnswers, 'Count:', Object.keys(assessmentData.knowledgeAnswers || {}).length);
+  console.log('[ASSESSMENT-API] Total Knowledge Questions:', assessmentData.totalKnowledgeQuestions);
+  console.log('[ASSESSMENT-API] Total Aptitude Questions:', assessmentData.totalAptitudeQuestions);
 
   // Check environment variables
   console.log('[ASSESSMENT-API] === ENVIRONMENT CHECK ===');
