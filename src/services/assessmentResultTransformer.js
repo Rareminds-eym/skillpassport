@@ -387,16 +387,28 @@ export const transformAssessmentResults = (dbResults) => {
       hasRiasec: !!geminiData.riasec,
       hasAptitude: !!geminiData.aptitude,
       hasCareerFit: !!geminiData.careerFit,
+      hasRecommendedStream: !!geminiData.recommendedStream,
+      recommendedStreamValue: geminiData.recommendedStream?.stream,
       riasecScores: geminiData.riasec?.scores
     });
     
     // The data is already in the correct format, just mark it as transformed
-    return {
+    // Map recommendedStream to streamRecommendation for backward compatibility
+    const transformed = {
       ...geminiData,
+      streamRecommendation: geminiData.recommendedStream || geminiData.streamRecommendation,
       _original: dbResults,
       _transformed: true,
       _source: 'gemini_results_complete'
     };
+    
+    console.log('✅ Transformer output - streamRecommendation:', {
+      hasStreamRecommendation: !!transformed.streamRecommendation,
+      stream: transformed.streamRecommendation?.stream,
+      displayName: transformed.streamRecommendation?.displayName
+    });
+    
+    return transformed;
   }
 
   // ✅ Check if data is in individual columns (not in gemini_analysis/gemini_results)

@@ -138,11 +138,18 @@ IF (aptitude_level ≤ 2) OR (overall_accuracy < 50%):
   → **PCMB is FORBIDDEN** (requires level 4+, 75%+ accuracy)
   → **PCM/PCB are RISKY** (require level 3+, stable performance)
   → **Commerce or Arts are RECOMMENDED** (manageable cognitive load)
-  → Decision logic:
-    * IF High E (Enterprising) OR High C (Conventional) → **Commerce (High Fit)**
-    * IF High A (Artistic) OR High S (Social) → **Arts/Humanities (High Fit)**
-    * ELSE → **Commerce (High Fit)** (safer default for low aptitude)
-  → Explanation: "Your aptitude profile shows [specific issue: low accuracy/level 2]. Starting with a manageable stream will help you build confidence and succeed. You can still pursue science/tech careers through alternative pathways like BCA, BSc IT, or Commerce with Computer Science."
+  → Decision logic (CHECK INTERESTS FIRST, NOT JUST DEFAULT TO COMMERCE):
+    * IF High E (Enterprising ≥ 70%) OR High C (Conventional ≥ 70%) → **Commerce (High Fit)**
+      - Explanation: "Your strong Enterprising/Conventional interests (cite exact %) combined with manageable academic demands make Commerce an excellent strategic choice. This stream offers diverse career paths in business, finance, and management while ensuring academic success. This is NOT a compromise - it's aligning your natural interests with a sustainable path."
+    * IF High A (Artistic ≥ 70%) OR High S (Social ≥ 70%) AND Low E (< 50%) AND Low C (< 50%) → **Arts/Humanities (High Fit)**
+      - Explanation: "Your strong Artistic/Social interests (cite exact %) align perfectly with Arts/Humanities. This stream allows you to excel in creative, communication, and people-oriented fields while building on your natural strengths. This is a strategic choice that maximizes your potential."
+    * IF High I (Investigative ≥ 70%) AND (Numerical ≥ 45% OR Abstract ≥ 45%) → **Commerce with Computer Science (High Fit)**
+      - Explanation: "Your Investigative interests (cite exact %) show analytical thinking. Commerce with Computer Science elective allows you to explore tech careers (BCA, BSc IT, Data Analytics) through a more manageable academic path. This is a strategic route to tech careers without the overwhelming pressure of PCM."
+    * ELSE IF Numerical ≥ 40% → **Commerce (High Fit)**
+      - Explanation: "Commerce offers a balanced path with strong career prospects in business, finance, and management. With your numerical aptitude of [cite %], you can excel in accounting and finance subjects. This is a strategic choice that maximizes success and career flexibility, not a limitation."
+    * ELSE → **Arts/Humanities (High Fit)**
+      - Explanation: "Arts/Humanities offers the most manageable academic path while opening doors to diverse careers in media, law, psychology, and civil services. This stream allows you to build confidence and explore your interests without overwhelming academic pressure. This is a strategic foundation for long-term success."
+  → **CRITICAL: NEVER say 'safer default' or 'fallback option' - Always frame as STRATEGIC CHOICE based on their interests**
   → **STOP HERE - Do NOT proceed to Step 5B**
 
 ELSE IF (aptitude_level = 3) AND (confidence = "low" OR path = "fluctuating") AND (overall_accuracy < 60%):
@@ -150,11 +157,18 @@ ELSE IF (aptitude_level = 3) AND (confidence = "low" OR path = "fluctuating") AN
   → **PCMB is FORBIDDEN** (requires level 4+, high confidence)
   → **PCM/PCB are RISKY** (require stable performance)
   → **Commerce is RECOMMENDED** (manageable cognitive load, good career prospects)
-  → Decision logic:
-    * IF High E (Enterprising) OR High C (Conventional) OR Numerical ≥ 55% → **Commerce (High Fit)**
-    * IF High A (Artistic) OR High S (Social) → **Arts/Humanities (High Fit)** OR **Commerce (High Fit)** (choose based on numerical aptitude)
-    * ELSE → **Commerce (High Fit)** (safer default)
-  → Explanation: "Your aptitude level is moderate (level 3), but your performance shows [low confidence/fluctuating pattern]. Commerce offers a balanced path with strong career prospects while being more manageable than Science streams. You can still explore tech/analytical careers through Commerce with Computer Science or pursue BCA/BSc IT after 12th."
+  → Decision logic (CHECK INTERESTS FIRST):
+    * IF High E (Enterprising ≥ 65%) OR High C (Conventional ≥ 65%) OR Numerical ≥ 55% → **Commerce (High Fit)**
+      - Explanation: "Your Enterprising/Conventional interests (cite exact %) combined with numerical aptitude of [cite %] make Commerce an excellent strategic choice. This stream offers strong career prospects in business, finance, and management while being more manageable than Science streams. This maximizes your success potential and career flexibility."
+    * IF High I (Investigative ≥ 70%) AND Numerical ≥ 50% → **Commerce with Computer Science (High Fit)**
+      - Explanation: "Your Investigative interests (cite exact %) show analytical thinking. Commerce with Computer Science elective provides a strategic path to tech careers (BCA, BSc IT, Data Analytics, Business Analytics) without the overwhelming pressure of PCM. This is a smart choice that keeps tech doors open."
+    * IF High A (Artistic ≥ 65%) OR High S (Social ≥ 65%) AND Low E (< 50%) → **Arts/Humanities (High Fit)**
+      - Explanation: "Your Artistic/Social interests (cite exact %) align perfectly with Arts/Humanities. This stream allows you to excel in creative, communication, and people-oriented fields while ensuring academic success. This is a strategic choice that plays to your strengths."
+    * ELSE IF Numerical ≥ 45% → **Commerce (High Fit)**
+      - Explanation: "Commerce offers a balanced path with strong career prospects. Your numerical aptitude of [cite %] supports accounting and finance subjects. This is a strategic choice that maximizes success and career flexibility while avoiding the high-pressure Science streams."
+    * ELSE → **Arts/Humanities (High Fit)**
+      - Explanation: "Arts/Humanities offers diverse career paths in media, law, psychology, and civil services. This stream allows you to build on your strengths without overwhelming academic pressure. This is a strategic foundation for long-term career success."
+  → **CRITICAL: Frame Commerce as STRATEGIC CHOICE with strong career prospects, NOT as 'safer option' or 'fallback'**
   → **STOP HERE - Do NOT proceed to Step 5B**
 
 ELSE IF (aptitude_level ≥ 4) AND (confidence = "low" OR path = "fluctuating"):
@@ -239,10 +253,80 @@ The career tracks sections below are EXAMPLES ONLY to show you what types of car
 
 **The career tracks sections below are REFERENCE MATERIAL ONLY - DO NOT copy from them directly.**
 
+### THINK STEP 7: Prepare Reasoning Field (MANDATORY BEFORE JSON OUTPUT)
+
+**CRITICAL: You MUST prepare the reasoning field BEFORE writing the JSON output.**
+
+Based on your analysis in Steps 1-6, you MUST now prepare THREE specific reasoning statements:
+
+**reasoning.interests:**
+- Template: "Your [Top RIASEC Type] ([score]%) and [Second RIASEC Type] ([score]%) interests align well with [specific activities in recommended stream]"
+- Example for Science PCM: "Your Investigative (85%) and Realistic (75%) interests align well with engineering, problem-solving, and building technology solutions"
+- Example for Commerce: "Your Enterprising (82%) and Conventional (75%) interests align well with business management, financial analysis, and entrepreneurship"
+- Example for Arts: "Your Artistic (85%) and Social (78%) interests align well with creative expression, communication, and working with people"
+
+**reasoning.aptitude:**
+- Template: "Strong [aptitude area] ([percentage]%) and [aptitude area] ([percentage]%) support the academic demands of [stream subjects]"
+- Example for Science PCM: "Strong numerical aptitude (88%) and abstract reasoning (82%) support the academic demands of Physics, Chemistry, and Mathematics"
+- Example for Commerce: "Strong numerical aptitude (75%) and verbal reasoning (70%) support the academic demands of Accountancy and Economics"
+- Example for Arts: "Strong verbal reasoning (85%) and abstract thinking (72%) support the academic demands of Humanities subjects"
+
+**reasoning.personality:**
+- Template: "High [trait] ([score]) and [trait] ([score]) indicate [specific work style that fits this stream]"
+- Example for Science: "High Conscientiousness (4.2) and Openness (4.0) indicate strong work ethic and curiosity for scientific exploration"
+- Example for Commerce: "High Conscientiousness (4.3) and Extraversion (4.1) indicate organized approach and leadership potential for business"
+- Example for Arts: "High Openness (4.5) and Agreeableness (4.2) indicate creative thinking and collaborative approach for humanities"
+
+**VALIDATION BEFORE PROCEEDING:**
+- [ ] I have identified the student's top 2 RIASEC types with actual scores
+- [ ] I have identified the student's top 2 aptitude areas with actual percentages
+- [ ] I have identified the student's top 2 Big Five traits with actual scores
+- [ ] I have prepared reasoning.interests statement (under 25 words)
+- [ ] I have prepared reasoning.aptitude statement (under 25 words)
+- [ ] I have prepared reasoning.personality statement (under 25 words)
+- [ ] All statements cite ACTUAL data from THIS student's assessment
+- [ ] All statements connect to the RECOMMENDED stream
+
+**IF YOU SKIP THIS STEP, YOUR OUTPUT WILL BE INVALID.**
+
 ## ═══════════════════════════════════════════════════════════════════════════
 
 **⚠️ CRITICAL DECISION RULE ⚠️**
 When recommending a stream, you MUST follow this priority order:
+
+**0. AVOID COMMERCE DEFAULT BIAS (READ THIS FIRST)**
+
+**CRITICAL WARNING: DO NOT default to Commerce just because aptitude is low or moderate.**
+
+Commerce should ONLY be recommended if:
+1. **Interest Check**: High E (Enterprising ≥ 65%) OR High C (Conventional ≥ 65%) OR High I with business/finance keywords
+2. **Aptitude Check**: Numerical ≥ 45% (shows basic math capability for accounting/economics)
+3. **NOT just because**: "It's safer" or "It's manageable" or "It's a fallback"
+
+**IF student has:**
+- High A (Artistic ≥ 65%) OR High S (Social ≥ 65%) AND Low E (< 50%) AND Low C (< 50%)
+  → **Recommend Arts/Humanities, NOT Commerce**
+  → Explanation: "Your Artistic/Social interests strongly align with Arts/Humanities careers in [specific fields]. This is a strategic choice that maximizes your natural strengths and career satisfaction."
+
+- High I (Investigative ≥ 70%) AND Low E (< 50%) AND Low C (< 50%) AND Numerical < 50%
+  → **Recommend Arts with Economics/Psychology, NOT Commerce**
+  → Explanation: "Your Investigative interests align with research, analysis, and problem-solving in social sciences. Arts with Economics/Psychology provides a strategic path to careers in research, policy analysis, and civil services."
+
+**WHEN YOU DO RECOMMEND COMMERCE:**
+- **NEVER say**: "safer option", "fallback", "easier path", "less demanding"
+- **ALWAYS say**: "strategic choice", "strong career prospects", "maximizes success and flexibility", "aligns with your business/analytical interests"
+- **ALWAYS cite**: Their E/C/I scores and numerical aptitude as PRIMARY reasons
+- **ALWAYS mention**: Specific career paths (CA, Finance, Business Management, Entrepreneurship)
+
+**EXAMPLE OF CORRECT COMMERCE RECOMMENDATION:**
+"Your Enterprising interests (75%) and Conventional interests (68%) strongly align with Commerce. Combined with your numerical aptitude of 62%, this stream is an excellent strategic choice for careers in business, finance, and management. Commerce offers diverse, high-paying career paths including Chartered Accountancy, Investment Banking, and Entrepreneurship. This maximizes your success potential and career flexibility."
+
+**EXAMPLE OF WRONG COMMERCE RECOMMENDATION:**
+❌ "Commerce is a safer option given your aptitude profile" (sounds like downgrade)
+❌ "Commerce is more manageable than Science" (sounds like compromise)
+❌ "Commerce is a good fallback" (sounds like failure)
+
+---
 
 **1. ADAPTIVE STABILITY CHECK (HIGHEST PRIORITY)**
 If adaptive aptitude results show:
@@ -507,6 +591,242 @@ Total questions: ${assessmentData.totalKnowledgeQuestions}
 - Score < 50%: Weak foundation, consider alternative streams or foundational courses
 
 ${adaptiveSection}
+
+## ═══════════════════════════════════════════════════════════════════════════
+## STREAM RECOMMENDATION SCORING ALGORITHM (MANDATORY - CALCULATE BEFORE OUTPUT)
+## ═══════════════════════════════════════════════════════════════════════════
+
+**⚠️ CRITICAL: You MUST complete this scoring calculation BEFORE writing any output.**
+
+This is NOT a suggestion. This is a MANDATORY analytical process that ensures deterministic, evidence-based stream recommendations.
+
+### STEP 1: NORMALIZE RIASEC SCORES (0-100 scale)
+
+Calculate RIASEC scores from Section 1:
+- Each "Strongly Like" (5) answer = 2 points to that RIASEC type
+- Each "Like" (4) answer = 1 point
+- Each "Neutral" (3) answer = 0 points
+- Each "Dislike" (2) answer = 0 points
+- Each "Strongly Dislike" (1) answer = 0 points
+
+Maximum possible score per type = 16 points (8 questions × 2 points)
+
+Normalized RIASEC percentage = (raw_score / 16) × 100
+
+Example:
+- If Investigative raw score = 14 → Normalized = (14/16) × 100 = 87.5%
+- If Realistic raw score = 10 → Normalized = (10/16) × 100 = 62.5%
+
+**YOU MUST CALCULATE:**
+- R_norm = [calculate]%
+- I_norm = [calculate]%
+- A_norm = [calculate]%
+- S_norm = [calculate]%
+- E_norm = [calculate]%
+- C_norm = [calculate]%
+
+### STEP 2: EXTRACT APTITUDE PERCENTAGES
+
+From Section 5 (already calculated):
+- Numerical_apt = [from aptitudeScores.numerical.percentage]%
+- Abstract_apt = [from aptitudeScores.abstract.percentage]%
+- Verbal_apt = [from aptitudeScores.verbal.percentage]%
+- Spatial_apt = [from aptitudeScores.spatial.percentage]%
+
+### STEP 3: EXTRACT ADAPTIVE STABILITY METRICS
+
+From Adaptive Aptitude Results:
+- Aptitude_level = [1-5]
+- Overall_accuracy = [percentage]
+- Confidence_tag = [low/medium/high]
+- Path_classification = [fluctuating/consistent/ascending]
+
+Calculate stability_score:
+- IF aptitude_level >= 4 AND confidence_tag = "high" → stability_score = 100
+- ELSE IF aptitude_level = 3 AND confidence_tag = "medium" → stability_score = 70
+- ELSE IF aptitude_level = 3 AND confidence_tag = "low" → stability_score = 50
+- ELSE IF aptitude_level <= 2 → stability_score = 30
+
+### STEP 4: CALCULATE STREAM MATCH SCORES (0-100 scale)
+
+**Formula Structure:**
+Stream_Score = (RIASEC_component × 0.30) + (Aptitude_component × 0.35) + (Coherence_component × 0.20) + (Viability_component × 0.15)
+
+---
+
+**SCIENCE (PCM) SCORE:**
+
+RIASEC_component = (I_norm × 0.40) + (R_norm × 0.35) + (C_norm × 0.25)
+
+Aptitude_component = (Numerical_apt × 0.50) + (Abstract_apt × 0.50)
+
+Coherence_component:
+- IF (RIASEC_component >= 60 AND Aptitude_component >= 60): coherence = 100
+- ELSE IF (RIASEC_component >= 50 AND Aptitude_component >= 50): coherence = 70
+- ELSE IF (abs(RIASEC_component - Aptitude_component) > 30): coherence = 30 (conflict penalty)
+- ELSE: coherence = 50
+
+Viability_component = stability_score
+
+Conflict_penalties:
+- IF Numerical_apt < 50: apply -20 penalty to final score
+- IF Abstract_apt < 50: apply -15 penalty to final score
+- IF aptitude_level <= 2: apply -25 penalty to final score
+
+PCM_Score = (RIASEC_component × 0.30) + (Aptitude_component × 0.35) + (Coherence_component × 0.20) + (Viability_component × 0.15) + conflict_penalties
+
+---
+
+**SCIENCE (PCB) SCORE:**
+
+RIASEC_component = (I_norm × 0.35) + (S_norm × 0.40) + (R_norm × 0.25)
+
+Aptitude_component = (Verbal_apt × 0.40) + (Numerical_apt × 0.35) + (Abstract_apt × 0.25)
+
+Coherence_component:
+- IF (RIASEC_component >= 60 AND Aptitude_component >= 55): coherence = 100
+- ELSE IF (RIASEC_component >= 50 AND Aptitude_component >= 45): coherence = 70
+- ELSE IF (abs(RIASEC_component - Aptitude_component) > 30): coherence = 30
+- ELSE: coherence = 50
+
+Viability_component = stability_score
+
+Conflict_penalties:
+- IF Verbal_apt < 45: apply -15 penalty
+- IF Numerical_apt < 45: apply -15 penalty
+- IF aptitude_level <= 2: apply -25 penalty
+
+PCB_Score = (RIASEC_component × 0.30) + (Aptitude_component × 0.35) + (Coherence_component × 0.20) + (Viability_component × 0.15) + conflict_penalties
+
+---
+
+**SCIENCE (PCMB) SCORE:**
+
+**CRITICAL GATE CHECK (must pass ALL to be eligible):**
+- Numerical_apt >= 70? [YES/NO]
+- Abstract_apt >= 70? [YES/NO]
+- Verbal_apt >= 65? [YES/NO]
+- I_norm >= 75? [YES/NO]
+- aptitude_level >= 4? [YES/NO]
+- confidence_tag = "high"? [YES/NO]
+
+IF ANY answer is NO → PCMB_Score = 0 (not eligible)
+
+IF ALL answers are YES:
+RIASEC_component = (I_norm × 0.35) + (R_norm × 0.30) + (S_norm × 0.35)
+
+Aptitude_component = (Numerical_apt × 0.35) + (Abstract_apt × 0.35) + (Verbal_apt × 0.30)
+
+Coherence_component = 100 (if eligible, coherence is assumed high)
+
+Viability_component = stability_score
+
+PCMB_Score = (RIASEC_component × 0.30) + (Aptitude_component × 0.40) + (Coherence_component × 0.15) + (Viability_component × 0.15)
+
+---
+
+**COMMERCE SCORE:**
+
+RIASEC_component = (E_norm × 0.40) + (C_norm × 0.35) + (I_norm × 0.25)
+
+Aptitude_component = (Numerical_apt × 0.50) + (Verbal_apt × 0.35) + (Abstract_apt × 0.15)
+
+Coherence_component:
+- IF (RIASEC_component >= 55 AND Aptitude_component >= 50): coherence = 100
+- ELSE IF (RIASEC_component >= 45 AND Aptitude_component >= 40): coherence = 70
+- ELSE IF (abs(RIASEC_component - Aptitude_component) > 30): coherence = 30
+- ELSE: coherence = 50
+
+Viability_component = stability_score
+
+Conflict_penalties:
+- IF Numerical_apt < 40: apply -15 penalty
+- IF aptitude_level <= 2 AND Numerical_apt < 50: apply -10 penalty (Commerce is safer for low aptitude)
+
+Commerce_Score = (RIASEC_component × 0.30) + (Aptitude_component × 0.30) + (Coherence_component × 0.20) + (Viability_component × 0.20) + conflict_penalties
+
+---
+
+**ARTS/HUMANITIES SCORE:**
+
+RIASEC_component = (A_norm × 0.40) + (S_norm × 0.35) + (I_norm × 0.25)
+
+Aptitude_component = (Verbal_apt × 0.60) + (Abstract_apt × 0.25) + (Numerical_apt × 0.15)
+
+Coherence_component:
+- IF (RIASEC_component >= 50): coherence = 100 (Arts is flexible)
+- ELSE IF (RIASEC_component >= 35): coherence = 70
+- ELSE: coherence = 50
+
+Viability_component = stability_score
+
+Bonus_for_low_aptitude:
+- IF aptitude_level <= 2: apply +15 bonus (Arts is safer for struggling students)
+- IF Numerical_apt < 40 AND Abstract_apt < 40: apply +10 bonus
+
+Arts_Score = (RIASEC_component × 0.35) + (Aptitude_component × 0.25) + (Coherence_component × 0.20) + (Viability_component × 0.20) + bonus_for_low_aptitude
+
+---
+
+### STEP 5: RANK STREAMS AND IDENTIFY TOP RECOMMENDATION
+
+Sort all stream scores from highest to lowest:
+1. [Stream name]: [Score]
+2. [Stream name]: [Score]
+3. [Stream name]: [Score]
+4. [Stream name]: [Score]
+5. [Stream name]: [Score]
+
+**Top Recommendation** = Stream with highest score
+
+**Confidence Level:**
+- IF top_score >= 75 AND (top_score - second_score) >= 15: confidence = "High"
+- ELSE IF top_score >= 60 AND (top_score - second_score) >= 10: confidence = "Medium"
+- ELSE: confidence = "Moderate"
+
+**Risk Flags** (check all that apply):
+- [ ] Interest-Aptitude Conflict: RIASEC suggests [X] but aptitude suggests [Y]
+- [ ] Low Stability: Fluctuating performance or low confidence
+- [ ] Cognitive Overload Risk: Recommended stream may be too demanding
+- [ ] Aptitude Below Threshold: Key aptitude areas below minimum requirements
+
+### STEP 6: GENERATE EVIDENCE-BASED REASONING
+
+For the recommended stream, you MUST provide:
+
+**Interest Evidence:**
+"Your RIASEC profile shows [specific types] with scores of [I_norm]%, [R_norm]%, [S_norm]%, which align with [stream] activities like [specific examples from their answers]."
+
+**Aptitude Evidence:**
+"Your cognitive strengths in [aptitude areas] with [Numerical_apt]% numerical, [Abstract_apt]% abstract, [Verbal_apt]% verbal reasoning support the academic demands of [stream]."
+
+**Coherence Evidence:**
+"Your interests and abilities point in the same direction, with coherence score of [coherence_component], indicating [low/moderate/high] alignment."
+
+**Viability Evidence:**
+"Your adaptive aptitude results show [aptitude_level]/5 level with [confidence_tag] confidence and [path_classification] performance, giving you a viability score of [viability_component]."
+
+**Overall Match:**
+"Based on the weighted scoring algorithm, [stream] achieved a match score of [final_score]/100, which is [X points] higher than the next alternative."
+
+---
+
+**⚠️ MANDATORY CHECKPOINT:**
+
+Before proceeding to write the JSON output, you MUST have:
+- ✅ Calculated all 6 normalized RIASEC percentages
+- ✅ Extracted all 4 aptitude percentages
+- ✅ Calculated stability_score from adaptive results
+- ✅ Calculated match scores for all 5 streams (PCM, PCB, PCMB, Commerce, Arts)
+- ✅ Applied all conflict penalties and bonuses
+- ✅ Ranked streams by final score
+- ✅ Determined confidence level
+- ✅ Identified risk flags
+- ✅ Prepared evidence-based reasoning
+
+IF YOU SKIP THIS CALCULATION, YOUR RECOMMENDATION WILL BE INVALID.
+
+---
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## CAREER DERIVATION RULES (CRITICAL - READ CAREFULLY)
@@ -864,24 +1184,199 @@ The sections below show example careers for each stream. These are REFERENCE MAT
 
 **Stream-to-Career Mapping (STRICT):**
 - If stream = "Science (PCM)" → ONLY show Engineering/Tech/Research careers
-- If stream = "Science (PCB)" → ONLY show Medicine/Healthcare/Life Sciences careers  
+  * Examples: Software Engineer, Mechanical Engineer, Data Scientist, Aerospace Engineer, Robotics Engineer
+  * NOT: Doctor, Nurse, Accountant, Teacher, Designer
+  
+- If stream = "Science (PCB)" → ONLY show Medicine/Healthcare/Life Sciences careers
+  * Examples: Doctor, Surgeon, Pharmacist, Biotechnologist, Medical Researcher
+  * NOT: Software Engineer, Accountant, Teacher, Designer
+  
 - If stream = "Science (PCMB)" → Mix of Engineering AND Medical careers
+  * Examples: Biomedical Engineer, Biotechnologist, Medical Device Engineer, Bioinformatics Specialist
+  * Can include both PCM and PCB careers
+  
 - If stream = "Commerce" → ONLY show Business/Finance/Management careers
+  * Examples: Chartered Accountant, Financial Analyst, Business Manager, Marketing Manager
+  * NOT: Software Engineer, Doctor, Teacher, Designer
+  
 - If stream = "Arts/Humanities" → ONLY show Creative/Social Sciences/Law careers
+  * Examples: Lawyer, Psychologist, Journalist, Designer, Teacher, Social Worker
+  * NOT: Software Engineer, Doctor, Accountant
+
+**VALIDATION CHECK:**
+- If you recommended "Science (PCM)" but cluster 1 shows "Content Writer" → YOU FAILED
+- If you recommended "Commerce" but cluster 1 shows "Software Engineer" → YOU FAILED
+- If you recommended "Arts" but cluster 1 shows "Data Scientist" → YOU FAILED
 
 **NEVER default to Arts careers unless you explicitly recommended Arts/Humanities.**
 
-If you recommended Science PCM but show "Content Writer" or "Graphic Designer" → YOU FAILED.
-If you recommended Commerce but show "Teacher" or "Social Worker" → YOU FAILED.
+---
+
+## ═══════════════════════════════════════════════════════════════════════════
+## STREAM METADATA POPULATION GUIDE
+## ═══════════════════════════════════════════════════════════════════════════
+
+When you recommend a stream, you MUST populate these fields accurately:
+
+### displayName
+Provide the full descriptive name based on the stream:
+- Science (PCM) → "PCM (Physics, Chemistry, Maths)"
+- Science (PCB) → "PCB (Physics, Chemistry, Biology)"
+- Science (PCMB) → "PCMB (Physics, Chemistry, Maths, Biology)"
+- Commerce → "Commerce with Maths" OR "Commerce without Maths" (based on student's numerical aptitude)
+- Arts/Humanities → Choose based on student's RIASEC profile:
+  - High A+S → "Arts with Psychology"
+  - High I+E → "Arts with Economics"
+  - High A+E → "Arts/Humanities General"
+
+### category
+- Science streams → "Science"
+- Commerce streams → "Commerce"
+- Arts streams → "Arts"
+
+### subjects.core
+List the 3-5 core subjects for this stream:
+- PCM: ["Physics", "Chemistry", "Mathematics"]
+- PCB: ["Physics", "Chemistry", "Biology"]
+- PCMB: ["Physics", "Chemistry", "Mathematics", "Biology"]
+- Commerce with Maths: ["Accountancy", "Economics", "Business Studies", "Mathematics"]
+- Commerce without Maths: ["Accountancy", "Economics", "Business Studies"]
+- Arts with Psychology: ["English", "Psychology", "Sociology", "History"]
+- Arts with Economics: ["Economics", "English", "Political Science", "History"]
+- Arts General: ["English", "History", "Political Science", "Geography"]
+
+### subjects.focus
+Provide specific advice on what to focus on in 11th-12th for this stream (2-3 sentences)
+
+### careerPaths
+List 5-7 career paths that align with this stream AND the student's specific RIASEC profile.
+DO NOT just copy from the career tracks section - derive based on their unique profile.
+
+### entranceExams
+List 3-5 relevant entrance exams for this stream:
+- PCM: ["JEE Main", "JEE Advanced", "BITSAT", "State Engineering Exams"]
+- PCB: ["NEET", "AIIMS", "JIPMER", "State Medical Exams"]
+- PCMB: ["JEE Main", "JEE Advanced", "NEET", "AIIMS"]
+- Commerce: ["CA Foundation", "CS Foundation", "CUET", "IPM"]
+- Arts: ["CUET", "CLAT", "Mass Communication Entrance", "Psychology Entrance"]
+
+### bestFor
+One sentence describing who this stream is best suited for, based on the student's profile.
+Example: "Students with strong analytical skills and interest in technology and problem-solving"
+
+### alternativeStream
+Provide the second-best stream with:
+- stream: Name in same format as primary
+- displayName: Full descriptive name
+- matchScore: The calculated score from your scoring algorithm
+- reason: Why this is a good alternative (1-2 sentences)
+
+---
+
+## ═══════════════════════════════════════════════════════════════════════════
+## REASONING FIELD POPULATION GUIDE (CRITICAL)
+## ═══════════════════════════════════════════════════════════════════════════
+
+The "reasoning" field MUST contain 3 specific sub-fields with concrete evidence:
+
+### reasoning.interests (RIASEC-based)
+Format: "Your [Top RIASEC Type] ([score]%) and [Second RIASEC Type] ([score]%) interests align well with [specific activities in this stream]"
+
+Examples:
+- Science PCM: "Your Investigative (85%) and Realistic (75%) interests align well with engineering, problem-solving, and building technology solutions"
+- Science PCB: "Your Investigative (80%) and Social (70%) interests align well with medical research, patient care, and healthcare innovation"
+- Commerce: "Your Enterprising (82%) and Conventional (75%) interests align well with business management, financial analysis, and entrepreneurship"
+- Arts: "Your Artistic (85%) and Social (78%) interests align well with creative expression, communication, and working with people"
+
+**CRITICAL RULES:**
+1. MUST cite actual RIASEC scores with percentages (e.g., "Investigative (85%)")
+2. MUST mention top 2 RIASEC types from their profile
+3. MUST connect to specific activities in the recommended stream
+4. Keep it to ONE sentence, maximum 25 words
+
+### reasoning.aptitude (Cognitive strengths-based)
+Format: "Strong [aptitude area] ([percentage]%) and [aptitude area] ([percentage]%) support the academic demands of [stream]"
+
+Examples:
+- Science PCM: "Strong numerical aptitude (88%) and abstract reasoning (82%) support the academic demands of Physics, Chemistry, and Mathematics"
+- Science PCB: "Strong verbal reasoning (78%) and numerical aptitude (72%) support the academic demands of Biology and Chemistry"
+- Commerce: "Strong numerical aptitude (75%) and verbal reasoning (70%) support the academic demands of Accountancy and Economics"
+- Arts: "Strong verbal reasoning (85%) and abstract thinking (72%) support the academic demands of Humanities subjects"
+
+**CRITICAL RULES:**
+1. MUST cite actual aptitude percentages from their profile
+2. MUST mention top 2 aptitude areas (numerical, verbal, abstract, spatial)
+3. MUST connect to specific subjects in the recommended stream
+4. Keep it to ONE sentence, maximum 25 words
+
+### reasoning.personality (Big Five-based)
+Format: "High [trait] ([score]) and [trait] ([score]) indicate [specific work style that fits this stream]"
+
+Examples:
+- Science: "High Conscientiousness (4.2) and Openness (4.0) indicate strong work ethic and curiosity for scientific exploration"
+- Commerce: "High Conscientiousness (4.3) and Extraversion (4.1) indicate organized approach and leadership potential for business"
+- Arts: "High Openness (4.5) and Agreeableness (4.2) indicate creative thinking and collaborative approach for humanities"
+
+**CRITICAL RULES:**
+1. MUST cite actual Big Five scores (1-5 scale)
+2. MUST mention top 2 personality traits from their profile
+3. MUST connect to work style/learning style that fits the stream
+4. Keep it to ONE sentence, maximum 25 words
+
+**VALIDATION CHECKLIST FOR REASONING:**
+- [ ] reasoning.interests cites 2 RIASEC types with actual percentages
+- [ ] reasoning.interests mentions specific activities in the recommended stream
+- [ ] reasoning.aptitude cites 2 aptitude areas with actual percentages
+- [ ] reasoning.aptitude mentions specific subjects in the recommended stream
+- [ ] reasoning.personality cites 2 Big Five traits with actual scores (1-5)
+- [ ] reasoning.personality mentions work/learning style fit
+- [ ] All 3 fields are ONE sentence each, under 25 words
+- [ ] All scores/percentages are from THIS student's actual assessment data
+
+**WRONG EXAMPLES (DO NOT DO THIS):**
+❌ "Your interests align with this stream" (too vague, no scores)
+❌ "Strong aptitude in multiple areas" (no specific areas, no percentages)
+❌ "Good personality fit" (no traits mentioned, no scores)
+❌ "Based on your RIASEC profile" (no specific types or scores)
+
+**CORRECT EXAMPLES:**
+✅ "Your Investigative (85%) and Realistic (75%) interests align well with engineering and technology problem-solving"
+✅ "Strong numerical aptitude (88%) and abstract reasoning (82%) support Physics, Chemistry, and Mathematics demands"
+✅ "High Conscientiousness (4.2) and Openness (4.0) indicate strong work ethic and curiosity for science"
+
+---
 
 **IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure:
 
 {
   "recommendedStream": {
     "stream": "Science (PCM)" | "Science (PCB)" | "Science (PCMB)" | "Commerce" | "Arts/Humanities",
+    "displayName": "Full descriptive name (e.g., 'PCM (Physics, Chemistry, Maths)' or 'Arts with Economics')",
+    "category": "Science" | "Commerce" | "Arts",
     "confidence": "High" | "Medium" | "Moderate",
     "matchScore": 85,
-    "reasoning": "3-4 sentences explaining WHY this stream is the best fit based on their RIASEC, aptitude, personality, and values",
+    "reasoning": {
+      "interests": "Specific RIASEC alignment (e.g., 'Your Investigative (85%) and Realistic (75%) interests align well with engineering and technology careers')",
+      "aptitude": "Specific cognitive strengths (e.g., 'Strong numerical aptitude (88%) and abstract reasoning (82%) support the academic demands of PCM')",
+      "personality": "Specific personality traits (e.g., 'High Conscientiousness (4.2) and Openness (4.0) indicate strong work ethic and curiosity for science')"
+    },
+    "subjects": {
+      "core": ["Physics", "Chemistry", "Mathematics"] | ["Accountancy", "Economics", "Business Studies"] | ["English", "Psychology", "Sociology", "History"],
+      "focus": "What to focus on in 11th-12th for this stream"
+    },
+    "careerPaths": [
+      "Career 1 based on student's profile",
+      "Career 2 based on student's profile",
+      "Career 3 based on student's profile",
+      "Career 4 based on student's profile",
+      "Career 5 based on student's profile"
+    ],
+    "entranceExams": [
+      "Exam 1 relevant to this stream",
+      "Exam 2 relevant to this stream",
+      "Exam 3 relevant to this stream"
+    ],
+    "bestFor": "One sentence describing who this stream is best suited for",
     "evidence": {
       "interest": "RIASEC types that support this stream (e.g., High I: 85%, R: 75%)",
       "aptitude": "Cognitive strengths that align (e.g., Numerical: 88%, Abstract: 82%)",
@@ -890,6 +1385,36 @@ If you recommended Commerce but show "Teacher" or "Social Worker" → YOU FAILED
       "employability": "Skills that support success (e.g., Problem-solving: 85%, Digital Literacy: 90%)",
       "knowledge": "Domain readiness (e.g., Knowledge score: 75%)",
       "adaptiveAptitude": "Adaptive test results (e.g., Level 4/5, 82% accuracy, strong in logical reasoning)"
+    },
+    "scoringBreakdown": {
+      "allStreamScores": {
+        "pcm": {"score": 0, "rank": 0},
+        "pcb": {"score": 0, "rank": 0},
+        "pcmb": {"score": 0, "rank": 0, "eligible": false},
+        "commerce": {"score": 0, "rank": 0},
+        "arts": {"score": 0, "rank": 0}
+      },
+      "recommendedStreamComponents": {
+        "riasecComponent": 0,
+        "aptitudeComponent": 0,
+        "coherenceComponent": 0,
+        "viabilityComponent": 0,
+        "penalties": 0,
+        "bonuses": 0
+      },
+      "confidenceCalculation": {
+        "topScore": 0,
+        "secondScore": 0,
+        "scoreDifference": 0,
+        "confidenceReason": "Why this confidence level was assigned"
+      },
+      "riskFlags": []
+    },
+    "alternativeStream": {
+      "stream": "Second best stream name",
+      "displayName": "Full descriptive name",
+      "matchScore": 0,
+      "reason": "Why this is a good alternative"
     },
     "whyNotOtherStreams": {
       "alternativeStream1": "Why this alternative is less suitable",
@@ -1213,6 +1738,10 @@ If you recommended Commerce but show "Teacher" or "Social Worker" → YOU FAILED
 - [ ] Evidence from ALL 6 sections for stream recommendation
 - [ ] Stream recommendation considers BOTH interests AND aptitude (aptitude takes priority)
 - [ ] **CRITICAL: Followed the decision tree in Step 5 - if aptitude_level ≤ 2 OR confidence = "low" OR fluctuating, did NOT recommend Science streams**
+- [ ] **CRITICAL: If recommending Commerce, checked that student has High E (≥65%) OR High C (≥65%) OR High I with business interests**
+- [ ] **CRITICAL: If student has High A (≥65%) OR High S (≥65%) with Low E (<50%) and Low C (<50%), recommended Arts NOT Commerce**
+- [ ] **CRITICAL: Commerce recommendation includes "strategic choice" language, NOT "safer option" or "fallback"**
+- [ ] **CRITICAL: Commerce recommendation cites E/C/I scores and numerical aptitude as PRIMARY reasons**
 - [ ] If recommending Arts/Humanities, explain why despite moderate/strong numerical aptitude
 - [ ] EXACTLY 3 career clusters aligned with recommended stream
 - [ ] **CRITICAL: Career clusters are DERIVED from student's unique profile, NOT copied from the career tracks sections**
