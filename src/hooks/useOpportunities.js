@@ -13,6 +13,7 @@ import { opportunitiesService } from '../services/opportunitiesService';
  * @param {number} options.pageSize - Number of items per page
  * @param {string} options.sortBy - Sort order ('newest' or 'oldest')
  * @param {boolean} options.serverSidePagination - Enable server-side pagination
+ * @param {boolean} options.includeFactoryVisits - Include industrial visits in results
  * @returns {Object} Hook state and methods
  */
 export const useOpportunities = (options = {}) => {
@@ -25,7 +26,8 @@ export const useOpportunities = (options = {}) => {
     page = 1,
     pageSize = 6,
     sortBy = 'newest',
-    serverSidePagination = false
+    serverSidePagination = false,
+    includeFactoryVisits = false
   } = options;
 
   const [opportunities, setOpportunities] = useState([]);
@@ -73,7 +75,10 @@ export const useOpportunities = (options = {}) => {
         count = data.length;
       } else {
         // Fetch all opportunities when no search term
-        data = await opportunitiesService.getAllOpportunities();
+        data = await opportunitiesService.getAllOpportunities({
+          is_active: activeOnly,
+          includeFactoryVisits
+        });
         count = data.length;
       }
 
@@ -183,7 +188,7 @@ export const useOpportunities = (options = {}) => {
     if (fetchOnMount) {
       fetchOpportunities();
     }
-  }, [JSON.stringify(filters), JSON.stringify(studentSkills), activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination]);
+  }, [JSON.stringify(filters), JSON.stringify(studentSkills), activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination, includeFactoryVisits]);
 
   return {
     opportunities,
