@@ -8,8 +8,8 @@ DECLARE
   v_opportunity RECORD;
   v_student_name TEXT;
 BEGIN
-  -- Only proceed if offer_status changed to 'accepted'
-  IF NEW.offer_status = 'accepted' AND (OLD.offer_status IS NULL OR OLD.offer_status != 'accepted') THEN
+  -- Only proceed if application_status changed to 'accepted'
+  IF NEW.application_status = 'accepted' AND (OLD.application_status IS NULL OR OLD.application_status != 'accepted') THEN
     
     -- Get opportunity details
     SELECT id, job_title, company_name, recruiter_id
@@ -95,6 +95,6 @@ $$ LANGUAGE plpgsql;
 -- Create the trigger
 DROP TRIGGER IF EXISTS trigger_sync_pipeline_on_offer_acceptance ON applied_jobs;
 CREATE TRIGGER trigger_sync_pipeline_on_offer_acceptance
-  AFTER UPDATE OF offer_status ON applied_jobs
+  AFTER UPDATE OF application_status ON applied_jobs
   FOR EACH ROW
   EXECUTE FUNCTION sync_pipeline_on_offer_acceptance();

@@ -1,4 +1,4 @@
-import { Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock, RefreshCw, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -8,7 +8,7 @@ import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscripti
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
-import { getEntityContent, parseStudentType, setDatabasePlans } from '../../utils/getEntityContent';
+import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 /**
@@ -16,7 +16,7 @@ import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscripti
  */
 function getManagePath(userRole) {
   if (!userRole) return null; // Return null instead of default to prevent wrong redirects
-  
+
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -40,7 +40,7 @@ function getManagePath(userRole) {
  */
 function getManagePathFromType(type) {
   if (!type) return null; // Return null instead of default to prevent wrong redirects
-  
+
   const typeToPath = {
     // Student types
     'student': '/student/subscription/manage',
@@ -68,7 +68,7 @@ function getManagePathFromType(type) {
     'super_admin': '/admin/subscription/manage',
     'rm_admin': '/admin/subscription/manage',
   };
-  
+
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
 }
 
@@ -139,7 +139,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
           <ChevronUp className="h-4 w-4" /> Hide
         </button>
       </div>
-      
+
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className={`grid bg-gray-50 border-b border-gray-200`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
           <div className="p-4 font-semibold text-gray-700">Feature</div>
@@ -190,7 +190,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isContactSales = plan.contactSales;
-  
+
   const displayedFeatures = showAllFeatures ? plan.features : plan.features.slice(0, 6);
   const hasMoreFeatures = plan.features.length > 6;
 
@@ -205,13 +205,12 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
 
   return (
     <div
-      className={`relative bg-white rounded-2xl border-2 transition-all duration-300 h-full flex flex-col ${
-        isCurrentPlan 
-          ? 'border-blue-500 shadow-lg' 
-          : plan.recommended 
-          ? 'border-blue-500 shadow-lg' 
-          : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-      }`}
+      className={`relative bg-white rounded-2xl border-2 transition-all duration-300 h-full flex flex-col ${isCurrentPlan
+          ? 'border-blue-500 shadow-lg'
+          : plan.recommended
+            ? 'border-blue-500 shadow-lg'
+            : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+        }`}
     >
       {/* Badge */}
       {isCurrentPlan && (
@@ -228,7 +227,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
           </span>
         </div>
       )}
-      
+
       {/* Organization Mode Badge */}
       {isOrganizationMode && !isCurrentPlan && (
         <div className="absolute -top-3 right-4">
@@ -243,7 +242,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
         <div className="mb-5 pt-2">
           <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
           {plan.tagline && <p className="text-sm text-blue-600 font-medium mt-1">{plan.tagline}</p>}
-          
+
           <div className="mt-4">
             {isContactSales ? (
               <span className="text-2xl font-bold text-gray-900">Contact Sales</span>
@@ -257,7 +256,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
               </div>
             )}
           </div>
-          
+
           {/* Volume Discount Indicator for Organization Mode */}
           {isOrganizationMode && !isContactSales && (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -278,9 +277,8 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
           )}
 
           {isCurrentPlan && daysRemaining !== null && (
-            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-              daysRemaining <= 7 ? 'bg-red-100 text-red-700' : daysRemaining <= 15 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
-            }`}>
+            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${daysRemaining <= 7 ? 'bg-red-100 text-red-700' : daysRemaining <= 15 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+              }`}>
               <Clock className="h-4 w-4" />
               {daysRemaining} days remaining
             </div>
@@ -355,13 +353,12 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
           ) : (
             <button
               onClick={handleClick}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
-                isOrganizationMode
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${isOrganizationMode
                   ? 'bg-purple-600 text-white hover:bg-purple-700'
                   : isUpgrade || plan.recommended
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
-              }`}
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
+                }`}
             >
               {isOrganizationMode ? (
                 <>
@@ -390,10 +387,10 @@ function SubscriptionPlans() {
   const location = useLocation();
   const { type: pathType } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Get type from path params OR query params (for redirects from protected routes)
   const type = pathType || searchParams.get('type');
-  
+
   // Tab state - 'plans' or 'addons'
   const activeTab = searchParams.get('tab') || 'plans';
   const setActiveTab = useCallback((tab) => {
@@ -402,10 +399,10 @@ function SubscriptionPlans() {
       return prev;
     });
   }, [setSearchParams]);
-  
+
   // Use new authentication hook
   const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
-  
+
   // Debug logging for redirect loop investigation
   const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
   useEffect(() => {
@@ -422,7 +419,7 @@ function SubscriptionPlans() {
       });
     }
   }, [type, pathType, searchParams, userRole, isAuthenticated, authLoading, location.pathname, location.search, DEBUG]);
-  
+
   // Get the manage path based on URL type parameter (more reliable than userRole)
   // Falls back to userRole if type is not available
   // CRITICAL FIX: Ensure we never redirect to wrong path
@@ -433,62 +430,56 @@ function SubscriptionPlans() {
       if (DEBUG) console.log('[SubscriptionPlans] managePath from type:', type, '->', pathFromType);
       return pathFromType;
     }
-    
+
     // Fall back to userRole from auth
     if (userRole) {
       const pathFromRole = getManagePath(userRole);
       if (DEBUG) console.log('[SubscriptionPlans] managePath from userRole:', userRole, '->', pathFromRole);
       return pathFromRole;
     }
-    
+
     // SAFETY: If neither type nor userRole is available, don't redirect
     // This prevents the redirect loop when auth is still loading or role is not set
     if (DEBUG) console.log('[SubscriptionPlans] managePath: no type or userRole, returning null to prevent redirect');
     return null;
   }, [type, userRole, DEBUG]);
-  
+
   // Parse entity and role from type
   const { entity, role: pageRole } = useMemo(() => parseStudentType(type || 'student'), [type]);
-  
-  // Fetch plans from database
-  const { 
-    plans: dbPlans, 
-    loading: plansLoading, 
-    error: plansError 
+
+  // Map parsed entity/role to API query params
+  const entityTypeParam = useMemo(() => getEntityTypeParam(entity), [entity]);
+  const roleTypeParam = useMemo(() => getRoleTypeParam(pageRole), [pageRole]);
+
+  // Fetch plans EXCLUSIVELY from the Cloudflare Worker API.
+  // plans = null while loading, [] or [...] after.
+  const {
+    plans: dbPlans,
+    loading: plansLoading,
+    error: plansError,
+    refetch: refetchPlans,
   } = useSubscriptionPlansData({
     businessType: 'b2b',
-    entityType: entity,
-    roleType: pageRole
+    entityType: entityTypeParam,
+    roleType: roleTypeParam,
   });
-  
-  // Cache database plans for getEntityContent fallback
-  useEffect(() => {
-    if (dbPlans && dbPlans.length > 0) {
-      setDatabasePlans(dbPlans);
-    }
-  }, [dbPlans]);
-  
-  // Get dynamic content based on entity type (uses cached db plans if available)
-  const { title, subtitle, heroMessage, plans: configPlans, ctaText } = useMemo(() => {
-    return getEntityContent(type || 'student');
-  }, [type, dbPlans]); // Re-compute when dbPlans change
-  
-  // Use database plans if available, otherwise fall back to config plans
-  const plans = useMemo(() => {
-    if (dbPlans && dbPlans.length > 0) {
-      // Apply role-specific features from getEntityContent
-      const { plans: plansWithFeatures } = getEntityContent(type || 'student');
-      return plansWithFeatures;
-    }
-    return configPlans;
-  }, [dbPlans, configPlans, type]);
+
+  // Plans exclusively from DB — zero hardcoded fallback
+  const plans = dbPlans ?? [];
+
+  // UI-only content (titles, subtitles, CTA text). No pricing here.
+  const { title, subtitle, heroMessage, ctaText } = useMemo(
+    () => getEntityContent(type || 'student'),
+    [type]
+  );
 
   const studentType = type || 'student';
-  
+
   const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
-  // Combined loading state - wait for auth, subscription, and plans data
+  // Combined loading state — wait for auth, subscription, AND plans from API.
+  // plansLoading stays true until the first API response arrives (plans === null → loading).
   const isFullyLoaded = useMemo(
     () => !authLoading && !subscriptionLoading && !plansLoading,
     [authLoading, subscriptionLoading, plansLoading]
@@ -573,32 +564,32 @@ function SubscriptionPlans() {
       navigate(targetPath);
       return;
     }
-    
+
     // CRITICAL FIX: Check if auth is still loading
     if (authLoading) {
       console.log('🔄 Auth still loading, please wait...');
       return; // Don't redirect while auth is loading
     }
-    
+
     // If not authenticated, redirect to signup
     if (!isAuthenticated) {
       console.log('🔐 User not authenticated, redirecting to signup');
-      navigate('/signup', { 
-        state: { 
-          plan, 
-          studentType, 
-          returnTo: '/subscription/payment' 
-        } 
+      navigate('/signup', {
+        state: {
+          plan,
+          studentType,
+          returnTo: '/subscription/payment'
+        }
       });
       return;
     }
-    
+
     // If user has active/paused subscription, show upgrade mode
     if (hasActiveOrPausedSubscription) {
       navigate(`/subscription/plans?type=${studentType}&mode=upgrade`);
       return;
     }
-    
+
     // ENHANCED: Validate user exists in database before allowing payment
     // This prevents the payment page from redirecting back to signup
     const validateUserAndProceed = async () => {
@@ -609,45 +600,45 @@ function SubscriptionPlans() {
           .select('id, firstName, lastName, email')
           .eq('id', user.id)
           .maybeSingle();
-        
+
         if (error) {
           console.error('❌ Error checking user in database:', error);
           toast.error('Unable to verify account. Please try again.');
           return;
         }
-        
+
         if (!userData) {
           console.warn('⚠️ User not found in database, redirecting to complete signup');
-          navigate('/signup', { 
-            state: { 
-              plan, 
-              studentType, 
+          navigate('/signup', {
+            state: {
+              plan,
+              studentType,
               returnTo: '/subscription/payment',
               message: 'Please complete your account setup to continue with payment.'
-            } 
+            }
           });
           return;
         }
-        
+
         // User exists in database, proceed to payment
         console.log('✅ User validated, proceeding to payment');
-        navigate('/subscription/payment', { 
-          state: { 
-            plan, 
-            studentType, 
-            isUpgrade: !!subscriptionData 
-          } 
+        navigate('/subscription/payment', {
+          state: {
+            plan,
+            studentType,
+            isUpgrade: !!subscriptionData
+          }
         });
-        
+
       } catch (err) {
         console.error('❌ Error validating user:', err);
         toast.error('Unable to proceed with payment. Please try again.');
       }
     };
-    
+
     // Execute validation
     validateUserAndProceed();
-    
+
   }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath, type, userRole]);
 
   const formatDate = useCallback((dateString) => {
@@ -704,7 +695,32 @@ function SubscriptionPlans() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading plans...</p>
+          <p className="mt-4 text-gray-600 font-medium">Loading subscription plans…</p>
+          <p className="mt-1 text-sm text-gray-400">Fetching latest pricing from our servers</p>
+        </div>
+      </div>
+    );
+  }
+
+  // API loaded but returned an error and no plans
+  if (plansError && plans.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-sm">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertCircle className="h-6 w-6 text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Plans</h2>
+          <p className="text-gray-500 mb-6 text-sm">
+            {plansError.message || 'An error occurred while fetching subscription plans.'}
+          </p>
+          <button
+            onClick={refetchPlans}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Try Again
+          </button>
         </div>
       </div>
     );
@@ -714,7 +730,7 @@ function SubscriptionPlans() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        {/* Error Banner */}
+        {/* Subscription status error banner */}
         {subscriptionError && isAuthenticated && (
           <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
             <div>
@@ -726,13 +742,19 @@ function SubscriptionPlans() {
             </button>
           </div>
         )}
-        
-        {/* Error banner for plans fetch failures */}
-        {plansError && (
-          <div className="mb-6 bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4">
-            <p className="text-yellow-800 font-medium">
-              Using cached plan data. Some information may be outdated.
-            </p>
+
+        {/* Partial API failure banner — plans loaded but with a warning */}
+        {plansError && plans.length > 0 && (
+          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+              <p className="text-amber-800 text-sm font-medium">
+                Pricing information may be incomplete. Please refresh to see the latest plans.
+              </p>
+            </div>
+            <button onClick={refetchPlans} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm font-medium">
+              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            </button>
           </div>
         )}
         {/* Enhanced subscription status banner - Show only for authenticated users with active or paused subscription */}
@@ -750,9 +772,8 @@ function SubscriptionPlans() {
                   <p className="text-white/80">{currentPlanData?.name || 'Unknown'} Plan</p>
                 </div>
                 {daysRemaining !== null && (
-                  <div className={`px-4 py-2 rounded-full text-sm font-medium ${
-                    daysRemaining <= 7 ? 'bg-red-500 text-white' : daysRemaining <= 15 ? 'bg-amber-400 text-amber-900' : 'bg-white/20 text-white'
-                  }`}>
+                  <div className={`px-4 py-2 rounded-full text-sm font-medium ${daysRemaining <= 7 ? 'bg-red-500 text-white' : daysRemaining <= 15 ? 'bg-amber-400 text-amber-900' : 'bg-white/20 text-white'
+                    }`}>
                     <Clock className="h-4 w-4 inline mr-1.5" />
                     {daysRemaining} days left
                   </div>
@@ -824,22 +845,20 @@ function SubscriptionPlans() {
           <div className="inline-flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setActiveTab('plans')}
-              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                activeTab === 'plans'
+              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'plans'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               <Shield className="w-4 h-4" />
               Subscription Plans
             </button>
             <button
               onClick={() => setActiveTab('addons')}
-              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                activeTab === 'addons'
+              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'addons'
                   ? 'bg-white text-blue-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
-              }`}
+                }`}
             >
               <Sparkles className="w-4 h-4" />
               Add-Ons
@@ -901,8 +920,8 @@ function SubscriptionPlans() {
           </>
         ) : (
           /* Add-Ons Marketplace - compact mode without duplicate header */
-          <AddOnMarketplace 
-            role={pageRole} 
+          <AddOnMarketplace
+            role={pageRole}
             showBundles={true}
             showHeader={false}
             compact={true}
@@ -918,7 +937,7 @@ function SubscriptionPlans() {
           </a>
         </div>
       </div>
-      
+
       {/* Organization Purchase Panel */}
       {showOrgPurchasePanel && selectedPlanForOrg && (
         <OrganizationPurchasePanel
