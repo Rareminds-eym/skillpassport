@@ -7,7 +7,7 @@ import { OrganizationPurchasePanel } from '../../components/Subscription/Organiz
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import useAuth from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabaseClient';
+
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
@@ -185,7 +185,7 @@ FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 
 
 // Plan Card Component - Clean solid design
-const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
+const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
@@ -206,17 +206,16 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
   return (
     <div
       className={`relative bg-white rounded-2xl border-2 transition-all duration-300 h-full flex flex-col ${isCurrentPlan
+        ? 'border-emerald-500 shadow-xl shadow-emerald-500/10'
+        : plan.recommended
           ? 'border-blue-500 shadow-lg'
-          : plan.recommended
-            ? 'border-blue-500 shadow-lg'
-            : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+          : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
         }`}
     >
-      {/* Badge */}
       {isCurrentPlan && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center gap-1.5">
-            <Shield className="h-3.5 w-3.5" /> Active Plan
+          <span className="bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-sm">
+            <Shield className="h-3.5 w-3.5 justify-center" /> Active Plan
           </span>
         </div>
       )}
@@ -277,7 +276,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
           )}
 
           {isCurrentPlan && daysRemaining !== null && (
-            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${daysRemaining <= 7 ? 'bg-red-100 text-red-700' : daysRemaining <= 15 ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'
+            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${daysRemaining <= 7 ? 'bg-red-100 text-red-700' : daysRemaining <= 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
               }`}>
               <Clock className="h-4 w-4" />
               {daysRemaining} days remaining
@@ -333,11 +332,26 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
         <div className="mt-auto space-y-2">
           {isCurrentPlan ? (
             <>
-              <div className="w-full py-3 px-4 rounded-lg font-medium bg-blue-50 border border-blue-200 text-blue-700 text-center flex items-center justify-center gap-2">
+              <div className="w-full py-3 px-4 rounded-lg font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 text-center flex items-center justify-center gap-2">
                 <Check className="h-5 w-5" /> Your Current Plan
               </div>
+
+              {/* Only show Renew button if the subscription is cancelled but still active */}
+              {subscriptionData?.status === 'cancelled' && (
+                <button
+                  onClick={() => onSelect(plan)}
+                  className="w-full py-3 px-4 rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  <TrendingUp className="h-5 w-5" />
+                  Renew Plan
+                </button>
+              )}
+
               <button
-                onClick={() => onSelect(plan)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onManage) onManage();
+                }}
                 className="w-full py-3 px-4 rounded-lg font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 Manage Subscription
@@ -354,10 +368,10 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, subscriptionData, daysRe
             <button
               onClick={handleClick}
               className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${isOrganizationMode
-                  ? 'bg-purple-600 text-white hover:bg-purple-700'
-                  : isUpgrade || plan.recommended
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
+                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                : isUpgrade || plan.recommended
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
                 }`}
             >
               {isOrganizationMode ? (
@@ -491,6 +505,16 @@ function SubscriptionPlans() {
     [subscriptionData]
   );
 
+  // Broader check: does user have a current subscription (including cancelled but not expired)?
+  // Used for PlanCard highlighting so users can see their current plan during upgrade flow
+  const hasCurrentSubscription = useMemo(() => {
+    if (!subscriptionData) return false;
+    const { status, endDate } = subscriptionData;
+    if (isActiveOrPaused(status)) return true;
+    if (status === 'cancelled' && endDate) return new Date(endDate) > new Date();
+    return false;
+  }, [subscriptionData]);
+
   const currentPlanData = useMemo(
     () => subscriptionData ? plans.find(p => p.id === subscriptionData.plan) : null,
     [subscriptionData, plans]
@@ -557,21 +581,27 @@ function SubscriptionPlans() {
   }, [isFullyLoaded, shouldRedirect, navigate, location.search, managePath]);
 
   const handlePlanSelection = useCallback((plan) => {
-    // If user is currently on their active plan, go to manage page
-    if (subscriptionData && subscriptionData.plan === plan.id) {
-      // Use managePath if available, otherwise construct from type or userRole
+    // If user is currently on their ACTIVE plan (not cancelled), go to manage page
+    // Cancelled subscriptions should allow re-purchase of the same plan
+    if (subscriptionData && subscriptionData.plan === plan.id && subscriptionData.status !== 'cancelled') {
       const targetPath = managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${studentType}`;
       navigate(targetPath);
       return;
     }
 
-    // CRITICAL FIX: Check if auth is still loading
+    // Check if auth is still loading
     if (authLoading) {
       console.log('🔄 Auth still loading, please wait...');
-      return; // Don't redirect while auth is loading
+      return;
     }
 
-    // If not authenticated, redirect to signup
+    // If user has active/paused subscription and not already in upgrade mode, show upgrade mode
+    if (hasActiveOrPausedSubscription && !isUpgradeMode) {
+      navigate(`/subscription/plans?type=${studentType}&mode=upgrade`);
+      return;
+    }
+
+    // If not authenticated, redirect to signup with plan context
     if (!isAuthenticated) {
       console.log('🔐 User not authenticated, redirecting to signup');
       navigate('/signup', {
@@ -584,62 +614,19 @@ function SubscriptionPlans() {
       return;
     }
 
-    // If user has active/paused subscription, show upgrade mode
-    if (hasActiveOrPausedSubscription) {
-      navigate(`/subscription/plans?type=${studentType}&mode=upgrade`);
-      return;
-    }
-
-    // ENHANCED: Validate user exists in database before allowing payment
-    // This prevents the payment page from redirecting back to signup
-    const validateUserAndProceed = async () => {
-      try {
-        // Check if user exists in database
-        const { data: userData, error } = await supabase
-          .from('users')
-          .select('id, firstName, lastName, email')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('❌ Error checking user in database:', error);
-          toast.error('Unable to verify account. Please try again.');
-          return;
-        }
-
-        if (!userData) {
-          console.warn('⚠️ User not found in database, redirecting to complete signup');
-          navigate('/signup', {
-            state: {
-              plan,
-              studentType,
-              returnTo: '/subscription/payment',
-              message: 'Please complete your account setup to continue with payment.'
-            }
-          });
-          return;
-        }
-
-        // User exists in database, proceed to payment
-        console.log('✅ User validated, proceeding to payment');
-        navigate('/subscription/payment', {
-          state: {
-            plan,
-            studentType,
-            isUpgrade: !!subscriptionData
-          }
-        });
-
-      } catch (err) {
-        console.error('❌ Error validating user:', err);
-        toast.error('Unable to proceed with payment. Please try again.');
+    // CRITICAL: Navigate to payment page SYNCHRONOUSLY
+    // The old async DB validation was causing a race condition with auth state changes.
+    // PaymentCompletion.jsx already validates the user in the database, so this is not needed here.
+    console.log('✅ Navigating to payment page', { planId: plan.id, isUpgrade: !!subscriptionData });
+    navigate('/subscription/payment', {
+      state: {
+        plan,
+        studentType,
+        isUpgrade: !!subscriptionData
       }
-    };
+    });
 
-    // Execute validation
-    validateUserAndProceed();
-
-  }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, managePath, type, userRole]);
+  }, [isAuthenticated, authLoading, user, navigate, studentType, subscriptionData, hasActiveOrPausedSubscription, isUpgradeMode, managePath, type, userRole]);
 
   const formatDate = useCallback((dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -846,8 +833,8 @@ function SubscriptionPlans() {
             <button
               onClick={() => setActiveTab('plans')}
               className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'plans'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               <Shield className="w-4 h-4" />
@@ -856,8 +843,8 @@ function SubscriptionPlans() {
             <button
               onClick={() => setActiveTab('addons')}
               className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'addons'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               <Sparkles className="w-4 h-4" />
@@ -895,10 +882,11 @@ function SubscriptionPlans() {
                   plan={plan}
                   index={index}
                   allPlans={plans}
-                  isCurrentPlan={isAuthenticated && hasActiveOrPausedSubscription && subscriptionData?.plan === plan.id}
+                  isCurrentPlan={isAuthenticated && hasCurrentSubscription && subscriptionData?.plan === plan.id}
                   onSelect={handlePlanSelection}
-                  subscriptionData={isAuthenticated && hasActiveOrPausedSubscription ? subscriptionData : null}
-                  daysRemaining={isAuthenticated && hasActiveOrPausedSubscription ? daysRemaining : null}
+                  onManage={() => navigate(managePath || getManagePathFromType(type) || getManagePath(userRole) || `/subscription/plans?type=${studentType}`)}
+                  subscriptionData={isAuthenticated && hasCurrentSubscription ? subscriptionData : null}
+                  daysRemaining={isAuthenticated && hasCurrentSubscription ? daysRemaining : null}
                   isOrganizationMode={isOrganizationMode}
                   onOrganizationPurchase={handleOrganizationPurchase}
                 />
