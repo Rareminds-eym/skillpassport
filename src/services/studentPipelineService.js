@@ -169,7 +169,7 @@ export class StudentPipelineService {
               recruiter_id,
               experience_level,
               status,
-              openings_count,
+              applications_count,
               is_active
             )
           `)

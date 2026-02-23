@@ -61,13 +61,7 @@ const Opportunities = () => {
   const studentId = studentData?.id; // Use students.id (database ID)
 
   // Check profile completion status
-  const { 
-    canApplyToJobs, 
-    needsProfileCompletion, 
-    missingFields = [], 
-    completionPercentage,
-    isLoading: profileCheckLoading 
-  } = useProfileCompletion(studentId, !!studentId) || {};
+  const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(studentId, !!studentId);
 
   // Left sidebar tab state - Set default based on student type
   const getDefaultTab = () => {
@@ -434,10 +428,7 @@ const Opportunities = () => {
         rejectionReason: app.rejection_reason,
         nextAction: app.next_action,
         nextActionDate: app.next_action_date,
-        interviews: app.interviews || [],
-        opportunityStatus: app.opportunity?.status,
-        opportunityOpenings: app.opportunity?.openings_count,
-        opportunityIsActive: app.opportunity?.is_active
+        interviews: app.interviews || []
       }));
 
       setApplications(transformedApplications);
@@ -566,21 +557,8 @@ const Opportunities = () => {
 
     // Check if profile is complete before allowing application
     if (needsProfileCompletion) {
-      // Show alert with missing fields information
-      const missingFieldsList = missingFields && missingFields.length > 0 
-        ? missingFields.join(', ') 
-        : 'some required fields';
-      
-      const shouldNavigate = window.confirm(
-        `Your profile is ${completionPercentage || 0}% complete.\n\n` +
-        `Missing fields: ${missingFieldsList}\n\n` +
-        `Please complete your profile to apply for jobs.\n\n` +
-        `Click OK to go to Settings page.`
-      );
-      
-      if (shouldNavigate) {
-        navigate('/student/settings');
-      }
+      // Navigate to settings page
+      navigate('/student/settings');
       return;
     }
 
@@ -876,11 +854,6 @@ const Opportunities = () => {
                 setActiveTab={setActiveTab}
                 opportunities={opportunities}
                 setSelectedOpportunity={setSelectedOpportunity}
-                showOfferModal={showOfferModal}
-                setShowOfferModal={setShowOfferModal}
-                selectedOfferApplication={selectedOfferApplication}
-                setSelectedOfferApplication={setSelectedOfferApplication}
-                fetchApplicationsData={fetchApplicationsData}
               />
             )}
 
@@ -1297,8 +1270,6 @@ const MyJobsContent = ({
   isServerPaginated = false,
   canApplyToJobs,
   needsProfileCompletion,
-  missingFields = [],
-  completionPercentage,
   navigate
 }) => {
   // Use server-side pagination values when available
@@ -1596,8 +1567,6 @@ const MyJobsContent = ({
                 isApplying={isApplying}
                 canApplyToJobs={canApplyToJobs}
                 needsProfileCompletion={needsProfileCompletion}
-                missingFields={missingFields}
-                completionPercentage={completionPercentage}
                 navigate={navigate}
                 studentData={studentData}
               />
@@ -1643,12 +1612,7 @@ const MyApplicationsContent = ({
   queryClient,
   setActiveTab,
   opportunities,
-  setSelectedOpportunity,
-  showOfferModal,
-  setShowOfferModal,
-  selectedOfferApplication,
-  setSelectedOfferApplication,
-  fetchApplicationsData
+  setSelectedOpportunity
 }) => {
   // Helper function to get stage order
   const getStageOrder = (stage) => {
@@ -2038,21 +2002,6 @@ const MyApplicationsContent = ({
 
                           {/* Current Status Info */}
                           <div className="bg-white p-4 rounded-lg border border-blue-200 shadow-sm">
-                            {/* Position Closed Warning */}
-                            {app.opportunityStatus === 'filled' && app.pipelineStage !== 'hired' && app.pipelineStage !== 'rejected' && (
-                              <div className="mb-4 p-3 bg-red-50 border-2 border-red-200 rounded-lg">
-                                <div className="flex items-start gap-2">
-                                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                                  <div className="flex-1">
-                                    <p className="text-sm font-bold text-red-900">Position Closed</p>
-                                    <p className="text-xs text-red-700 mt-1">
-                                      All openings for this position have been filled. Your application is no longer being considered.
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            
                             <div className="flex items-center gap-3">
                               <div className={`p-3 rounded-lg ${currentStageConfig?.bg || 'bg-gray-100'}`}>
                                 {StageIcon && <StageIcon className="w-6 h-6" />}
@@ -2171,26 +2120,6 @@ const MyApplicationsContent = ({
 
                     {/* Action Buttons */}
                     <div className="flex lg:flex-col gap-2">
-                      {/* Offer Action Buttons */}
-                      {app.status === 'offer_received' && !app.offer_status && (
-                        <button
-                          onClick={() => {
-                            setSelectedOfferApplication(app);
-                            setShowOfferModal(true);
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-colors text-sm font-medium shadow-md"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                          Respond to Offer
-                        </button>
-                      )}
-
-                      {app.offer_status === 'accepted' && (
-                        <div className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-semibold border-2 border-green-300">
-                          ✓ Offer Accepted
-                        </div>
-                      )}
-
                       <button
                         onClick={() => {
                           // Toggle pipeline status visibility
@@ -2220,21 +2149,6 @@ const MyApplicationsContent = ({
           })
         )}
       </div>
-
-      {/* Offer Acceptance Modal */}
-      {showOfferModal && selectedOfferApplication && (
-        <OfferAcceptanceModal
-          application={selectedOfferApplication}
-          onClose={() => {
-            setShowOfferModal(false);
-            setSelectedOfferApplication(null);
-          }}
-          onSuccess={(action) => {
-            // Refresh applications
-            fetchApplicationsData();
-          }}
-        />
-      )}
     </>
   );
 };

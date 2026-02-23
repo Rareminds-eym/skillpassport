@@ -24,7 +24,7 @@ export class AppliedJobsService {
       // Check if opportunity has available openings
       const { data: opportunity, error: oppError } = await supabase
         .from('opportunities')
-        .select('openings_count, status, is_active, job_title, company_name')
+        .select('applications_count, status, is_active, job_title, company_name')
         .eq('id', opportunityId)
         .single();
 
@@ -33,7 +33,7 @@ export class AppliedJobsService {
         throw oppError;
       }
 
-      if (!opportunity.is_active || opportunity.status === 'filled' || opportunity.openings_count === 0) {
+      if (!opportunity.is_active || opportunity.status === 'filled' || opportunity.applications_count === 0) {
         console.log('⚠️ No openings available');
         return {
           success: false,

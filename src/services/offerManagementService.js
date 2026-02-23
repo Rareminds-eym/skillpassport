@@ -20,7 +20,7 @@ class OfferManagementService {
             id,
             job_title,
             company_name,
-            openings_count
+            applications_count
           )
         `)
         .single();
@@ -67,7 +67,7 @@ class OfferManagementService {
     try {
       const { data, error } = await supabase
         .from('opportunities')
-        .select('openings_count, status, is_active')
+        .select('applications_count, status, is_active')
         .eq('id', opportunityId)
         .single();
 
@@ -75,7 +75,7 @@ class OfferManagementService {
 
       return {
         success: true,
-        hasOpenings: data.openings_count > 0 && data.is_active && data.status !== 'filled'
+        hasOpenings: data.applications_count > 0 && data.is_active && data.status !== 'filled'
       };
     } catch (error) {
       console.error('Error checking openings:', error);
