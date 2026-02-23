@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { TourState, TourProgress, TourKey } from './types';
-import { 
-  getTourProgressFromStorage, 
-  saveTourProgressToStorage, 
+import {
+  getTourProgressFromStorage,
+  saveTourProgressToStorage,
   markTourCompleted,
   isEligibleForTour,
   forceUnlockScroll,
@@ -33,8 +33,8 @@ interface TourProviderProps {
   userEmail?: string;
 }
 
-export const TourProvider: React.FC<TourProviderProps> = ({ 
-  children, 
+export const TourProvider: React.FC<TourProviderProps> = ({
+  children,
   studentId
 }) => {
   const [state, setState] = useState<TourState>({
@@ -45,11 +45,11 @@ export const TourProvider: React.FC<TourProviderProps> = ({
   });
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
-  
+
   // Single source of truth for tour running state
   const [isTourRunning, setIsTourRunning] = useState(false);
   const [activeTourKey, setActiveTourKey] = useState<TourKey | null>(null);
-  
+
   // Track if we've loaded progress for current studentId
   const loadedForStudentId = useRef<string | undefined>(undefined);
 
@@ -70,17 +70,17 @@ export const TourProvider: React.FC<TourProviderProps> = ({
 
     setLoading(true);
     console.log('📚 Loading tour progress for studentId:', studentId);
-    
+
     try {
       let progress: TourProgress = {};
-      
+
       // Load from database
       const { data, error } = await supabase
         .from('students')
         .select('tour_progress')
         .eq('id', studentId)
-        .single();
-        
+        .maybeSingle();
+
       if (!error && data?.tour_progress) {
         progress = data.tour_progress;
         console.log('📚 Tour progress loaded from database:', progress);
@@ -90,10 +90,10 @@ export const TourProvider: React.FC<TourProviderProps> = ({
         console.log('📚 No tour progress in database, using empty progress');
         progress = {};
       }
-      
+
       setState(prev => ({ ...prev, progress }));
       loadedForStudentId.current = studentId;
-      
+
     } catch (error) {
       console.error('Failed to load tour progress:', error);
       setState(prev => ({ ...prev, progress: {} }));
@@ -113,17 +113,17 @@ export const TourProvider: React.FC<TourProviderProps> = ({
           .from('students')
           .update({ tour_progress: progress })
           .eq('id', studentId);
-          
+
         if (error) {
           console.error('Failed to save tour progress to database:', error);
         } else {
           console.log('📚 Tour progress saved to database:', progress);
         }
       }
-      
+
       // Always save to localStorage as fallback
       saveTourProgressToStorage(progress);
-      
+
       setState(prev => ({ ...prev, progress }));
     } catch (error) {
       console.error('Failed to save tour progress:', error);
@@ -187,48 +187,48 @@ export const TourProvider: React.FC<TourProviderProps> = ({
       console.log(`⚠️ Tour ${tourKey} requested but tour progress is still loading`);
       return;
     }
-    
+
     // Don't start if not eligible
     if (!isEligibleForTour(tourKey, state.progress)) {
       console.log(`⚠️ Tour ${tourKey} requested but is not eligible`);
       return;
     }
-    
+
     // Don't start if another tour is running
     if (isTourRunning && activeTourKey !== tourKey) {
       console.log(`⚠️ Tour ${tourKey} requested but tour ${activeTourKey} is already running`);
       return;
     }
-    
+
     // Don't start if same tour is already running
     if (isTourRunning && activeTourKey === tourKey) {
       console.log(`⚠️ Tour ${tourKey} already running`);
       return;
     }
-    
+
     console.log(`🎯 Starting tour: ${tourKey}`);
-    
+
     setState(prev => ({
       ...prev,
       isRunning: true,
       stepIndex: 0,
       tourKey,
     }));
-    
+
     setActiveTourKey(tourKey);
     setIsTourRunning(true);
   }, [loading, state.progress, isTourRunning, activeTourKey]);
 
   const completeTour = useCallback(async (tourKey: TourKey) => {
     console.log(`✅ Completing tour: ${tourKey}`);
-    
+
     const updatedProgress = markTourCompleted(tourKey, state.progress);
     await saveTourProgress(updatedProgress);
-    
+
     // Stop tour and unlock scroll via centralized state
     setActiveTourKey(null);
     setIsTourRunning(false);
-    
+
     setState(prev => ({
       ...prev,
       isRunning: false,
@@ -239,11 +239,11 @@ export const TourProvider: React.FC<TourProviderProps> = ({
 
   const skipTour = useCallback(async (tourKey: TourKey) => {
     console.log(`⏭️ Skipping tour: ${tourKey}`);
-    
+
     // Stop tour and unlock scroll via centralized state
     setActiveTourKey(null);
     setIsTourRunning(false);
-    
+
     // Mark as completed when skipped
     await completeTour(tourKey);
   }, [completeTour]);
@@ -258,7 +258,7 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     if (loading) {
       return false;
     }
-    
+
     return isEligibleForTour(tourKey, state.progress);
   }, [state.progress, loading]);
 

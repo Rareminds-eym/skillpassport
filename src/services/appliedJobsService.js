@@ -21,6 +21,27 @@ export class AppliedJobsService {
     try {
       console.log('🔍 applyToJob called with:', { studentId, opportunityId });
 
+      // Check if opportunity has available openings
+      const { data: opportunity, error: oppError } = await supabase
+        .from('opportunities')
+        .select('openings_count, status, is_active, job_title, company_name')
+        .eq('id', opportunityId)
+        .single();
+
+      if (oppError) {
+        console.error('❌ Error fetching opportunity:', oppError);
+        throw oppError;
+      }
+
+      if (!opportunity.is_active || opportunity.status === 'filled' || opportunity.openings_count === 0) {
+        console.log('⚠️ No openings available');
+        return {
+          success: false,
+          message: `All openings for ${opportunity.job_title} at ${opportunity.company_name} have been filled.`,
+          data: null
+        };
+      }
+
       // Check if already applied
       const { data: existing } = await supabase
         .from('applied_jobs')
