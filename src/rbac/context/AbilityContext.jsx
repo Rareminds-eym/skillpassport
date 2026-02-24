@@ -120,7 +120,7 @@ export const AbilityProvider = ({ children }) => {
 
   // Build CASL ability from permission list
   const buildAbilityFromPermissions = (permissions) => {
-    const { can, cannot, build } = new AbilityBuilder(createMongoAbility);
+    const { can, build } = new AbilityBuilder(createMongoAbility);
 
     console.log('[RBAC] Building ability from', permissions.length, 'permissions');
     
@@ -129,18 +129,12 @@ export const AbilityProvider = ({ children }) => {
     console.log('[RBAC] Assessment permissions:', assessmentPerms);
 
     permissions.forEach(perm => {
-      if (perm.is_granted) {
-        if (perm.field) {
-          can(perm.action, perm.subject, perm.field);
-        } else {
-          can(perm.action, perm.subject);
-        }
+      // Permissions from rbac_get_user_permissions are already filtered to granted only
+      // So we don't need to check is_granted field
+      if (perm.field) {
+        can(perm.action, perm.subject, perm.field);
       } else {
-        if (perm.field) {
-          cannot(perm.action, perm.subject, perm.field);
-        } else {
-          cannot(perm.action, perm.subject);
-        }
+        can(perm.action, perm.subject);
       }
     });
 
