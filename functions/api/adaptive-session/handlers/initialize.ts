@@ -106,11 +106,20 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     // Create session in database (reuse supabase client from earlier)
     console.log('💾 [InitializeHandler] Creating session in database...');
+    
+    // Map gradeLevel to database enum values
+    // Database enum only has: middle_school, high_school, higher_secondary
+    const dbGradeLevel = gradeLevel === 'after_12' || gradeLevel === 'undergraduate' || gradeLevel === 'postgraduate' 
+      ? 'higher_secondary' 
+      : gradeLevel === 'after10' 
+        ? 'high_school'
+        : gradeLevel;
+    
     const { data: sessionData, error: sessionError } = await supabase
       .from('adaptive_aptitude_sessions')
       .insert({
         student_id: studentId,
-        grade_level: gradeLevel,
+        grade_level: dbGradeLevel,
         student_course: specificGrade ? `Grade ${specificGrade}` : (studentCourse || null),
         current_phase: 'diagnostic_screener',
         current_difficulty: 3, // Default starting difficulty

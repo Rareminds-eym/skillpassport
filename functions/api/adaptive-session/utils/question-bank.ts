@@ -85,6 +85,16 @@ export function studentGradeToGradeLevel(gradeString: string): GradeLevel {
  * Returns array of grade identifiers to query in the database
  */
 function gradeToNumbers(gradeLevel: GradeLevel, specificGrade?: string | number): (number | string)[] {
+  // For after_12, undergraduate, postgraduate - NEVER use specificGrade, always use the gradeLevel mapping
+  if (gradeLevel === 'after_12' || gradeLevel === 'undergraduate' || gradeLevel === 'postgraduate') {
+    switch (gradeLevel) {
+      case 'after_12': return ['Post-12']; // After 12th
+      case 'undergraduate': return ['UG']; // Undergraduate
+      case 'postgraduate': return ['PG']; // Postgraduate
+      default: return ['Post-12'];
+    }
+  }
+  
   // If specific grade provided, use it
   if (specificGrade !== undefined && specificGrade !== null) {
     if (typeof specificGrade === 'number') return [specificGrade];
@@ -100,7 +110,7 @@ function gradeToNumbers(gradeLevel: GradeLevel, specificGrade?: string | number)
     case 'after10': return [10]; // After 10th - use grade 10 questions
     case 'after_12': return ['Post-12']; // After 12th
     case 'undergraduate': return ['UG']; // Undergraduate
-    case 'postgraduate': return ['UG']; // PG not available yet, fallback to UG
+    case 'postgraduate': return ['PG']; // Postgraduate
     default: return [9, 10];
   }
 }
