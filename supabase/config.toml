@@ -78,7 +78,8 @@ sql_paths = ["./seed_no_storage.sql",
 "./seed_adaptive_questions_higher_secondary.sql",
 "./seed_adaptive_questions_highschool.sql",
 "./seed_adaptive_questions_middleschool.sql",
-"./seed_adaptive_questions_ug.sql",]
+"./seed_adaptive_questions_ug.sql",
+"./seed_adaptive_questions_pg.sql",]
 
 [db.network_restrictions]
 # Enable management of network restrictions.
