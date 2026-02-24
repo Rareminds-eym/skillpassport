@@ -13,6 +13,7 @@ import {
     Download,
     HelpCircle,
     LayoutDashboard,
+    Lock,
     Mail,
     Receipt,
     RefreshCw,
@@ -664,13 +665,15 @@ function MySubscription() {
             </button>
             <button
               onClick={() => setActiveTab('addons')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+              disabled
+              title="Add-Ons management is currently disabled"
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 opacity-50 cursor-not-allowed ${
                 activeTab === 'addons'
                   ? 'bg-white text-neutral-900 shadow-sm'
-                  : 'text-neutral-600 hover:text-neutral-900'
+                  : 'text-neutral-600'
               }`}
             >
-              <Sparkles className="w-4 h-4" />
+              <Lock className="w-4 h-4" />
               Add-Ons
             </button>
           </div>
@@ -713,12 +716,14 @@ function MySubscription() {
               </p>
               <button
                 onClick={handleRenewSubscription}
-                className={`mt-3 px-4 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors inline-flex items-center gap-2 ${
-                  isPaused ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-neutral-900 text-white'
+                disabled
+                title="Subscription renewal is currently disabled"
+                className={`mt-3 px-4 py-1.5 rounded-md text-sm font-medium transition-colors inline-flex items-center gap-2 opacity-50 cursor-not-allowed ${
+                  isPaused ? 'bg-orange-600 text-white' : 'bg-neutral-900 text-white'
                 }`}
               >
+                <Lock className="w-4 h-4" />
                 {isPaused ? 'Resume Subscription' : 'Renew Now'}
-                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -931,22 +936,13 @@ function MySubscription() {
                       </div>
                       <button
                         onClick={handleToggleAutoRenew}
-                        disabled={isTogglingAutoRenew}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                          autoRenewEnabled ? 'bg-neutral-900' : 'bg-neutral-300'
-                        }`}
+                        disabled
+                        title="Auto-renewal toggle is currently disabled"
+                        className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors opacity-50 cursor-not-allowed bg-neutral-300"
                       >
-                        {isTogglingAutoRenew ? (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-3 h-3 border-2 border-neutral-400 border-t-white rounded-full animate-spin"></div>
-                          </div>
-                        ) : (
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              autoRenewEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                            }`}
-                          />
-                        )}
+                        <span
+                          className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-0.5"
+                        />
                       </button>
                     </dd>
                   </div>
@@ -1052,39 +1048,38 @@ function MySubscription() {
 
                 <button
                   onClick={handleUpgradePlan}
-                  className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors group"
+                  disabled
+                  title="Plan upgrades are currently disabled"
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-900 text-white rounded-lg text-sm font-medium transition-colors opacity-50 cursor-not-allowed"
                 >
                   <span className="flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
+                    <Lock className="w-4 h-4" />
                     Upgrade Plan
                   </span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
                 <button
                   onClick={handleRenewSubscription}
-                  className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-100 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors group"
+                  disabled
+                  title="Subscription renewal is currently disabled"
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-100 text-neutral-900 rounded-lg text-sm font-medium transition-colors opacity-50 cursor-not-allowed"
                 >
                   <span className="flex items-center gap-2">
-                    <RefreshCw className="w-4 h-4" />
+                    <Lock className="w-4 h-4" />
                     Renew Now
                   </span>
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
                 {isPaused && (
                   <button
                     onClick={handleResumeSubscription}
-                    disabled={isPausing}
-                    className="w-full flex items-center justify-center px-4 py-2.5 text-green-600 bg-green-50 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled
+                    title="Subscription resume is currently disabled"
+                    className="w-full flex items-center justify-center px-4 py-2.5 text-green-600 bg-green-50 rounded-lg text-sm font-medium transition-colors opacity-50 cursor-not-allowed"
                   >
                     <span className="flex items-center gap-2">
-                      {isPausing ? (
-                        <div className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4" />
-                      )}
-                      {isPausing ? 'Resuming...' : 'Resume Subscription'}
+                      <Lock className="w-4 h-4" />
+                      Resume Subscription
                     </span>
                   </button>
                 )}
@@ -1093,19 +1088,23 @@ function MySubscription() {
                   <>
                     <button
                       onClick={() => setShowPauseModal(true)}
-                      className="w-full flex items-center justify-center px-4 py-2.5 text-orange-600 bg-orange-50 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors"
+                      disabled
+                      title="Subscription pause is currently disabled"
+                      className="w-full flex items-center justify-center px-4 py-2.5 text-orange-600 bg-orange-50 rounded-lg text-sm font-medium transition-colors opacity-50 cursor-not-allowed"
                     >
                       <span className="flex items-center gap-2">
-                        <Clock className="w-4 h-4" />
+                        <Lock className="w-4 h-4" />
                         Pause Subscription
                       </span>
                     </button>
                     <button
                       onClick={handleCancelSubscription}
-                      className="w-full flex items-center justify-center px-4 py-2.5 text-neutral-600 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
+                      disabled
+                      title="Subscription cancellation is currently disabled"
+                      className="w-full flex items-center justify-center px-4 py-2.5 text-neutral-600 rounded-lg text-sm font-medium transition-colors opacity-50 cursor-not-allowed"
                     >
                       <span className="flex items-center gap-2">
-                        <XIcon className="w-4 h-4" />
+                        <Lock className="w-4 h-4" />
                         Cancel Subscription
                       </span>
                     </button>
