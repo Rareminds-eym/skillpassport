@@ -77,7 +77,7 @@ function generateSeed(data: AssessmentData): number {
  * Validate assessment response structure
  * Ensures the response has all required fields with correct types
  */
-function validateAssessmentStructure(result: any): { valid: boolean; errors: string[]; warnings: string[] } {
+function validateAssessmentStructure(result: any, gradeLevel?: string): { valid: boolean; errors: string[]; warnings: string[] } {
   // ============================================================================
   // ENHANCED LOGGING: Log validation start (Requirement 4.3, 4.5)
   // ============================================================================
@@ -85,6 +85,7 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
   console.log('[VALIDATION] Response type:', typeof result);
   console.log('[VALIDATION] Is array:', Array.isArray(result));
   console.log('[VALIDATION] Response keys:', result ? Object.keys(result).join(', ') : 'null');
+  console.log('[VALIDATION] Grade level:', gradeLevel);
   
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -226,6 +227,63 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
           console.warn('[VALIDATION] ⚠️', warning);
         }
       });
+    }
+    
+    // Validate degreePrograms (CRITICAL for after12 students ONLY)
+    if (gradeLevel === 'after12') {
+      if (!result.careerFit.degreePrograms || !Array.isArray(result.careerFit.degreePrograms)) {
+        const error = 'careerFit.degreePrograms must be an array (required for after12 students)';
+        errors.push(error);
+        console.error('[VALIDATION] ❌', error);
+      } else {
+        if (result.careerFit.degreePrograms.length !== 3) {
+          const error = `careerFit.degreePrograms must have exactly 3 programs, got ${result.careerFit.degreePrograms.length}`;
+          errors.push(error);
+          console.error('[VALIDATION] ❌', error);
+        } else {
+          console.log('[VALIDATION] ✅ careerFit.degreePrograms has 3 programs');
+        }
+        
+        // Validate each program
+        result.careerFit.degreePrograms.forEach((program: any, index: number) => {
+          const programNum = index + 1;
+          if (!program || typeof program !== 'object') {
+            const error = `Program ${programNum} must be an object`;
+            errors.push(error);
+            console.error('[VALIDATION] ❌', error);
+            return;
+          }
+          
+          const requiredProgramFields = ['programName', 'matchScore', 'fit', 'duration', 'roleDescription', 'topUniversities', 'alignedWithCluster', 'whyThisFitsYou', 'evidence'];
+          const missingProgramFields: string[] = [];
+          requiredProgramFields.forEach(field => {
+            if (!program[field]) {
+              const error = `Program ${programNum} missing REQUIRED field: ${field}`;
+              errors.push(error);
+              missingProgramFields.push(field);
+              console.error('[VALIDATION] ❌', error);
+            }
+          });
+          
+          if (missingProgramFields.length === 0) {
+            console.log(`[VALIDATION] ✅ Program ${programNum} has all required fields`);
+          }
+          
+          // Validate evidence structure (all 7 sections required)
+          if (program.evidence && typeof program.evidence === 'object') {
+            const requiredEvidence = ['interest', 'aptitude', 'personality', 'values', 'employability', 'knowledge', 'adaptiveAptitude'];
+            requiredEvidence.forEach(field => {
+              if (!program.evidence[field]) {
+                const error = `Program ${programNum} evidence missing REQUIRED field: ${field}`;
+                errors.push(error);
+                console.error('[VALIDATION] ❌', error);
+              }
+            });
+          }
+        });
+      }
+    } else {
+      console.log('[VALIDATION] ℹ️ Skipping degreePrograms validation (not required for', gradeLevel, ')');
     }
   }
   
@@ -561,7 +619,7 @@ async function analyzeAssessment(
       // ============================================================================
       // STRICT VALIDATION (Requirement 7.2, 7.3)
       // ============================================================================
-      const validation = validateAssessmentStructure(result);
+      const validation = validateAssessmentStructure(result, gradeLevel);
       
       // ============================================================================
       // VALIDATION FAILURE HANDLING (Requirement 7.4)

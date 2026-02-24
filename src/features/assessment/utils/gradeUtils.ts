@@ -63,7 +63,7 @@ export const getGradeLevelFromNumber = (gradeNum: number): GradeLevel | null => 
 /**
  * Map UI grade level to adaptive aptitude grade level
  */
-export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_school' | 'high_school' | 'higher_secondary' | 'after_12' | 'undergraduate' | 'postgraduate' => {
+export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_school' | 'high_school' | 'higher_secondary' | 'after10' | 'after12' | 'undergraduate' | 'postgraduate' => {
   switch (gradeLevel) {
     case 'middle':
       return 'middle_school';
@@ -72,9 +72,9 @@ export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_sc
     case 'higher_secondary':
       return 'higher_secondary';
     case 'after10':
-      return 'high_school'; // After 10th uses high school level questions
+      return 'after10'; // After 10th
     case 'after12':
-      return 'after_12'; // After 12th uses Post-12 questions
+      return 'after12'; // After 12th uses Post-12 questions
     case 'college':
       return 'undergraduate'; // College defaults to undergraduate (will be determined by grade column in DB)
     default:

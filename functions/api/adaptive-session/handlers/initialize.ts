@@ -89,10 +89,10 @@ export const initializeHandler: PagesFunction = async (context) => {
     }
 
     // Validate gradeLevel
-    const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary', 'after_12', 'undergraduate', 'postgraduate'];
-    if (!validGradeLevels.includes(actualGradeLevel)) {
+    const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary', 'after10', 'after12', 'undergraduate', 'postgraduate'];
+    if (!validGradeLevels.includes(gradeLevel)) {
       return jsonResponse(
-        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, after_12, undergraduate, postgraduate' },
+        { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, after10, after12, undergraduate, postgraduate' },
         400
       );
     }
@@ -121,13 +121,12 @@ export const initializeHandler: PagesFunction = async (context) => {
 
     // Create session in database (reuse supabase client from earlier)
     console.log('💾 [InitializeHandler] Creating session in database...');
-    
     const { data: sessionData, error: sessionError } = await supabase
       .from('adaptive_aptitude_sessions')
       .insert({
         student_id: studentId,
-        grade_level: actualGradeLevel,
-        student_course: specificGrade ? `Grade ${specificGrade}` : (studentCourse || studentGradeString || null),
+        grade_level: gradeLevel,
+        student_course: specificGrade ? `Grade ${specificGrade}` : (studentCourse || null),
         current_phase: 'diagnostic_screener',
         current_difficulty: 3, // Default starting difficulty
         difficulty_path: [],

@@ -300,6 +300,10 @@ const buildEnhancedGrade = (
   }
 
   // Fallback based on gradeLevel
+  if (gradeLevel === 'after12') {
+    return 'after12';
+  }
+
   if (gradeLevel === 'after10') {
     return 'after10';
   }
@@ -747,21 +751,9 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         console.log('📊 [Stage 5/6] Saving to database...');
         window.setAnalysisProgress?.('saving', 'Saving your personalized report...');
 
-        // For after10, use the AI-recommended stream instead of studentStream
-        let finalStreamId = studentStream;
-        if (gradeLevel === 'after10' && geminiResults?.recommendedStream?.stream) {
-          const streamMapping: Record<string, string> = {
-            'Science (PCM)': 'science_pcm',
-            'Science (PCB)': 'science_pcb',
-            'Science (PCMB)': 'science_pcmb',
-            'Commerce': 'commerce',
-            'Arts/Humanities': 'arts',
-            'Arts': 'arts',
-            'Humanities': 'arts'
-          };
-          finalStreamId = streamMapping[geminiResults.recommendedStream.stream] || studentStream;
-          console.log('✅ [After10] Using AI-recommended stream:', geminiResults.recommendedStream.stream, '→', finalStreamId);
-        }
+        // stream_id should always be the student's input stream, not the AI recommendation
+        // The AI recommendation is stored in gemini_results JSON field
+        const finalStreamId = studentStream;
 
         const dbResults = await assessmentService.completeAttempt(
           attemptId,

@@ -21,15 +21,29 @@ import type { GradeLevel, DifficultyLevel, Subtag, Question, TestPhase } from '.
 
 /**
  * Maps dimension codes to subtags
- * Database dimensions: AR, DI, LR, PS, QR, ST
+ * Database dimensions: AN, QU, DI, AR, LR, ST, PS, etc.
  */
 const DIMENSION_TO_SUBTAG: Record<string, Subtag> = {
   'QR': 'numerical_reasoning',      // Quantitative Reasoning
+  'QU': 'numerical_reasoning',      // Quantitative (alternate code)
+  'AN': 'numerical_reasoning',      // Analytical/Numerical
   'LR': 'logical_reasoning',         // Logical Reasoning
   'ST': 'spatial_reasoning',         // Spatial Thinking
   'AR': 'pattern_recognition',       // Abstract Reasoning
   'DI': 'data_interpretation',       // Data Interpretation
-  'PS': 'verbal_reasoning',          // Problem Solving (mapped to verbal)
+  'PS': 'verbal_reasoning',          // Problem Solving
+  'AT': 'verbal_reasoning',          // Attention/Verbal
+  'DR': 'logical_reasoning',         // Deductive Reasoning
+  'AL': 'logical_reasoning',         // Analytical Logic
+  'CG': 'pattern_recognition',       // Cognitive/Pattern
+  'CM': 'verbal_reasoning',          // Comprehension
+  'CT': 'logical_reasoning',         // Critical Thinking
+  'GE': 'verbal_reasoning',          // General
+  'ME': 'numerical_reasoning',       // Mathematical
+  'NS': 'numerical_reasoning',       // Number Series
+  'PR': 'pattern_recognition',       // Pattern Recognition
+  'QA': 'numerical_reasoning',       // Quantitative Aptitude
+  'TR': 'logical_reasoning',         // Technical Reasoning
 };
 
 /**
@@ -85,17 +99,12 @@ export function studentGradeToGradeLevel(gradeString: string): GradeLevel {
  * Returns array of grade identifiers to query in the database
  */
 function gradeToNumbers(gradeLevel: GradeLevel, specificGrade?: string | number): (number | string)[] {
-  // For after_12, undergraduate, postgraduate - NEVER use specificGrade, always use the gradeLevel mapping
-  if (gradeLevel === 'after_12' || gradeLevel === 'undergraduate' || gradeLevel === 'postgraduate') {
-    switch (gradeLevel) {
-      case 'after_12': return ['Post-12']; // After 12th
-      case 'undergraduate': return ['UG']; // Undergraduate
-      case 'postgraduate': return ['PG']; // Postgraduate
-      default: return ['Post-12'];
-    }
-  }
+  // For after12, undergraduate, postgraduate - NEVER use specificGrade, always use the gradeLevel mapping
+  if (gradeLevel === 'after12') return ['Post-12'];
+  if (gradeLevel === 'undergraduate') return ['UG'];
+  if (gradeLevel === 'postgraduate') return ['PG'];
   
-  // If specific grade provided, use it
+  // If specific grade provided, use it (only for school grades)
   if (specificGrade !== undefined && specificGrade !== null) {
     if (typeof specificGrade === 'number') return [specificGrade];
     const extracted = extractGradeNumber(specificGrade);
@@ -108,9 +117,6 @@ function gradeToNumbers(gradeLevel: GradeLevel, specificGrade?: string | number)
     case 'high_school': return [9, 10];
     case 'higher_secondary': return [11, 12];
     case 'after10': return [10]; // After 10th - use grade 10 questions
-    case 'after_12': return ['Post-12']; // After 12th
-    case 'undergraduate': return ['UG']; // Undergraduate
-    case 'postgraduate': return ['PG']; // Postgraduate
     default: return [9, 10];
   }
 }
@@ -131,7 +137,7 @@ function shuffle<T>(array: T[]): T[] {
  * Convert database row to Question type
  */
 function mapToQuestion(row: any, phase: TestPhase, gradeLevel: GradeLevel): Question {
-  const dimension = row.metadata?.dimension || row.dimension;
+  const dimension = row.metadata?.dimension;
   const subtag = DIMENSION_TO_SUBTAG[dimension] || 'logical_reasoning';
   
   return {
@@ -199,7 +205,7 @@ export async function fetchDiagnosticQuestions(
   let lastDimension: string | null = null;
   
   for (const question of shuffled) {
-    const dimension = question.metadata?.dimension || question.dimension;
+    const dimension = question.metadata?.dimension;
     
     // Skip if same as last dimension
     if (dimension === lastDimension) {
@@ -465,7 +471,7 @@ export async function fetchStabilityQuestions(
   let lastDimension: string | null = null;
   
   for (const question of shuffled) {
-    const dimension = question.metadata?.dimension || question.dimension;
+    const dimension = question.metadata?.dimension;
     
     // Skip if same as last dimension
     if (dimension === lastDimension) {
