@@ -7,6 +7,7 @@ import {
     ChevronDown,
     GraduationCap,
     Loader2,
+    Lock,
     MoreVertical,
     Paperclip,
     Phone,
@@ -25,6 +26,7 @@ import NewAdminConversationModal from '../../components/messaging/NewAdminConver
 import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
 import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
 import { useAuth } from '../../context/AuthContext';
+import { useAbility } from '../../rbac/hooks/useAbility';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
@@ -38,6 +40,10 @@ import { supabase } from '../../lib/supabaseClient';
 import MessageService from '../../services/messageService';
 
 const Messages = () => {
+  // RBAC permission checks
+  const abilityContext = useAbility();
+  const can = abilityContext?.can || (() => false);
+  const abilityLoading = abilityContext?.loading || false;
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationIdFromUrl = searchParams.get('conversation');
@@ -1255,8 +1261,13 @@ console.log('🔍 Checking online for educator:', {
     setDeleteModal({ isOpen: true, conversationId, contactName });
   }, []);
 
+  // Check permissions
+  const canReadMessages = can('read', 'Messages');
+  const canSendMessages = can('send', 'Messages');
+  const canDeleteMessages = can('delete', 'Messages');
+
   // Show loading state
-  if (loadingConversations || !studentId || isTabSwitching) {
+  if (loadingConversations || !studentId || isTabSwitching || abilityLoading) {
     return (
       <div className="flex h-[calc(100vh-180px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 items-center justify-center">
         <div className="text-center">
@@ -1264,8 +1275,25 @@ console.log('🔍 Checking online for educator:', {
           <p className="text-gray-500">
             {!studentId ? 'Loading user data...' :
               isTabSwitching ? 'Switching tabs...' :
-                'Loading conversations...'}
+                abilityLoading ? 'Loading permissions...' :
+                  'Loading conversations...'}
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Restrict access if user doesn't have read permission
+  if (!canReadMessages) {
+    return (
+      <div className="flex h-[calc(100vh-120px)] bg-white rounded-xl shadow-lg border border-gray-200 items-center justify-center">
+        <div className="text-center p-8">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-10 h-10 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+          <p className="text-gray-600 mb-4">You don't have permission to view messages.</p>
+          <p className="text-sm text-gray-500">Contact your administrator to request access.</p>
         </div>
       </div>
     );
@@ -1705,31 +1733,33 @@ console.log('🔍 Checking online for educator:', {
                 </div>
 
                 {/* Quick Actions on Hover */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {/* Delete Button - Direct action */}
-                  <button
+                {canDeleteMessages && (
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Delete Button - Direct action */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openDeleteModal(contact.id, contact.name, e);
+                      }}
+                      className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                      title="Delete conversation"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
+                    </button>
+
+                    {/* Archive Button - Can add if needed */}
+                    {/* <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      openDeleteModal(contact.id, contact.name, e);
+                      // Archive action
                     }}
-                    className="p-2 hover:bg-red-100 rounded-full transition-colors"
-                    title="Delete conversation"
+                    className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                    title="Archive conversation"
                   >
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </button>
-
-                  {/* Archive Button - Can add if needed */}
-                  {/* <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Archive action
-                  }}
-                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                  title="Archive conversation"
-                >
-                  <Archive className="w-4 h-4 text-gray-600" />
-                </button> */}
-                </div>
+                    <Archive className="w-4 h-4 text-gray-600" />
+                  </button> */}
+                  </div>
+                )}
               </div>
             ))
           )}
@@ -1846,6 +1876,12 @@ console.log('🔍 Checking online for educator:', {
 
             {/* Message Input */}
             <div className="p-4 bg-white border-t border-gray-200">
+              {!canSendMessages ? (
+                <div className="flex items-center justify-center py-4 px-6 bg-gray-50 rounded-lg border border-gray-200">
+                  <Lock className="w-5 h-5 text-gray-400 mr-2" />
+                  <p className="text-sm text-gray-600">You don't have permission to send messages</p>
+                </div>
+              ) : (
               <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                 {/* <button
                   type="button"
@@ -1884,6 +1920,7 @@ console.log('🔍 Checking online for educator:', {
                   )}
                 </button>
               </form>
+              )}
             </div>
           </>
         ) : (
