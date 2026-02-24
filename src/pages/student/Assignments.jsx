@@ -27,6 +27,7 @@ import {
   Target,
   ChevronDown,
   Loader2,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
@@ -1387,18 +1388,17 @@ const [submissionData, setSubmissionData] = useState({
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
                   </Button>
-                  {/* Submit Assignment button that changes status */}
-                  {canSubmitAssignment(assignment) ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleStatusChange(assignment.id, 'submitted')}
-                      className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-sm font-medium px-5 py-2.5 rounded-lg"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      Submit Assignment
-                    </Button>
-                  ) : assignment.status === 'todo' || assignment.status === 'in-progress' ? (
+                  {/* Submit Assignment button - DISABLED */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={true}
+                    className="bg-gray-300 text-gray-500 cursor-not-allowed opacity-60 border-gray-300 text-sm font-medium px-5 py-2.5 rounded-lg"
+                    title="Assignment submission is currently disabled"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    <Lock className="w-4 h-4" />
+                  </Button>
                     <div className="flex items-center gap-2 text-sm text-red-600">
                       <AlertCircle className="w-4 h-4" />
                       <span className="font-medium">Late submission not allowed</span>
@@ -1628,12 +1628,14 @@ const [submissionData, setSubmissionData] = useState({
                 >
                   Close
                 </Button>
-                {canSubmitAssignment(selectedAssignment) ? (
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <Upload className="w-4 h-4 mr-2" />
-                    {selectedAssignment.status === 'in-progress' ? 'Update Submission' : 'Submit Assignment'}
-                  </Button>
-                ) : selectedAssignment.status !== 'submitted' && selectedAssignment.status !== 'graded' && isOverdue(selectedAssignment.dueDate) && !selectedAssignment.allowLateSubmission ? (
+                <Button
+                  disabled={true}
+                  className="bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
+                  title="Assignment submission is currently disabled"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  <Lock className="w-4 h-4" />
+                </Button>
                   <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 px-4 py-2 rounded-lg border border-red-200">
                     <AlertCircle className="w-4 h-4" />
                     <span className="font-medium">Late submission not allowed</span>

@@ -31,6 +31,13 @@ export const defineAbilitiesFor = (user) => {
   can('read', 'Assessment');
   can('view', 'AssessmentResults');
   can('access', 'CareerAI');
+  can('toggle', 'TrainingVisibility');
+  can('toggle', 'ProjectsVisibility');
+  can('toggle', 'CertificatesVisibility');
+  can('toggle', 'ExperienceVisibility');
+  can('toggle', 'SoftSkillsVisibility');
+  can('toggle', 'TechnicalSkillsVisibility');
+  can('toggle', 'EducationVisibility');
 
   return build();
 };

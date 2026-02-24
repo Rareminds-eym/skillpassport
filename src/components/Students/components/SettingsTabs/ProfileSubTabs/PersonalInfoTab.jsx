@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { User, MapPin, AlertCircle, Save } from "lucide-react";
+import { User, MapPin, AlertCircle, Save, Lock } from "lucide-react";
 import { Button } from "../../ui/button";
 
 const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
@@ -357,21 +357,20 @@ const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, 
       <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
         <Button
           onClick={handleSaveProfile}
-          disabled={isSaving}
-          className={`
+          disabled={true}
+          className="
             inline-flex items-center gap-2
-            bg-blue-600 hover:bg-blue-700 active:bg-blue-800
-            text-white font-medium
+            bg-gray-300 text-gray-500
+            cursor-not-allowed opacity-60
+            font-medium
             px-6 py-2.5 rounded-lg
             shadow-[0_2px_6px_rgba(0,0,0,0.05)]
-            hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]
-            active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]
             transition-all duration-200 ease-in-out
-            disabled:opacity-60 disabled:cursor-not-allowed
-          `}
+          "
+          title="Profile editing is currently disabled"
         >
-          <Save className="w-4 h-4" />
-          {isSaving ? "Saving..." : "Save Changes"}
+          <Lock className="w-4 h-4" />
+          Save Changes (Disabled)
         </Button>
       </div>
     </div>

@@ -11,7 +11,8 @@ import {
   Upload,
   Zap,
   CheckSquare,
-  Star
+  Star,
+  Lock
 } from 'lucide-react';
 
 export interface Assignment {
@@ -414,16 +415,14 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
             View Details
           </button>
           
-          {/* Upload Button */}
-          {canSubmitAssignment(assignment) && (
-            <button
-              onClick={() => onUploadClick(assignment)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium"
-            >
-              <Upload className="w-4 h-4" />
-              Upload Submission
-            </button>
-          )}
+          {/* Upload Button - DISABLED */}
+          <button
+            disabled={true}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gray-300 text-gray-500 rounded-xl cursor-not-allowed opacity-60 text-sm font-medium"
+            title="Assignment submission is currently disabled"
+          >
+            <Lock className="w-4 h-4" />
+          </button>
           
           {/* Show message when submission is disabled due to late submission policy */}
           {!canSubmitAssignment(assignment) && assignment.status !== 'submitted' && assignment.status !== 'graded' && isOverdue(assignment.due_date) && !assignment.allow_late_submission && (

@@ -180,7 +180,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $
+AS $$
 BEGIN
   RETURN QUERY
   SELECT DISTINCT
@@ -217,7 +217,7 @@ BEGIN
   )
   ORDER BY p.sort_order, p.permission_key;
 END;
-$;
+$$;
 
 -- 4.2 Function: Get usage status for a feature
 CREATE OR REPLACE FUNCTION public.rbac_get_usage_status(
@@ -233,7 +233,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $
+AS $$
 DECLARE
   v_usage_count integer;
   v_usage_limit integer;
@@ -287,7 +287,7 @@ BEGIN
     v_reset_period,
     v_next_reset_at;
 END;
-$;
+$$;
 
 -- 4.3 Function: Check and increment usage
 CREATE OR REPLACE FUNCTION public.rbac_check_and_increment_usage(
@@ -302,7 +302,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $
+AS $$
 DECLARE
   v_usage_count integer;
   v_usage_limit integer;
@@ -387,7 +387,7 @@ BEGIN
       0;
   END IF;
 END;
-$;
+$$;
 
 -- ============================================================================
 -- 5. ENABLE ROW LEVEL SECURITY (RLS)

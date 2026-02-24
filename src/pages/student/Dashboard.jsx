@@ -1673,11 +1673,26 @@ const StudentDashboard = () => {
             </CardTitle>
             <div className="flex items-center gap-2">
               <button
-                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-                title="View All Technical Skills"
-                onClick={() => setActiveModal("skills")}
+                className={`p-2 rounded-md transition-colors ${
+                  can('toggle', 'TechnicalSkillsVisibility')
+                    ? 'hover:bg-blue-100 cursor-pointer'
+                    : 'cursor-not-allowed opacity-50'
+                }`}
+                title={can('toggle', 'TechnicalSkillsVisibility') ? "View All Technical Skills" : "Access Restricted"}
+                onClick={() => {
+                  if (can('toggle', 'TechnicalSkillsVisibility')) {
+                    setActiveModal("skills");
+                  } else {
+                    toast.error('You do not have permission to view technical skills');
+                  }
+                }}
+                disabled={!can('toggle', 'TechnicalSkillsVisibility')}
               >
-                <Eye className="w-5 h-5 text-blue-600" />
+                {can('toggle', 'TechnicalSkillsVisibility') ? (
+                  <Eye className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <EyeOff className="w-5 h-5 text-gray-400" />
+                )}
               </button>
             </div>
           </div>
@@ -1776,11 +1791,26 @@ const StudentDashboard = () => {
               </span>
             </CardTitle>
             <button
-              className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-              title="View All Projects & Internships"
-              onClick={() => setActiveModal("projects")}
+              className={`p-2 rounded-md transition-colors ${
+                can('toggle', 'ProjectsVisibility')
+                  ? 'hover:bg-blue-100 cursor-pointer'
+                  : 'cursor-not-allowed opacity-50'
+              }`}
+              title={can('toggle', 'ProjectsVisibility') ? "View All Projects & Internships" : "Access Restricted"}
+              onClick={() => {
+                if (can('toggle', 'ProjectsVisibility')) {
+                  setActiveModal("projects");
+                } else {
+                  toast.error('You do not have permission to view projects');
+                }
+              }}
+              disabled={!can('toggle', 'ProjectsVisibility')}
             >
-              <Eye className="w-5 h-5 text-blue-600" />
+              {can('toggle', 'ProjectsVisibility') ? (
+                <Eye className="w-5 h-5 text-blue-600" />
+              ) : (
+                <EyeOff className="w-5 h-5 text-gray-400" />
+              )}
             </button>
           </div>
         </CardHeader>
@@ -1878,11 +1908,26 @@ const StudentDashboard = () => {
             </CardTitle>
             <div className="flex items-center gap-2">
               <button
-                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-                title="View All Education"
-                onClick={() => setActiveModal("education")}
+                className={`p-2 rounded-md transition-colors ${
+                  can('toggle', 'EducationVisibility')
+                    ? 'hover:bg-blue-100 cursor-pointer'
+                    : 'cursor-not-allowed opacity-50'
+                }`}
+                title={can('toggle', 'EducationVisibility') ? "View All Education" : "Access Restricted"}
+                onClick={() => {
+                  if (can('toggle', 'EducationVisibility')) {
+                    setActiveModal("education");
+                  } else {
+                    toast.error('You do not have permission to view education');
+                  }
+                }}
+                disabled={!can('toggle', 'EducationVisibility')}
               >
-                <Eye className="w-5 h-5 text-blue-600" />
+                {can('toggle', 'EducationVisibility') ? (
+                  <Eye className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <EyeOff className="w-5 h-5 text-gray-400" />
+                )}
               </button>
             </div>
           </div>
@@ -1968,11 +2013,26 @@ const StudentDashboard = () => {
               <span className="text-lg font-bold text-gray-800">Training</span>
             </CardTitle>
             <button
-              className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-              title="View All Courses"
-              onClick={() => setActiveModal("training")}
+              className={`p-2 rounded-md transition-colors ${
+                can('toggle', 'TrainingVisibility')
+                  ? 'hover:bg-blue-100 cursor-pointer'
+                  : 'cursor-not-allowed opacity-50'
+              }`}
+              title={can('toggle', 'TrainingVisibility') ? "View All Courses" : "Access Restricted"}
+              onClick={() => {
+                if (can('toggle', 'TrainingVisibility')) {
+                  setActiveModal("training");
+                } else {
+                  toast.error('You do not have permission to view training courses');
+                }
+              }}
+              disabled={!can('toggle', 'TrainingVisibility')}
             >
-              <Eye className="w-5 h-5 text-blue-600" />
+              {can('toggle', 'TrainingVisibility') ? (
+                <Eye className="w-5 h-5 text-blue-600" />
+              ) : (
+                <EyeOff className="w-5 h-5 text-gray-400" />
+              )}
             </button>
           </div>
         </CardHeader>
@@ -2188,11 +2248,26 @@ const StudentDashboard = () => {
             </CardTitle>
             <div className="flex items-center gap-2">
               <button
-                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-                title="View All Certificates"
-                onClick={() => setActiveModal("certificates")}
+                className={`p-2 rounded-md transition-colors ${
+                  can('toggle', 'CertificatesVisibility')
+                    ? 'hover:bg-blue-100 cursor-pointer'
+                    : 'cursor-not-allowed opacity-50'
+                }`}
+                title={can('toggle', 'CertificatesVisibility') ? "View All Certificates" : "Access Restricted"}
+                onClick={() => {
+                  if (can('toggle', 'CertificatesVisibility')) {
+                    setActiveModal("certificates");
+                  } else {
+                    toast.error('You do not have permission to view certificates');
+                  }
+                }}
+                disabled={!can('toggle', 'CertificatesVisibility')}
               >
-                <Eye className="w-5 h-5 text-blue-600" />
+                {can('toggle', 'CertificatesVisibility') ? (
+                  <Eye className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <EyeOff className="w-5 h-5 text-gray-400" />
+                )}
               </button>
             </div>
           </div>
@@ -2303,11 +2378,26 @@ const StudentDashboard = () => {
         </CardTitle>
         <div className="flex items-center gap-2">
           <button
-            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-            title="View All Experience"
-            onClick={() => setActiveModal("experience")}
+            className={`p-2 rounded-md transition-colors ${
+              can('toggle', 'ExperienceVisibility')
+                ? 'hover:bg-blue-100 cursor-pointer'
+                : 'cursor-not-allowed opacity-50'
+            }`}
+            title={can('toggle', 'ExperienceVisibility') ? "View All Experience" : "Access Restricted"}
+            onClick={() => {
+              if (can('toggle', 'ExperienceVisibility')) {
+                setActiveModal("experience");
+              } else {
+                toast.error('You do not have permission to view experience');
+              }
+            }}
+            disabled={!can('toggle', 'ExperienceVisibility')}
           >
-            <Eye className="w-5 h-5 text-blue-600" />
+            {can('toggle', 'ExperienceVisibility') ? (
+              <Eye className="w-5 h-5 text-blue-600" />
+            ) : (
+              <EyeOff className="w-5 h-5 text-gray-400" />
+            )}
           </button>
         </div>
       </div>
@@ -2428,11 +2518,26 @@ const StudentDashboard = () => {
             </CardTitle>
             <div className="flex items-center gap-2">
               <button
-                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-                title="View All Soft Skills"
-                onClick={() => setActiveModal("softSkills")}
+                className={`p-2 rounded-md transition-colors ${
+                  can('toggle', 'SoftSkillsVisibility')
+                    ? 'hover:bg-blue-100 cursor-pointer'
+                    : 'cursor-not-allowed opacity-50'
+                }`}
+                title={can('toggle', 'SoftSkillsVisibility') ? "View All Soft Skills" : "Access Restricted"}
+                onClick={() => {
+                  if (can('toggle', 'SoftSkillsVisibility')) {
+                    setActiveModal("softSkills");
+                  } else {
+                    toast.error('You do not have permission to view soft skills');
+                  }
+                }}
+                disabled={!can('toggle', 'SoftSkillsVisibility')}
               >
-                <Eye className="w-5 h-5 text-blue-600" />
+                {can('toggle', 'SoftSkillsVisibility') ? (
+                  <Eye className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <EyeOff className="w-5 h-5 text-gray-400" />
+                )}
               </button>
             </div>
           </div>
