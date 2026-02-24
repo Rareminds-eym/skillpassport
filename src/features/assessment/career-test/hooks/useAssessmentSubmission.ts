@@ -559,6 +559,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
       timeRemaining,
       elapsedTime,
       selectedCategory,
+      studentProgram,
     }: SubmissionOptions) => {
       setIsSubmitting(true);
       setError(null);
@@ -629,7 +630,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           studentStream,
           gradeLevel,
           selectedCategory || null,
-          options.studentProgram || null
+          studentProgram || null
         );
 
         await storeStudentContext(attemptId, studentContext);
