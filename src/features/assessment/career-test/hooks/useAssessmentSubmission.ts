@@ -565,17 +565,68 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           console.log('📊 [Stage 1/6] Preparing your responses...');
           window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
           
+          // Merge answers first (needed for session ID lookup)
+          const answersWithAdaptive = { ...answers };
+          
           // Fetch adaptive aptitude results if available
           let adaptiveResults = null;
-          if (currentAttempt?.adaptive_aptitude_session_id) {
+          
+          // CRITICAL: Get session ID from answers (stored when adaptive test completes)
+          console.log('🔍 [Preparing] Looking for adaptive session ID in answers...');
+          const sessionIdFromAnswers = answersWithAdaptive['adaptive_aptitude_session_id'];
+          console.log('🔍 [Preparing] Session ID from answers:', sessionIdFromAnswers);
+          
+          // If we have a session ID in answers, ensure it's saved to the attempt table
+          if (sessionIdFromAnswers && attemptId) {
+            console.log('🔗 [Preparing] Ensuring session ID is saved to attempt table...');
+            try {
+              const { error: updateError } = await supabase
+                .from('personal_assessment_attempts')
+                .update({ adaptive_aptitude_session_id: sessionIdFromAnswers })
+                .eq('id', attemptId);
+              
+              if (updateError) {
+                console.error('❌ [Preparing] Failed to save session ID to attempt:', updateError);
+              } else {
+                console.log('✅ [Preparing] Session ID saved to attempt table');
+              }
+            } catch (saveErr) {
+              console.error('❌ [Preparing] Error saving session ID:', saveErr);
+            }
+          }
+          
+          // Refetch attempt to verify session ID is saved
+          const { data: latestAttempt, error: attemptError } = await supabase
+            .from('personal_assessment_attempts')
+            .select('adaptive_aptitude_session_id, grade_level')
+            .eq('id', attemptId)
+            .single();
+          
+          if (attemptError) {
+            console.error('❌ [Preparing] Error refetching attempt:', attemptError);
+          } else {
+            console.log('✅ [Preparing] Latest attempt data:', latestAttempt);
+          }
+          
+          // Use session ID from answers (most reliable)
+          const sessionId = sessionIdFromAnswers;
+          const attemptGradeLevel = latestAttempt?.grade_level || gradeLevel;
+          
+          console.log('🔍 [Preparing] Final session ID to use:', sessionId);
+          
+          // Check if this grade level uses adaptive aptitude
+          const usesAdaptiveAptitude = ['middle', 'highschool', 'after10', 'after12', 'college', 'higher_secondary'].includes(attemptGradeLevel || '');
+          
+          if (sessionId && usesAdaptiveAptitude) {
             console.log('🔍 [Preparing] Fetching adaptive aptitude results...');
-            console.log('🔍 [Preparing] Session ID:', currentAttempt.adaptive_aptitude_session_id);
+            console.log('🔍 [Preparing] Session ID:', sessionId);
+            console.log('🔍 [Preparing] Grade level:', attemptGradeLevel);
             
             try {
               const { data: adaptiveData, error: adaptiveError } = await supabase
                 .from('adaptive_aptitude_results')
                 .select('*')
-                .eq('session_id', currentAttempt.adaptive_aptitude_session_id)
+                .eq('session_id', sessionId)
                 .maybeSingle();
               
               if (!adaptiveError && adaptiveData) {
@@ -584,20 +635,41 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
                   level: adaptiveData.aptitude_level,
                   accuracy: adaptiveData.overall_accuracy,
                   totalQuestions: adaptiveData.total_questions,
-                  totalCorrect: adaptiveData.total_correct
+                  totalCorrect: adaptiveData.total_correct,
+                  accuracyBySubtag: adaptiveData.accuracy_by_subtag
                 });
+                console.log('✅ [Preparing] Full adaptive data:', JSON.stringify(adaptiveData, null, 2));
               } else {
-                console.warn('⚠️ [Preparing] No adaptive results found:', adaptiveError?.message);
+                console.warn('⚠️ [Preparing] No adaptive results found - test may not have been completed');
+                console.warn('⚠️ [Preparing] Error:', adaptiveError?.message);
+                console.warn('⚠️ [Preparing] Session ID:', sessionId);
+                
+                // Check if the session exists
+                const { data: sessionData } = await supabase
+                  .from('adaptive_aptitude_sessions')
+                  .select('status, total_questions_answered')
+                  .eq('id', sessionId)
+                  .maybeSingle();
+                
+                if (sessionData) {
+                  console.warn('⚠️ [Preparing] Session exists but no results:', {
+                    status: sessionData.status,
+                    questionsAnswered: sessionData.total_questions_answered
+                  });
+                } else {
+                  console.warn('⚠️ [Preparing] Session does not exist in database');
+                }
               }
             } catch (adaptiveErr) {
               console.error('❌ [Preparing] Error fetching adaptive results:', adaptiveErr);
             }
+          } else if (!sessionId && usesAdaptiveAptitude) {
+            console.warn('⚠️ [Preparing] No adaptive session ID found - adaptive test may have been skipped');
           } else {
-            console.log('ℹ️ [Preparing] No adaptive session ID found in attempt');
+            console.log('ℹ️ [Preparing] Grade level does not use adaptive aptitude test');
           }
           
-          // Merge answers with adaptive results for AI analysis
-          const answersWithAdaptive = { ...answers };
+          // Log prepared answers
           console.log('📦 [Preparing] Prepared answers:', {
             totalAnswers: Object.keys(answersWithAdaptive).length,
             hasAdaptiveResults: !!adaptiveResults

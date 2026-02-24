@@ -17,6 +17,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 
 // Auth & Database
 // @ts-ignore - JS file without type declarations
@@ -1413,6 +1414,9 @@ const AssessmentTestPage: React.FC = () => {
     // Initialize adaptive test
     if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
       console.log('🚀 [ADAPTIVE] Starting adaptive test...');
+      console.log('🚀 [ADAPTIVE] Student ID:', user?.id);
+      console.log('🚀 [ADAPTIVE] Current attempt ID:', currentAttempt?.id);
+      
       // Initialize adaptive timer based on section config
       setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);
       
@@ -1428,12 +1432,20 @@ const AssessmentTestPage: React.FC = () => {
         
         // Start the adaptive test (async - questions will load in background)
         try {
+          console.log('🚀 [ADAPTIVE] Calling adaptiveAptitude.startTest()...');
           await adaptiveAptitude.startTest();
           console.log('✅ [ADAPTIVE] startTest completed successfully');
+          console.log('✅ [ADAPTIVE] Session ID:', adaptiveAptitude.session?.id);
+          console.log('✅ [ADAPTIVE] Current question:', adaptiveAptitude.currentQuestion?.id);
         } catch (err) {
           console.error('❌ [ADAPTIVE] Failed to start test:', err);
+          console.error('❌ [ADAPTIVE] Error details:', {
+            message: (err as Error)?.message,
+            stack: (err as Error)?.stack,
+            error: err
+          });
           adaptiveStartPendingRef.current = false;
-          flow.setError('Failed to initialize adaptive test. Please try again.');
+          flow.setError(`Failed to initialize adaptive test: ${(err as Error)?.message || 'Unknown error'}. Please refresh and try again.`);
           return;
         }
         
@@ -2435,19 +2447,31 @@ const AssessmentTestPage: React.FC = () => {
               >
                 {/* Question Content */}
                 <div className="flex-1 py-8">
-                  <QuestionRenderer
-                    question={currentQuestion}
-                    questionId={questionId}
-                    sectionId={currentSection?.id || ''}
-                    answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
-                    onAnswer={handleAnswerChange}
-                    responseScale={currentSection?.responseScale}
-                    isAdaptive={currentSection?.isAdaptive}
-                    adaptiveTimer={adaptiveQuestionTimer}
-                    adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
-                    adaptiveLoading={false}
-                    adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
-                  />
+                  {currentSection?.isAdaptive && !currentQuestion ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                      <p className="text-gray-600">Loading adaptive question...</p>
+                      {adaptiveAptitude.error && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-red-700 text-sm">{adaptiveAptitude.error}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <QuestionRenderer
+                      question={currentQuestion}
+                      questionId={questionId}
+                      sectionId={currentSection?.id || ''}
+                      answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
+                      onAnswer={handleAnswerChange}
+                      responseScale={currentSection?.responseScale}
+                      isAdaptive={currentSection?.isAdaptive}
+                      adaptiveTimer={adaptiveQuestionTimer}
+                      adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
+                      adaptiveLoading={false}
+                      adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
+                    />
+                  )}
                 </div>
 
                 {/* Navigation Buttons - Fixed at bottom */}

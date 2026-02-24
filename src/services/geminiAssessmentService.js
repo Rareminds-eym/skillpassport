@@ -559,6 +559,19 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   } = questionBanks;
 
   // ============================================================================
+  // EXTRACT ADAPTIVE RESULTS FROM ANSWERS IF NOT PROVIDED
+  // During regenerate, adaptive_aptitude_results is nested in answers object
+  // ============================================================================
+  if (!adaptiveResults && answers.adaptive_aptitude_results) {
+    console.log('🔍 Found adaptive_aptitude_results in answers object - extracting...');
+    adaptiveResults = answers.adaptive_aptitude_results;
+    console.log('✅ Extracted adaptive results:', {
+      level: adaptiveResults.aptitudeLevel || adaptiveResults.aptitude_level,
+      accuracy: adaptiveResults.overallAccuracy || adaptiveResults.overall_accuracy
+    });
+  }
+
+  // ============================================================================
   // ENHANCED LOGGING: Log grade level and section prefix before extraction (Requirement 6.1, 6.2)
   // ============================================================================
   console.log('=== prepareAssessmentData EXTRACTION START ===');
@@ -567,6 +580,7 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('📊 Total answers received:', Object.keys(answers).length);
   console.log('📊 Sample answer keys (first 10):', Object.keys(answers).slice(0, 10));
   console.log('📊 Sample answer entries (first 3):', Object.entries(answers).slice(0, 3));
+  console.log('📊 Has adaptive results:', !!adaptiveResults);
   
   // Log section prefixes that will be used for extraction
   console.log('📊 Section Prefixes for extraction:');
