@@ -11,7 +11,7 @@ import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabas
 import type { InitializeTestOptions, InitializeTestResult, GradeLevel } from '../types';
 import { dbSessionToTestSession } from '../utils/converters';
 import { authenticateUser } from '../../shared/auth';
-import { fetchDiagnosticQuestions, extractGradeNumber } from '../utils/question-bank';
+import { fetchDiagnosticQuestions, extractGradeNumber, studentGradeToGradeLevel } from '../utils/question-bank';
 
 /**
  * Initializes a new adaptive aptitude test session
@@ -73,16 +73,31 @@ export const initializeHandler: PagesFunction = async (context) => {
     const studentGradeString = studentData.grade;
     console.log('✅ [InitializeHandler] Found student record:', { studentId, grade: studentGradeString });
 
+    // Determine actual gradeLevel from student's grade column for college students
+    // This overrides the frontend-provided gradeLevel if student has UG/PG in their grade
+    let actualGradeLevel = gradeLevel;
+    if (studentGradeString) {
+      const detectedGradeLevel = studentGradeToGradeLevel(studentGradeString);
+      if (detectedGradeLevel === 'undergraduate' || detectedGradeLevel === 'postgraduate') {
+        actualGradeLevel = detectedGradeLevel;
+        console.log('🎓 [InitializeHandler] Overriding gradeLevel based on student grade:', {
+          provided: gradeLevel,
+          detected: actualGradeLevel,
+          studentGrade: studentGradeString
+        });
+      }
+    }
+
     // Validate gradeLevel
     const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary', 'after_12', 'undergraduate', 'postgraduate'];
-    if (!validGradeLevels.includes(gradeLevel)) {
+    if (!validGradeLevels.includes(actualGradeLevel)) {
       return jsonResponse(
         { error: 'Invalid gradeLevel. Must be one of: middle_school, high_school, higher_secondary, after_12, undergraduate, postgraduate' },
         400
       );
     }
 
-    console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel });
+    console.log('🚀 [InitializeHandler] initializeTest called:', { studentId, gradeLevel: actualGradeLevel });
 
     // Fetch diagnostic screener questions from question bank (no AI)
     console.log('📝 [InitializeHandler] Fetching diagnostic screener questions from database...');
@@ -91,7 +106,7 @@ export const initializeHandler: PagesFunction = async (context) => {
     const specificGrade = extractGradeNumber(studentGradeString);
     console.log('🎯 [InitializeHandler] Using specific grade:', specificGrade || 'fallback to range');
     
-    const diagnosticQuestions = await fetchDiagnosticQuestions(supabase, gradeLevel, [], specificGrade || undefined);
+    const diagnosticQuestions = await fetchDiagnosticQuestions(supabase, actualGradeLevel, [], specificGrade || undefined);
     
     console.log('📋 [InitializeHandler] Questions fetched from database:', {
       questionsCount: diagnosticQuestions.length,
@@ -107,20 +122,12 @@ export const initializeHandler: PagesFunction = async (context) => {
     // Create session in database (reuse supabase client from earlier)
     console.log('💾 [InitializeHandler] Creating session in database...');
     
-    // Map gradeLevel to database enum values
-    // Database enum only has: middle_school, high_school, higher_secondary
-    const dbGradeLevel = gradeLevel === 'after_12' || gradeLevel === 'undergraduate' || gradeLevel === 'postgraduate' 
-      ? 'higher_secondary' 
-      : gradeLevel === 'after10' 
-        ? 'high_school'
-        : gradeLevel;
-    
     const { data: sessionData, error: sessionError } = await supabase
       .from('adaptive_aptitude_sessions')
       .insert({
         student_id: studentId,
-        grade_level: dbGradeLevel,
-        student_course: specificGrade ? `Grade ${specificGrade}` : (studentCourse || null),
+        grade_level: actualGradeLevel,
+        student_course: specificGrade ? `Grade ${specificGrade}` : (studentCourse || studentGradeString || null),
         current_phase: 'diagnostic_screener',
         current_difficulty: 3, // Default starting difficulty
         difficulty_path: [],

@@ -76,7 +76,7 @@ export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_sc
     case 'after12':
       return 'after_12'; // After 12th uses Post-12 questions
     case 'college':
-      return 'undergraduate'; // College uses undergraduate level questions
+      return 'undergraduate'; // College defaults to undergraduate (will be determined by grade column in DB)
     default:
       return 'high_school';
   }

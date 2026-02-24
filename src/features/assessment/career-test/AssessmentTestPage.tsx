@@ -1697,6 +1697,7 @@ const AssessmentTestPage: React.FC = () => {
         timeRemaining: flow.timeRemaining,
         elapsedTime: flow.elapsedTime,
         selectedCategory: flow.selectedCategory,
+        studentProgram: studentProgram || null,
         antiCheatingReport: antiCheatingMonitor.getReport()
       });
     } else {

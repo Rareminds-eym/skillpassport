@@ -59,6 +59,7 @@ interface SubmissionOptions {
   timeRemaining: number | null;
   elapsedTime: number;
   selectedCategory?: string | null;
+  studentProgram?: string | null;
 }
 
 interface UseAssessmentSubmissionResult {
@@ -105,19 +106,20 @@ const determineStudentType = (
   studentTypeField: string | null,
   userMetadataRole: string | null
 ): 'school' | 'college' | 'general' => {
-  // Priority 1: Use student_type field if available
+  // Priority 1: College students have program_id, degree_level, or college_id
+  // Check this FIRST because student_type field might be incorrect
+  if (programId || degreeLevel || collegeId) {
+    return 'college';
+  }
+
+  // Priority 2: Use student_type field if available
   if (studentTypeField === 'school') return 'school';
   if (studentTypeField === 'college') return 'college';
 
-  // Priority 2: Use user metadata role
+  // Priority 3: Use user metadata role
   if (userMetadataRole) {
     if (userMetadataRole.includes('school')) return 'school';
     if (userMetadataRole.includes('college')) return 'college';
-  }
-
-  // Priority 3: College students have program_id, degree_level, or college_id
-  if (programId || degreeLevel || collegeId) {
-    return 'college';
   }
 
   // Priority 4: School students have school_id
@@ -241,9 +243,10 @@ const buildEnhancedGrade = (
   gradeLevel: GradeLevel | null
 ): string => {
   // For college students with program name
-  if (programName && !grade) {
+  if (programName) {
     const programLower = programName.toLowerCase();
     
+    // Check if it's a UG program
     if (
       programLower.includes('bachelor') ||
       programLower.includes('b.tech') ||
@@ -255,6 +258,7 @@ const buildEnhancedGrade = (
       return `UG - ${programName}`;
     }
 
+    // Check if it's a PG program
     if (
       programLower.includes('master') ||
       programLower.includes('m.tech') ||
@@ -265,8 +269,14 @@ const buildEnhancedGrade = (
       return `PG - ${programName}`;
     }
 
+    // Check if it's a Diploma
     if (programLower.includes('diploma')) {
       return `Diploma - ${programName}`;
+    }
+
+    // If grade is UG/PG, use it with program name
+    if (grade && (grade.toUpperCase() === 'UG' || grade.toUpperCase() === 'PG')) {
+      return `${grade.toUpperCase()} - ${programName}`;
     }
 
     return programName;
@@ -351,7 +361,8 @@ const buildStudentContext = async (
   userId: string,
   studentStream: string | null,
   gradeLevel: GradeLevel | null,
-  selectedCategory: string | null
+  selectedCategory: string | null,
+  studentProgram?: string | null
 ): Promise<StudentContext> => {
   try {
     // Fetch both student record and user metadata
@@ -382,7 +393,7 @@ const buildStudentContext = async (
 
     if (studentError || !student) {
       console.warn('⚠️ Could not fetch student record:', studentError?.message);
-      return buildFallbackContext(studentStream, gradeLevel, selectedCategory);
+      return buildFallbackContext(studentStream, gradeLevel, selectedCategory, studentProgram);
     }
 
     // Extract program information
@@ -431,7 +442,7 @@ const buildStudentContext = async (
     return context;
   } catch (contextError) {
     console.error('❌ Error building student context:', contextError);
-    return buildFallbackContext(studentStream, gradeLevel, selectedCategory);
+    return buildFallbackContext(studentStream, gradeLevel, selectedCategory, studentProgram);
   }
 };
 
@@ -441,16 +452,18 @@ const buildStudentContext = async (
 const buildFallbackContext = (
   studentStream: string | null,
   gradeLevel: GradeLevel | null,
-  selectedCategory: string | null
+  selectedCategory: string | null,
+  studentProgram?: string | null
 ): StudentContext => {
   const category = selectedCategory || deriveCategory(studentStream);
-  const enhancedGrade = buildEnhancedGrade(null, null, studentStream, gradeLevel);
+  const enhancedGrade = buildEnhancedGrade(null, studentProgram, studentStream, gradeLevel);
 
   const context: StudentContext = {
     rawGrade: enhancedGrade,
     selectedStream: studentStream,
     selectedCategory: category,
     studentType: 'general',
+    programName: studentProgram || undefined,
   };
 
   console.log('✅ [STUDENT-CONTEXT] Built fallback context:', JSON.stringify(context, null, 2));
@@ -615,7 +628,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           userId!,
           studentStream,
           gradeLevel,
-          selectedCategory || null
+          selectedCategory || null,
+          options.studentProgram || null
         );
 
         await storeStudentContext(attemptId, studentContext);

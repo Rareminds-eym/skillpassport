@@ -49,8 +49,8 @@ export function studentGradeToGradeLevel(gradeString: string): GradeLevel {
   
   const gradeLower = gradeString.toLowerCase();
   
-  // Check for college/university indicators first
-  if (gradeLower.includes('ug') || gradeLower.includes('undergraduate') || 
+  // Check for college/university indicators - grade column contains "UG" or "PG" directly
+  if (gradeLower === 'ug' || gradeLower.includes('undergraduate') || 
       gradeLower.includes('bachelor') || gradeLower.includes('b.tech') || 
       gradeLower.includes('btech') || gradeLower.includes('bca') || 
       gradeLower.includes('b.sc') || gradeLower.includes('bsc') ||
@@ -59,7 +59,7 @@ export function studentGradeToGradeLevel(gradeString: string): GradeLevel {
     return 'undergraduate';
   }
   
-  if (gradeLower.includes('pg') || gradeLower.includes('postgraduate') ||
+  if (gradeLower === 'pg' || gradeLower.includes('postgraduate') ||
       gradeLower.includes('master') || gradeLower.includes('m.tech') || 
       gradeLower.includes('mtech') || gradeLower.includes('mca') || 
       gradeLower.includes('mba') || gradeLower.includes('m.sc') || 
