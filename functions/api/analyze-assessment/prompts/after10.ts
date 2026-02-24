@@ -86,10 +86,11 @@ Before recommending ANY stream, you MUST complete this internal reasoning:
 - Ask yourself: "Can this student handle sustained academic pressure for 2 years?"
 - **CRITICAL DECISION RULES**:
   * IF aptitude_level ≤ 2 OR confidence = "low" OR path = "fluctuating" OR difficulty 3 accuracy < 40%:
-    → This student needs a MANAGEABLE stream, NOT the most demanding one
+    → This student needs a stream that MATCHES THEIR INTERESTS, considering their aptitude
+    → **UNLESS cognitive scores override** (numerical ≥ 70% AND abstract ≥ 65% means Science is viable)
     → **PCMB is OFF THE TABLE** (highest cognitive load - requires level 4+, 75%+ accuracy, high confidence)
-    → **PCM/PCB are RISKY** (high cognitive load - mark as "Moderate Fit" at best)
-    → **Commerce or Arts are SAFER** (moderate cognitive load - mark as "High Fit")
+    → **PCM/PCB may be viable IF cognitive scores are strong** (check Step 5-Zero override)
+    → **Commerce or Arts based on INTERESTS** (check RIASEC first, not just default to Commerce)
 
 ### THINK STEP 2: Calculate RIASEC Scores Precisely
 - Go through every question, apply categoryMapping, compute exact scores
@@ -129,46 +130,82 @@ If interests say Science but aptitude says No → Recommend Commerce/Arts with S
 
 **CRITICAL: Follow this decision tree EXACTLY. Do NOT skip steps.**
 
-**STEP 5A: Check Adaptive Aptitude Stability (HIGHEST PRIORITY)**
+**STEP 5-ZERO: Cognitive Score Override Check (HIGHEST PRIORITY - CHECK THIS FIRST)**
 
-**CRITICAL: Aptitude LEVEL takes precedence over confidence/path when level is 3+**
+**Before checking aptitude_level, ask yourself: "Does this student have STRONG cognitive scores despite low aptitude level?"**
+
+IF (numerical ≥ 70% AND abstract ≥ 65%) OR (numerical ≥ 65% AND verbal ≥ 65%):
+  → **Cognitive ability is REAL - aptitude level is just test variance/anxiety**
+  → **Science streams are VIABLE** (recommend based on RIASEC + cognitive fit)
+  → **Skip the aptitude_level ≤ 2 restrictions** (those are for genuinely low aptitude)
+  → Decision logic:
+    * IF High I (≥ 70%) OR High R (≥ 70%) AND Numerical ≥ 70% AND Abstract ≥ 65% → **Science PCM (Moderate Fit)**
+      - Explanation: "Your numerical (cite %) and abstract reasoning (cite %) strongly support PCM. Your aptitude level of [cite level] suggests inconsistent test performance - this is likely test anxiety or performance variability, NOT lack of ability. Your cognitive scores prove you have the capability. Focus on building confidence and consistency in 11th-12th. With structured support and stress management, you can excel in PCM."
+    * IF High I (≥ 70%) AND High S (≥ 65%) AND Verbal ≥ 65% AND Numerical ≥ 60% → **Science PCB (Moderate Fit)**
+      - Explanation: "Your verbal (cite %) and numerical (cite %) support PCB. Your aptitude level of [cite level] reflects test inconsistency, not ability. Focus on building confidence and consistent study habits."
+    * ELSE → Proceed to Step 5A below
+  → **STOP HERE if PCM/PCB recommended - Do NOT proceed to Step 5A**
+
+**STEP 5A: Check Adaptive Aptitude Stability**
+
+**CRITICAL: Aptitude LEVEL takes precedence over confidence/path when level is 3+, UNLESS cognitive scores override (checked above)**
 
 IF (aptitude_level ≤ 2) OR (overall_accuracy < 50%):
-  → **Student has GENUINELY LOW aptitude**
-  → **PCMB is FORBIDDEN** (requires level 4+, 75%+ accuracy)
-  → **PCM/PCB are RISKY** (require level 3+, stable performance)
-  → **Commerce or Arts are RECOMMENDED** (manageable cognitive load)
-  → Decision logic (CHECK INTERESTS FIRST, NOT JUST DEFAULT TO COMMERCE):
-    * IF High E (Enterprising ≥ 70%) OR High C (Conventional ≥ 70%) → **Commerce (High Fit)**
-      - Explanation: "Your strong Enterprising/Conventional interests (cite exact %) combined with manageable academic demands make Commerce an excellent strategic choice. This stream offers diverse career paths in business, finance, and management while ensuring academic success. This is NOT a compromise - it's aligning your natural interests with a sustainable path."
+  → **First, check if cognitive scores override low level (should have been caught in Step 5-Zero):**
+  
+  IF (numerical ≥ 70% AND abstract ≥ 65%):
+    → **ERROR: This should have been caught in Step 5-Zero. Recommend Science PCM (Moderate Fit) with confidence-building advice.**
+  
+  ELSE IF (numerical ≥ 60% AND verbal ≥ 60%):
+    → **Student has MODERATE cognitive ability despite low aptitude level**
+    → Decision logic:
+      * IF High I (≥ 70%) AND High S (≥ 65%) → **Science PCB (Moderate Fit)**
+        - Explanation: "Your verbal (cite %) and numerical (cite %) support PCB. Your aptitude level of [cite level] suggests test inconsistency. Focus on building confidence and study consistency. PCB is viable with structured support."
+      * ELSE → Proceed to Commerce/Arts logic below
+  
+  ELSE:
+    → **Student has GENUINELY LOW aptitude across the board**
+    → **PCMB is FORBIDDEN** (requires level 4+, 75%+ accuracy)
+    → **PCM/PCB are RISKY** (require level 3+, stable performance)
+    → **CHECK INTERESTS FIRST to avoid Commerce default bias:**
+    
     * IF High A (Artistic ≥ 70%) OR High S (Social ≥ 70%) AND Low E (< 50%) AND Low C (< 50%) → **Arts/Humanities (High Fit)**
-      - Explanation: "Your strong Artistic/Social interests (cite exact %) align perfectly with Arts/Humanities. This stream allows you to excel in creative, communication, and people-oriented fields while building on your natural strengths. This is a strategic choice that maximizes your potential."
-    * IF High I (Investigative ≥ 70%) AND (Numerical ≥ 45% OR Abstract ≥ 45%) → **Commerce with Computer Science (High Fit)**
-      - Explanation: "Your Investigative interests (cite exact %) show analytical thinking. Commerce with Computer Science elective allows you to explore tech careers (BCA, BSc IT, Data Analytics) through a more manageable academic path. This is a strategic route to tech careers without the overwhelming pressure of PCM."
-    * ELSE IF Numerical ≥ 40% → **Commerce (High Fit)**
-      - Explanation: "Commerce offers a balanced path with strong career prospects in business, finance, and management. With your numerical aptitude of [cite %], you can excel in accounting and finance subjects. This is a strategic choice that maximizes success and career flexibility, not a limitation."
+      - Explanation: "Your Artistic/Social interests (cite exact %) align perfectly with Arts/Humanities. This stream allows you to excel in creative, communication, and people-oriented fields while building on your natural strengths. This matches your interest profile."
+    
+    * IF High I (Investigative ≥ 70%) AND Low E (< 50%) AND Low C (< 50%) AND Numerical < 50% → **Arts with Economics/Psychology (High Fit)**
+      - Explanation: "Your Investigative interests (cite exact %) align with analytical humanities like Economics, Psychology, or Political Science. These fields satisfy your analytical curiosity while matching your interest profile."
+    
+    * IF High E (Enterprising ≥ 70%) OR High C (Conventional ≥ 70%) → **Commerce (High Fit)**
+      - Explanation: "Your Enterprising/Conventional interests (cite exact %) align perfectly with Commerce. This stream offers diverse career paths in business, finance, and management while matching your interest profile."
+    
+    * IF High I (Investigative ≥ 70%) AND Numerical ≥ 45% → **Commerce with Computer Science (High Fit)**
+      - Explanation: "Your Investigative interests (cite exact %) show analytical thinking. Commerce with Computer Science elective allows you to explore tech careers (BCA, BSc IT, Data Analytics) while matching your analytical interests."
+    
+    * ELSE IF Numerical ≥ 45% → **Commerce (Moderate Fit)**
+      - Explanation: "Your numerical aptitude of [cite %] supports Commerce subjects like accounting and finance. Commerce offers strong career prospects in business and management."
+    
     * ELSE → **Arts/Humanities (High Fit)**
-      - Explanation: "Arts/Humanities offers the most manageable academic path while opening doors to diverse careers in media, law, psychology, and civil services. This stream allows you to build confidence and explore your interests without overwhelming academic pressure. This is a strategic foundation for long-term success."
-  → **CRITICAL: NEVER say 'safer default' or 'fallback option' - Always frame as STRATEGIC CHOICE based on their interests**
+      - Explanation: "Arts/Humanities offers diverse career paths in media, law, psychology, and civil services while building on your verbal and creative strengths."
+  
+  → **CRITICAL: NEVER say 'safer', 'fallback', or 'less demanding' - Frame as INTEREST MATCH**
   → **STOP HERE - Do NOT proceed to Step 5B**
 
 ELSE IF (aptitude_level = 3) AND (confidence = "low" OR path = "fluctuating") AND (overall_accuracy < 60%):
   → **Student has MODERATE aptitude but UNSTABLE performance**
   → **PCMB is FORBIDDEN** (requires level 4+, high confidence)
   → **PCM/PCB are RISKY** (require stable performance)
-  → **Commerce is RECOMMENDED** (manageable cognitive load, good career prospects)
-  → Decision logic (CHECK INTERESTS FIRST):
+  → **CHECK INTERESTS FIRST:**
     * IF High E (Enterprising ≥ 65%) OR High C (Conventional ≥ 65%) OR Numerical ≥ 55% → **Commerce (High Fit)**
-      - Explanation: "Your Enterprising/Conventional interests (cite exact %) combined with numerical aptitude of [cite %] make Commerce an excellent strategic choice. This stream offers strong career prospects in business, finance, and management while being more manageable than Science streams. This maximizes your success potential and career flexibility."
+      - Explanation: "Your Enterprising/Conventional interests (cite exact %) combined with numerical aptitude of [cite %] align perfectly with Commerce. This stream offers strong career prospects in business, finance, and management while matching your interest profile."
     * IF High I (Investigative ≥ 70%) AND Numerical ≥ 50% → **Commerce with Computer Science (High Fit)**
-      - Explanation: "Your Investigative interests (cite exact %) show analytical thinking. Commerce with Computer Science elective provides a strategic path to tech careers (BCA, BSc IT, Data Analytics, Business Analytics) without the overwhelming pressure of PCM. This is a smart choice that keeps tech doors open."
+      - Explanation: "Your Investigative interests (cite exact %) show analytical thinking. Commerce with Computer Science elective provides a path to tech careers (BCA, BSc IT, Data Analytics, Business Analytics) that matches your interests."
     * IF High A (Artistic ≥ 65%) OR High S (Social ≥ 65%) AND Low E (< 50%) → **Arts/Humanities (High Fit)**
-      - Explanation: "Your Artistic/Social interests (cite exact %) align perfectly with Arts/Humanities. This stream allows you to excel in creative, communication, and people-oriented fields while ensuring academic success. This is a strategic choice that plays to your strengths."
-    * ELSE IF Numerical ≥ 45% → **Commerce (High Fit)**
-      - Explanation: "Commerce offers a balanced path with strong career prospects. Your numerical aptitude of [cite %] supports accounting and finance subjects. This is a strategic choice that maximizes success and career flexibility while avoiding the high-pressure Science streams."
+      - Explanation: "Your Artistic/Social interests (cite exact %) align perfectly with Arts/Humanities. This stream allows you to excel in creative, communication, and people-oriented fields that match your interests."
+    * ELSE IF Numerical ≥ 45% → **Commerce (Moderate Fit)**
+      - Explanation: "Your numerical aptitude of [cite %] supports Commerce subjects like accounting and finance. Commerce offers strong career prospects in business and management."
     * ELSE → **Arts/Humanities (High Fit)**
-      - Explanation: "Arts/Humanities offers diverse career paths in media, law, psychology, and civil services. This stream allows you to build on your strengths without overwhelming academic pressure. This is a strategic foundation for long-term career success."
-  → **CRITICAL: Frame Commerce as STRATEGIC CHOICE with strong career prospects, NOT as 'safer option' or 'fallback'**
+      - Explanation: "Arts/Humanities offers diverse career paths in media, law, psychology, and civil services that build on your strengths."
+  → **CRITICAL: Frame as INTEREST MATCH, NOT as 'safer option' or 'less demanding'**
   → **STOP HERE - Do NOT proceed to Step 5B**
 
 ELSE IF (aptitude_level ≥ 4) AND (confidence = "low" OR path = "fluctuating"):
@@ -176,13 +213,12 @@ ELSE IF (aptitude_level ≥ 4) AND (confidence = "low" OR path = "fluctuating"):
   → **This is likely test anxiety or inconsistent preparation, NOT lack of ability**
   → **PCMB is RISKY** (requires both high aptitude AND high confidence)
   → **PCM/PCB are VIABLE** (aptitude level 4+ can handle it with support)
-  → **Commerce is SAFE** (leverages aptitude without overwhelming pressure)
-  → Decision logic:
+  → Decision logic (CHECK INTERESTS FIRST - they have the ability, so follow their interests):
     * Check RIASEC interests FIRST (they have the ability, so follow their interests):
-      - IF High I (Investigative) AND (High R OR High E) AND Numerical ≥ 65% AND Abstract ≥ 60% → **Science PCM (High Fit)** + mention "Your aptitude level 4 shows strong capability. Focus on building consistency and managing test anxiety."
-      - IF High I (Investigative) AND High S (Social) AND Verbal ≥ 60% AND Numerical ≥ 55% → **Science PCB (High Fit)** + mention "Your aptitude level 4 shows strong capability. Focus on building consistency and managing test anxiety."
-      - IF High E (Enterprising) OR High C (Conventional) OR Numerical ≥ 55% → **Commerce (High Fit)** + mention "Your aptitude level 4 means you can excel in Commerce with less pressure than Science. This is a strategic choice, not a limitation."
-      - IF High A (Artistic) AND High S (Social) AND Low I (< 50%) → **Arts/Humanities (High Fit)** + mention "Your aptitude level 4 means you can excel in any stream. Arts aligns with your creative and social interests."
+      - IF High I (Investigative) AND (High R OR High E) AND Numerical ≥ 65% AND Abstract ≥ 60% → **Science PCM (High Fit)** + mention "Your aptitude level [cite] shows strong capability. Focus on building consistency and managing test anxiety. You have the ability for PCM."
+      - IF High I (Investigative) AND High S (Social) AND Verbal ≥ 60% AND Numerical ≥ 55% → **Science PCB (High Fit)** + mention "Your aptitude level [cite] shows strong capability. Focus on building consistency and managing test anxiety. You have the ability for PCB."
+      - IF High E (Enterprising) OR High C (Conventional) → **Commerce (High Fit)** + mention "Your aptitude level [cite] means you can excel in Commerce. This matches your Enterprising/Conventional interests."
+      - IF High A (Artistic) AND High S (Social) AND Low I (< 50%) → **Arts/Humanities (High Fit)** + mention "Your aptitude level [cite] means you can excel in any stream. Arts aligns with your creative and social interests."
     * **CRITICAL**: For aptitude level 4+, low confidence is NOT a reason to avoid their interest area - it's a reason to provide support and encouragement
   → **STOP HERE - Do NOT proceed to Step 5B**
 
@@ -214,7 +250,7 @@ IF aptitude_level ≥ 4 AND confidence = "high" AND (path = "stable" OR "ascendi
 **STEP 5D: Final Validation**
 - Confirm the recommended stream matches BOTH aptitude AND interests
 - If there's a mismatch (e.g., interests say Science but aptitude says Commerce), PRIORITIZE APTITUDE
-- Explain the mismatch clearly: "While you're interested in [X], your aptitude profile suggests [Y] would be more manageable. You can still pursue [X-related careers] through alternative pathways."
+- Explain the mismatch clearly: "While you're interested in [X], your aptitude profile suggests [Y] would be a better match. You can still pursue [X-related careers] through alternative pathways."
 
 **REMEMBER: NEVER recommend PCMB unless aptitude_level ≥ 4 AND Numerical ≥ 70% AND Abstract ≥ 70% AND Verbal ≥ 65% AND confidence = "high" AND path = "stable" or "ascending"**
 
@@ -301,7 +337,7 @@ When recommending a stream, you MUST follow this priority order:
 Commerce should ONLY be recommended if:
 1. **Interest Check**: High E (Enterprising ≥ 65%) OR High C (Conventional ≥ 65%) OR High I with business/finance keywords
 2. **Aptitude Check**: Numerical ≥ 45% (shows basic math capability for accounting/economics)
-3. **NOT just because**: "It's safer" or "It's manageable" or "It's a fallback"
+3. **NOT just because**: Low aptitude alone - must have E/C/I interests
 
 **IF student has:**
 - High A (Artistic ≥ 65%) OR High S (Social ≥ 65%) AND Low E (< 50%) AND Low C (< 50%)
@@ -313,8 +349,8 @@ Commerce should ONLY be recommended if:
   → Explanation: "Your Investigative interests align with research, analysis, and problem-solving in social sciences. Arts with Economics/Psychology provides a strategic path to careers in research, policy analysis, and civil services."
 
 **WHEN YOU DO RECOMMEND COMMERCE:**
-- **NEVER say**: "safer option", "fallback", "easier path", "less demanding"
-- **ALWAYS say**: "strategic choice", "strong career prospects", "maximizes success and flexibility", "aligns with your business/analytical interests"
+- **NEVER say**: "safer option", "fallback", "easier path", "less demanding", "manageable"
+- **ALWAYS say**: "matches your interests", "aligns with your Enterprising/Conventional profile", "strong career prospects in business/finance"
 - **ALWAYS cite**: Their E/C/I scores and numerical aptitude as PRIMARY reasons
 - **ALWAYS mention**: Specific career paths (CA, Finance, Business Management, Entrepreneurship)
 
@@ -325,6 +361,9 @@ Commerce should ONLY be recommended if:
 ❌ "Commerce is a safer option given your aptitude profile" (sounds like downgrade)
 ❌ "Commerce is more manageable than Science" (sounds like compromise)
 ❌ "Commerce is a good fallback" (sounds like failure)
+
+**EXAMPLE OF CORRECT COMMERCE RECOMMENDATION:**
+✅ "Your Enterprising interests (E=75%) and Conventional interests (C=68%) align perfectly with Commerce. With numerical aptitude of 62%, you can excel in business, finance, and management careers."
 
 ---
 
@@ -382,8 +421,10 @@ Then:
 - Student will likely struggle and burn out
 
 Example: If RIASEC shows High I+R (Science interests) BUT aptitude_level = 2, confidence = "low", fluctuating:
-→ Recommend Commerce or Arts with STEM electives
-→ Explain: "While you enjoy science, your current aptitude profile suggests starting with a less demanding stream. You can pursue science careers through alternative pathways."`;
+→ FIRST check if cognitive scores override (numerical ≥ 70%, abstract ≥ 65%)
+→ IF override: Recommend PCM with confidence-building advice
+→ IF no override: Recommend Commerce or Arts based on secondary interests
+→ Explain: "While you enjoy science, your current aptitude profile suggests exploring alternative paths. You can pursue science careers through other routes."`;
 
   return { section, isHighAptitude };
 }
@@ -741,7 +782,7 @@ Viability_component = stability_score
 
 Conflict_penalties:
 - IF Numerical_apt < 40: apply -15 penalty
-- IF aptitude_level <= 2 AND Numerical_apt < 50: apply -10 penalty (Commerce is safer for low aptitude)
+- IF aptitude_level <= 2 AND Numerical_apt < 50 AND Low E/C interests: apply -10 penalty
 
 Commerce_Score = (RIASEC_component × 0.30) + (Aptitude_component × 0.30) + (Coherence_component × 0.20) + (Viability_component × 0.20) + conflict_penalties
 
@@ -761,8 +802,8 @@ Coherence_component:
 Viability_component = stability_score
 
 Bonus_for_low_aptitude:
-- IF aptitude_level <= 2: apply +15 bonus (Arts is safer for struggling students)
-- IF Numerical_apt < 40 AND Abstract_apt < 40: apply +10 bonus
+- IF aptitude_level <= 2 AND High A/S interests: apply +15 bonus
+- IF Numerical_apt < 40 AND Abstract_apt < 40 AND High A/S: apply +10 bonus
 
 Arts_Score = (RIASEC_component × 0.35) + (Aptitude_component × 0.25) + (Coherence_component × 0.20) + (Viability_component × 0.20) + bonus_for_low_aptitude
 
@@ -1712,9 +1753,9 @@ Examples:
 ## ═══════════════════════════════════════════════════════════════════════════
 
 **STREAM RECOMMENDATION RULES:**
-1. **Check adaptive stability FIRST** - If level ≤ 2 or confidence = "low" or fluctuating → Avoid PCMB, prefer stable streams
+1. **Check adaptive stability FIRST** - If level ≤ 2 or confidence = "low" or fluctuating → Check cognitive override, then match to interests
 2. **Use scoring, not just thresholds** - Consider stability, confidence, and difficulty performance
-3. **Be realistic about academic load** - PCM/PCB are demanding, PCMB is most demanding, Commerce/Arts are more manageable
+3. **Match streams to interests** - PCM/PCB for I/R interests, Commerce for E/C, Arts for A/S
 4. **Interests guide choice within capability** - Don't let interests override cognitive readiness
 5. **Provide honest guidance** - If they're borderline, say "Moderate Fit" and mention support needs
 6. **Consider survivability** - Academic success requires sustained performance, not just threshold scores
@@ -1740,7 +1781,7 @@ Examples:
 - [ ] **CRITICAL: Followed the decision tree in Step 5 - if aptitude_level ≤ 2 OR confidence = "low" OR fluctuating, did NOT recommend Science streams**
 - [ ] **CRITICAL: If recommending Commerce, checked that student has High E (≥65%) OR High C (≥65%) OR High I with business interests**
 - [ ] **CRITICAL: If student has High A (≥65%) OR High S (≥65%) with Low E (<50%) and Low C (<50%), recommended Arts NOT Commerce**
-- [ ] **CRITICAL: Commerce recommendation includes "strategic choice" language, NOT "safer option" or "fallback"**
+- [ ] **CRITICAL: Commerce recommendation cites E/C/I scores and numerical aptitude as PRIMARY reasons, NOT "safer" or "manageable"**
 - [ ] **CRITICAL: Commerce recommendation cites E/C/I scores and numerical aptitude as PRIMARY reasons**
 - [ ] If recommending Arts/Humanities, explain why despite moderate/strong numerical aptitude
 - [ ] EXACTLY 3 career clusters aligned with recommended stream
