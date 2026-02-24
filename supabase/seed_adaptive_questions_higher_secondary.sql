@@ -409,7 +409,7 @@ INSERT INTO personal_assessment_questions (
   'Logical deduction / implication reasoning.',
   26,
   true,
-  '{"grade": 11, "dimension": "LR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "LR", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -424,7 +424,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   27,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -439,7 +439,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   28,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -454,7 +454,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   29,
   true,
-  '{"grade": 11, "dimension": "AT", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AT", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -469,7 +469,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   30,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -484,7 +484,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   31,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -499,7 +499,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   32,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -514,7 +514,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   33,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -529,7 +529,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   34,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -544,7 +544,7 @@ INSERT INTO personal_assessment_questions (
   'Expected value, complements, and decision principles.',
   35,
   true,
-  '{"grade": 11, "dimension": "DR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DR", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -559,7 +559,7 @@ INSERT INTO personal_assessment_questions (
   'Expected value, complements, and decision principles.',
   36,
   true,
-  '{"grade": 11, "dimension": "DR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DR", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -574,7 +574,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   37,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -589,7 +589,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   38,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -604,7 +604,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   39,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -619,7 +619,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   40,
   true,
-  '{"grade": 11, "dimension": "AT", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AT", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -634,7 +634,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   41,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -649,7 +649,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   42,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -664,7 +664,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   43,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -679,7 +679,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   44,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -694,7 +694,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   45,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -709,7 +709,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   46,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -724,7 +724,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   47,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -739,7 +739,7 @@ INSERT INTO personal_assessment_questions (
   'Logical deduction / implication reasoning.',
   48,
   true,
-  '{"grade": 11, "dimension": "LR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "LR", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -754,7 +754,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   49,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -769,7 +769,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   50,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -784,7 +784,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   51,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -799,7 +799,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   52,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -814,7 +814,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   53,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -829,7 +829,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   54,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -844,7 +844,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   55,
   true,
-  '{"grade": 11, "dimension": "AT", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AT", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -859,7 +859,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   56,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -874,7 +874,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   57,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -889,7 +889,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   58,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -904,7 +904,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   59,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -919,7 +919,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   60,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -934,7 +934,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   61,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -949,7 +949,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   62,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -964,7 +964,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   63,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -979,7 +979,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   64,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -994,7 +994,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   65,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1009,7 +1009,7 @@ INSERT INTO personal_assessment_questions (
   'Expected value, complements, and decision principles.',
   66,
   true,
-  '{"grade": 11, "dimension": "DR", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1024,7 +1024,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   67,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1039,7 +1039,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   68,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1054,7 +1054,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   69,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1069,7 +1069,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   70,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1084,7 +1084,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   71,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1099,7 +1099,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   72,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1114,7 +1114,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   73,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1129,7 +1129,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   74,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1144,7 +1144,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   75,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1159,7 +1159,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   76,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1174,7 +1174,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   77,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1189,7 +1189,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   78,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1204,7 +1204,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   79,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1219,7 +1219,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   80,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1234,7 +1234,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   81,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1249,7 +1249,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   82,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1264,7 +1264,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   83,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1279,7 +1279,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   84,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1294,7 +1294,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   85,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1309,7 +1309,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   86,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1324,7 +1324,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   87,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1339,7 +1339,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   88,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1354,7 +1354,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   89,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1369,7 +1369,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   90,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1384,7 +1384,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   91,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1399,7 +1399,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   92,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1414,7 +1414,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   93,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1429,7 +1429,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   94,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1444,7 +1444,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   95,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1459,7 +1459,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   96,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1474,7 +1474,7 @@ INSERT INTO personal_assessment_questions (
   'Expected value, complements, and decision principles.',
   97,
   true,
-  '{"grade": 11, "dimension": "DR", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DR", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1489,7 +1489,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   98,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1504,7 +1504,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   99,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1519,7 +1519,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   100,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1534,7 +1534,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   101,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1549,7 +1549,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   102,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1564,7 +1564,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   103,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1579,7 +1579,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   104,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1594,7 +1594,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   105,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1609,7 +1609,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   106,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1624,7 +1624,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   107,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1639,7 +1639,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   108,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1654,7 +1654,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   109,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1669,7 +1669,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   110,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1684,7 +1684,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   111,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1699,7 +1699,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   112,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1714,7 +1714,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   113,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1729,7 +1729,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   114,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1744,7 +1744,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   115,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1759,7 +1759,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   116,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1774,7 +1774,7 @@ INSERT INTO personal_assessment_questions (
   'Expected value, complements, and decision principles.',
   117,
   true,
-  '{"grade": 11, "dimension": "DR", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1789,7 +1789,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   118,
   true,
-  '{"grade": 11, "dimension": "AT", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AT", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1804,7 +1804,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   119,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1819,7 +1819,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   120,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1834,7 +1834,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   121,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1849,7 +1849,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   122,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1864,7 +1864,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   123,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1879,7 +1879,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   124,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1894,7 +1894,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   125,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1909,7 +1909,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   126,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1924,7 +1924,7 @@ INSERT INTO personal_assessment_questions (
   'Expected value, complements, and decision principles.',
   127,
   true,
-  '{"grade": 11, "dimension": "DR", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1939,7 +1939,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   128,
   true,
-  '{"grade": 11, "dimension": "AT", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AT", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1954,7 +1954,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   129,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1969,7 +1969,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   130,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1984,7 +1984,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   131,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1999,7 +1999,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   132,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2014,7 +2014,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   133,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2029,7 +2029,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   134,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2044,7 +2044,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   135,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2059,7 +2059,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   136,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2074,7 +2074,7 @@ INSERT INTO personal_assessment_questions (
   'Expected value, complements, and decision principles.',
   137,
   true,
-  '{"grade": 11, "dimension": "DR", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2089,7 +2089,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   138,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2104,7 +2104,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   139,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2119,7 +2119,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   140,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2134,7 +2134,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   141,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2149,7 +2149,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   142,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2164,7 +2164,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   143,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2179,7 +2179,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   144,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2194,7 +2194,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   145,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2209,7 +2209,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   146,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2224,7 +2224,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   147,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2239,7 +2239,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   148,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2254,7 +2254,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   149,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2269,7 +2269,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   150,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2284,7 +2284,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   151,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2299,7 +2299,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   152,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2314,7 +2314,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   153,
   true,
-  '{"grade": 11, "dimension": "AT", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AT", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2329,7 +2329,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   154,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2344,7 +2344,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   155,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2359,7 +2359,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   156,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2374,7 +2374,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   157,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2389,7 +2389,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   158,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2404,7 +2404,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   159,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2419,7 +2419,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   160,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2434,7 +2434,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   161,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2449,7 +2449,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   162,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2464,7 +2464,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   163,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2479,7 +2479,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   164,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2494,7 +2494,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   165,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2509,7 +2509,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   166,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2524,7 +2524,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   167,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2539,7 +2539,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   168,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2554,7 +2554,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   169,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2569,7 +2569,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   170,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2584,7 +2584,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   171,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2599,7 +2599,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   172,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2614,7 +2614,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   173,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2629,7 +2629,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   174,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2644,7 +2644,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   175,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2659,7 +2659,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   176,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2674,7 +2674,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   177,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2689,7 +2689,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   178,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2704,7 +2704,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   179,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2719,7 +2719,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   180,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2734,7 +2734,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   181,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2749,7 +2749,7 @@ INSERT INTO personal_assessment_questions (
   'Expected value, complements, and decision principles.',
   182,
   true,
-  '{"grade": 11, "dimension": "DR", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DR", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2764,7 +2764,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   183,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2779,7 +2779,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   184,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2794,7 +2794,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   185,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2809,7 +2809,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   186,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2824,7 +2824,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   187,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2839,7 +2839,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   188,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2854,7 +2854,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   189,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2869,7 +2869,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   190,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2884,7 +2884,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   191,
   true,
-  '{"grade": 11, "dimension": "AT", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AT", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2899,7 +2899,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   192,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2914,7 +2914,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   193,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2929,7 +2929,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   194,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2944,7 +2944,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   195,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2959,7 +2959,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   196,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2974,7 +2974,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   197,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2989,7 +2989,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   198,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3004,7 +3004,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   199,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3019,7 +3019,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   200,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3034,7 +3034,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   201,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3049,7 +3049,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   202,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3064,7 +3064,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   203,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3079,7 +3079,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   204,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3094,7 +3094,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   205,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3109,7 +3109,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   206,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3124,7 +3124,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   207,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3139,7 +3139,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   208,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3154,7 +3154,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   209,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3169,7 +3169,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   210,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3184,7 +3184,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   211,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3199,7 +3199,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   212,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3214,7 +3214,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   213,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3229,7 +3229,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   214,
   true,
-  '{"grade": 11, "dimension": "AT", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AT", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3244,7 +3244,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   215,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3259,7 +3259,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   216,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3274,7 +3274,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   217,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3289,7 +3289,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   218,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3304,7 +3304,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   219,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3319,7 +3319,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   220,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3334,7 +3334,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   221,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3349,7 +3349,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   222,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3364,7 +3364,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   223,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3379,7 +3379,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   224,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3394,7 +3394,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   225,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3409,7 +3409,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   226,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3424,7 +3424,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   227,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3439,7 +3439,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   228,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3454,7 +3454,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   229,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3469,7 +3469,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   230,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3484,7 +3484,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   231,
   true,
-  '{"grade": 11, "dimension": "ST", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3499,7 +3499,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   232,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3514,7 +3514,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   233,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3529,7 +3529,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   234,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3544,7 +3544,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   235,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3559,7 +3559,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   236,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3574,7 +3574,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   237,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3589,7 +3589,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   238,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3604,7 +3604,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   239,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3619,7 +3619,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   240,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3634,7 +3634,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   241,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3649,7 +3649,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   242,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3664,7 +3664,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   243,
   true,
-  '{"grade": 11, "dimension": "AR", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AR", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3679,7 +3679,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   244,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3694,7 +3694,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   245,
   true,
-  '{"grade": 11, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3709,7 +3709,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   246,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3724,7 +3724,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   247,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3739,7 +3739,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   248,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3754,7 +3754,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   249,
   true,
-  '{"grade": 11, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3769,7 +3769,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   250,
   true,
-  '{"grade": 11, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 11, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4159,7 +4159,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   276,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4174,7 +4174,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   277,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4189,7 +4189,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   278,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4204,7 +4204,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   279,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4219,7 +4219,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   280,
   true,
-  '{"grade": 12, "dimension": "AR", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AR", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4234,7 +4234,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   281,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4249,7 +4249,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   282,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4264,7 +4264,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   283,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4279,7 +4279,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   284,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4294,7 +4294,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   285,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4309,7 +4309,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   286,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4324,7 +4324,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   287,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4339,7 +4339,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   288,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4354,7 +4354,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   289,
   true,
-  '{"grade": 12, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4369,7 +4369,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   290,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4384,7 +4384,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   291,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4399,7 +4399,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   292,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4414,7 +4414,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   293,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4429,7 +4429,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   294,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4444,7 +4444,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   295,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4459,7 +4459,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   296,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4474,7 +4474,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   297,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4489,7 +4489,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   298,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4504,7 +4504,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   299,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4519,7 +4519,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   300,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4534,7 +4534,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   301,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4549,7 +4549,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   302,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4564,7 +4564,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   303,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4579,7 +4579,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   304,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4594,7 +4594,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   305,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4609,7 +4609,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   306,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4624,7 +4624,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   307,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4639,7 +4639,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   308,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4654,7 +4654,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   309,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4669,7 +4669,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   310,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4684,7 +4684,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   311,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4699,7 +4699,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   312,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4714,7 +4714,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   313,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4729,7 +4729,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   314,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4744,7 +4744,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   315,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4759,7 +4759,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   316,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4774,7 +4774,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   317,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4789,7 +4789,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   318,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4804,7 +4804,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   319,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4819,7 +4819,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   320,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4834,7 +4834,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   321,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4849,7 +4849,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   322,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4864,7 +4864,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   323,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4879,7 +4879,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   324,
   true,
-  '{"grade": 12, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4894,7 +4894,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   325,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4909,7 +4909,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   326,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4924,7 +4924,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   327,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4939,7 +4939,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   328,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4954,7 +4954,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   329,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4969,7 +4969,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   330,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4984,7 +4984,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   331,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4999,7 +4999,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   332,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5014,7 +5014,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   333,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5029,7 +5029,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   334,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5044,7 +5044,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   335,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5059,7 +5059,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   336,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5074,7 +5074,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   337,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5089,7 +5089,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   338,
   true,
-  '{"grade": 12, "dimension": "AR", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AR", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5104,7 +5104,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   339,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5119,7 +5119,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   340,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5134,7 +5134,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   341,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5149,7 +5149,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   342,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5164,7 +5164,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   343,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5179,7 +5179,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   344,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5194,7 +5194,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   345,
   true,
-  '{"grade": 12, "dimension": "AR", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AR", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5209,7 +5209,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   346,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5224,7 +5224,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   347,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5239,7 +5239,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   348,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5254,7 +5254,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   349,
   true,
-  '{"grade": 12, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5269,7 +5269,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   350,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5284,7 +5284,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   351,
   true,
-  '{"grade": 12, "dimension": "AR", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5299,7 +5299,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   352,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5314,7 +5314,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   353,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5329,7 +5329,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   354,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5344,7 +5344,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   355,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5359,7 +5359,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   356,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5374,7 +5374,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   357,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5389,7 +5389,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   358,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5404,7 +5404,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   359,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5419,7 +5419,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   360,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5434,7 +5434,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   361,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5449,7 +5449,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   362,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5464,7 +5464,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   363,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5479,7 +5479,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   364,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5494,7 +5494,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   365,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5509,7 +5509,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   366,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5524,7 +5524,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   367,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5539,7 +5539,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   368,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5554,7 +5554,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   369,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5569,7 +5569,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   370,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5584,7 +5584,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   371,
   true,
-  '{"grade": 12, "dimension": "AR", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5599,7 +5599,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   372,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5614,7 +5614,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   373,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5629,7 +5629,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   374,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5644,7 +5644,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   375,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5659,7 +5659,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   376,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5674,7 +5674,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   377,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5689,7 +5689,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   378,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5704,7 +5704,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   379,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5719,7 +5719,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   380,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5734,7 +5734,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   381,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5749,7 +5749,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   382,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5764,7 +5764,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   383,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5779,7 +5779,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   384,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5794,7 +5794,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   385,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5809,7 +5809,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   386,
   true,
-  '{"grade": 12, "dimension": "AT", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AT", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5824,7 +5824,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   387,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5839,7 +5839,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   388,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5854,7 +5854,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   389,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5869,7 +5869,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   390,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5884,7 +5884,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   391,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5899,7 +5899,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   392,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5914,7 +5914,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   393,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5929,7 +5929,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   394,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5944,7 +5944,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   395,
   true,
-  '{"grade": 12, "dimension": "AR", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "AR", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5959,7 +5959,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   396,
   true,
-  '{"grade": 12, "dimension": "ST", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5974,7 +5974,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   397,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5989,7 +5989,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   398,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6004,7 +6004,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   399,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6019,7 +6019,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   400,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6034,7 +6034,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   401,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6049,7 +6049,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   402,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6064,7 +6064,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   403,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6079,7 +6079,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   404,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6094,7 +6094,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   405,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6109,7 +6109,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   406,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6124,7 +6124,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   407,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6139,7 +6139,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   408,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6154,7 +6154,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   409,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6169,7 +6169,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   410,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6184,7 +6184,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   411,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6199,7 +6199,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   412,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6214,7 +6214,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   413,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6229,7 +6229,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   414,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6244,7 +6244,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   415,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6259,7 +6259,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   416,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6274,7 +6274,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   417,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6289,7 +6289,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   418,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6304,7 +6304,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   419,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6319,7 +6319,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   420,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6334,7 +6334,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   421,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6349,7 +6349,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   422,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6364,7 +6364,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   423,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6379,7 +6379,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   424,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6394,7 +6394,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   425,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6409,7 +6409,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   426,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6424,7 +6424,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   427,
   true,
-  '{"grade": 12, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6439,7 +6439,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   428,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6454,7 +6454,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   429,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6469,7 +6469,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   430,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6484,7 +6484,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   431,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6499,7 +6499,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   432,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6514,7 +6514,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   433,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6529,7 +6529,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   434,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6544,7 +6544,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   435,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6559,7 +6559,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   436,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6574,7 +6574,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   437,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6589,7 +6589,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   438,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6604,7 +6604,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   439,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6619,7 +6619,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   440,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6634,7 +6634,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   441,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6649,7 +6649,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   442,
   true,
-  '{"grade": 12, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6664,7 +6664,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   443,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6679,7 +6679,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   444,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6694,7 +6694,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   445,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6709,7 +6709,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   446,
   true,
-  '{"grade": 12, "dimension": "AR", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AR", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6724,7 +6724,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   447,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6739,7 +6739,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   448,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6754,7 +6754,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   449,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6769,7 +6769,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   450,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6784,7 +6784,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   451,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6799,7 +6799,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   452,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6814,7 +6814,7 @@ INSERT INTO personal_assessment_questions (
   'Interdependency, proportionality, and system aggregation.',
   453,
   true,
-  '{"grade": 12, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6829,7 +6829,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   454,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6844,7 +6844,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   455,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6859,7 +6859,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   456,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6874,7 +6874,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   457,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6889,7 +6889,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   458,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6904,7 +6904,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   459,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6919,7 +6919,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   460,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6934,7 +6934,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   461,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6949,7 +6949,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   462,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6964,7 +6964,7 @@ INSERT INTO personal_assessment_questions (
   'Pattern / abstraction / symbol reasoning.',
   463,
   true,
-  '{"grade": 12, "dimension": "AR", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AR", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6979,7 +6979,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   464,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6994,7 +6994,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   465,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7009,7 +7009,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   466,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7024,7 +7024,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   467,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7039,7 +7039,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   468,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7054,7 +7054,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   469,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7069,7 +7069,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   470,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7084,7 +7084,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   471,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7099,7 +7099,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   472,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7114,7 +7114,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   473,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7129,7 +7129,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   474,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7144,7 +7144,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   475,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7159,7 +7159,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   476,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7174,7 +7174,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   477,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7189,7 +7189,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   478,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7204,7 +7204,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   479,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7219,7 +7219,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   480,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7234,7 +7234,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   481,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7249,7 +7249,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   482,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7264,7 +7264,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   483,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7279,7 +7279,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   484,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7294,7 +7294,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   485,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7309,7 +7309,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   486,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7324,7 +7324,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   487,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7339,7 +7339,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   488,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7354,7 +7354,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   489,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7369,7 +7369,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   490,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7384,7 +7384,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   491,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7399,7 +7399,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   492,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7414,7 +7414,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step but quick analytical computation.',
   493,
   true,
-  '{"grade": 12, "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7429,7 +7429,7 @@ INSERT INTO personal_assessment_questions (
   'Algorithmic intuition and step counting.',
   494,
   true,
-  '{"grade": 12, "dimension": "AT", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "AT", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7444,7 +7444,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   495,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7459,7 +7459,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   496,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7474,7 +7474,7 @@ INSERT INTO personal_assessment_questions (
   'Quantitative aptitude (fast compute).',
   497,
   true,
-  '{"grade": 12, "dimension": "QA", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "QA", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7489,7 +7489,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   498,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7504,7 +7504,7 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   499,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7519,5 +7519,5 @@ INSERT INTO personal_assessment_questions (
   'Interpreting data, percentages, central tendency.',
   500,
   true,
-  '{"grade": 12, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": 12, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );

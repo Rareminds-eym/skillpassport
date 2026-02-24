@@ -779,6 +779,12 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // Aptitude - available for all grade levels (adaptive for middle/high school)
   const aptitudeScores = geminiResults?.aptitude?.scores || null;
   const aptitudeOverall = geminiResults?.aptitude?.overallScore ?? null;
+  
+  // CRITICAL DEBUG: Log aptitude extraction
+  console.log('🔍 [completeAttempt] Extracting aptitude scores from geminiResults...');
+  console.log('🔍 [completeAttempt] geminiResults.aptitude:', JSON.stringify(geminiResults?.aptitude, null, 2));
+  console.log('🔍 [completeAttempt] Extracted aptitudeScores:', JSON.stringify(aptitudeScores, null, 2));
+  console.log('🔍 [completeAttempt] Extracted aptitudeOverall:', aptitudeOverall);
 
   // 🔧 CRITICAL FIX: Extract adaptive aptitude results if present
   // This data comes from the adaptive aptitude test and should be preserved
