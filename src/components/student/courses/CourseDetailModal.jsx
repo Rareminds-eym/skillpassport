@@ -17,9 +17,6 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
     if (course.status !== 'Active') {
       return { text: 'Coming Soon', icon: Play, disabled: true };
     }
-    if (!canStartCourses) {
-      return { text: 'Start Learning', icon: Play, disabled: true };
-    }
     if (isCompleted) {
       return { text: 'Review Course', icon: RotateCcw, disabled: false };
     }
@@ -255,7 +252,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                   Close
                 </button>
                 <button
-                  onClick={() => canStartCourses && onStartCourse(course)}
+                  onClick={() => onStartCourse(course)}
                   disabled={buttonContent.disabled}
                   className={`px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2 ${buttonContent.disabled
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'

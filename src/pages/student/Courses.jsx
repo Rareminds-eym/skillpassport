@@ -10,6 +10,7 @@ import {
     Eye,
     Grid3x3,
     List,
+    Lock,
     Play,
     TrendingUp,
     Users
@@ -909,8 +910,11 @@ const Courses = () => {
                     ) : (
                       <Button
                         onClick={() => handleCourseClick(course)}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
+                        disabled
+                        title="Course details are currently disabled"
+                        className="w-full bg-indigo-600 text-white opacity-50 cursor-not-allowed flex items-center justify-center gap-2"
                       >
+                        <Lock className="w-4 h-4" />
                         View Course Details
                       </Button>
                     )}
@@ -1101,8 +1105,11 @@ const Courses = () => {
                         ) : (
                           <Button
                             onClick={() => handleCourseClick(course)}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            disabled
+                            title="Course details are currently disabled"
+                            className="bg-indigo-600 text-white opacity-50 cursor-not-allowed flex items-center gap-2"
                           >
+                            <Lock className="w-4 h-4" />
                             View Course Details
                           </Button>
                         )}
