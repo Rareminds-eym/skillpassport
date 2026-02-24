@@ -17,7 +17,8 @@
 
 const STREAM_KNOWLEDGE_BASE = {
   pcmb: {
-    name: "PCMB (Physics, Chemistry, Maths, Biology)",
+    name: "Science (PCMB)",
+    displayName: "PCMB (Physics, Chemistry, Maths, Biology)",
     category: "Science",
     riasec: { primary: ["I", "R"], secondary: ["C"], weights: { I: 0.4, R: 0.35, C: 0.25 } },
     subjects: {
@@ -30,7 +31,8 @@ const STREAM_KNOWLEDGE_BASE = {
     bestFor: "Students interested in medicine, biology, and life sciences"
   },
   pcms: {
-    name: "PCMS (Physics, Chemistry, Maths, Computer Science)",
+    name: "Science (PCMS)",
+    displayName: "PCMS (Physics, Chemistry, Maths, Computer Science)",
     category: "Science",
     riasec: { primary: ["I", "R"], secondary: ["C"], weights: { I: 0.35, R: 0.4, C: 0.25 } },
     subjects: {
@@ -43,7 +45,8 @@ const STREAM_KNOWLEDGE_BASE = {
     bestFor: "Students interested in technology, programming, and computer science"
   },
   pcm: {
-    name: "PCM (Physics, Chemistry, Maths)",
+    name: "Science (PCM)",
+    displayName: "PCM (Physics, Chemistry, Maths)",
     category: "Science",
     riasec: { primary: ["R", "I"], secondary: ["C"], weights: { R: 0.4, I: 0.35, C: 0.25 } },
     subjects: {
@@ -56,7 +59,8 @@ const STREAM_KNOWLEDGE_BASE = {
     bestFor: "Students interested in engineering, physics, and mathematics"
   },
   pcb: {
-    name: "PCB (Physics, Chemistry, Biology)",
+    name: "Science (PCB)",
+    displayName: "PCB (Physics, Chemistry, Biology)",
     category: "Science",
     riasec: { primary: ["I", "S"], secondary: ["R"], weights: { I: 0.35, S: 0.4, R: 0.25 } },
     subjects: {
@@ -69,7 +73,8 @@ const STREAM_KNOWLEDGE_BASE = {
     bestFor: "Students interested in healthcare and medical sciences"
   },
   commerce_maths: {
-    name: "Commerce with Maths",
+    name: "Commerce",
+    displayName: "Commerce with Maths",
     category: "Commerce",
     riasec: { primary: ["E", "C"], secondary: ["I"], weights: { E: 0.35, C: 0.4, I: 0.25 } },
     subjects: {
@@ -82,7 +87,8 @@ const STREAM_KNOWLEDGE_BASE = {
     bestFor: "Students interested in finance, accounting, and quantitative analysis"
   },
   commerce: {
-    name: "Commerce without Maths",
+    name: "Commerce",
+    displayName: "Commerce without Maths",
     category: "Commerce",
     riasec: { primary: ["E", "C"], secondary: ["S"], weights: { E: 0.4, C: 0.35, S: 0.25 } },
     subjects: {
@@ -95,7 +101,8 @@ const STREAM_KNOWLEDGE_BASE = {
     bestFor: "Students interested in business, management, and entrepreneurship"
   },
   arts_psychology: {
-    name: "Arts with Psychology",
+    name: "Arts/Humanities",
+    displayName: "Arts with Psychology",
     category: "Arts",
     riasec: { primary: ["S", "I"], secondary: ["A"], weights: { S: 0.4, I: 0.35, A: 0.25 } },
     subjects: {
@@ -108,7 +115,8 @@ const STREAM_KNOWLEDGE_BASE = {
     bestFor: "Students interested in understanding human behavior and mental health"
   },
   arts_economics: {
-    name: "Arts with Economics",
+    name: "Arts/Humanities",
+    displayName: "Arts with Economics",
     category: "Arts",
     riasec: { primary: ["I", "E"], secondary: ["S"], weights: { I: 0.4, E: 0.35, S: 0.25 } },
     subjects: {
@@ -121,7 +129,8 @@ const STREAM_KNOWLEDGE_BASE = {
     bestFor: "Students interested in economics, policy-making, and civil services"
   },
   arts: {
-    name: "Arts/Humanities General",
+    name: "Arts/Humanities",
+    displayName: "Arts/Humanities General",
     category: "Arts",
     riasec: { primary: ["A", "S"], secondary: ["I"], weights: { A: 0.4, S: 0.35, I: 0.25 } },
     subjects: {
@@ -389,7 +398,8 @@ const calculateStreamScore = (streamId, streamProfile, interestDNA, academicProf
 
   return {
     streamId,
-    streamName: streamProfile.name,
+    streamName: streamProfile.name, // Now matches AI format: "Science (PCM)", "Commerce", "Arts/Humanities"
+    displayName: streamProfile.displayName, // Full descriptive name for UI if needed
     category: streamProfile.category,
     matchScore: finalScore,
     matchLevel,
@@ -437,7 +447,7 @@ export const calculateStreamRecommendations = (assessmentResults, academicData =
 
   return {
     isAfter10: true,
-    recommendedStream: topRecommendation?.streamName || 'Science',
+    recommendedStream: topRecommendation?.streamName || 'Science (PCM)', // Now matches AI format
     streamFit: topRecommendation?.matchLevel || 'Medium',
     confidenceScore: topRecommendation?.matchScore || 50,
     reasoning: {
