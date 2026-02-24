@@ -1054,6 +1054,14 @@ export const useAssessmentResults = () => {
                     // ✅ NEW: Check if data is in individual columns instead of gemini_results
                     let geminiResults = directResult.gemini_results;
 
+                    console.log('🔍 gemini_results check:', {
+                        hasGeminiResults: !!geminiResults,
+                        geminiResultsType: typeof geminiResults,
+                        geminiResultsKeys: geminiResults ? Object.keys(geminiResults) : null,
+                        hasRecommendedStream: !!geminiResults?.recommendedStream,
+                        geminiResultsLength: geminiResults ? Object.keys(geminiResults).length : 0
+                    });
+
                     // CRITICAL FIX: If gemini_results AND individual columns are ALL NULL, trigger regeneration
                     // Don't reconstruct empty objects - they pass validation but have no data
                     const hasIndividualColumns = directResult.riasec_scores || directResult.aptitude_scores || directResult.career_fit;
@@ -1108,6 +1116,8 @@ export const useAssessmentResults = () => {
                             profileSnapshot: directResult.profile_snapshot || '',
                             finalNote: directResult.final_note || '',
                             overallSummary: directResult.overall_summary || '',
+                            // Add recommended stream for after10 students
+                            recommendedStream: directResult.recommended_stream || undefined,
                             // Add adaptive aptitude results if they exist
                             adaptiveAptitudeResults: adaptiveAptitudeResults || undefined
                         };
@@ -1151,10 +1161,14 @@ export const useAssessmentResults = () => {
                             
                             const validatedResults = await applyValidation(geminiResults, {});
 
+                            // ✅ CRITICAL: Preserve gemini_results for normalizer
+                            validatedResults.gemini_results = geminiResults;
+
                             console.log('🔍 DEBUG - Before normalization (direct lookup):', {
                                 hasRiasec: !!validatedResults.riasec,
                                 riasecScores: validatedResults.riasec?.scores,
                                 hasGeminiResults: !!validatedResults.gemini_results,
+                                hasRecommendedStream: !!validatedResults.gemini_results?.recommendedStream,
                                 originalScores: validatedResults.gemini_results?.riasec?._originalScores
                             });
 
