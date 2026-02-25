@@ -49,7 +49,7 @@ function getSubscriptionBasePath(pathname) {
 /**
  * SubscriptionDashboard - Main dashboard for subscription management
  */
-export function SubscriptionDashboard({ className = '' }) {
+export function SubscriptionDashboard({ className = '', subscriptionData: propSubscriptionData }) {
   const navigate = useNavigate();
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
@@ -63,6 +63,9 @@ export function SubscriptionDashboard({ className = '' }) {
     cancelAddOn,
     isCancelling
   } = useSubscriptionContext();
+  
+  // Use prop subscriptionData if provided (from useSubscriptionQuery), otherwise fall back to context
+  const subscriptionData = propSubscriptionData || subscription;
 
   const [cancellingId, setCancellingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
@@ -136,27 +139,27 @@ export function SubscriptionDashboard({ className = '' }) {
           <div>
             <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Current Plan</p>
             <h2 className="text-4xl font-light mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-              {subscription?.plan_name || 'Free Plan'}
+              {subscriptionData?.planName || subscriptionData?.plan_name || subscriptionData?.plan_type || 'Basic Plan'}
             </h2>
-            {subscription?.current_period_end && (
+            {subscriptionData?.current_period_end && (
               <p className="text-white/70 text-sm flex items-center gap-2 font-medium">
                 <Calendar className="w-4 h-4" />
-                Renews {new Date(subscription.current_period_end).toLocaleDateString()}
+                Renews {new Date(subscriptionData.current_period_end).toLocaleDateString()}
               </p>
             )}
           </div>
           <div className="text-right">
             <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Monthly Cost</p>
             <p className="text-5xl font-light" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-              ₹{subscription?.plan_amount || 0}
+              ₹{subscriptionData?.planPrice || subscriptionData?.plan_amount || 0}
             </p>
           </div>
         </div>
 
-        {subscription && (
+        {subscriptionData && (
           <div className="relative mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
             <span className="text-sm text-white/70 font-medium">
-              Status: <span className="text-white font-semibold capitalize">{subscription.status}</span>
+              Status: <span className="text-white font-semibold capitalize">{subscriptionData.status}</span>
             </span>
             <button
               onClick={() => {
@@ -185,7 +188,7 @@ export function SubscriptionDashboard({ className = '' }) {
       <div className="grid md:grid-cols-3 gap-6">
         <CostCard
           title="Base Plan"
-          amount={subscription?.plan_amount || 0}
+          amount={subscriptionData?.planPrice || subscriptionData?.plan_amount || 0}
           period="month"
           icon={CreditCard}
         />
@@ -197,7 +200,7 @@ export function SubscriptionDashboard({ className = '' }) {
         />
         <CostCard
           title="Total"
-          amount={(subscription?.plan_amount || 0) + totalAddOnCost.monthly}
+          amount={Math.round(((subscriptionData?.planPrice || subscriptionData?.plan_amount || 0) + totalAddOnCost.monthly) * 100) / 100}
           period="month"
           icon={DollarSign}
           highlight
@@ -289,6 +292,11 @@ export function SubscriptionDashboard({ className = '' }) {
  * CostCard - Displays a cost metric - Editorial Luxury
  */
 function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
+  // Format amount to 2 decimal places and remove trailing zeros
+  const formattedAmount = typeof amount === 'number' 
+    ? amount.toFixed(2).replace(/\.?0+$/, '')
+    : amount;
+    
   return (
     <div className={`
       rounded-3xl p-6 border-2 shadow-lg hover:shadow-xl transition-all
@@ -307,7 +315,7 @@ function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
       </div>
       <div className="flex items-baseline gap-1">
         <span className={`text-4xl font-light ${highlight ? 'text-amber-700' : 'text-slate-900'}`} style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-          ₹{amount}
+          ₹{formattedAmount}
         </span>
         <span className="text-slate-500 text-sm font-medium">/{period}</span>
       </div>

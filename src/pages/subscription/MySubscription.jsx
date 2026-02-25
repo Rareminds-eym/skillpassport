@@ -31,6 +31,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { getUserSubscriptions } from '../../services/Subscriptions/subscriptionService';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '../../utils/subscriptionHelpers';
+import { useUsageStatistics } from '../../hooks/useUsageStatistics';
 
 /**
  * Get the settings path based on current URL path (more reliable than role)
@@ -525,12 +526,8 @@ function MySubscription() {
 
   const { isExpiringSoon, isExpired, isActive, isPaused } = statusChecks;
 
-  // Mock usage statistics
-  const usageStats = {
-    assessments: { used: 15, total: 50, label: 'Skill Assessments' },
-    profileViews: { used: 234, total: 1000, label: 'Profile Views' },
-    reports: { used: 8, total: 20, label: 'Reports Generated' },
-  };
+  // Fetch dynamic usage statistics
+  const { usageStats, loading: usageLoading } = useUsageStatistics(currentPlan);
 
   // Skeleton loader component - Editorial luxury style
   const SkeletonLoader = () => (
@@ -680,7 +677,7 @@ function MySubscription() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Add-Ons Tab Content */}
         {activeTab === 'addons' ? (
-          <SubscriptionDashboard />
+          <SubscriptionDashboard subscriptionData={subscriptionData} />
         ) : (
           <>
         {/* Alert Banner - Editorial Luxury Style */}
@@ -744,8 +741,19 @@ function MySubscription() {
                 </h3>
               </div>
               <div className="p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  {Object.values(usageStats).map((stat, idx) => (
+                {usageLoading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    {[1, 2, 3].map((idx) => (
+                      <div key={idx} className="animate-pulse">
+                        <div className="h-4 bg-slate-200 rounded-2xl mb-2"></div>
+                        <div className="h-2.5 bg-slate-100 rounded-full mb-2"></div>
+                        <div className="h-3 bg-slate-100 rounded-2xl"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : usageStats ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    {Object.values(usageStats).map((stat, idx) => (
                     <div key={idx}>
                       <div className="flex items-baseline justify-between mb-2">
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{stat.label}</span>
@@ -762,7 +770,12 @@ function MySubscription() {
                       </p>
                     </div>
                   ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <p className="text-sm font-medium">Unable to load usage statistics</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -789,7 +802,7 @@ function MySubscription() {
                       </span>
                     </div>
                     <h2 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                      {currentPlan?.name || 'Basic Plan'}
+                      {currentPlan?.name || subscriptionData?.planName || subscriptionData?.plan_type || 'Basic Plan'}
                     </h2>
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
