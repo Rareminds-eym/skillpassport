@@ -668,8 +668,10 @@ const AssessmentTestPage: React.FC = () => {
         flow.setCurrentScreen('assessment'); // Show assessment screen with loading state
       } else {
         console.error('❌ [ADAPTIVE RESUME] No questions loaded and not loading - session resume may have failed');
-        // Session resume failed or no questions available
-        flow.setError('Failed to resume adaptive test. Please refresh and try again.');
+        console.log('🔧 [ADAPTIVE RESUME] Showing section intro so user can restart the section');
+        // Session resume failed or no questions available - show intro so user can restart
+        flow.setCurrentQuestionIndex(0);
+        flow.setShowSectionIntro(true);
         flow.setCurrentScreen('section_intro');
       }
 
@@ -2365,6 +2367,18 @@ const AssessmentTestPage: React.FC = () => {
                 )}
               </div>
             </div>
+          )}
+          
+          {/* Adaptive Test Complete - Show section complete if adaptive test finished but flow.showSectionComplete not set yet */}
+          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.isTestComplete && (
+            <SectionCompleteScreen
+              key={`complete-adaptive-${currentSection.id}`}
+              sectionTitle={currentSection.title}
+              nextSectionTitle={!flow.isLastSection && sections[flow.currentSectionIndex + 1]?.title}
+              elapsedTime={flow.sectionTimings[currentSection.id] || flow.elapsedTime}
+              isLastSection={flow.isLastSection}
+              onContinue={handleNextSection}
+            />
           )}
           
           {/* Adaptive Section Error - Show error if adaptive test fails to initialize */}
