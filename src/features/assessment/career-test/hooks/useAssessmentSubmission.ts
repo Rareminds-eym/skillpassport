@@ -296,10 +296,28 @@ const buildEnhancedGrade = (
       return `${grade} - ${streamName}`;
     }
 
+    // For highschool (Grade 9/10), format as "Grade 9" or "Grade 10"
+    if (gradeLevel === 'highschool') {
+      // Check if grade is just a number (9 or 10)
+      const gradeNum = parseInt(String(grade));
+      if (gradeNum === 9) {
+        return 'Grade 9';
+      }
+      if (gradeNum === 10) {
+        return 'Grade 10';
+      }
+      // If grade already has "Grade" prefix, return as-is
+      if (String(grade).toLowerCase().includes('grade')) {
+        return grade;
+      }
+      // Otherwise, add "Grade" prefix
+      return `Grade ${grade}`;
+    }
+
     return grade;
   }
 
-  // Fallback based on gradeLevel
+  // Fallback based on gradeLevel (only for non-highschool grades)
   if (gradeLevel === 'after12') {
     return 'after12';
   }
@@ -319,14 +337,11 @@ const buildEnhancedGrade = (
     return `Grade 11/12 - ${streamName}`;
   }
 
-  if (gradeLevel === 'highschool') {
-    return 'Grade 9/10';
-  }
-
   if (gradeLevel === 'middle') {
     return 'Grade 6-8';
   }
 
+  // No fallback for highschool - grade must be present in database
   return 'Student';
 };
 
@@ -640,6 +655,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
             // ✅ FIX: For higher_secondary, include the selected stream in rawGrade
             // This ensures AI knows if student is in Arts/Science/Commerce
             let enhancedGrade = student.grade;
+            let derivedCategory = selectedCategory || deriveCategory(studentStream);
+            
             if (gradeLevel === 'higher_secondary' && studentStream) {
               // Map stream ID to readable name
               const streamMap: Record<string, string> = {
@@ -685,6 +702,8 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           } else {
             console.warn('⚠️ Could not fetch student context:', studentError?.message);
           }
+        } catch (studentFetchErr) {
+          console.error('❌ Error fetching student context:', studentFetchErr);
         }
       }
 
@@ -696,6 +715,7 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           'arts': 'Arts'
         };
         const streamName = streamMap[studentStream] || studentStream;
+        const derivedCategory = selectedCategory || deriveCategory(studentStream);
         
         // Try to determine specific grade from answers if available
         // Check if there's a grade selection answer in the assessment
@@ -718,6 +738,20 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         };
         console.log(`✅ Created fallback student context: "${specificGrade} - ${streamName}"`);
       }
+
+      try {
+        if (!userId) {
+          throw new Error('User ID is required for assessment submission');
+        }
+
+        // ============================================================================
+        // STEP 1: Get student record ID
+        // ============================================================================
+        let studentRecordId = await getStudentRecordId(userId);
+        if (!studentRecordId) {
+          console.warn('⚠️ No student record found, using auth user_id directly');
+          studentRecordId = userId;
+        }
 
         if (!studentRecordId) {
           throw new Error('User ID is required for assessment submission');

@@ -80,13 +80,34 @@ export function buildHighSchoolPrompt(assessmentData: AssessmentData, answersHas
     : '';
 
   // Extract actual grade from student context
-  const studentGrade = assessmentData.studentContext?.rawGrade || assessmentData.studentContext?.grade;
+  const studentGrade = assessmentData.studentContext?.rawGrade;
   const gradeInfo = studentGrade ? ` The student is currently in grade ${studentGrade}.` : '';
-  const isGrade9 = studentGrade && (studentGrade === '9' || studentGrade === 9);
-  const isGrade10 = studentGrade && (studentGrade === '10' || studentGrade === 10);
-  const isGrade9or10 = isGrade9 || isGrade10;
+  
+  // Parse grade to determine if it's 9 or 10
+  let isGrade9 = false;
+  let isGrade10 = false;
+  
+  if (studentGrade) {
+    const gradeStr = String(studentGrade).toLowerCase();
+    // Check for explicit grade 9
+    if (gradeStr === '9' || gradeStr === 'grade 9' || gradeStr === 'class 9') {
+      isGrade9 = true;
+    }
+    // Check for explicit grade 10
+    else if (gradeStr === '10' || gradeStr === 'grade 10' || gradeStr === 'class 10') {
+      isGrade10 = true;
+    }
+    // Check for "Grade 9/10" format (should not happen anymore, but handle as fallback)
+    else if (gradeStr.includes('9/10') || gradeStr.includes('9-10')) {
+      isGrade10 = true; // Default to Grade 10 behavior when range is given
+    }
+  }
 
-  return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.${gradeInfo}
+  return `You are a career counselor for high school students (grades 9-10 ONLY). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.${gradeInfo}
+
+🚨 CRITICAL: THIS PROMPT IS FOR GRADES 9-10 ONLY 🚨
+This is NOT for grades 11-12 (higher secondary). Those students use a different prompt.
+Focus on exploration (Grade 9) or stream decision (Grade 10) - NOT college/career placement.
 
 ${isGrade9 ? `
 🚨 CRITICAL ALERT: THIS STUDENT IS IN GRADE 9 🚨
@@ -309,22 +330,11 @@ ${isGrade9 ? `
    - Help them make informed decisions
 
 **REMEMBER**: This student is 15-16 years old and will choose their stream in 2-4 months. They need clear guidance to make a confident decision.
-` : ''}${studentGrade && (studentGrade === '11' || studentGrade === 11 || studentGrade === '12' || studentGrade === 12) ? `
-**THIS STUDENT IS IN GRADE ${studentGrade} (11th-12th, ages 16-18) - CAREER PREPARATION FOCUS:**
-
-**PRIMARY FOCUS**: Help them prepare for college admissions, entrance exams, and specific career paths.
-
-**DETAILED GUIDANCE ALLOWED:**
-- ✅ Include specific entrance exams (JEE, NEET, CLAT, CUET, etc.) and preparation strategies
-- ✅ Mention specific colleges and institutions (IIT, AIIMS, NLU, etc.)
-- ✅ Provide detailed salary ranges (entry/mid/senior levels)
-- ✅ Use professional career terminology and industry-specific job titles
-- ✅ Include internship opportunities and early career planning
-- ✅ Discuss competitive exam pathways (UPSC, CA, CFA, etc.)
-- ✅ Provide detailed roadmaps for college applications and career entry
-
-**LANGUAGE**: Professional but accessible. They're preparing for adult careers, so use realistic job market language.
 ` : ''}
+
+🚨 CRITICAL: GRADES 11-12 ARE NOT SUPPORTED BY THIS PROMPT 🚨
+This prompt is ONLY for grades 9-10. If you see grade 11 or 12, there's a routing error.
+Students in grades 11-12 should use the higher_secondary prompt instead.
 
 ## 🔥 CRITICAL: USE REAL-TIME JOB MARKET DATA
 
@@ -701,7 +711,7 @@ Use these market-aligned career clusters for 2025-2030:
 
 **TRACK 1 (HIGH FIT) - Top Career Clusters:**
 
-${studentGrade && (studentGrade === '9' || studentGrade === 9 || studentGrade === '10' || studentGrade === 10) ? `
+${studentGrade && (studentGrade.includes('9') || studentGrade.includes('10') || studentGrade === 'Grade 9' || studentGrade === 'Grade 10') ? `
 **FOR GRADES 9-10 (Ages 14-16) - USE THESE SIMPLIFIED, STREAM-FOCUSED CAREER FIELDS:**
 
 **CRITICAL**: For 9th-10th graders, career recommendations must:
