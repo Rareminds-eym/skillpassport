@@ -21,15 +21,29 @@ import type { GradeLevel, DifficultyLevel, Subtag, Question, TestPhase } from '.
 
 /**
  * Maps dimension codes to subtags
- * Database dimensions: AR, DI, LR, PS, QR, ST
+ * Database dimensions: AN, QU, DI, AR, LR, ST, PS, etc.
  */
 const DIMENSION_TO_SUBTAG: Record<string, Subtag> = {
   'QR': 'numerical_reasoning',      // Quantitative Reasoning
+  'QU': 'numerical_reasoning',      // Quantitative (alternate code)
+  'AN': 'numerical_reasoning',      // Analytical/Numerical
   'LR': 'logical_reasoning',         // Logical Reasoning
   'ST': 'spatial_reasoning',         // Spatial Thinking
   'AR': 'pattern_recognition',       // Abstract Reasoning
   'DI': 'data_interpretation',       // Data Interpretation
-  'PS': 'verbal_reasoning',          // Problem Solving (mapped to verbal)
+  'PS': 'verbal_reasoning',          // Problem Solving
+  'AT': 'verbal_reasoning',          // Attention/Verbal
+  'DR': 'logical_reasoning',         // Deductive Reasoning
+  'AL': 'logical_reasoning',         // Analytical Logic
+  'CG': 'pattern_recognition',       // Cognitive/Pattern
+  'CM': 'verbal_reasoning',          // Comprehension
+  'CT': 'logical_reasoning',         // Critical Thinking
+  'GE': 'verbal_reasoning',          // General
+  'ME': 'numerical_reasoning',       // Mathematical
+  'NS': 'numerical_reasoning',       // Number Series
+  'PR': 'pattern_recognition',       // Pattern Recognition
+  'QA': 'numerical_reasoning',       // Quantitative Aptitude
+  'TR': 'logical_reasoning',         // Technical Reasoning
 };
 
 /**
@@ -45,22 +59,52 @@ export function extractGradeNumber(gradeString: string): number | null {
  * Convert student grade string to GradeLevel enum
  */
 export function studentGradeToGradeLevel(gradeString: string): GradeLevel {
+  if (!gradeString) return 'high_school';
+  
+  const gradeLower = gradeString.toLowerCase();
+  
+  // Check for college/university indicators - grade column contains "UG" or "PG" directly
+  if (gradeLower === 'ug' || gradeLower.includes('undergraduate') || 
+      gradeLower.includes('bachelor') || gradeLower.includes('b.tech') || 
+      gradeLower.includes('btech') || gradeLower.includes('bca') || 
+      gradeLower.includes('b.sc') || gradeLower.includes('bsc') ||
+      gradeLower.includes('b.com') || gradeLower.includes('bcom') ||
+      gradeLower.includes('ba ') || gradeLower.includes('bba')) {
+    return 'undergraduate';
+  }
+  
+  if (gradeLower === 'pg' || gradeLower.includes('postgraduate') ||
+      gradeLower.includes('master') || gradeLower.includes('m.tech') || 
+      gradeLower.includes('mtech') || gradeLower.includes('mca') || 
+      gradeLower.includes('mba') || gradeLower.includes('m.sc') || 
+      gradeLower.includes('msc')) {
+    return 'postgraduate';
+  }
+  
+  // Extract numeric grade for school levels
   const numericGrade = extractGradeNumber(gradeString);
   
-  if (!numericGrade) return 'high_school';
+  if (numericGrade) {
+    if (numericGrade >= 6 && numericGrade <= 8) return 'middle_school';
+    if (numericGrade >= 9 && numericGrade <= 10) return 'high_school';
+    if (numericGrade >= 11 && numericGrade <= 12) return 'higher_secondary';
+  }
   
-  if (numericGrade >= 6 && numericGrade <= 8) return 'middle_school';
-  if (numericGrade >= 9 && numericGrade <= 10) return 'high_school';
-  if (numericGrade >= 11 && numericGrade <= 12) return 'higher_secondary';
-  
+  // Default fallback
   return 'high_school';
 }
 
 /**
- * Map grade level to specific grade numbers
+ * Map grade level to specific grade numbers or grade strings
+ * Returns array of grade identifiers to query in the database
  */
-function gradeToNumbers(gradeLevel: GradeLevel, specificGrade?: string | number): number[] {
-  // If specific grade provided, use it
+function gradeToNumbers(gradeLevel: GradeLevel, specificGrade?: string | number): (number | string)[] {
+  // For after12, undergraduate, postgraduate - NEVER use specificGrade, always use the gradeLevel mapping
+  if (gradeLevel === 'after12') return ['Post-12'];
+  if (gradeLevel === 'undergraduate') return ['UG'];
+  if (gradeLevel === 'postgraduate') return ['PG'];
+  
+  // If specific grade provided, use it (only for school grades)
   if (specificGrade !== undefined && specificGrade !== null) {
     if (typeof specificGrade === 'number') return [specificGrade];
     const extracted = extractGradeNumber(specificGrade);
@@ -72,6 +116,7 @@ function gradeToNumbers(gradeLevel: GradeLevel, specificGrade?: string | number)
     case 'middle_school': return [6, 7, 8];
     case 'high_school': return [9, 10];
     case 'higher_secondary': return [11, 12];
+    case 'after10': return [10]; // After 10th - use grade 10 questions
     default: return [9, 10];
   }
 }
@@ -92,7 +137,7 @@ function shuffle<T>(array: T[]): T[] {
  * Convert database row to Question type
  */
 function mapToQuestion(row: any, phase: TestPhase, gradeLevel: GradeLevel): Question {
-  const dimension = row.metadata?.dimension || row.dimension;
+  const dimension = row.metadata?.dimension;
   const subtag = DIMENSION_TO_SUBTAG[dimension] || 'logical_reasoning';
   
   return {
@@ -128,12 +173,19 @@ export async function fetchDiagnosticQuestions(
   });
   
   // Fetch all available questions at difficulty 3
+  // Handle both numeric grades (6-12) and string grades (UG, Post-12)
   let query = supabase
     .from('personal_assessment_questions')
     .select('id, metadata, question_text, options, correct_answer, description')
-    .contains('metadata', { grade: grades[0] })
     .eq('metadata->>difficulty_rank', '3')
     .limit(100); // Fetch large pool for randomization
+  
+  // Filter by grade - use OR condition for multiple grades
+  if (grades.length === 1) {
+    query = query.eq('metadata->>grade', grades[0].toString());
+  } else {
+    query = query.in('metadata->>grade', grades.map(g => g.toString()));
+  }
   
   if (excludeIds.length > 0) {
     query = query.not('id', 'in', `(${excludeIds.join(',')})`);
@@ -153,7 +205,7 @@ export async function fetchDiagnosticQuestions(
   let lastDimension: string | null = null;
   
   for (const question of shuffled) {
-    const dimension = question.metadata?.dimension || question.dimension;
+    const dimension = question.metadata?.dimension;
     
     // Skip if same as last dimension
     if (dimension === lastDimension) {
@@ -222,10 +274,16 @@ export async function fetchAdaptiveQuestion(
     let query = supabase
       .from('personal_assessment_questions')
       .select('id, metadata, question_text, options, correct_answer, description')
-      .contains('metadata', { grade: grades[0] })
       .eq('metadata->>difficulty_rank', difficulty.toString())
       .eq('metadata->>dimension', dimension)
       .limit(20);
+    
+    // Filter by grade
+    if (grades.length === 1) {
+      query = query.eq('metadata->>grade', grades[0].toString());
+    } else {
+      query = query.in('metadata->>grade', grades.map(g => g.toString()));
+    }
     
     if (excludeIds.length > 0) {
       query = query.not('id', 'in', `(${excludeIds.join(',')})`);
@@ -248,9 +306,15 @@ export async function fetchAdaptiveQuestion(
   let fallbackQuery = supabase
     .from('personal_assessment_questions')
     .select('id, metadata, question_text, options, correct_answer, description')
-    .contains('metadata', { grade: grades[0] })
     .eq('metadata->>difficulty_rank', difficulty.toString())
     .limit(20);
+  
+  // Filter by grade
+  if (grades.length === 1) {
+    fallbackQuery = fallbackQuery.eq('metadata->>grade', grades[0].toString());
+  } else {
+    fallbackQuery = fallbackQuery.in('metadata->>grade', grades.map(g => g.toString()));
+  }
   
   if (excludeIds.length > 0) {
     fallbackQuery = fallbackQuery.not('id', 'in', `(${excludeIds.join(',')})`);
@@ -277,9 +341,15 @@ export async function fetchAdaptiveQuestion(
     let adjQuery = supabase
       .from('personal_assessment_questions')
       .select('id, metadata, question_text, options, correct_answer, description')
-      .contains('metadata', { grade: grades[0] })
       .eq('metadata->>difficulty_rank', adjDiff.toString())
       .limit(20);
+    
+    // Filter by grade
+    if (grades.length === 1) {
+      adjQuery = adjQuery.eq('metadata->>grade', grades[0].toString());
+    } else {
+      adjQuery = adjQuery.in('metadata->>grade', grades.map(g => g.toString()));
+    }
     
     if (excludeIds.length > 0) {
       adjQuery = adjQuery.not('id', 'in', `(${excludeIds.join(',')})`);
@@ -295,31 +365,34 @@ export async function fetchAdaptiveQuestion(
     }
   }
   
-  // Strategy 4: Try expanding grade range
-  const allMiddleSchoolGrades = [6, 7, 8];
-  const expandedGrades = allMiddleSchoolGrades.filter(g => !grades.includes(g));
-  
-  if (expandedGrades.length > 0) {
-    console.log(`🔄 [QuestionBank] Trying expanded grades: ${expandedGrades.join(', ')}...`);
+  // Strategy 4: Try expanding grade range (only for numeric grades)
+  const hasNumericGrades = grades.some(g => typeof g === 'number');
+  if (hasNumericGrades) {
+    const allMiddleSchoolGrades = [6, 7, 8];
+    const expandedGrades = allMiddleSchoolGrades.filter(g => !grades.includes(g));
     
-    let expandedQuery = supabase
-      .from('personal_assessment_questions')
-      .select('id, metadata, question_text, options, correct_answer, description')
-      .gte('metadata->>difficulty_rank', Math.max(1, difficulty - 1).toString())
-      .lte('metadata->>difficulty_rank', Math.min(5, difficulty + 1).toString())
-      .limit(20);
-    
-    if (excludeIds.length > 0) {
-      expandedQuery = expandedQuery.not('id', 'in', `(${excludeIds.join(',')})`);
-    }
-    
-    const { data: expandedData, error: expandedError } = await expandedQuery;
-    
-    if (!expandedError && expandedData && expandedData.length > 0) {
-      const shuffled = shuffle(expandedData);
-      const selected = shuffled[0];
-      console.log(`✅ [QuestionBank] Found with expanded grades: ${selected.id} (grade ${selected.metadata?.grade}, ${selected.metadata?.dimension}, difficulty ${selected.metadata?.difficulty_rank})`);
-      return mapToQuestion(selected, 'adaptive_core', gradeLevel);
+    if (expandedGrades.length > 0) {
+      console.log(`🔄 [QuestionBank] Trying expanded grades: ${expandedGrades.join(', ')}...`);
+      
+      let expandedQuery = supabase
+        .from('personal_assessment_questions')
+        .select('id, metadata, question_text, options, correct_answer, description')
+        .gte('metadata->>difficulty_rank', Math.max(1, difficulty - 1).toString())
+        .lte('metadata->>difficulty_rank', Math.min(5, difficulty + 1).toString())
+        .limit(20);
+      
+      if (excludeIds.length > 0) {
+        expandedQuery = expandedQuery.not('id', 'in', `(${excludeIds.join(',')})`);
+      }
+      
+      const { data: expandedData, error: expandedError } = await expandedQuery;
+      
+      if (!expandedError && expandedData && expandedData.length > 0) {
+        const shuffled = shuffle(expandedData);
+        const selected = shuffled[0];
+        console.log(`✅ [QuestionBank] Found with expanded grades: ${selected.id} (grade ${selected.metadata?.grade}, ${selected.metadata?.dimension}, difficulty ${selected.metadata?.difficulty_rank})`);
+        return mapToQuestion(selected, 'adaptive_core', gradeLevel);
+      }
     }
   }
   
@@ -370,9 +443,15 @@ export async function fetchStabilityQuestions(
   let query = supabase
     .from('personal_assessment_questions')
     .select('id, metadata, question_text, options, correct_answer, description')
-    .contains('metadata', { grade: grades[0] })
     .eq('metadata->>difficulty_rank', difficulty.toString())
     .limit(100); // Fetch large pool for randomization
+  
+  // Filter by grade
+  if (grades.length === 1) {
+    query = query.eq('metadata->>grade', grades[0].toString());
+  } else {
+    query = query.in('metadata->>grade', grades.map(g => g.toString()));
+  }
   
   if (excludeIds.length > 0) {
     query = query.not('id', 'in', `(${excludeIds.join(',')})`);
@@ -392,7 +471,7 @@ export async function fetchStabilityQuestions(
   let lastDimension: string | null = null;
   
   for (const question of shuffled) {
-    const dimension = question.metadata?.dimension || question.dimension;
+    const dimension = question.metadata?.dimension;
     
     // Skip if same as last dimension
     if (dimension === lastDimension) {

@@ -60,10 +60,11 @@ export function getSystemMessage(gradeLevel: GradeLevel): string {
 CRITICAL REQUIREMENTS:
 1) Always return complete, valid JSON - never truncate.
 2) You MUST provide EXACTLY 3 career clusters (High fit, Medium fit, Explore fit) - this is MANDATORY.
-3) Ensure all arrays and objects are properly closed.
-4) Each cluster must have description, evidence, roles, domains, and whyItFits fields filled.
-5) **CRITICAL**: You MUST include the "overallSummary" field at the end of the JSON - this is MANDATORY and must be 3-4 sentences.
-6) **SALARY RANGES MUST VARY**: Each career must have DIFFERENT salary ranges based on the actual industry standards. DO NOT use the same salary range for all careers!
+3) **CRITICAL FOR AFTER12 STUDENTS**: You MUST include "degreePrograms" array with EXACTLY 3 programs inside "careerFit" object - this is MANDATORY.
+4) Ensure all arrays and objects are properly closed.
+5) Each cluster must have description, evidence, roles, domains, and whyItFits fields filled.
+6) **CRITICAL**: You MUST include the "overallSummary" field at the end of the JSON - this is MANDATORY and must be 3-4 sentences.
+7) **SALARY RANGES MUST VARY**: Each career must have DIFFERENT salary ranges based on the actual industry standards. DO NOT use the same salary range for all careers!
 
 SALARY GUIDELINES (India, 2025-2030, in LPA):
 - Engineering/Tech: Entry 4-8, Mid 10-15, Senior 15-25
@@ -94,7 +95,24 @@ EXAMPLE OF CORRECT FORMAT:
   "profileSnapshot": {...},
   "riasec": {...},
   "aptitude": {...},
-  "careerFit": {...},
+  "careerFit": {
+    "clusters": [...],
+    "degreePrograms": [
+      {
+        "programName": "B.Tech Computer Science",
+        "matchScore": 92,
+        "fit": "High",
+        "duration": "4 years",
+        "roleDescription": "...",
+        "topUniversities": [...],
+        "alignedWithCluster": "...",
+        "whyThisFitsYou": "...",
+        "evidence": {...}
+      },
+      {...},
+      {...}
+    ]
+  },
   "finalNote": {...},
   "overallSummary": "This is a 3-4 sentence summary that MUST be included."
 }
@@ -119,12 +137,36 @@ If the student provides their program/degree information (e.g., "Bsc Physics", "
 
 If you ignore the program and recommend unrelated careers, your response will be REJECTED and you will be asked to try again.`;
 
+  const after12DegreePrograms = `
+
+🚨 CRITICAL FOR AFTER12 STUDENTS: DEGREE PROGRAMS ARE MANDATORY 🚨
+
+You MUST include "degreePrograms" array with EXACTLY 3 programs inside the "careerFit" object.
+
+Each program MUST have these fields:
+- programName: Specific program name (e.g., "B.Tech Computer Science & AI")
+- matchScore: 65-95 based on profile fit
+- fit: "High", "Medium", or "Explore"
+- duration: Program duration (e.g., "4 years")
+- roleDescription: 2-3 sentences about what graduates do
+- topUniversities: Array of 5-7 Indian universities
+- alignedWithCluster: Which career cluster it aligns with
+- whyThisFitsYou: Personalized reasoning (2-3 sentences)
+- evidence: Object with ALL 7 sections (interest, aptitude, personality, values, employability, knowledge, adaptiveAptitude)
+
+If you do NOT include degreePrograms array, your response will be REJECTED.`;
+
   if (gradeLevel === 'middle') {
     return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
   }
 
   if (gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary') {
     return `${baseMessage} You are speaking to high school students (grades 9-12). Provide guidance on college majors and career paths. Be aspirational but realistic.${requirements}`;
+  }
+
+  // After 12th students - add degree programs requirement
+  if (gradeLevel === 'after12') {
+    return `${baseMessage}${after12DegreePrograms}${requirements}`;
   }
 
   // College students - add program validation
