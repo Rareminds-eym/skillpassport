@@ -784,7 +784,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   51,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -799,7 +799,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   52,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -814,7 +814,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   53,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -829,7 +829,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   54,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -844,7 +844,7 @@ INSERT INTO personal_assessment_questions (
   'Logarithmic complexity reasoning.',
   55,
   true,
-  '{"grade": "Post-12", "dimension": "AT", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AT", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -859,7 +859,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   56,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -874,7 +874,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   57,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -889,7 +889,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   58,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -904,7 +904,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   59,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -919,7 +919,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   60,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -934,7 +934,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   61,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -949,7 +949,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   62,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -964,7 +964,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   63,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -979,7 +979,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   64,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -994,7 +994,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   65,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1009,7 +1009,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   66,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1024,7 +1024,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   67,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1039,7 +1039,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   68,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1054,7 +1054,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   69,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1069,7 +1069,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   70,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1084,7 +1084,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   71,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1099,7 +1099,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   72,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1114,7 +1114,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   73,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1129,7 +1129,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   74,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1144,7 +1144,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   75,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1159,7 +1159,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   76,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1174,7 +1174,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   77,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1189,7 +1189,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   78,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1204,7 +1204,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   79,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1219,7 +1219,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   80,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1234,7 +1234,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   81,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1249,7 +1249,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   82,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1264,7 +1264,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   83,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1279,7 +1279,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   84,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1294,7 +1294,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   85,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1309,7 +1309,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   86,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1324,7 +1324,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   87,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1339,7 +1339,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   88,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1354,7 +1354,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   89,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1369,7 +1369,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   90,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1384,7 +1384,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   91,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1399,7 +1399,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   92,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1414,7 +1414,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   93,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1429,7 +1429,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   94,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1444,7 +1444,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   95,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1459,7 +1459,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   96,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1474,7 +1474,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   97,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1489,7 +1489,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   98,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1504,7 +1504,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   99,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1519,7 +1519,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   100,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 1, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1534,7 +1534,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   101,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1549,7 +1549,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   102,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1564,7 +1564,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   103,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1579,7 +1579,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   104,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1594,7 +1594,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   105,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1609,7 +1609,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   106,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1624,7 +1624,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   107,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1639,7 +1639,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   108,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1654,7 +1654,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   109,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1669,7 +1669,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   110,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1684,7 +1684,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   111,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1699,7 +1699,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   112,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1714,7 +1714,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   113,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1729,7 +1729,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   114,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1744,7 +1744,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   115,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1759,7 +1759,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   116,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1774,7 +1774,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   117,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1789,7 +1789,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   118,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1804,7 +1804,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   119,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1819,7 +1819,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   120,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1834,7 +1834,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   121,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1849,7 +1849,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   122,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1864,7 +1864,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   123,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1879,7 +1879,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   124,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1894,7 +1894,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   125,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1909,7 +1909,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   126,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1924,7 +1924,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   127,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1939,7 +1939,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   128,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1954,7 +1954,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   129,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1969,7 +1969,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   130,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1984,7 +1984,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   131,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1999,7 +1999,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   132,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2014,7 +2014,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   133,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2029,7 +2029,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   134,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2044,7 +2044,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   135,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2059,7 +2059,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   136,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2074,7 +2074,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   137,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2089,7 +2089,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   138,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2104,7 +2104,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   139,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2119,7 +2119,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   140,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2134,7 +2134,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   141,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2149,7 +2149,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   142,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2164,7 +2164,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   143,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2179,7 +2179,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   144,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2194,7 +2194,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   145,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2209,7 +2209,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   146,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2224,7 +2224,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   147,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2239,7 +2239,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   148,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2254,7 +2254,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   149,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2269,7 +2269,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   150,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 45}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 45}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2284,7 +2284,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   151,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2299,7 +2299,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   152,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2314,7 +2314,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   153,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2329,7 +2329,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   154,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2344,7 +2344,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   155,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2359,7 +2359,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   156,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2374,7 +2374,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   157,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2389,7 +2389,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   158,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2404,7 +2404,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   159,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2419,7 +2419,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   160,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2434,7 +2434,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   161,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2449,7 +2449,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   162,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2464,7 +2464,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   163,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2479,7 +2479,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   164,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2494,7 +2494,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   165,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2509,7 +2509,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   166,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2524,7 +2524,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   167,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2539,7 +2539,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   168,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2554,7 +2554,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   169,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2569,7 +2569,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   170,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2584,7 +2584,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   171,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2599,7 +2599,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   172,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2614,7 +2614,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   173,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2629,7 +2629,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   174,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2644,7 +2644,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   175,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2659,7 +2659,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   176,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2674,7 +2674,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   177,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2689,7 +2689,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   178,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2704,7 +2704,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   179,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2719,7 +2719,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   180,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2734,7 +2734,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   181,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2749,7 +2749,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   182,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2764,7 +2764,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   183,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2779,7 +2779,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   184,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2794,7 +2794,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   185,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2809,7 +2809,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   186,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2824,7 +2824,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   187,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2839,7 +2839,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   188,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2854,7 +2854,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   189,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2869,7 +2869,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   190,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2884,7 +2884,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   191,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2899,7 +2899,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   192,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2914,7 +2914,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   193,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2929,7 +2929,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   194,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2944,7 +2944,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   195,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2959,7 +2959,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   196,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2974,7 +2974,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   197,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2989,7 +2989,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   198,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3004,7 +3004,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   199,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3019,7 +3019,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   200,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3034,7 +3034,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   201,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3049,7 +3049,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   202,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3064,7 +3064,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   203,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3079,7 +3079,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   204,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3094,7 +3094,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   205,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3109,7 +3109,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   206,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3124,7 +3124,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   207,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3139,7 +3139,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   208,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3154,7 +3154,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   209,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3169,7 +3169,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   210,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3184,7 +3184,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   211,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3199,7 +3199,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   212,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3214,7 +3214,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   213,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3229,7 +3229,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   214,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3244,7 +3244,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   215,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3259,7 +3259,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   216,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3274,7 +3274,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   217,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3289,7 +3289,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   218,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3304,7 +3304,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   219,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3319,7 +3319,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   220,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3334,7 +3334,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   221,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3349,7 +3349,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   222,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3364,7 +3364,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   223,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3379,7 +3379,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   224,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3394,7 +3394,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   225,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3409,7 +3409,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   226,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3424,7 +3424,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   227,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3439,7 +3439,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   228,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3454,7 +3454,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   229,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3469,7 +3469,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   230,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3484,7 +3484,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   231,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3499,7 +3499,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   232,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3514,7 +3514,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   233,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3529,7 +3529,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   234,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3544,7 +3544,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   235,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3559,7 +3559,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   236,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3574,7 +3574,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   237,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3589,7 +3589,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   238,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3604,7 +3604,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   239,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3619,7 +3619,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   240,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3634,7 +3634,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   241,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3649,7 +3649,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   242,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3664,7 +3664,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   243,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3679,7 +3679,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   244,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3694,7 +3694,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   245,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3709,7 +3709,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   246,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3724,7 +3724,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   247,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3739,7 +3739,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   248,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3754,7 +3754,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   249,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3769,7 +3769,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   250,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3784,7 +3784,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   251,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3799,7 +3799,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   252,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3814,7 +3814,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   253,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3829,7 +3829,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   254,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3844,7 +3844,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   255,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3859,7 +3859,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   256,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3874,7 +3874,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   257,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3889,7 +3889,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   258,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3904,7 +3904,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   259,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3919,7 +3919,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   260,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3934,7 +3934,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   261,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3949,7 +3949,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   262,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3964,7 +3964,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   263,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3979,7 +3979,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   264,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3994,7 +3994,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   265,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4009,7 +4009,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   266,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4024,7 +4024,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   267,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4039,7 +4039,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   268,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4054,7 +4054,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   269,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4069,7 +4069,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   270,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4084,7 +4084,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   271,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4099,7 +4099,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   272,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4114,7 +4114,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   273,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4129,7 +4129,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   274,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4144,7 +4144,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   275,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4159,7 +4159,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   276,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4174,7 +4174,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   277,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4189,7 +4189,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   278,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4204,7 +4204,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   279,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4219,7 +4219,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   280,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4234,7 +4234,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   281,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4249,7 +4249,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   282,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4264,7 +4264,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   283,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4279,7 +4279,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   284,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4294,7 +4294,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   285,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4309,7 +4309,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   286,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4324,7 +4324,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   287,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4339,7 +4339,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   288,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4354,7 +4354,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   289,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4369,7 +4369,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   290,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4384,7 +4384,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   291,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4399,7 +4399,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   292,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4414,7 +4414,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   293,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4429,7 +4429,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   294,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4444,7 +4444,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   295,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4459,7 +4459,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   296,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4474,7 +4474,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   297,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4489,7 +4489,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   298,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4504,7 +4504,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   299,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4519,7 +4519,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   300,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 60}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 60}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4534,7 +4534,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   301,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4549,7 +4549,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   302,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4564,7 +4564,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   303,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4579,7 +4579,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   304,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4594,7 +4594,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   305,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4609,7 +4609,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   306,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4624,7 +4624,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   307,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4639,7 +4639,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   308,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4654,7 +4654,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   309,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4669,7 +4669,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   310,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4684,7 +4684,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   311,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4699,7 +4699,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   312,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4714,7 +4714,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   313,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4729,7 +4729,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   314,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4744,7 +4744,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   315,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4759,7 +4759,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   316,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4774,7 +4774,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   317,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4789,7 +4789,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   318,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4804,7 +4804,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   319,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4819,7 +4819,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   320,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4834,7 +4834,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   321,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4849,7 +4849,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   322,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4864,7 +4864,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   323,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4879,7 +4879,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   324,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4894,7 +4894,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   325,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4909,7 +4909,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   326,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4924,7 +4924,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   327,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4939,7 +4939,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   328,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4954,7 +4954,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   329,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4969,7 +4969,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   330,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4984,7 +4984,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   331,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4999,7 +4999,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   332,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5014,7 +5014,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   333,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5029,7 +5029,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   334,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5044,7 +5044,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   335,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5059,7 +5059,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   336,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5074,7 +5074,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   337,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5089,7 +5089,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   338,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5104,7 +5104,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   339,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5119,7 +5119,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   340,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5134,7 +5134,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   341,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5149,7 +5149,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   342,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5164,7 +5164,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   343,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5179,7 +5179,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   344,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5194,7 +5194,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   345,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5209,7 +5209,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   346,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5224,7 +5224,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   347,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5239,7 +5239,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   348,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5254,7 +5254,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   349,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5269,7 +5269,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   350,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 7, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5284,7 +5284,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   351,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5299,7 +5299,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   352,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5314,7 +5314,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   353,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5329,7 +5329,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   354,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5344,7 +5344,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   355,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5359,7 +5359,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   356,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5374,7 +5374,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   357,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5389,7 +5389,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   358,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5404,7 +5404,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   359,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5419,7 +5419,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   360,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5434,7 +5434,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   361,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5449,7 +5449,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   362,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5464,7 +5464,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   363,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5479,7 +5479,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   364,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5494,7 +5494,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   365,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5509,7 +5509,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   366,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5524,7 +5524,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   367,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5539,7 +5539,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   368,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5554,7 +5554,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   369,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5569,7 +5569,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   370,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5584,7 +5584,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   371,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5599,7 +5599,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   372,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5614,7 +5614,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   373,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5629,7 +5629,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   374,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5644,7 +5644,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   375,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5659,7 +5659,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   376,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5674,7 +5674,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   377,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5689,7 +5689,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   378,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5704,7 +5704,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   379,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5719,7 +5719,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   380,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5734,7 +5734,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   381,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5749,7 +5749,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   382,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5764,7 +5764,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   383,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5779,7 +5779,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   384,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5794,7 +5794,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   385,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5809,7 +5809,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   386,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5824,7 +5824,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   387,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5839,7 +5839,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   388,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5854,7 +5854,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   389,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5869,7 +5869,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   390,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5884,7 +5884,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   391,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5899,7 +5899,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   392,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5914,7 +5914,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   393,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5929,7 +5929,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   394,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5944,7 +5944,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   395,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5959,7 +5959,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   396,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5974,7 +5974,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   397,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5989,7 +5989,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   398,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6004,7 +6004,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   399,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6019,7 +6019,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   400,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 8, "time_target_sec": 75}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 4, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6034,7 +6034,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   401,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6049,7 +6049,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   402,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6064,7 +6064,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   403,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6079,7 +6079,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   404,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6094,7 +6094,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   405,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6109,7 +6109,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   406,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6124,7 +6124,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   407,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6139,7 +6139,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   408,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6154,7 +6154,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   409,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6169,7 +6169,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   410,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6184,7 +6184,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   411,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6199,7 +6199,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   412,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6214,7 +6214,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   413,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6229,7 +6229,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   414,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6244,7 +6244,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   415,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6259,7 +6259,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   416,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6274,7 +6274,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   417,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6289,7 +6289,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   418,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6304,7 +6304,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   419,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6319,7 +6319,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   420,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6334,7 +6334,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   421,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6349,7 +6349,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   422,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6364,7 +6364,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   423,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6379,7 +6379,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   424,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6394,7 +6394,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   425,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6409,7 +6409,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   426,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6424,7 +6424,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   427,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6439,7 +6439,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   428,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6454,7 +6454,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   429,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6469,7 +6469,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   430,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6484,7 +6484,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   431,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6499,7 +6499,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   432,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6514,7 +6514,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   433,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6529,7 +6529,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   434,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6544,7 +6544,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   435,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6559,7 +6559,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   436,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6574,7 +6574,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   437,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6589,7 +6589,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   438,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6604,7 +6604,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   439,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6619,7 +6619,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   440,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6634,7 +6634,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   441,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6649,7 +6649,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   442,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6664,7 +6664,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   443,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6679,7 +6679,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   444,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6694,7 +6694,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   445,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6709,7 +6709,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   446,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6724,7 +6724,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   447,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6739,7 +6739,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   448,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6754,7 +6754,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   449,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6769,7 +6769,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   450,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6784,7 +6784,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   451,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6799,7 +6799,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   452,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6814,7 +6814,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   453,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6829,7 +6829,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   454,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6844,7 +6844,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   455,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6859,7 +6859,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   456,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6874,7 +6874,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   457,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6889,7 +6889,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   458,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6904,7 +6904,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   459,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6919,7 +6919,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   460,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6934,7 +6934,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   461,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6949,7 +6949,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   462,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6964,7 +6964,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   463,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6979,7 +6979,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   464,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6994,7 +6994,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   465,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7009,7 +7009,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   466,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7024,7 +7024,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   467,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7039,7 +7039,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   468,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7054,7 +7054,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   469,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7069,7 +7069,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   470,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7084,7 +7084,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   471,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7099,7 +7099,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   472,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7114,7 +7114,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   473,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7129,7 +7129,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   474,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7144,7 +7144,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   475,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7159,7 +7159,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   476,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7174,7 +7174,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   477,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7189,7 +7189,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   478,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7204,7 +7204,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   479,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7219,7 +7219,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   480,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7234,7 +7234,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   481,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7249,7 +7249,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   482,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7264,7 +7264,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   483,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7279,7 +7279,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   484,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7294,7 +7294,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   485,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7309,7 +7309,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   486,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7324,7 +7324,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   487,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7339,7 +7339,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   488,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7354,7 +7354,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   489,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7369,7 +7369,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   490,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7384,7 +7384,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   491,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7399,7 +7399,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   492,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7414,7 +7414,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   493,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7429,7 +7429,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   494,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7444,7 +7444,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   495,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7459,7 +7459,7 @@ INSERT INTO personal_assessment_questions (
   'Percentage data interpretation.',
   496,
   true,
-  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7474,7 +7474,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   497,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7489,7 +7489,7 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   498,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7504,7 +7504,7 @@ INSERT INTO personal_assessment_questions (
   'Compound growth modeling.',
   499,
   true,
-  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "QU", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7519,5 +7519,5 @@ INSERT INTO personal_assessment_questions (
   'Multi-step linear analytical reasoning.',
   500,
   true,
-  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 10, "time_target_sec": 90}'::jsonb
+  '{"grade": "Post-12", "dimension": "AN", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
 );
