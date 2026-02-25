@@ -642,46 +642,113 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         // ============================================================================
         // STEP 4: Fetch adaptive aptitude results
         // ============================================================================
-        let adaptiveResults = null;
-        let adaptiveSessionId = currentAttempt?.adaptive_aptitude_session_id;
+        console.log('📊 [Stage 1/6] Preparing your responses...');
+        window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
         
-        // If no session ID in currentAttempt, fetch the latest attempt to get the linked session
-        if (!adaptiveSessionId && attemptId) {
-          console.log('🔍 [Preparing] No adaptive session ID in currentAttempt, fetching latest attempt...');
+        let adaptiveResults = null;
+        
+        // CRITICAL: Get session ID from answers (stored when adaptive test completes)
+        console.log('🔍 [Preparing] Looking for adaptive session ID in answers...');
+        const sessionIdFromAnswers = answers['adaptive_aptitude_session_id'];
+        console.log('🔍 [Preparing] Session ID from answers:', sessionIdFromAnswers);
+        
+        // If we have a session ID in answers, ensure it's saved to the attempt table
+        if (sessionIdFromAnswers && attemptId) {
+          console.log('🔗 [Preparing] Ensuring session ID is saved to attempt table...');
           try {
-            const { data: latestAttempt, error: attemptError } = await supabase
+            const { error: updateError } = await supabase
               .from('personal_assessment_attempts')
-              .select('adaptive_aptitude_session_id')
-              .eq('id', attemptId)
+              .update({ adaptive_aptitude_session_id: sessionIdFromAnswers })
+              .eq('id', attemptId);
+            
+            if (updateError) {
+              console.error('❌ [Preparing] Failed to save session ID to attempt:', updateError);
+            } else {
+              console.log('✅ [Preparing] Session ID saved to attempt table');
+            }
+          } catch (saveErr) {
+            console.error('❌ [Preparing] Error saving session ID:', saveErr);
+          }
+        }
+        
+        // Refetch attempt to verify session ID is saved
+        const { data: latestAttempt, error: attemptError } = await supabase
+          .from('personal_assessment_attempts')
+          .select('adaptive_aptitude_session_id, grade_level')
+          .eq('id', attemptId)
+          .maybeSingle();
+        
+        if (attemptError) {
+          console.error('❌ [Preparing] Error refetching attempt:', attemptError);
+        } else {
+          console.log('✅ [Preparing] Latest attempt data:', latestAttempt);
+        }
+        
+        // Use session ID from answers (most reliable)
+        const sessionId = sessionIdFromAnswers;
+        const attemptGradeLevel = latestAttempt?.grade_level || gradeLevel;
+        
+        console.log('� [Preparing] Final session ID to use:', sessionId);
+        
+        // Check if this grade level uses adaptive aptitude
+        const usesAdaptiveAptitude = ['middle', 'highschool', 'after10', 'after12', 'college', 'higher_secondary'].includes(attemptGradeLevel || '');
+        
+        if (sessionId && usesAdaptiveAptitude) {
+          console.log('� [Preparing] Fetching adaptive aptitude results...');
+          console.log('🔍 [Preparing] Session ID:', sessionId);
+          console.log('🔍 [Preparing] Grade level:', attemptGradeLevel);
+          
+          try {
+            const { data: adaptiveData, error: adaptiveError } = await supabase
+              .from('adaptive_aptitude_results')
+              .select('*')
+              .eq('session_id', sessionId)
               .maybeSingle();
             
-            if (!attemptError && latestAttempt?.adaptive_aptitude_session_id) {
-              adaptiveSessionId = latestAttempt.adaptive_aptitude_session_id;
-              console.log('✅ [Preparing] Found adaptive session ID from attempt:', adaptiveSessionId);
+            if (!adaptiveError && adaptiveData) {
+              adaptiveResults = adaptiveData;
+              console.log('✅ [Preparing] Adaptive results fetched:', {
+                level: adaptiveData.aptitude_level,
+                accuracy: adaptiveData.overall_accuracy,
+                totalQuestions: adaptiveData.total_questions,
+                totalCorrect: adaptiveData.total_correct,
+                accuracyBySubtag: adaptiveData.accuracy_by_subtag
+              });
             } else {
-              console.warn('⚠️ [Preparing] No adaptive session ID found in attempt');
+              console.warn('⚠️ [Preparing] No adaptive results found - test may not have been completed');
+              console.warn('⚠️ [Preparing] Error:', adaptiveError?.message);
+              console.warn('⚠️ [Preparing] Session ID:', sessionId);
+              
+              // Check if the session exists
+              const { data: sessionData } = await supabase
+                .from('adaptive_aptitude_sessions')
+                .select('status, total_questions_answered')
+                .eq('id', sessionId)
+                .maybeSingle();
+              
+              if (sessionData) {
+                console.warn('⚠️ [Preparing] Session exists but no results:', {
+                  status: sessionData.status,
+                  questionsAnswered: sessionData.total_questions_answered
+                });
+              } else {
+                console.warn('⚠️ [Preparing] Session does not exist in database');
+              }
             }
-          } catch (fetchErr) {
-            console.error('❌ [Preparing] Error fetching attempt:', fetchErr);
+          } catch (adaptiveErr) {
+            console.error('❌ [Preparing] Error fetching adaptive results:', adaptiveErr);
           }
+        } else if (!sessionId && usesAdaptiveAptitude) {
+          console.warn('⚠️ [Preparing] No adaptive session ID found - adaptive test may have been skipped');
+        } else {
+          console.log('ℹ️ [Preparing] Grade level does not use adaptive aptitude test');
         }
         
-        if (adaptiveSessionId) {
-          console.log('🔍 [Preparing] Fetching adaptive results for session:', adaptiveSessionId);
-          adaptiveResults = await fetchAdaptiveResults(adaptiveSessionId);
-          
-          if (adaptiveResults) {
-            console.log('✅ [Preparing] Adaptive results fetched successfully:', {
-              level: adaptiveResults.aptitude_level,
-              accuracy: adaptiveResults.overall_accuracy,
-              confidence: adaptiveResults.confidence_tag
-            });
-          } else {
-            console.warn('⚠️ [Preparing] Failed to fetch adaptive results');
-          }
-        } else {
-          console.log('ℹ️ [Preparing] No adaptive session ID available');
-        }
+        // Log prepared answers
+        console.log('📦 [Preparing] Prepared answers:', {
+          totalAnswers: Object.keys(answers).length,
+          hasAdaptiveResults: !!adaptiveResults
+        });
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -748,236 +815,26 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
 
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
-        console.log('📊 [Stage 5/6] Saving to database...');
+        console.log('� [Stage 5/6] Saving to database...');
         window.setAnalysisProgress?.('saving', 'Saving your personalized report...');
 
         // stream_id should always be the student's input stream, not the AI recommendation
         // The AI recommendation is stored in gemini_results JSON field
         const finalStreamId = studentStream;
 
-      // Save completion to database
-      if (attemptId && studentRecordId) {
-        try {
-          console.log('🚀 [UNIFIED LOADER] Starting AI analysis during submission...');
-          console.log('🚀 [UNIFIED LOADER] This will show ONE loader for the entire process');
-          
-          // ============================================================================
-          // STAGE 1: PREPARING (0-10%)
-          // ============================================================================
-          console.log('📊 [Stage 1/6] Preparing your responses...');
-          window.setAnalysisProgress?.('preparing', 'Organizing assessment data...');
-          
-          // Merge answers first (needed for session ID lookup)
-          const answersWithAdaptive = { ...answers };
-          
-          // Fetch adaptive aptitude results if available
-          let adaptiveResults = null;
-          
-          // CRITICAL: Get session ID from answers (stored when adaptive test completes)
-          console.log('🔍 [Preparing] Looking for adaptive session ID in answers...');
-          const sessionIdFromAnswers = answersWithAdaptive['adaptive_aptitude_session_id'];
-          console.log('🔍 [Preparing] Session ID from answers:', sessionIdFromAnswers);
-          
-          // If we have a session ID in answers, ensure it's saved to the attempt table
-          if (sessionIdFromAnswers && attemptId) {
-            console.log('🔗 [Preparing] Ensuring session ID is saved to attempt table...');
-            try {
-              const { error: updateError } = await supabase
-                .from('personal_assessment_attempts')
-                .update({ adaptive_aptitude_session_id: sessionIdFromAnswers })
-                .eq('id', attemptId);
-              
-              if (updateError) {
-                console.error('❌ [Preparing] Failed to save session ID to attempt:', updateError);
-              } else {
-                console.log('✅ [Preparing] Session ID saved to attempt table');
-              }
-            } catch (saveErr) {
-              console.error('❌ [Preparing] Error saving session ID:', saveErr);
-            }
-          }
-          
-          // Refetch attempt to verify session ID is saved
-          const { data: latestAttempt, error: attemptError } = await supabase
-            .from('personal_assessment_attempts')
-            .select('adaptive_aptitude_session_id, grade_level')
-            .eq('id', attemptId)
-            .single();
-          
-          if (attemptError) {
-            console.error('❌ [Preparing] Error refetching attempt:', attemptError);
-          } else {
-            console.log('✅ [Preparing] Latest attempt data:', latestAttempt);
-          }
-          
-          // Use session ID from answers (most reliable)
-          const sessionId = sessionIdFromAnswers;
-          const attemptGradeLevel = latestAttempt?.grade_level || gradeLevel;
-          
-          console.log('🔍 [Preparing] Final session ID to use:', sessionId);
-          
-          // Check if this grade level uses adaptive aptitude
-          const usesAdaptiveAptitude = ['middle', 'highschool', 'after10', 'after12', 'college', 'higher_secondary'].includes(attemptGradeLevel || '');
-          
-          if (sessionId && usesAdaptiveAptitude) {
-            console.log('🔍 [Preparing] Fetching adaptive aptitude results...');
-            console.log('🔍 [Preparing] Session ID:', sessionId);
-            console.log('🔍 [Preparing] Grade level:', attemptGradeLevel);
-            
-            try {
-              const { data: adaptiveData, error: adaptiveError } = await supabase
-                .from('adaptive_aptitude_results')
-                .select('*')
-                .eq('session_id', sessionId)
-                .maybeSingle();
-              
-              if (!adaptiveError && adaptiveData) {
-                adaptiveResults = adaptiveData;
-                console.log('✅ [Preparing] Adaptive results fetched:', {
-                  level: adaptiveData.aptitude_level,
-                  accuracy: adaptiveData.overall_accuracy,
-                  totalQuestions: adaptiveData.total_questions,
-                  totalCorrect: adaptiveData.total_correct,
-                  accuracyBySubtag: adaptiveData.accuracy_by_subtag
-                });
-                console.log('✅ [Preparing] Full adaptive data:', JSON.stringify(adaptiveData, null, 2));
-              } else {
-                console.warn('⚠️ [Preparing] No adaptive results found - test may not have been completed');
-                console.warn('⚠️ [Preparing] Error:', adaptiveError?.message);
-                console.warn('⚠️ [Preparing] Session ID:', sessionId);
-                
-                // Check if the session exists
-                const { data: sessionData } = await supabase
-                  .from('adaptive_aptitude_sessions')
-                  .select('status, total_questions_answered')
-                  .eq('id', sessionId)
-                  .maybeSingle();
-                
-                if (sessionData) {
-                  console.warn('⚠️ [Preparing] Session exists but no results:', {
-                    status: sessionData.status,
-                    questionsAnswered: sessionData.total_questions_answered
-                  });
-                } else {
-                  console.warn('⚠️ [Preparing] Session does not exist in database');
-                }
-              }
-            } catch (adaptiveErr) {
-              console.error('❌ [Preparing] Error fetching adaptive results:', adaptiveErr);
-            }
-          } else if (!sessionId && usesAdaptiveAptitude) {
-            console.warn('⚠️ [Preparing] No adaptive session ID found - adaptive test may have been skipped');
-          } else {
-            console.log('ℹ️ [Preparing] Grade level does not use adaptive aptitude test');
-          }
-          
-          // Log prepared answers
-          console.log('📦 [Preparing] Prepared answers:', {
-            totalAnswers: Object.keys(answersWithAdaptive).length,
-            hasAdaptiveResults: !!adaptiveResults
-          });
-          
-          // Small delay to show preparing stage
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // ============================================================================
-          // STAGE 2: SENDING (10-20%)
-          // ============================================================================
-          console.log('📊 [Stage 2/6] Connecting to AI engine...');
-          window.setAnalysisProgress?.('sending', 'Sending your responses to AI...');
-          
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          // ============================================================================
-          // STAGE 3: AI ANALYZING (20-70%) - THE MAIN EVENT
-          // ============================================================================
-          console.log('📊 [Stage 3/6] AI Analysis starting...');
-          console.log('⏱️ [AI Analysis] Starting timer...');
-          window.setAnalysisProgress?.('analyzing', 'AI is analyzing your assessment...');
-          
-          const aiStartTime = Date.now();
-          let geminiResults = null;
-          
+        // Save completion to database
+        if (attemptId && studentRecordId) {
           try {
-            console.log('🤖 [AI Analysis] Calling analyzeAssessmentWithGemini...');
-            console.log('🤖 [AI Analysis] Parameters:', {
-              hasAnswers: !!answersWithAdaptive,
-              answerCount: Object.keys(answersWithAdaptive).length,
-              stream: studentStream,
-              gradeLevel: gradeLevel || 'after12',
-              hasQuestionBanks: !!(riasecQuestions && bigFiveQuestions),
-              hasTimings: !!finalTimings,
-              hasAdaptiveResults: !!adaptiveResults,
-              adaptiveSessionId: currentAttempt?.adaptive_aptitude_session_id
-            });
+            console.log('� [Database] Calling completeAttempt WITH AI results...');
             
-            // Call AI analysis with all data
-            geminiResults = await analyzeAssessmentWithGemini(
-              answersWithAdaptive,
-              studentStream,
-              {
-                riasecQuestions,
-                aptitudeQuestions: [], // Adaptive aptitude is separate
-                bigFiveQuestions,
-                workValuesQuestions,
-                employabilityQuestions,
-                streamKnowledgeQuestions
-              },
-              finalTimings,
+            const dbResults = await assessmentService.completeAttempt(
+              attemptId,
+              studentRecordId,
+              finalStreamId,
               gradeLevel || 'after12',
-              null, // preCalculatedScores
-              studentContext,
-              adaptiveResults
+              geminiResults, // ← AI results included!
+              finalTimings
             );
-            
-            const aiDuration = ((Date.now() - aiStartTime) / 1000).toFixed(1);
-            console.log(`✅ [AI Analysis] Completed successfully in ${aiDuration}s`);
-            console.log('✅ [AI Analysis] Results received:', {
-              hasRiasec: !!geminiResults?.riasec,
-              hasCareerFit: !!geminiResults?.careerFit,
-              hasRoadmap: !!geminiResults?.roadmap,
-              resultKeys: geminiResults ? Object.keys(geminiResults) : []
-            });
-            
-          } catch (aiError: any) {
-            console.error('❌ [AI Analysis] Failed:', aiError);
-            console.error('❌ [AI Analysis] Error details:', {
-              message: aiError.message,
-              code: aiError.code,
-              stack: aiError.stack
-            });
-            
-            // Show error in analyzing screen
-            window.setAnalysisProgress?.('error', `AI analysis failed: ${aiError.message}`);
-            
-            throw new Error(`AI analysis failed: ${aiError.message}`);
-          }
-          
-          // ============================================================================
-          // STAGE 4: PROCESSING (70-85%)
-          // ============================================================================
-          console.log('📊 [Stage 4/6] Processing results...');
-          window.setAnalysisProgress?.('processing', 'Generating career matches...');
-          
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // ============================================================================
-          // STAGE 5: SAVING (85-95%)
-          // ============================================================================
-          console.log('📊 [Stage 5/6] Saving to database...');
-          window.setAnalysisProgress?.('saving', 'Saving your personalized report...');
-          
-          console.log('💾 [Database] Calling completeAttempt WITH AI results...');
-          
-          const dbResults = await assessmentService.completeAttempt(
-            attemptId,
-            studentRecordId,
-             finalStreamId,
-            //studentStream,
-            gradeLevel || 'after12',
-            geminiResults, // ← AI results included!
-            finalTimings
-          );
 
         console.log('✅ [Database] Assessment saved successfully:', dbResults.id);
 
