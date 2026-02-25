@@ -72,34 +72,130 @@ function getManagePathFromType(type) {
   return typeToPath[type] || null; // Return null instead of default to prevent wrong redirects
 }
 
-// Feature comparison data
-const FEATURE_COMPARISON = {
-  'Core Features': {
-    'Student Management': [true, true, true, true],
-    'Progress Tracking': [true, true, true, true],
-    'Basic Reports': [true, true, true, true],
-    'Advanced Analytics': [false, true, true, true],
-  },
-  'Support': {
-    'Email Support': [true, true, true, true],
-    'Priority Support': [false, true, true, true],
-    'Dedicated Manager': [false, false, true, true],
-    '24/7 Support': [false, false, false, true],
-  },
-  'Integrations': {
-    'API Access': [false, true, true, true],
-    'Custom Integrations': [false, false, true, true],
-    'SSO': [false, false, true, true],
-  },
+// Convert snake_case to user-friendly Title Case
+const formatFeatureName = (name) => {
+  if (!name) return '';
+  return name
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase())
+    .replace(/\b(\d+)\s?gb\b/gi, '$1 GB')
+    .replace(/\b(\d+)\s?mb\b/gi, '$1 MB');
+};
+
+// Build feature comparison from actual plan data
+const getFeatureComparison = (plans) => {
+  if (!plans || plans.length === 0) return {};
+  
+  const categories = {
+    'Essentials': {},
+    'Learning': {},
+    'Support': {},
+    'Extras': {}
+  };
+  
+  // Feature categorization mapping
+  const featureCategories = {
+    // Essentials
+    'access_basic_assessments': 'Essentials',
+    '5_assessments_month': 'Essentials',
+    '10_assessments_month': 'Essentials',
+    'unlimited_assessments': 'Essentials',
+    '3_projects': 'Essentials',
+    '10_projects': 'Essentials',
+    'unlimited_projects': 'Essentials',
+    '5gb_storage': 'Essentials',
+    '10gb_storage': 'Essentials',
+    '50gb_storage': 'Essentials',
+    
+    // Learning
+    'skill_analytics': 'Learning',
+    'advanced_analytics': 'Learning',
+    'portfolio_builder': 'Learning',
+    'advanced_portfolio': 'Learning',
+    'career_paths': 'Learning',
+    'all_career_paths': 'Learning',
+    'interview_prep': 'Learning',
+    'mock_interviews': 'Learning',
+    'linkedin_opt': 'Learning',
+    'resume_builder': 'Learning',
+    'certificates': 'Learning',
+    'verified_certs': 'Learning',
+    
+    // Support
+    'basic_support': 'Support',
+    'priority_support': 'Support',
+    'mentorship': 'Support',
+    'placement_assist': 'Support'
+  };
+  
+  // Collect all unique features across all plans
+  const allFeatures = new Map();
+  
+  plans.forEach((plan, planIndex) => {
+    if (!plan.features || !Array.isArray(plan.features)) return;
+    
+    plan.features.forEach(feature => {
+      // Handle both string features and object features
+      let featureKey, displayName, value;
+      
+      if (typeof feature === 'string') {
+        featureKey = feature;
+        displayName = formatFeatureName(feature);
+        value = true;
+      } else if (typeof feature === 'object' && feature !== null) {
+        featureKey = feature.feature_key || feature.key || feature.name;
+        displayName = feature.name || feature.label || formatFeatureName(featureKey);
+        value = feature.feature_value || feature.value || true;
+        if (feature.is_included === false) value = '—';
+        if (feature.is_partial === true) value = '~';
+      } else {
+        return; // Skip invalid features
+      }
+      
+      if (!featureKey || !displayName) return;
+      
+      // Determine category
+      const category = featureCategories[featureKey] || 'Extras';
+      
+      // Use displayName as key to prevent duplicates
+      if (!allFeatures.has(displayName)) {
+        allFeatures.set(displayName, {
+          displayName,
+          category,
+          values: Array(plans.length).fill('—')
+        });
+      }
+      
+      // Set the value for this plan
+      const featureData = allFeatures.get(displayName);
+      featureData.values[planIndex] = value;
+    });
+  });
+  
+  // Organize by category
+  allFeatures.forEach((data, featureName) => {
+    const category = categories[data.category] ? data.category : 'Extras';
+    categories[category][featureName] = data.values;
+  });
+  
+  // Remove empty categories
+  Object.keys(categories).forEach(key => {
+    if (Object.keys(categories[key]).length === 0) {
+      delete categories[key];
+    }
+  });
+  
+  return categories;
 };
 
 // Feature Comparison Table Component
 const FeatureComparisonTable = memo(({ plans }) => {
   const [showComparison, setShowComparison] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState({
-    'Core Features': true,
-    'Support': false,
-    'Integrations': false,
+    'Essentials': true,
+    'Learning': true,
+    'Support': true,
+    'Extras': true,
   });
 
   const toggleCategory = useCallback((category) => {
@@ -110,17 +206,28 @@ const FeatureComparisonTable = memo(({ plans }) => {
   }, []);
 
   const renderValue = useCallback((value) => {
-    if (value === true) return <Check className="h-5 w-5 text-green-600" />;
-    if (value === false) return <X className="h-5 w-5 text-gray-300" />;
-    return <span className="text-sm text-gray-700">{value}</span>;
+    if (value === true) return (
+      <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100">
+        <Check className="h-4 w-4 text-green-600" />
+      </div>
+    );
+    if (value === false || value === '—') return (
+      <span className="text-gray-300 text-lg">—</span>
+    );
+    if (value === '~') return (
+      <span className="text-amber-500 font-medium">~</span>
+    );
+    return <span className="text-sm text-gray-900 font-medium">{value}</span>;
   }, []);
+
+  const featureComparison = useMemo(() => getFeatureComparison(plans), [plans]);
 
   if (!showComparison) {
     return (
       <div className="mt-16 text-center">
         <button
           onClick={() => setShowComparison(true)}
-          className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm mx-auto"
+          className="text-blue-600 hover:text-blue-700 flex items-center gap-2 text-sm mx-auto font-medium transition-colors"
         >
           <ChevronDown className="h-4 w-4" /> Show Feature Comparison
         </button>
@@ -129,44 +236,70 @@ const FeatureComparisonTable = memo(({ plans }) => {
   }
 
   return (
-    <div className="mt-16">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Feature Comparison</h2>
+    <div className="mt-20">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900">Compare Plans</h2>
+          <p className="text-gray-600 mt-1">See what's included in each plan</p>
+        </div>
         <button
           onClick={() => setShowComparison(false)}
-          className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm"
+          className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm font-medium transition-colors"
         >
           <ChevronUp className="h-4 w-4" /> Hide
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className={`grid bg-gray-50 border-b border-gray-200`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
-          <div className="p-4 font-semibold text-gray-700">Feature</div>
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-lg">
+        {/* Header */}
+        <div className={`grid bg-gradient-to-br from-blue-600 to-indigo-700 text-white`} style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}>
+          <div className="p-6 font-bold text-lg">Features</div>
           {plans.map((plan) => (
-            <div key={plan.id} className="p-4 text-center">
-              <div className="font-bold text-gray-900">{plan.name}</div>
+            <div key={plan.id} className="p-6 text-center border-l border-white/10">
+              <div className="font-bold text-lg mb-1">{plan.name}</div>
+              {plan.price && !plan.contactSales && (
+                <div className="text-sm text-blue-100">₹{parseInt(plan.price).toLocaleString()}/{plan.duration}</div>
+              )}
+              {plan.contactSales && (
+                <div className="text-sm text-blue-100">Custom</div>
+              )}
             </div>
           ))}
         </div>
 
-        {Object.entries(FEATURE_COMPARISON).map(([category, features]) => (
-          <div key={category} className="border-b border-gray-100 last:border-b-0">
+        {/* Categories */}
+        {Object.entries(featureComparison).map(([category, features], categoryIndex) => (
+          <div key={category} className={categoryIndex > 0 ? 'border-t-2 border-gray-100' : ''}>
             <button
               onClick={() => toggleCategory(category)}
-              className="w-full p-4 flex items-center gap-2 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+              className="w-full p-5 flex items-center gap-3 bg-gray-50 hover:bg-gray-100 transition-all text-left group"
             >
-              {expandedCategories[category] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span className="font-semibold text-gray-800">{category}</span>
+              <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+                expandedCategories[category] 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 text-gray-600 group-hover:bg-gray-300'
+              }`}>
+                {expandedCategories[category] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </div>
+              <div className="flex-1">
+                <span className="font-bold text-gray-900 text-lg">{category}</span>
+                <span className="ml-3 text-sm text-gray-500">{Object.keys(features).length} features</span>
+              </div>
             </button>
 
             {expandedCategories[category] && (
-              <div>
-                {Object.entries(features).map(([feature, values]) => (
-                  <div key={feature} className={`grid border-t border-gray-100 hover:bg-gray-50`} style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
-                    <div className="p-4 text-sm text-gray-600">{feature}</div>
+              <div className="divide-y divide-gray-100">
+                {Object.entries(features).map(([feature, values], featureIndex) => (
+                  <div 
+                    key={feature} 
+                    className={`grid hover:bg-blue-50/50 transition-colors ${featureIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`} 
+                    style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}
+                  >
+                    <div className="p-5 text-sm text-gray-700 font-medium flex items-center">
+                      <span>{feature}</span>
+                    </div>
                     {values.slice(0, plans.length).map((value, index) => (
-                      <div key={index} className="p-4 text-center flex items-center justify-center">
+                      <div key={index} className="p-5 text-center flex items-center justify-center border-l border-gray-100">
                         {renderValue(value)}
                       </div>
                     ))}
@@ -177,6 +310,24 @@ const FeatureComparisonTable = memo(({ plans }) => {
           </div>
         ))}
       </div>
+
+      {/* Legend */}
+      <div className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-600">
+        <div className="flex items-center gap-2">
+          <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100">
+            <Check className="h-4 w-4 text-green-600" />
+          </div>
+          <span>Included</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-gray-300 text-lg">—</span>
+          <span>Not available</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-amber-500 font-medium">~</span>
+          <span>Partially available</span>
+        </div>
+      </div>
     </div>
   );
 });
@@ -184,15 +335,45 @@ const FeatureComparisonTable = memo(({ plans }) => {
 FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 
 
-// Plan Card Component - Clean solid design
+// Plan Card Component - Clean solid design with user-friendly feature display
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
   const isContactSales = plan.contactSales;
 
-  const displayedFeatures = showAllFeatures ? plan.features : plan.features.slice(0, 6);
-  const hasMoreFeatures = plan.features.length > 6;
+  // Group features by category for better display
+  const featuresByCategory = useMemo(() => {
+    if (!plan.features || !Array.isArray(plan.features)) return {};
+    
+    const categories = {
+      'Essentials': [],
+      'Learning': [],
+      'Support': [],
+      'Extras': []
+    };
+    
+    plan.features.forEach(feature => {
+      const category = feature.category || 'Extras';
+      if (categories[category]) {
+        categories[category].push(feature);
+      } else {
+        categories['Extras'].push(feature);
+      }
+    });
+    
+    return categories;
+  }, [plan.features]);
+
+  const hasMoreFeatures = plan.features?.length > 6;
+
+  // Category icons and colors
+  const categoryConfig = {
+    'Essentials': { icon: 'Zap', color: 'amber', label: 'Essentials' },
+    'Learning': { icon: 'GraduationCap', color: 'blue', label: 'Learning & Growth' },
+    'Support': { icon: 'HeadphonesIcon', color: 'emerald', label: 'Support' },
+    'Extras': { icon: 'Gift', color: 'purple', label: 'Extras' }
+  };
 
   // Handle organization purchase click
   const handleClick = useCallback(() => {
@@ -202,6 +383,38 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
       onSelect(plan);
     }
   }, [isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
+
+  // Render feature item with icon and value
+  const renderFeature = (feature, idx) => (
+    <li key={idx} className="flex items-start gap-3 py-2">
+      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
+        <Check className="h-3 w-3 text-blue-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm font-medium text-gray-900">{formatFeatureName(feature.name || feature)}</span>
+        {(feature.value || feature.feature_value) && (
+          <span className="block text-xs text-gray-500 mt-0.5">{feature.value || feature.feature_value}</span>
+        )}
+      </div>
+    </li>
+  );
+
+  // Render category section
+  const renderCategory = (categoryKey, features) => {
+    if (!features || features.length === 0) return null;
+    const config = categoryConfig[categoryKey] || categoryConfig['Extras'];
+    
+    return (
+      <div key={categoryKey} className="mb-4">
+        <h5 className={`text-xs font-bold uppercase tracking-wider mb-2 text-${config.color}-600 flex items-center gap-1.5`}>
+          {config.label}
+        </h5>
+        <ul className="space-y-0.5">
+          {features.slice(0, showAllFeatures ? undefined : 3).map((feature, idx) => renderFeature(feature, idx))}
+        </ul>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -307,23 +520,24 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           </div>
         )}
 
-        {/* Features */}
+        {/* Features - User-friendly grouped display */}
         <div className="flex-1 mb-5">
-          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Features</h4>
-          <ul className="space-y-2.5">
-            {displayedFeatures.map((feature, idx) => (
-              <li key={idx} className="flex items-start gap-2.5">
-                <Check className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <span className="text-sm text-gray-600">{feature}</span>
-              </li>
-            ))}
-          </ul>
+          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">What's Included</h4>
+          
+          {Object.entries(featuresByCategory).map(([category, features]) => 
+            renderCategory(category, features)
+          )}
+          
           {hasMoreFeatures && (
             <button
               onClick={() => setShowAllFeatures(!showAllFeatures)}
-              className="mt-3 text-sm font-medium text-blue-600 hover:text-blue-700"
+              className="mt-2 w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center gap-1"
             >
-              {showAllFeatures ? 'Show less' : `+${plan.features.length - 6} more`}
+              {showAllFeatures ? (
+                <>Show less <ChevronUp className="h-4 w-4" /></>
+              ) : (
+                <>Show all {plan.features.length} features <ChevronDown className="h-4 w-4" /></>
+              )}
             </button>
           )}
         </div>
@@ -465,6 +679,12 @@ function SubscriptionPlans() {
   const entityTypeParam = useMemo(() => getEntityTypeParam(entity), [entity]);
   const roleTypeParam = useMemo(() => getRoleTypeParam(pageRole), [pageRole]);
 
+  // Determine business type based on user role
+  // B2C for individual students, B2B for organization admins
+  const businessType = useMemo(() => {
+    return pageRole === 'admin' ? 'b2b' : 'b2c';
+  }, [pageRole]);
+
   // Fetch plans EXCLUSIVELY from the Cloudflare Worker API.
   // plans = null while loading, [] or [...] after.
   const {
@@ -473,7 +693,7 @@ function SubscriptionPlans() {
     error: plansError,
     refetch: refetchPlans,
   } = useSubscriptionPlansData({
-    businessType: 'b2b',
+    businessType,
     entityType: entityTypeParam,
     roleType: roleTypeParam,
   });
@@ -874,8 +1094,8 @@ function SubscriptionPlans() {
               </div>
             )}
 
-            {/* Plans Grid */}
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Plans Grid - responsive columns based on plan count */}
+            <div className={`grid md:grid-cols-2 gap-6 ${plans.length === 3 ? 'lg:grid-cols-3' : plans.length >= 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
               {plans.map((plan, index) => (
                 <PlanCard
                   key={plan.id}
