@@ -18,6 +18,10 @@ import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
+import {
+  createAuthenticationError,
+  logErrorSafely,
+} from '../utils/error-handling';
 
 /**
  * File size limits (in bytes)
@@ -123,7 +127,7 @@ export const handleUpload: PagesFunction = async (context) => {
   try {
     // Require authentication
     if (!authenticatedContext.user) {
-      return jsonResponse({ error: 'Authentication required' }, 401);
+      return createAuthenticationError('/upload', 'missing_token');
     }
 
     const { user } = authenticatedContext;
@@ -183,7 +187,7 @@ export const handleUpload: PagesFunction = async (context) => {
       type: file.type,
     });
   } catch (error) {
-    console.error('❌ Upload error:', error);
+    logErrorSafely('Upload', error);
     return jsonResponse({
       error: (error as Error).message || 'Upload failed',
     }, 500);

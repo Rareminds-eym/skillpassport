@@ -27,6 +27,11 @@ import {
   isEducator,
   type OwnershipValidationResult,
 } from '../utils/ownership';
+import {
+  createAuthenticationError,
+  createAuthorizationError,
+  logErrorSafely,
+} from '../utils/error-handling';
 
 /**
  * Validate ownership of a file based on its path pattern
@@ -76,10 +81,7 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
 
   // Require authentication
   if (!user) {
-    return jsonResponse({ 
-      error: 'Authentication required',
-      message: 'Please provide a valid JWT token in the Authorization header'
-    }, 401);
+    return createAuthenticationError('/delete', 'missing_token');
   }
 
   try {
@@ -120,15 +122,20 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
     // Validate ownership
     const ownership = await validateOwnership(fileKey, user.id, supabaseAdmin);
     if (!ownership.isOwner) {
-      console.warn('🚫 Ownership validation failed:', {
-        userId: user.id,
+      // Determine the specific reason for authorization failure
+      let reason: 'ownership_mismatch' | 'insufficient_role' | 'user_id_mismatch' = 'ownership_mismatch';
+      if (ownership.reason?.includes('educator')) {
+        reason = 'insufficient_role';
+      } else if (ownership.reason?.includes('mismatch')) {
+        reason = 'user_id_mismatch';
+      }
+      
+      return createAuthorizationError(
+        user.id,
         fileKey,
-        reason: ownership.reason,
-      });
-      return jsonResponse({ 
-        error: 'Access denied',
-        message: ownership.reason || 'You do not have permission to delete this file'
-      }, 403);
+        reason,
+        ownership.reason || 'You do not have permission to delete this file'
+      );
     }
 
     // Create R2 client
@@ -145,7 +152,7 @@ export const handleDelete: PagesFunction = async (context: AuthenticatedContext)
       key: fileKey,
     });
   } catch (error) {
-    console.error('❌ Delete error:', error);
+    logErrorSafely('Delete', error);
     return jsonResponse({
       error: (error as Error).message || 'Delete failed',
     }, 500);

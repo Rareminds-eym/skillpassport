@@ -21,6 +21,7 @@
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
 import { authenticateUser, AuthResult } from '../shared/auth';
+import { createAuthenticationError } from './utils/error-handling';
 
 // Import all handlers
 import { handleUpload } from './handlers/upload';
@@ -77,14 +78,8 @@ export const onRequest: PagesFunction = async (context) => {
       const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
       
       if (!authResult) {
-        // Authentication failed - return 401
-        return jsonResponse(
-          {
-            error: 'Authentication required',
-            message: 'Please provide a valid JWT token in the Authorization header',
-          },
-          401
-        );
+        // Authentication failed - return 401 with standardized error
+        return createAuthenticationError(path, 'missing_token');
       }
 
       // Attach user context to the request
