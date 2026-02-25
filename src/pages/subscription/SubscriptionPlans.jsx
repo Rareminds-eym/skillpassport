@@ -207,7 +207,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
 
   const renderValue = useCallback((value) => {
     if (value === true) return (
-      <div className="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 shadow-lg">
+      <div className="inline-flex items-center justify-center w-7 h-7 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 shadow-lg">
         <Check className="h-4 w-4 text-white" strokeWidth={3} />
       </div>
     );
@@ -227,7 +227,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
       <div className="mt-16 text-center">
         <button
           onClick={() => setShowComparison(true)}
-          className="text-blue-600 hover:text-blue-700 flex items-center gap-2 text-sm mx-auto font-medium transition-colors"
+          className="text-slate-600 hover:text-slate-900 flex items-center gap-2 text-sm mx-auto font-semibold transition-colors"
         >
           <ChevronDown className="h-4 w-4" /> Show Feature Comparison
         </button>
@@ -321,7 +321,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
       {/* Legend */}
       <div className="mt-8 flex items-center justify-center gap-8 text-sm text-slate-600">
         <div className="flex items-center gap-3">
-          <div className="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 shadow-lg">
+          <div className="inline-flex items-center justify-center w-7 h-7 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 shadow-lg">
             <Check className="h-4 w-4 text-white" strokeWidth={3} />
           </div>
           <span className="font-medium">Included</span>
@@ -390,7 +390,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     
     return (
       <li key={idx} className="flex items-start gap-3 py-2 group">
-        <div className="flex-shrink-0 w-5 h-5 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center mt-0.5 shadow-sm group-hover:scale-110 transition-transform">
+        <div className="flex-shrink-0 w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center mt-0.5 shadow-sm group-hover:scale-110 transition-transform">
           <Check className="h-3 w-3 text-white" strokeWidth={3} />
         </div>
         <div className="flex-1 min-w-0">
@@ -443,7 +443,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
             {plan.name}
           </h3>
           {plan.tagline && (
-            <p className="text-sm text-blue-600 font-medium">{plan.tagline}</p>
+            <p className="text-sm text-amber-600 font-semibold">{plan.tagline}</p>
           )}
 
           <div className="mt-6">
@@ -530,7 +530,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           {hasMoreFeatures && (
             <button
               onClick={() => setShowAllFeatures(!showAllFeatures)}
-              className="mt-4 w-full py-2.5 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors flex items-center justify-center gap-2"
+              className="mt-4 w-full py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               {showAllFeatures ? (
                 <>Show less <ChevronUp className="h-4 w-4" /></>
@@ -898,11 +898,11 @@ function SubscriptionPlans() {
 
   if (!isFullyLoaded) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading subscription plans…</p>
-          <p className="mt-1 text-sm text-gray-400">Fetching latest pricing from our servers</p>
+          <div className="w-16 h-16 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto"></div>
+          <p className="mt-6 text-slate-900 font-light text-xl" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Loading subscription plans…</p>
+          <p className="mt-2 text-sm text-slate-500 font-medium">Fetching latest pricing from our servers</p>
         </div>
       </div>
     );
@@ -911,20 +911,20 @@ function SubscriptionPlans() {
   // API loaded but returned an error and no plans
   if (plansError && plans.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-sm">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="h-6 w-6 text-red-500" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl">
+            <AlertCircle className="h-8 w-8 text-white" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Plans</h2>
-          <p className="text-gray-500 mb-6 text-sm">
+          <h2 className="text-3xl font-light text-slate-900 mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Unable to Load Plans</h2>
+          <p className="text-slate-600 mb-8 leading-relaxed font-light">
             {plansError.message || 'An error occurred while fetching subscription plans.'}
           </p>
           <button
             onClick={refetchPlans}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl font-semibold hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl hover:scale-105"
           >
-            <RefreshCw className="h-4 w-4" />
+            <RefreshCw className="h-5 w-5" />
             Try Again
           </button>
         </div>
@@ -1090,7 +1090,7 @@ function SubscriptionPlans() {
                             animation: `fadeInUp 0.5s ease-out ${index * 0.05}s both` 
                           }}
                         >
-                          <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
                             <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
                           </div>
                           <div className="flex-1">
@@ -1184,7 +1184,7 @@ function SubscriptionPlans() {
 
         {/* Hero Message */}
         {heroMessage && (
-          <div className="mb-12 relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-8 shadow-xl">
+          <div className="mb-12 relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-800 via-slate-900 to-slate-800 p-8 shadow-xl">
             <div className="absolute inset-0 opacity-10" style={{
               backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
             }}></div>

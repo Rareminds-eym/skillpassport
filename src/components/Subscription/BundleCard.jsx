@@ -151,7 +151,7 @@ export function BundleCard({
             )}
           </div>
           {billingPeriod === 'annual' && (
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-slate-500 mt-2 font-medium">
               ₹{Math.round(annualPrice / 12)}/mo billed annually
             </p>
           )}
@@ -160,29 +160,31 @@ export function BundleCard({
         {/* Included Features Toggle */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors mb-4"
+          className="w-full flex items-center justify-between py-4 px-5 bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl hover:from-slate-100 hover:to-slate-200 transition-all mb-5 border border-slate-200"
         >
-          <span className="text-sm font-medium text-gray-700">
+          <span className="text-sm font-semibold text-slate-700 uppercase tracking-wider">
             {totalFeatures} features included
             {isPartiallyOwned && ` (${ownedCount} owned)`}
           </span>
           {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-gray-500" />
+            <ChevronUp className="w-5 h-5 text-slate-600" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-gray-500" />
+            <ChevronDown className="w-5 h-5 text-slate-600" />
           )}
         </button>
 
         {/* Expanded Features List */}
         {isExpanded && (
-          <div className="mb-4 space-y-2">
+          <div className="mb-5 space-y-3">
             {featureKeys.map((featureKey, index) => (
               <div
                 key={featureKey}
-                className="flex items-center gap-2 text-sm text-gray-600"
+                className="flex items-center gap-3 text-sm text-slate-700"
               >
-                <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
-                <span className="capitalize">
+                <div className="w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                </div>
+                <span className="capitalize font-medium">
                   {featureKey.replace(/_/g, ' ')}
                 </span>
               </div>
@@ -194,7 +196,7 @@ export function BundleCard({
         {isOwned ? (
           <button
             disabled
-            className="w-full py-3 px-4 bg-green-100 text-green-700 font-medium rounded-lg flex items-center justify-center gap-2"
+            className="w-full py-4 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-2xl flex items-center justify-center gap-2 border-2 border-emerald-200"
           >
             <Check className="w-5 h-5" />
             All Features Active
@@ -203,7 +205,7 @@ export function BundleCard({
           <button
             onClick={() => onPurchase?.(bundle.id, billingPeriod)}
             disabled={isPurchasing}
-            className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-4 px-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-2xl hover:from-purple-700 hover:to-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-105"
           >
             {isPurchasing ? (
               <>
@@ -221,7 +223,7 @@ export function BundleCard({
 
         {/* Partial Ownership Note */}
         {isPartiallyOwned && !isOwned && (
-          <p className="text-xs text-amber-600 text-center mt-3">
+          <p className="text-xs text-amber-700 text-center mt-4 font-medium bg-amber-50 py-2 px-3 rounded-xl">
             You already own {ownedCount} of {totalFeatures} features. 
             Bundle price includes all features.
           </p>
@@ -250,37 +252,37 @@ export function BundleCardCompact({
 
   return (
     <div className={`
-      p-4 bg-white rounded-lg border
-      ${isOwned ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}
+      p-5 bg-white rounded-2xl border-2 shadow-sm hover:shadow-lg transition-all
+      ${isOwned ? 'border-emerald-500 bg-emerald-50/30' : 'border-purple-300 hover:border-purple-400'}
       ${className}
     `}>
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center gap-4 mb-4">
         <div className={`
-          w-10 h-10 rounded-lg flex items-center justify-center
-          ${isOwned ? 'bg-green-100 text-green-600' : 'bg-indigo-100 text-indigo-600'}
+          w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg
+          ${isOwned ? 'bg-gradient-to-br from-emerald-400 to-emerald-500' : 'bg-gradient-to-br from-purple-500 to-purple-600'}
         `}>
-          <Package className="w-5 h-5" />
+          <Package className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h4 className="font-semibold text-gray-900">{bundle.name}</h4>
-          <p className="text-xs text-gray-500">{featureCount} features</p>
+          <h4 className="font-light text-lg text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{bundle.name}</h4>
+          <p className="text-xs text-slate-500 font-semibold uppercase tracking-wider">{featureCount} features</p>
         </div>
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="font-bold text-gray-900">
-          ₹{currentPrice}/{billingPeriod === 'monthly' ? 'mo' : 'yr'}
+        <span className="font-light text-2xl text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+          ₹{currentPrice}<span className="text-sm text-slate-500">/{billingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
         </span>
         
         {isOwned ? (
-          <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+          <span className="text-sm text-emerald-700 font-semibold flex items-center gap-1.5 bg-emerald-100 px-3 py-1.5 rounded-xl">
             <Check className="w-4 h-4" />
             Owned
           </span>
         ) : (
           <button
             onClick={() => onPurchase?.(bundle.id, billingPeriod)}
-            className="px-3 py-1.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            className="px-5 py-2 text-sm font-semibold bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800 rounded-2xl transition-all shadow-lg hover:shadow-xl hover:scale-105"
           >
             Get Bundle
           </button>

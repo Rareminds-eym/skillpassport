@@ -512,26 +512,26 @@ export function AddOnMarketplace({
  */
 function MarketplaceSkeleton() {
   return (
-    <div className="space-y-8 animate-pulse">
+    <div className="space-y-10 animate-pulse">
       <div className="flex justify-between">
         <div>
-          <div className="h-8 w-48 bg-gray-200 rounded mb-2" />
-          <div className="h-4 w-64 bg-gray-200 rounded" />
+          <div className="h-12 w-64 bg-slate-200 rounded-3xl mb-3" />
+          <div className="h-6 w-80 bg-slate-100 rounded-2xl" />
         </div>
-        <div className="h-10 w-48 bg-gray-200 rounded" />
+        <div className="h-14 w-56 bg-slate-200 rounded-2xl" />
       </div>
 
-      <div className="h-12 bg-gray-200 rounded-lg" />
+      <div className="h-16 bg-slate-100 rounded-3xl" />
 
       <div className="grid md:grid-cols-3 gap-6">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-64 bg-gray-200 rounded-xl" />
+          <div key={i} className="h-72 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl border-2 border-slate-200" />
         ))}
       </div>
 
       <div className="grid md:grid-cols-4 gap-6">
         {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-          <div key={i} className="h-48 bg-gray-200 rounded-xl" />
+          <div key={i} className="h-64 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl border-2 border-slate-200" />
         ))}
       </div>
     </div>

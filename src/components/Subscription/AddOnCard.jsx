@@ -199,19 +199,19 @@ export function AddOnCardCompact({
 
   return (
     <div className={`
-      flex items-center justify-between p-4 bg-white rounded-lg border
-      ${isOwned ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}
+      flex items-center justify-between p-5 bg-white rounded-2xl border-2 shadow-sm hover:shadow-lg transition-all
+      ${isOwned ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-slate-300'}
       ${className}
     `}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {isOwned && (
-          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-            <Check className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <Check className="w-4 w-4 text-white" strokeWidth={3} />
           </div>
         )}
         <div>
-          <h4 className="font-medium text-gray-900">{addOn.feature_name}</h4>
-          <p className="text-sm text-gray-500">
+          <h4 className="font-light text-lg text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{addOn.feature_name}</h4>
+          <p className="text-sm text-slate-500 font-medium mt-0.5">
             ₹{currentPrice}/{billingPeriod === 'monthly' ? 'mo' : 'yr'}
           </p>
         </div>
@@ -220,7 +220,7 @@ export function AddOnCardCompact({
       {!isOwned && (
         <button
           onClick={() => onPurchase?.(addOn.feature_key, billingPeriod)}
-          className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+          className="px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black rounded-2xl transition-all shadow-lg hover:shadow-xl hover:scale-105"
         >
           Add
         </button>
