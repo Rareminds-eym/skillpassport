@@ -532,10 +532,41 @@ async function analyzeAssessment(
   console.log('[ASSESSMENT] 🧮 Pre-calculating RIASEC scores from answers...');
   const precalculatedRiasec = calculateRiasecScores(assessmentData.riasecAnswers);
   console.log('[ASSESSMENT] ✅ RIASEC pre-calculation complete');
+  console.log('[ASSESSMENT] 📊 RIASEC Code:', precalculatedRiasec.code);
+  console.log('[ASSESSMENT] 📊 RIASEC Percentages:', precalculatedRiasec.percentages);
   
   // ============================================================================
-  // STEP 1: Build prompt WITHOUT pre-fetching job market data
-  // Let AI determine RIASEC first, then we can fetch targeted data if needed
+  // STEP 0.5: Fetch real-time job market data for higher_secondary and after12
+  // ============================================================================
+  let jobMarketSection = '';
+  
+  if (gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') {
+    console.log('[ASSESSMENT] 🌐 Fetching real-time job market data...');
+    
+    // Extract career categories based on RIASEC profile
+    const aptitudeLevel = assessmentData.adaptiveAptitudeResults?.aptitudeLevel || 3;
+    const categories = extractCareerCategories(
+      precalculatedRiasec.code,
+      aptitudeLevel,
+      [],
+      assessmentData.stream // Pass stream for psychology detection
+    );
+    
+    console.log('[ASSESSMENT] 📊 Selected categories for', precalculatedRiasec.code, ':', categories.join(', '));
+    
+    // Fetch real-time data
+    const jobMarketData = await fetchJobMarketData(env, categories);
+    
+    if (Object.keys(jobMarketData).length > 0) {
+      console.log('[ASSESSMENT] ✅ Real-time job market data fetched successfully');
+      jobMarketSection = generateJobMarketSection(jobMarketData, precalculatedRiasec.code);
+    } else {
+      console.log('[ASSESSMENT] ⚠️ No job market data fetched, using hardcoded fallback');
+    }
+  }
+  
+  // ============================================================================
+  // STEP 1: Build prompt with real-time job market data
   // ============================================================================
   
   // Generate deterministic hash for consistent results
@@ -557,8 +588,8 @@ async function analyzeAssessment(
     basePrompt = buildAfter10Prompt(assessmentData, seed);
     console.log(`[ASSESSMENT] ✅ Using AFTER 10TH prompt (stream selection for 11th-12th)`);
   } else if (gradeLevel === 'higher_secondary') {
-    // Grades 11-12: Use higher secondary prompt
-    basePrompt = buildHigherSecondaryPrompt(assessmentData, seed);
+    // Grades 11-12: Use higher secondary prompt with real-time job market data
+    basePrompt = buildHigherSecondaryPrompt(assessmentData, seed, jobMarketSection);
     console.log(`[ASSESSMENT] ✅ Using HIGHER SECONDARY prompt (grades 11-12)`);
   } else if (gradeLevel === 'after12') {
     // After 12th (College-Bound): Use after12 prompt with degreePrograms requirement

@@ -314,27 +314,59 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
 
       console.log('📝 [NextQuestionHandler] Fetching stability questions from database...');
       
-      newQuestions = await fetchStabilityQuestions(
-        supabase,
-        gradeLevel,
-        band,
-        existingQuestionIds,
-        specificGrade || undefined
-      );
-      
-      console.log('📊 [NextQuestionHandler] Stability questions fetched:', {
-        questionsReceived: newQuestions.length,
-        expectedCount: 6,
-        source: 'personal_assessment_questions'
-      });
-      
-      if (!newQuestions || newQuestions.length === 0) {
-        console.error('❌ [NextQuestionHandler] No stability questions found in database!');
-        throw new Error('No stability questions available in question bank');
-      }
-      
-      if (newQuestions.length < 6) {
-        console.warn(`⚠️ [NextQuestionHandler] Expected 6 stability questions but got ${newQuestions.length}`);
+      try {
+        newQuestions = await fetchStabilityQuestions(
+          supabase,
+          gradeLevel,
+          band,
+          existingQuestionIds,
+          specificGrade || undefined
+        );
+        
+        console.log('📊 [NextQuestionHandler] Stability questions fetched:', {
+          questionsReceived: newQuestions.length,
+          expectedCount: 6,
+          source: 'personal_assessment_questions'
+        });
+        
+        if (!newQuestions || newQuestions.length === 0) {
+          console.warn('⚠️ [NextQuestionHandler] No stability questions available - skipping stability phase');
+          console.log('🏁 [NextQuestionHandler] Completing test without stability phase');
+          
+          // Complete the test immediately
+          const result: NextQuestionResult = {
+            question: null,
+            isTestComplete: true,
+            currentPhase,
+            progress: {
+              questionsAnswered: sessionData.questions_answered,
+              currentQuestionIndex,
+              totalQuestionsInPhase: currentPhaseQuestions.length,
+            },
+          };
+          return jsonResponse(result);
+        }
+        
+        if (newQuestions.length < 6) {
+          console.warn(`⚠️ [NextQuestionHandler] Expected 6 stability questions but got ${newQuestions.length}`);
+        }
+      } catch (stabilityError) {
+        console.error('❌ [NextQuestionHandler] Error fetching stability questions:', stabilityError);
+        console.warn('⚠️ [NextQuestionHandler] Skipping stability phase due to error');
+        console.log('🏁 [NextQuestionHandler] Completing test without stability phase');
+        
+        // Complete the test immediately
+        const result: NextQuestionResult = {
+          question: null,
+          isTestComplete: true,
+          currentPhase,
+          progress: {
+            questionsAnswered: sessionData.questions_answered,
+            currentQuestionIndex,
+            totalQuestionsInPhase: currentPhaseQuestions.length,
+          },
+        };
+        return jsonResponse(result);
       }
     }
 

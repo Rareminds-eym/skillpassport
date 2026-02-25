@@ -578,18 +578,146 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         finalTimings[lastSection.id] = timeSpent;
       }
 
-      try {
-        // ============================================================================
-        // STEP 1: Get student record ID
-        // ============================================================================
-        let studentRecordId: string | null = null;
-        if (userId) {
-          studentRecordId = await getStudentRecordId(userId);
-          if (!studentRecordId) {
-            console.warn('⚠️ No student record found, using auth user_id directly');
-            studentRecordId = userId;
+      // ✅ CRITICAL FIX: Fetch student context for all students to get their actual grade
+      // This ensures career recommendations are age-appropriate
+      let studentContext: any = {};
+
+      if (userId) {
+        try {
+
+          const { data: student, error: studentError } = await supabase
+            .from('students')
+            .select(`
+              grade,
+              branch_field,
+              course_name,
+              program_id,
+              programs (
+                name,
+                code,
+                degree_level
+              )
+            `)
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (!studentError && student) {
+            // Extract degree level from grade or program
+            const extractDegreeLevel = (grade: string | null, programDegreeLevel: string | null): string | null => {
+              if (programDegreeLevel) return programDegreeLevel;
+              if (!grade) return null;
+              const gradeStr = grade.toLowerCase();
+              if (gradeStr.includes('pg') || gradeStr.includes('postgraduate') ||
+                gradeStr.includes('m.tech') || gradeStr.includes('mtech') ||
+                gradeStr.includes('mca') || gradeStr.includes('mba') ||
+                gradeStr.includes('m.sc') || gradeStr.includes('msc')) {
+                return 'postgraduate';
+              }
+              if (gradeStr.includes('ug') || gradeStr.includes('undergraduate') ||
+                gradeStr.includes('b.tech') || gradeStr.includes('btech') ||
+                gradeStr.includes('bca') || gradeStr.includes('b.sc') ||
+                gradeStr.includes('b.com') || gradeStr.includes('ba ') ||
+                gradeStr.includes('bba')) {
+                return 'undergraduate';
+              }
+              if (gradeStr.includes('diploma')) {
+                return 'diploma';
+              }
+              return null;
+            };
+
+            // Priority: program.name > program.code > course_name > branch_field
+            const programName = (student.programs as any)?.name ||
+              (student.programs as any)?.code ||
+              student.course_name ||
+              student.branch_field;
+            const programCode = (student.programs as any)?.code || null;
+            const degreeLevel = extractDegreeLevel(
+              student.grade,
+              (student.programs as any)?.degree_level
+            );
+
+            // ✅ FIX: For higher_secondary, include the selected stream in rawGrade
+            // This ensures AI knows if student is in Arts/Science/Commerce
+            let enhancedGrade = student.grade;
+            if (gradeLevel === 'higher_secondary' && studentStream) {
+              // Map stream ID to readable name
+              const streamMap: Record<string, string> = {
+                'science': 'Science',
+                'commerce': 'Commerce',
+                'arts': 'Arts'
+              };
+              const streamName = streamMap[studentStream] || studentStream;
+              
+              // Parse the grade to get specific grade number (11 or 12)
+              let specificGrade = student.grade;
+              if (student.grade) {
+                const gradeStr = String(student.grade).toLowerCase();
+                console.log(`🔍 Parsing student.grade: "${student.grade}" (lowercase: "${gradeStr}")`);
+                
+                // CRITICAL: Check for 12 FIRST, then 11 (to avoid "11" matching in "11/12")
+                if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
+                  specificGrade = 'Grade 12';
+                  console.log(`✅ Detected Grade 12 from: "${student.grade}"`);
+                } else if (gradeStr.includes('11') || gradeStr.includes('xi') || gradeStr.includes('eleven')) {
+                  specificGrade = 'Grade 11';
+                  console.log(`✅ Detected Grade 11 from: "${student.grade}"`);
+                } else {
+                  console.warn(`⚠️ Could not parse grade from: "${student.grade}", keeping as-is`);
+                }
+              }
+              
+              enhancedGrade = `${specificGrade} - ${streamName}`;
+              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}" (from student.grade: "${student.grade}")`);
+            }
+
+            studentContext = {
+              rawGrade: enhancedGrade,
+              grade: student.grade, // Keep original grade too
+              programName: programName,
+              programCode: programCode,
+              degreeLevel: degreeLevel,
+              selectedStream: studentStream, // Include the selected stream
+              selectedCategory: derivedCategory // Include the category (arts/science/commerce)
+            };
+
+
+          } else {
+            console.warn('⚠️ Could not fetch student context:', studentError?.message);
           }
         }
+      }
+
+      // ✅ FIX: If no student record but we have a stream selection, still include it
+      if (Object.keys(studentContext).length === 0 && studentStream && gradeLevel === 'higher_secondary') {
+        const streamMap: Record<string, string> = {
+          'science': 'Science',
+          'commerce': 'Commerce',
+          'arts': 'Arts'
+        };
+        const streamName = streamMap[studentStream] || studentStream;
+        
+        // Try to determine specific grade from answers if available
+        // Check if there's a grade selection answer in the assessment
+        const gradeAnswer = answers['grade_selection'] || answers['student_grade'];
+        let specificGrade = 'Grade 11'; // Default to Grade 11 if unknown
+        
+        if (gradeAnswer) {
+          // Parse grade from answer
+          const gradeStr = String(gradeAnswer).toLowerCase();
+          if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
+            specificGrade = 'Grade 12';
+          }
+          // If it includes '11', keep default Grade 11
+        }
+        
+        studentContext = {
+          rawGrade: `${specificGrade} - ${streamName}`,
+          selectedStream: studentStream,
+          selectedCategory: derivedCategory
+        };
+        console.log(`✅ Created fallback student context: "${specificGrade} - ${streamName}"`);
+      }
 
         if (!studentRecordId) {
           throw new Error('User ID is required for assessment submission');
