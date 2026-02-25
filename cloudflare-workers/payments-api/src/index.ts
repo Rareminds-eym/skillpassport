@@ -765,9 +765,10 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     planName?: string;
     userEmail?: string;
     userName?: string;
+    isUpgrade?: boolean;
   };
 
-  const { amount, currency, planId, planName, userEmail, userName } = body;
+  const { amount, currency, planId, planName, userEmail, userName, isUpgrade } = body;
 
   // Validate required fields
   if (!amount || !currency || !userEmail || !planId || !planName) {
@@ -804,7 +805,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     .gte('subscription_end_date', new Date().toISOString())
     .maybeSingle();
 
-  if (existingSubscription) {
+  if (existingSubscription && !isUpgrade) {
     // User already has a valid subscription (active or cancelled but not expired)
     const message = existingSubscription.status === 'cancelled'
       ? `You have a cancelled subscription that is still active until ${new Date(existingSubscription.subscription_end_date).toLocaleDateString()}`
@@ -1465,26 +1466,22 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
         new_end_date: extensionDate.toISOString(),
       });
     } else {
-      // Different plan type - user is trying to subscribe to a different plan
-      // Return existing subscription info without creating duplicate
-      console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, tried to get ${planType}`);
+      // DIFFERENT PLAN TYPE - THIS IS AN UPGRADE/DOWNGRADE
+      console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, upgrading to ${planType}`);
 
-      return jsonResponse({
-        success: true,
-        verified: true,
-        message: `You already have an active ${existingActiveSubscription.plan_type} subscription. Payment was processed but no new subscription created.`,
-        payment_id: razorpay_payment_id,
-        order_id: razorpay_order_id,
-        user_id: existingActiveSubscription.user_id,
-        user_name: existingActiveSubscription.full_name,
-        user_email: existingActiveSubscription.email,
-        payment_method: paymentMethod,
-        amount: paymentAmount,
-        subscription: existingActiveSubscription,
-        already_processed: true,
-        is_existing_subscription: true,
-        note: 'Contact support if you need to change your plan.',
-      });
+      const upgradeTimestamp = new Date().toISOString();
+
+      // 1. Deactivate the old subscription
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          status: 'cancelled',
+          updated_at: upgradeTimestamp,
+        })
+        .eq('id', existingActiveSubscription.id);
+
+      // (We don't return here. We let the execution fall through to create the NEW subscription record below!)
+      // To ensure the new record gets created, we break out of this if-block by doing nothing more.
     }
   }
 
@@ -2691,7 +2688,7 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   // Update registration with order ID and payment history
   await supabaseAdmin
     .from(tableName)
-    .update({ 
+    .update({
       razorpay_order_id: order.id,
       payment_history: paymentHistory
     })

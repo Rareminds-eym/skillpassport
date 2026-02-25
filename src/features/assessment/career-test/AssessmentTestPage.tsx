@@ -652,7 +652,11 @@ const AssessmentTestPage: React.FC = () => {
       }
       
       // Adaptive session exists, check if it was successfully resumed and questions are loaded
-      if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
+      if (adaptiveAptitude.isTestComplete) {
+        console.log('✅ [ADAPTIVE RESUME] Test is complete, showing results');
+        // Test is complete, show results
+        flow.setCurrentScreen('results');
+      } else if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
         console.log('✅ [ADAPTIVE RESUME] Questions loaded, starting section immediately');
         // Adaptive session was already resumed in handleResumeAssessment
         // Questions are loaded, so we can start immediately

@@ -1,0 +1,1641 @@
+batch_id,grade,id,dimension,band,difficulty_rank,template_family,question_text,option_A,option_B,option_C,option_D,correct_answer,explanation_step_1,explanation_step_2,explanation_step_3,final_answer,time_target_sec,solution_type,solution_data,explanation
+ADAPT_G6-8_BANK_400,6,G6_Q1,QR,A1,2,arith_add,What is 23 + 45?,75,71,68,66,C,Step 1: Add 23 and 45.,Step 2: 23 + 45 = 68.,,68,45,arithmetic,operation=addition;operands=23|45;result=68,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 68."
+ADAPT_G6-8_BANK_400,6,G6_Q2,QR,A1,1,arith_add,What is 89 + 21?,108,113,110,117,C,Step 1: Add 89 and 21.,Step 2: 89 + 21 = 110.,,110,45,arithmetic,operation=addition;operands=89|21;result=110,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 110."
+ADAPT_G6-8_BANK_400,6,G6_Q3,QR,A1,2,arith_sub,What is 69 ? 26?,45,50,40,43,D,Step 1: Subtract 26 from 69.,Step 2: 69 ? 26 = 43.,,43,45,arithmetic,operation=subtraction;operands=69|26;result=43,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 43."
+ADAPT_G6-8_BANK_400,6,G6_Q4,QR,A1,2,arith_div,What is 66 ÷ 6?,12,10,11,13,C,Step 1: Divide 66 by 6.,Step 2: 66 ÷ 6 = 11.,,11,45,arithmetic,operation=division;operands=66|6;result=11,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 11."
+ADAPT_G6-8_BANK_400,6,G6_Q5,QR,A1,1,arith_div,What is 64 ÷ 8?,10,7,8,9,C,Step 1: Divide 64 by 8.,Step 2: 64 ÷ 8 = 8.,,8,45,arithmetic,operation=division;operands=64|8;result=8,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8."
+ADAPT_G6-8_BANK_400,6,G6_Q6,QR,A1,1,arith_add,What is 68 + 22?,90,97,88,93,A,Step 1: Add 68 and 22.,Step 2: 68 + 22 = 90.,,90,45,arithmetic,operation=addition;operands=68|22;result=90,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 90."
+ADAPT_G6-8_BANK_400,6,G6_Q7,QR,A2,4,percent_of,What is 10% of 120?,17,14,12,9,C,Step 1: Convert 10% to a fraction/decimal.,Step 2: 10% of 120 = 12.,,12,60,percent,percent=10;base=120;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,6,G6_Q8,QR,A2,3,unit_conv,A rope is 6 meters long. How many centimeters is that?,650,600,6000,60,B,Step 1: 1 meter = 100 centimeters.,Step 2: 6 × 100 = 600 centimeters.,,600,60,arithmetic,operation=unit_conversion;meters=6;cm_per_m=100;result=600,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 600."
+ADAPT_G6-8_BANK_400,6,G6_Q9,QR,A2,3,decimal_add,What is 5.9 + 2.8?,8.9,8.6,9.2,8.7,D,Step 1: Add the decimals.,Step 2: 5.9 + 2.8 = 8.7.,,8.7,60,arithmetic,operation=decimal_addition;operands=5.9|2.8;result=8.7,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8.7."
+ADAPT_G6-8_BANK_400,6,G6_Q10,QR,A2,4,ratio_missing,"The ratio of boys to girls is 5:4. If there are 25 boys, how many girls are there?",30,20,25,15,B,"Step 1: 5 parts = 25, so 1 part = 5.",Step 2: Girls = 4 parts = 4 × 5 = 20.,,20,60,ratio,ratio=5|4;given_boys=25;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,6,G6_Q11,QR,A2,3,ratio_missing,"The ratio of boys to girls is 2:6. If there are 18 boys, how many girls are there?",72,54,45,63,B,"Step 1: 2 parts = 18, so 1 part = 9.",Step 2: Girls = 6 parts = 6 × 9 = 54.,,54,60,ratio,ratio=2|6;given_boys=18;result=54,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 54."
+ADAPT_G6-8_BANK_400,6,G6_Q12,QR,A2,3,percent_of,What is 25% of 100?,25,22,30,27,A,Step 1: Convert 25% to a fraction/decimal.,Step 2: 25% of 100 = 25.,,25,60,percent,percent=25;base=100;result=25,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 25."
+ADAPT_G6-8_BANK_400,6,G6_Q13,QR,A2,3,decimal_add,What is 1.2 + 3.0?,4.1,4.2,4.4,4.7,B,Step 1: Add the decimals.,Step 2: 1.2 + 3.0 = 4.2.,,4.2,60,arithmetic,operation=decimal_addition;operands=1.2|3.0;result=4.2,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 4.2."
+ADAPT_G6-8_BANK_400,6,G6_Q14,QR,A2,4,percent_of,What is 25% of 60?,20,12,15,17,C,Step 1: Convert 25% to a fraction/decimal.,Step 2: 25% of 60 = 15.,,15,60,percent,percent=25;base=60;result=15,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 15."
+ADAPT_G6-8_BANK_400,6,G6_Q15,QR,A2,3,unit_conv,A rope is 7 meters long. How many centimeters is that?,7000,700,70,750,B,Step 1: 1 meter = 100 centimeters.,Step 2: 7 × 100 = 700 centimeters.,,700,60,arithmetic,operation=unit_conversion;meters=7;cm_per_m=100;result=700,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 700."
+ADAPT_G6-8_BANK_400,6,G6_Q16,QR,B1,6,unit_conv,A rope is 2 meters long. How many centimeters is that?,20,2000,250,200,D,Step 1: 1 meter = 100 centimeters.,Step 2: 2 × 100 = 200 centimeters.,,200,75,arithmetic,operation=unit_conversion;meters=2;cm_per_m=100;result=200,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 200."
+ADAPT_G6-8_BANK_400,6,G6_Q17,QR,B1,6,ratio_word,"Red:Blue marbles are in the ratio 5:2. If there are 14 blue marbles, how many red marbles are there?",35,42,28,49,A,"Step 1: 2 parts = 14, so 1 part = 7.",Step 2: Red = 5 parts = 5 × 7 = 35.,,35,75,ratio,ratio=5|2;given_blue=14;result=35,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 35."
+ADAPT_G6-8_BANK_400,6,G6_Q18,QR,B1,6,percent_change,A number increases by 10% from 100. What is the new number?,115,112,108,110,D,Step 1: 10% of 100 = 10.,Step 2: New number = 100 + 10 = 110.,,110,75,percent,start=100;percent_increase=10;result=110,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 110."
+ADAPT_G6-8_BANK_400,6,G6_Q19,QR,B1,5,percent_change,A number increases by 20% from 40. What is the new number?,46,50,48,53,C,Step 1: 20% of 40 = 8.,Step 2: New number = 40 + 8 = 48.,,48,75,percent,start=40;percent_increase=20;result=48,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 48."
+ADAPT_G6-8_BANK_400,6,G6_Q20,QR,B1,5,ratio_word,"Red:Blue marbles are in the ratio 3:4. If there are 20 blue marbles, how many red marbles are there?",25,20,10,15,D,"Step 1: 4 parts = 20, so 1 part = 5.",Step 2: Red = 3 parts = 3 × 5 = 15.,,15,75,ratio,ratio=3|4;given_blue=20;result=15,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 15."
+ADAPT_G6-8_BANK_400,6,G6_Q21,QR,B1,6,multistep_word,Ravi has 15 stickers and gets 23 more. He gives away 9. How many stickers does he have now?,34,27,29,31,C,Step 1: Total after getting more = 15 + 23 = 38.,Step 2: Give away 9: 38 ? 9 = 29.,,29,75,word_problem,operation=add_then_sub;operands=15|23|9;result=29,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 29."
+ADAPT_G6-8_BANK_400,6,G6_Q22,QR,B2,7,linear_eq,Solve: x + 11 = 18,8,9,6,7,D,Step 1: Subtract 11 from both sides.,Step 2: x = 18 ? 11 = 7.,,7,90,linear_equation,equation=x+11=18;solution=7,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 7."
+ADAPT_G6-8_BANK_400,6,G6_Q23,QR,B2,8,ratio_word,"Red:Blue marbles are in the ratio 5:3. If there are 18 blue marbles, how many red marbles are there?",36,24,30,42,C,"Step 1: 3 parts = 18, so 1 part = 6.",Step 2: Red = 5 parts = 5 × 6 = 30.,,30,90,ratio,ratio=5|3;given_blue=18;result=30,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 30."
+ADAPT_G6-8_BANK_400,6,G6_Q24,LR,A1,2,letter_seq,"Which comes next: G, I, K, M, ?",N,O,P,Q,B,Step 1: The letters skip one each time (+2 letters).,Step 2: After M comes O.,,O,45,logic_rule,type=letter_sequence;rule=+2_letters;result=O,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : O."
+ADAPT_G6-8_BANK_400,6,G6_Q25,LR,A1,1,letter_seq,"Which comes next: A, C, E, G, ?",H,I,J,K,B,Step 1: The letters skip one each time (+2 letters).,Step 2: After G comes I.,,I,45,logic_rule,type=letter_sequence;rule=+2_letters;result=I,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : I."
+ADAPT_G6-8_BANK_400,6,G6_Q26,LR,A1,1,odd_one_out,Which one does NOT belong?,Triangle,Square,Circle,Rectangle,C,Step 1: Check which option is different from the others.,Step 2: Circle has no straight sides.,,Circle,45,logic_rule,type=classification;odd=Circle,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Circle."
+ADAPT_G6-8_BANK_400,6,G6_Q29,LR,A1,2,letter_seq,"Which comes next: C, E, G, I, ?",J,K,L,M,B,Step 1: The letters skip one each time (+2 letters).,Step 2: After I comes K.,,K,45,logic_rule,type=letter_sequence;rule=+2_letters;result=K,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : K."
+ADAPT_G6-8_BANK_400,6,G6_Q30,LR,A2,3,ordering_3,Nisha is taller than Sam. Sam is taller than Ravi. Who is the shortest?,Nisha,Sam,Ravi,Cannot be determined,C,Step 1: Nisha > Sam.,Step 2: Sam > Ravi.,Step 3: So Ravi is the shortest.,Ravi,60,logic_rule,rules=Nisha>Sam|Sam>Ravi;solution=Ravi,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Ravi."
+ADAPT_G6-8_BANK_400,6,G6_Q31,LR,A2,3,ordering_3,Ravi is taller than Aarav. Aarav is taller than Nisha. Who is the shortest?,Ravi,Aarav,Nisha,Cannot be determined,C,Step 1: Ravi > Aarav.,Step 2: Aarav > Nisha.,Step 3: So Nisha is the shortest.,Nisha,60,logic_rule,rules=Ravi>Aarav|Aarav>Nisha;solution=Nisha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Nisha."
+ADAPT_G6-8_BANK_400,6,G6_Q32,LR,A2,3,ordering_3,Riya is taller than Nisha. Nisha is taller than Aarav. Who is the shortest?,Riya,Nisha,Aarav,Cannot be determined,C,Step 1: Riya > Nisha.,Step 2: Nisha > Aarav.,Step 3: So Aarav is the shortest.,Aarav,60,logic_rule,rules=Riya>Nisha|Nisha>Aarav;solution=Aarav,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Aarav."
+ADAPT_G6-8_BANK_400,6,G6_Q33,LR,A2,3,if_then,"If it rains, the ground gets wet. It is raining. What must be true?",The ground is wet,The ground is dry,It will not rain tomorrow,The ground will freeze,A,Step 1: Rule: If it rains ? ground gets wet.,"Step 2: It is raining, so the ground is wet.",,The ground is wet,60,logic_rule,rules=Rain->Wet;given=Rain;solution=Wet,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : The ground is wet."
+ADAPT_G6-8_BANK_400,6,G6_Q34,LR,A2,3,ordering_3,Nisha is taller than Ravi. Ravi is taller than Riya. Who is the shortest?,Nisha,Ravi,Riya,Cannot be determined,C,Step 1: Nisha > Ravi.,Step 2: Ravi > Riya.,Step 3: So Riya is the shortest.,Riya,60,logic_rule,rules=Nisha>Ravi|Ravi>Riya;solution=Riya,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Riya."
+ADAPT_G6-8_BANK_400,6,G6_Q35,LR,A2,3,ordering_3,Meena is taller than Ravi. Ravi is taller than Sam. Who is the shortest?,Meena,Ravi,Sam,Cannot be determined,C,Step 1: Meena > Ravi.,Step 2: Ravi > Sam.,Step 3: So Sam is the shortest.,Sam,60,logic_rule,rules=Meena>Ravi|Ravi>Sam;solution=Sam,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Sam."
+ADAPT_G6-8_BANK_400,6,G6_Q36,LR,A2,3,ordering_3,Aarav is taller than Meena. Meena is taller than Kavya. Who is the shortest?,Aarav,Meena,Kavya,Cannot be determined,C,Step 1: Aarav > Meena.,Step 2: Meena > Kavya.,Step 3: So Kavya is the shortest.,Kavya,60,logic_rule,rules=Aarav>Meena|Meena>Kavya;solution=Kavya,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Kavya."
+ADAPT_G6-8_BANK_400,6,G6_Q37,LR,A2,4,ordering_3,Ravi is taller than Riya. Riya is taller than Aarav. Who is the shortest?,Ravi,Riya,Aarav,Cannot be determined,C,Step 1: Ravi > Riya.,Step 2: Riya > Aarav.,Step 3: So Aarav is the shortest.,Aarav,60,logic_rule,rules=Ravi>Riya|Riya>Aarav;solution=Aarav,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Aarav."
+ADAPT_G6-8_BANK_400,6,G6_Q38,LR,B1,5,ordering_4,"Four friends stand in a line: Asha, Esha, Farah, Dev. Asha is before Esha. Farah is before Dev. Which statement must be true?",Esha is first,Asha is before Esha,Dev is before Farah,Farah is last,B,Step 1: One rule given is 'Asha is before Esha'.,Step 2: That must always be true.,,Asha is before Esha,75,logic_rule,rules=Asha_before_Esha|Farah_before_Dev;solution=Asha_before_Esha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Asha is before Esha."
+ADAPT_G6-8_BANK_400,6,G6_Q39,LR,B1,5,ordering_4,"Four friends stand in a line: Dev, Farah, Esha, Asha. Dev is before Farah. Esha is before Asha. Which statement must be true?",Farah is first,Dev is before Farah,Asha is before Esha,Esha is last,B,Step 1: One rule given is 'Dev is before Farah'.,Step 2: That must always be true.,,Dev is before Farah,75,logic_rule,rules=Dev_before_Farah|Esha_before_Asha;solution=Dev_before_Farah,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Dev is before Farah."
+ADAPT_G6-8_BANK_400,6,G6_Q40,LR,B1,5,ordering_4,"Four friends stand in a line: Bala, Dev, Asha, Farah. Bala is before Dev. Asha is before Farah. Which statement must be true?",Dev is first,Bala is before Dev,Farah is before Asha,Asha is last,B,Step 1: One rule given is 'Bala is before Dev'.,Step 2: That must always be true.,,Bala is before Dev,75,logic_rule,rules=Bala_before_Dev|Asha_before_Farah;solution=Bala_before_Dev,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Bala is before Dev."
+ADAPT_G6-8_BANK_400,6,G6_Q41,LR,B1,5,must_be_true,All cats are animals. Mimi is a cat. What must be true?,Mimi is an animal,Mimi is a dog,All animals are cats,Mimi cannot be an animal,A,Step 1: All cats are animals.,"Step 2: Mimi is a cat, so Mimi is an animal.",,Mimi is an animal,75,logic_rule,rules=AllCatsAnimals|MimiCat;solution=MimiAnimal,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Mimi is an animal."
+ADAPT_G6-8_BANK_400,6,G6_Q42,LR,B1,6,ordering_4,"Four friends stand in a line: Chirag, Bala, Asha, Farah. Chirag is before Bala. Asha is before Farah. Which statement must be true?",Bala is first,Chirag is before Bala,Farah is before Asha,Asha is last,B,Step 1: One rule given is 'Chirag is before Bala'.,Step 2: That must always be true.,,Chirag is before Bala,75,logic_rule,rules=Chirag_before_Bala|Asha_before_Farah;solution=Chirag_before_Bala,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Chirag is before Bala."
+ADAPT_G6-8_BANK_400,6,G6_Q43,LR,B1,6,ordering_4,"Four friends stand in a line: Farah, Chirag, Asha, Dev. Farah is before Chirag. Asha is before Dev. Which statement must be true?",Chirag is first,Farah is before Chirag,Dev is before Asha,Asha is last,B,Step 1: One rule given is 'Farah is before Chirag'.,Step 2: That must always be true.,,Farah is before Chirag,75,logic_rule,rules=Farah_before_Chirag|Asha_before_Dev;solution=Farah_before_Chirag,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Farah is before Chirag."
+ADAPT_G6-8_BANK_400,6,G6_Q44,LR,B2,8,conditional_combo,"If a number is even, it is divisible by 2. 18 is even. What must be true?",18 is divisible by 2,18 is divisible by 5,18 is prime,18 is odd,A,Step 1: Even numbers are divisible by 2.,"Step 2: 18 is even, so it is divisible by 2.",,18 is divisible by 2,90,logic_rule,rules=Even->DivBy2;given=18_even;solution=18_divby2,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 18 is divisible by 2."
+ADAPT_G6-8_BANK_400,6,G6_Q45,LR,B2,7,constraint_line,"In a race, A finished before B. B finished before C. Which statement must be true?",A finished before C,C finished before A,B finished last,A finished last,A,Step 1: A before B and B before C.,Step 2: So A must be before C.,,A finished before C,90,logic_rule,rules=A<B|B<C;solution=A<C,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : A finished before C."
+ADAPT_G6-8_BANK_400,6,G6_Q46,PAR,A1,2,seq_plus,"Find the next number: 3, 5, 7, 9, ?",9,11,13,15,B,Step 1: The pattern adds 2 each time.,Step 2: 9 + 2 = 11.,,11,45,sequence,rule=+2;sequence=3|5|7|9;result=11,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 11."
+ADAPT_G6-8_BANK_400,6,G6_Q47,PAR,A1,1,seq_plus,"Find the next number: 4, 9, 14, 19, ?",19,24,29,34,B,Step 1: The pattern adds 5 each time.,Step 2: 19 + 5 = 24.,,24,45,sequence,rule=+5;sequence=4|9|14|19;result=24,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 24."
+ADAPT_G6-8_BANK_400,6,G6_Q48,PAR,A1,1,seq_plus,"Find the next number: 1, 7, 13, 19, ?",19,25,31,37,B,Step 1: The pattern adds 6 each time.,Step 2: 19 + 6 = 25.,,25,45,sequence,rule=+6;sequence=1|7|13|19;result=25,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 25."
+ADAPT_G6-8_BANK_400,6,G6_Q49,PAR,A1,2,seq_times2,"Find the next number: 6, 12, 24, 48, ?",92,96,100,48,B,Step 1: Each number is multiplied by 2.,Step 2: 48 × 2 = 96.,,96,45,sequence,rule=×2;sequence=6|12|24|48;result=96,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 96."
+ADAPT_G6-8_BANK_400,6,G6_Q50,PAR,A1,1,seq_times2,"Find the next number: 4, 8, 16, 32, ?",60,64,68,32,B,Step 1: Each number is multiplied by 2.,Step 2: 32 × 2 = 64.,,64,45,sequence,rule=×2;sequence=4|8|16|32;result=64,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 64."
+ADAPT_G6-8_BANK_400,6,G6_Q51,PAR,A1,1,seq_times2,"Find the next number: 3, 6, 12, 24, ?",44,48,52,24,B,Step 1: Each number is multiplied by 2.,Step 2: 24 × 2 = 48.,,48,45,sequence,rule=×2;sequence=3|6|12|24;result=48,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 48."
+ADAPT_G6-8_BANK_400,6,G6_Q52,PAR,A2,4,analogy_opposites,Choose the best match: Tall : Short :: Up : ?,Down,Left,Right,Fast,A,Step 1: The first pair are opposites.,Step 2: The opposite of Up is Down.,,Down,60,analogy,type=opposites;pair=Up:Down,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Down."
+ADAPT_G6-8_BANK_400,6,G6_Q53,PAR,A2,3,analogy_factor,Complete: 4 is to 12 as 5 is to ?,12,15,18,16,B,Step 1: 4 becomes 12 by multiplying by 3.,Step 2: 5 × 3 = 15.,,15,60,analogy,rule=×3;input=5;result=15,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 15."
+ADAPT_G6-8_BANK_400,6,G6_Q54,PAR,A2,3,alt_rule,"Find the next number: 3, 6, 4, 7, 5, ?",7,8,9,10,B,"Step 1: The pattern alternates +3, then ?2.",Step 2: Continue the +3 step after the last term.,,8,60,sequence,rule=+3_-2_alternating;sequence=3|6|4|7|5;result=8,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8."
+ADAPT_G6-8_BANK_400,6,G6_Q55,PAR,A2,3,analogy_factor,Complete: 6 is to 12 as 7 is to ?,12,14,16,15,B,Step 1: 6 becomes 12 by multiplying by 2.,Step 2: 7 × 2 = 14.,,14,60,analogy,rule=×2;input=7;result=14,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14."
+ADAPT_G6-8_BANK_400,6,G6_Q56,PAR,A2,3,analogy_factor,Complete: 3 is to 12 as 4 is to ?,12,16,20,17,B,Step 1: 3 becomes 12 by multiplying by 4.,Step 2: 4 × 4 = 16.,,16,60,analogy,rule=×4;input=4;result=16,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 16."
+ADAPT_G6-8_BANK_400,6,G6_Q57,PAR,A2,3,alt_rule,"Find the next number: 5, 8, 6, 9, 7, ?",9,10,11,12,B,"Step 1: The pattern alternates +3, then ?2.",Step 2: Continue the +3 step after the last term.,,10,60,sequence,rule=+3_-2_alternating;sequence=5|8|6|9|7;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."
+ADAPT_G6-8_BANK_400,6,G6_Q58,PAR,A2,4,alt_rule,"Find the next number: 6, 9, 7, 10, 8, ?",10,11,12,13,B,"Step 1: The pattern alternates +3, then ?2.",Step 2: Continue the +3 step after the last term.,,11,60,sequence,rule=+3_-2_alternating;sequence=6|9|7|10|8;result=11,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 11."
+ADAPT_G6-8_BANK_400,6,G6_Q59,PAR,A2,4,analogy_factor,Complete: 4 is to 16 as 5 is to ?,16,20,24,21,B,Step 1: 4 becomes 16 by multiplying by 4.,Step 2: 5 × 4 = 20.,,20,60,analogy,rule=×4;input=5;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,6,G6_Q60,PAR,B1,5,seq_mixed,"Find the next number: 10, 12, 24, 26, ?",52,50,54,28,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 26 × 2 = 52.,,52,75,sequence,rule=+2_then_×2_repeat;sequence=10|12|24|26;result=52,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 52."
+ADAPT_G6-8_BANK_400,6,G6_Q61,PAR,B1,5,seq_mixed,"Find the next number: 4, 6, 12, 14, ?",28,26,30,16,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 14 × 2 = 28.,,28,75,sequence,rule=+2_then_×2_repeat;sequence=4|6|12|14;result=28,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 28."
+ADAPT_G6-8_BANK_400,6,G6_Q62,PAR,B1,6,seq_mixed,"Find the next number: 3, 5, 10, 12, ?",24,22,26,14,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 12 × 2 = 24.,,24,75,sequence,rule=+2_then_×2_repeat;sequence=3|5|10|12;result=24,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 24."
+ADAPT_G6-8_BANK_400,6,G6_Q63,PAR,B1,5,seq_mixed,"Find the next number: 6, 8, 16, 18, ?",36,34,38,20,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 18 × 2 = 36.,,36,75,sequence,rule=+2_then_×2_repeat;sequence=6|8|16|18;result=36,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 36."
+ADAPT_G6-8_BANK_400,6,G6_Q64,PAR,B1,5,seq_mixed,"Find the next number: 7, 9, 18, 20, ?",40,38,42,22,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 20 × 2 = 40.,,40,75,sequence,rule=+2_then_×2_repeat;sequence=7|9|18|20;result=40,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 40."
+ADAPT_G6-8_BANK_400,6,G6_Q65,PAR,B1,5,two_rule,"Find the next number: 1, 4, 2, 5, 3, ?",4,6,8,9,B,Step 1: The pattern alternates +3 and ?2.,"Step 2: After 3, apply +3 to get 6.",,6,75,sequence,rule=+3_-2_alternating;sequence=1|4|2|5|3;result=6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6."
+ADAPT_G6-8_BANK_400,6,G6_Q66,PAR,B2,7,seq_non_linear,"Find the next number: 1, 4, 9, 16, ?",20,24,25,26,C,"Step 1: These are squares: 1², 2², 3², 4².",Step 2: Next is 5² = 25.,,25,90,sequence,rule=squares;sequence=1|4|9|16;result=25,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 25."
+ADAPT_G6-8_BANK_400,6,G6_Q67,PAR,B2,7,rule_machine,"A rule changes a number by: multiply by 2, then add 1. If the input is 4, what is the output?",8,9,10,12,B,Step 1: 4 × 2 = 8.,Step 2: 8 + 1 = 9.,,9,90,rule_inference,rule=×2_then_+1;input=4;result=9,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 9."
+ADAPT_G6-8_BANK_400,6,G6_Q68,SR,A1,2,mirror_rule,A shape is mirrored left-to-right. Which change happens?,Left becomes right,Top becomes bottom,It gets bigger,It disappears,A,Step 1: A left-to-right mirror flips sides.,Step 2: Left becomes right.,,Left becomes right,45,spatial_rule,type=mirror;axis=vertical;result=LeftRightFlip,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Left becomes right."
+ADAPT_G6-8_BANK_400,6,G6_Q69,SR,A1,1,rot_90_rule,A shape is rotated 90° clockwise. A top point moves to the...,Left,Right,Bottom,Top,B,Step 1: A 90° clockwise rotation moves the top to the right.,Step 2: So the top point goes to the right.,,Right,45,spatial_rule,type=rotation;degrees=90;direction=clockwise;result=Right,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Right."
+ADAPT_G6-8_BANK_400,6,G6_Q74,SR,A2,3,symmetry_fact,Which shape always has at least one line of symmetry?,Scalene triangle,Circle,Irregular quadrilateral,Random scribble,B,Step 1: A circle is symmetric about many lines (diameters).,Step 2: So it has at least one line of symmetry.,,Circle,60,spatial_rule,type=symmetry;shape=circle;result=has_symmetry,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Circle."
+ADAPT_G6-8_BANK_400,6,G6_Q75,SR,A2,4,rot_180,"If an arrow points up and you rotate it 180°, it will point...",Up,Down,Left,Right,B,Step 1: A 180° rotation turns the arrow around.,Step 2: Up becomes down.,,Down,60,spatial_rule,type=rotation;degrees=180;result=Down,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Down."
+ADAPT_G6-8_BANK_400,6,G6_Q76,SR,A2,3,cube_faces,A cube has how many faces?,4,5,6,8,C,Step 1: A cube is made of square faces.,Step 2: It has 6 faces.,,6,60,spatial_rule,type=cube_faces;result=6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6."
+ADAPT_G6-8_BANK_400,6,G6_Q82,SR,B1,5,grid_move,A point moves 5 steps right and 4 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+5;dy=+4;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,6,G6_Q83,SR,B1,5,grid_move,A point moves 4 steps right and 2 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+4;dy=+2;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,6,G6_Q84,SR,B1,5,grid_move,A point moves 5 steps right and 2 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+5;dy=+2;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,6,G6_Q85,SR,B1,5,grid_move,A point moves 4 steps right and 1 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+4;dy=+1;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,6,G6_Q86,SR,B1,5,grid_move,A point moves 3 steps right and 4 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+3;dy=+4;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,6,G6_Q87,SR,B1,5,grid_move,A point moves 4 steps right and 3 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+4;dy=+3;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,6,G6_Q88,SR,B2,8,rotation_2step_word,A shape is rotated 90° clockwise and then 180° clockwise. What is the total rotation?,180°,270°,360°,90°,B,Step 1: Add the rotations: 90° + 180°.,Step 2: Total rotation = 270°.,,270°,90,spatial_rule,type=rotation;total_degrees=270;result=270,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 270°."
+ADAPT_G6-8_BANK_400,6,G6_Q89,SR,B2,8,net_faces_missing,"A cube net has 6 squares. If one square is missing, how many faces can the folded shape have at most?",4,5,6,7,B,Step 1: A cube needs 6 faces.,"Step 2: With one square missing, there are only 5 squares.",,5,90,spatial_rule,type=net_faces;available_squares=5;result=5,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5."
+ADAPT_G6-8_BANK_400,6,G6_Q90,DI,A1,1,table_lookup,"Table: Apples=20, Bananas=12, Mangoes=20. How many Mangoes are there?",19,20,22,25,B,Step 1: Read the value for the item in the table.,Step 2: Mangoes = 20.,,20,45,table_lookup,Apples=20;Bananas=12;Mangoes=20;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,6,G6_Q91,DI,A1,1,table_lookup,"Table: Bananas=14, Mangoes=16, Pens=20. How many Pens are there?",20,25,22,19,A,Step 1: Read the value for the item in the table.,Step 2: Pens = 20.,,20,45,table_lookup,Bananas=14;Mangoes=16;Pens=20;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,6,G6_Q92,DI,A1,1,table_lookup,"Table: Oranges=12, Pens=8, Books=11. How many Pens are there?",10,13,7,8,D,Step 1: Read the value for the item in the table.,Step 2: Pens = 8.,,8,45,table_lookup,Oranges=12;Pens=8;Books=11;result=8,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8."
+ADAPT_G6-8_BANK_400,6,G6_Q93,DI,A1,1,table_lookup,"Table: Books=14, Mangoes=8, Oranges=11. How many Mangoes are there?",7,8,13,10,B,Step 1: Read the value for the item in the table.,Step 2: Mangoes = 8.,,8,45,table_lookup,Books=14;Mangoes=8;Oranges=11;result=8,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8."
+ADAPT_G6-8_BANK_400,6,G6_Q94,DI,A1,2,table_lookup,"Table: Books=13, Grapes=6, Bananas=6. How many Bananas are there?",8,6,11,5,B,Step 1: Read the value for the item in the table.,Step 2: Bananas = 6.,,6,45,table_lookup,Books=13;Grapes=6;Bananas=6;result=6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6."
+ADAPT_G6-8_BANK_400,6,G6_Q95,DI,A1,1,table_lookup,"Table: Apples=14, Pens=20, Grapes=20. How many Pens are there?",22,25,20,19,C,Step 1: Read the value for the item in the table.,Step 2: Pens = 20.,,20,45,table_lookup,Apples=14;Pens=20;Grapes=20;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,6,G6_Q96,DI,A2,3,difference,"A table shows: May=15, June=38. How many more in June than May?",26,24,22,23,D,Step 1: Find the difference (June ? May).,Step 2: 38 ? 15 = 23.,,23,60,arithmetic,operation=subtraction;operands=38|15;result=23,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 23."
+ADAPT_G6-8_BANK_400,6,G6_Q97,DI,A2,4,total,"A table shows: Markers=4, Erasers=7, Pens=7. What is the total items?",19,21,18,17,C,Step 1: Add all values.,Step 2: 4 + 7 + 7 = 18.,,18,60,arithmetic,operation=addition;operands=4|7|7;result=18,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 18."
+ADAPT_G6-8_BANK_400,6,G6_Q98,DI,A2,4,total,"A table shows: Notebooks=10, Erasers=15, Markers=17. What is the total items?",43,42,41,45,B,Step 1: Add all values.,Step 2: 10 + 15 + 17 = 42.,,42,60,arithmetic,operation=addition;operands=10|15|17;result=42,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 42."
+ADAPT_G6-8_BANK_400,6,G6_Q99,DI,A2,3,total,"A table shows: Erasers=6, Pens=9, Notebooks=9. What is the total items?",27,25,24,23,C,Step 1: Add all values.,Step 2: 6 + 9 + 9 = 24.,,24,60,arithmetic,operation=addition;operands=6|9|9;result=24,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 24."
+ADAPT_G6-8_BANK_400,6,G6_Q100,DI,A2,4,compare,"In a chart, Team A scored 23 and Team B scored 24. Who scored more?",Team A,Team B,Both same,Cannot tell,B,Step 1: Compare the two scores.,"Step 2: 24 is greater, so Team B scored more.",,Team B,60,compare,A=23;B=24;result=Team B,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Team B."
+ADAPT_G6-8_BANK_400,6,G6_Q101,DI,A2,3,total,"A table shows: Pencils=18, Erasers=12, Notebooks=4. What is the total items?",34,33,37,35,A,Step 1: Add all values.,Step 2: 18 + 12 + 4 = 34.,,34,60,arithmetic,operation=addition;operands=18|12|4;result=34,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 34."
+ADAPT_G6-8_BANK_400,6,G6_Q102,DI,A2,3,total,"A table shows: Notebooks=10, Pens=11, Erasers=9. What is the total items?",33,30,31,29,B,Step 1: Add all values.,Step 2: 10 + 11 + 9 = 30.,,30,60,arithmetic,operation=addition;operands=10|11|9;result=30,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 30."
+ADAPT_G6-8_BANK_400,6,G6_Q103,DI,A2,3,compare,"In a chart, Team A scored 12 and Team B scored 11. Who scored more?",Team A,Team B,Both same,Cannot tell,A,Step 1: Compare the two scores.,"Step 2: 12 is greater, so Team A scored more.",,Team A,60,compare,A=12;B=11;result=Team A,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Team A."
+ADAPT_G6-8_BANK_400,6,G6_Q104,DI,A2,3,difference,"A table shows: May=31, June=35. How many more in June than May?",7,4,3,5,B,Step 1: Find the difference (June ? May).,Step 2: 35 ? 31 = 4.,,4,60,arithmetic,operation=subtraction;operands=35|31;result=4,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 4."
+ADAPT_G6-8_BANK_400,6,G6_Q105,DI,B1,6,max_min,"Values are: 14, 27, 17, 13. Which is the greatest?",14,27,17,13,B,Step 1: Compare all the numbers.,Step 2: The greatest value is 27.,,27,75,arithmetic,operation=max;operands=14|27|17|13;result=27,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 27."
+ADAPT_G6-8_BANK_400,6,G6_Q106,DI,B1,5,max_min,"Values are: 20, 19, 7, 24. Which is the greatest?",20,19,7,24,D,Step 1: Compare all the numbers.,Step 2: The greatest value is 24.,,24,75,arithmetic,operation=max;operands=20|19|7|24;result=24,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 24."
+ADAPT_G6-8_BANK_400,6,G6_Q107,DI,B1,5,average_3,"Scores are: 19, 13, 17. What is the average? (1 decimal place)",16.6,16.9,16.3,16.0,C,Step 1: Add the scores: 19 + 13 + 17 = 49.,Step 2: Divide by 3.,Step 3: 49 ÷ 3 = 16.3.,16.3,75,arithmetic,operation=average;operands=19|13|17;result=16.3,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 16.3."
+ADAPT_G6-8_BANK_400,6,G6_Q108,DI,B1,6,max_min,"Values are: 23, 23, 5, 29. Which is the greatest?",23,23,5,29,D,Step 1: Compare all the numbers.,Step 2: The greatest value is 29.,,29,75,arithmetic,operation=max;operands=23|23|5|29;result=29,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 29."
+ADAPT_G6-8_BANK_400,6,G6_Q109,DI,B1,5,average_3,"Scores are: 17, 8, 20. What is the average? (1 decimal place)",15.0,14.7,15.6,15.3,A,Step 1: Add the scores: 17 + 8 + 20 = 45.,Step 2: Divide by 3.,Step 3: 45 ÷ 3 = 15.0.,15.0,75,arithmetic,operation=average;operands=17|8|20;result=15.0,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 15.0."
+ADAPT_G6-8_BANK_400,6,G6_Q110,DI,B1,5,sum_two,"A chart shows: Jan=24, Feb=19, Mar=21. What is Jan + Mar?",48,46,44,45,D,Step 1: Add Jan and Mar values.,Step 2: 24 + 21 = 45.,,45,75,arithmetic,operation=addition;operands=24|21;result=45,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 45."
+ADAPT_G6-8_BANK_400,6,G6_Q111,DI,B2,7,two_step_table,"Table: Red=20, Blue=13, Green=15. What is (Red + Blue) ? Green?",18,21,19,17,A,Step 1: Red + Blue = 20 + 13 = 33.,Step 2: (Red + Blue) ? Green = 33 ? 15 = 18.,,18,90,arithmetic,operation=(a+b)-c;values=Red:20|Blue:13|Green:15;result=18,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 18."
+ADAPT_G6-8_BANK_400,6,G6_Q112,DI,B2,7,two_step_table,"Table: Red=11, Blue=24, Green=12. What is (Red + Blue) ? Green?",23,26,24,22,A,Step 1: Red + Blue = 11 + 24 = 35.,Step 2: (Red + Blue) ? Green = 35 ? 12 = 23.,,23,90,arithmetic,operation=(a+b)-c;values=Red:11|Blue:24|Green:12;result=23,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 23."
+ADAPT_G6-8_BANK_400,6,G6_Q113,AA,A1,2,odd_decimal,Which number is different from the others?,2.5,2.50,2.500,2.05,D,"Step 1: 2.5, 2.50, and 2.500 are equal.",Step 2: 2.05 is different.,,2.05,45,error_spotting,set=2.5|2.50|2.500|2.05;odd=2.05,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 2.05."
+ADAPT_G6-8_BANK_400,6,G6_Q114,AA,A1,2,exact_match,Which option matches exactly: 8D6W?,8D6W,8B6W,W6D8,8D6Y,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,8D6W,45,mismatch_detection,target=8D6W;result=8D6W,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8D6W."
+ADAPT_G6-8_BANK_400,6,G6_Q115,AA,A1,1,exact_match,Which option matches exactly: 4B4Z?,4B4Z,4D4Z,Z4B4,4B4W,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,4B4Z,45,mismatch_detection,target=4B4Z;result=4B4Z,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 4B4Z."
+ADAPT_G6-8_BANK_400,6,G6_Q116,AA,A1,1,exact_match,Which option matches exactly: 2C8W?,2C8W,2D8W,W8C2,2C8W,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,2C8W,45,mismatch_detection,target=2C8W;result=2C8W,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 2C8W."
+ADAPT_G6-8_BANK_400,6,G6_Q117,AA,A1,1,exact_match,Which option matches exactly: 7A2Z?,7A2Z,7C2Z,Z2A7,7A2Y,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,7A2Z,45,mismatch_detection,target=7A2Z;result=7A2Z,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 7A2Z."
+ADAPT_G6-8_BANK_400,6,G6_Q118,AA,A1,1,exact_match,Which option matches exactly: 7B6X?,7B6X,7B6X,X6B7,7B6W,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,7B6X,45,mismatch_detection,target=7B6X;result=7B6X,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 7B6X."
+ADAPT_G6-8_BANK_400,6,G6_Q119,AA,A2,4,pattern_break,"A list shows: 15, 17, 19, 21, 24. One number breaks the pattern of +2. Which one?",17,19,21,24,D,Step 1: +2 pattern would give the last number as 23.,Step 2: 24 breaks the pattern.,,24,60,error_spotting,rule=+2;sequence=15|17|19|21|24;odd=24,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 24."
+ADAPT_G6-8_BANK_400,6,G6_Q120,AA,A2,3,pattern_break,"A list shows: 10, 12, 14, 16, 19. One number breaks the pattern of +2. Which one?",12,14,16,19,D,Step 1: +2 pattern would give the last number as 18.,Step 2: 19 breaks the pattern.,,19,60,error_spotting,rule=+2;sequence=10|12|14|16|19;odd=19,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 19."
+ADAPT_G6-8_BANK_400,6,G6_Q121,AA,A2,3,spelling_easy,Find the word with a spelling mistake.,Beautiful,Receive,Definately,Quiet,C,Step 1: Check each spelling carefully.,Step 2: 'Definately' is incorrect.,,Definately,60,error_spotting,type=spelling;odd=Definately,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Definately."
+ADAPT_G6-8_BANK_400,6,G6_Q122,AA,A2,3,instr_2step,Start with 10. Add 6. Then multiply by 5. What is the result?,80,85,82,78,A,Step 1: 10 + 6 = 16.,Step 2: 16 × 5 = 80.,,80,60,instruction_check,input=10;rules=+6|×5;result=80,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 80."
+ADAPT_G6-8_BANK_400,6,G6_Q123,AA,A2,4,pattern_break,"A list shows: 13, 15, 17, 19, 22. One number breaks the pattern of +2. Which one?",15,17,19,22,D,Step 1: +2 pattern would give the last number as 21.,Step 2: 22 breaks the pattern.,,22,60,error_spotting,rule=+2;sequence=13|15|17|19|22;odd=22,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 22."
+ADAPT_G6-8_BANK_400,6,G6_Q124,AA,A2,4,instr_2step,Start with 12. Add 5. Then multiply by 3. What is the result?,49,53,51,56,C,Step 1: 12 + 5 = 17.,Step 2: 17 × 3 = 51.,,51,60,instruction_check,input=12;rules=+5|×3;result=51,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 51."
+ADAPT_G6-8_BANK_400,6,G6_Q125,AA,A2,3,pattern_break,"A list shows: 16, 18, 20, 22, 25. One number breaks the pattern of +2. Which one?",18,20,22,25,D,Step 1: +2 pattern would give the last number as 24.,Step 2: 25 breaks the pattern.,,25,60,error_spotting,rule=+2;sequence=16|18|20|22|25;odd=25,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 25."
+ADAPT_G6-8_BANK_400,6,G6_Q126,AA,A2,3,instr_2step,Start with 10. Add 2. Then multiply by 3. What is the result?,41,38,36,34,C,Step 1: 10 + 2 = 12.,Step 2: 12 × 3 = 36.,,36,60,instruction_check,input=10;rules=+2|×3;result=36,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 36."
+ADAPT_G6-8_BANK_400,6,G6_Q127,AA,B1,5,symbol_diff,Which option is NOT the same as the others?,(a+b),(a + b),(a+b ),(a-b),D,Step 1: The first three all mean a plus b.,Step 2: (a-b) is different because it is subtraction.,,(a-b),75,mismatch_detection,target=(a+b);odd=(a-b),"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : (a-b)."
+ADAPT_G6-8_BANK_400,6,G6_Q128,AA,B1,6,instr_3step,Start with 8. Multiply by 4. Add 4. Then subtract 1. What is the result?,35,34,36,38,A,Step 1: 8 × 4 = 32.,Step 2: 32 + 4 = 36.,Step 3: 36 ? 1 = 35.,35,75,instruction_check,input=8;rules=×4|+4|-1;result=35,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 35."
+ADAPT_G6-8_BANK_400,6,G6_Q129,AA,B1,6,instr_3step,Start with 7. Multiply by 4. Add 7. Then subtract 4. What is the result?,31,32,34,30,A,Step 1: 7 × 4 = 28.,Step 2: 28 + 7 = 35.,Step 3: 35 ? 4 = 31.,31,75,instruction_check,input=7;rules=×4|+7|-4;result=31,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 31."
+ADAPT_G6-8_BANK_400,6,G6_Q130,AA,B1,5,instr_3step,Start with 3. Multiply by 2. Add 8. Then subtract 3. What is the result?,14,11,10,12,B,Step 1: 3 × 2 = 6.,Step 2: 6 + 8 = 14.,Step 3: 14 ? 3 = 11.,11,75,instruction_check,input=3;rules=×2|+8|-3;result=11,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 11."
+ADAPT_G6-8_BANK_400,6,G6_Q131,AA,B1,5,instr_3step,Start with 3. Multiply by 3. Add 4. Then subtract 3. What is the result?,9,11,13,10,D,Step 1: 3 × 3 = 9.,Step 2: 9 + 4 = 13.,Step 3: 13 ? 3 = 10.,10,75,instruction_check,input=3;rules=×3|+4|-3;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."
+ADAPT_G6-8_BANK_400,6,G6_Q132,AA,B1,5,instr_3step,Start with 5. Multiply by 4. Add 6. Then subtract 5. What is the result?,24,20,21,22,C,Step 1: 5 × 4 = 20.,Step 2: 20 + 6 = 26.,Step 3: 26 ? 5 = 21.,21,75,instruction_check,input=5;rules=×4|+6|-5;result=21,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 21."
+ADAPT_G6-8_BANK_400,6,G6_Q133,AA,B2,8,notation_error,Which option is written incorrectly as a fraction?,3/5,7/9,4\6,2/3,C,Step 1: Fractions are written with a slash like 3/5.,Step 2: 4\6 is not written correctly as a fraction.,,4\6,90,error_spotting,type=notation_error;odd=4\6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 4\6."
+ADAPT_G6-8_BANK_400,6,G6_Q134,AA,B2,7,unit_error,A student writes: 1 meter = 10 centimeters. Which statement is correct?,The student is correct,It should be 1 m = 100 cm,It should be 1 m = 1000 cm,Meters cannot be converted,B,Step 1: 1 meter equals 100 centimeters.,Step 2: So the correct statement is 1 m = 100 cm.,,It should be 1 m = 100 cm,90,error_spotting,type=unit_error;given=1m=10cm;correct=1m=100cm,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : It should be 1 m = 100 cm."
+ADAPT_G6-8_BANK_400,7,G7_Q135,QR,A1,3,arith_sub,What is 69 ? 24?,45,52,47,42,A,Step 1: Subtract 24 from 69.,Step 2: 69 ? 24 = 45.,,45,45,arithmetic,operation=subtraction;operands=69|24;result=45,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 45."
+ADAPT_G6-8_BANK_400,7,G7_Q136,QR,A1,2,arith_add,What is 79 + 46?,128,132,125,123,C,Step 1: Add 79 and 46.,Step 2: 79 + 46 = 125.,,125,45,arithmetic,operation=addition;operands=79|46;result=125,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 125."
+ADAPT_G6-8_BANK_400,7,G7_Q137,QR,A1,2,arith_mul,What is 12 × 8?,93,96,100,104,B,Step 1: Multiply 12 by 8.,Step 2: 12 × 8 = 96.,,96,45,arithmetic,operation=multiplication;operands=12|8;result=96,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 96."
+ADAPT_G6-8_BANK_400,7,G7_Q138,QR,A1,3,arith_div,What is 28 ÷ 4?,7,8,9,6,A,Step 1: Divide 28 by 4.,Step 2: 28 ÷ 4 = 7.,,7,45,arithmetic,operation=division;operands=28|4;result=7,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 7."
+ADAPT_G6-8_BANK_400,7,G7_Q139,QR,A1,3,arith_mul,What is 10 × 4?,37,40,44,48,B,Step 1: Multiply 10 by 4.,Step 2: 10 × 4 = 40.,,40,45,arithmetic,operation=multiplication;operands=10|4;result=40,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 40."
+ADAPT_G6-8_BANK_400,7,G7_Q140,QR,A1,2,arith_add,What is 97 + 73?,177,168,170,173,C,Step 1: Add 97 and 73.,Step 2: 97 + 73 = 170.,,170,45,arithmetic,operation=addition;operands=97|73;result=170,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 170."
+ADAPT_G6-8_BANK_400,7,G7_Q141,QR,A2,5,decimal_add,What is 4.9 + 2.6?,8.0,7.5,7.4,7.7,B,Step 1: Add the decimals.,Step 2: 4.9 + 2.6 = 7.5.,,7.5,60,arithmetic,operation=decimal_addition;operands=4.9|2.6;result=7.5,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 7.5."
+ADAPT_G6-8_BANK_400,7,G7_Q142,QR,A2,4,fraction_compare,Which fraction is greatest?,3/11,1/11,3/6,1/6,C,Step 1: Compare the fractions by value (or use a common denominator).,Step 2: 3/6 is the greatest among the options.,,3/6,60,arithmetic,operation=fraction_compare;operands=3/11|1/11|3/6|1/6;result=3/6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 3/6."
+ADAPT_G6-8_BANK_400,7,G7_Q143,QR,A2,5,percent_of,What is 20% of 60?,12,9,17,14,A,Step 1: Convert 20% to a fraction/decimal.,Step 2: 20% of 60 = 12.,,12,60,percent,percent=20;base=60;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,7,G7_Q144,QR,A2,4,unit_conv,A rope is 5 meters long. How many centimeters is that?,500,5000,550,50,A,Step 1: 1 meter = 100 centimeters.,Step 2: 5 × 100 = 500 centimeters.,,500,60,arithmetic,operation=unit_conversion;meters=5;cm_per_m=100;result=500,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 500."
+ADAPT_G6-8_BANK_400,7,G7_Q145,QR,A2,5,ratio_missing,"The ratio of boys to girls is 2:5. If there are 8 boys, how many girls are there?",16,28,20,24,C,"Step 1: 2 parts = 8, so 1 part = 4.",Step 2: Girls = 5 parts = 5 × 4 = 20.,,20,60,ratio,ratio=2|5;given_boys=8;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,7,G7_Q146,QR,A2,4,ratio_missing,"The ratio of boys to girls is 4:6. If there are 28 boys, how many girls are there?",49,56,42,35,C,"Step 1: 4 parts = 28, so 1 part = 7.",Step 2: Girls = 6 parts = 6 × 7 = 42.,,42,60,ratio,ratio=4|6;given_boys=28;result=42,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 42."
+ADAPT_G6-8_BANK_400,7,G7_Q148,QR,A2,4,ratio_missing,"The ratio of boys to girls is 5:2. If there are 25 boys, how many girls are there?",5,15,20,10,D,"Step 1: 5 parts = 25, so 1 part = 5.",Step 2: Girls = 2 parts = 2 × 5 = 10.,,10,60,ratio,ratio=5|2;given_boys=25;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."
+ADAPT_G6-8_BANK_400,7,G7_Q150,QR,B1,6,percent_change,A number increases by 20% from 50. What is the new number?,58,62,60,65,C,Step 1: 20% of 50 = 10.,Step 2: New number = 50 + 10 = 60.,,60,75,percent,start=50;percent_increase=20;result=60,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 60."
+ADAPT_G6-8_BANK_400,7,G7_Q151,QR,B1,6,percent_change,A number increases by 25% from 100. What is the new number?,130,127,125,123,C,Step 1: 25% of 100 = 25.,Step 2: New number = 100 + 25 = 125.,,125,75,percent,start=100;percent_increase=25;result=125,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 125."
+ADAPT_G6-8_BANK_400,7,G7_Q152,QR,B1,6,ratio_word,"Red:Blue marbles are in the ratio 2:5. If there are 20 blue marbles, how many red marbles are there?",16,8,4,12,B,"Step 1: 5 parts = 20, so 1 part = 4.",Step 2: Red = 2 parts = 2 × 4 = 8.,,8,75,ratio,ratio=2|5;given_blue=20;result=8,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8."
+ADAPT_G6-8_BANK_400,7,G7_Q153,QR,B1,7,percent_change,A number increases by 10% from 50. What is the new number?,60,53,55,57,C,Step 1: 10% of 50 = 5.,Step 2: New number = 50 + 5 = 55.,,55,75,percent,start=50;percent_increase=10;result=55,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 55."
+ADAPT_G6-8_BANK_400,7,G7_Q154,QR,B1,7,ratio_word,"Red:Blue marbles are in the ratio 4:2. If there are 10 blue marbles, how many red marbles are there?",25,30,20,15,C,"Step 1: 2 parts = 10, so 1 part = 5.",Step 2: Red = 4 parts = 4 × 5 = 20.,,20,75,ratio,ratio=4|2;given_blue=10;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,7,G7_Q155,QR,B1,6,unit_conv,A rope is 9 meters long. How many centimeters is that?,90,950,9000,900,D,Step 1: 1 meter = 100 centimeters.,Step 2: 9 × 100 = 900 centimeters.,,900,75,arithmetic,operation=unit_conversion;meters=9;cm_per_m=100;result=900,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 900."
+ADAPT_G6-8_BANK_400,7,G7_Q156,QR,B2,9,multistep_word,Ravi has 36 stickers and gets 23 more. He gives away 13. How many stickers does he have now?,44,51,48,46,D,Step 1: Total after getting more = 36 + 23 = 59.,Step 2: Give away 13: 59 ? 13 = 46.,,46,90,word_problem,operation=add_then_sub;operands=36|23|13;result=46,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 46."
+ADAPT_G6-8_BANK_400,7,G7_Q157,QR,B2,8,linear_eq,Solve: x + 11 = 25,13,15,16,14,D,Step 1: Subtract 11 from both sides.,Step 2: x = 25 ? 11 = 14.,,14,90,linear_equation,equation=x+11=25;solution=14,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14."
+ADAPT_G6-8_BANK_400,7,G7_Q158,LR,A1,2,letter_seq,"Which comes next: K, M, O, Q, ?",R,S,T,U,B,Step 1: The letters skip one each time (+2 letters).,Step 2: After Q comes S.,,S,45,logic_rule,type=letter_sequence;rule=+2_letters;result=S,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : S."
+ADAPT_G6-8_BANK_400,7,G7_Q159,LR,A1,3,letter_seq,"Which comes next: I, K, M, O, ?",P,Q,R,S,B,Step 1: The letters skip one each time (+2 letters).,Step 2: After O comes Q.,,Q,45,logic_rule,type=letter_sequence;rule=+2_letters;result=Q,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Q."
+ADAPT_G6-8_BANK_400,7,G7_Q160,LR,A1,3,letter_seq,"Which comes next: E, G, I, K, ?",L,M,N,O,B,Step 1: The letters skip one each time (+2 letters).,Step 2: After K comes M.,,M,45,logic_rule,type=letter_sequence;rule=+2_letters;result=M,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : M."
+ADAPT_G6-8_BANK_400,7,G7_Q164,LR,A2,4,ordering_3,Kavya is taller than Sam. Sam is taller than Riya. Who is the shortest?,Kavya,Sam,Riya,Cannot be determined,C,Step 1: Kavya > Sam.,Step 2: Sam > Riya.,Step 3: So Riya is the shortest.,Riya,60,logic_rule,rules=Kavya>Sam|Sam>Riya;solution=Riya,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Riya."
+ADAPT_G6-8_BANK_400,7,G7_Q165,LR,A2,4,ordering_3,Riya is taller than Kavya. Kavya is taller than Nisha. Who is the shortest?,Riya,Kavya,Nisha,Cannot be determined,C,Step 1: Riya > Kavya.,Step 2: Kavya > Nisha.,Step 3: So Nisha is the shortest.,Nisha,60,logic_rule,rules=Riya>Kavya|Kavya>Nisha;solution=Nisha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Nisha."
+ADAPT_G6-8_BANK_400,7,G7_Q166,LR,A2,4,ordering_3,Sam is taller than Ravi. Ravi is taller than Nisha. Who is the shortest?,Sam,Ravi,Nisha,Cannot be determined,C,Step 1: Sam > Ravi.,Step 2: Ravi > Nisha.,Step 3: So Nisha is the shortest.,Nisha,60,logic_rule,rules=Sam>Ravi|Ravi>Nisha;solution=Nisha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Nisha."
+ADAPT_G6-8_BANK_400,7,G7_Q167,LR,A2,4,ordering_3,Aarav is taller than Sam. Sam is taller than Meena. Who is the shortest?,Aarav,Sam,Meena,Cannot be determined,C,Step 1: Aarav > Sam.,Step 2: Sam > Meena.,Step 3: So Meena is the shortest.,Meena,60,logic_rule,rules=Aarav>Sam|Sam>Meena;solution=Meena,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Meena."
+ADAPT_G6-8_BANK_400,7,G7_Q168,LR,A2,4,ordering_3,Riya is taller than Aarav. Aarav is taller than Ravi. Who is the shortest?,Riya,Aarav,Ravi,Cannot be determined,C,Step 1: Riya > Aarav.,Step 2: Aarav > Ravi.,Step 3: So Ravi is the shortest.,Ravi,60,logic_rule,rules=Riya>Aarav|Aarav>Ravi;solution=Ravi,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Ravi."
+ADAPT_G6-8_BANK_400,7,G7_Q169,LR,A2,4,ordering_3,Sam is taller than Nisha. Nisha is taller than Meena. Who is the shortest?,Sam,Nisha,Meena,Cannot be determined,C,Step 1: Sam > Nisha.,Step 2: Nisha > Meena.,Step 3: So Meena is the shortest.,Meena,60,logic_rule,rules=Sam>Nisha|Nisha>Meena;solution=Meena,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Meena."
+ADAPT_G6-8_BANK_400,7,G7_Q170,LR,A2,5,ordering_3,Nisha is taller than Aarav. Aarav is taller than Ravi. Who is the shortest?,Nisha,Aarav,Ravi,Cannot be determined,C,Step 1: Nisha > Aarav.,Step 2: Aarav > Ravi.,Step 3: So Ravi is the shortest.,Ravi,60,logic_rule,rules=Nisha>Aarav|Aarav>Ravi;solution=Ravi,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Ravi."
+ADAPT_G6-8_BANK_400,7,G7_Q171,LR,A2,4,ordering_3,Kavya is taller than Ravi. Ravi is taller than Nisha. Who is the shortest?,Kavya,Ravi,Nisha,Cannot be determined,C,Step 1: Kavya > Ravi.,Step 2: Ravi > Nisha.,Step 3: So Nisha is the shortest.,Nisha,60,logic_rule,rules=Kavya>Ravi|Ravi>Nisha;solution=Nisha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Nisha."
+ADAPT_G6-8_BANK_400,7,G7_Q172,LR,B1,6,ordering_4,"Four friends stand in a line: Farah, Chirag, Asha, Bala. Farah is before Chirag. Asha is before Bala. Which statement must be true?",Chirag is first,Farah is before Chirag,Bala is before Asha,Asha is last,B,Step 1: One rule given is 'Farah is before Chirag'.,Step 2: That must always be true.,,Farah is before Chirag,75,logic_rule,rules=Farah_before_Chirag|Asha_before_Bala;solution=Farah_before_Chirag,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Farah is before Chirag."
+ADAPT_G6-8_BANK_400,7,G7_Q173,LR,B1,6,ordering_4,"Four friends stand in a line: Chirag, Asha, Bala, Dev. Chirag is before Asha. Bala is before Dev. Which statement must be true?",Asha is first,Chirag is before Asha,Dev is before Bala,Bala is last,B,Step 1: One rule given is 'Chirag is before Asha'.,Step 2: That must always be true.,,Chirag is before Asha,75,logic_rule,rules=Chirag_before_Asha|Bala_before_Dev;solution=Chirag_before_Asha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Chirag is before Asha."
+ADAPT_G6-8_BANK_400,7,G7_Q174,LR,B1,6,ordering_4,"Four friends stand in a line: Chirag, Esha, Dev, Farah. Chirag is before Esha. Dev is before Farah. Which statement must be true?",Esha is first,Chirag is before Esha,Farah is before Dev,Dev is last,B,Step 1: One rule given is 'Chirag is before Esha'.,Step 2: That must always be true.,,Chirag is before Esha,75,logic_rule,rules=Chirag_before_Esha|Dev_before_Farah;solution=Chirag_before_Esha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Chirag is before Esha."
+ADAPT_G6-8_BANK_400,7,G7_Q175,LR,B1,7,ordering_4,"Four friends stand in a line: Farah, Esha, Asha, Chirag. Farah is before Esha. Asha is before Chirag. Which statement must be true?",Esha is first,Farah is before Esha,Chirag is before Asha,Asha is last,B,Step 1: One rule given is 'Farah is before Esha'.,Step 2: That must always be true.,,Farah is before Esha,75,logic_rule,rules=Farah_before_Esha|Asha_before_Chirag;solution=Farah_before_Esha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Farah is before Esha."
+ADAPT_G6-8_BANK_400,7,G7_Q176,LR,B1,6,ordering_4,"Four friends stand in a line: Bala, Chirag, Dev, Asha. Bala is before Chirag. Dev is before Asha. Which statement must be true?",Chirag is first,Bala is before Chirag,Asha is before Dev,Dev is last,B,Step 1: One rule given is 'Bala is before Chirag'.,Step 2: That must always be true.,,Bala is before Chirag,75,logic_rule,rules=Bala_before_Chirag|Dev_before_Asha;solution=Bala_before_Chirag,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Bala is before Chirag."
+ADAPT_G6-8_BANK_400,7,G7_Q177,LR,B1,7,ordering_4,"Four friends stand in a line: Bala, Asha, Chirag, Esha. Bala is before Asha. Chirag is before Esha. Which statement must be true?",Asha is first,Bala is before Asha,Esha is before Chirag,Chirag is last,B,Step 1: One rule given is 'Bala is before Asha'.,Step 2: That must always be true.,,Bala is before Asha,75,logic_rule,rules=Bala_before_Asha|Chirag_before_Esha;solution=Bala_before_Asha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Bala is before Asha."
+ADAPT_G6-8_BANK_400,7,G7_Q180,PAR,A1,2,seq_plus,"Find the next number: 2, 4, 6, 8, ?",8,10,12,14,B,Step 1: The pattern adds 2 each time.,Step 2: 8 + 2 = 10.,,10,45,sequence,rule=+2;sequence=2|4|6|8;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."
+ADAPT_G6-8_BANK_400,7,G7_Q181,PAR,A1,3,seq_plus,"Find the next number: 3, 9, 15, 21, ?",21,27,33,39,B,Step 1: The pattern adds 6 each time.,Step 2: 21 + 6 = 27.,,27,45,sequence,rule=+6;sequence=3|9|15|21;result=27,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 27."
+ADAPT_G6-8_BANK_400,7,G7_Q182,PAR,A1,2,seq_times2,"Find the next number: 2, 4, 8, 16, ?",28,32,36,16,B,Step 1: Each number is multiplied by 2.,Step 2: 16 × 2 = 32.,,32,45,sequence,rule=×2;sequence=2|4|8|16;result=32,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 32."
+ADAPT_G6-8_BANK_400,7,G7_Q183,PAR,A1,2,seq_plus,"Find the next number: 5, 7, 9, 11, ?",11,13,15,17,B,Step 1: The pattern adds 2 each time.,Step 2: 11 + 2 = 13.,,13,45,sequence,rule=+2;sequence=5|7|9|11;result=13,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 13."
+ADAPT_G6-8_BANK_400,7,G7_Q184,PAR,A1,2,seq_plus,"Find the next number: 7, 13, 19, 25, ?",25,31,37,43,B,Step 1: The pattern adds 6 each time.,Step 2: 25 + 6 = 31.,,31,45,sequence,rule=+6;sequence=7|13|19|25;result=31,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 31."
+ADAPT_G6-8_BANK_400,7,G7_Q185,PAR,A1,3,seq_plus,"Find the next number: 2, 7, 12, 17, ?",17,22,27,32,B,Step 1: The pattern adds 5 each time.,Step 2: 17 + 5 = 22.,,22,45,sequence,rule=+5;sequence=2|7|12|17;result=22,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 22."
+ADAPT_G6-8_BANK_400,7,G7_Q186,PAR,A2,5,analogy_factor,Complete: 2 is to 8 as 3 is to ?,8,12,16,13,B,Step 1: 2 becomes 8 by multiplying by 4.,Step 2: 3 × 4 = 12.,,12,60,analogy,rule=×4;input=3;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,7,G7_Q187,PAR,A2,4,analogy_opposites,Choose the best match: Open : Closed :: Up : ?,Down,Left,Right,Fast,A,Step 1: The first pair are opposites.,Step 2: The opposite of Up is Down.,,Down,60,analogy,type=opposites;pair=Up:Down,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Down."
+ADAPT_G6-8_BANK_400,7,G7_Q188,PAR,A2,5,analogy_factor,Complete: 4 is to 8 as 5 is to ?,8,10,12,11,B,Step 1: 4 becomes 8 by multiplying by 2.,Step 2: 5 × 2 = 10.,,10,60,analogy,rule=×2;input=5;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."
+ADAPT_G6-8_BANK_400,7,G7_Q189,PAR,A2,5,alt_rule,"Find the next number: 7, 10, 8, 11, 9, ?",11,12,13,14,B,"Step 1: The pattern alternates +3, then ?2.",Step 2: Continue the +3 step after the last term.,,12,60,sequence,rule=+3_-2_alternating;sequence=7|10|8|11|9;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,7,G7_Q190,PAR,A2,4,analogy_factor,Complete: 6 is to 24 as 7 is to ?,24,28,32,29,B,Step 1: 6 becomes 24 by multiplying by 4.,Step 2: 7 × 4 = 28.,,28,60,analogy,rule=×4;input=7;result=28,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 28."
+ADAPT_G6-8_BANK_400,7,G7_Q191,PAR,A2,4,analogy_factor,Complete: 5 is to 15 as 6 is to ?,15,18,21,19,B,Step 1: 5 becomes 15 by multiplying by 3.,Step 2: 6 × 3 = 18.,,18,60,analogy,rule=×3;input=6;result=18,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 18."
+ADAPT_G6-8_BANK_400,7,G7_Q192,PAR,A2,4,analogy_factor,Complete: 2 is to 6 as 3 is to ?,6,9,12,10,B,Step 1: 2 becomes 6 by multiplying by 3.,Step 2: 3 × 3 = 9.,,9,60,analogy,rule=×3;input=3;result=9,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 9."
+ADAPT_G6-8_BANK_400,7,G7_Q193,PAR,A2,5,analogy_opposites,Choose the best match: Day : Night :: Up : ?,Down,Left,Right,Fast,A,Step 1: The first pair are opposites.,Step 2: The opposite of Up is Down.,,Down,60,analogy,type=opposites;pair=Up:Down,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Down."
+ADAPT_G6-8_BANK_400,7,G7_Q194,PAR,B1,7,seq_mixed,"Find the next number: 9, 11, 22, 24, ?",48,46,50,26,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 24 × 2 = 48.,,48,75,sequence,rule=+2_then_×2_repeat;sequence=9|11|22|24;result=48,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 48."
+ADAPT_G6-8_BANK_400,7,G7_Q195,PAR,B1,6,seq_mixed,"Find the next number: 2, 4, 8, 10, ?",20,18,22,12,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 10 × 2 = 20.,,20,75,sequence,rule=+2_then_×2_repeat;sequence=2|4|8|10;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,7,G7_Q196,PAR,B1,6,seq_mixed,"Find the next number: 8, 10, 20, 22, ?",44,42,46,24,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 22 × 2 = 44.,,44,75,sequence,rule=+2_then_×2_repeat;sequence=8|10|20|22;result=44,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 44."
+ADAPT_G6-8_BANK_400,7,G7_Q197,PAR,B1,7,two_rule,"Find the next number: 2, 5, 3, 6, 4, ?",5,7,9,10,B,Step 1: The pattern alternates +3 and ?2.,"Step 2: After 4, apply +3 to get 7.",,7,75,sequence,rule=+3_-2_alternating;sequence=2|5|3|6|4;result=7,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 7."
+ADAPT_G6-8_BANK_400,7,G7_Q198,PAR,B1,7,seq_mixed,"Find the next number: 5, 7, 14, 16, ?",32,30,34,18,A,"Step 1: The pattern adds 2, then multiplies by 2, repeating.",Step 2: 16 × 2 = 32.,,32,75,sequence,rule=+2_then_×2_repeat;sequence=5|7|14|16;result=32,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 32."
+ADAPT_G6-8_BANK_400,7,G7_Q200,PAR,B2,8,rule_machine,"A rule changes a number by: multiply by 2, then add 1. If the input is 7, what is the output?",14,15,16,18,B,Step 1: 7 × 2 = 14.,Step 2: 14 + 1 = 15.,,15,90,rule_inference,rule=×2_then_+1;input=7;result=15,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 15."
+ADAPT_G6-8_BANK_400,7,G7_Q201,PAR,B2,9,rule_machine,"A rule changes a number by: multiply by 2, then add 1. If the input is 9, what is the output?",18,19,20,22,B,Step 1: 9 × 2 = 18.,Step 2: 18 + 1 = 19.,,19,90,rule_inference,rule=×2_then_+1;input=9;result=19,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 19."
+ADAPT_G6-8_BANK_400,7,G7_Q216,SR,B1,6,rot_add,"A letter L is rotated 90° clockwise, then 90° clockwise again. That is the same as rotating it...",90°,180°,270°,360°,B,Step 1: Two 90° rotations add up.,Step 2: 90° + 90° = 180°.,,180°,75,spatial_rule,type=rotation;total_degrees=180;result=180,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 180°."
+ADAPT_G6-8_BANK_400,7,G7_Q217,SR,B1,6,grid_move,A point moves 3 steps right and 2 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+3;dy=+2;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,7,G7_Q218,SR,B1,7,grid_move,A point moves 3 steps right and 3 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+3;dy=+3;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,7,G7_Q219,SR,B1,6,grid_move,A point moves 5 steps right and 1 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+5;dy=+1;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,7,G7_Q220,SR,B1,6,grid_move,A point moves 4 steps right and 4 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+4;dy=+4;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,7,G7_Q221,SR,B1,6,grid_move,A point moves 2 steps right and 2 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+2;dy=+2;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,7,G7_Q224,DI,A1,3,table_lookup,"Table: Apples=5, Books=11, Bananas=19. How many Books are there?",16,13,10,11,D,Step 1: Read the value for the item in the table.,Step 2: Books = 11.,,11,45,table_lookup,Apples=5;Books=11;Bananas=19;result=11,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 11."
+ADAPT_G6-8_BANK_400,7,G7_Q225,DI,A1,2,table_lookup,"Table: Apples=18, Pens=5, Grapes=5. How many Grapes are there?",5,7,10,4,A,Step 1: Read the value for the item in the table.,Step 2: Grapes = 5.,,5,45,table_lookup,Apples=18;Pens=5;Grapes=5;result=5,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5."
+ADAPT_G6-8_BANK_400,7,G7_Q226,DI,A1,2,table_lookup,"Table: Pens=8, Bananas=9, Apples=12. How many Pens are there?",8,13,10,7,A,Step 1: Read the value for the item in the table.,Step 2: Pens = 8.,,8,45,table_lookup,Pens=8;Bananas=9;Apples=12;result=8,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8."
+ADAPT_G6-8_BANK_400,7,G7_Q227,DI,A1,2,table_lookup,"Table: Oranges=12, Mangoes=12, Books=14. How many Books are there?",16,19,13,14,D,Step 1: Read the value for the item in the table.,Step 2: Books = 14.,,14,45,table_lookup,Oranges=12;Mangoes=12;Books=14;result=14,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14."
+ADAPT_G6-8_BANK_400,7,G7_Q228,DI,A1,2,table_lookup,"Table: Mangoes=20, Pens=6, Grapes=5. How many Grapes are there?",4,10,5,7,C,Step 1: Read the value for the item in the table.,Step 2: Grapes = 5.,,5,45,table_lookup,Mangoes=20;Pens=6;Grapes=5;result=5,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5."
+ADAPT_G6-8_BANK_400,7,G7_Q229,DI,A1,2,table_lookup,"Table: Grapes=6, Apples=12, Pens=11. How many Pens are there?",10,11,13,16,B,Step 1: Read the value for the item in the table.,Step 2: Pens = 11.,,11,45,table_lookup,Grapes=6;Apples=12;Pens=11;result=11,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 11."
+ADAPT_G6-8_BANK_400,7,G7_Q230,DI,A2,4,total,"A table shows: Erasers=11, Pens=4, Notebooks=8. What is the total items?",23,26,24,22,A,Step 1: Add all values.,Step 2: 11 + 4 + 8 = 23.,,23,60,arithmetic,operation=addition;operands=11|4|8;result=23,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 23."
+ADAPT_G6-8_BANK_400,7,G7_Q231,DI,A2,5,difference,"A table shows: May=17, June=30. How many more in June than May?",13,16,14,12,A,Step 1: Find the difference (June ? May).,Step 2: 30 ? 17 = 13.,,13,60,arithmetic,operation=subtraction;operands=30|17;result=13,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 13."
+ADAPT_G6-8_BANK_400,7,G7_Q232,DI,A2,4,total,"A table shows: Pens=13, Erasers=15, Markers=7. What is the total items?",36,38,34,35,D,Step 1: Add all values.,Step 2: 13 + 15 + 7 = 35.,,35,60,arithmetic,operation=addition;operands=13|15|7;result=35,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 35."
+ADAPT_G6-8_BANK_400,7,G7_Q233,DI,A2,5,difference,"A table shows: May=31, June=36. How many more in June than May?",6,5,4,8,B,Step 1: Find the difference (June ? May).,Step 2: 36 ? 31 = 5.,,5,60,arithmetic,operation=subtraction;operands=36|31;result=5,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5."
+ADAPT_G6-8_BANK_400,7,G7_Q234,DI,A2,4,difference,"A table shows: May=37, June=53. How many more in June than May?",16,17,19,15,A,Step 1: Find the difference (June ? May).,Step 2: 53 ? 37 = 16.,,16,60,arithmetic,operation=subtraction;operands=53|37;result=16,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 16."
+ADAPT_G6-8_BANK_400,7,G7_Q235,DI,A2,4,compare,"In a chart, Team A scored 28 and Team B scored 22. Who scored more?",Team A,Team B,Both same,Cannot tell,A,Step 1: Compare the two scores.,"Step 2: 28 is greater, so Team A scored more.",,Team A,60,compare,A=28;B=22;result=Team A,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Team A."
+ADAPT_G6-8_BANK_400,7,G7_Q236,DI,A2,5,total,"A table shows: Pens=12, Erasers=10, Markers=5. What is the total items?",26,27,28,30,B,Step 1: Add all values.,Step 2: 12 + 10 + 5 = 27.,,27,60,arithmetic,operation=addition;operands=12|10|5;result=27,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 27."
+ADAPT_G6-8_BANK_400,7,G7_Q237,DI,A2,4,difference,"A table shows: May=22, June=23. How many more in June than May?",0,2,4,1,D,Step 1: Find the difference (June ? May).,Step 2: 23 ? 22 = 1.,,1,60,arithmetic,operation=subtraction;operands=23|22;result=1,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 1."
+ADAPT_G6-8_BANK_400,7,G7_Q238,DI,B1,6,average_3,"Scores are: 13, 20, 12. What is the average? (1 decimal place)",15.3,14.7,15.6,15.0,D,Step 1: Add the scores: 13 + 20 + 12 = 45.,Step 2: Divide by 3.,Step 3: 45 ÷ 3 = 15.0.,15.0,75,arithmetic,operation=average;operands=13|20|12;result=15.0,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 15.0."
+ADAPT_G6-8_BANK_400,7,G7_Q239,DI,B1,6,average_3,"Scores are: 15, 16, 16. What is the average? (1 decimal place)",16.0,15.4,15.7,16.3,C,Step 1: Add the scores: 15 + 16 + 16 = 47.,Step 2: Divide by 3.,Step 3: 47 ÷ 3 = 15.7.,15.7,75,arithmetic,operation=average;operands=15|16|16;result=15.7,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 15.7."
+ADAPT_G6-8_BANK_400,7,G7_Q240,DI,B1,6,average_3,"Scores are: 16, 9, 17. What is the average? (1 decimal place)",14.6,14.0,14.3,13.7,B,Step 1: Add the scores: 16 + 9 + 17 = 42.,Step 2: Divide by 3.,Step 3: 42 ÷ 3 = 14.0.,14.0,75,arithmetic,operation=average;operands=16|9|17;result=14.0,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14.0."
+ADAPT_G6-8_BANK_400,7,G7_Q241,DI,B1,7,average_3,"Scores are: 14, 20, 9. What is the average? (1 decimal place)",14.9,14.3,14.0,14.6,B,Step 1: Add the scores: 14 + 20 + 9 = 43.,Step 2: Divide by 3.,Step 3: 43 ÷ 3 = 14.3.,14.3,75,arithmetic,operation=average;operands=14|20|9;result=14.3,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14.3."
+ADAPT_G6-8_BANK_400,7,G7_Q242,DI,B1,6,average_3,"Scores are: 10, 10, 12. What is the average? (1 decimal place)",10.7,11.3,11.0,10.4,A,Step 1: Add the scores: 10 + 10 + 12 = 32.,Step 2: Divide by 3.,Step 3: 32 ÷ 3 = 10.7.,10.7,75,arithmetic,operation=average;operands=10|10|12;result=10.7,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10.7."
+ADAPT_G6-8_BANK_400,7,G7_Q243,DI,B1,6,sum_two,"A chart shows: Jan=11, Feb=19, Mar=14. What is Jan + Mar?",25,26,24,28,A,Step 1: Add Jan and Mar values.,Step 2: 11 + 14 = 25.,,25,75,arithmetic,operation=addition;operands=11|14;result=25,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 25."
+ADAPT_G6-8_BANK_400,7,G7_Q244,DI,B2,8,two_step_table,"Table: Red=18, Blue=17, Green=25. What is (Red + Blue) ? Green?",9,10,13,11,B,Step 1: Red + Blue = 18 + 17 = 35.,Step 2: (Red + Blue) ? Green = 35 ? 25 = 10.,,10,90,arithmetic,operation=(a+b)-c;values=Red:18|Blue:17|Green:25;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."
+ADAPT_G6-8_BANK_400,7,G7_Q245,DI,B2,8,two_step_table,"Table: Red=10, Blue=22, Green=20. What is (Red + Blue) ? Green?",12,11,13,15,A,Step 1: Red + Blue = 10 + 22 = 32.,Step 2: (Red + Blue) ? Green = 32 ? 20 = 12.,,12,90,arithmetic,operation=(a+b)-c;values=Red:10|Blue:22|Green:20;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,7,G7_Q246,AA,A1,2,exact_match,Which option matches exactly: 4C9X?,4C9X,4D9X,X9C4,4C9Y,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,4C9X,45,mismatch_detection,target=4C9X;result=4C9X,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 4C9X."
+ADAPT_G6-8_BANK_400,7,G7_Q247,AA,A1,3,exact_match,Which option matches exactly: 5D4Z?,5D4Z,5C4Z,Z4D5,5D4W,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,5D4Z,45,mismatch_detection,target=5D4Z;result=5D4Z,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5D4Z."
+ADAPT_G6-8_BANK_400,7,G7_Q248,AA,A1,2,exact_match,Which option matches exactly: 9B8W?,9B8W,9D8W,W8B9,9B8X,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,9B8W,45,mismatch_detection,target=9B8W;result=9B8W,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 9B8W."
+ADAPT_G6-8_BANK_400,7,G7_Q249,AA,A1,3,exact_match,Which option matches exactly: 6D2Y?,6D2Y,6B2Y,Y2D6,6D2Y,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,6D2Y,45,mismatch_detection,target=6D2Y;result=6D2Y,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6D2Y."
+ADAPT_G6-8_BANK_400,7,G7_Q250,AA,A1,3,exact_match,Which option matches exactly: 6D1Z?,6D1Z,6D1Z,Z1D6,6D1Z,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,6D1Z,45,mismatch_detection,target=6D1Z;result=6D1Z,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6D1Z."
+ADAPT_G6-8_BANK_400,7,G7_Q251,AA,A1,3,exact_match,Which option matches exactly: 5A1X?,5A1X,5C1X,X1A5,5A1X,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,5A1X,45,mismatch_detection,target=5A1X;result=5A1X,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5A1X."
+ADAPT_G6-8_BANK_400,7,G7_Q252,AA,A2,4,instr_2step,Start with 3. Add 2. Then multiply by 4. What is the result?,25,20,18,22,B,Step 1: 3 + 2 = 5.,Step 2: 5 × 4 = 20.,,20,60,instruction_check,input=3;rules=+2|×4;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,7,G7_Q253,AA,A2,4,instr_2step,Start with 8. Add 2. Then multiply by 5. What is the result?,55,48,52,50,D,Step 1: 8 + 2 = 10.,Step 2: 10 × 5 = 50.,,50,60,instruction_check,input=8;rules=+2|×5;result=50,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 50."
+ADAPT_G6-8_BANK_400,7,G7_Q254,AA,A2,5,instr_2step,Start with 5. Add 4. Then multiply by 4. What is the result?,41,36,38,34,B,Step 1: 5 + 4 = 9.,Step 2: 9 × 4 = 36.,,36,60,instruction_check,input=5;rules=+4|×4;result=36,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 36."
+ADAPT_G6-8_BANK_400,7,G7_Q255,AA,A2,5,instr_2step,Start with 10. Add 5. Then multiply by 4. What is the result?,58,65,62,60,D,Step 1: 10 + 5 = 15.,Step 2: 15 × 4 = 60.,,60,60,instruction_check,input=10;rules=+5|×4;result=60,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 60."
+ADAPT_G6-8_BANK_400,7,G7_Q256,AA,A2,5,instr_2step,Start with 3. Add 4. Then multiply by 2. What is the result?,19,14,12,16,B,Step 1: 3 + 4 = 7.,Step 2: 7 × 2 = 14.,,14,60,instruction_check,input=3;rules=+4|×2;result=14,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14."
+ADAPT_G6-8_BANK_400,7,G7_Q257,AA,A2,4,instr_2step,Start with 11. Add 3. Then multiply by 4. What is the result?,54,56,58,61,B,Step 1: 11 + 3 = 14.,Step 2: 14 × 4 = 56.,,56,60,instruction_check,input=11;rules=+3|×4;result=56,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 56."
+ADAPT_G6-8_BANK_400,7,G7_Q258,AA,A2,4,instr_2step,Start with 9. Add 5. Then multiply by 2. What is the result?,28,26,33,30,A,Step 1: 9 + 5 = 14.,Step 2: 14 × 2 = 28.,,28,60,instruction_check,input=9;rules=+5|×2;result=28,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 28."
+ADAPT_G6-8_BANK_400,7,G7_Q259,AA,A2,5,instr_2step,Start with 6. Add 3. Then multiply by 4. What is the result?,38,41,34,36,D,Step 1: 6 + 3 = 9.,Step 2: 9 × 4 = 36.,,36,60,instruction_check,input=6;rules=+3|×4;result=36,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 36."
+ADAPT_G6-8_BANK_400,7,G7_Q260,AA,B1,7,instr_3step,Start with 7. Multiply by 3. Add 4. Then subtract 4. What is the result?,24,20,22,21,D,Step 1: 7 × 3 = 21.,Step 2: 21 + 4 = 25.,Step 3: 25 ? 4 = 21.,21,75,instruction_check,input=7;rules=×3|+4|-4;result=21,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 21."
+ADAPT_G6-8_BANK_400,7,G7_Q261,AA,B1,7,instr_3step,Start with 7. Multiply by 3. Add 6. Then subtract 5. What is the result?,22,25,21,23,A,Step 1: 7 × 3 = 21.,Step 2: 21 + 6 = 27.,Step 3: 27 ? 5 = 22.,22,75,instruction_check,input=7;rules=×3|+6|-5;result=22,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 22."
+ADAPT_G6-8_BANK_400,7,G7_Q262,AA,B1,6,instr_3step,Start with 4. Multiply by 3. Add 3. Then subtract 2. What is the result?,14,16,13,12,C,Step 1: 4 × 3 = 12.,Step 2: 12 + 3 = 15.,Step 3: 15 ? 2 = 13.,13,75,instruction_check,input=4;rules=×3|+3|-2;result=13,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 13."
+ADAPT_G6-8_BANK_400,7,G7_Q263,AA,B1,6,instr_3step,Start with 10. Multiply by 3. Add 6. Then subtract 5. What is the result?,31,34,30,32,A,Step 1: 10 × 3 = 30.,Step 2: 30 + 6 = 36.,Step 3: 36 ? 5 = 31.,31,75,instruction_check,input=10;rules=×3|+6|-5;result=31,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 31."
+ADAPT_G6-8_BANK_400,7,G7_Q264,AA,B1,6,instr_3step,Start with 9. Multiply by 4. Add 7. Then subtract 2. What is the result?,41,40,44,42,A,Step 1: 9 × 4 = 36.,Step 2: 36 + 7 = 43.,Step 3: 43 ? 2 = 41.,41,75,instruction_check,input=9;rules=×4|+7|-2;result=41,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 41."
+ADAPT_G6-8_BANK_400,7,G7_Q265,AA,B1,6,instr_3step,Start with 7. Multiply by 3. Add 7. Then subtract 1. What is the result?,30,28,27,26,C,Step 1: 7 × 3 = 21.,Step 2: 21 + 7 = 28.,Step 3: 28 ? 1 = 27.,27,75,instruction_check,input=7;rules=×3|+7|-1;result=27,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 27."
+ADAPT_G6-8_BANK_400,8,G8_Q268,QR,A1,3,arith_div,What is 60 ÷ 10?,6,7,5,8,A,Step 1: Divide 60 by 10.,Step 2: 60 ÷ 10 = 6.,,6,45,arithmetic,operation=division;operands=60|10;result=6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6."
+ADAPT_G6-8_BANK_400,8,G8_Q269,QR,A1,4,arith_div,What is 56 ÷ 4?,13,16,15,14,D,Step 1: Divide 56 by 4.,Step 2: 56 ÷ 4 = 14.,,14,45,arithmetic,operation=division;operands=56|4;result=14,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14."
+ADAPT_G6-8_BANK_400,8,G8_Q270,QR,A1,4,arith_mul,What is 13 × 11?,147,143,151,140,B,Step 1: Multiply 13 by 11.,Step 2: 13 × 11 = 143.,,143,45,arithmetic,operation=multiplication;operands=13|11;result=143,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 143."
+ADAPT_G6-8_BANK_400,8,G8_Q271,QR,A1,3,arith_add,What is 78 + 91?,176,167,169,172,C,Step 1: Add 78 and 91.,Step 2: 78 + 91 = 169.,,169,45,arithmetic,operation=addition;operands=78|91;result=169,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 169."
+ADAPT_G6-8_BANK_400,8,G8_Q272,QR,A1,3,arith_sub,What is 112 ? 37?,72,75,77,82,B,Step 1: Subtract 37 from 112.,Step 2: 112 ? 37 = 75.,,75,45,arithmetic,operation=subtraction;operands=112|37;result=75,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 75."
+ADAPT_G6-8_BANK_400,8,G8_Q273,QR,A1,3,arith_add,What is 78 + 12?,93,88,97,90,D,Step 1: Add 78 and 12.,Step 2: 78 + 12 = 90.,,90,45,arithmetic,operation=addition;operands=78|12;result=90,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 90."
+ADAPT_G6-8_BANK_400,8,G8_Q275,QR,A2,6,ratio_missing,"The ratio of boys to girls is 4:2. If there are 24 boys, how many girls are there?",6,24,12,18,C,"Step 1: 4 parts = 24, so 1 part = 6.",Step 2: Girls = 2 parts = 2 × 6 = 12.,,12,60,ratio,ratio=4|2;given_boys=24;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,8,G8_Q276,QR,A2,5,ratio_missing,"The ratio of boys to girls is 3:5. If there are 27 boys, how many girls are there?",54,63,36,45,D,"Step 1: 3 parts = 27, so 1 part = 9.",Step 2: Girls = 5 parts = 5 × 9 = 45.,,45,60,ratio,ratio=3|5;given_boys=27;result=45,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 45."
+ADAPT_G6-8_BANK_400,8,G8_Q277,QR,A2,6,decimal_add,What is 4.0 + 1.4?,5.9,5.4,5.3,5.6,B,Step 1: Add the decimals.,Step 2: 4.0 + 1.4 = 5.4.,,5.4,60,arithmetic,operation=decimal_addition;operands=4.0|1.4;result=5.4,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5.4."
+ADAPT_G6-8_BANK_400,8,G8_Q278,QR,A2,6,percent_of,What is 10% of 40?,1,6,4,9,C,Step 1: Convert 10% to a fraction/decimal.,Step 2: 10% of 40 = 4.,,4,60,percent,percent=10;base=40;result=4,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 4."
+ADAPT_G6-8_BANK_400,8,G8_Q280,QR,A2,5,decimal_add,What is 1.4 + 4.3?,5.9,6.2,5.6,5.7,D,Step 1: Add the decimals.,Step 2: 1.4 + 4.3 = 5.7.,,5.7,60,arithmetic,operation=decimal_addition;operands=1.4|4.3;result=5.7,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5.7."
+ADAPT_G6-8_BANK_400,8,G8_Q281,QR,A2,5,ratio_missing,"The ratio of boys to girls is 3:3. If there are 21 boys, how many girls are there?",28,14,21,35,C,"Step 1: 3 parts = 21, so 1 part = 7.",Step 2: Girls = 3 parts = 3 × 7 = 21.,,21,60,ratio,ratio=3|3;given_boys=21;result=21,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 21."
+ADAPT_G6-8_BANK_400,8,G8_Q282,QR,A2,5,decimal_add,What is 5.8 + 1.7?,7.5,7.4,7.7,8.0,A,Step 1: Add the decimals.,Step 2: 5.8 + 1.7 = 7.5.,,7.5,60,arithmetic,operation=decimal_addition;operands=5.8|1.7;result=7.5,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 7.5."
+ADAPT_G6-8_BANK_400,8,G8_Q283,QR,B1,8,ratio_word,"Red:Blue marbles are in the ratio 3:4. If there are 36 blue marbles, how many red marbles are there?",18,36,45,27,D,"Step 1: 4 parts = 36, so 1 part = 9.",Step 2: Red = 3 parts = 3 × 9 = 27.,,27,75,ratio,ratio=3|4;given_blue=36;result=27,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 27."
+ADAPT_G6-8_BANK_400,8,G8_Q284,QR,B1,8,multistep_word,Ravi has 39 stickers and gets 39 more. He gives away 15. How many stickers does he have now?,65,68,63,61,C,Step 1: Total after getting more = 39 + 39 = 78.,Step 2: Give away 15: 78 ? 15 = 63.,,63,75,word_problem,operation=add_then_sub;operands=39|39|15;result=63,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 63."
+ADAPT_G6-8_BANK_400,8,G8_Q285,QR,B1,7,multistep_word,Ravi has 19 stickers and gets 27 more. He gives away 15. How many stickers does he have now?,33,36,29,31,D,Step 1: Total after getting more = 19 + 27 = 46.,Step 2: Give away 15: 46 ? 15 = 31.,,31,75,word_problem,operation=add_then_sub;operands=19|27|15;result=31,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 31."
+ADAPT_G6-8_BANK_400,8,G8_Q286,QR,B1,7,multistep_word,Ravi has 12 stickers and gets 30 more. He gives away 6. How many stickers does he have now?,34,41,38,36,D,Step 1: Total after getting more = 12 + 30 = 42.,Step 2: Give away 6: 42 ? 6 = 36.,,36,75,word_problem,operation=add_then_sub;operands=12|30|6;result=36,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 36."
+ADAPT_G6-8_BANK_400,8,G8_Q287,QR,B1,7,multistep_word,Ravi has 37 stickers and gets 24 more. He gives away 13. How many stickers does he have now?,48,50,53,46,A,Step 1: Total after getting more = 37 + 24 = 61.,Step 2: Give away 13: 61 ? 13 = 48.,,48,75,word_problem,operation=add_then_sub;operands=37|24|13;result=48,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 48."
+ADAPT_G6-8_BANK_400,8,G8_Q288,QR,B1,7,multistep_word,Ravi has 28 stickers and gets 18 more. He gives away 7. How many stickers does he have now?,44,39,41,37,B,Step 1: Total after getting more = 28 + 18 = 46.,Step 2: Give away 7: 46 ? 7 = 39.,,39,75,word_problem,operation=add_then_sub;operands=28|18|7;result=39,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 39."
+ADAPT_G6-8_BANK_400,8,G8_Q289,QR,B2,9,ratio_word,"Red:Blue marbles are in the ratio 5:3. If there are 12 blue marbles, how many red marbles are there?",16,28,20,24,C,"Step 1: 3 parts = 12, so 1 part = 4.",Step 2: Red = 5 parts = 5 × 4 = 20.,,20,90,ratio,ratio=5|3;given_blue=12;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,8,G8_Q290,QR,B2,9,multistep_word,Ravi has 31 stickers and gets 31 more. He gives away 5. How many stickers does he have now?,59,57,62,55,B,Step 1: Total after getting more = 31 + 31 = 62.,Step 2: Give away 5: 62 ? 5 = 57.,,57,90,word_problem,operation=add_then_sub;operands=31|31|5;result=57,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 57."
+ADAPT_G6-8_BANK_400,8,G8_Q297,LR,A2,5,ordering_3,Nisha is taller than Riya. Riya is taller than Sam. Who is the shortest?,Nisha,Riya,Sam,Cannot be determined,C,Step 1: Nisha > Riya.,Step 2: Riya > Sam.,Step 3: So Sam is the shortest.,Sam,60,logic_rule,rules=Nisha>Riya|Riya>Sam;solution=Sam,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Sam."
+ADAPT_G6-8_BANK_400,8,G8_Q298,LR,A2,6,ordering_3,Meena is taller than Sam. Sam is taller than Kavya. Who is the shortest?,Meena,Sam,Kavya,Cannot be determined,C,Step 1: Meena > Sam.,Step 2: Sam > Kavya.,Step 3: So Kavya is the shortest.,Kavya,60,logic_rule,rules=Meena>Sam|Sam>Kavya;solution=Kavya,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Kavya."
+ADAPT_G6-8_BANK_400,8,G8_Q299,LR,A2,5,ordering_3,Nisha is taller than Sam. Sam is taller than Riya. Who is the shortest?,Nisha,Sam,Riya,Cannot be determined,C,Step 1: Nisha > Sam.,Step 2: Sam > Riya.,Step 3: So Riya is the shortest.,Riya,60,logic_rule,rules=Nisha>Sam|Sam>Riya;solution=Riya,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Riya."
+ADAPT_G6-8_BANK_400,8,G8_Q300,LR,A2,5,ordering_3,Kavya is taller than Nisha. Nisha is taller than Riya. Who is the shortest?,Kavya,Nisha,Riya,Cannot be determined,C,Step 1: Kavya > Nisha.,Step 2: Nisha > Riya.,Step 3: So Riya is the shortest.,Riya,60,logic_rule,rules=Kavya>Nisha|Nisha>Riya;solution=Riya,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Riya."
+ADAPT_G6-8_BANK_400,8,G8_Q301,LR,A2,5,ordering_3,Nisha is taller than Riya. Riya is taller than Kavya. Who is the shortest?,Nisha,Riya,Kavya,Cannot be determined,C,Step 1: Nisha > Riya.,Step 2: Riya > Kavya.,Step 3: So Kavya is the shortest.,Kavya,60,logic_rule,rules=Nisha>Riya|Riya>Kavya;solution=Kavya,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Kavya."
+ADAPT_G6-8_BANK_400,8,G8_Q302,LR,A2,6,ordering_3,Kavya is taller than Meena. Meena is taller than Nisha. Who is the shortest?,Kavya,Meena,Nisha,Cannot be determined,C,Step 1: Kavya > Meena.,Step 2: Meena > Nisha.,Step 3: So Nisha is the shortest.,Nisha,60,logic_rule,rules=Kavya>Meena|Meena>Nisha;solution=Nisha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Nisha."
+ADAPT_G6-8_BANK_400,8,G8_Q303,LR,A2,6,ordering_3,Kavya is taller than Ravi. Ravi is taller than Riya. Who is the shortest?,Kavya,Ravi,Riya,Cannot be determined,C,Step 1: Kavya > Ravi.,Step 2: Ravi > Riya.,Step 3: So Riya is the shortest.,Riya,60,logic_rule,rules=Kavya>Ravi|Ravi>Riya;solution=Riya,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Riya."
+ADAPT_G6-8_BANK_400,8,G8_Q304,LR,A2,6,ordering_3,Riya is taller than Aarav. Aarav is taller than Nisha. Who is the shortest?,Riya,Aarav,Nisha,Cannot be determined,C,Step 1: Riya > Aarav.,Step 2: Aarav > Nisha.,Step 3: So Nisha is the shortest.,Nisha,60,logic_rule,rules=Riya>Aarav|Aarav>Nisha;solution=Nisha,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Nisha."
+ADAPT_G6-8_BANK_400,8,G8_Q305,LR,B1,7,ordering_4,"Four friends stand in a line: Bala, Dev, Asha, Esha. Bala is before Dev. Asha is before Esha. Which statement must be true?",Dev is first,Bala is before Dev,Esha is before Asha,Asha is last,B,Step 1: One rule given is 'Bala is before Dev'.,Step 2: That must always be true.,,Bala is before Dev,75,logic_rule,rules=Bala_before_Dev|Asha_before_Esha;solution=Bala_before_Dev,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Bala is before Dev."
+ADAPT_G6-8_BANK_400,8,G8_Q306,LR,B1,7,ordering_4,"Four friends stand in a line: Chirag, Farah, Asha, Dev. Chirag is before Farah. Asha is before Dev. Which statement must be true?",Farah is first,Chirag is before Farah,Dev is before Asha,Asha is last,B,Step 1: One rule given is 'Chirag is before Farah'.,Step 2: That must always be true.,,Chirag is before Farah,75,logic_rule,rules=Chirag_before_Farah|Asha_before_Dev;solution=Chirag_before_Farah,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Chirag is before Farah."
+ADAPT_G6-8_BANK_400,8,G8_Q307,LR,B1,7,ordering_4,"Four friends stand in a line: Dev, Bala, Asha, Chirag. Dev is before Bala. Asha is before Chirag. Which statement must be true?",Bala is first,Dev is before Bala,Chirag is before Asha,Asha is last,B,Step 1: One rule given is 'Dev is before Bala'.,Step 2: That must always be true.,,Dev is before Bala,75,logic_rule,rules=Dev_before_Bala|Asha_before_Chirag;solution=Dev_before_Bala,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Dev is before Bala."
+ADAPT_G6-8_BANK_400,8,G8_Q308,LR,B1,7,ordering_4,"Four friends stand in a line: Dev, Bala, Farah, Asha. Dev is before Bala. Farah is before Asha. Which statement must be true?",Bala is first,Dev is before Bala,Asha is before Farah,Farah is last,B,Step 1: One rule given is 'Dev is before Bala'.,Step 2: That must always be true.,,Dev is before Bala,75,logic_rule,rules=Dev_before_Bala|Farah_before_Asha;solution=Dev_before_Bala,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Dev is before Bala."
+ADAPT_G6-8_BANK_400,8,G8_Q309,LR,B1,8,ordering_4,"Four friends stand in a line: Chirag, Bala, Esha, Dev. Chirag is before Bala. Esha is before Dev. Which statement must be true?",Bala is first,Chirag is before Bala,Dev is before Esha,Esha is last,B,Step 1: One rule given is 'Chirag is before Bala'.,Step 2: That must always be true.,,Chirag is before Bala,75,logic_rule,rules=Chirag_before_Bala|Esha_before_Dev;solution=Chirag_before_Bala,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Chirag is before Bala."
+ADAPT_G6-8_BANK_400,8,G8_Q310,LR,B1,8,ordering_4,"Four friends stand in a line: Asha, Farah, Dev, Chirag. Asha is before Farah. Dev is before Chirag. Which statement must be true?",Farah is first,Asha is before Farah,Chirag is before Dev,Dev is last,B,Step 1: One rule given is 'Asha is before Farah'.,Step 2: That must always be true.,,Asha is before Farah,75,logic_rule,rules=Asha_before_Farah|Dev_before_Chirag;solution=Asha_before_Farah,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Asha is before Farah."
+ADAPT_G6-8_BANK_400,8,G8_Q313,PAR,A1,3,seq_plus,"Find the next number: 9, 14, 19, 24, ?",24,29,34,39,B,Step 1: The pattern adds 5 each time.,Step 2: 24 + 5 = 29.,,29,45,sequence,rule=+5;sequence=9|14|19|24;result=29,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 29."
+ADAPT_G6-8_BANK_400,8,G8_Q314,PAR,A1,3,seq_plus,"Find the next number: 2, 8, 14, 20, ?",20,26,32,38,B,Step 1: The pattern adds 6 each time.,Step 2: 20 + 6 = 26.,,26,45,sequence,rule=+6;sequence=2|8|14|20;result=26,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 26."
+ADAPT_G6-8_BANK_400,8,G8_Q315,PAR,A1,3,seq_times2,"Find the next number: 5, 10, 20, 40, ?",76,80,84,40,B,Step 1: Each number is multiplied by 2.,Step 2: 40 × 2 = 80.,,80,45,sequence,rule=×2;sequence=5|10|20|40;result=80,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 80."
+ADAPT_G6-8_BANK_400,8,G8_Q316,PAR,A1,3,seq_plus,"Find the next number: 6, 10, 14, 18, ?",18,22,26,30,B,Step 1: The pattern adds 4 each time.,Step 2: 18 + 4 = 22.,,22,45,sequence,rule=+4;sequence=6|10|14|18;result=22,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 22."
+ADAPT_G6-8_BANK_400,8,G8_Q317,PAR,A1,3,seq_plus,"Find the next number: 4, 7, 10, 13, ?",13,16,19,22,B,Step 1: The pattern adds 3 each time.,Step 2: 13 + 3 = 16.,,16,45,sequence,rule=+3;sequence=4|7|10|13;result=16,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 16."
+ADAPT_G6-8_BANK_400,8,G8_Q318,PAR,A1,4,seq_plus,"Find the next number: 2, 6, 10, 14, ?",14,18,22,26,B,Step 1: The pattern adds 4 each time.,Step 2: 14 + 4 = 18.,,18,45,sequence,rule=+4;sequence=2|6|10|14;result=18,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 18."
+ADAPT_G6-8_BANK_400,8,G8_Q319,PAR,A2,6,analogy_factor,Complete: 5 is to 10 as 6 is to ?,10,12,14,13,B,Step 1: 5 becomes 10 by multiplying by 2.,Step 2: 6 × 2 = 12.,,12,60,analogy,rule=×2;input=6;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,8,G8_Q320,PAR,A2,5,analogy_factor,Complete: 2 is to 4 as 3 is to ?,4,6,8,7,B,Step 1: 2 becomes 4 by multiplying by 2.,Step 2: 3 × 2 = 6.,,6,60,analogy,rule=×2;input=3;result=6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6."
+ADAPT_G6-8_BANK_400,8,G8_Q321,PAR,A2,5,alt_rule,"Find the next number: 9, 12, 10, 13, 11, ?",13,14,15,16,B,"Step 1: The pattern alternates +3, then ?2.",Step 2: Continue the +3 step after the last term.,,14,60,sequence,rule=+3_-2_alternating;sequence=9|12|10|13|11;result=14,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14."
+ADAPT_G6-8_BANK_400,8,G8_Q322,PAR,A2,5,alt_rule,"Find the next number: 8, 11, 9, 12, 10, ?",12,13,14,15,B,"Step 1: The pattern alternates +3, then ?2.",Step 2: Continue the +3 step after the last term.,,13,60,sequence,rule=+3_-2_alternating;sequence=8|11|9|12|10;result=13,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 13."
+ADAPT_G6-8_BANK_400,8,G8_Q323,PAR,A2,5,analogy_factor,Complete: 6 is to 18 as 7 is to ?,18,21,24,22,B,Step 1: 6 becomes 18 by multiplying by 3.,Step 2: 7 × 3 = 21.,,21,60,analogy,rule=×3;input=7;result=21,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 21."
+ADAPT_G6-8_BANK_400,8,G8_Q324,PAR,A2,5,analogy_opposites,Choose the best match: Hot : Cold :: Up : ?,Down,Left,Right,Fast,A,Step 1: The first pair are opposites.,Step 2: The opposite of Up is Down.,,Down,60,analogy,type=opposites;pair=Up:Down,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Down."
+ADAPT_G6-8_BANK_400,8,G8_Q325,PAR,A2,6,analogy_factor,Complete: 3 is to 6 as 4 is to ?,6,8,10,9,B,Step 1: 3 becomes 6 by multiplying by 2.,Step 2: 4 × 2 = 8.,,8,60,analogy,rule=×2;input=4;result=8,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 8."
+ADAPT_G6-8_BANK_400,8,G8_Q327,PAR,B1,7,two_rule,"Find the next number: 4, 7, 5, 8, 6, ?",7,9,11,12,B,Step 1: The pattern alternates +3 and ?2.,"Step 2: After 6, apply +3 to get 9.",,9,75,sequence,rule=+3_-2_alternating;sequence=4|7|5|8|6;result=9,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 9."
+ADAPT_G6-8_BANK_400,8,G8_Q333,PAR,B2,9,rule_machine,"A rule changes a number by: multiply by 2, then add 1. If the input is 5, what is the output?",10,11,12,14,B,Step 1: 5 × 2 = 10.,Step 2: 10 + 1 = 11.,,11,90,rule_inference,rule=×2_then_+1;input=5;result=11,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 11."
+ADAPT_G6-8_BANK_400,8,G8_Q334,PAR,B2,9,rule_machine,"A rule changes a number by: multiply by 2, then add 1. If the input is 11, what is the output?",22,23,24,26,B,Step 1: 11 × 2 = 22.,Step 2: 22 + 1 = 23.,,23,90,rule_inference,rule=×2_then_+1;input=11;result=23,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 23."
+ADAPT_G6-8_BANK_400,8,G8_Q349,SR,B1,7,grid_move,A point moves 2 steps right and 3 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+2;dy=+3;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,8,G8_Q350,SR,B1,7,grid_move,A point moves 3 steps right and 1 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+3;dy=+1;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,8,G8_Q351,SR,B1,7,grid_move,A point moves 2 steps right and 1 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+2;dy=+1;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,8,G8_Q352,SR,B1,7,grid_move,A point moves 5 steps right and 3 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+5;dy=+3;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,8,G8_Q353,SR,B1,7,grid_move,A point moves 2 steps right and 4 steps up on a grid. Which direction is the overall movement?,Only right,Only up,Up and right,Down and left,C,Step 1: The move includes right and up directions.,Step 2: So the overall movement is up and right.,,Up and right,75,spatial_rule,type=grid_move;dx=+2;dy=+4;result=UpRight,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Up and right."
+ADAPT_G6-8_BANK_400,8,G8_Q357,DI,A1,3,table_lookup,"Table: Grapes=8, Apples=13, Mangoes=7. How many Apples are there?",18,13,12,15,B,Step 1: Read the value for the item in the table.,Step 2: Apples = 13.,,13,45,table_lookup,Grapes=8;Apples=13;Mangoes=7;result=13,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 13."
+ADAPT_G6-8_BANK_400,8,G8_Q358,DI,A1,3,table_lookup,"Table: Oranges=5, Grapes=13, Books=12. How many Grapes are there?",18,12,15,13,D,Step 1: Read the value for the item in the table.,Step 2: Grapes = 13.,,13,45,table_lookup,Oranges=5;Grapes=13;Books=12;result=13,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 13."
+ADAPT_G6-8_BANK_400,8,G8_Q359,DI,A1,3,table_lookup,"Table: Mangoes=11, Oranges=13, Books=10. How many Books are there?",9,10,15,12,B,Step 1: Read the value for the item in the table.,Step 2: Books = 10.,,10,45,table_lookup,Mangoes=11;Oranges=13;Books=10;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."
+ADAPT_G6-8_BANK_400,8,G8_Q360,DI,A1,3,table_lookup,"Table: Pens=12, Oranges=11, Bananas=12. How many Bananas are there?",14,17,12,11,C,Step 1: Read the value for the item in the table.,Step 2: Bananas = 12.,,12,45,table_lookup,Pens=12;Oranges=11;Bananas=12;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,8,G8_Q361,DI,A1,3,table_lookup,"Table: Books=5, Pens=6, Mangoes=20. How many Pens are there?",6,11,8,5,A,Step 1: Read the value for the item in the table.,Step 2: Pens = 6.,,6,45,table_lookup,Books=5;Pens=6;Mangoes=20;result=6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6."
+ADAPT_G6-8_BANK_400,8,G8_Q362,DI,A1,4,table_lookup,"Table: Pens=17, Grapes=12, Oranges=9. How many Pens are there?",16,17,19,22,B,Step 1: Read the value for the item in the table.,Step 2: Pens = 17.,,17,45,table_lookup,Pens=17;Grapes=12;Oranges=9;result=17,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 17."
+ADAPT_G6-8_BANK_400,8,G8_Q363,DI,A2,6,difference,"A table shows: May=24, June=39. How many more in June than May?",16,15,18,14,B,Step 1: Find the difference (June ? May).,Step 2: 39 ? 24 = 15.,,15,60,arithmetic,operation=subtraction;operands=39|24;result=15,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 15."
+ADAPT_G6-8_BANK_400,8,G8_Q364,DI,A2,6,total,"A table shows: Pens=17, Pencils=13, Notebooks=3. What is the total items?",36,34,32,33,D,Step 1: Add all values.,Step 2: 17 + 13 + 3 = 33.,,33,60,arithmetic,operation=addition;operands=17|13|3;result=33,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 33."
+ADAPT_G6-8_BANK_400,8,G8_Q365,DI,A2,5,difference,"A table shows: May=17, June=29. How many more in June than May?",15,11,12,13,C,Step 1: Find the difference (June ? May).,Step 2: 29 ? 17 = 12.,,12,60,arithmetic,operation=subtraction;operands=29|17;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,8,G8_Q366,DI,A2,5,total,"A table shows: Notebooks=13, Markers=14, Pens=8. What is the total items?",35,34,36,38,A,Step 1: Add all values.,Step 2: 13 + 14 + 8 = 35.,,35,60,arithmetic,operation=addition;operands=13|14|8;result=35,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 35."
+ADAPT_G6-8_BANK_400,8,G8_Q367,DI,A2,6,difference,"A table shows: May=20, June=26. How many more in June than May?",9,6,7,5,B,Step 1: Find the difference (June ? May).,Step 2: 26 ? 20 = 6.,,6,60,arithmetic,operation=subtraction;operands=26|20;result=6,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6."
+ADAPT_G6-8_BANK_400,8,G8_Q368,DI,A2,5,total,"A table shows: Pencils=10, Notebooks=6, Markers=11. What is the total items?",30,28,27,26,C,Step 1: Add all values.,Step 2: 10 + 6 + 11 = 27.,,27,60,arithmetic,operation=addition;operands=10|6|11;result=27,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 27."
+ADAPT_G6-8_BANK_400,8,G8_Q369,DI,A2,5,compare,"In a chart, Team A scored 15 and Team B scored 23. Who scored more?",Team A,Team B,Both same,Cannot tell,B,Step 1: Compare the two scores.,"Step 2: 23 is greater, so Team B scored more.",,Team B,60,compare,A=15;B=23;result=Team B,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Team B."
+ADAPT_G6-8_BANK_400,8,G8_Q370,DI,A2,6,compare,"In a chart, Team A scored 30 and Team B scored 26. Who scored more?",Team A,Team B,Both same,Cannot tell,A,Step 1: Compare the two scores.,"Step 2: 30 is greater, so Team A scored more.",,Team A,60,compare,A=30;B=26;result=Team A,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : Team A."
+ADAPT_G6-8_BANK_400,8,G8_Q371,DI,B1,7,max_min,"Values are: 15, 30, 20, 14. Which is the greatest?",15,30,20,14,B,Step 1: Compare all the numbers.,Step 2: The greatest value is 30.,,30,75,arithmetic,operation=max;operands=15|30|20|14;result=30,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 30."
+ADAPT_G6-8_BANK_400,8,G8_Q372,DI,B1,8,max_min,"Values are: 23, 6, 17, 8. Which is the greatest?",23,6,17,8,A,Step 1: Compare all the numbers.,Step 2: The greatest value is 23.,,23,75,arithmetic,operation=max;operands=23|6|17|8;result=23,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 23."
+ADAPT_G6-8_BANK_400,8,G8_Q373,DI,B1,7,sum_two,"A chart shows: Jan=7, Feb=12, Mar=14. What is Jan + Mar?",20,21,22,24,B,Step 1: Add Jan and Mar values.,Step 2: 7 + 14 = 21.,,21,75,arithmetic,operation=addition;operands=7|14;result=21,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 21."
+ADAPT_G6-8_BANK_400,8,G8_Q374,DI,B1,8,max_min,"Values are: 15, 13, 16, 16. Which is the greatest?",15,13,16,16,C,Step 1: Compare all the numbers.,Step 2: The greatest value is 16.,,16,75,arithmetic,operation=max;operands=15|13|16|16;result=16,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 16."
+ADAPT_G6-8_BANK_400,8,G8_Q375,DI,B1,7,max_min,"Values are: 30, 13, 16, 5. Which is the greatest?",30,13,16,5,A,Step 1: Compare all the numbers.,Step 2: The greatest value is 30.,,30,75,arithmetic,operation=max;operands=30|13|16|5;result=30,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 30."
+ADAPT_G6-8_BANK_400,8,G8_Q376,DI,B1,7,sum_two,"A chart shows: Jan=17, Feb=25, Mar=12. What is Jan + Mar?",29,30,32,28,A,Step 1: Add Jan and Mar values.,Step 2: 17 + 12 = 29.,,29,75,arithmetic,operation=addition;operands=17|12;result=29,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 29."
+ADAPT_G6-8_BANK_400,8,G8_Q377,DI,B2,9,two_step_table,"Table: Red=24, Blue=12, Green=22. What is (Red + Blue) ? Green?",17,14,15,13,B,Step 1: Red + Blue = 24 + 12 = 36.,Step 2: (Red + Blue) ? Green = 36 ? 22 = 14.,,14,90,arithmetic,operation=(a+b)-c;values=Red:24|Blue:12|Green:22;result=14,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 14."
+ADAPT_G6-8_BANK_400,8,G8_Q378,DI,B2,9,two_step_table,"Table: Red=23, Blue=22, Green=12. What is (Red + Blue) ? Green?",32,34,36,33,D,Step 1: Red + Blue = 23 + 22 = 45.,Step 2: (Red + Blue) ? Green = 45 ? 12 = 33.,,33,90,arithmetic,operation=(a+b)-c;values=Red:23|Blue:22|Green:12;result=33,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 33."
+ADAPT_G6-8_BANK_400,8,G8_Q379,AA,A1,3,exact_match,Which option matches exactly: 2A2X?,2A2X,2C2X,X2A2,2A2W,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,2A2X,45,mismatch_detection,target=2A2X;result=2A2X,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 2A2X."
+ADAPT_G6-8_BANK_400,8,G8_Q380,AA,A1,3,exact_match,Which option matches exactly: 6A1W?,6A1W,6D1W,W1A6,6A1W,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,6A1W,45,mismatch_detection,target=6A1W;result=6A1W,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 6A1W."
+ADAPT_G6-8_BANK_400,8,G8_Q381,AA,A1,3,exact_match,Which option matches exactly: 1C9X?,1C9X,1A9X,X9C1,1C9Z,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,1C9X,45,mismatch_detection,target=1C9X;result=1C9X,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 1C9X."
+ADAPT_G6-8_BANK_400,8,G8_Q382,AA,A1,3,exact_match,Which option matches exactly: 3C7X?,3C7X,3B7X,X7C3,3C7X,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,3C7X,45,mismatch_detection,target=3C7X;result=3C7X,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 3C7X."
+ADAPT_G6-8_BANK_400,8,G8_Q383,AA,A1,3,exact_match,Which option matches exactly: 5C7Z?,5C7Z,5C7Z,Z7C5,5C7Z,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,5C7Z,45,mismatch_detection,target=5C7Z;result=5C7Z,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 5C7Z."
+ADAPT_G6-8_BANK_400,8,G8_Q384,AA,A1,3,exact_match,Which option matches exactly: 9D9Z?,9D9Z,9C9Z,Z9D9,9D9Y,A,Step 1: Look for the exact same characters in the same order.,Step 2: Only option A matches exactly.,,9D9Z,45,mismatch_detection,target=9D9Z;result=9D9Z,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 9D9Z."
+ADAPT_G6-8_BANK_400,8,G8_Q385,AA,A2,5,instr_2step,Start with 10. Add 4. Then multiply by 4. What is the result?,54,56,58,61,B,Step 1: 10 + 4 = 14.,Step 2: 14 × 4 = 56.,,56,60,instruction_check,input=10;rules=+4|×4;result=56,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 56."
+ADAPT_G6-8_BANK_400,8,G8_Q386,AA,A2,6,instr_2step,Start with 3. Add 6. Then multiply by 3. What is the result?,27,32,29,25,A,Step 1: 3 + 6 = 9.,Step 2: 9 × 3 = 27.,,27,60,instruction_check,input=3;rules=+6|×3;result=27,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 27."
+ADAPT_G6-8_BANK_400,8,G8_Q387,AA,A2,5,instr_2step,Start with 3. Add 6. Then multiply by 4. What is the result?,36,34,41,38,A,Step 1: 3 + 6 = 9.,Step 2: 9 × 4 = 36.,,36,60,instruction_check,input=3;rules=+6|×4;result=36,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 36."
+ADAPT_G6-8_BANK_400,8,G8_Q388,AA,A2,5,instr_2step,Start with 5. Add 5. Then multiply by 5. What is the result?,48,50,55,52,B,Step 1: 5 + 5 = 10.,Step 2: 10 × 5 = 50.,,50,60,instruction_check,input=5;rules=+5|×5;result=50,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 50."
+ADAPT_G6-8_BANK_400,8,G8_Q389,AA,A2,6,pattern_break,"A list shows: 14, 16, 18, 20, 23. One number breaks the pattern of +2. Which one?",16,18,20,23,D,Step 1: +2 pattern would give the last number as 22.,Step 2: 23 breaks the pattern.,,23,60,error_spotting,rule=+2;sequence=14|16|18|20|23;odd=23,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 23."
+ADAPT_G6-8_BANK_400,8,G8_Q390,AA,A2,6,instr_2step,Start with 5. Add 3. Then multiply by 4. What is the result?,37,34,30,32,D,Step 1: 5 + 3 = 8.,Step 2: 8 × 4 = 32.,,32,60,instruction_check,input=5;rules=+3|×4;result=32,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 32."
+ADAPT_G6-8_BANK_400,8,G8_Q391,AA,A2,5,instr_2step,Start with 8. Add 2. Then multiply by 3. What is the result?,32,35,28,30,D,Step 1: 8 + 2 = 10.,Step 2: 10 × 3 = 30.,,30,60,instruction_check,input=8;rules=+2|×3;result=30,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 30."
+ADAPT_G6-8_BANK_400,8,G8_Q392,AA,A2,5,instr_2step,Start with 7. Add 4. Then multiply by 3. What is the result?,35,33,31,38,B,Step 1: 7 + 4 = 11.,Step 2: 11 × 3 = 33.,,33,60,instruction_check,input=7;rules=+4|×3;result=33,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 33."
+ADAPT_G6-8_BANK_400,8,G8_Q393,AA,B1,7,instr_3step,Start with 4. Multiply by 2. Add 6. Then subtract 2. What is the result?,12,15,13,11,A,Step 1: 4 × 2 = 8.,Step 2: 8 + 6 = 14.,Step 3: 14 ? 2 = 12.,12,75,instruction_check,input=4;rules=×2|+6|-2;result=12,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 12."
+ADAPT_G6-8_BANK_400,8,G8_Q394,AA,B1,8,instr_3step,Start with 7. Multiply by 2. Add 4. Then subtract 1. What is the result?,20,17,18,16,B,Step 1: 7 × 2 = 14.,Step 2: 14 + 4 = 18.,Step 3: 18 ? 1 = 17.,17,75,instruction_check,input=7;rules=×2|+4|-1;result=17,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 17."
+ADAPT_G6-8_BANK_400,8,G8_Q395,AA,B1,7,instr_3step,Start with 6. Multiply by 3. Add 3. Then subtract 1. What is the result?,20,19,23,21,A,Step 1: 6 × 3 = 18.,Step 2: 18 + 3 = 21.,Step 3: 21 ? 1 = 20.,20,75,instruction_check,input=6;rules=×3|+3|-1;result=20,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 20."
+ADAPT_G6-8_BANK_400,8,G8_Q396,AA,B1,8,instr_3step,Start with 5. Multiply by 3. Add 8. Then subtract 1. What is the result?,22,21,25,23,A,Step 1: 5 × 3 = 15.,Step 2: 15 + 8 = 23.,Step 3: 23 ? 1 = 22.,22,75,instruction_check,input=5;rules=×3|+8|-1;result=22,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 22."
+ADAPT_G6-8_BANK_400,8,G8_Q397,AA,B1,8,instr_3step,Start with 2. Multiply by 4. Add 7. Then subtract 5. What is the result?,13,9,11,10,D,Step 1: 2 × 4 = 8.,Step 2: 8 + 7 = 15.,Step 3: 15 ? 5 = 10.,10,75,instruction_check,input=2;rules=×4|+7|-5;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."
+ADAPT_G6-8_BANK_400,8,G8_Q398,AA,B1,7,instr_3step,Start with 3. Multiply by 2. Add 8. Then subtract 4. What is the result?,11,13,10,9,C,Step 1: 3 × 2 = 6.,Step 2: 6 + 8 = 14.,Step 3: 14 ? 4 = 10.,10,75,instruction_check,input=3;rules=×2|+8|-4;result=10,"Step 1: Carefully analyze the problem and identify the rule or logic required.
+Step 2: Apply the reasoning step by step to reach the correct solution.
+Step 3: After applying the logic correctly, we determine the correct option.
+
+Therefore, the correct answer is Option : 10."

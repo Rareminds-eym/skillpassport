@@ -157,6 +157,7 @@ const MyLearning = lazy(() => import("../pages/student/MyLearning"));
 const MyExperience = lazy(() => import("../pages/student/MyExperience"));
 const Courses = lazy(() => import("../pages/student/Courses"));
 const CoursePlayer = lazy(() => import("../pages/student/CoursePlayer"));
+const ComingSoon = lazy(() => import("../pages/student/ComingSoon"));
 const Opportunities = lazy(() => import("../pages/student/Opportunities"));
 const SavedJobs = lazy(() => import("../pages/student/SavedJobs"));
 const Applications = lazy(() => import("../pages/student/Applications"));
@@ -887,6 +888,7 @@ const AppRoutes = () => {
           <Route path="my-experience" element={<MyExperience />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
+          <Route path="coming-soon" element={<ComingSoon />} />
           <Route path="opportunities" element={<Opportunities />} />
           <Route path="saved-jobs" element={<SavedJobs />} />
           <Route path="applications" element={<Applications />} />

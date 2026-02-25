@@ -50,11 +50,11 @@ const getAuthHeaders = (token) => {
  * @param {string} token - Auth token
  * @returns {Promise<Object>} Order details from Razorpay
  */
-export async function createOrder({ amount, currency = 'INR', planId, planName, userEmail, userName }, token) {
+export async function createOrder({ amount, currency = 'INR', planId, planName, userEmail, userName, isUpgrade }, token) {
   const response = await fetch(`${getBaseUrl()}/create-order`, {
     method: 'POST',
     headers: getAuthHeaders(token),
-    body: JSON.stringify({ amount, currency, planId, planName, userEmail, userName }),
+    body: JSON.stringify({ amount, currency, planId, planName, userEmail, userName, isUpgrade }),
   });
 
   if (!response.ok) {

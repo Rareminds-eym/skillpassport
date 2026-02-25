@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import {
   AlertCircle,
   Award,
@@ -10,6 +11,7 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  Factory,
   FileText,
   Filter,
   Grid3x3,
@@ -33,6 +35,7 @@ import OpportunityCard from '../../components/Students/components/OpportunityCar
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
 import RecommendedJobs from '../../components/Students/components/RecommendedJobs';
+import IndustrialVisitPreview from '../../components/Students/components/IndustrialVisitPreview';
 import Pagination from '../../components/educator/Pagination';
 import { useAuth } from '../../context/AuthContext';
 import { useOpportunities } from '../../hooks/useOpportunities';
@@ -40,6 +43,7 @@ import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
+import factoryVisitsService from '../../services/factoryVisitsService';
 import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
 
 // Import Applications component content
@@ -59,8 +63,66 @@ const Opportunities = () => {
   // Check profile completion status
   const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(studentId, !!studentId);
 
-  // Left sidebar tab state
-  const [activeTab, setActiveTab] = useState('my-jobs'); // 'my-jobs' or 'my-applications'
+  // Left sidebar tab state - Set default based on student type
+  const getDefaultTab = () => {
+    if (!studentData) return 'my-jobs'; // Temporary default while loading
+    const gradeStr = String(studentData.grade || '').toUpperCase().trim();
+    
+    // Check for college/university grades (UG, PG, etc.) - default to my-jobs
+    if (gradeStr.includes('UG') || gradeStr.includes('PG') || 
+        gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
+        gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
+        gradeStr.includes('MASTER')) {
+      return 'my-jobs';
+    }
+    
+    // Check for Diploma explicitly - treat as high school
+    if (gradeStr.includes('DIPLOMA')) {
+      return 'industrial-visits';
+    }
+    
+    // Extract numeric part from strings like "GRADE 10", "10", "10TH", etc.
+    const match = gradeStr.match(/(\d+)/);
+    
+    if (match) {
+      const gradeNum = parseInt(match[1], 10);
+      
+      // Middle school (6-8): Default to industrial visits
+      if (gradeNum >= 6 && gradeNum <= 8) {
+        return 'industrial-visits';
+      }
+      
+      // High school (9-12): Default to industrial visits
+      if (gradeNum >= 9 && gradeNum <= 12) {
+        return 'industrial-visits';
+      }
+    }
+    
+    // College: Default to my-jobs
+    return 'my-jobs';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getDefaultTab()); // 'my-jobs', 'my-applications', 'industrial-visits', or 'history'
+
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
+
+  // Update active tab when student data loads
+  useEffect(() => {
+    // Don't override if we have a navigation state
+    if (location.state?.activeTab) return;
+    
+    if (studentData && studentData.grade) {
+      const correctTab = getDefaultTab();
+      if (activeTab !== correctTab) {
+        setActiveTab(correctTab);
+      }
+    }
+  }, [studentData, location.state]);
 
   // My Jobs state (existing opportunities logic)
   const [searchTerm, setSearchTerm] = useState('');
@@ -94,21 +156,83 @@ const Opportunities = () => {
   const [showPipelineStatus, setShowPipelineStatus] = useState({});
   const [messagingApplicationId, setMessagingApplicationId] = useState(null);
 
+  // Industrial Visits state
+  const [industrialVisits, setIndustrialVisits] = useState([]);
+  const [industrialVisitsLoading, setIndustrialVisitsLoading] = useState(false);
+  const [selectedIndustrialVisit, setSelectedIndustrialVisit] = useState(null);
+  const [ivSearchTerm, setIvSearchTerm] = useState('');
+  const [ivSectorFilter, setIvSectorFilter] = useState('all');
+  const [ivLocationFilter, setIvLocationFilter] = useState('all');
+  const [ivViewMode, setIvViewMode] = useState('grid');
+  const [ivCurrentPage, setIvCurrentPage] = useState(1);
+  const ivItemsPerPage = 10;
+  const [registeredVisits, setRegisteredVisits] = useState(new Set());
+  const [isRegistering, setIsRegistering] = useState(false);
+
   // Memoize student type to prevent unnecessary recalculations
   const studentType = React.useMemo(() => {
+    if (!studentData) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false };
+    
     const isSchool = isSchoolStudent(studentData);
     const isUniversity = isCollegeStudent(studentData);
-    return { isSchoolStudent: isSchool, isUniversityStudent: isUniversity };
+    
+    // Determine specific school level
+    let isMiddleSchool = false;
+    let isHighSchool = false;
+    
+    if (studentData.grade) {
+      const gradeStr = String(studentData.grade).toUpperCase().trim();
+      
+      // Check for college/university grades (UG, PG, etc.)
+      if (gradeStr.includes('UG') || gradeStr.includes('PG') || 
+          gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
+          gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
+          gradeStr.includes('MASTER')) {
+        // These are college students, not high school
+        isMiddleSchool = false;
+        isHighSchool = false;
+      }
+      // Check for Diploma explicitly - treat as high school
+      else if (gradeStr.includes('DIPLOMA')) {
+        isHighSchool = true;
+      } else {
+        // Extract numeric part from strings like "GRADE 10", "10", "10TH", etc.
+        const match = gradeStr.match(/(\d+)/);
+        
+        if (match) {
+          const gradeNum = parseInt(match[1], 10);
+          isMiddleSchool = gradeNum >= 6 && gradeNum <= 8;
+          isHighSchool = gradeNum >= 9 && gradeNum <= 12;
+        }
+      }
+    }
+    
+    return { 
+      isSchoolStudent: isSchool, 
+      isUniversityStudent: isUniversity,
+      isMiddleSchool,
+      isHighSchool
+    };
   }, [studentData]);
 
   // Build server-side filters (excluding skills which needs client-side filtering)
   const serverFilters = React.useMemo(() => {
     const filters = {};
 
-    // Employment type filter - for school students, force internship only
+    // Employment type filter based on student level
     // NOTE: Database stores employment_type with capital first letter (e.g., "Internship", "Full-time")
-    if (studentType.isSchoolStudent) {
+    if (studentType.isMiddleSchool) {
+      // Middle school: No regular opportunities, only industrial visits
+      filters.employmentType = []; // Will show no opportunities
+    } else if (studentType.isHighSchool) {
+      // High school (9-12): Only internships
       filters.employmentType = ['Internship'];
+    } else if (studentType.isUniversityStudent) {
+      // College: Both internships and full-time jobs
+      if (advancedFilters.employmentType.length > 0) {
+        filters.employmentType = advancedFilters.employmentType;
+      }
+      // No filter means show all (internships and jobs)
     } else if (advancedFilters.employmentType.length > 0) {
       filters.employmentType = advancedFilters.employmentType;
     }
@@ -133,11 +257,19 @@ const Opportunities = () => {
     }
 
     return filters;
-  }, [advancedFilters, studentType.isSchoolStudent]);
+  }, [advancedFilters, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent]);
 
   // Fetch opportunities with server-side pagination
   // IMPORTANT: Only fetch after studentData is loaded to ensure correct filters
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Determine if we should fetch opportunities based on student type and active tab
+  const shouldFetchOpportunities = React.useMemo(() => {
+    if (!studentData) return false;
+    // Fetch opportunities for high school and college students when on my-jobs tab
+    return (studentType.isHighSchool || studentType.isUniversityStudent) && activeTab === 'my-jobs';
+  }, [studentData, studentType.isHighSchool, studentType.isUniversityStudent, activeTab]);
+  
   const {
     opportunities,
     loading: dataLoading,
@@ -145,7 +277,7 @@ const Opportunities = () => {
     totalCount,
     totalPages
   } = useOpportunities({
-    fetchOnMount: !!studentData, // Only fetch when studentData is available
+    fetchOnMount: shouldFetchOpportunities,
     activeOnly: true,
     searchTerm: debouncedSearch,
     page: currentPage,
@@ -196,7 +328,7 @@ const Opportunities = () => {
     }
   }, [totalPages, currentPage, totalCount]);
 
-  // Pre-select opportunity from navigation state (from Dashboard)
+  // Pre-select opportunity from navigation state (from Dashboard) or auto-select first
   useEffect(() => {
     if (location.state?.selectedOpportunityId && opportunities.length > 0) {
       const preSelectedOpp = opportunities.find(
@@ -209,15 +341,31 @@ const Opportunities = () => {
       }
       // Clear the navigation state
       navigate(location.pathname, { replace: true, state: {} });
+    } else if (opportunities.length > 0 && !selectedOpportunity && activeTab === 'my-jobs') {
+      // Auto-select first opportunity if none selected
+      setSelectedOpportunity(opportunities[0]);
     }
-  }, [location.state, opportunities, navigate, location.pathname]);
+  }, [location.state, opportunities, navigate, location.pathname, selectedOpportunity, activeTab]);
 
   // Set loading to false when data is ready (removed artificial 5-second delay)
   useEffect(() => {
-    if (!dataLoading) {
+    // For middle school students, wait for industrial visits to load
+    if (studentType.isMiddleSchool) {
+      if (!industrialVisitsLoading) {
+        setIsLoading(false);
+      }
+    } 
+    // For high school and college, wait for opportunities to load
+    else if (studentType.isHighSchool || studentType.isUniversityStudent) {
+      if (!dataLoading) {
+        setIsLoading(false);
+      }
+    }
+    // Fallback: if studentData is loaded but no specific type detected
+    else if (studentData) {
       setIsLoading(false);
     }
-  }, [dataLoading]);
+  }, [dataLoading, industrialVisitsLoading, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, studentData]);
 
   useMessageNotifications({
     userId: studentId,
@@ -290,9 +438,9 @@ const Opportunities = () => {
     }
   }, [studentId, userEmail]);
 
-  // Fetch applications when tab changes to my-applications
+  // Fetch applications when tab changes to my-applications or history
   useEffect(() => {
-    if (activeTab === 'my-applications') {
+    if (activeTab === 'my-applications' || activeTab === 'history') {
       fetchApplicationsData();
     }
   }, [activeTab, fetchApplicationsData]);
@@ -310,6 +458,37 @@ const Opportunities = () => {
       StudentPipelineService.unsubscribeFromPipelineUpdates(channel);
     };
   }, [studentId, activeTab, fetchApplicationsData]);
+
+  // Fetch industrial visits when tab is industrial-visits or on initial load for middle/high school
+  useEffect(() => {
+    const fetchIndustrialVisits = async () => {
+      // Fetch if on industrial-visits tab OR if middle/high school student (since it's their default view)
+      if (activeTab === 'industrial-visits' || studentType.isMiddleSchool || studentType.isHighSchool) {
+        setIndustrialVisitsLoading(true);
+        try {
+          const data = await factoryVisitsService.getAllFactoryVisits();
+          setIndustrialVisits(data);
+          // Auto-select first visit if none selected
+          if (data && data.length > 0 && !selectedIndustrialVisit) {
+            setSelectedIndustrialVisit(data[0]);
+          }
+          
+          // Fetch registered visits
+          if (studentId) {
+            const registrations = await factoryVisitsService.getStudentRegistrations(studentId);
+            const registeredIds = new Set(registrations.map(r => r.opportunity_id));
+            setRegisteredVisits(registeredIds);
+          }
+        } catch (error) {
+          console.error('Error fetching industrial visits:', error);
+        } finally {
+          setIndustrialVisitsLoading(false);
+        }
+      }
+    };
+
+    fetchIndustrialVisits();
+  }, [activeTab, studentType.isMiddleSchool, studentType.isHighSchool, studentId]);
 
   const formatLastUpdate = (dateString) => {
     if (!dateString) return 'Recently';
@@ -340,9 +519,6 @@ const Opportunities = () => {
 
     setFilteredApplications(filtered);
   }, [searchQuery, statusFilter, applications]);
-
-  // Memoize student type to prevent unnecessary recalculations - MOVED UP
-  // const studentType is now defined earlier in the component
 
   // Filter and sort opportunities for My Jobs tab with advanced filters
   // NOTE: Most filtering is now done server-side. Only skills filtering remains client-side.
@@ -423,6 +599,39 @@ const Opportunities = () => {
     }
   };
 
+  const handleRegisterForVisit = async (visit) => {
+    if (!studentId) {
+      toast.error('Please log in to register for visits');
+      return;
+    }
+
+    setIsRegistering(true);
+
+    try {
+      const result = await factoryVisitsService.registerForVisit(studentId, visit.id);
+
+      if (result.success) {
+        toast.success(result.message);
+        setRegisteredVisits(prev => new Set([...prev, visit.id]));
+        // Refresh applications to show in history
+        if (activeTab === 'history') {
+          fetchApplicationsData();
+        }
+      } else {
+        toast.error(result.message);
+        // Only navigate to settings if profile is incomplete (not if already registered)
+        if (result.message.includes('complete your profile')) {
+          setTimeout(() => navigate('/student/settings'), 1500);
+        }
+      }
+    } catch (error) {
+      console.error('Error registering for visit:', error);
+      toast.error('An error occurred while registering');
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
@@ -458,63 +667,120 @@ const Opportunities = () => {
           </div>
         )}
 
-        {/* Tab Switcher */}
+        {/* Tab Switcher - Show different tabs based on student level */}
         {!isLoading && (
           <div className="mb-8">
-            {/* Tab Navigation with Subheadings */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {/* My Jobs Tab */}
+              <div className={`grid ${
+                studentType.isMiddleSchool 
+                  ? 'grid-cols-2' 
+                  : studentType.isHighSchool 
+                    ? 'grid-cols-3' 
+                    : 'grid-cols-3'
+              } gap-2`}>
+                {/* Industrial Visits Tab - Show for all students */}
                 <button
-                  onClick={() => setActiveTab('my-jobs')}
-                  className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-jobs'
+                  onClick={() => setActiveTab('industrial-visits')}
+                  className={`relative text-left p-4 rounded-lg transition-all ${
+                    activeTab === 'industrial-visits'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                      : 'bg-white hover:bg-gray-50'
-                    }`}
+                      : 'hover:bg-gray-50'
+                  }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-100'
-                      }`}>
-                      <Briefcase className={`w-6 h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'
-                        }`} />
+                    <div className={`p-2 rounded-lg ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                      <Factory className={`w-6 h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
                     </div>
                     <div className="flex-1">
-                      <h1 className={`font-bold text-2xl ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-900'
-                        }`}>
-                        My Jobs
+                      <h1 className={`font-bold text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                        Industrial Visits
                       </h1>
                       <p className="text-sm text-gray-600 mt-1">
-                        Discover and apply to exciting career opportunities
+                        Explore factory visits and learning opportunities
                       </p>
                     </div>
                   </div>
                 </button>
 
-                {/* My Applications Tab */}
-                <button
-                  onClick={() => setActiveTab('my-applications')}
-                  className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-applications'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                      : 'bg-white hover:bg-gray-50'
+                {/* History Tab - Show for middle school only */}
+                {studentType.isMiddleSchool && (
+                  <button
+                    onClick={() => setActiveTab('history')}
+                    className={`relative text-left p-4 rounded-lg transition-all ${
+                      activeTab === 'history'
+                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                        : 'hover:bg-gray-50'
                     }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-100'
-                      }`}>
-                      <FileText className={`w-6 h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'
-                        }`} />
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${activeTab === 'history' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Clock className={`w-6 h-6 ${activeTab === 'history' ? 'text-white' : 'text-gray-600'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <h1 className={`font-bold text-lg ${activeTab === 'history' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          History
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                          View your past activities and visits
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h1 className={`font-bold text-lg ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-900'
-                        }`}>
-                        My Applications
-                      </h1>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Track your application status and progress
-                      </p>
+                  </button>
+                )}
+
+                {/* My Jobs Tab - Show for high school and college */}
+                {(studentType.isHighSchool || studentType.isUniversityStudent) && (
+                  <button
+                    onClick={() => setActiveTab('my-jobs')}
+                    className={`relative text-left p-4 rounded-lg transition-all ${
+                      activeTab === 'my-jobs'
+                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Briefcase className={`w-6 h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <h1 className={`font-bold text-lg ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          My Jobs
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {studentType.isUniversityStudent 
+                            ? 'Browse internships and full-time opportunities' 
+                            : 'Explore internship opportunities'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </button>
+                  </button>
+                )}
+
+                {/* My Applications Tab - Show for high school and college */}
+                {(studentType.isHighSchool || studentType.isUniversityStudent) && (
+                  <button
+                    onClick={() => setActiveTab('my-applications')}
+                    className={`relative text-left p-4 rounded-lg transition-all ${
+                      activeTab === 'my-applications'
+                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <FileText className={`w-6 h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <h1 className={`font-bold text-lg ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          My Applications
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Track your application status and progress
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -523,53 +789,55 @@ const Opportunities = () => {
         {/* Main Content Area */}
         {!isLoading && (
           <div>
-            {activeTab === 'my-jobs' && (
-              <>
-                {/* AI Recommended Jobs */}
-                <RecommendedJobs
-                  studentProfile={{ ...studentData, id: studentId, profile: studentData }}
-                  onSelectJob={setSelectedOpportunity}
-                  appliedJobs={appliedJobs}
-                  savedJobs={savedJobs}
-                  onToggleSave={handleToggleSave}
-                  onApply={handleApply}
-                />
-
-                <MyJobsContent
-                  searchTerm={searchTerm}
-                  setSearchTerm={setSearchTerm}
-                  debouncedSearch={debouncedSearch}
-                  setDebouncedSearch={setDebouncedSearch}
-                  sortBy={sortBy}
-                  setSortBy={setSortBy}
-                  viewMode={viewMode}
-                  setViewMode={setViewMode}
-                  opportunities={filteredAndSortedOpportunities}
-                  error={error}
-                  selectedOpportunity={selectedOpportunity}
-                  setSelectedOpportunity={setSelectedOpportunity}
-                  appliedJobs={appliedJobs}
-                  savedJobs={savedJobs}
-                  handleToggleSave={handleToggleSave}
-                  handleApply={handleApply}
-                  isApplying={isApplying}
-                  advancedFilters={advancedFilters}
-                  setAdvancedFilters={setAdvancedFilters}
-                  currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
-                  opportunitiesPerPage={opportunitiesPerPage}
-                  studentData={studentData}
-                  totalCount={totalCount}
-                  totalPages={totalPages}
-                  isServerPaginated={true}
-                  canApplyToJobs={canApplyToJobs}
-                  needsProfileCompletion={needsProfileCompletion}
-                  navigate={navigate}
-                />
-              </>
+            {/* AI Recommended Jobs - Show for high school and college students only */}
+            {(studentType.isHighSchool || studentType.isUniversityStudent) && activeTab === 'my-jobs' && (
+              <RecommendedJobs
+                studentProfile={{ ...studentData, id: studentId, profile: studentData }}
+                onSelectJob={setSelectedOpportunity}
+                appliedJobs={appliedJobs}
+                savedJobs={savedJobs}
+                onToggleSave={handleToggleSave}
+                onApply={handleApply}
+              />
             )}
 
-            {activeTab === 'my-applications' && (
+            {/* My Jobs Tab - Show for high school and college */}
+            {activeTab === 'my-jobs' && (studentType.isHighSchool || studentType.isUniversityStudent) && (
+              <MyJobsContent
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                debouncedSearch={debouncedSearch}
+                setDebouncedSearch={setDebouncedSearch}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+                viewMode={viewMode}
+                setViewMode={setViewMode}
+                opportunities={filteredAndSortedOpportunities}
+                error={error}
+                selectedOpportunity={selectedOpportunity}
+                setSelectedOpportunity={setSelectedOpportunity}
+                appliedJobs={appliedJobs}
+                savedJobs={savedJobs}
+                handleToggleSave={handleToggleSave}
+                handleApply={handleApply}
+                isApplying={isApplying}
+                advancedFilters={advancedFilters}
+                setAdvancedFilters={setAdvancedFilters}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                opportunitiesPerPage={opportunitiesPerPage}
+                totalCount={totalCount}
+                totalPages={totalPages}
+                isServerPaginated={true}
+                canApplyToJobs={canApplyToJobs}
+                needsProfileCompletion={needsProfileCompletion}
+                navigate={navigate}
+                studentData={studentData}
+              />
+            )}
+
+            {/* My Applications Tab - Show for high school and college */}
+            {activeTab === 'my-applications' && (studentType.isHighSchool || studentType.isUniversityStudent) && (
               <MyApplicationsContent
                 applications={filteredApplications}
                 searchQuery={searchQuery}
@@ -588,6 +856,376 @@ const Opportunities = () => {
                 setSelectedOpportunity={setSelectedOpportunity}
               />
             )}
+
+            {/* History Tab - Show for middle school only */}
+            {activeTab === 'history' && studentType.isMiddleSchool && (
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-indigo-100 rounded-lg">
+                      <Clock className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900">My Industrial Visit History</h2>
+                  </div>
+                  <p className="text-gray-600 ml-14">Track your registered industrial visits</p>
+                </div>
+
+                {/* Registrations List */}
+                {(() => {
+                  // Filter applications to only show factory visits
+                  const visitRegistrations = applications.filter(app => 
+                    app.type === 'factory_visit'
+                  );
+
+                  if (visitRegistrations.length === 0) {
+                    return (
+                      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                        <Factory className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                        <h3 className="text-xl font-semibold text-gray-600 mb-2">No Visit History Yet</h3>
+                        <p className="text-gray-500 text-sm mb-4">You haven't registered for any industrial visits yet</p>
+                        <button
+                          onClick={() => setActiveTab('industrial-visits')}
+                          className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                        >
+                          Explore Industrial Visits
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {visitRegistrations.map((app) => {
+                        const statusConfig = {
+                          applied: { label: 'Registered', color: 'text-blue-700', bg: 'bg-blue-50', icon: Clock },
+                          accepted: { label: 'Confirmed', color: 'text-green-700', bg: 'bg-green-50', icon: CheckCircle2 },
+                          rejected: { label: 'Not Selected', color: 'text-gray-600', bg: 'bg-gray-50', icon: XCircle },
+                        }[app.status] || { label: 'Registered', color: 'text-blue-700', bg: 'bg-blue-50', icon: Clock };
+                        
+                        const StatusIcon = statusConfig.icon;
+
+                        return (
+                          <div
+                            key={app.id}
+                            className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all border border-gray-200 p-6"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-start gap-4">
+                                  <div className="p-3 bg-indigo-50 rounded-lg">
+                                    <Factory className="w-6 h-6 text-indigo-600" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                                      {app.company}
+                                    </h3>
+                                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-3">
+                                      <div className="flex items-center gap-1.5">
+                                        <MapPin className="w-4 h-4" />
+                                        <span>{app.location}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <Calendar className="w-4 h-4" />
+                                        <span>Registered {new Date(app.appliedDate).toLocaleDateString()}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <Clock className="w-4 h-4" />
+                                        <span>Updated {app.lastUpdate}</span>
+                                      </div>
+                                    </div>
+                                    {app.jobTitle && app.jobTitle !== 'N/A' && (
+                                      <p className="text-sm text-gray-600 mb-2">{app.jobTitle}</p>
+                                    )}
+                                    {app.level && app.level !== 'N/A' && (
+                                      <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
+                                        {app.level}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${statusConfig.bg} border border-gray-200`}>
+                                <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
+                                <span className={`text-sm font-semibold ${statusConfig.color}`}>
+                                  {statusConfig.label}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Industrial Visits Tab - Show for all students */}
+            {activeTab === 'industrial-visits' && (() => {
+              // Filter logic
+              const filteredVisits = industrialVisits.filter(visit => {
+                const matchesSearch = ivSearchTerm === '' || 
+                  visit.company_name.toLowerCase().includes(ivSearchTerm.toLowerCase()) ||
+                  visit.location.toLowerCase().includes(ivSearchTerm.toLowerCase()) ||
+                  visit.sector.toLowerCase().includes(ivSearchTerm.toLowerCase());
+                const matchesSector = ivSectorFilter === 'all' || visit.sector === ivSectorFilter;
+                const matchesLocation = ivLocationFilter === 'all' || visit.location.includes(ivLocationFilter);
+                return matchesSearch && matchesSector && matchesLocation;
+              });
+
+              // Pagination logic
+              const totalPages = Math.ceil(filteredVisits.length / ivItemsPerPage);
+              const startIndex = (ivCurrentPage - 1) * ivItemsPerPage;
+              const endIndex = startIndex + ivItemsPerPage;
+              const paginatedVisits = filteredVisits.slice(startIndex, endIndex);
+
+              return (
+                <div className="space-y-6">
+                  {/* Search and Filters - Matching Opportunities Style */}
+                  <div className="space-y-4">
+                    {/* Search Bar and Controls */}
+                    <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
+                      {/* Search Bar */}
+                      <div className="relative flex-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Search company, location, or industry..."
+                          value={ivSearchTerm}
+                          onChange={(e) => {
+                            setIvSearchTerm(e.target.value);
+                            setIvCurrentPage(1);
+                          }}
+                          className="w-full h-12 pl-12 pr-12 bg-white border border-slate-200/60 rounded-2xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm"
+                        />
+                        {ivSearchTerm && (
+                          <button
+                            onClick={() => {
+                              setIvSearchTerm('');
+                              setIvCurrentPage(1);
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Control Buttons */}
+                      <div className="flex flex-col sm:flex-row lg:flex-row items-stretch sm:items-center gap-3 lg:flex-shrink-0">
+                        {/* Sector Filter */}
+                        <select
+                          value={ivSectorFilter}
+                          onChange={(e) => {
+                            setIvSectorFilter(e.target.value);
+                            setIvCurrentPage(1);
+                          }}
+                          className="flex-1 sm:flex-none lg:w-auto px-4 h-12 bg-white border border-slate-200/60 rounded-2xl text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm min-w-0 sm:min-w-[160px]"
+                        >
+                          <option value="all">All Industries</option>
+                          {[...new Set(industrialVisits.map(v => v.sector))].sort().map(sector => (
+                            <option key={sector} value={sector}>{sector}</option>
+                          ))}
+                        </select>
+
+                        {/* Location Filter */}
+                        <select
+                          value={ivLocationFilter}
+                          onChange={(e) => {
+                            setIvLocationFilter(e.target.value);
+                            setIvCurrentPage(1);
+                          }}
+                          className="flex-1 sm:flex-none lg:w-auto px-4 h-12 bg-white border border-slate-200/60 rounded-2xl text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 shadow-sm min-w-0 sm:min-w-[160px]"
+                        >
+                          <option value="all">All Locations</option>
+                          {[...new Set(industrialVisits.map(v => v.location.split(',')[0].trim()))].sort().map(location => (
+                            <option key={location} value={location}>{location}</option>
+                          ))}
+                        </select>
+
+                        {/* View Mode Toggle */}
+                        <div className="flex items-center bg-white border border-slate-200/60 rounded-2xl p-1 shadow-sm h-12">
+                          <button
+                            onClick={() => setIvViewMode('grid')}
+                            className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
+                              ivViewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                          >
+                            <Grid3x3 className="w-4 h-4 mx-auto" />
+                          </button>
+                          <button
+                            onClick={() => setIvViewMode('list')}
+                            className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
+                              ivViewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                            }`}
+                          >
+                            <List className="w-4 h-4 mx-auto" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Results Count and Clear Filters */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <p className="text-xs md:text-sm text-gray-600">
+                        Showing {startIndex + 1}-{Math.min(endIndex, filteredVisits.length)} of {filteredVisits.length} visits
+                        {filteredVisits.length !== industrialVisits.length && (
+                          <span className="hidden sm:inline"> (filtered from {industrialVisits.length} total)</span>
+                        )}
+                      </p>
+                      {(ivSearchTerm || ivSectorFilter !== 'all' || ivLocationFilter !== 'all') && (
+                        <button
+                          onClick={() => {
+                            setIvSearchTerm('');
+                            setIvSectorFilter('all');
+                            setIvLocationFilter('all');
+                            setIvCurrentPage(1);
+                          }}
+                          className="text-xs md:text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 self-start sm:self-auto"
+                        >
+                          <X className="w-3 h-3 md:w-4 md:h-4" />
+                          Clear filters
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Industrial Visits Grid with Preview Panel */}
+                  {industrialVisitsLoading ? (
+                    <div className="flex justify-center items-center py-20">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    </div>
+                  ) : filteredVisits.length === 0 ? (
+                    <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+                      <Factory className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-600 mb-2">No industrial visits found</h3>
+                      <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Left: Cards Grid (2 columns, 6 cards) */}
+                      <div className="lg:col-span-2">
+                        {ivViewMode === 'grid' ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {paginatedVisits.map((visit) => (
+                              <div
+                                key={visit.id}
+                                className={`bg-white border rounded-2xl p-5 hover:shadow-lg transition-all cursor-pointer ${
+                                  selectedIndustrialVisit?.id === visit.id
+                                    ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
+                                    : 'border-gray-200 hover:border-blue-300'
+                                }`}
+                                onClick={() => setSelectedIndustrialVisit(visit)}
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="p-2 bg-blue-50 rounded-lg">
+                                    <Factory className="w-6 h-6 text-blue-600" />
+                                  </div>
+                                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                                    Visit
+                                  </span>
+                                </div>
+                                
+                                <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
+                                  {visit.company_name}
+                                </h3>
+                                
+                                <div className="space-y-2 text-sm text-gray-600 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Building2 className="w-4 h-4 flex-shrink-0" />
+                                    <span className="line-clamp-1">{visit.sector}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="w-4 h-4 flex-shrink-0" />
+                                    <span className="line-clamp-1">{visit.location}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {paginatedVisits.map((visit) => (
+                              <div
+                                key={visit.id}
+                                className={`bg-white border rounded-2xl p-5 hover:shadow-md transition-all cursor-pointer ${
+                                  selectedIndustrialVisit?.id === visit.id
+                                    ? 'border-blue-500 shadow-md ring-2 ring-blue-200'
+                                    : 'border-gray-200 hover:border-blue-300'
+                                }`}
+                                onClick={() => setSelectedIndustrialVisit(visit)}
+                              >
+                                <div className="flex items-start gap-4">
+                                  <div className="p-3 bg-blue-50 rounded-lg flex-shrink-0">
+                                    <Factory className="w-6 h-6 text-blue-600" />
+                                  </div>
+                                  
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-4 mb-2">
+                                      <h3 className="font-bold text-lg text-gray-900">
+                                        {visit.company_name}
+                                      </h3>
+                                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium flex-shrink-0">
+                                        Visit
+                                      </span>
+                                    </div>
+                                    
+                                    <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
+                                      <div className="flex items-center gap-2">
+                                        <Building2 className="w-4 h-4 flex-shrink-0" />
+                                        <span>{visit.sector}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <MapPin className="w-4 h-4 flex-shrink-0" />
+                                        <span>{visit.location}</span>
+                                      </div>
+                                    </div>
+                                    
+                                    {visit.description && (
+                                      <p className="text-sm text-gray-600 line-clamp-2">
+                                        {visit.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Fixed Preview Panel */}
+                      <div className="hidden lg:block lg:sticky lg:top-16 lg:self-start">
+                        <IndustrialVisitPreview
+                          visit={selectedIndustrialVisit}
+                          onRegister={handleRegisterForVisit}
+                          isRegistered={selectedIndustrialVisit && registeredVisits.has(selectedIndustrialVisit.id)}
+                          isRegistering={isRegistering}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {filteredVisits.length > ivItemsPerPage && (
+                    <div className="bg-white rounded-xl md:rounded-2xl border border-gray-200 shadow-sm">
+                      <Pagination
+                        currentPage={ivCurrentPage}
+                        totalPages={totalPages}
+                        totalItems={filteredVisits.length}
+                        itemsPerPage={ivItemsPerPage}
+                        onPageChange={(page) => {
+                          const validPage = Math.max(1, Math.min(page, totalPages));
+                          setIvCurrentPage(validPage);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -749,7 +1387,7 @@ const MyJobsContent = ({
                       <span className="text-xs text-blue-600 font-medium">★ Saved</span>
                     ) : (
                       <span className="text-xs text-indigo-600 font-medium group-hover:underline">
-                        View Details →
+                        View Details
                       </span>
                     )}
                   </div>

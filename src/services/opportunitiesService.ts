@@ -59,6 +59,7 @@ export interface OpportunityFilters {
   mode?: string;
   department?: string;
   is_active?: boolean;
+  includeFactoryVisits?: boolean;
 }
 
 class OpportunitiesService {
@@ -66,8 +67,14 @@ class OpportunitiesService {
     try {
       let query = supabase
         .from('opportunities')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
+      
+      // Only exclude factory visits if not explicitly included
+      if (!filters?.includeFactoryVisits) {
+        query = query.neq('employment_type', 'factory_visit');
+      }
+      
+      query = query.order('created_at', { ascending: false });
 
       // Apply filters
       if (filters?.search) {
@@ -291,6 +298,7 @@ class OpportunitiesService {
       const { data, error } = await supabase
         .from('opportunities')
         .select('*')
+        .neq('employment_type', 'factory_visit') // Exclude factory visits from search results
         .or(`title.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
         .order('created_at', { ascending: false });
 
@@ -336,6 +344,9 @@ class OpportunitiesService {
       // Build base query for BOTH count and data
       const buildQuery = (selectFields: string = '*', includeRange: boolean = false) => {
         let query = supabase.from('opportunities').select(selectFields, { count: 'exact', head: false });
+
+        // Exclude factory visits from regular opportunities
+        query = query.neq('employment_type', 'factory_visit');
 
         // Apply active filter FIRST
         if (activeOnly) {
@@ -395,6 +406,9 @@ class OpportunitiesService {
       // WORKAROUND: Supabase count is unreliable with RLS, so we fetch ALL filtered IDs to get accurate count
       // This is a lightweight query since we only fetch the 'id' field
       let countQuery = supabase.from('opportunities').select('id', { count: 'exact', head: false });
+      
+      // Exclude factory visits from count
+      countQuery = countQuery.neq('employment_type', 'factory_visit');
       
       // Apply ALL the same filters as the data query
       if (activeOnly) {

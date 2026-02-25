@@ -6,6 +6,158 @@
 import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
 
 /**
+ * Calculate RIASEC scores from raw assessment answers
+ * This ensures deterministic scoring before sending to AI
+ */
+function calculateRIASECScores(riasecAnswers: any): Record<string, number> {
+  const scores: Record<string, number> = {
+    R: 0, I: 0, A: 0, S: 0, E: 0, C: 0
+  };
+
+  console.log('[RIASEC-CALC] Starting calculation...');
+  console.log('[RIASEC-CALC] Input type:', typeof riasecAnswers);
+  console.log('[RIASEC-CALC] Is array?', Array.isArray(riasecAnswers));
+  console.log('[RIASEC-CALC] Raw input:', JSON.stringify(riasecAnswers).substring(0, 500));
+
+  // Hardcoded category mappings for middle school questions (ms1-ms5)
+  // These match the actual questions in src/features/assessment/data/questions/middleSchoolQuestions.ts
+  const middleSchoolMappings: Record<string, Record<string, string>> = {
+    'ms1': {
+      'Building/making something with your hands': 'R',
+      'Drawing/painting/designing': 'A',
+      'Solving puzzles or brain games': 'I',
+      'Helping someone learn or feel better': 'S',
+      'Organizing a class event or selling something': 'E',
+      'Being outdoors / with animals / nature': 'R'
+    },
+    'ms2': {
+      'Science experiments': 'I',
+      'Math games / logic puzzles': 'I',
+      'Writing stories / poems': 'A',
+      'Art / craft / design': 'A',
+      'Sports / dance / drama': 'R',
+      'Group discussions / debates': 'S',
+      'Coding / robotics / tinkering': 'I',
+      'Community / volunteering': 'S',
+      'Business fairs / buying-selling projects': 'E',
+      'Gardening / environment clubs': 'R'
+    },
+    'ms3': {
+      'How things work / inventions': 'I',
+      'Art / music / creativity': 'A',
+      'Mysteries / problem-solving': 'I',
+      'People stories / emotions / friendships': 'S',
+      'Money/business / "how to grow" ideas': 'E',
+      'Nature / space / animals / earth': 'R'
+    },
+    'ms4': {
+      'Make a model / build something': 'R',
+      'Make it look beautiful / creative': 'A',
+      'Find facts and explain clearly': 'I',
+      'Work with friends and share roles': 'S',
+      'Plan it, lead it, present it': 'E',
+      'Connect it to real life / society / environment': 'S'
+    },
+    'ms5': {
+      'Writing long answers': 'A',
+      'Doing calculations': 'I',
+      'Speaking in front of people': 'E',
+      'Working in groups': 'S',
+      'Doing neat/design work': 'A',
+      'Doing hands-on/building tasks': 'R'
+    }
+  };
+
+  // Handle if riasecAnswers is an object instead of array
+  // If it's an object, convert to array while preserving the keys as questionId
+  const answersArray = Array.isArray(riasecAnswers) 
+    ? riasecAnswers 
+    : Object.entries(riasecAnswers || {}).map(([key, value]) => ({
+        ...value,
+        questionId: value.questionId || key // Use existing questionId or the object key
+      }));
+
+  console.log('[RIASEC-CALC] Answers array length:', answersArray.length);
+  console.log('[RIASEC-CALC] Sample answer:', JSON.stringify(answersArray[0]).substring(0, 200));
+
+  answersArray.forEach((answer, index) => {
+    if (!answer) {
+      console.log(`[RIASEC-CALC] Question ${index}: Skipped (null/undefined)`);
+      return;
+    }
+    
+    // Extract question ID if available (e.g., "ms1", "ms2")
+    const questionId = answer.questionId || answer.id || `q${index}`;
+    const categoryMapping = answer.categoryMapping || middleSchoolMappings[questionId];
+    const response = answer.answer;
+    
+    // ms5 is INVERSE - asking what they AVOID (subtract points instead of add)
+    const isInverseQuestion = questionId === 'ms5';
+
+    console.log(`[RIASEC-CALC] Question ${questionId}:`, {
+      hasMapping: !!categoryMapping,
+      responseType: typeof response,
+      response: Array.isArray(response) ? response.length + ' items' : response,
+      isInverse: isInverseQuestion
+    });
+
+    if (!categoryMapping) {
+      console.log(`[RIASEC-CALC] Question ${questionId}: No categoryMapping found`);
+      return;
+    }
+
+    // Handle array responses (multiselect)
+    if (Array.isArray(response)) {
+      console.log(`[RIASEC-CALC] Question ${questionId}: Array response with ${response.length} items`);
+      response.forEach(selected => {
+        const riasecType = categoryMapping[selected];
+        if (riasecType && scores[riasecType] !== undefined) {
+          if (isInverseQuestion) {
+            // For ms5 (what they avoid), subtract points
+            scores[riasecType] = Math.max(0, scores[riasecType] - 2);
+            console.log(`[RIASEC-CALC] Subtracted 2 points from ${riasecType} (they avoid "${selected}")`);
+          } else {
+            scores[riasecType] += 2;
+            console.log(`[RIASEC-CALC] Added 2 points to ${riasecType} (from "${selected}")`);
+          }
+        } else {
+          console.log(`[RIASEC-CALC] No mapping found for "${selected}"`);
+        }
+      });
+    }
+    // Handle single string responses
+    else if (typeof response === 'string') {
+      const riasecType = categoryMapping[response];
+      console.log(`[RIASEC-CALC] Question ${questionId}: String response "${response}" -> ${riasecType}`);
+      if (riasecType && scores[riasecType] !== undefined) {
+        if (isInverseQuestion) {
+          scores[riasecType] = Math.max(0, scores[riasecType] - 2);
+          console.log(`[RIASEC-CALC] Subtracted 2 points from ${riasecType}`);
+        } else {
+          scores[riasecType] += 2;
+          console.log(`[RIASEC-CALC] Added 2 points to ${riasecType}`);
+        }
+      }
+    }
+    // Handle rating responses (1-4)
+    else if (typeof response === 'number') {
+      const strengthType = answer.strengthType || answer.context;
+      console.log(`[RIASEC-CALC] Question ${questionId}: Number response ${response}, strengthType: ${strengthType}`);
+      if (strengthType && scores[strengthType] !== undefined) {
+        if (response >= 3) {
+          const points = response === 4 ? 2 : 1;
+          scores[strengthType] += points;
+          console.log(`[RIASEC-CALC] Added ${points} points to ${strengthType}`);
+        }
+      }
+    }
+  });
+
+  console.log('[RIASEC-CALC] Final scores:', scores);
+  return scores;
+}
+
+/**
  * Pre-process adaptive aptitude results into actionable insights
  * ⚠️ NO FUNCTIONAL CHANGES — identical to original
  */
