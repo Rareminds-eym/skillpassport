@@ -109,7 +109,17 @@ export function useAddOnCatalog(options = {}) {
         .map(ent => ent.feature_key)
     );
 
-    return addOnsData.map(addOn => ({
+    // Deduplicate by feature_key - keep the first occurrence
+    const seen = new Set();
+    const deduped = addOnsData.filter(addOn => {
+      if (seen.has(addOn.feature_key)) {
+        return false;
+      }
+      seen.add(addOn.feature_key);
+      return true;
+    });
+
+    return deduped.map(addOn => ({
       ...addOn,
       isOwned: ownedFeatureKeys.has(addOn.feature_key),
       ownershipStatus: ownedFeatureKeys.has(addOn.feature_key) ? 'owned' : 'available'

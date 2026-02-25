@@ -76,10 +76,11 @@ export function useSubscriptionPlansData(options = {}) {
         // Fetch ALL features — no artificial limit
       });
 
+      const url = `${PAYMENTS_API_URL}/subscription-plans?${params}`;
+      console.log('[useSubscriptionPlansData] Fetching from:', url);
+
       try {
-        const response = await fetch(
-          `${PAYMENTS_API_URL}/subscription-plans?${params}`
-        );
+        const response = await fetch(url);
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
@@ -89,6 +90,7 @@ export function useSubscriptionPlansData(options = {}) {
         }
 
         const data = await response.json();
+        console.log('[useSubscriptionPlansData] API Response:', data);
 
         if (!data.success) {
           throw new Error(data.error || 'API returned unsuccessful response');

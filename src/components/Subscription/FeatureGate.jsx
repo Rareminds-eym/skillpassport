@@ -82,7 +82,7 @@ function BackButton() {
   return (
     <button
       onClick={() => navigate(-1)}
-      className="inline-flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors text-sm font-medium"
+      className="inline-flex items-center gap-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-2xl transition-colors text-sm font-semibold"
     >
       <ArrowLeft className="w-4 h-4" />
       Back
@@ -139,7 +139,7 @@ function LockedCard({ featureKey, addOn, upgradePrice, showUpgradePrompt, onUpgr
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-2xl border-2 border-slate-200 overflow-hidden">
         {/* Header with gradient accent */}
         <div className="relative px-8 pt-8 pb-6">
           {/* Pro badge */}
@@ -384,9 +384,9 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
         {/* Content */}
         <div className="p-6 -mt-4">
           {monthly === 0 && annual === 0 ? (
-            <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
-              <div className="w-10 h-10 border-2 border-gray-200 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-gray-500">Loading pricing...</p>
+            <div className="text-center py-12 bg-white rounded-3xl shadow-lg border-2 border-slate-200">
+              <div className="w-10 h-10 border-2 border-slate-200 border-t-amber-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-slate-500 font-medium">Loading pricing...</p>
             </div>
           ) : (
             <>
@@ -394,9 +394,9 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
               <div className="bg-gray-100 p-1 rounded-xl flex mb-5">
                 <button
                   onClick={() => setBilling('monthly')}
-                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex-1 py-2.5 px-4 rounded-2xl text-sm font-semibold transition-all ${
                     billing === 'monthly' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
+                      ? 'bg-white text-slate-900 shadow-lg' 
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -404,9 +404,9 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
                 </button>
                 <button
                   onClick={() => setBilling('annual')}
-                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all relative ${
+                  className={`flex-1 py-2.5 px-4 rounded-2xl text-sm font-semibold transition-all relative ${
                     billing === 'annual' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
+                      ? 'bg-white text-slate-900 shadow-lg' 
                       : 'text-gray-500 hover:text-gray-700'
                   }`}
                 >
@@ -420,7 +420,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
               </div>
 
               {/* Pricing Card */}
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 rounded-2xl p-5 mb-5 border border-gray-100">
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-3xl p-5 mb-5 border-2 border-slate-200">
                 <div className="flex items-baseline justify-between mb-1">
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-bold text-gray-900">₹{price}</span>
@@ -456,7 +456,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
               </div>
 
               {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-2">
+                <div className="mb-4 p-3 bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-2xl text-red-700 text-sm flex items-center gap-2 font-medium">
                   <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                     <X className="w-3 h-3 text-red-500" />
                   </div>
