@@ -160,7 +160,7 @@ export function BundleCard({
         {/* Included Features Toggle */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full flex items-center justify-between py-4 px-5 bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl hover:from-slate-100 hover:to-slate-200 transition-all mb-5 border border-slate-200"
+          className="w-full flex items-center justify-between py-4 px-5 bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl hover:from-slate-100 hover:to-slate-200 transition-all mb-5 border-2 border-slate-200"
         >
           <span className="text-sm font-semibold text-slate-700 uppercase tracking-wider">
             {totalFeatures} features included
@@ -181,7 +181,7 @@ export function BundleCard({
                 key={featureKey}
                 className="flex items-center gap-3 text-sm text-slate-700"
               >
-                <div className="w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <div className="w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center flex-shrink-0 shadow-lg">
                   <Check className="w-3 h-3 text-white" strokeWidth={3} />
                 </div>
                 <span className="capitalize font-medium">
@@ -252,7 +252,7 @@ export function BundleCardCompact({
 
   return (
     <div className={`
-      p-5 bg-white rounded-2xl border-2 shadow-sm hover:shadow-lg transition-all
+      p-5 bg-white rounded-2xl border-2 shadow-lg hover:shadow-xl transition-all
       ${isOwned ? 'border-emerald-500 bg-emerald-50/30' : 'border-purple-300 hover:border-purple-400'}
       ${className}
     `}>

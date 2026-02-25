@@ -199,7 +199,7 @@ export function AddOnCardCompact({
 
   return (
     <div className={`
-      flex items-center justify-between p-5 bg-white rounded-2xl border-2 shadow-sm hover:shadow-lg transition-all
+      flex items-center justify-between p-5 bg-white rounded-2xl border-2 shadow-lg hover:shadow-xl transition-all
       ${isOwned ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-slate-300'}
       ${className}
     `}>

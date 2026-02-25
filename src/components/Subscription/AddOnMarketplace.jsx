@@ -332,7 +332,7 @@ export function AddOnMarketplace({
               placeholder="Search add-ons..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3.5 border-2 border-slate-200 rounded-2xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-sm"
+              className="w-full pl-12 pr-4 py-3.5 border-2 border-slate-200 rounded-2xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 transition-all shadow-lg"
             />
             {searchTerm && (
               <button
@@ -348,7 +348,7 @@ export function AddOnMarketplace({
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-5 py-3.5 border-2 rounded-2xl flex items-center gap-2 font-semibold transition-all shadow-sm ${
+              className={`px-5 py-3.5 border-2 rounded-2xl flex items-center gap-2 font-semibold transition-all shadow-lg ${
                 showFilters || selectedCategory
                   ? 'border-slate-900 bg-slate-900 text-white'
                   : 'border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -363,7 +363,7 @@ export function AddOnMarketplace({
               )}
             </button>
 
-            <div className="flex border-2 border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+            <div className="flex border-2 border-slate-200 rounded-2xl overflow-hidden shadow-lg">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-3 transition-colors ${viewMode === 'grid' ? 'bg-slate-100' : 'hover:bg-slate-50'}`}
@@ -386,7 +386,7 @@ export function AddOnMarketplace({
         <div className="flex flex-wrap gap-3 p-6 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border border-slate-200">
           <button
             onClick={() => setSelectedCategory(null)}
-            className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all shadow-sm ${
+            className={`px-5 py-2.5 rounded-2xl text-sm font-semibold transition-all shadow-lg ${
               !selectedCategory
                 ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
                 : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
@@ -398,7 +398,7 @@ export function AddOnMarketplace({
             <button
               key={category}
               onClick={() => setSelectedCategory(category)}
-              className={`px-5 py-2.5 rounded-2xl text-sm font-semibold capitalize transition-all shadow-sm ${
+              className={`px-5 py-2.5 rounded-2xl text-sm font-semibold capitalize transition-all shadow-lg ${
                 selectedCategory === category
                   ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
                   : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'

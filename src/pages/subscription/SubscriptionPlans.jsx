@@ -390,7 +390,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     
     return (
       <li key={idx} className="flex items-start gap-3 py-2 group">
-        <div className="flex-shrink-0 w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center mt-0.5 shadow-sm group-hover:scale-110 transition-transform">
+        <div className="flex-shrink-0 w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
           <Check className="h-3 w-3 text-white" strokeWidth={3} />
         </div>
         <div className="flex-1 min-w-0">
@@ -496,7 +496,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
         {/* Capacity */}
         {plan.limits && (
-          <div className="mb-6 p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
+          <div className="mb-6 p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border-2 border-slate-200">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Capacity</h4>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-start gap-4">
@@ -938,7 +938,7 @@ function SubscriptionPlans() {
       <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
         {/* Subscription status error banner */}
         {subscriptionError && isAuthenticated && (
-          <div className="mb-8 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">
+          <div className="mb-8 bg-gradient-to-r from-red-50 to-red-100 border-2 border-red-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center">
                 <AlertCircle className="h-6 w-6 text-white" />
@@ -956,7 +956,7 @@ function SubscriptionPlans() {
 
         {/* Partial API failure banner */}
         {plansError && plans.length > 0 && (
-          <div className="mb-8 bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">
+          <div className="mb-8 bg-gradient-to-r from-amber-50 to-amber-100 border-2 border-amber-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center">
                 <AlertCircle className="h-6 w-6 text-white" />
@@ -987,7 +987,7 @@ function SubscriptionPlans() {
                 <div className="flex items-start justify-between gap-8 flex-wrap">
                   <div className="flex-1 min-w-[300px]">
                     {/* Status badge */}
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-6">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 backdrop-blur-xl border-2 border-white/10 mb-6">
                       <div className={`w-2 h-2 rounded-full ${subscriptionData.status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></div>
                       <span className="text-xs font-medium tracking-wider uppercase text-white/70">
                         {subscriptionData.status === 'active' ? 'Currently Active' : 'Paused'}
@@ -1025,7 +1025,7 @@ function SubscriptionPlans() {
                         : daysRemaining <= 15 
                         ? 'bg-gradient-to-br from-amber-500 to-amber-600' 
                         : 'bg-gradient-to-br from-slate-700 to-slate-800'
-                    } rounded-3xl p-8 shadow-2xl border border-white/10 min-w-[180px]`}>
+                    } rounded-3xl p-8 shadow-2xl border-2 border-white/10 min-w-[180px]`}>
                       <div className="absolute top-3 right-3">
                         <Clock className="h-5 w-5 text-white/30" />
                       </div>
@@ -1043,7 +1043,7 @@ function SubscriptionPlans() {
 
                 {/* Expiring Soon Alert - Integrated design */}
                 {daysRemaining !== null && daysRemaining <= 7 && (
-                  <div className="mt-8 relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500/10 to-red-600/10 backdrop-blur-xl border border-red-500/20 p-5">
+                  <div className="mt-8 relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500/10 to-red-600/10 backdrop-blur-xl border-2 border-red-500/20 p-5">
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent"></div>
                     <div className="relative flex items-start gap-4">
                       <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -1064,7 +1064,7 @@ function SubscriptionPlans() {
             {/* Details Grid - Asymmetric layout */}
             <div className="mt-8 grid lg:grid-cols-[1.2fr_1fr] gap-6">
               {/* Features Card - Dominant */}
-              <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-lg">
+              <div className="relative overflow-hidden rounded-3xl bg-white border-2 border-slate-200 shadow-lg">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-50 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
                 
                 <div className="relative p-8">
@@ -1090,7 +1090,7 @@ function SubscriptionPlans() {
                             animation: `fadeInUp 0.5s ease-out ${index * 0.05}s both` 
                           }}
                         >
-                          <div className="flex-shrink-0 w-6 h-6 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+                          <div className="flex-shrink-0 w-6 h-6 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
                             <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
                           </div>
                           <div className="flex-1">
@@ -1115,7 +1115,7 @@ function SubscriptionPlans() {
               </div>
 
               {/* Details Card - Secondary */}
-              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 shadow-lg">
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-slate-200 shadow-lg">
                 <div className="p-8">
                   <div className="flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
@@ -1206,7 +1206,7 @@ function SubscriptionPlans() {
 
         {/* Tab Navigation */}
         <div className="flex justify-center mb-12">
-          <div className="inline-flex bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
+          <div className="inline-flex bg-white rounded-2xl p-1.5 shadow-lg border-2 border-slate-200">
             <button
               onClick={() => setActiveTab('plans')}
               className={`px-8 py-3.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'plans'
@@ -1241,7 +1241,7 @@ function SubscriptionPlans() {
                   backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
                 }}></div>
                 <div className="relative flex items-center gap-4">
-                  <div className="w-14 h-14 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
+                  <div className="w-14 h-14 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border-2 border-white/20">
                     <Building2 className="w-7 h-7 text-white" />
                   </div>
                   <div>

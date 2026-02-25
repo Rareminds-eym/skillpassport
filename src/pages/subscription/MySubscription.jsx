@@ -532,26 +532,26 @@ function MySubscription() {
     reports: { used: 8, total: 20, label: 'Reports Generated' },
   };
 
-  // Skeleton loader component
+  // Skeleton loader component - Editorial luxury style
   const SkeletonLoader = () => (
-    <div className="min-h-screen bg-neutral-50">
-      <div className="bg-white border-b border-neutral-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      <div className="bg-white border-b-2 border-slate-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="h-8 w-64 bg-neutral-200 rounded animate-pulse mb-2"></div>
-          <div className="h-4 w-48 bg-neutral-200 rounded animate-pulse"></div>
+          <div className="h-8 w-64 bg-slate-200 rounded-2xl animate-pulse mb-2"></div>
+          <div className="h-4 w-48 bg-slate-100 rounded-2xl animate-pulse"></div>
         </div>
       </div>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-lg border border-neutral-200 p-6">
-              <div className="h-6 w-32 bg-neutral-200 rounded animate-pulse mb-4"></div>
-              <div className="h-8 w-48 bg-neutral-200 rounded animate-pulse"></div>
+            <div className="bg-white rounded-3xl border-2 border-slate-200 p-6 shadow-lg">
+              <div className="h-6 w-32 bg-slate-200 rounded-2xl animate-pulse mb-4"></div>
+              <div className="h-8 w-48 bg-slate-200 rounded-2xl animate-pulse"></div>
             </div>
           </div>
           <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-neutral-200 p-6">
-              <div className="h-6 w-32 bg-neutral-200 rounded animate-pulse"></div>
+            <div className="bg-white rounded-3xl border-2 border-slate-200 p-6 shadow-lg">
+              <div className="h-6 w-32 bg-slate-200 rounded-2xl animate-pulse"></div>
             </div>
           </div>
         </div>
@@ -564,16 +564,16 @@ function MySubscription() {
     return <SkeletonLoader />;
   }
 
-  // No subscription found
+  // No subscription found - Editorial luxury style
   if (!subscriptionData) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex flex-col">
         {/* Back to Home for no subscription state */}
-        <div className="bg-white border-b border-neutral-200">
+        <div className="bg-white border-b-2 border-slate-200">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <button
               onClick={() => navigate(getSettingsUrl())}
-              className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 transition-colors group"
+              className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors group font-medium"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
               Back to Settings
@@ -582,12 +582,12 @@ function MySubscription() {
         </div>
         
         <div className="flex-1 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white rounded-lg border border-neutral-200 p-8 text-center">
-            <div className="w-14 h-14 bg-neutral-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-7 h-7 text-neutral-600" />
+          <div className="max-w-md w-full bg-white rounded-3xl border-2 border-slate-200 p-8 text-center shadow-2xl">
+            <div className="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <Shield className="w-7 h-7 text-slate-700" />
             </div>
-            <h2 className="text-xl font-semibold text-neutral-900 mb-2">No Active Subscription</h2>
-            <p className="text-neutral-600 text-sm mb-6">
+            <h2 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>No Active Subscription</h2>
+            <p className="text-slate-600 text-sm mb-6 font-light leading-relaxed">
               You don't have an active subscription yet. Choose a plan to get started.
             </p>
             <button
@@ -595,7 +595,7 @@ function MySubscription() {
                 // Use userType from URL path (already computed at top of component)
                 navigate(`/subscription/plans?type=${userType}`);
               }}
-              className="w-full bg-neutral-900 text-white py-2.5 px-6 rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors"
+              className="w-full bg-gradient-to-r from-slate-800 to-slate-900 text-white py-3 px-6 rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl hover:scale-105"
             >
               View Plans
             </button>
@@ -606,14 +606,14 @@ function MySubscription() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Header */}
-      <div className="bg-white border-b border-neutral-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      {/* Header - Editorial Luxury Style */}
+      <div className="bg-white border-b-2 border-slate-200 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Back to Settings Button */}
           <button
             onClick={() => navigate(getSettingsUrl())}
-            className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-neutral-900 mb-4 transition-colors group"
+            className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-6 transition-colors group font-medium"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
             Back to Settings
@@ -621,42 +621,42 @@ function MySubscription() {
           
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h1 className="text-2xl font-semibold text-neutral-900 mb-2">My Subscription</h1>
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <h1 className="text-5xl font-light text-slate-900 mb-3 tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>My Subscription</h1>
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
                 {user?.email && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-neutral-100 text-neutral-700">
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-2xl text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                     <Mail className="w-3 h-3 mr-1.5" />
                     {user.email}
                   </span>
                 )}
                 {subscriptionData?.entityType && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-purple-100 text-purple-700 capitalize">
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-2xl text-xs font-semibold bg-purple-100 text-purple-700 capitalize border border-purple-200">
                     <Circle className="w-2 h-2 mr-1.5 fill-purple-600" />
                     {subscriptionData.entityType.replace('-', ' ')}
                   </span>
                 )}
                 {role && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 capitalize">
+                  <span className="inline-flex items-center px-3 py-1.5 rounded-2xl text-xs font-semibold bg-amber-100 text-amber-700 capitalize border border-amber-200">
                     <Shield className="w-3 h-3 mr-1.5" />
                     {role}
                   </span>
                 )}
               </div>
-              <p className="text-sm text-neutral-600">Manage your subscription and billing</p>
+              <p className="text-lg text-slate-600 font-light">Manage your subscription and billing</p>
             </div>
-            <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center">
-              <Shield className="w-5 h-5 text-neutral-700" />
+            <div className="w-12 h-12 bg-gradient-to-br from-slate-700 to-slate-800 rounded-2xl flex items-center justify-center shadow-lg">
+              <Shield className="w-6 h-6 text-white" />
             </div>
           </div>
 
-          {/* Tab Navigation */}
-          <div className="mt-6 flex gap-1 bg-neutral-100 rounded-lg p-1 w-fit">
+          {/* Tab Navigation - Editorial Style */}
+          <div className="mt-8 inline-flex bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
             <button
               onClick={() => setActiveTab('subscription')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
                 activeTab === 'subscription'
-                  ? 'bg-white text-neutral-900 shadow-sm'
-                  : 'text-neutral-600 hover:text-neutral-900'
+                  ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Shield className="w-4 h-4" />
@@ -664,10 +664,10 @@ function MySubscription() {
             </button>
             <button
               onClick={() => setActiveTab('addons')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
+              className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
                 activeTab === 'addons'
-                  ? 'bg-white text-neutral-900 shadow-sm'
-                  : 'text-neutral-600 hover:text-neutral-900'
+                  ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Sparkles className="w-4 h-4" />
@@ -683,26 +683,28 @@ function MySubscription() {
           <SubscriptionDashboard />
         ) : (
           <>
-        {/* Alert Banner */}
+        {/* Alert Banner - Editorial Luxury Style */}
         {(isExpiringSoon || isExpired || isPaused) && (
-          <div className={`mb-6 p-4 rounded-lg border flex items-start gap-3 ${
+          <div className={`mb-8 p-6 rounded-3xl border-2 flex items-start gap-4 shadow-lg ${
             isExpired 
-              ? 'bg-neutral-50 border-neutral-300' 
+              ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200' 
               : isPaused
-              ? 'bg-orange-50 border-orange-300'
-              : 'bg-neutral-50 border-neutral-300'
+              ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200'
+              : 'bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200'
           }`}>
-            <AlertCircle className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
-              isPaused ? 'text-orange-700' : 'text-neutral-700'
-            }`} />
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${
+              isExpired ? 'bg-red-500' : isPaused ? 'bg-amber-500' : 'bg-slate-700'
+            }`}>
+              <AlertCircle className="w-6 h-6 text-white" />
+            </div>
             <div className="flex-1">
-              <h3 className={`font-medium text-sm ${
-                isPaused ? 'text-orange-900' : 'text-neutral-900'
-              }`}>
+              <h3 className={`font-light text-2xl mb-2 ${
+                isPaused ? 'text-amber-900' : isExpired ? 'text-red-900' : 'text-slate-900'
+              }`} style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                 {isExpired ? 'Subscription Expired' : isPaused ? 'Subscription Paused' : 'Subscription Expiring Soon'}
               </h3>
-              <p className={`text-sm mt-1 ${
-                isPaused ? 'text-orange-700' : 'text-neutral-600'
+              <p className={`text-sm font-light leading-relaxed ${
+                isPaused ? 'text-amber-700' : isExpired ? 'text-red-700' : 'text-slate-600'
               }`}>
                 {isExpired 
                   ? 'Your subscription has expired. Renew now to continue accessing premium features.'
@@ -713,8 +715,12 @@ function MySubscription() {
               </p>
               <button
                 onClick={handleRenewSubscription}
-                className={`mt-3 px-4 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-800 transition-colors inline-flex items-center gap-2 ${
-                  isPaused ? 'bg-orange-600 text-white hover:bg-orange-700' : 'bg-neutral-900 text-white'
+                className={`mt-4 px-6 py-3 rounded-2xl text-sm font-semibold transition-all inline-flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 ${
+                  isPaused 
+                    ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white hover:from-amber-700 hover:to-amber-800' 
+                    : isExpired
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800'
+                    : 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
                 }`}
               >
                 {isPaused ? 'Resume Subscription' : 'Renew Now'}
@@ -727,11 +733,13 @@ function MySubscription() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Plan Information */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Usage Statistics */}
-            <div className="bg-white rounded-lg border border-neutral-200">
-              <div className="px-6 py-5 border-b border-neutral-200">
-                <h3 className="text-sm font-medium text-neutral-900 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-neutral-600" />
+            {/* Usage Statistics - Editorial Luxury */}
+            <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+              <div className="px-6 py-5 border-b border-slate-100">
+                <h3 className="text-lg font-light text-slate-900 flex items-center gap-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                  <div className="w-8 h-8 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
+                    <BarChart3 className="w-4 h-4 text-white" />
+                  </div>
                   Usage Statistics
                 </h3>
               </div>
@@ -740,16 +748,16 @@ function MySubscription() {
                   {Object.values(usageStats).map((stat, idx) => (
                     <div key={idx}>
                       <div className="flex items-baseline justify-between mb-2">
-                        <span className="text-xs font-medium text-neutral-500">{stat.label}</span>
-                        <span className="text-xs text-neutral-600">{stat.used}/{stat.total}</span>
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{stat.label}</span>
+                        <span className="text-xs text-slate-600 font-medium">{stat.used}/{stat.total}</span>
                       </div>
-                      <div className="w-full bg-neutral-100 rounded-full h-2">
+                      <div className="w-full bg-slate-100 rounded-full h-2.5 shadow-inner">
                         <div 
-                          className="bg-neutral-900 h-2 rounded-full transition-all duration-300"
+                          className="bg-gradient-to-r from-slate-800 to-slate-900 h-2.5 rounded-full transition-all duration-300 shadow-sm"
                           style={{ width: `${(stat.used / stat.total) * 100}%` }}
                         ></div>
                       </div>
-                      <p className="text-xs text-neutral-600 mt-1">
+                      <p className="text-xs text-slate-600 mt-2 font-medium">
                         {stat.total - stat.used} remaining
                       </p>
                     </div>
@@ -758,46 +766,52 @@ function MySubscription() {
               </div>
             </div>
 
-            {/* Current Plan Card */}
-            <div className="bg-white rounded-lg border border-neutral-200 hover:border-neutral-300 transition-colors">
+            {/* Current Plan Card - Editorial Luxury */}
+            <div className="bg-white rounded-3xl border-2 border-slate-200 hover:border-slate-300 transition-all shadow-lg hover:shadow-xl">
               {/* Plan Header */}
-              <div className="px-6 py-5 border-b border-neutral-200">
+              <div className="px-6 py-5 border-b border-slate-100">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-3">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium ${
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${
                         isActive 
-                          ? 'bg-neutral-900 text-white' 
+                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' 
                           : isPaused
-                          ? 'bg-orange-100 text-orange-800'
+                          ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white'
                           : isExpired
-                          ? 'bg-neutral-200 text-neutral-700'
-                          : 'bg-neutral-200 text-neutral-700'
+                          ? 'bg-slate-200 text-slate-700'
+                          : 'bg-slate-200 text-slate-700'
                       }`}>
                         <Circle className={`w-1.5 h-1.5 ${
-                          isActive ? 'fill-white' : isPaused ? 'fill-orange-600' : 'fill-neutral-600'
+                          isActive ? 'fill-white animate-pulse' : isPaused ? 'fill-white' : 'fill-slate-600'
                         }`} />
                         {subscriptionData.status.charAt(0).toUpperCase() + subscriptionData.status.slice(1)}
                       </span>
                     </div>
-                    <h2 className="text-xl font-semibold text-neutral-900 mb-1">
+                    <h2 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                       {currentPlan?.name || 'Basic Plan'}
                     </h2>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-neutral-900">
+                      <span className="text-4xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                         {currentPlan?.price ? `₹${currentPlan.price}` : 'Contact Sales'}
                       </span>
-                      <span className="text-sm text-neutral-600">
+                      <span className="text-sm text-slate-600 font-light">
                         {currentPlan?.priceLabel || '/person'}
                       </span>
                     </div>
                   </div>
                   {isActive && daysRemaining !== null && (
                     <div className="flex flex-col items-end">
-                      <span className="text-xs text-neutral-500 mb-1">Remaining</span>
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 rounded-md">
-                        <Clock className="w-4 h-4 text-neutral-600" />
-                        <span className="text-sm font-medium text-neutral-900">
+                      <span className="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wider">Remaining</span>
+                      <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl shadow-lg ${
+                        daysRemaining <= 7 
+                          ? 'bg-gradient-to-br from-red-500 to-red-600' 
+                          : daysRemaining <= 15 
+                          ? 'bg-gradient-to-br from-amber-500 to-amber-600' 
+                          : 'bg-gradient-to-br from-slate-700 to-slate-800'
+                      }`}>
+                        <Clock className="w-4 h-4 text-white" />
+                        <span className="text-sm font-semibold text-white">
                           {daysRemaining} days
                         </span>
                       </div>
@@ -807,14 +821,14 @@ function MySubscription() {
 
                 {/* Progress Bar */}
                 {isActive && progressPercentage > 0 && (
-                  <div className="mt-4 pt-4 border-t border-neutral-200">
+                  <div className="mt-5 pt-5 border-t border-slate-100">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-neutral-600">Subscription Period</span>
-                      <span className="text-xs font-medium text-neutral-900">{Math.round(progressPercentage)}%</span>
+                      <span className="text-xs text-slate-600 font-semibold uppercase tracking-wider">Subscription Period</span>
+                      <span className="text-xs font-bold text-slate-900">{Math.round(progressPercentage)}%</span>
                     </div>
-                    <div className="w-full bg-neutral-100 rounded-full h-1.5">
+                    <div className="w-full bg-slate-100 rounded-full h-2 shadow-inner">
                       <div 
-                        className="bg-neutral-900 h-1.5 rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-slate-800 to-slate-900 h-2 rounded-full transition-all duration-500 shadow-sm"
                         style={{ width: `${progressPercentage}%` }}
                       ></div>
                     </div>
@@ -824,36 +838,36 @@ function MySubscription() {
 
               {/* Plan Features */}
               <div className="px-6 py-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-medium text-neutral-900">Plan Features</h3>
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="text-lg font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Plan Features</h3>
                   {totalFeaturesCount > 0 && (
                     <span 
-                      className={`text-xs transition-all duration-300 ${
-                        showingAllFeatures ? 'text-neutral-700 font-medium' : 'text-neutral-500'
+                      className={`text-xs transition-all duration-300 font-semibold uppercase tracking-wider ${
+                        showingAllFeatures ? 'text-slate-700' : 'text-slate-500'
                       }`}
                     >
                       {showingAllFeatures 
-                        ? `Showing all ${totalFeaturesCount} features`
-                        : `${totalFeaturesCount} feature${totalFeaturesCount !== 1 ? 's' : ''} included`
+                        ? `All ${totalFeaturesCount} features`
+                        : `${totalFeaturesCount} included`
                       }
                     </span>
                   )}
                 </div>
                 
                 {/* Features List with smooth CSS transitions */}
-                <ul className="space-y-2.5">
+                <ul className="space-y-3">
                   {displayFeatures.map((feature, index) => (
                     <li 
                       key={`feature-${feature.slice(0, 20)}-${index}`}
-                      className="flex items-start gap-3 opacity-100 transform translate-y-0 transition-all duration-300 ease-out"
+                      className="flex items-start gap-3 opacity-100 transform translate-y-0 transition-all duration-300 ease-out group"
                       style={{ 
                         transitionDelay: `${index * 30}ms`
                       }}
                     >
-                      <div className="w-5 h-5 rounded-full bg-neutral-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Check className="w-3 h-3 text-neutral-700" />
+                      <div className="w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
                       </div>
-                      <span className="text-sm text-neutral-700">{feature}</span>
+                      <span className="text-sm text-slate-700 font-medium leading-relaxed">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -863,15 +877,15 @@ function MySubscription() {
                   <button
                     onClick={handleToggleFeatures}
                     disabled={loadingMoreFeatures}
-                    className={`mt-4 w-full flex items-center justify-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg transition-all duration-200 group ${
+                    className={`mt-5 w-full flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold rounded-2xl transition-all duration-200 group ${
                       loadingMoreFeatures
-                        ? 'bg-neutral-100 text-neutral-400 cursor-not-allowed'
-                        : 'bg-neutral-50 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 active:scale-[0.98]'
+                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                        : 'bg-slate-50 text-slate-600 hover:text-slate-900 hover:bg-slate-100 active:scale-[0.98] border border-slate-200'
                     }`}
                   >
                     {loadingMoreFeatures ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-neutral-300 border-t-neutral-600 rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
                         <span>Loading...</span>
                       </>
                     ) : showingAllFeatures ? (
@@ -893,57 +907,59 @@ function MySubscription() {
               </div>
             </div>
 
-            {/* Subscription Details */}
-            <div className="bg-white rounded-lg border border-neutral-200">
-              <div className="px-6 py-5 border-b border-neutral-200">
-                <h3 className="text-sm font-medium text-neutral-900 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-neutral-600" />
+            {/* Subscription Details - Editorial Luxury */}
+            <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+              <div className="px-6 py-5 border-b border-slate-100">
+                <h3 className="text-lg font-light text-slate-900 flex items-center gap-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                  <div className="w-8 h-8 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
+                    <Calendar className="w-4 h-4 text-white" />
+                  </div>
                   Subscription Details
                 </h3>
               </div>
               <div className="px-6 py-5">
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                   <div>
-                    <dt className="text-xs font-medium text-neutral-500 mb-1.5">Start Date</dt>
-                    <dd className="text-sm text-neutral-900">{formatDate(subscriptionData.startDate)}</dd>
+                    <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Start Date</dt>
+                    <dd className="text-sm text-slate-900 font-medium">{formatDate(subscriptionData.startDate)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-medium text-neutral-500 mb-1.5">End Date</dt>
-                    <dd className="text-sm text-neutral-900">{formatDate(subscriptionData.endDate)}</dd>
+                    <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">End Date</dt>
+                    <dd className="text-sm text-slate-900 font-medium">{formatDate(subscriptionData.endDate)}</dd>
                   </div>
                   <div className="sm:col-span-2">
-                    <dt className="text-xs font-medium text-neutral-500 mb-2">Auto Renewal</dt>
-                    <dd className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium ${
+                    <dt className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Auto Renewal</dt>
+                    <dd className="flex items-center justify-between p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${
                           autoRenewEnabled 
-                            ? 'bg-neutral-900 text-white' 
-                            : 'bg-neutral-200 text-neutral-700'
+                            ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' 
+                            : 'bg-slate-200 text-slate-700'
                         }`}>
                           <Circle className={`w-1.5 h-1.5 ${
-                            autoRenewEnabled ? 'fill-white' : 'fill-neutral-600'
+                            autoRenewEnabled ? 'fill-white animate-pulse' : 'fill-slate-600'
                           }`} />
                           {autoRenewEnabled ? 'Enabled' : 'Disabled'}
                         </span>
-                        <span className="text-xs text-neutral-600">
+                        <span className="text-xs text-slate-600 font-medium">
                           {autoRenewEnabled ? 'Subscription renews automatically' : 'Manual renewal required'}
                         </span>
                       </div>
                       <button
                         onClick={handleToggleAutoRenew}
                         disabled={isTogglingAutoRenew}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                          autoRenewEnabled ? 'bg-neutral-900' : 'bg-neutral-300'
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-inner ${
+                          autoRenewEnabled ? 'bg-gradient-to-r from-slate-800 to-slate-900' : 'bg-slate-300'
                         }`}
                       >
                         {isTogglingAutoRenew ? (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="w-3 h-3 border-2 border-neutral-400 border-t-white rounded-full animate-spin"></div>
+                            <div className="w-3 h-3 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
                           </div>
                         ) : (
                           <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              autoRenewEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-lg ${
+                              autoRenewEnabled ? 'translate-x-6' : 'translate-x-0.5'
                             }`}
                           />
                         )}
@@ -952,16 +968,16 @@ function MySubscription() {
                   </div>
                   {subscriptionData.nextBillingDate && autoRenewEnabled && (
                     <div className="sm:col-span-2">
-                      <dt className="text-xs font-medium text-neutral-500 mb-1.5">Next Billing Date</dt>
-                      <dd className="text-sm text-neutral-900">{formatDate(subscriptionData.nextBillingDate)}</dd>
+                      <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Next Billing Date</dt>
+                      <dd className="text-sm text-slate-900 font-medium">{formatDate(subscriptionData.nextBillingDate)}</dd>
                     </div>
                   )}
                 </dl>
               </div>
             </div>
 
-            {/* Billing History */}
-            <div className="bg-white rounded-lg border border-neutral-200">
+            {/* Billing History - Editorial Luxury */}
+            <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
               <button
                 onClick={() => setShowBillingHistory(!showBillingHistory)}
                 onMouseEnter={() => {
@@ -970,55 +986,59 @@ function MySubscription() {
                     fetchBillingHistory();
                   }
                 }}
-                className="w-full px-6 py-5 border-b border-neutral-200 flex items-center justify-between hover:bg-neutral-50 transition-colors"
+                className="w-full px-6 py-5 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-t-3xl"
               >
-                <h3 className="text-sm font-medium text-neutral-900 flex items-center gap-2">
-                  <Receipt className="w-4 h-4 text-neutral-600" />
+                <h3 className="text-lg font-light text-slate-900 flex items-center gap-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                  <div className="w-8 h-8 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
+                    <Receipt className="w-4 h-4 text-white" />
+                  </div>
                   Billing History
                 </h3>
                 {showBillingHistory ? (
-                  <ChevronUp className="w-4 h-4 text-neutral-600" />
+                  <ChevronUp className="w-4 h-4 text-slate-600" />
                 ) : (
-                  <ChevronDown className="w-4 h-4 text-neutral-600" />
+                  <ChevronDown className="w-4 h-4 text-slate-600" />
                 )}
               </button>
               {showBillingHistory && (
                 <div className="px-6 py-4">
                   {loadingBillingHistory ? (
                     <div className="flex items-center justify-center py-8">
-                      <div className="w-6 h-6 border-2 border-neutral-300 border-t-neutral-900 rounded-full animate-spin"></div>
+                      <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin"></div>
                     </div>
                   ) : billingHistory.length === 0 ? (
                     <div className="text-center py-8">
-                      <Receipt className="w-8 h-8 text-neutral-400 mx-auto mb-2" />
-                      <p className="text-sm text-neutral-600">No billing history found</p>
+                      <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                        <Receipt className="w-6 h-6 text-slate-400" />
+                      </div>
+                      <p className="text-sm text-slate-600 font-medium">No billing history found</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {billingHistory.map((invoice) => (
-                        <div key={invoice.id} className="flex items-center justify-between py-3 border-b border-neutral-100 last:border-0">
+                        <div key={invoice.id} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-neutral-900">{invoice.description}</p>
-                            <p className="text-xs text-neutral-500 mt-0.5">{formatDate(invoice.date)}</p>
+                            <p className="text-sm font-medium text-slate-900">{invoice.description}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">{formatDate(invoice.date)}</p>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-sm font-semibold text-neutral-900">₹{invoice.amount}</span>
-                            <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium ${
+                            <span className="text-sm font-semibold text-slate-900">₹{invoice.amount}</span>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${
                               invoice.status === 'success' || invoice.status === 'paid'
-                                ? 'bg-neutral-900 text-white'
-                                : 'bg-neutral-200 text-neutral-700'
+                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
+                                : 'bg-slate-200 text-slate-700'
                             }`}>
                               <Circle className={`w-1.5 h-1.5 ${
-                                invoice.status === 'success' || invoice.status === 'paid' ? 'fill-white' : 'fill-neutral-600'
+                                invoice.status === 'success' || invoice.status === 'paid' ? 'fill-white' : 'fill-slate-600'
                               }`} />
                               {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
                             </span>
                             <button
                               onClick={handleDownloadInvoice}
-                              className="p-1.5 hover:bg-neutral-100 rounded-md transition-colors"
+                              className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
                               title="Download Invoice"
                             >
-                              <Download className="w-4 h-4 text-neutral-600" />
+                              <Download className="w-4 h-4 text-slate-600" />
                             </button>
                           </div>
                         </div>
@@ -1032,16 +1052,16 @@ function MySubscription() {
 
           {/* Right Column - Actions & Payment */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg border border-neutral-200">
-              <div className="px-5 py-4 border-b border-neutral-200">
-                <h3 className="text-sm font-medium text-neutral-900">Quick Actions</h3>
+            {/* Quick Actions - Editorial Luxury */}
+            <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h3 className="text-lg font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Quick Actions</h3>
               </div>
-              <div className="p-4 space-y-2">
+              <div className="p-4 space-y-3">
                 {/* Go to Dashboard - Primary CTA */}
                 <button
                   onClick={() => navigate(getDashboardUrl())}
-                  className="w-full flex items-center justify-between px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all group shadow-lg hover:shadow-xl hover:scale-105"
                 >
                   <span className="flex items-center gap-2">
                     <LayoutDashboard className="w-4 h-4" />
@@ -1052,7 +1072,7 @@ function MySubscription() {
 
                 <button
                   onClick={handleUpgradePlan}
-                  className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl text-sm font-semibold hover:from-amber-600 hover:to-amber-700 transition-all group shadow-lg hover:shadow-xl hover:scale-105"
                 >
                   <span className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
@@ -1063,7 +1083,7 @@ function MySubscription() {
 
                 <button
                   onClick={handleRenewSubscription}
-                  className="w-full flex items-center justify-between px-4 py-2.5 bg-neutral-100 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors group"
+                  className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all group border border-slate-200"
                 >
                   <span className="flex items-center gap-2">
                     <RefreshCw className="w-4 h-4" />
@@ -1076,11 +1096,11 @@ function MySubscription() {
                   <button
                     onClick={handleResumeSubscription}
                     disabled={isPausing}
-                    className="w-full flex items-center justify-center px-4 py-2.5 text-green-600 bg-green-50 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex items-center justify-center px-4 py-3 text-emerald-700 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl text-sm font-semibold hover:from-emerald-100 hover:to-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 shadow-sm"
                   >
                     <span className="flex items-center gap-2">
                       {isPausing ? (
-                        <div className="w-4 h-4 border-2 border-green-600/30 border-t-green-600 rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin" />
                       ) : (
                         <RefreshCw className="w-4 h-4" />
                       )}
@@ -1093,7 +1113,7 @@ function MySubscription() {
                   <>
                     <button
                       onClick={() => setShowPauseModal(true)}
-                      className="w-full flex items-center justify-center px-4 py-2.5 text-orange-600 bg-orange-50 rounded-lg text-sm font-medium hover:bg-orange-100 transition-colors"
+                      className="w-full flex items-center justify-center px-4 py-3 text-amber-700 bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl text-sm font-semibold hover:from-amber-100 hover:to-amber-200 transition-all border border-amber-200 shadow-sm"
                     >
                       <span className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
@@ -1102,7 +1122,7 @@ function MySubscription() {
                     </button>
                     <button
                       onClick={handleCancelSubscription}
-                      className="w-full flex items-center justify-center px-4 py-2.5 text-neutral-600 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
+                      className="w-full flex items-center justify-center px-4 py-3 text-slate-600 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all border border-slate-200"
                     >
                       <span className="flex items-center gap-2">
                         <XIcon className="w-4 h-4" />
@@ -1114,51 +1134,53 @@ function MySubscription() {
               </div>
             </div>
 
-            {/* Payment Information */}
-            <div className="bg-white rounded-lg border border-neutral-200">
-              <div className="px-5 py-4 border-b border-neutral-200">
-                <h3 className="text-sm font-medium text-neutral-900 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-neutral-600" />
+            {/* Payment Information - Editorial Luxury */}
+            <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h3 className="text-lg font-light text-slate-900 flex items-center gap-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                  <div className="w-8 h-8 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
+                    <CreditCard className="w-4 h-4 text-white" />
+                  </div>
                   Payment Information
                 </h3>
               </div>
               <div className="p-5">
-                <dl className="space-y-4">
+                <dl className="space-y-5">
                   <div>
-                    <dt className="text-xs font-medium text-neutral-500 mb-1.5">Payment Status</dt>
+                    <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Payment Status</dt>
                     <dd>
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium ${
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${
                         subscriptionData.paymentStatus === 'success' 
-                          ? 'bg-neutral-900 text-white' 
-                          : 'bg-neutral-100 text-neutral-700'
+                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' 
+                          : 'bg-slate-200 text-slate-700'
                       }`}>
                         <Circle className={`w-1.5 h-1.5 ${
-                          subscriptionData.paymentStatus === 'success' ? 'fill-white' : 'fill-neutral-600'
+                          subscriptionData.paymentStatus === 'success' ? 'fill-white animate-pulse' : 'fill-slate-600'
                         }`} />
                         {subscriptionData.paymentStatus === 'success' ? 'Paid' : 'Pending'}
                       </span>
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs font-medium text-neutral-500 mb-1.5">Plan Price</dt>
+                    <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Plan Price</dt>
                     <dd className="flex items-baseline gap-1">
-                      <span className="text-xl font-semibold text-neutral-900">
+                      <span className="text-3xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                         {subscriptionData.planPrice ? `₹${subscriptionData.planPrice}` : (currentPlan?.price ? `₹${currentPlan.price}` : 'Contact Sales')}
                       </span>
-                      <span className="text-xs text-neutral-600">
+                      <span className="text-xs text-slate-600 font-medium">
                         {currentPlan?.priceLabel || '/person'}
                       </span>
                     </dd>
                   </div>
-                  <div className="pt-3 border-t border-neutral-200">
+                  <div className="pt-3 border-t border-slate-200">
                     <button
                       onClick={handleDownloadInvoice}
                       disabled={isDownloadingInvoice}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-neutral-100 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"
                     >
                       {isDownloadingInvoice ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-neutral-400 border-t-neutral-900 rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-900 rounded-full animate-spin" />
                           Downloading...
                         </>
                       ) : (
@@ -1173,21 +1195,23 @@ function MySubscription() {
               </div>
             </div>
 
-            {/* Support Contact */}
-            <div className="bg-white rounded-lg border border-neutral-200">
-              <div className="px-5 py-4 border-b border-neutral-200">
-                <h3 className="text-sm font-medium text-neutral-900 flex items-center gap-2">
-                  <HelpCircle className="w-4 h-4 text-neutral-600" />
+            {/* Support Contact - Editorial Luxury */}
+            <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+              <div className="px-5 py-4 border-b border-slate-100">
+                <h3 className="text-lg font-light text-slate-900 flex items-center gap-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                  <div className="w-8 h-8 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
+                    <HelpCircle className="w-4 h-4 text-white" />
+                  </div>
                   Need Help?
                 </h3>
               </div>
-              <div className="p-5 space-y-3">
-                <p className="text-xs text-neutral-600">
+              <div className="p-5 space-y-4">
+                <p className="text-sm text-slate-600 font-light leading-relaxed">
                   Have questions about your subscription or billing?
                 </p>
                 <button
                   onClick={handleContactSupport}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-neutral-300 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all hover:scale-105"
                 >
                   <Mail className="w-4 h-4" />
                   Contact Support
@@ -1200,25 +1224,25 @@ function MySubscription() {
         )}
       </div>
 
-      {/* Cancel Confirmation Modal */}
+      {/* Cancel Confirmation Modal - Editorial Luxury */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-neutral-200 max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border-2 border-slate-200 max-w-lg w-full p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-start gap-4 mb-6">
-              <div className="w-10 h-10 bg-neutral-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="w-5 h-5 text-neutral-700" />
+              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                <AlertCircle className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-neutral-900 mb-1">Cancel Subscription?</h3>
-                <p className="text-sm text-neutral-600">
+                <h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Cancel Subscription?</h3>
+                <p className="text-sm text-slate-600 font-light leading-relaxed">
                   You'll keep access until {subscriptionData?.endDate ? formatDate(subscriptionData.endDate) : 'the end of your billing period'}.
                 </p>
               </div>
             </div>
             
             {/* Cancellation Feedback */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-neutral-900 mb-2">
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                 Why are you canceling? *
               </label>
               <div className="space-y-2">
@@ -1229,16 +1253,16 @@ function MySubscription() {
                   'Found alternative',
                   'Other'
                 ].map((reason) => (
-                  <label key={reason} className="flex items-center gap-2 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer transition-colors">
+                  <label key={reason} className="flex items-center gap-3 p-4 border-2 border-slate-200 rounded-2xl hover:bg-slate-50 cursor-pointer transition-all hover:border-slate-300">
                     <input
                       type="radio"
                       name="cancelReason"
                       value={reason}
                       checked={cancelReason === reason}
                       onChange={(e) => handleCancelReasonChange(e.target.value)}
-                      className="w-4 h-4 text-neutral-900 focus:ring-neutral-900"
+                      className="w-4 h-4 text-slate-900 focus:ring-slate-900"
                     />
-                    <span className="text-sm text-neutral-700">{reason}</span>
+                    <span className="text-sm text-slate-700 font-medium">{reason}</span>
                   </label>
                 ))}
               </div>
@@ -1246,8 +1270,8 @@ function MySubscription() {
 
             {/* Additional Feedback */}
             {cancelReason && (
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-neutral-900 mb-2">
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                   Tell us more (optional)
                 </label>
                 <textarea
@@ -1255,18 +1279,18 @@ function MySubscription() {
                   onChange={(e) => setAdditionalFeedback(e.target.value)}
                   placeholder="Your feedback helps us improve..."
                   rows={3}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:border-transparent"
+                  className="w-full px-4 py-3 border-2 border-slate-300 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900 font-light"
                 />
               </div>
             )}
 
             {/* Retention Offers */}
             {showRetentionOffer && (
-              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="text-sm font-semibold text-neutral-900 mb-2">
+              <div className="mb-6 p-5 bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-200 rounded-3xl shadow-lg">
+                <h4 className="text-lg font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                   {cancelReason === 'Too expensive' ? '💰 Special Offer: 30% Off' : '⏸️ Try Pausing Instead'}
                 </h4>
-                <p className="text-xs text-neutral-600 mb-3">
+                <p className="text-sm text-slate-600 mb-4 font-light leading-relaxed">
                   {cancelReason === 'Too expensive'
                     ? 'We\'d hate to see you go! How about 30% off for the next 3 months?'
                     : 'Not using it right now? Pause your subscription for 1-3 months instead of canceling.'}
@@ -1280,7 +1304,7 @@ function MySubscription() {
                       setShowPauseModal(true);
                     }
                   }}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-2xl text-sm font-semibold hover:from-amber-700 hover:to-amber-800 transition-all shadow-lg hover:scale-105"
                 >
                   {cancelReason === 'Too expensive' ? 'Claim 30% Discount' : 'Pause Subscription'}
                 </button>
@@ -1296,14 +1320,14 @@ function MySubscription() {
                   setShowRetentionOffer(false);
                 }}
                 disabled={isCancelling}
-                className="flex-1 px-4 py-2.5 border border-neutral-300 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Keep Subscription
               </button>
               <button
                 onClick={confirmCancelSubscription}
                 disabled={isCancelling || !cancelReason}
-                className="flex-1 px-4 py-2.5 bg-neutral-900 text-white rounded-lg text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105"
               >
                 {isCancelling ? (
                   <span className="flex items-center justify-center gap-2">
@@ -1319,38 +1343,38 @@ function MySubscription() {
         </div>
       )}
 
-      {/* Pause Subscription Modal */}
+      {/* Pause Subscription Modal - Editorial Luxury */}
       {showPauseModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg border border-neutral-200 max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border-2 border-slate-200 max-w-md w-full p-8 shadow-2xl">
             <div className="flex items-start gap-4 mb-6">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Clock className="w-5 h-5 text-blue-600" />
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                <Clock className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-neutral-900 mb-1">Pause Subscription</h3>
-                <p className="text-sm text-neutral-600">
+                <h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Pause Subscription</h3>
+                <p className="text-sm text-slate-600 font-light leading-relaxed">
                   Take a break without losing your data. Your subscription will automatically resume.
                 </p>
               </div>
             </div>
             
             <div className="mb-6">
-              <label className="block text-sm font-medium text-neutral-900 mb-3">
+              <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                 How long would you like to pause?
               </label>
               <div className="space-y-2">
                 {[1, 2, 3].map((months) => (
-                  <label key={months} className="flex items-center gap-3 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer transition-colors">
+                  <label key={months} className="flex items-center gap-3 p-4 border-2 border-slate-200 rounded-2xl hover:bg-slate-50 cursor-pointer transition-all hover:border-slate-300">
                     <input
                       type="radio"
                       name="pauseMonths"
                       value={months}
                       checked={pauseMonths === months}
                       onChange={(e) => setPauseMonths(Number(e.target.value))}
-                      className="w-4 h-4 text-blue-600 focus:ring-blue-600"
+                      className="w-4 h-4 text-amber-600 focus:ring-amber-600"
                     />
-                    <span className="text-sm text-neutral-700 flex-1">{months} Month{months > 1 ? 's' : ''}</span>
+                    <span className="text-sm text-slate-700 flex-1 font-medium">{months} Month{months > 1 ? 's' : ''}</span>
                   </label>
                 ))}
               </div>
@@ -1360,14 +1384,14 @@ function MySubscription() {
               <button
                 onClick={() => setShowPauseModal(false)}
                 disabled={isPausing}
-                className="flex-1 px-4 py-2.5 border border-neutral-300 text-neutral-900 rounded-lg text-sm font-medium hover:bg-neutral-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={handlePauseSubscription}
                 disabled={isPausing}
-                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-2xl text-sm font-semibold hover:from-amber-700 hover:to-amber-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105"
               >
                 {isPausing ? (
                   <span className="flex items-center justify-center gap-2">

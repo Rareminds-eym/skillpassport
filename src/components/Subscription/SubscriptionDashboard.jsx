@@ -106,49 +106,57 @@ export function SubscriptionDashboard({ className = '' }) {
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
-      {/* Header */}
+    <div className={`space-y-8 ${className}`}>
+      {/* Header - Editorial Luxury */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Subscription</h1>
-          <p className="text-gray-600 mt-1">Manage your plan and add-ons</p>
+          <h1 className="text-5xl font-light text-slate-900 tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>My Subscription</h1>
+          <p className="text-slate-600 mt-2 text-lg font-light">Manage your plan and add-ons</p>
         </div>
         <button
           onClick={() => navigate(`${basePath}/subscription/add-ons`)}
-          className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+          className="px-6 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-semibold rounded-2xl hover:from-slate-900 hover:to-black transition-all flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105"
         >
           <Sparkles className="w-4 h-4" />
           Browse Add-ons
         </button>
       </div>
 
-      {/* Current Plan Card */}
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-2xl p-6 text-white">
-        <div className="flex items-start justify-between">
+      {/* Current Plan Card - Editorial Luxury */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl p-8 text-white shadow-2xl">
+        {/* Decorative pattern */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
+        }}></div>
+        
+        {/* Accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
+        
+        <div className="relative flex items-start justify-between">
           <div>
-            <p className="text-indigo-200 text-sm font-medium">Current Plan</p>
-            <h2 className="text-2xl font-bold mt-1">
+            <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Current Plan</p>
+            <h2 className="text-4xl font-light mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
               {subscription?.plan_name || 'Free Plan'}
             </h2>
             {subscription?.current_period_end && (
-              <p className="text-indigo-200 text-sm mt-2 flex items-center gap-1">
+              <p className="text-white/70 text-sm flex items-center gap-2 font-medium">
                 <Calendar className="w-4 h-4" />
                 Renews {new Date(subscription.current_period_end).toLocaleDateString()}
               </p>
             )}
           </div>
           <div className="text-right">
-            <p className="text-indigo-200 text-sm">Monthly Cost</p>
-            <p className="text-3xl font-bold">
+            <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Monthly Cost</p>
+            <p className="text-5xl font-light" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
               ₹{subscription?.plan_amount || 0}
             </p>
           </div>
         </div>
 
         {subscription && (
-          <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-between">
-            <span className="text-sm text-indigo-200">
-              Status: <span className="text-white font-medium capitalize">{subscription.status}</span>
+          <div className="relative mt-6 pt-6 border-t border-white/10 flex items-center justify-between">
+            <span className="text-sm text-white/70 font-medium">
+              Status: <span className="text-white font-semibold capitalize">{subscription.status}</span>
             </span>
             <button
               onClick={() => {
@@ -164,7 +172,7 @@ export function SubscriptionDashboard({ className = '' }) {
                 const userType = typeMap[basePath] || 'student';
                 navigate(`/subscription/plans?type=${userType}&mode=upgrade`);
               }}
-              className="text-sm text-white hover:underline flex items-center gap-1"
+              className="text-sm text-white hover:text-amber-300 flex items-center gap-1 font-semibold transition-colors"
             >
               Change Plan
               <ChevronRight className="w-4 h-4" />
@@ -173,8 +181,8 @@ export function SubscriptionDashboard({ className = '' }) {
         )}
       </div>
 
-      {/* Cost Summary */}
-      <div className="grid md:grid-cols-3 gap-4">
+      {/* Cost Summary - Editorial Luxury */}
+      <div className="grid md:grid-cols-3 gap-6">
         <CostCard
           title="Base Plan"
           amount={subscription?.plan_amount || 0}
@@ -196,42 +204,48 @@ export function SubscriptionDashboard({ className = '' }) {
         />
       </div>
 
-      {/* Grace Period Warning */}
+      {/* Grace Period Warning - Editorial Luxury */}
       {gracePeriodEnts.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-200 rounded-3xl p-6 flex items-start gap-4 shadow-lg">
+          <div className="w-10 h-10 rounded-2xl bg-amber-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+            <AlertCircle className="w-5 h-5 text-white" />
+          </div>
           <div>
-            <h3 className="font-medium text-amber-800">Payment Required</h3>
-            <p className="text-sm text-amber-700 mt-1">
+            <h3 className="font-light text-xl text-amber-900 mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Payment Required</h3>
+            <p className="text-sm text-amber-700 font-light leading-relaxed">
               {gracePeriodEnts.length} add-on(s) are in grace period. Please update your payment method to avoid losing access.
             </p>
           </div>
         </div>
       )}
 
-      {/* Active Add-ons */}
+      {/* Active Add-ons - Editorial Luxury */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-indigo-600" />
+        <h2 className="text-3xl font-light text-slate-900 mb-6 flex items-center gap-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
           Active Add-ons
-          <span className="text-sm font-normal text-gray-500">
+          <span className="text-lg font-medium text-slate-500">
             ({activeEnts.length + gracePeriodEnts.length})
           </span>
         </h2>
 
         {activeEnts.length === 0 && gracePeriodEnts.length === 0 ? (
-          <div className="bg-gray-50 rounded-lg p-8 text-center">
-            <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 mb-4">No active add-ons</p>
+          <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-12 text-center border-2 border-slate-200 shadow-lg">
+            <div className="w-16 h-16 rounded-3xl bg-slate-200 flex items-center justify-center mx-auto mb-4">
+              <Package className="w-8 h-8 text-slate-400" />
+            </div>
+            <p className="text-slate-600 mb-6 font-light text-lg">No active add-ons</p>
             <button
               onClick={() => navigate(`${basePath}/subscription/add-ons`)}
-              className="text-indigo-600 hover:underline"
+              className="px-6 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-semibold rounded-2xl hover:from-slate-900 hover:to-black transition-all shadow-lg hover:scale-105"
             >
               Browse available add-ons
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {[...gracePeriodEnts, ...activeEnts].map(entitlement => (
               <EntitlementCard
                 key={entitlement.id}
@@ -246,15 +260,17 @@ export function SubscriptionDashboard({ className = '' }) {
         )}
       </section>
 
-      {/* Cancelled Add-ons */}
+      {/* Cancelled Add-ons - Editorial Luxury */}
       {cancelledEnts.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-gray-400" />
+          <h2 className="text-3xl font-light text-slate-900 mb-6 flex items-center gap-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+            <div className="w-10 h-10 rounded-2xl bg-slate-300 flex items-center justify-center shadow-lg">
+              <Clock className="w-5 h-5 text-slate-600" />
+            </div>
             Cancelled (Access Until Expiry)
           </h2>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {cancelledEnts.map(entitlement => (
               <EntitlementCard
                 key={entitlement.id}
@@ -270,33 +286,37 @@ export function SubscriptionDashboard({ className = '' }) {
 }
 
 /**
- * CostCard - Displays a cost metric
+ * CostCard - Displays a cost metric - Editorial Luxury
  */
 function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
   return (
     <div className={`
-      rounded-xl p-4 border
+      rounded-3xl p-6 border-2 shadow-lg hover:shadow-xl transition-all
       ${highlight 
-        ? 'bg-indigo-50 border-indigo-200' 
-        : 'bg-white border-gray-200'
+        ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200' 
+        : 'bg-white border-slate-200'
       }
     `}>
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className={`w-4 h-4 ${highlight ? 'text-indigo-600' : 'text-gray-400'}`} />
-        <span className="text-sm text-gray-600">{title}</span>
+      <div className="flex items-center gap-3 mb-4">
+        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg ${
+          highlight ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-slate-700 to-slate-800'
+        }`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+        <span className="text-sm text-slate-600 font-semibold uppercase tracking-wider">{title}</span>
       </div>
       <div className="flex items-baseline gap-1">
-        <span className={`text-2xl font-bold ${highlight ? 'text-indigo-600' : 'text-gray-900'}`}>
+        <span className={`text-4xl font-light ${highlight ? 'text-amber-700' : 'text-slate-900'}`} style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
           ₹{amount}
         </span>
-        <span className="text-gray-500 text-sm">/{period}</span>
+        <span className="text-slate-500 text-sm font-medium">/{period}</span>
       </div>
     </div>
   );
 }
 
 /**
- * EntitlementCard - Displays a single entitlement
+ * EntitlementCard - Displays a single entitlement - Editorial Luxury
  */
 function EntitlementCard({ 
   entitlement, 
@@ -312,43 +332,43 @@ function EntitlementCard({
 
   return (
     <div className={`
-      bg-white rounded-lg border p-4
-      ${isGracePeriod ? 'border-amber-300 bg-amber-50/50' : 'border-gray-200'}
+      bg-white rounded-3xl border-2 p-6 shadow-lg hover:shadow-xl transition-all
+      ${isGracePeriod ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100' : 'border-slate-200'}
       ${isCancelled ? 'opacity-75' : ''}
     `}>
       <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-4">
           {/* Status Indicator */}
           <div className={`
-            w-10 h-10 rounded-lg flex items-center justify-center
+            w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg
             ${isGracePeriod 
-              ? 'bg-amber-100 text-amber-600' 
+              ? 'bg-gradient-to-br from-amber-500 to-amber-600' 
               : isCancelled 
-                ? 'bg-gray-100 text-gray-400'
-                : 'bg-green-100 text-green-600'
+                ? 'bg-slate-200'
+                : 'bg-gradient-to-br from-emerald-400 to-emerald-500'
             }
           `}>
             {isGracePeriod ? (
-              <AlertCircle className="w-5 h-5" />
+              <AlertCircle className="w-6 h-6 text-white" />
             ) : isCancelled ? (
-              <Clock className="w-5 h-5" />
+              <Clock className="w-6 h-6 text-slate-500" />
             ) : (
-              <Check className="w-5 h-5" />
+              <Check className="w-6 h-6 text-white" strokeWidth={3} />
             )}
           </div>
 
           <div>
-            <h3 className="font-medium text-gray-900 capitalize">
+            <h3 className="font-light text-xl text-slate-900 capitalize mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
               {entitlement.feature_key?.replace(/_/g, ' ')}
             </h3>
-            <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+            <div className="flex items-center gap-3 text-sm text-slate-500 font-medium">
               <span className="capitalize">{entitlement.billing_period}</span>
               <span>•</span>
               <span>₹{entitlement.price_at_purchase}/{entitlement.billing_period === 'monthly' ? 'mo' : 'yr'}</span>
             </div>
             
             {/* Renewal/Expiry Info */}
-            <p className={`text-sm mt-2 ${isGracePeriod ? 'text-amber-600' : 'text-gray-500'}`}>
+            <p className={`text-sm mt-3 font-medium ${isGracePeriod ? 'text-amber-700' : 'text-slate-600'}`}>
               {isCancelled ? (
                 <>Access until {endDate.toLocaleDateString()}</>
               ) : isGracePeriod ? (
@@ -364,22 +384,22 @@ function EntitlementCard({
 
         {/* Actions */}
         {!isCancelled && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* Auto-renew Toggle */}
             <button
               onClick={() => onToggleAutoRenew?.(entitlement.id, entitlement.auto_renew)}
               disabled={isToggling}
               className={`
-                px-3 py-1.5 text-sm rounded-lg border transition-colors flex items-center gap-1
+                px-4 py-2 text-sm rounded-2xl border-2 transition-all flex items-center gap-2 font-semibold shadow-lg
                 ${entitlement.auto_renew 
-                  ? 'border-green-200 bg-green-50 text-green-700' 
-                  : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  ? 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 text-emerald-700' 
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                 }
                 ${isToggling ? 'opacity-50' : ''}
               `}
               title={entitlement.auto_renew ? 'Auto-renew is ON' : 'Auto-renew is OFF'}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isToggling ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isToggling ? 'animate-spin' : ''}`} />
               {entitlement.auto_renew ? 'Auto' : 'Manual'}
             </button>
 
@@ -387,12 +407,12 @@ function EntitlementCard({
             <button
               onClick={() => onCancel?.(entitlement.id)}
               disabled={isCancelling}
-              className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
+              className="px-4 py-2 text-sm text-red-700 hover:bg-red-50 rounded-2xl transition-all flex items-center gap-2 font-semibold border-2 border-red-200"
             >
               {isCancelling ? (
-                <div className="w-3.5 h-3.5 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
               ) : (
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               )}
               Cancel
             </button>
@@ -402,9 +422,9 @@ function EntitlementCard({
 
       {/* Bundle indicator */}
       {entitlement.bundle_id && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <span className="text-xs text-gray-500 flex items-center gap-1">
-            <Package className="w-3 h-3" />
+        <div className="mt-4 pt-4 border-t border-slate-100">
+          <span className="text-xs text-slate-500 flex items-center gap-2 font-semibold uppercase tracking-wider">
+            <Package className="w-3.5 h-3.5" />
             Part of bundle
           </span>
         </div>
@@ -414,21 +434,21 @@ function EntitlementCard({
 }
 
 /**
- * Loading skeleton
+ * Loading skeleton - Editorial Luxury
  */
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
-      <div className="h-8 w-48 bg-gray-200 rounded" />
-      <div className="h-40 bg-gray-200 rounded-2xl" />
-      <div className="grid md:grid-cols-3 gap-4">
+    <div className="space-y-8 animate-pulse">
+      <div className="h-10 w-64 bg-slate-200 rounded-3xl" />
+      <div className="h-48 bg-slate-200 rounded-3xl" />
+      <div className="grid md:grid-cols-3 gap-6">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-24 bg-gray-200 rounded-xl" />
+          <div key={i} className="h-32 bg-slate-200 rounded-3xl" />
         ))}
       </div>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-24 bg-gray-200 rounded-lg" />
+          <div key={i} className="h-32 bg-slate-200 rounded-3xl" />
         ))}
       </div>
     </div>
