@@ -460,14 +460,14 @@ const buildFallbackContext = (
   studentProgram?: string | null
 ): StudentContext => {
   const category = selectedCategory || deriveCategory(studentStream);
-  const enhancedGrade = buildEnhancedGrade(null, studentProgram, studentStream, gradeLevel);
+  const enhancedGrade = buildEnhancedGrade(null, studentProgram ?? null, studentStream, gradeLevel);
 
   const context: StudentContext = {
     rawGrade: enhancedGrade,
     selectedStream: studentStream,
     selectedCategory: category,
     studentType: 'general',
-    programName: studentProgram || undefined,
+    programName: studentProgram ?? undefined,
   };
 
   console.log('✅ [STUDENT-CONTEXT] Built fallback context:', JSON.stringify(context, null, 2));
@@ -1013,9 +1013,15 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         setError(errorMessage);
         setIsSubmitting(false);
       }
-    },
-    [navigate]
-  );
+    }
+  } catch (err: any) {
+    console.error('❌ Outer submission error:', err);
+    setError(err.message || 'Submission failed');
+    setIsSubmitting(false);
+  }
+},
+[navigate]
+);
 
   return {
     isSubmitting,

@@ -26,6 +26,7 @@ import {
   generateJobMarketSection, 
   extractCareerCategories 
 } from '../services/job-market-data';
+import { buildAfter12Prompt } from '../prompts/after12';
 
 interface RequestBody {
   assessmentData: AssessmentData;
@@ -559,10 +560,14 @@ async function analyzeAssessment(
     // Grades 11-12: Use higher secondary prompt
     basePrompt = buildHigherSecondaryPrompt(assessmentData, seed);
     console.log(`[ASSESSMENT] ✅ Using HIGHER SECONDARY prompt (grades 11-12)`);
+  } else if (gradeLevel === 'after12') {
+    // After 12th (College-Bound): Use after12 prompt with degreePrograms requirement
+    basePrompt = buildAfter12Prompt(assessmentData, seed);
+    console.log(`[ASSESSMENT] ✅ Using AFTER 12TH prompt (college-bound with degree programs)`);
   } else {
-    // College/After 12th: Use college prompt
+    // College/University students: Use college prompt
     basePrompt = buildCollegePrompt(assessmentData, seed);
-    console.log(`[ASSESSMENT] ✅ Using COLLEGE prompt (after 12th/college)`);
+    console.log(`[ASSESSMENT] ✅ Using COLLEGE prompt (university students)`);
   }
   console.log('[ASSESSMENT] 📊 AI will analyze raw answers and calculate RIASEC scores');
   console.log('[ASSESSMENT] 🎯 Career recommendations will be based on AI-calculated RIASEC');

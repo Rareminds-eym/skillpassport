@@ -409,7 +409,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   26,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -424,7 +424,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   27,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -439,7 +439,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   28,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -454,7 +454,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   29,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -469,7 +469,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   30,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -484,7 +484,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   31,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -499,7 +499,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   32,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -514,7 +514,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   33,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -529,7 +529,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   34,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -544,7 +544,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   35,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -559,7 +559,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   36,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -574,7 +574,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   37,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -589,7 +589,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   38,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -604,7 +604,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   39,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -619,7 +619,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   40,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -634,7 +634,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   41,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -649,7 +649,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   42,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -664,7 +664,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   43,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -679,7 +679,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   44,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -694,7 +694,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   45,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -709,7 +709,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   46,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -724,7 +724,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   47,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -739,7 +739,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   48,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -754,7 +754,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   49,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -769,7 +769,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   50,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 70}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 1, "time_target_sec": 70}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -784,7 +784,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   51,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -799,7 +799,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   52,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -814,7 +814,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   53,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -829,7 +829,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   54,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -844,7 +844,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   55,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -859,7 +859,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   56,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -874,7 +874,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   57,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -889,7 +889,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   58,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -904,7 +904,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   59,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -919,7 +919,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   60,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -934,7 +934,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   61,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -949,7 +949,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   62,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -964,7 +964,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   63,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -979,7 +979,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   64,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -994,7 +994,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   65,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1009,7 +1009,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   66,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1024,7 +1024,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   67,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1039,7 +1039,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   68,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1054,7 +1054,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   69,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1069,7 +1069,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   70,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1084,7 +1084,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   71,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1099,7 +1099,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   72,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1114,7 +1114,7 @@ INSERT INTO personal_assessment_questions (
   'Uses standard trigonometric values.',
   73,
   true,
-  '{"grade": 9, "dimension": "TR", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "TR", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1129,7 +1129,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   74,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1144,7 +1144,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   75,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 75}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1159,7 +1159,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   76,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1174,7 +1174,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   77,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1189,7 +1189,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   78,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1204,7 +1204,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   79,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1219,7 +1219,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   80,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1234,7 +1234,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   81,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1249,7 +1249,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   82,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1264,7 +1264,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   83,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1279,7 +1279,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   84,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1294,7 +1294,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   85,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1309,7 +1309,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   86,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1324,7 +1324,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   87,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1339,7 +1339,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   88,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1354,7 +1354,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   89,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1369,7 +1369,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   90,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1384,7 +1384,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   91,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1399,7 +1399,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   92,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1414,7 +1414,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   93,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1429,7 +1429,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   94,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1444,7 +1444,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   95,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1459,7 +1459,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   96,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1474,7 +1474,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   97,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1489,7 +1489,7 @@ INSERT INTO personal_assessment_questions (
   'Computes probability for equally likely outcomes (die).',
   98,
   true,
-  '{"grade": 9, "dimension": "PR", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "PR", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1504,7 +1504,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   99,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1519,7 +1519,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   100,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 80}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1534,7 +1534,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   101,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1549,7 +1549,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   102,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1564,7 +1564,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   103,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1579,7 +1579,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   104,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1594,7 +1594,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   105,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1609,7 +1609,7 @@ INSERT INTO personal_assessment_questions (
   'Uses standard trigonometric values.',
   106,
   true,
-  '{"grade": 9, "dimension": "TR", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "TR", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1624,7 +1624,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   107,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1639,7 +1639,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   108,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1654,7 +1654,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   109,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1669,7 +1669,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   110,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1684,7 +1684,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   111,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1699,7 +1699,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   112,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1714,7 +1714,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   113,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1729,7 +1729,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   114,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1744,7 +1744,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   115,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1759,7 +1759,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   116,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1774,7 +1774,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   117,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1789,7 +1789,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   118,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1804,7 +1804,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   119,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1819,7 +1819,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   120,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1834,7 +1834,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   121,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1849,7 +1849,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   122,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1864,7 +1864,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   123,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1879,7 +1879,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   124,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1894,7 +1894,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   125,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 85}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1909,7 +1909,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   126,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1924,7 +1924,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   127,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1939,7 +1939,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   128,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1954,7 +1954,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   129,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1969,7 +1969,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   130,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1984,7 +1984,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   131,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -1999,7 +1999,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   132,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2014,7 +2014,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   133,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2029,7 +2029,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   134,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2044,7 +2044,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   135,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2059,7 +2059,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   136,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2074,7 +2074,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   137,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2089,7 +2089,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   138,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2104,7 +2104,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   139,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2119,7 +2119,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   140,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2134,7 +2134,7 @@ INSERT INTO personal_assessment_questions (
   'Uses standard trigonometric values.',
   141,
   true,
-  '{"grade": 9, "dimension": "TR", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "TR", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2149,7 +2149,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   142,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2164,7 +2164,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   143,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2179,7 +2179,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   144,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2194,7 +2194,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   145,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2209,7 +2209,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   146,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2224,7 +2224,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   147,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2239,7 +2239,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   148,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2254,7 +2254,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   149,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2269,7 +2269,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   150,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 6, "time_target_sec": 90}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2284,7 +2284,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   151,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2299,7 +2299,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   152,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2314,7 +2314,7 @@ INSERT INTO personal_assessment_questions (
   'Uses standard trigonometric values.',
   153,
   true,
-  '{"grade": 9, "dimension": "TR", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "TR", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2329,7 +2329,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   154,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2344,7 +2344,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   155,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2359,7 +2359,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   156,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2374,7 +2374,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   157,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2389,7 +2389,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   158,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2404,7 +2404,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   159,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2419,7 +2419,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   160,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2434,7 +2434,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   161,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2449,7 +2449,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   162,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2464,7 +2464,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   163,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2479,7 +2479,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   164,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2494,7 +2494,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   165,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2509,7 +2509,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   166,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2524,7 +2524,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   167,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2539,7 +2539,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   168,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2554,7 +2554,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   169,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2569,7 +2569,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   170,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2584,7 +2584,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   171,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2599,7 +2599,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   172,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2614,7 +2614,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   173,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2629,7 +2629,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   174,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2644,7 +2644,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   175,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 95}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2659,7 +2659,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   176,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2674,7 +2674,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   177,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2689,7 +2689,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   178,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2704,7 +2704,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   179,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2719,7 +2719,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   180,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2734,7 +2734,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   181,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2749,7 +2749,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   182,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2764,7 +2764,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   183,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2779,7 +2779,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   184,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2794,7 +2794,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   185,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2809,7 +2809,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   186,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2824,7 +2824,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   187,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2839,7 +2839,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   188,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2854,7 +2854,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   189,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2869,7 +2869,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   190,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2884,7 +2884,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   191,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2899,7 +2899,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   192,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2914,7 +2914,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   193,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2929,7 +2929,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   194,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2944,7 +2944,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   195,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2959,7 +2959,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   196,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2974,7 +2974,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   197,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -2989,7 +2989,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   198,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3004,7 +3004,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   199,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3019,7 +3019,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   200,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 8, "time_target_sec": 100}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3034,7 +3034,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   201,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3049,7 +3049,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   202,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3064,7 +3064,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   203,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3079,7 +3079,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   204,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3094,7 +3094,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   205,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3109,7 +3109,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   206,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3124,7 +3124,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   207,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3139,7 +3139,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   208,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3154,7 +3154,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   209,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3169,7 +3169,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   210,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3184,7 +3184,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   211,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3199,7 +3199,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   212,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3214,7 +3214,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   213,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3229,7 +3229,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   214,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3244,7 +3244,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   215,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3259,7 +3259,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   216,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3274,7 +3274,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   217,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3289,7 +3289,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   218,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3304,7 +3304,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   219,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3319,7 +3319,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   220,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3334,7 +3334,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   221,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3349,7 +3349,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   222,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3364,7 +3364,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   223,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3379,7 +3379,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   224,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3394,7 +3394,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   225,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 105}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3409,7 +3409,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   226,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3424,7 +3424,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   227,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3439,7 +3439,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   228,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3454,7 +3454,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   229,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3469,7 +3469,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   230,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3484,7 +3484,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   231,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3499,7 +3499,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   232,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3514,7 +3514,7 @@ INSERT INTO personal_assessment_questions (
   'Uses standard trigonometric values.',
   233,
   true,
-  '{"grade": 9, "dimension": "TR", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "TR", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3529,7 +3529,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   234,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3544,7 +3544,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   235,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3559,7 +3559,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   236,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3574,7 +3574,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   237,
   true,
-  '{"grade": 9, "dimension": "NS", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3589,7 +3589,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   238,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3604,7 +3604,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   239,
   true,
-  '{"grade": 9, "dimension": "CG", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3619,7 +3619,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   240,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3634,7 +3634,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   241,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3649,7 +3649,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   242,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3664,7 +3664,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   243,
   true,
-  '{"grade": 9, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3679,7 +3679,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   244,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3694,7 +3694,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   245,
   true,
-  '{"grade": 9, "dimension": "GE", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3709,7 +3709,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   246,
   true,
-  '{"grade": 9, "dimension": "ME", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3724,7 +3724,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   247,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3739,7 +3739,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   248,
   true,
-  '{"grade": 9, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3754,7 +3754,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   249,
   true,
-  '{"grade": 9, "dimension": "ST", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -3769,7 +3769,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   250,
   true,
-  '{"grade": 9, "dimension": "CM", "difficulty_rank": 10, "time_target_sec": 110}'::jsonb
+  '{"grade": 9, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4159,7 +4159,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   276,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4174,7 +4174,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   277,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4189,7 +4189,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   278,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4204,7 +4204,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   279,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4219,7 +4219,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   280,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4234,7 +4234,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   281,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4249,7 +4249,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   282,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4264,7 +4264,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   283,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4279,7 +4279,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   284,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4294,7 +4294,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   285,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4309,7 +4309,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   286,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4324,7 +4324,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   287,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4339,7 +4339,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   288,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4354,7 +4354,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   289,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4369,7 +4369,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   290,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4384,7 +4384,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   291,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4399,7 +4399,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   292,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4414,7 +4414,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   293,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4429,7 +4429,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   294,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4444,7 +4444,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   295,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4459,7 +4459,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   296,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4474,7 +4474,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   297,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4489,7 +4489,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   298,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4504,7 +4504,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   299,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4519,7 +4519,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   300,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 75}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 1, "time_target_sec": 75}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4534,7 +4534,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   301,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4549,7 +4549,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   302,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4564,7 +4564,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   303,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4579,7 +4579,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   304,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4594,7 +4594,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   305,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4609,7 +4609,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   306,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4624,7 +4624,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   307,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4639,7 +4639,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   308,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4654,7 +4654,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   309,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4669,7 +4669,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   310,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4684,7 +4684,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   311,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4699,7 +4699,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   312,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4714,7 +4714,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   313,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4729,7 +4729,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   314,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4744,7 +4744,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   315,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4759,7 +4759,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   316,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4774,7 +4774,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   317,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4789,7 +4789,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   318,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4804,7 +4804,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   319,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4819,7 +4819,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   320,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4834,7 +4834,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   321,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4849,7 +4849,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   322,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4864,7 +4864,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   323,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4879,7 +4879,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   324,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4894,7 +4894,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   325,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 80}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 80}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4909,7 +4909,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   326,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4924,7 +4924,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   327,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4939,7 +4939,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   328,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4954,7 +4954,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   329,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4969,7 +4969,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   330,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4984,7 +4984,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   331,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -4999,7 +4999,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   332,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5014,7 +5014,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   333,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5029,7 +5029,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   334,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5044,7 +5044,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   335,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5059,7 +5059,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   336,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5074,7 +5074,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   337,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5089,7 +5089,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   338,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5104,7 +5104,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   339,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5119,7 +5119,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   340,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5134,7 +5134,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   341,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5149,7 +5149,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   342,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5164,7 +5164,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   343,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5179,7 +5179,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   344,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5194,7 +5194,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   345,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5209,7 +5209,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   346,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5224,7 +5224,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   347,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5239,7 +5239,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   348,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5254,7 +5254,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   349,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5269,7 +5269,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   350,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 85}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 2, "time_target_sec": 85}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5284,7 +5284,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   351,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5299,7 +5299,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   352,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5314,7 +5314,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   353,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5329,7 +5329,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   354,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5344,7 +5344,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   355,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5359,7 +5359,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   356,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5374,7 +5374,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   357,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5389,7 +5389,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   358,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5404,7 +5404,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   359,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5419,7 +5419,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   360,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5434,7 +5434,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   361,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5449,7 +5449,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   362,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5464,7 +5464,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   363,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5479,7 +5479,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   364,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5494,7 +5494,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   365,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5509,7 +5509,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   366,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5524,7 +5524,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   367,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5539,7 +5539,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   368,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5554,7 +5554,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   369,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5569,7 +5569,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   370,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5584,7 +5584,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   371,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5599,7 +5599,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   372,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5614,7 +5614,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   373,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5629,7 +5629,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   374,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5644,7 +5644,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   375,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 90}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 90}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5659,7 +5659,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   376,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5674,7 +5674,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   377,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5689,7 +5689,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   378,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5704,7 +5704,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   379,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5719,7 +5719,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   380,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5734,7 +5734,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   381,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5749,7 +5749,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   382,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5764,7 +5764,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   383,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5779,7 +5779,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   384,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5794,7 +5794,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   385,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5809,7 +5809,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   386,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5824,7 +5824,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   387,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5839,7 +5839,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   388,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5854,7 +5854,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   389,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5869,7 +5869,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   390,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5884,7 +5884,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   391,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5899,7 +5899,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   392,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5914,7 +5914,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   393,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5929,7 +5929,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   394,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5944,7 +5944,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   395,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5959,7 +5959,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   396,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5974,7 +5974,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   397,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -5989,7 +5989,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   398,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6004,7 +6004,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   399,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6019,7 +6019,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   400,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 6, "time_target_sec": 95}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 3, "time_target_sec": 95}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6034,7 +6034,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   401,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6049,7 +6049,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   402,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6064,7 +6064,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   403,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6079,7 +6079,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   404,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6094,7 +6094,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   405,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6109,7 +6109,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   406,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6124,7 +6124,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   407,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6139,7 +6139,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   408,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6154,7 +6154,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   409,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6169,7 +6169,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   410,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6184,7 +6184,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   411,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6199,7 +6199,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   412,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6214,7 +6214,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   413,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6229,7 +6229,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   414,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6244,7 +6244,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   415,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6259,7 +6259,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   416,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6274,7 +6274,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   417,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6289,7 +6289,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   418,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6304,7 +6304,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   419,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6319,7 +6319,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   420,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6334,7 +6334,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   421,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6349,7 +6349,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   422,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6364,7 +6364,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   423,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6379,7 +6379,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   424,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6394,7 +6394,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   425,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 7, "time_target_sec": 100}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 100}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6409,7 +6409,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   426,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6424,7 +6424,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   427,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6439,7 +6439,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   428,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6454,7 +6454,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   429,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6469,7 +6469,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   430,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6484,7 +6484,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   431,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6499,7 +6499,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   432,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6514,7 +6514,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   433,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6529,7 +6529,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   434,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6544,7 +6544,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   435,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6559,7 +6559,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   436,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6574,7 +6574,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   437,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6589,7 +6589,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   438,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6604,7 +6604,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   439,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6619,7 +6619,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   440,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6634,7 +6634,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   441,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6649,7 +6649,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   442,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6664,7 +6664,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   443,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6679,7 +6679,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   444,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6694,7 +6694,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   445,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6709,7 +6709,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   446,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6724,7 +6724,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   447,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6739,7 +6739,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   448,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6754,7 +6754,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   449,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6769,7 +6769,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   450,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 8, "time_target_sec": 105}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 4, "time_target_sec": 105}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6784,7 +6784,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   451,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6799,7 +6799,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   452,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6814,7 +6814,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   453,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6829,7 +6829,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   454,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6844,7 +6844,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   455,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6859,7 +6859,7 @@ INSERT INTO personal_assessment_questions (
   'Applies circumference formula of a circle.',
   456,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6874,7 +6874,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   457,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6889,7 +6889,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   458,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6904,7 +6904,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   459,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6919,7 +6919,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   460,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6934,7 +6934,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   461,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6949,7 +6949,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   462,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6964,7 +6964,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   463,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6979,7 +6979,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   464,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -6994,7 +6994,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   465,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7009,7 +7009,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   466,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7024,7 +7024,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   467,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7039,7 +7039,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   468,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7054,7 +7054,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   469,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7069,7 +7069,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   470,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7084,7 +7084,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   471,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7099,7 +7099,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   472,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7114,7 +7114,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   473,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7129,7 +7129,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   474,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7144,7 +7144,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   475,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 9, "time_target_sec": 110}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 110}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7159,7 +7159,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   476,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7174,7 +7174,7 @@ INSERT INTO personal_assessment_questions (
   'Uses angle-sum property of triangles.',
   477,
   true,
-  '{"grade": 10, "dimension": "GE", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "GE", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7189,7 +7189,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   478,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7204,7 +7204,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   479,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7219,7 +7219,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   480,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7234,7 +7234,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   481,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7249,7 +7249,7 @@ INSERT INTO personal_assessment_questions (
   'Evaluates a polynomial for a given value of x.',
   482,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7264,7 +7264,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   483,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7279,7 +7279,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   484,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7294,7 +7294,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   485,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7309,7 +7309,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   486,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7324,7 +7324,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   487,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7339,7 +7339,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   488,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7354,7 +7354,7 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   489,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7369,7 +7369,7 @@ INSERT INTO personal_assessment_questions (
   'Computes slope using coordinate geometry.',
   490,
   true,
-  '{"grade": 10, "dimension": "CG", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "CG", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7384,7 +7384,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   491,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7399,7 +7399,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   492,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7414,7 +7414,7 @@ INSERT INTO personal_assessment_questions (
   'Finds volume of a cuboid from dimensions.',
   493,
   true,
-  '{"grade": 10, "dimension": "ME", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "ME", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7429,7 +7429,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   494,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7444,7 +7444,7 @@ INSERT INTO personal_assessment_questions (
   'Finds median from an ordered data set.',
   495,
   true,
-  '{"grade": 10, "dimension": "ST", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "ST", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7459,7 +7459,7 @@ INSERT INTO personal_assessment_questions (
   'Solves a one-variable linear equation.',
   496,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7474,7 +7474,7 @@ INSERT INTO personal_assessment_questions (
   'Identifies roots from a factorable quadratic equation.',
   497,
   true,
-  '{"grade": 10, "dimension": "AL", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "AL", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7489,7 +7489,7 @@ INSERT INTO personal_assessment_questions (
   'Converts part-to-whole information into a percentage.',
   498,
   true,
-  '{"grade": 10, "dimension": "DI", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "DI", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7504,7 +7504,7 @@ INSERT INTO personal_assessment_questions (
   'Calculates selling price after discount.',
   499,
   true,
-  '{"grade": 10, "dimension": "CM", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "CM", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );
 
 INSERT INTO personal_assessment_questions (
@@ -7519,5 +7519,5 @@ INSERT INTO personal_assessment_questions (
   'Uses laws of exponents to simplify expressions.',
   500,
   true,
-  '{"grade": 10, "dimension": "NS", "difficulty_rank": 10, "time_target_sec": 115}'::jsonb
+  '{"grade": 10, "dimension": "NS", "difficulty_rank": 5, "time_target_sec": 115}'::jsonb
 );

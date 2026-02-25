@@ -74,10 +74,30 @@ export function buildAfter12Prompt(assessmentData: AssessmentData, answersHash: 
   
   const adaptiveSection = adaptiveData?.section || '';
 
-  return `You are an expert career counselor for students who have completed 12th grade and are choosing college programs. Analyze this student's comprehensive 7-section career assessment and provide detailed guidance for their college and career decisions.
+  return `You are an expert career counselor for students who have completed 12th grade and are choosing college programs. Analyze this student's 7-section assessment and provide evidence-based guidance.
 
-## CRITICAL: This must be DETERMINISTIC - same input = same output always
-Session ID: ${answersHash}
+## CORE REQUIREMENTS
+**Student Stream: ${assessmentData.stream || 'Not specified'}**
+**Session ID: ${answersHash}** (for deterministic results)
+
+**🚨 CRITICAL: NO HARDCODED TEMPLATES 🚨**
+You MUST analyze the student's actual RIASEC scores and create CUSTOMIZED career clusters.
+DO NOT use generic "Technology & Innovation" or "Healthcare & Life Sciences" templates.
+Instead, look at their top 3 RIASEC types and create clusters that match THEIR specific profile.
+
+**STREAM ALIGNMENT RULE:**
+All career clusters and degree programs MUST match the student's stream:
+- Science streams → Customize based on RIASEC (e.g., IRA → Research & Data Science, ISR → Healthcare & Medicine)
+- Commerce streams → Customize based on RIASEC (e.g., ECI → Finance & Business, EAS → Marketing & Creative Business)
+- Arts streams → Customize based on RIASEC (e.g., ASE → Creative & Media, SAI → Psychology & Social Work)
+
+**LANGUAGE REQUIREMENT:**
+Respond ONLY in English. Use English names for all universities and programs.
+
+## 🚨 CRITICAL LANGUAGE REQUIREMENT 🚨
+**YOU MUST respond ONLY in ENGLISH. DO NOT use Bengali, Hindi, or any other language.**
+**ALL university names, program names, and text MUST be in ENGLISH ONLY.**
+**Example: Use "Presidency College Kolkata" NOT "প্রেসিডেন্সি বিশ্ববিদ্যালয়"**
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## SECTION 1: CAREER INTERESTS (RIASEC) - 48 Questions
@@ -110,6 +130,7 @@ You MUST use this mapping to calculate scores precisely:
 3. Calculate maxScore = 24 (8 questions × 3 points max per question)
 4. Calculate percentage for each type: (score / 24) × 100
 5. Identify top 3 types by score
+6. Form the RIASEC code as a 3-letter string (e.g., "AES", "IRA", "ECS") - MUST be exactly 3 letters
 
 ## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
 **IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
@@ -288,6 +309,7 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
     "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "maxScore": 24,
+    "code": "ASE",
     "interpretation": "What their interests mean for college major and career selection"
   },
   "aptitude": {
@@ -307,6 +329,7 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
     "workStyleSummary": "Their work style and how personality shapes career fit"
   },
   "workValues": {
+    "scores": {"Security": 0, "Autonomy": 0, "Creativity": 0, "Status": 0, "Impact": 0, "Financial": 0, "Leadership": 0, "Lifestyle": 0},
     "topThree": [
       {"value": "Primary work value", "score": 4.5, "description": "Why this matters to them"},
       {"value": "Second value", "score": 4.0, "description": "How this influences career choice"},
@@ -315,6 +338,16 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
     "interpretation": "How their values should guide career decisions"
   },
   "employability": {
+    "skillScores": {
+      "Communication": 75,
+      "Teamwork": 80,
+      "ProblemSolving": 85,
+      "Adaptability": 70,
+      "DigitalFluency": 90,
+      "Leadership": 85,
+      "Professionalism": 80,
+      "CareerReadiness": 85
+    },
     "scores": {
       "communication": 75,
       "teamwork": 80,
@@ -440,7 +473,7 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
         "roleDescription": "As a Computer Science graduate, you'll design and develop software applications, work on cutting-edge technologies like AI and cloud computing, and solve complex technical problems. You'll have opportunities in software development, data science, cybersecurity, and tech entrepreneurship.",
         "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad", "VIT Vellore", "Manipal Institute of Technology"],
         "alignedWithCluster": "Technology & Innovation",
-        "whyThisFitsYou": "Your exceptional logical reasoning (85%) and high Investigative interest (I: 88%) make you perfect for software development. Your strong problem-solving skills (90%) and curiosity for technology align perfectly with CSE's analytical and creative demands.",
+        "whyThisFitsYou": "Your exceptional logical reasoning and high Investigative interest make you perfect for software development. Your strong problem-solving skills and curiosity for technology align perfectly with CSE's analytical and creative demands.",
         "evidence": {
           "interest": "High I (Investigative 88%) and R (Realistic 75%) indicate strong fit for technical problem-solving",
           "aptitude": "Exceptional numerical (85%) and logical reasoning (88%) demonstrate strong analytical capabilities",
@@ -608,78 +641,92 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
 }
 
 ## ═══════════════════════════════════════════════════════════════════════════
-## CRITICAL: CAREER CLUSTERS MUST ALIGN WITH STUDENT'S STREAM
+## CRITICAL: CAREER CLUSTERS MUST ALIGN WITH STUDENT'S STREAM AND RIASEC
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**IMPORTANT**: The student has already selected their stream during 12th grade. The 3 career clusters MUST align with their chosen stream:
+**IMPORTANT**: The student has already selected their stream during 12th grade. The 3 career clusters MUST:
+1. **Align with their chosen stream** (Science/Commerce/Arts)
+2. **Match their RIASEC profile** (top 3 types with highest scores)
+3. **Be CUSTOMIZED based on their actual assessment results** - NOT generic templates
 
 **Student Stream**: ${assessmentData.stream || 'Not specified'}
 
-**Stream-Based Career Cluster Mapping:**
+**CRITICAL INSTRUCTION**: The career clusters below are EXAMPLES ONLY to show the range of possibilities within each stream. You MUST customize them based on the student's actual RIASEC scores, aptitude, personality, and values.
+
+**Stream-Based Career Cluster GUIDELINES (NOT TEMPLATES):**
 
 ### SCIENCE STREAM (science, science_pcmb, science_pcms, pcmb, pcms, pcm, pcb):
-**Cluster 1 (High Fit) - Technology & Innovation:**
-- Software Engineer, Data Scientist, AI/ML Engineer, Cybersecurity Analyst
-- Product Manager, Tech Entrepreneur, Full Stack Developer
-- Salary: Entry ₹6-15L, Mid ₹15-40L, Senior ₹40-100L+
+**CUSTOMIZE based on student's RIASEC:**
+- **High I (Investigative)**: Research, Data Science, Scientific Analysis, Medical Research
+- **High R (Realistic)**: Engineering, Lab Work, Technical Roles, Hands-on Science
+- **High A (Artistic)**: Architecture, Design Engineering, Scientific Visualization, Creative Tech
+- **High S (Social)**: Healthcare, Medical Practice, Clinical Psychology, Public Health
+- **High E (Enterprising)**: Tech Entrepreneurship, Product Management, Biotech Business
+- **High C (Conventional)**: Quality Control, Lab Management, Clinical Administration
 
-**Cluster 2 (Medium Fit) - Engineering & Research:**
-- Mechanical Engineer, Civil Engineer, Aerospace Engineer, Robotics Engineer
-- Research Scientist, R&D Engineer, Systems Architect
-- Salary: Entry ₹5-12L, Mid ₹12-30L, Senior ₹30-80L
-
-**Cluster 3 (Explore) - Healthcare & Life Sciences:**
-- Doctor, Surgeon, Medical Researcher, Pharmacist
-- Biotechnologist, Geneticist, Clinical Researcher
-- Salary: Entry ₹6-15L, Mid ₹15-50L, Senior ₹50-200L
+**Example Cluster Combinations (CUSTOMIZE based on their top 3 RIASEC):**
+- **IRA**: Technology & Innovation, Research & Development, Design Engineering
+- **ISR**: Healthcare & Medicine, Biomedical Research, Clinical Sciences
+- **RIE**: Engineering & Technology, Product Development, Tech Entrepreneurship
+- **IAS**: Creative Technology, Scientific Communication, Health Psychology
+- **Salary Ranges**: Entry ₹5-15L, Mid ₹12-50L, Senior ₹30-200L (varies by field)
 
 ### COMMERCE STREAM (commerce, commerce_maths, commerce_accounts):
-**Cluster 1 (High Fit) - Finance & Accounting:**
-- Chartered Accountant, Financial Analyst, Investment Banker
-- Portfolio Manager, Risk Analyst, Tax Consultant
-- Salary: Entry ₹5-12L, Mid ₹12-35L, Senior ₹35-100L
+**CUSTOMIZE based on student's RIASEC:**
+- **High E (Enterprising)**: Business Management, Entrepreneurship, Sales Leadership
+- **High C (Conventional)**: Accounting, Finance, Banking, Auditing
+- **High I (Investigative)**: Financial Analysis, Market Research, Data Analytics
+- **High S (Social)**: HR Management, Customer Relations, Organizational Development
+- **High A (Artistic)**: Marketing, Brand Management, Creative Business
+- **High R (Realistic)**: Operations Management, Supply Chain, Logistics
 
-**Cluster 2 (Medium Fit) - Business & Management:**
-- Business Manager, Operations Manager, Strategy Consultant
-- Marketing Manager, HR Manager, Product Manager
-- Salary: Entry ₹4-10L, Mid ₹10-25L, Senior ₹25-70L
-
-**Cluster 3 (Explore) - Entrepreneurship & Digital Business:**
-- Entrepreneur, Startup Founder, Business Consultant
-- Digital Marketing Manager, E-commerce Manager, Brand Strategist
-- Salary: Entry ₹3-15L, Mid ₹15-50L, Senior ₹50-500L (variable)
+**Example Cluster Combinations (CUSTOMIZE based on their top 3 RIASEC):**
+- **ECI**: Finance & Investment Banking, Business Analytics, Strategic Consulting
+- **EAS**: Marketing & Brand Management, Creative Entrepreneurship, Media Business
+- **CIE**: Accounting & Auditing, Financial Planning, Risk Management
+- **ESA**: HR & Organizational Development, Business Development, Corporate Training
+- **Salary Ranges**: Entry ₹3-15L, Mid ₹10-50L, Senior ₹25-500L (varies by field)
 
 ### ARTS STREAM (arts, arts_psychology, arts_economics, arts_general, humanities):
-**Cluster 1 (High Fit) - Creative & Design:**
-- Graphic Designer, UI/UX Designer, Fashion Designer, Interior Designer
-- Animator, VFX Artist, Game Designer, Brand Designer
-- Salary: Entry ₹4-12L, Mid ₹12-35L, Senior ₹35-100L
+**CUSTOMIZE based on student's RIASEC:**
+- **High A (Artistic)**: Creative Arts, Design, Media Production, Content Creation
+- **High S (Social)**: Psychology, Counseling, Social Work, Teaching, NGO Work
+- **High E (Enterprising)**: Media Management, Event Management, Public Relations
+- **High I (Investigative)**: Research, Policy Analysis, Journalism, Academic Writing
+- **High C (Conventional)**: Legal Documentation, Administration, Library Science
+- **High R (Realistic)**: Photography, Film Production, Technical Theatre
 
-**Cluster 2 (Medium Fit) - Media & Communication:**
-- Journalist, Content Writer, PR Manager, Social Media Manager
-- Film Director, Video Editor, Podcast Host, YouTuber
-- Salary: Entry ₹3-10L, Mid ₹10-25L, Senior ₹25-70L
-
-**Cluster 3 (Explore) - Social Sciences & Law:**
-- Lawyer, Civil Services Officer, Policy Analyst, Diplomat
-- Psychologist, Counselor, Social Worker, NGO Manager
-- Salary: Entry ₹4-15L, Mid ₹15-50L, Senior ₹50-200L
+**Example Cluster Combinations (CUSTOMIZE based on their top 3 RIASEC):**
+- **ASE**: Creative & Design, Media Production, Brand Strategy
+- **SAI**: Psychology & Counseling, Social Research, Human Services
+- **AEI**: Media & Communication, Content Strategy, Digital Marketing
+- **IAS**: Research & Academia, Scientific Writing, Policy Analysis
+- **Salary Ranges**: Entry ₹3-15L, Mid ₹10-50L, Senior ₹25-200L (varies by field)
 
 **CRITICAL INSTRUCTIONS:**
 1. **Identify the student's stream** from the stream field above
-2. **Use ONLY the 3 career clusters** that match their stream
-3. **Customize each cluster** based on their specific RIASEC, aptitude, and personality scores
-4. **Provide evidence from ALL 6 sections** for each cluster
-5. **If stream is unclear or invalid**, default to the stream that best matches their RIASEC top 3 types:
+2. **Analyze their RIASEC top 3 types** (e.g., IRA, ASE, ECI)
+3. **Create 3 CUSTOMIZED career clusters** that match BOTH their stream AND their RIASEC profile
+4. **DO NOT use generic templates** - personalize based on their actual scores
+5. **Provide evidence from ALL 7 sections** for each cluster
+6. **If stream is unclear or invalid**, default to the stream that best matches their RIASEC top 3 types:
    - High I + R → Science
    - High E + C → Commerce
    - High A + S → Arts
 
 ## ⚠️ SPECIAL CASE: HIGH ARTISTIC (A) STUDENTS ⚠️
 **IF the student has 'A' (Artistic) in their top 3 RIASEC types:**
-- **Science stream**: Replace Cluster 3 with "Design & Architecture" (Architecture, Product Design, Industrial Design)
-- **Commerce stream**: Replace Cluster 3 with "Creative Business" (Fashion Business, Event Management, Media Production)
+- **Science stream**: Replace generic clusters with personalized ones (e.g., Architecture, Product Design, Scientific Visualization, Biomedical Design)
+- **Commerce stream**: Replace generic clusters with creative business options (e.g., Fashion Business, Event Management, Media Production)
 - **Arts stream**: Ensure Cluster 1 is creative/artistic (already covered)
+
+## ⚠️ SPECIAL CASE: SCIENCE PCB (BIOLOGY) STUDENTS ⚠️
+**IF the student's stream is science_pcb or pcb:**
+- **High I + S (Investigative + Social)**: Healthcare & Medicine, Clinical Research, Public Health
+- **High I + R (Investigative + Realistic)**: Biomedical Engineering, Biotechnology, Lab Sciences
+- **High I + A (Investigative + Artistic)**: Medical Illustration, Health Communication, Biodesign
+- **High S + E (Social + Enterprising)**: Healthcare Management, Pharmaceutical Sales, Health Tech
+- **DO NOT default to generic "Technology & Innovation"** unless their RIASEC strongly supports it (high I + R with low S)
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## PROGRAM DERIVATION INSTRUCTIONS (MANDATORY - DO NOT SELECT FROM LISTS)
@@ -821,7 +868,7 @@ For each program, you MUST cite evidence from:
    - **roleDescription**: 2-3 sentences about what graduates do
    - **topUniversities**: Array of 5-7 Indian universities
    - **alignedWithCluster**: Which career cluster it aligns with
-   - **whyThisFitsYou**: Personalized reasoning (2-3 sentences)
+   - **whyThisFitsYou**: Personalized reasoning without percentages or scores (2-3 meaningful sentences explaining the connection between their profile and this program)
    - **evidence**: Object with ALL 7 sections (interest, aptitude, personality, values, employability, knowledge, adaptiveAptitude)
 
 **EXAMPLE OUTPUT FORMAT (Derived Programs):**
@@ -837,7 +884,7 @@ For each program, you MUST cite evidence from:
       "roleDescription": "As a Computer Science graduate, you'll design and develop software applications, work on cutting-edge technologies like AI and cloud computing, and solve complex technical problems. You'll have opportunities in software development, data science, cybersecurity, and tech entrepreneurship.",
       "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad", "VIT Vellore", "Manipal Institute of Technology"],
       "alignedWithCluster": "Technology & Innovation",
-      "whyThisFitsYou": "Your Investigative (85%) and Realistic (75%) interests combined with exceptional numerical aptitude (88%) and abstract reasoning (82%) point toward computational problem-solving. Your high Openness (4.2) indicates innovation potential, while Conscientiousness (4.0) ensures disciplined learning.",
+      "whyThisFitsYou": "Your Investigative and Realistic interests combined with exceptional numerical aptitude and abstract reasoning point toward computational problem-solving. Your high Openness indicates innovation potential, while Conscientiousness ensures disciplined learning.",
       "evidence": {
         "interest": "High I (Investigative 85%) and R (Realistic 75%) indicate strong fit for technical problem-solving",
         "aptitude": "Exceptional numerical (88%) and abstract reasoning (82%) demonstrate strong analytical capabilities",
@@ -856,7 +903,7 @@ For each program, you MUST cite evidence from:
       "roleDescription": "Electronics engineers design, develop, and test electronic systems and devices. You'll work on projects ranging from telecommunications to embedded systems, IoT devices, and signal processing. Career paths include electronics engineering, embedded systems development, and telecommunications.",
       "topUniversities": ["IIT Madras", "IIT Kharagpur", "NIT Surathkal", "BITS Pilani", "Anna University", "PSG College of Technology", "Jadavpur University"],
       "alignedWithCluster": "Engineering & Research",
-      "whyThisFitsYou": "Your Realistic (75%) interests in hands-on problem-solving combined with strong numerical (88%) and abstract (82%) aptitude support engineering coursework. Your Conscientiousness (4.0) ensures attention to detail needed for circuit design.",
+      "whyThisFitsYou": "Your Realistic interests in hands-on problem-solving combined with strong numerical and abstract aptitude support engineering coursework. Your Conscientiousness ensures attention to detail needed for circuit design.",
       "evidence": {
         "interest": "Realistic (75%) interests align with hands-on engineering work",
         "aptitude": "Strong numerical (88%) and abstract (82%) aptitude support engineering coursework",
@@ -875,7 +922,7 @@ For each program, you MUST cite evidence from:
       "roleDescription": "This interdisciplinary program combines theoretical physics with computational methods. You'll study quantum mechanics, thermodynamics, and computational physics. Career paths include research scientist, computational physicist, data analyst, and scientific software developer.",
       "topUniversities": ["St. Stephen's College Delhi", "Loyola College Chennai", "Fergusson College Pune", "Presidency College Kolkata", "Hindu College Delhi", "Madras Christian College", "St. Xavier's Mumbai"],
       "alignedWithCluster": "Research & Academia",
-      "whyThisFitsYou": "Your Investigative (85%) interests and Artistic (60%) side suggest research with creative problem-solving. This interdisciplinary program combines theoretical physics with computational methods, leveraging your abstract reasoning (82%) while exploring your curiosity (Openness 4.2).",
+      "whyThisFitsYou": "Your Investigative interests and Artistic side suggest research with creative problem-solving. This interdisciplinary program combines theoretical physics with computational methods, leveraging your abstract reasoning while exploring your curiosity and Openness.",
       "evidence": {
         "interest": "Investigative (85%) interests and Artistic (60%) side support research with creative problem-solving",
         "aptitude": "Abstract reasoning (82%) supports theoretical physics and computational methods",
@@ -983,7 +1030,7 @@ Example structure:
   "roleDescription": "As a Computer Science graduate, you'll design and develop software applications...",  // ← REQUIRED - MUST BE PRESENT
   "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad"],  // ← REQUIRED - MUST BE PRESENT
   "alignedWithCluster": "Technology & Innovation",
-  "whyThisFitsYou": "Your Investigative (85%) and Realistic (75%) interests combined with exceptional numerical aptitude (88%)...",  // ← PERSONALIZED derivation
+  "whyThisFitsYou": "Your Investigative and Realistic interests combined with exceptional numerical aptitude and abstract reasoning...",  // ← PERSONALIZED without percentages
   "evidence": {
     "interest": "High I (Investigative 85%) and R (Realistic 75%) indicate strong fit for technical problem-solving",
     "aptitude": "Exceptional numerical (88%) and abstract reasoning (82%) demonstrate strong analytical capabilities",
