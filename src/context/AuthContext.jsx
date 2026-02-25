@@ -63,9 +63,11 @@ export const AuthProvider = ({ children }) => {
           parsedUser.email === sessionUser.email;
         
         if (userMatches) {
-          // Always update role from session to ensure it's current
+          // CRITICAL FIX: Always use session user ID (auth user ID), not stored ID
+          // The stored ID might be a student record ID, which breaks queries
           return {
             ...parsedUser,
+            id: sessionUser.id,  // Force auth user ID
             role: sessionRole,
           };
         }

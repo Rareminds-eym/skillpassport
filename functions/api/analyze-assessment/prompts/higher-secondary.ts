@@ -77,6 +77,12 @@ ${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No signifi
 export function buildHigherSecondaryPrompt(assessmentData: AssessmentData, answersHash: number, jobMarketSection?: string): string {
   // Extract student context for stream-specific guidance
   const selectedStream = assessmentData.stream;
+  const gradeLevel = assessmentData.gradeLevel; // 'higher_secondary' for both 11th and 12th
+  
+  // Determine if student is in 11th or 12th grade based on context
+  // If we have more specific grade info, use it; otherwise default to Grade 11
+  const rawGrade = assessmentData.studentContext?.rawGrade || '';
+  const isGrade12 = rawGrade.startsWith('Grade 12');
   
   // Pre-process adaptive results for efficiency
   const adaptiveData = assessmentData.adaptiveAptitudeResults 
@@ -731,6 +737,53 @@ Generate 3 entry-level + 3 mid-career roles per track that are:
 ` : '';
 
   return `You are an expert career counselor for higher secondary students (grades 11-12). These students have already chosen their academic stream and are preparing for college entrance exams and career decisions.
+
+${isGrade12 ? `
+## 🎓 GRADE 12 STUDENT - ADVANCED CAREER PLANNING
+
+**CRITICAL: This is a Grade 12 student. Your recommendations must be MORE ADVANCED and ACTION-ORIENTED than Grade 11.**
+
+**Grade 12 Specific Requirements:**
+1. **Immediate Action Focus**: Student is 6-12 months away from college. Recommendations must be IMMEDIATELY ACTIONABLE.
+2. **Entrance Exam Specificity**: Provide SPECIFIC entrance exam strategies, not general advice.
+3. **College Application Ready**: Include specific college names, application timelines, cutoffs.
+4. **Career Path Clarity**: More detailed career progression (5-year, 10-year outlook).
+5. **Skill Gap Urgency**: Identify skills to build in NEXT 6 MONTHS before college.
+6. **Financial Planning**: Include scholarship info, education loans, cost considerations.
+7. **Backup Plans**: Must include Plan B and Plan C options for entrance exams.
+
+**Tone Difference from Grade 11:**
+- Grade 11: Exploratory, foundational, "you have time to explore"
+- Grade 12: Decisive, urgent, "here's your action plan for the next 6 months"
+
+**Roadmap Specificity:**
+- Immediate (Next 3 months): Entrance exam prep schedule, mock tests, application deadlines
+- Short-term (6-12 months): College selection, application strategy, backup options
+- Projects: Must be completable before college applications (portfolio building)
+
+` : `
+## 📚 GRADE 11 STUDENT - FOUNDATIONAL CAREER EXPLORATION
+
+**This is a Grade 11 student. Your recommendations should be EXPLORATORY and FOUNDATIONAL.**
+
+**Grade 11 Specific Requirements:**
+1. **Exploration Focus**: Student has 18-24 months. Encourage exploration and skill building.
+2. **Foundation Building**: Focus on building strong subject fundamentals.
+3. **Career Awareness**: Introduce career options, not immediate decisions.
+4. **Skill Development**: Long-term skill building (12-18 months).
+5. **Entrance Exam Introduction**: General exam awareness, not urgent prep.
+
+**Tone:**
+- Exploratory, encouraging, "you have time to explore and build skills"
+- Focus on discovering interests and building foundations
+
+**Roadmap Specificity:**
+- Immediate (Next 3 months): Subject mastery, skill exploration, career research
+- Short-term (6-12 months): Entrance exam familiarization, extracurriculars, projects
+- Projects: Can be longer-term (6-12 months completion time)
+
+`}
+
 ${psychologyWarning}
 ${streamSpecificInstructions}
 
@@ -1019,6 +1072,69 @@ ${jobMarketSection || `
 
 **YOU MUST GENERATE CAREER CLUSTERS DYNAMICALLY BASED ON THE STUDENT'S ACTUAL DATA - NO TEMPLATES!**
 
+${isGrade12 ? `
+## 🎯 GRADE 12 SPECIFIC REQUIREMENTS - READ CAREFULLY
+
+**THIS IS A GRADE 12 STUDENT - CAREER RECOMMENDATIONS MUST BE MORE SPECIFIC:**
+
+**CRITICAL RULE: Cluster titles MUST be different for Grade 12 vs Grade 11**
+- Grade 12 titles should be MORE SPECIFIC and career-focused
+- Grade 11 titles are broader and exploratory
+- Example with same RIASEC (I=85%, S=78%, A=60%):
+  - Grade 11: "Economics & Social Research" (broad, exploratory)
+  - Grade 12: "Economic Policy Analysis & Public Administration" (specific, career-ready)
+
+**WHAT DIFFERS FOR GRADE 12:**
+
+1. **CLUSTER TITLES**: Must be MORE SPECIFIC than Grade 11
+   - Add specific career domains or specializations
+   - Use professional terminology
+   - Example: "Economic Research" → "Economic Policy Analysis & Think Tank Research"
+   
+2. **ENTRY ROLES**: Must reflect IMMEDIATE post-graduation opportunities (0-2 years)
+   - Grade 11: "Economic Research Assistant" (exploratory, skill-building focus)
+   - Grade 12: "Junior Research Analyst at Think Tank" (specific, immediate hiring roles)
+   
+3. **MID-CAREER ROLES**: Must show CLEAR 5-10 year progression with certifications
+   - Grade 11: "Policy Analyst" (aspirational, general)
+   - Grade 12: "Senior Policy Analyst (5-7 years, requires Master's in Public Policy)" (specific timeline + requirements)
+   
+4. **MATCH SCORES**: Should be slightly HIGHER (more confident) for Grade 12
+   - Grade 11: 85% match (exploratory confidence)
+   - Grade 12: 90% match (career-ready confidence)
+   
+5. **DESCRIPTIONS**: Must include entrance exams, college names, cutoffs, application strategy
+   - Grade 11: "This path involves studying economics and developing analytical skills..."
+   - Grade 12: "Apply for BA Economics at DU/JNU/ISI (CUET cutoff 95%+), prepare for UPSC CSE/RBI Grade B, target internships at ORF/NITI Aayog..."
+
+6. **SALARY RANGES**: Include specific salary expectations for Grade 12
+   - Grade 11: Can skip or be vague
+   - Grade 12: "₹4-6L entry, ₹12-18L mid-career"
+` : `
+## 🎯 GRADE 11 SPECIFIC REQUIREMENTS
+
+**THIS IS A GRADE 11 STUDENT - KEEP RECOMMENDATIONS EXPLORATORY:**
+
+**CRITICAL RULE: Cluster titles should be BROADER and EXPLORATORY**
+- Grade 11 titles are broader to encourage exploration
+- Grade 12 titles are more specific and career-focused
+- Example with same RIASEC (I=85%, S=78%, A=60%):
+  - Grade 11: "Economics & Social Research" (broad, exploratory)
+  - Grade 12: "Economic Policy Analysis & Public Administration" (specific, career-ready)
+
+**WHAT DIFFERS FOR GRADE 11:**
+
+1. **CLUSTER TITLES**: Should be BROADER than Grade 12
+   - Use general career domains
+   - Encourage exploration
+   - Example: "Economic Policy Analysis" → "Economics & Social Research"
+
+2. **ENTRY ROLES**: Focus on skill building over 18-24 months
+3. **MID-CAREER ROLES**: Can be aspirational, showing possibilities
+4. **MATCH SCORES**: Can be more exploratory (lower confidence is OK)
+5. **DESCRIPTIONS**: Focus on exploration and foundation building
+`}
+
 **STEP-BY-STEP DYNAMIC GENERATION PROCESS:**
 
 **STEP 1: ANALYZE STUDENT'S COMPLETE PROFILE**
@@ -1087,12 +1203,26 @@ For each RIASEC combination, determine the ROLE TYPE within the allowed career d
   - If knowledge 40-70%: Standard entry roles (Associate, Analyst, Coordinator)
   - If knowledge > 70%: Competitive entry roles (Specialist, Engineer, Researcher)
   - Integrate work values: Autonomy > 4.0 → add "Freelance" or "Independent" variants
+  ${isGrade12 ? `
+  - **Grade 12 Adjustment**: Entry roles should reflect IMMEDIATE post-graduation opportunities (0-2 years)
+  - Focus on roles achievable with bachelor's degree or entry certifications
+  - Include internship-to-hire pathways where relevant` : `
+  - **Grade 11 Adjustment**: Entry roles can be more exploratory
+  - Include roles that require skill building over next 18-24 months
+  - Focus on foundational positions that allow learning`}
   
 - **Mid-career roles (3 roles):** Generate based on RIASEC + domain + work values
   - If Leadership > 4.0: Add management/leadership roles (Manager, Lead, Director)
   - If Autonomy > 4.0: Add consulting/advisory roles (Consultant, Advisor, Specialist)
   - If Financial > 4.0: Add high-earning specializations (Senior, Principal, Chief)
   - If Creativity > 4.0: Add innovation roles (Innovation Lead, Design Lead, R&D Head)
+  ${isGrade12 ? `
+  - **Grade 12 Adjustment**: Mid-career roles should show clear 5-10 year progression
+  - Include specific certifications/qualifications needed for advancement
+  - Mention salary ranges and growth trajectory` : `
+  - **Grade 11 Adjustment**: Mid-career roles can be more aspirational
+  - Focus on showing career possibilities and growth paths
+  - Emphasize skill development journey`}
 
 **DO NOT use generic role lists. Generate roles specific to:**
 1. Their RIASEC combination (e.g., I+S in PCMB = Clinical + Research roles, not generic Doctor)
@@ -1100,6 +1230,7 @@ For each RIASEC combination, determine the ROLE TYPE within the allowed career d
 3. Their knowledge level (accessible vs competitive)
 4. Their work values (freelance, management, high-earning, creative variants)
 5. Their personality (Big Five traits influence role style)
+6. **Their grade level** (Grade 12 = immediate opportunities, Grade 11 = exploratory)
 
 - Calculate match score: 75 + (average of top 2 RIASEC % × 0.20) + aptitude adjustment
 - Apply knowledge gating: If knowledge < 40%, recommend accessible variants (B.Sc not IIT)
@@ -1117,17 +1248,32 @@ For each RIASEC combination, determine the ROLE TYPE within the allowed career d
   - Apply same knowledge gating as Cluster 1
   - Consider partial aptitude fit (not perfect match)
   - Integrate work values for role variants
+  ${isGrade12 ? `
+  - **Grade 12 Adjustment**: Focus on realistic alternatives if Cluster 1 doesn't work out
+  - Include backup career paths with similar entry requirements
+  - Mention alternative entrance exams or pathways` : `
+  - **Grade 11 Adjustment**: Can explore adjacent career areas
+  - Include roles that allow pivoting between interests
+  - Focus on transferable skill building`}
   
 - **Mid-career roles (3 roles):** Generate based on growth potential
   - Consider how their secondary RIASEC types could develop
   - Apply work values for specialization direction
   - Consider personality traits for role style
+  ${isGrade12 ? `
+  - **Grade 12 Adjustment**: Show how this path differs from Cluster 1 in 5-10 years
+  - Include specific pivot points or specialization options
+  - Mention cross-over opportunities between clusters` : `
+  - **Grade 11 Adjustment**: Emphasize exploration and skill discovery
+  - Show how interests might evolve over time
+  - Focus on keeping options open`}
 
 **DO NOT copy roles from Cluster 1. Generate NEW roles that:**
 1. Match their secondary RIASEC combination
 2. Are within allowed domain but different career family
 3. Reflect partial aptitude/personality fit
 4. Show growth potential in different direction
+5. **Appropriate for their grade level** (Grade 12 = backup plans, Grade 11 = exploration)
 
 - Calculate match score: 60 + (average of secondary RIASEC % × 0.18) + adjustments
 - Apply same gating rules as Cluster 1
@@ -1143,17 +1289,32 @@ For each RIASEC combination, determine the ROLE TYPE within the allowed career d
   - Focus on accessible entry points for exploration
   - Consider roles that allow skill building
   - May include interdisciplinary or emerging career paths
+  ${isGrade12 ? `
+  - **Grade 12 Adjustment**: Include "Plan C" options or emerging fields
+  - Focus on unconventional but viable paths
+  - Mention how to pivot to this path if needed` : `
+  - **Grade 11 Adjustment**: Encourage broad exploration
+  - Include emerging or future-oriented careers
+  - Focus on discovering hidden interests`}
   
 - **Mid-career roles (3 roles):** Generate based on potential growth areas
   - Consider how interests might develop over time
   - Include roles that bridge multiple RIASEC types
   - May include specialized or niche career paths
+  ${isGrade12 ? `
+  - **Grade 12 Adjustment**: Show realistic long-term potential
+  - Include success stories or case studies where relevant
+  - Mention unique advantages of this path` : `
+  - **Grade 11 Adjustment**: Inspire with possibilities
+  - Show how diverse interests can combine
+  - Focus on long-term career evolution`}
 
 **DO NOT copy roles from Clusters 1 or 2. Generate EXPLORATORY roles that:**
 1. Match their tertiary RIASEC type or adjacent interests
 2. Are within allowed domain but represent growth/exploration
 3. May be emerging or interdisciplinary careers
 4. Show potential for skill development
+5. **Appropriate for their grade level** (Grade 12 = viable alternatives, Grade 11 = inspiration)
 
 - Calculate match score: 45 + (exploratory RIASEC % × 0.17) + adjustments
 - Can include growth areas or emerging interests
@@ -1502,25 +1663,25 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
   },
   "roadmap": {
     "immediate": {
-      "title": "Next 3 Months (11th/12th Grade Focus)",
+      "title": "${isGrade12 ? 'Next 3 Months (Entrance Exam Prep & Applications)' : 'Next 3 Months (Foundation Building)'}",
       "goals": ["<Goal 1>", "<Goal 2>", "<Goal 3>"],
       "actions": ["<Action 1>", "<Action 2>", "<Action 3>"],
-      "entranceExamPrep": "<Specific exam preparation guidance>"
+      "entranceExamPrep": "${isGrade12 ? '<SPECIFIC exam prep strategy with mock test schedule, weak areas to focus, application deadlines>' : '<General exam awareness and subject foundation building>'}"
     },
     "shortTerm": {
-      "title": "6-12 Months (College Preparation)",
+      "title": "${isGrade12 ? '6-12 Months (College Selection & Backup Plans)' : '6-12 Months (Skill Development & Exploration)'}",
       "goals": ["<Goal 1>", "<Goal 2>"],
       "actions": ["<Action 1>", "<Action 2>"],
-      "collegeApplications": "<Application strategy>"
+      "collegeApplications": "${isGrade12 ? '<SPECIFIC college names, cutoffs, application strategy, backup options>' : '<General college awareness and entrance exam familiarization>'}"
     },
     "projects": [
       {
         "title": "<Project 1>",
         "description": "<Detailed description>",
         "skills": ["<Skill 1>", "<Skill 2>"],
-        "timeline": "<Timeline>",
+        "timeline": "${isGrade12 ? '<Must be completable in 3-6 months for college applications>' : '<Can be 6-12 months for long-term skill building>'}",
         "difficulty": "<Level>",
-        "purpose": "<Why this project matters>",
+        "purpose": "${isGrade12 ? '<Portfolio building for college applications>' : '<Skill exploration and foundation building>'}",
         "output": "<Deliverable>",
         "steps": ["<Step 1>", "<Step 2>", "<Step 3>"],
         "resources": ["<Resource 1>", "<Resource 2>"]
@@ -1530,8 +1691,8 @@ Return ONLY a JSON object (no markdown). Use this exact structure:
   "finalNote": {
     "advantage": "<Their strongest competitive advantage>",
     "growthFocus": "<Key area to focus on>",
-    "collegeGuidance": "<Specific guidance for college major selection>",
-    "entranceExamStrategy": "<Strategy for entrance exams based on their profile>"
+    "collegeGuidance": "${isGrade12 ? '<SPECIFIC college names, application strategy, cutoffs, backup plans>' : '<General college major exploration and entrance exam awareness>'}",
+    "entranceExamStrategy": "${isGrade12 ? '<DETAILED exam-specific strategy: mock test schedule, weak areas, time management, application deadlines>' : '<General entrance exam introduction and subject foundation building>'}"
   },
   "overallSummary": "<3-4 sentences summarizing their career readiness, unique strengths, and clear next steps for college preparation>"
 }

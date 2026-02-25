@@ -455,8 +455,27 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
                 'arts': 'Arts'
               };
               const streamName = streamMap[studentStream] || studentStream;
-              enhancedGrade = `${student.grade} - ${streamName}`;
-              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}"`);
+              
+              // Parse the grade to get specific grade number (11 or 12)
+              let specificGrade = student.grade;
+              if (student.grade) {
+                const gradeStr = String(student.grade).toLowerCase();
+                console.log(`🔍 Parsing student.grade: "${student.grade}" (lowercase: "${gradeStr}")`);
+                
+                // CRITICAL: Check for 12 FIRST, then 11 (to avoid "11" matching in "11/12")
+                if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
+                  specificGrade = 'Grade 12';
+                  console.log(`✅ Detected Grade 12 from: "${student.grade}"`);
+                } else if (gradeStr.includes('11') || gradeStr.includes('xi') || gradeStr.includes('eleven')) {
+                  specificGrade = 'Grade 11';
+                  console.log(`✅ Detected Grade 11 from: "${student.grade}"`);
+                } else {
+                  console.warn(`⚠️ Could not parse grade from: "${student.grade}", keeping as-is`);
+                }
+              }
+              
+              enhancedGrade = `${specificGrade} - ${streamName}`;
+              console.log(`✅ Enhanced grade for higher_secondary: "${enhancedGrade}" (from student.grade: "${student.grade}")`);
             }
 
             studentContext = {
@@ -486,12 +505,27 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           'arts': 'Arts'
         };
         const streamName = streamMap[studentStream] || studentStream;
+        
+        // Try to determine specific grade from answers if available
+        // Check if there's a grade selection answer in the assessment
+        const gradeAnswer = answers['grade_selection'] || answers['student_grade'];
+        let specificGrade = 'Grade 11'; // Default to Grade 11 if unknown
+        
+        if (gradeAnswer) {
+          // Parse grade from answer
+          const gradeStr = String(gradeAnswer).toLowerCase();
+          if (gradeStr.includes('12') || gradeStr.includes('xii') || gradeStr.includes('twelve')) {
+            specificGrade = 'Grade 12';
+          }
+          // If it includes '11', keep default Grade 11
+        }
+        
         studentContext = {
-          rawGrade: `Grade 11/12 - ${streamName}`,
+          rawGrade: `${specificGrade} - ${streamName}`,
           selectedStream: studentStream,
           selectedCategory: derivedCategory
         };
-
+        console.log(`✅ Created fallback student context: "${specificGrade} - ${streamName}"`);
       }
 
       // ✅ CRITICAL FIX: Convert auth user_id to student record ID early
