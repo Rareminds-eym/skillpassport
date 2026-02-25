@@ -17,6 +17,7 @@
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { R2Client } from '../utils/r2-client';
+import type { AuthenticatedContext } from '../[[path]]';
 
 /**
  * File size limits (in bytes)
@@ -103,13 +104,13 @@ function validateFileType(type: string): { valid: boolean; error?: string } {
 
 /**
  * Generate unique file key
- * Format: uploads/{timestamp}-{uuid}.{extension}
+ * Format: uploads/{userId}/{timestamp}-{uuid}.{extension}
  */
-function generateUniqueKey(filename: string): string {
+function generateUniqueKey(filename: string, userId: string): string {
   const timestamp = Date.now();
   const randomString = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
   const extension = filename.substring(filename.lastIndexOf('.'));
-  return `uploads/${timestamp}-${randomString}${extension}`;
+  return `uploads/${userId}/${timestamp}-${randomString}${extension}`;
 }
 
 /**
@@ -117,8 +118,15 @@ function generateUniqueKey(filename: string): string {
  */
 export const handleUpload: PagesFunction = async (context) => {
   const { request, env } = context;
+  const authenticatedContext = context as AuthenticatedContext;
 
   try {
+    // Require authentication
+    if (!authenticatedContext.user) {
+      return jsonResponse({ error: 'Authentication required' }, 401);
+    }
+
+    const { user } = authenticatedContext;
     // Parse multipart form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
@@ -148,8 +156,8 @@ export const handleUpload: PagesFunction = async (context) => {
     // Create R2 client
     const r2 = new R2Client(env);
 
-    // Generate unique file key
-    const fileKey = generateUniqueKey(filename);
+    // Generate unique file key with user ID
+    const fileKey = generateUniqueKey(filename, user.id);
 
     // Convert file to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
