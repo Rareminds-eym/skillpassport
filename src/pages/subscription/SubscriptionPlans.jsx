@@ -207,17 +207,17 @@ const FeatureComparisonTable = memo(({ plans }) => {
 
   const renderValue = useCallback((value) => {
     if (value === true) return (
-      <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100">
-        <Check className="h-4 w-4 text-green-600" />
+      <div className="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 shadow-lg">
+        <Check className="h-4 w-4 text-white" strokeWidth={3} />
       </div>
     );
     if (value === false || value === '—') return (
-      <span className="text-gray-300 text-lg">—</span>
+      <span className="text-slate-300 text-xl">—</span>
     );
     if (value === '~') return (
-      <span className="text-amber-500 font-medium">~</span>
+      <span className="text-amber-500 font-bold text-lg">~</span>
     );
-    return <span className="text-sm text-gray-900 font-medium">{value}</span>;
+    return <span className="text-sm text-slate-900 font-semibold">{value}</span>;
   }, []);
 
   const featureComparison = useMemo(() => getFeatureComparison(plans), [plans]);
@@ -239,29 +239,36 @@ const FeatureComparisonTable = memo(({ plans }) => {
     <div className="mt-20">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Compare Plans</h2>
-          <p className="text-gray-600 mt-1">See what's included in each plan</p>
+          <h2 className="text-5xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+            Compare Plans
+          </h2>
+          <p className="text-slate-600 mt-2 text-lg font-light">See what's included in each plan</p>
         </div>
         <button
           onClick={() => setShowComparison(false)}
-          className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm font-medium transition-colors"
+          className="text-slate-500 hover:text-slate-700 flex items-center gap-2 text-sm font-semibold transition-colors"
         >
           <ChevronUp className="h-4 w-4" /> Hide
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-lg">
+      <div className="bg-white rounded-3xl border-2 border-slate-200 overflow-hidden shadow-2xl">
         {/* Header */}
-        <div className={`grid bg-gradient-to-br from-blue-600 to-indigo-700 text-white`} style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}>
-          <div className="p-6 font-bold text-lg">Features</div>
+        <div className={`grid bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative`} style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}>
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
+          }}></div>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
+          
+          <div className="relative p-8 font-light text-xl" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Features</div>
           {plans.map((plan) => (
-            <div key={plan.id} className="p-6 text-center border-l border-white/10">
-              <div className="font-bold text-lg mb-1">{plan.name}</div>
+            <div key={plan.id} className="relative p-8 text-center border-l border-white/10">
+              <div className="font-light text-xl mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{plan.name}</div>
               {plan.price && !plan.contactSales && (
-                <div className="text-sm text-blue-100">₹{parseInt(plan.price).toLocaleString()}/{plan.duration}</div>
+                <div className="text-sm text-white/70 font-medium">₹{parseInt(plan.price).toLocaleString()}/{plan.duration}</div>
               )}
               {plan.contactSales && (
-                <div className="text-sm text-blue-100">Custom</div>
+                <div className="text-sm text-white/70 font-medium">Custom</div>
               )}
             </div>
           ))}
@@ -269,37 +276,37 @@ const FeatureComparisonTable = memo(({ plans }) => {
 
         {/* Categories */}
         {Object.entries(featureComparison).map(([category, features], categoryIndex) => (
-          <div key={category} className={categoryIndex > 0 ? 'border-t-2 border-gray-100' : ''}>
+          <div key={category} className={categoryIndex > 0 ? 'border-t-2 border-slate-100' : ''}>
             <button
               onClick={() => toggleCategory(category)}
-              className="w-full p-5 flex items-center gap-3 bg-gray-50 hover:bg-gray-100 transition-all text-left group"
+              className="w-full p-6 flex items-center gap-4 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-200 transition-all text-left group"
             >
-              <div className={`flex items-center justify-center w-8 h-8 rounded-lg transition-colors ${
+              <div className={`flex items-center justify-center w-10 h-10 rounded-2xl transition-all shadow-lg ${
                 expandedCategories[category] 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 text-gray-600 group-hover:bg-gray-300'
+                  ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white scale-110' 
+                  : 'bg-white text-slate-600 group-hover:bg-slate-50 border-2 border-slate-200'
               }`}>
                 {expandedCategories[category] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
               </div>
               <div className="flex-1">
-                <span className="font-bold text-gray-900 text-lg">{category}</span>
-                <span className="ml-3 text-sm text-gray-500">{Object.keys(features).length} features</span>
+                <span className="font-light text-2xl text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{category}</span>
+                <span className="ml-4 text-sm text-slate-500 font-medium">{Object.keys(features).length} features</span>
               </div>
             </button>
 
             {expandedCategories[category] && (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-slate-100">
                 {Object.entries(features).map(([feature, values], featureIndex) => (
                   <div 
                     key={feature} 
-                    className={`grid hover:bg-blue-50/50 transition-colors ${featureIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`} 
+                    className={`grid hover:bg-slate-50 transition-colors ${featureIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`} 
                     style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}
                   >
-                    <div className="p-5 text-sm text-gray-700 font-medium flex items-center">
+                    <div className="p-6 text-sm text-slate-700 font-medium flex items-center">
                       <span>{feature}</span>
                     </div>
                     {values.slice(0, plans.length).map((value, index) => (
-                      <div key={index} className="p-5 text-center flex items-center justify-center border-l border-gray-100">
+                      <div key={index} className="p-6 text-center flex items-center justify-center border-l border-slate-100">
                         {renderValue(value)}
                       </div>
                     ))}
@@ -312,20 +319,20 @@ const FeatureComparisonTable = memo(({ plans }) => {
       </div>
 
       {/* Legend */}
-      <div className="mt-6 flex items-center justify-center gap-6 text-sm text-gray-600">
-        <div className="flex items-center gap-2">
-          <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100">
-            <Check className="h-4 w-4 text-green-600" />
+      <div className="mt-8 flex items-center justify-center gap-8 text-sm text-slate-600">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 shadow-lg">
+            <Check className="h-4 w-4 text-white" strokeWidth={3} />
           </div>
-          <span>Included</span>
+          <span className="font-medium">Included</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-gray-300 text-lg">—</span>
-          <span>Not available</span>
+        <div className="flex items-center gap-3">
+          <span className="text-slate-300 text-xl">—</span>
+          <span className="font-medium">Not available</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-amber-500 font-medium">~</span>
-          <span>Partially available</span>
+        <div className="flex items-center gap-3">
+          <span className="text-amber-500 font-bold text-lg">~</span>
+          <span className="font-medium">Partially available</span>
         </div>
       </div>
     </div>
@@ -335,7 +342,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
 FeatureComparisonTable.displayName = 'FeatureComparisonTable';
 
 
-// Plan Card Component - Clean solid design with user-friendly feature display
+// Plan Card Component - Editorial luxury design
 const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionData, daysRemaining, allPlans, index, isOrganizationMode, onOrganizationPurchase }) => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(allPlans.find(p => p.id === subscriptionData.plan)?.price || 0);
@@ -367,14 +374,6 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
   const hasMoreFeatures = plan.features?.length > 6;
 
-  // Category icons and colors
-  const categoryConfig = {
-    'Essentials': { icon: 'Zap', color: 'amber', label: 'Essentials' },
-    'Learning': { icon: 'GraduationCap', color: 'blue', label: 'Learning & Growth' },
-    'Support': { icon: 'HeadphonesIcon', color: 'emerald', label: 'Support' },
-    'Extras': { icon: 'Gift', color: 'purple', label: 'Extras' }
-  };
-
   // Handle organization purchase click
   const handleClick = useCallback(() => {
     if (isOrganizationMode && onOrganizationPurchase) {
@@ -384,112 +383,110 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     }
   }, [isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
 
-  // Render feature item with icon and value
-  const renderFeature = (feature, idx) => (
-    <li key={idx} className="flex items-start gap-3 py-2">
-      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center mt-0.5">
-        <Check className="h-3 w-3 text-blue-600" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <span className="text-sm font-medium text-gray-900">{formatFeatureName(feature.name || feature)}</span>
-        {(feature.value || feature.feature_value) && (
-          <span className="block text-xs text-gray-500 mt-0.5">{feature.value || feature.feature_value}</span>
-        )}
-      </div>
-    </li>
-  );
-
-  // Render category section
-  const renderCategory = (categoryKey, features) => {
-    if (!features || features.length === 0) return null;
-    const config = categoryConfig[categoryKey] || categoryConfig['Extras'];
+  // Render feature item
+  const renderFeature = (feature, idx) => {
+    const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
+    const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
     
     return (
-      <div key={categoryKey} className="mb-4">
-        <h5 className={`text-xs font-bold uppercase tracking-wider mb-2 text-${config.color}-600 flex items-center gap-1.5`}>
-          {config.label}
-        </h5>
-        <ul className="space-y-0.5">
-          {features.slice(0, showAllFeatures ? undefined : 3).map((feature, idx) => renderFeature(feature, idx))}
-        </ul>
-      </div>
+      <li key={idx} className="flex items-start gap-3 py-2 group">
+        <div className="flex-shrink-0 w-5 h-5 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center mt-0.5 shadow-sm group-hover:scale-110 transition-transform">
+          <Check className="h-3 w-3 text-white" strokeWidth={3} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium text-slate-700">{formatFeatureName(featureName)}</span>
+          {featureValue && (
+            <span className="block text-xs text-slate-500 mt-0.5">{featureValue}</span>
+          )}
+        </div>
+      </li>
     );
   };
 
   return (
     <div
-      className={`relative bg-white rounded-2xl border-2 transition-all duration-300 h-full flex flex-col ${isCurrentPlan
-        ? 'border-emerald-500 shadow-xl shadow-emerald-500/10'
-        : plan.recommended
-          ? 'border-blue-500 shadow-lg'
-          : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+      className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl ${
+        isCurrentPlan
+          ? 'border-emerald-500 shadow-emerald-500/20'
+          : plan.recommended
+          ? 'border-slate-900 shadow-slate-900/10 scale-105'
+          : 'border-slate-200 hover:border-slate-300'
         }`}
     >
+      {/* Badges */}
       {isCurrentPlan && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-emerald-500 text-white px-4 py-1 rounded-full text-sm font-bold flex items-center gap-1.5 shadow-sm">
-            <Shield className="h-3.5 w-3.5 justify-center" /> Active Plan
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+          <span className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-5 py-2 rounded-full text-sm font-bold flex items-center gap-2 shadow-xl">
+            <Shield className="h-4 w-4" /> Active Plan
           </span>
         </div>
       )}
       {!isCurrentPlan && plan.recommended && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium">
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
+          <span className="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 px-5 py-2 rounded-full text-sm font-bold shadow-xl">
             Most Popular
           </span>
         </div>
       )}
-
-      {/* Organization Mode Badge */}
       {isOrganizationMode && !isCurrentPlan && (
-        <div className="absolute -top-3 right-4">
-          <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-            <Building2 className="h-3 w-3" /> Bulk
+        <div className="absolute -top-4 right-6 z-10">
+          <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl">
+            <Building2 className="h-3.5 w-3.5" /> Bulk
           </span>
         </div>
       )}
 
-      <div className="p-6 flex flex-col h-full">
+      <div className="p-8 flex flex-col h-full">
         {/* Header */}
-        <div className="mb-5 pt-2">
-          <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-          {plan.tagline && <p className="text-sm text-blue-600 font-medium mt-1">{plan.tagline}</p>}
+        <div className="mb-6 pt-2">
+          <h3 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+            {plan.name}
+          </h3>
+          {plan.tagline && (
+            <p className="text-sm text-blue-600 font-medium">{plan.tagline}</p>
+          )}
 
-          <div className="mt-4">
+          <div className="mt-6">
             {isContactSales ? (
-              <span className="text-2xl font-bold text-gray-900">Contact Sales</span>
+              <span className="text-3xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                Contact Sales
+              </span>
             ) : (
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-gray-900">₹{parseInt(plan.price).toLocaleString()}</span>
-                <span className="text-gray-500">/{plan.duration}</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                  ₹{parseInt(plan.price).toLocaleString()}
+                </span>
+                <span className="text-slate-500 font-light">/{plan.duration}</span>
                 {isOrganizationMode && (
-                  <span className="text-sm text-gray-400 ml-1">/seat</span>
+                  <span className="text-sm text-slate-400 ml-1">/seat</span>
                 )}
               </div>
             )}
           </div>
 
-          {/* Volume Discount Indicator for Organization Mode */}
+          {/* Volume Discount Indicator */}
           {isOrganizationMode && !isContactSales && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
                 50+ seats: 10% off
               </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
                 100+: 20% off
-              </span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
-                500+: 30% off
               </span>
             </div>
           )}
 
           {plan.positioning && (
-            <p className="mt-3 text-sm text-gray-500">{plan.positioning}</p>
+            <p className="mt-4 text-sm text-slate-600 font-light leading-relaxed">{plan.positioning}</p>
           )}
 
           {isCurrentPlan && daysRemaining !== null && (
-            <div className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${daysRemaining <= 7 ? 'bg-red-100 text-red-700' : daysRemaining <= 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
+            <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold ${
+              daysRemaining <= 7 
+                ? 'bg-red-100 text-red-700' 
+                : daysRemaining <= 15 
+                ? 'bg-amber-100 text-amber-700' 
+                : 'bg-emerald-100 text-emerald-700'
               }`}>
               <Clock className="h-4 w-4" />
               {daysRemaining} days remaining
@@ -499,39 +496,41 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
         {/* Capacity */}
         {plan.limits && (
-          <div className="mb-5 p-4 bg-gray-50 rounded-xl">
-            <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Capacity</h4>
-            <div className="space-y-2 text-sm">
+          <div className="mb-6 p-5 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Capacity</h4>
+            <div className="space-y-3 text-sm">
               <div className="flex justify-between items-start gap-4">
-                <span className="text-gray-600 flex-shrink-0">Learners</span>
-                <span className="font-medium text-gray-900 text-right">
+                <span className="text-slate-600 font-medium">Learners</span>
+                <span className="font-semibold text-slate-900 text-right">
                   {typeof plan.limits.learners === 'number' ? `Up to ${plan.limits.learners.toLocaleString()}` : plan.limits.learners}
                 </span>
               </div>
+              <div className="h-px bg-slate-200"></div>
               <div className="flex justify-between items-start gap-4">
-                <span className="text-gray-600 flex-shrink-0">Admins</span>
-                <span className="font-medium text-gray-900 text-right">{plan.limits.admins}</span>
+                <span className="text-slate-600 font-medium">Admins</span>
+                <span className="font-semibold text-slate-900 text-right">{plan.limits.admins}</span>
               </div>
+              <div className="h-px bg-slate-200"></div>
               <div className="flex justify-between items-start gap-4">
-                <span className="text-gray-600 flex-shrink-0">Storage</span>
-                <span className="font-medium text-gray-900 text-right">{plan.limits.storage}</span>
+                <span className="text-slate-600 font-medium">Storage</span>
+                <span className="font-semibold text-slate-900 text-right">{plan.limits.storage}</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Features - User-friendly grouped display */}
-        <div className="flex-1 mb-5">
-          <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">What's Included</h4>
+        {/* Features */}
+        <div className="flex-1 mb-6">
+          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">What's Included</h4>
           
-          {Object.entries(featuresByCategory).map(([category, features]) => 
-            renderCategory(category, features)
-          )}
+          <div className="space-y-1">
+            {plan.features?.slice(0, showAllFeatures ? undefined : 6).map((feature, idx) => renderFeature(feature, idx))}
+          </div>
           
           {hasMoreFeatures && (
             <button
               onClick={() => setShowAllFeatures(!showAllFeatures)}
-              className="mt-2 w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors flex items-center justify-center gap-1"
+              className="mt-4 w-full py-2.5 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               {showAllFeatures ? (
                 <>Show less <ChevronUp className="h-4 w-4" /></>
@@ -543,18 +542,17 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
         </div>
 
         {/* Actions */}
-        <div className="mt-auto space-y-2">
+        <div className="mt-auto space-y-3">
           {isCurrentPlan ? (
             <>
-              <div className="w-full py-3 px-4 rounded-lg font-medium bg-emerald-50 border border-emerald-200 text-emerald-700 text-center flex items-center justify-center gap-2">
+              <div className="w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-50 border-2 border-emerald-200 text-emerald-700 text-center flex items-center justify-center gap-2">
                 <Check className="h-5 w-5" /> Your Current Plan
               </div>
 
-              {/* Only show Renew button if the subscription is cancelled but still active */}
               {subscriptionData?.status === 'cancelled' && (
                 <button
                   onClick={() => onSelect(plan)}
-                  className="w-full py-3 px-4 rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-4 px-4 rounded-2xl font-semibold bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
                 >
                   <TrendingUp className="h-5 w-5" />
                   Renew Plan
@@ -566,7 +564,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                   e.stopPropagation();
                   if (onManage) onManage();
                 }}
-                className="w-full py-3 px-4 rounded-lg font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                className="w-full py-4 px-4 rounded-2xl font-semibold border-2 border-slate-300 text-slate-700 hover:bg-slate-50 transition-all"
               >
                 Manage Subscription
               </button>
@@ -574,18 +572,19 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           ) : isContactSales ? (
             <a
               href="mailto:sales@skillpassport.in?subject=Enterprise%20Plan%20Inquiry"
-              className="w-full py-3 px-4 rounded-lg font-medium bg-gray-900 text-white hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-4 px-4 rounded-2xl font-semibold bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2"
             >
               Contact Sales
             </a>
           ) : (
             <button
               onClick={handleClick}
-              className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${isOrganizationMode
-                ? 'bg-purple-600 text-white hover:bg-purple-700'
-                : isUpgrade || plan.recommended
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-100 text-gray-900 hover:bg-gray-200 border border-gray-300'
+              className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${
+                isOrganizationMode
+                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                  : isUpgrade || plan.recommended
+                  ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
+                  : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
               {isOrganizationMode ? (
@@ -935,126 +934,284 @@ function SubscriptionPlans() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
         {/* Subscription status error banner */}
         {subscriptionError && isAuthenticated && (
-          <div className="mb-8 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="text-red-800 font-medium">Unable to load subscription status</p>
-              <p className="text-red-600 text-sm">{subscriptionError?.message || 'Please try again.'}</p>
+          <div className="mb-8 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-red-500 flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <p className="text-red-900 font-semibold text-lg">Unable to load subscription status</p>
+                <p className="text-red-700 text-sm">{subscriptionError?.message || 'Please try again.'}</p>
+              </div>
             </div>
-            <button onClick={refreshSubscription} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
+            <button onClick={refreshSubscription} className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 text-sm font-semibold shadow-lg transition-all hover:scale-105">
               Retry
             </button>
           </div>
         )}
 
-        {/* Partial API failure banner — plans loaded but with a warning */}
+        {/* Partial API failure banner */}
         {plansError && plans.length > 0 && (
-          <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
-              <p className="text-amber-800 text-sm font-medium">
+          <div className="mb-8 bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-3xl p-6 flex items-center justify-between shadow-lg">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-white" />
+              </div>
+              <p className="text-amber-900 font-medium">
                 Pricing information may be incomplete. Please refresh to see the latest plans.
               </p>
             </div>
-            <button onClick={refetchPlans} className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm font-medium">
-              <RefreshCw className="h-3.5 w-3.5" /> Refresh
+            <button onClick={refetchPlans} className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-2xl hover:bg-amber-700 font-semibold shadow-lg transition-all hover:scale-105">
+              <RefreshCw className="h-4 w-4" /> Refresh
             </button>
           </div>
         )}
         {/* Enhanced subscription status banner - Show only for authenticated users with active or paused subscription */}
         {isAuthenticated && hasActiveOrPausedSubscription && (
-          <div className="mb-10">
-            <div className={`rounded-2xl p-6 ${subscriptionData.status === 'active' ? 'bg-blue-600' : 'bg-amber-500'}`}>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Shield className="h-6 w-6 text-white" />
+          <div className="mb-16">
+            {/* Main Status Card - Editorial Luxury Aesthetic */}
+            <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-2xl">
+              {/* Sophisticated background pattern */}
+              <div className="absolute inset-0 opacity-[0.03]" style={{
+                backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
+              }}></div>
+              
+              {/* Accent line */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
+              
+              <div className="relative z-10 p-10">
+                <div className="flex items-start justify-between gap-8 flex-wrap">
+                  <div className="flex-1 min-w-[300px]">
+                    {/* Status badge */}
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 mb-6">
+                      <div className={`w-2 h-2 rounded-full ${subscriptionData.status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></div>
+                      <span className="text-xs font-medium tracking-wider uppercase text-white/70">
+                        {subscriptionData.status === 'active' ? 'Currently Active' : 'Paused'}
+                      </span>
+                    </div>
+                    
+                    {/* Main heading - Editorial style */}
+                    <h2 className="text-5xl font-light text-white mb-3 tracking-tight leading-none" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                      {currentPlanData?.name || 'Premium'}
+                    </h2>
+                    <p className="text-xl text-white/60 font-light tracking-wide mb-6" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                      {currentPlanData?.tagline || 'Your subscription is active'}
+                    </p>
+                    
+                    {/* Subscription period */}
+                    <div className="flex items-center gap-6 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-amber-400" />
+                        <span className="text-white/50 font-light">Started</span>
+                        <span className="text-white font-medium">{formatDate(subscriptionData.startDate)}</span>
+                      </div>
+                      <div className="w-px h-4 bg-white/10"></div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white/50 font-light">Expires</span>
+                        <span className="text-white font-medium">{formatDate(subscriptionData.endDate)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Days remaining - Asymmetric placement */}
+                  {daysRemaining !== null && (
+                    <div className={`relative ${
+                      daysRemaining <= 7 
+                        ? 'bg-gradient-to-br from-red-500 to-red-600' 
+                        : daysRemaining <= 15 
+                        ? 'bg-gradient-to-br from-amber-500 to-amber-600' 
+                        : 'bg-gradient-to-br from-slate-700 to-slate-800'
+                    } rounded-3xl p-8 shadow-2xl border border-white/10 min-w-[180px]`}>
+                      <div className="absolute top-3 right-3">
+                        <Clock className="h-5 w-5 text-white/30" />
+                      </div>
+                      <div className="text-center">
+                        <div className="text-6xl font-light text-white mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                          {daysRemaining}
+                        </div>
+                        <div className="text-sm text-white/70 uppercase tracking-widest font-medium">
+                          Days Left
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold text-white">
-                    {subscriptionData.status === 'active' ? 'Active Subscription' : 'Paused Subscription'}
-                  </h2>
-                  <p className="text-white/80">{currentPlanData?.name || 'Unknown'} Plan</p>
-                </div>
-                {daysRemaining !== null && (
-                  <div className={`px-4 py-2 rounded-full text-sm font-medium ${daysRemaining <= 7 ? 'bg-red-500 text-white' : daysRemaining <= 15 ? 'bg-amber-400 text-amber-900' : 'bg-white/20 text-white'
-                    }`}>
-                    <Clock className="h-4 w-4 inline mr-1.5" />
-                    {daysRemaining} days left
+
+                {/* Expiring Soon Alert - Integrated design */}
+                {daysRemaining !== null && daysRemaining <= 7 && (
+                  <div className="mt-8 relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500/10 to-red-600/10 backdrop-blur-xl border border-red-500/20 p-5">
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent"></div>
+                    <div className="relative flex items-start gap-4">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                        <AlertCircle className="h-5 w-5 text-red-300" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-white font-medium mb-1">Action Required</p>
+                        <p className="text-white/70 text-sm leading-relaxed">
+                          Your subscription expires soon. Renew now to maintain uninterrupted access to all premium features.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-              {daysRemaining !== null && daysRemaining <= 7 && (
-                <div className="mt-4 bg-white/10 rounded-lg p-3 text-white/90 text-sm flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Your subscription is expiring soon. Renew or upgrade to continue.
-                </div>
-              )}
             </div>
 
-            {/* Subscription Details */}
-            <div className="mt-4 bg-white rounded-xl border border-gray-200 p-6">
-              <h3 className="font-bold text-gray-900 mb-4">Subscription Details</h3>
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-500">Start Date</span>
-                    <span className="font-medium text-gray-900">{formatDate(subscriptionData.startDate)}</span>
+            {/* Details Grid - Asymmetric layout */}
+            <div className="mt-8 grid lg:grid-cols-[1.2fr_1fr] gap-6">
+              {/* Features Card - Dominant */}
+              <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200 shadow-lg">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-50 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
+                
+                <div className="relative p-8">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg">
+                      <Sparkles className="h-5 w-5 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                      Active Features
+                    </h3>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-gray-500">End Date</span>
-                    <span className="font-medium text-gray-900">{formatDate(subscriptionData.endDate)}</span>
+                  
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {(currentPlanData?.features || []).slice(0, 8).map((feature, index) => {
+                      const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
+                      const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
+                      
+                      return (
+                        <div 
+                          key={index} 
+                          className="flex items-start gap-3 group"
+                          style={{ 
+                            animation: `fadeInUp 0.5s ease-out ${index * 0.05}s both` 
+                          }}
+                        >
+                          <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
+                            <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-sm text-slate-700 leading-relaxed font-medium">{formatFeatureName(featureName)}</span>
+                            {featureValue && (
+                              <span className="block text-xs text-slate-500 mt-0.5">{featureValue}</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="flex justify-between py-2">
-                    <span className="text-gray-500">Auto Renewal</span>
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${subscriptionData.autoRenew ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
-                      {subscriptionData.autoRenew ? 'Enabled' : 'Disabled'}
-                    </span>
-                  </div>
+                  
+                  {(currentPlanData?.features?.length || 0) > 8 && (
+                    <div className="mt-6 pt-6 border-t border-slate-100">
+                      <span className="text-sm text-amber-600 font-semibold">
+                        Plus {currentPlanData.features.length - 8} additional features
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Active Features</h4>
-                  <ul className="space-y-2">
-                    {subscriptionData.features?.slice(0, 5).map((feature, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
-                        <Check className="h-4 w-4 text-blue-600 mt-0.5" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+              </div>
+
+              {/* Details Card - Secondary */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 shadow-lg">
+                <div className="p-8">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center shadow-lg">
+                      <Shield className="h-5 w-5 text-white" />
+                    </div>
+                    <h3 className="text-2xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                      Details
+                    </h3>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    <div className="group">
+                      <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Billing Cycle</div>
+                      <div className="text-lg text-slate-900 font-medium">
+                        {currentPlanData?.duration || 'Monthly'}
+                      </div>
+                    </div>
+                    
+                    <div className="h-px bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200"></div>
+                    
+                    <div className="group">
+                      <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Auto Renewal</div>
+                      <div className="flex items-center gap-3">
+                        <div className={`relative w-12 h-6 rounded-full transition-colors ${
+                          subscriptionData.autoRenew ? 'bg-emerald-500' : 'bg-slate-300'
+                        }`}>
+                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+                            subscriptionData.autoRenew ? 'translate-x-6' : 'translate-x-0'
+                          }`}></div>
+                        </div>
+                        <span className={`text-sm font-semibold ${
+                          subscriptionData.autoRenew ? 'text-emerald-700' : 'text-slate-600'
+                        }`}>
+                          {subscriptionData.autoRenew ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="h-px bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200"></div>
+                    
+                    <div className="group">
+                      <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Plan Value</div>
+                      <div className="text-2xl text-slate-900 font-light" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                        {currentPlanData?.price ? `₹${parseInt(currentPlanData.price).toLocaleString()}` : 'Custom'}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         )}
+        
+        <style>{`
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+        `}</style>
 
         {/* Hero Message */}
         {heroMessage && (
-          <div className="mb-8 bg-blue-50 border border-blue-100 rounded-xl p-5 text-center">
-            <p className="text-blue-800 font-medium">{heroMessage}</p>
+          <div className="mb-12 relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 p-8 shadow-xl">
+            <div className="absolute inset-0 opacity-10" style={{
+              backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
+            }}></div>
+            <p className="relative text-white text-lg font-light text-center" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+              {heroMessage}
+            </p>
           </div>
         )}
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-3">
+        <div className="text-center mb-16">
+          <h1 className="text-6xl font-light text-slate-900 mb-4 tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
             {isAuthenticated && hasActiveOrPausedSubscription ? 'Manage Your Plan' : title}
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto font-light leading-relaxed">
             {isAuthenticated && hasActiveOrPausedSubscription ? 'Upgrade to unlock more features' : subtitle}
           </p>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex justify-center mb-8">
-          <div className="inline-flex bg-gray-100 rounded-lg p-1">
+        <div className="flex justify-center mb-12">
+          <div className="inline-flex bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
             <button
               onClick={() => setActiveTab('plans')}
-              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'plans'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              className={`px-8 py-3.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'plans'
+                ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <Shield className="w-4 h-4" />
@@ -1062,14 +1219,14 @@ function SubscriptionPlans() {
             </button>
             <button
               onClick={() => setActiveTab('addons')}
-              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'addons'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+              className={`px-8 py-3.5 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'addons'
+                ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <Sparkles className="w-4 h-4" />
               Add-Ons
-              <span className="ml-1 px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">New</span>
+              <span className="ml-1 px-2 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded-full font-bold">New</span>
             </button>
           </div>
         </div>
@@ -1079,14 +1236,19 @@ function SubscriptionPlans() {
           <>
             {/* Organization Mode Banner */}
             {isOrganizationMode && (
-              <div className="mb-8 bg-purple-50 border border-purple-200 rounded-xl p-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-purple-600" />
+              <div className="mb-12 relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-600 to-purple-800 p-8 shadow-xl">
+                <div className="absolute inset-0 opacity-10" style={{
+                  backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
+                }}></div>
+                <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 bg-white/10 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/20">
+                    <Building2 className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-purple-900">Organization Purchase Mode</h3>
-                    <p className="text-sm text-purple-700">
+                    <h3 className="text-2xl font-light text-white mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+                      Organization Purchase Mode
+                    </h3>
+                    <p className="text-purple-100 font-light">
                       Purchase subscriptions for your entire {organizationType}. Volume discounts available for 50+ seats.
                     </p>
                   </div>
@@ -1114,11 +1276,13 @@ function SubscriptionPlans() {
             </div>
 
             {/* Trust Indicators */}
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-gray-500 text-sm">
+            <div className="mt-16 flex flex-wrap items-center justify-center gap-12 text-slate-600">
               {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map((item) => (
-                <div key={item} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-blue-600" />
-                  <span>{item}</span>
+                <div key={item} className="flex items-center gap-3 group">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                    <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                  </div>
+                  <span className="font-medium">{item}</span>
                 </div>
               ))}
             </div>
@@ -1137,12 +1301,26 @@ function SubscriptionPlans() {
         )}
 
         {/* Contact Section */}
-        <div className="mt-16 text-center bg-white rounded-xl border border-gray-200 p-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-2">Need Help Choosing?</h3>
-          <p className="text-gray-600 mb-4">Our team can help you find the right plan for your organization.</p>
-          <a href="mailto:support@skillpassport.in" className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
-            Contact Support
-          </a>
+        <div className="mt-20 text-center relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-12 shadow-2xl">
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
+          }}></div>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
+          
+          <div className="relative">
+            <h3 className="text-4xl font-light text-white mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
+              Need Help Choosing?
+            </h3>
+            <p className="text-white/70 mb-8 text-lg font-light max-w-xl mx-auto">
+              Our team can help you find the right plan for your organization.
+            </p>
+            <a 
+              href="mailto:support@skillpassport.in" 
+              className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl font-semibold hover:bg-slate-100 transition-all shadow-xl hover:scale-105"
+            >
+              Contact Support
+            </a>
+          </div>
         </div>
       </div>
 
