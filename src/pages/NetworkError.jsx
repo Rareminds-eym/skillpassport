@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { WifiOff, RefreshCw } from 'lucide-react';
+import { WifiOff, RefreshCw, Wifi, Cloud, Signal } from 'lucide-react';
 
 export default function NetworkError() {
   const [isRetrying, setIsRetrying] = useState(false);
@@ -40,89 +40,76 @@ export default function NetworkError() {
   };
 
   return (
-    <div className="network-error-container">
-      {/* Animated Background */}
-      <div className="network-error-bg">
-        <div className="grain-overlay" />
-        <div className="radial-glow" />
-      </div>
-
-      {/* Content */}
-      <div className="network-error-content">
-        {/* Animated Network Illustration */}
-        <div className="network-illustration">
-          <svg viewBox="0 0 200 120" className="network-svg">
-            {/* Node 1 */}
-            <circle cx="40" cy="60" r="8" className="node node-1" />
-            
-            {/* Node 2 */}
-            <circle cx="100" cy="30" r="8" className="node node-2" />
-            
-            {/* Node 3 */}
-            <circle cx="160" cy="60" r="8" className="node node-3" />
-            
-            {/* Node 4 */}
-            <circle cx="100" cy="90" r="8" className="node node-4" />
-            
-            {/* Connected Lines */}
-            <line x1="40" y1="60" x2="100" y2="30" className="connection connection-solid" />
-            <line x1="100" y1="30" x2="160" y2="60" className="connection connection-solid" />
-            <line x1="40" y1="60" x2="100" y2="90" className="connection connection-solid" />
-            
-            {/* Broken Connection */}
-            <line x1="100" y1="90" x2="160" y2="60" className="connection connection-broken" strokeDasharray="4 4" />
-            
-            {/* Pulsing Disconnect Icon */}
-            <g className="disconnect-icon">
-              <circle cx="130" cy="75" r="12" className="disconnect-bg" />
-              <path d="M125 75 L135 75 M130 70 L130 80" stroke="#E8A838" strokeWidth="2" strokeLinecap="round" />
-            </g>
-          </svg>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-4 py-12">
+      <div className="max-w-2xl w-full text-center">
+        {/* Animated GIF */}
+        <div className="mb-8 flex justify-center">
+          <img 
+            src="/assets/HomePage/404 error page with cat.gif" 
+            alt="Network Error Animation"
+            className="max-w-full h-auto"
+            style={{ imageRendering: 'crisp-edges' }}
+          />
         </div>
 
-        {/* Text Content */}
-        <div className="network-error-text">
-          <h1 className="network-error-title">You're Offline</h1>
-          <p className="network-error-subtitle">
-            Your SkillPassport is safe. We just can't reach the network right now.
-          </p>
-          <p className="network-error-body">
-            Check your internet connection and try again. Any progress you've made is saved locally and will sync when you're back online.
-          </p>
-        </div>
+        {/* Title */}
+        <h1 className="text-5xl md:text-6xl font-bold text-slate-800 mb-4">
+          You're Offline
+        </h1>
+
+        {/* Subtitle */}
+        <p className="text-xl text-slate-600 font-medium mb-3">
+          Your SkillPassport is safe
+        </p>
+
+        {/* Description */}
+        <p className="text-base text-slate-500 max-w-lg mx-auto mb-8 leading-relaxed">
+          We can't reach the network right now. Check your internet connection and try again. Your progress is saved locally and will sync when you're back online.
+        </p>
 
         {/* Action Buttons */}
-        <div className="network-error-actions">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
+          {/* Primary Button */}
           <button 
             onClick={handleRetry}
             disabled={isRetrying}
-            className="btn-primary"
+            className="w-full sm:w-auto py-4 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold text-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 flex items-center justify-center gap-3 group"
           >
-            {isRetrying ? (
-              <>
-                <RefreshCw className="btn-icon spinning" size={18} />
-                Retrying...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="btn-icon" size={18} />
-                Try Again
-              </>
-            )}
+            <RefreshCw 
+              className={`w-5 h-5 transition-transform ${isRetrying ? 'animate-spin' : 'group-hover:rotate-180 duration-500'}`} 
+            />
+            <span>{isRetrying ? 'Retrying...' : 'Try Again'}</span>
           </button>
-          
+
+          {/* Secondary Button */}
           <button 
             onClick={handleOfflineMode}
-            className="btn-secondary"
+            className="w-full sm:w-auto py-4 px-8 bg-white border-2 border-slate-300 text-slate-700 rounded-xl font-semibold text-lg hover:bg-slate-50 hover:border-slate-400 transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-3"
           >
-            <WifiOff className="btn-icon" size={18} />
-            View Offline Skills
+            <WifiOff className="w-5 h-5" />
+            <span>View Offline Skills</span>
           </button>
         </div>
 
+        {/* Status Indicator */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-full border border-slate-200 shadow-sm">
+          <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
+          <span className="text-sm font-medium text-slate-600">
+            {isOnline ? 'Connection restored' : 'No internet connection'}
+          </span>
+        </div>
+
         {/* Footer */}
-        <p className="network-error-footer">
-          Need help? Visit <a href="https://rareminds.in" target="_blank" rel="noopener noreferrer">support.rareminds.com</a>
+        <p className="text-sm text-slate-500 mt-8">
+          Need help? Visit{' '}
+          <a 
+            href="https://rareminds.in" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-700 font-medium underline"
+          >
+            rareminds.in
+          </a>
         </p>
       </div>
     </div>
