@@ -244,7 +244,8 @@ The categories above were selected because they align with your ${riasecCode} pr
 export function extractCareerCategories(
   riasecCode: string,
   aptitudeLevel: number,
-  interests: string[]
+  interests: string[],
+  stream?: string
 ): string[] {
   const categories: string[] = [];
   
@@ -253,6 +254,22 @@ export function extractCareerCategories(
   
   console.log('[JOB MARKET] Analyzing RIASEC profile:', riasecCode);
   console.log('[JOB MARKET] Top 3 types:', riasecTypes.join(', '));
+  console.log('[JOB MARKET] Stream:', stream || 'not provided');
+  
+  // CRITICAL: Special handling for psychology stream
+  if (stream && stream.toLowerCase().includes('psychology')) {
+    console.log('[JOB MARKET] 🚨 PSYCHOLOGY STREAM DETECTED - Prioritizing psychology categories');
+    
+    // For psychology stream, ALWAYS prioritize psychology-related categories
+    categories.push('Psychology & Mental Health');
+    categories.push('Social Services & Counseling');
+    categories.push('Healthcare & Wellness Coordination');
+    categories.push('Education & Training');
+    categories.push('Research & Academia');
+    
+    console.log('[JOB MARKET] 🎯 Psychology stream categories:', categories.join(', '));
+    return categories.slice(0, 5);
+  }
   
   // RIASEC to Career Category Mapping (Balanced - no single type dominates)
   const riasecMapping: Record<string, string[]> = {
