@@ -292,6 +292,54 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
 \`\`\`
 
 ## ═══════════════════════════════════════════════════════════════════════════
+## CRITICAL PRE-GENERATION CHECKLIST - MUST COMPLETE BEFORE GENERATING JSON
+## ═══════════════════════════════════════════════════════════════════════════
+
+**🚨 BEFORE YOU START WRITING THE JSON OUTPUT, YOU MUST:**
+
+1. **Plan 3 Career Clusters** based on student's RIASEC top 3 types + Stream
+2. **For EACH cluster, list AT LEAST:**
+   - 5-6 entry-level roles
+   - 5-6 mid-career roles
+   - 4-5 senior-level roles
+
+3. **SPECIAL ATTENTION TO CLUSTER 3 (Explore Track):**
+   - Cluster 3 MUST have minimum 3 roles at EACH level (entry, mid, senior)
+   - Total minimum for Cluster 3: 9 roles (3 entry + 3 mid + 3 senior)
+   - If you cannot find 3 roles per level, you chose the wrong career cluster - pick a different one with more role variety
+
+4. **Verify Role Counts:**
+   - Cluster 1: entry ≥ 5, mid ≥ 5, senior ≥ 4
+   - Cluster 2: entry ≥ 4, mid ≥ 4, senior ≥ 3
+   - Cluster 3: entry ≥ 3, mid ≥ 3, senior ≥ 3 (CRITICAL - NO EXCEPTIONS)
+
+**Example Planning Sheet:**
+
+Cluster 3: "Accounting & Audit" (68% match)
+- Entry roles: Junior Accountant, Audit Associate, Tax Assistant, Accounts Executive
+- Mid roles: Senior Accountant, Audit Manager, Tax Consultant, Financial Controller
+- Senior roles: Chief Accountant, Audit Partner, CFO, Director of Finance
+
+**If you cannot list at least 3 roles per level, STOP and choose a different career cluster with more role diversity.**
+
+**VALIDATION QUESTION:** "Does Cluster 3 have at least 3 entry + 3 mid + 3 senior roles listed?"
+- If YES → Proceed to generate JSON
+- If NO → Go back and add more roles OR choose a different career cluster
+
+**🛑 FINAL VALIDATION - DO NOT PROCEED WITHOUT COMPLETING THIS:**
+
+Count the roles in Cluster 3:
+- Entry roles: ___ (must be ≥ 3)
+- Mid roles: ___ (must be ≥ 3)
+- Senior roles: ___ (must be ≥ 3)
+
+If ANY level has fewer than 3 roles, you MUST:
+1. Add more roles to reach the minimum, OR
+2. Choose a completely different career cluster with more role variety
+
+**DO NOT generate the JSON until this validation passes.**
+
+## ═══════════════════════════════════════════════════════════════════════════
 ## OUTPUT FORMAT
 ## ═══════════════════════════════════════════════════════════════════════════
 
@@ -473,9 +521,9 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
           "adaptiveAptitude": "Adaptive test insights (REQUIRED)"
         },
         "roles": {
-          "entry": ["3-4 entry roles"],
-          "mid": ["3-4 mid roles"],
-          "senior": ["2-3 senior roles"]
+          "entry": ["Entry Role 1", "Entry Role 2", "Entry Role 3"],
+          "mid": ["Mid Role 1", "Mid Role 2", "Mid Role 3"],
+          "senior": ["Senior Role 1", "Senior Role 2", "Senior Role 3"]
         },
         "domains": ["Related areas"],
         "salaryRange": {
@@ -559,7 +607,8 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
       ],
       "exploreLater": [
         {"name": "Job Title 1 (e.g., Content Writer)", "salary": {"min": 3, "max": 7}, "description": "Role description"},
-        {"name": "Job Title 2 (e.g., Teacher)", "salary": {"min": 3, "max": 9}, "description": "Role description"}
+        {"name": "Job Title 2 (e.g., Teacher)", "salary": {"min": 3, "max": 9}, "description": "Role description"},
+        {"name": "Job Title 3 (e.g., Counselor)", "salary": {"min": 3, "max": 8}, "description": "Role description"}
       ]
     }
   },
@@ -1203,6 +1252,8 @@ Before returning your response, verify:
 - [ ] **CRITICAL SEMANTIC COHERENCE: Read each cluster title and verify ALL roles listed belong to that exact domain**
 - [ ] **VALIDATION TEST: For each cluster, ask "Would a recruiter in [cluster title] recognize all these roles as part of their field?" - If NO, fix the cluster**
 - [ ] **NO CROSS-CONTAMINATION: Verify no role appears in wrong cluster (e.g., "Biomedical Engineer" should NOT be in "Research & Development" cluster)**
+- [ ] **MINIMUM ROLE COUNT: EVERY cluster MUST have AT LEAST 3 roles in entry, mid, AND senior levels - NO EXCEPTIONS**
+- [ ] **CLUSTER 3 VALIDATION: Track 3 MUST have minimum 3 entry + 3 mid + 3 senior roles (total 9+ roles)**
 - [ ] Programs are SPECIFIC (e.g., "B.Tech Computer Science & AI" not "Engineering")
 - [ ] Each program has evidence from ALL 7 sections in the derivation
 - [ ] Each career cluster has evidence from ALL 7 sections
@@ -1215,6 +1266,8 @@ Before returning your response, verify:
 - [ ] **CRITICAL: Each degree program has "topUniversities" array (5-7 universities)**
 - [ ] If 'A' (Artistic) is in top 3 RIASEC, at least one creative career cluster AND one creative program included
 - [ ] **FINAL COHERENCE CHECK: Read the entire response and ensure cluster titles, roles, and degree programs form a logical, coherent career guidance package**
+- [ ] **FINAL ROLE COUNT CHECK: Count roles in each cluster - entry (min 3), mid (min 3), senior (min 3) - if any cluster has less than 3 roles at any level, ADD MORE ROLES**
+
 
 **🚨 MANDATORY FIELDS FOR EACH DEGREE PROGRAM - DO NOT SKIP:**
 
