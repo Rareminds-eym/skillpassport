@@ -63,9 +63,9 @@ export const getUserUsageStatistics = async () => {
  */
 const getAssessmentsUsage = async (userId) => {
   try {
-    // Count completed assessments
+    // Count completed personal assessments
     const { count, error } = await supabase
-      .from('assessment_results')
+      .from('personal_assessment_results')
       .select('*', { count: 'exact', head: true })
       .eq('student_id', userId);
 
@@ -98,11 +98,10 @@ const getAssessmentsUsage = async (userId) => {
 const getProfileViewsUsage = async (userId) => {
   try {
     // Count profile views from analytics or tracking table
-    // Note: This assumes you have a profile_views or analytics table
     const { count, error } = await supabase
       .from('profile_views')
       .select('*', { count: 'exact', head: true })
-      .eq('profile_user_id', userId);
+      .eq('student_id', userId);
 
     if (error) {
       // If table doesn't exist, return 0
@@ -144,12 +143,11 @@ const getProfileViewsUsage = async (userId) => {
  */
 const getReportsUsage = async (userId) => {
   try {
-    // Count generated reports
-    // This could be from a reports table or document generation logs
+    // Count generated reports from student_reports table
     const { count, error } = await supabase
-      .from('generated_reports')
+      .from('student_reports')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
+      .eq('student_id', userId);
 
     if (error) {
       // If table doesn't exist, return 0

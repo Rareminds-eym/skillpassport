@@ -13,28 +13,13 @@ import { supabase } from '../../lib/supabaseClient';
 import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
 import paymentsApiService from '../../services/paymentsApiService';
 
-// Plan code normalization map — maps DB plan_type values to canonical plan codes.
-// Must match plan_code values in the Supabase subscription_plans table.
-// NOTE: Never add pricing or feature lists here — those come from the database.
-const PLAN_TYPE_MAP = {
-  'basic': 'basic',
-  'professional': 'professional',
-  'enterprise': 'enterprise',
-  'enterprise_ecosystem': 'enterprise_ecosystem',
-  // Legacy mappings for old data
-  'standard': 'basic',
-  'premium': 'professional',
-  'pro': 'professional',
-};
-
 /**
  * Format subscription data for UI
  */
 const formatSubscriptionData = (data) => {
   if (!data) return null;
 
-  const planType = data.plan_type?.toLowerCase() || 'basic';
-  const planId = PLAN_TYPE_MAP[planType] || planType;
+  const planId = data.subscription_plans?.plan_code || data.plan_type || data.plan_code;
 
   return {
     id: data.id,

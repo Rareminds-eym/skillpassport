@@ -85,14 +85,14 @@ const formatFeatureName = (name) => {
 // Build feature comparison from actual plan data
 const getFeatureComparison = (plans) => {
   if (!plans || plans.length === 0) return {};
-  
+
   const categories = {
     'Essentials': {},
     'Learning': {},
     'Support': {},
     'Extras': {}
   };
-  
+
   // Feature categorization mapping
   const featureCategories = {
     // Essentials
@@ -106,7 +106,7 @@ const getFeatureComparison = (plans) => {
     '5gb_storage': 'Essentials',
     '10gb_storage': 'Essentials',
     '50gb_storage': 'Essentials',
-    
+
     // Learning
     'skill_analytics': 'Learning',
     'advanced_analytics': 'Learning',
@@ -120,24 +120,24 @@ const getFeatureComparison = (plans) => {
     'resume_builder': 'Learning',
     'certificates': 'Learning',
     'verified_certs': 'Learning',
-    
+
     // Support
     'basic_support': 'Support',
     'priority_support': 'Support',
     'mentorship': 'Support',
     'placement_assist': 'Support'
   };
-  
+
   // Collect all unique features across all plans
   const allFeatures = new Map();
-  
+
   plans.forEach((plan, planIndex) => {
     if (!plan.features || !Array.isArray(plan.features)) return;
-    
+
     plan.features.forEach(feature => {
       // Handle both string features and object features
       let featureKey, displayName, value;
-      
+
       if (typeof feature === 'string') {
         featureKey = feature;
         displayName = formatFeatureName(feature);
@@ -151,12 +151,12 @@ const getFeatureComparison = (plans) => {
       } else {
         return; // Skip invalid features
       }
-      
+
       if (!featureKey || !displayName) return;
-      
+
       // Determine category
       const category = featureCategories[featureKey] || 'Extras';
-      
+
       // Use displayName as key to prevent duplicates
       if (!allFeatures.has(displayName)) {
         allFeatures.set(displayName, {
@@ -165,26 +165,26 @@ const getFeatureComparison = (plans) => {
           values: Array(plans.length).fill('—')
         });
       }
-      
+
       // Set the value for this plan
       const featureData = allFeatures.get(displayName);
       featureData.values[planIndex] = value;
     });
   });
-  
+
   // Organize by category
   allFeatures.forEach((data, featureName) => {
     const category = categories[data.category] ? data.category : 'Extras';
     categories[category][featureName] = data.values;
   });
-  
+
   // Remove empty categories
   Object.keys(categories).forEach(key => {
     if (Object.keys(categories[key]).length === 0) {
       delete categories[key];
     }
   });
-  
+
   return categories;
 };
 
@@ -259,7 +259,7 @@ const FeatureComparisonTable = memo(({ plans }) => {
             backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
           }}></div>
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
-          
+
           <div className="relative p-8 font-light text-xl" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Features</div>
           {plans.map((plan) => (
             <div key={plan.id} className="relative p-8 text-center border-l border-white/10">
@@ -281,11 +281,10 @@ const FeatureComparisonTable = memo(({ plans }) => {
               onClick={() => toggleCategory(category)}
               className="w-full p-6 flex items-center gap-4 bg-gradient-to-r from-slate-50 to-slate-100 hover:from-slate-100 hover:to-slate-200 transition-all text-left group"
             >
-              <div className={`flex items-center justify-center w-10 h-10 rounded-2xl transition-all shadow-lg ${
-                expandedCategories[category] 
-                  ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white scale-110' 
-                  : 'bg-white text-slate-600 group-hover:bg-slate-50 border-2 border-slate-200'
-              }`}>
+              <div className={`flex items-center justify-center w-10 h-10 rounded-2xl transition-all shadow-lg ${expandedCategories[category]
+                ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white scale-110'
+                : 'bg-white text-slate-600 group-hover:bg-slate-50 border-2 border-slate-200'
+                }`}>
                 {expandedCategories[category] ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
               </div>
               <div className="flex-1">
@@ -297,9 +296,9 @@ const FeatureComparisonTable = memo(({ plans }) => {
             {expandedCategories[category] && (
               <div className="divide-y divide-slate-100">
                 {Object.entries(features).map(([feature, values], featureIndex) => (
-                  <div 
-                    key={feature} 
-                    className={`grid hover:bg-slate-50 transition-colors ${featureIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`} 
+                  <div
+                    key={feature}
+                    className={`grid hover:bg-slate-50 transition-colors ${featureIndex % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
                     style={{ gridTemplateColumns: `minmax(250px, 1fr) repeat(${plans.length}, minmax(150px, 1fr))` }}
                   >
                     <div className="p-6 text-sm text-slate-700 font-medium flex items-center">
@@ -352,14 +351,14 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   // Group features by category for better display
   const featuresByCategory = useMemo(() => {
     if (!plan.features || !Array.isArray(plan.features)) return {};
-    
+
     const categories = {
       'Essentials': [],
       'Learning': [],
       'Support': [],
       'Extras': []
     };
-    
+
     plan.features.forEach(feature => {
       const category = feature.category || 'Extras';
       if (categories[category]) {
@@ -368,7 +367,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
         categories['Extras'].push(feature);
       }
     });
-    
+
     return categories;
   }, [plan.features]);
 
@@ -387,7 +386,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   const renderFeature = (feature, idx) => {
     const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
     const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
-    
+
     return (
       <li key={idx} className="flex items-start gap-3 py-2 group">
         <div className="flex-shrink-0 w-5 h-5 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
@@ -405,10 +404,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
   return (
     <div
-      className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl ${
-        isCurrentPlan
-          ? 'border-emerald-500 shadow-emerald-500/20'
-          : plan.recommended
+      className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl ${isCurrentPlan
+        ? 'border-emerald-500 shadow-emerald-500/20'
+        : plan.recommended
           ? 'border-slate-900 shadow-slate-900/10 scale-105'
           : 'border-slate-200 hover:border-slate-300'
         }`}
@@ -481,11 +479,10 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           )}
 
           {isCurrentPlan && daysRemaining !== null && (
-            <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold ${
-              daysRemaining <= 7 
-                ? 'bg-red-100 text-red-700' 
-                : daysRemaining <= 15 
-                ? 'bg-amber-100 text-amber-700' 
+            <div className={`mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-semibold ${daysRemaining <= 7
+              ? 'bg-red-100 text-red-700'
+              : daysRemaining <= 15
+                ? 'bg-amber-100 text-amber-700'
                 : 'bg-emerald-100 text-emerald-700'
               }`}>
               <Clock className="h-4 w-4" />
@@ -522,11 +519,11 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
         {/* Features */}
         <div className="flex-1 mb-6">
           <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">What's Included</h4>
-          
+
           <div className="space-y-1">
             {plan.features?.slice(0, showAllFeatures ? undefined : 6).map((feature, idx) => renderFeature(feature, idx))}
           </div>
-          
+
           {hasMoreFeatures && (
             <button
               onClick={() => setShowAllFeatures(!showAllFeatures)}
@@ -579,10 +576,9 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           ) : (
             <button
               onClick={handleClick}
-              className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${
-                isOrganizationMode
-                  ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
-                  : isUpgrade || plan.recommended
+              className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isOrganizationMode
+                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
+                : isUpgrade || plan.recommended
                   ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
                   : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
@@ -979,10 +975,10 @@ function SubscriptionPlans() {
               <div className="absolute inset-0 opacity-[0.03]" style={{
                 backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
               }}></div>
-              
+
               {/* Accent line */}
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
-              
+
               <div className="relative z-10 p-10">
                 <div className="flex items-start justify-between gap-8 flex-wrap">
                   <div className="flex-1 min-w-[300px]">
@@ -993,15 +989,14 @@ function SubscriptionPlans() {
                         {subscriptionData.status === 'active' ? 'Currently Active' : 'Paused'}
                       </span>
                     </div>
-                    
-                    {/* Main heading - Editorial style */}
+
                     <h2 className="text-5xl font-light text-white mb-3 tracking-tight leading-none" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                      {currentPlanData?.name || 'Premium'}
+                      {currentPlanData?.name || subscriptionData.planName || 'Professional'}
                     </h2>
                     <p className="text-xl text-white/60 font-light tracking-wide mb-6" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                       {currentPlanData?.tagline || 'Your subscription is active'}
                     </p>
-                    
+
                     {/* Subscription period */}
                     <div className="flex items-center gap-6 text-sm">
                       <div className="flex items-center gap-2">
@@ -1019,13 +1014,12 @@ function SubscriptionPlans() {
 
                   {/* Days remaining - Asymmetric placement */}
                   {daysRemaining !== null && (
-                    <div className={`relative ${
-                      daysRemaining <= 7 
-                        ? 'bg-gradient-to-br from-red-500 to-red-600' 
-                        : daysRemaining <= 15 
-                        ? 'bg-gradient-to-br from-amber-500 to-amber-600' 
+                    <div className={`relative ${daysRemaining <= 7
+                      ? 'bg-gradient-to-br from-red-500 to-red-600'
+                      : daysRemaining <= 15
+                        ? 'bg-gradient-to-br from-amber-500 to-amber-600'
                         : 'bg-gradient-to-br from-slate-700 to-slate-800'
-                    } rounded-3xl p-8 shadow-2xl border-2 border-white/10 min-w-[180px]`}>
+                      } rounded-3xl p-8 shadow-2xl border-2 border-white/10 min-w-[180px]`}>
                       <div className="absolute top-3 right-3">
                         <Clock className="h-5 w-5 text-white/30" />
                       </div>
@@ -1066,7 +1060,7 @@ function SubscriptionPlans() {
               {/* Features Card - Dominant */}
               <div className="relative overflow-hidden rounded-3xl bg-white border-2 border-slate-200 shadow-lg">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-50 to-transparent rounded-full -translate-y-32 translate-x-32"></div>
-                
+
                 <div className="relative p-8">
                   <div className="flex items-center gap-3 mb-8">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg">
@@ -1076,18 +1070,18 @@ function SubscriptionPlans() {
                       Active Features
                     </h3>
                   </div>
-                  
+
                   <div className="grid sm:grid-cols-2 gap-4">
                     {(currentPlanData?.features || []).slice(0, 8).map((feature, index) => {
                       const featureName = typeof feature === 'string' ? feature : (feature.name || feature.feature_key || '');
                       const featureValue = typeof feature === 'object' ? (feature.value || feature.feature_value) : null;
-                      
+
                       return (
-                        <div 
-                          key={index} 
+                        <div
+                          key={index}
                           className="flex items-start gap-3 group"
-                          style={{ 
-                            animation: `fadeInUp 0.5s ease-out ${index * 0.05}s both` 
+                          style={{
+                            animation: `fadeInUp 0.5s ease-out ${index * 0.05}s both`
                           }}
                         >
                           <div className="flex-shrink-0 w-6 h-6 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
@@ -1103,7 +1097,7 @@ function SubscriptionPlans() {
                       );
                     })}
                   </div>
-                  
+
                   {(currentPlanData?.features?.length || 0) > 8 && (
                     <div className="mt-6 pt-6 border-t border-slate-100">
                       <span className="text-sm text-amber-600 font-semibold">
@@ -1125,7 +1119,7 @@ function SubscriptionPlans() {
                       Details
                     </h3>
                   </div>
-                  
+
                   <div className="space-y-6">
                     <div className="group">
                       <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Billing Cycle</div>
@@ -1133,29 +1127,26 @@ function SubscriptionPlans() {
                         {currentPlanData?.duration || 'Monthly'}
                       </div>
                     </div>
-                    
+
                     <div className="h-px bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200"></div>
-                    
+
                     <div className="group">
                       <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Auto Renewal</div>
                       <div className="flex items-center gap-3">
-                        <div className={`relative w-12 h-6 rounded-full transition-colors ${
-                          subscriptionData.autoRenew ? 'bg-emerald-500' : 'bg-slate-300'
-                        }`}>
-                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-                            subscriptionData.autoRenew ? 'translate-x-6' : 'translate-x-0'
-                          }`}></div>
+                        <div className={`relative w-12 h-6 rounded-full transition-colors ${subscriptionData.autoRenew ? 'bg-emerald-500' : 'bg-slate-300'
+                          }`}>
+                          <div className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${subscriptionData.autoRenew ? 'translate-x-6' : 'translate-x-0'
+                            }`}></div>
                         </div>
-                        <span className={`text-sm font-semibold ${
-                          subscriptionData.autoRenew ? 'text-emerald-700' : 'text-slate-600'
-                        }`}>
+                        <span className={`text-sm font-semibold ${subscriptionData.autoRenew ? 'text-emerald-700' : 'text-slate-600'
+                          }`}>
                           {subscriptionData.autoRenew ? 'Enabled' : 'Disabled'}
                         </span>
                       </div>
                     </div>
-                    
+
                     <div className="h-px bg-gradient-to-r from-slate-200 via-slate-300 to-slate-200"></div>
-                    
+
                     <div className="group">
                       <div className="text-xs uppercase tracking-widest text-slate-500 mb-2 font-medium">Plan Value</div>
                       <div className="text-2xl text-slate-900 font-light" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
@@ -1168,7 +1159,7 @@ function SubscriptionPlans() {
             </div>
           </div>
         )}
-        
+
         <style>{`
           @keyframes fadeInUp {
             from {
@@ -1306,7 +1297,7 @@ function SubscriptionPlans() {
             backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
           }}></div>
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
-          
+
           <div className="relative">
             <h3 className="text-4xl font-light text-white mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
               Need Help Choosing?
@@ -1314,8 +1305,8 @@ function SubscriptionPlans() {
             <p className="text-white/70 mb-8 text-lg font-light max-w-xl mx-auto">
               Our team can help you find the right plan for your organization.
             </p>
-            <a 
-              href="mailto:support@skillpassport.in" 
+            <a
+              href="mailto:support@skillpassport.in"
               className="inline-flex items-center gap-3 px-8 py-4 bg-white text-slate-900 rounded-2xl font-semibold hover:bg-slate-100 transition-all shadow-xl hover:scale-105"
             >
               Contact Support
