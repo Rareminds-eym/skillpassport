@@ -19,12 +19,15 @@ export function getPhaseRules(phase: ConversationPhase): string {
 - NO lengthy lists or explanations yet`,
     exploring: `
 - Moderate depth (300-500 words)
+- READ conversation history and acknowledge previous discussion if relevant
+- Start with brief reference to context: "Since we're discussing X..." or "Building on that..."
 - Introduce specific profile details
 - Provide 2-3 concrete recommendations
 - Use some structure (bullets/headers)
 - End with offer to explore deeper`,
     deep_dive: `
 - Comprehensive response (up to 800 words)
+- REFERENCE previous conversation points naturally
 - Detailed, actionable guidance
 - Use structured formatting
 - Include specific examples
@@ -40,6 +43,30 @@ export function getPhaseRules(phase: ConversationPhase): string {
 }
 
 export function buildStudentContextXML(profile: StudentProfile): string {
+  // Determine if this is a school student (Grades 1-12)
+  const isSchoolStudent = profile.grade && profile.grade.toLowerCase().includes('grade');
+  const gradeNumber = (profile as any).gradeNumber;
+  
+  // For school students in Grades 1-12, contextualize skills appropriately
+  let skillsNote = '';
+  if (isSchoolStudent && gradeNumber && gradeNumber <= 12) {
+    if (profile.technicalSkills.length > 0 || profile.softSkills.length > 0) {
+      skillsNote = `
+<skills_context>
+⚠️ IMPORTANT: This is a ${profile.grade} student (age ~${gradeNumber + 5} years).
+The skills listed below may be test/placeholder data and should NOT be emphasized in career guidance.
+For school students, focus on:
+- Academic interests and subject preferences
+- Career domain exploration (not specific technical skills)
+- Stream selection guidance (Science/Commerce/Arts)
+- Age-appropriate skill development suggestions
+
+DO NOT say things like "I see you have skills in react/Programming" to a Grade 10 student.
+Instead, ask about their favorite subjects, interests, and what they enjoy learning.
+</skills_context>`;
+    }
+  }
+  
   const techSkills = profile.technicalSkills.length > 0
     ? profile.technicalSkills.map(s => `${s.name} (L${s.level}${s.verified ? '✓' : ''})`).join(', ')
     : 'None listed';
@@ -55,6 +82,7 @@ export function buildStudentContextXML(profile: StudentProfile): string {
 <university>${profile.university || 'Not specified'}</university>
 <cgpa>${profile.cgpa || 'Not specified'}</cgpa>
 <year>${profile.yearOfPassing || 'Not specified'}</year>
+${skillsNote}
 
 <student_skills>
 <technical>${techSkills}</technical>

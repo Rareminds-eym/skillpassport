@@ -33,13 +33,15 @@ export async function sendCareerChatMessage(
   token: string,
   onToken?: (content: string) => void,
   onDone?: (data: unknown) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  abortSignal?: AbortSignal
 ): Promise<void> {
   try {
     const response = await fetch(`${API_URL}/chat`, {
       method: 'POST',
       headers: getAuthHeaders(token),
       body: JSON.stringify({ conversationId, message, selectedChips }),
+      signal: abortSignal,
     });
 
     if (!response.ok) {
@@ -92,6 +94,10 @@ export async function sendCareerChatMessage(
       }
     }
   } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      console.log('Stream aborted by user');
+      return;
+    }
     onError?.(error as Error);
   }
 }
