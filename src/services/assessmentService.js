@@ -746,18 +746,32 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // Prepare data for insertion - explicitly extract each field
   const riasecScoresRaw = geminiResults?.riasec?.scores || null;
   
-  // FIX: If RIASEC scores are all zeros but _originalScores exists, use those instead
-  // This handles cases where AI returns zeros in scores but has calculated values in _originalScores
-  const riasecScores = riasecScoresRaw && 
-    Object.values(riasecScoresRaw).every(v => v === 0) && 
-    geminiResults?.riasec?._originalScores
-    ? geminiResults.riasec._originalScores  // Use original scores if current scores are all zeros
-    : riasecScoresRaw;
+  console.log('🔍 [completeAttempt] RIASEC extraction:');
+  console.log('   riasecScoresRaw:', JSON.stringify(riasecScoresRaw));
+  console.log('   _originalScores:', JSON.stringify(geminiResults?.riasec?._originalScores));
+  console.log('   _preservedScores:', JSON.stringify(geminiResults?.riasec?._preservedScores));
+  console.log('   _scoreBackup:', JSON.stringify(geminiResults?.riasec?._scoreBackup));
   
-  if (riasecScoresRaw && Object.values(riasecScoresRaw).every(v => v === 0) && geminiResults?.riasec?._originalScores) {
-    console.log('⚠️ [AssessmentService] RIASEC scores were all zeros, using _originalScores instead');
-    console.log('   Original (zeros):', riasecScoresRaw);
-    console.log('   Corrected:', riasecScores);
+  // FIX: If RIASEC scores are all zeros, try backup fields from backend
+  // The backend API adds these backup fields to prevent frontend corruption
+  let riasecScores = riasecScoresRaw;
+  
+  if (riasecScoresRaw && Object.values(riasecScoresRaw).every(v => v === 0)) {
+    console.warn('⚠️ [completeAttempt] RIASEC scores are all zeros, checking backup fields...');
+    
+    // Try backup fields in order of preference
+    if (geminiResults?.riasec?._preservedScores && !Object.values(geminiResults.riasec._preservedScores).every(v => v === 0)) {
+      riasecScores = geminiResults.riasec._preservedScores;
+      console.log('✅ Using _preservedScores:', riasecScores);
+    } else if (geminiResults?.riasec?._scoreBackup && !Object.values(geminiResults.riasec._scoreBackup).every(v => v === 0)) {
+      riasecScores = geminiResults.riasec._scoreBackup;
+      console.log('✅ Using _scoreBackup:', riasecScores);
+    } else if (geminiResults?.riasec?._originalScores && !Object.values(geminiResults.riasec._originalScores).every(v => v === 0)) {
+      riasecScores = geminiResults.riasec._originalScores;
+      console.log('✅ Using _originalScores:', riasecScores);
+    } else {
+      console.error('❌ All RIASEC score fields are zeros!');
+    }
   }
   
   const riasecCode = geminiResults?.riasec?.code || null;

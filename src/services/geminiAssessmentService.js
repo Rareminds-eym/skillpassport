@@ -606,6 +606,10 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('  - RIASEC prefix:', riasecPrefix);
   console.log('  - Looking for keys starting with:', `${riasecPrefix}_`);
   console.log('  - Grade level:', gradeLevel);
+  console.log('  - riasecQuestions available:', riasecQuestions?.length || 0);
+  if (riasecQuestions?.length > 0) {
+    console.log('  - Sample question:', riasecQuestions[0]);
+  }
   
   // First, try to extract using question bank
   Object.entries(answers).forEach(([key, value]) => {
@@ -618,27 +622,28 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
         // For after10/after12/college: questions have a 'type' field (R, I, A, S, E, C)
         // This is the RIASEC category directly
         riasecAnswers[questionId] = {
-          questionId: questionId, // Add question ID for mapping lookup
+          questionId: questionId,
           question: question.text,
           answer: value,
-          riasecType: question.type, // Use the type field as RIASEC category
+          riasecType: question.type, // CRITICAL: This tells backend which RIASEC category
           categoryMapping: question.categoryMapping,
-          questionType: question.categoryMapping ? 'multiselect' : 'rating' // Determine question type
+          questionType: question.categoryMapping ? 'multiselect' : 'rating'
         };
-        console.log(`  ✅ Extracted with question bank: ${questionId}, RIASEC type: ${question.type}`);
+        console.log(`  ✅ Extracted with question bank: ${questionId}, RIASEC type: ${question.type}, answer: ${value}`);
       } else {
-        // FALLBACK: For middle/high school questions (ms1, hs1, etc.) or standard RIASEC (r1, i1, etc.)
-        // Middle/high school questions have categoryMapping in the question bank, so we need the question
-        // For now, extract the answer and let the AI analyze it
+        // FALLBACK: Detect RIASEC type from question ID (r1, i1, a1, s1, e1, c1)
+        const typeMatch = questionId.match(/^([riasce])(\d+)$/i);
+        const riasecType = typeMatch ? typeMatch[1].toUpperCase() : null;
+        
         riasecAnswers[questionId] = {
-          questionId: questionId, // Add question ID for hardcoded mapping lookup
+          questionId: questionId,
           question: `Interest question ${questionId}`,
           answer: value,
-          questionType: 'multiselect', // Middle school uses multiselect
-          categoryMapping: null, // Will use hardcoded mapping in backend
-          riasecType: null // Unknown without question bank
+          questionType: 'rating',
+          categoryMapping: null,
+          riasecType: riasecType // CRITICAL: Detected from question ID
         };
-        console.log(`  ⚠️ Extracted without question bank (fallback): ${questionId} = ${JSON.stringify(value).substring(0, 100)}`);
+        console.log(`  ⚠️ Extracted without question bank (fallback): ${questionId}, detected type: ${riasecType}, answer: ${value}`);
       }
     }
   });
@@ -646,12 +651,28 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
   console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
   if (Object.keys(riasecAnswers).length === 0) {
     console.error('❌ NO RIASEC ANSWERS EXTRACTED! This will cause zero scores.');
-    console.error('   Check if answer keys match expected format:', `${riasecPrefix}_ms1`, `${riasecPrefix}_hs1`, `${riasecPrefix}_r1`, 'etc.');
+    console.error('   Check if answer keys match expected format:', `${riasecPrefix}_r1`, `${riasecPrefix}_a1`, 'etc.');
     console.error('   Available answer keys:', Object.keys(answers).filter(k => k.includes('interest') || k.includes('riasec')).slice(0, 10));
   } else {
     console.log('✅ RIASEC answers extracted successfully');
     console.log('   Sample extracted keys:', Object.keys(riasecAnswers).slice(0, 5));
     console.log('   Sample extracted values:', Object.values(riasecAnswers).slice(0, 2));
+    
+    // Verify all answers have riasecType
+    const missingType = Object.entries(riasecAnswers).filter(([id, ans]) => !ans.riasecType);
+    if (missingType.length > 0) {
+      console.error('❌ CRITICAL: Some RIASEC answers missing riasecType:', missingType.map(([id]) => id).join(', '));
+      console.error('   This will cause those questions to be skipped in scoring!');
+    } else {
+      console.log('✅ All RIASEC answers have riasecType property');
+      
+      // Show distribution by type
+      const typeDistribution = {};
+      Object.values(riasecAnswers).forEach(ans => {
+        typeDistribution[ans.riasecType] = (typeDistribution[ans.riasecType] || 0) + 1;
+      });
+      console.log('   Distribution by type:', typeDistribution);
+    }
   }
 
   // ============================================================================
@@ -1542,6 +1563,18 @@ const prepareAssessmentData = (answers, stream, questionBanks, sectionTimings = 
     '/ expected: 48 for higher_secondary'
   );
   console.log('   - Knowledge:', Object.keys(knowledgeAnswers).length, '/ expected: 20 for higher_secondary');
+  
+  // 🔍 DEBUG: Log sample RIASEC answers to verify structure
+  console.log('📊 RIASEC Sample (first 3):');
+  Object.entries(riasecAnswers).slice(0, 3).forEach(([id, data]) => {
+    console.log(`   ${id}:`, {
+      answer: data.answer,
+      riasecType: data.riasecType,
+      questionType: data.questionType,
+      hasCategoryMapping: !!data.categoryMapping
+    });
+  });
+  
   console.log('📊 === END EXTRACTION SUMMARY ===');
 
   return {

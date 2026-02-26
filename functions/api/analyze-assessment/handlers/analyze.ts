@@ -61,36 +61,71 @@ function calculateRiasecScores(riasecAnswers: Record<string, any>): {
   const scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
   let totalQuestions = 0;
   
+  console.log('[RIASEC] === CALCULATING RIASEC SCORES ===');
+  console.log('[RIASEC] riasecAnswers type:', typeof riasecAnswers);
+  console.log('[RIASEC] riasecAnswers is null?', riasecAnswers === null);
+  console.log('[RIASEC] riasecAnswers is undefined?', riasecAnswers === undefined);
+  console.log('[RIASEC] riasecAnswers keys:', riasecAnswers ? Object.keys(riasecAnswers) : 'N/A');
+  console.log('[RIASEC] Total questions received:', Object.keys(riasecAnswers || {}).length);
+  
+  // Log first 3 questions to debug structure
+  Object.entries(riasecAnswers || {}).slice(0, 3).forEach(([id, question]: [string, any]) => {
+    console.log(`[RIASEC] Sample ${id}:`, {
+      answer: question.answer,
+      answerType: typeof question.answer,
+      riasecType: question.riasecType,
+      hasCategoryMapping: !!question.categoryMapping
+    });
+  });
+  
   // Process each question
   Object.values(riasecAnswers).forEach((question: any) => {
-    if (!question.categoryMapping) return;
-    
     const answer = question.answer;
     const mapping = question.categoryMapping;
+    const riasecType = question.riasecType; // Direct RIASEC type from question
     let questionAnswered = false;
     
-    // Handle array answers (multiselect)
-    if (Array.isArray(answer) && answer.length > 0) {
+    // Handle numeric rating answers (1-5 scale) - for college/after12/after10
+    if (typeof answer === 'number' && riasecType && scores.hasOwnProperty(riasecType)) {
+      // Rating scale scoring:
+      // 1-2: 0 points
+      // 3: 1 point
+      // 4: 2 points
+      // 5: 3 points
+      let points = 0;
+      if (answer >= 3) {
+        points = answer - 2; // 3->1, 4->2, 5->3
+      }
+      
+      console.log(`[RIASEC] Processing: type=${riasecType}, answer=${answer}, points=${points}, before=${scores[riasecType]}`);
+      
+      scores[riasecType] += points;
+      questionAnswered = true;
+      totalQuestions++;
+      
+      console.log(`[RIASEC] After: type=${riasecType}, score=${scores[riasecType]}`);
+    }
+    // Handle array answers (multiselect) - for middle/high school
+    else if (Array.isArray(answer) && answer.length > 0 && mapping) {
       answer.forEach((option: string) => {
-        const riasecType = mapping[option];
-        if (riasecType && scores.hasOwnProperty(riasecType)) {
-          scores[riasecType] += 2;
+        const mappedType = mapping[option];
+        if (mappedType && scores.hasOwnProperty(mappedType)) {
+          scores[mappedType] += 2;
           questionAnswered = true;
         }
       });
-    }
-    // Handle single string answer
-    else if (typeof answer === 'string' && answer.length > 0) {
-      const riasecType = mapping[answer];
-      if (riasecType && scores.hasOwnProperty(riasecType)) {
-        scores[riasecType] += 2;
-        questionAnswered = true;
+      if (questionAnswered) {
+        totalQuestions++;
       }
     }
-    
-    // Count this as one question regardless of how many options were selected
-    if (questionAnswered) {
-      totalQuestions++;
+    // Handle single string answer with mapping
+    else if (typeof answer === 'string' && answer.length > 0 && mapping) {
+      const mappedType = mapping[answer];
+      if (mappedType && scores.hasOwnProperty(mappedType)) {
+        scores[mappedType] += 2;
+        questionAnswered = true;
+        totalQuestions++;
+      }
     }
   });
   
@@ -975,18 +1010,24 @@ export async function handleAnalyzeAssessment(
   let canValidateRiasec = false;
   
   if (assessmentData.riasecAnswers && Object.keys(assessmentData.riasecAnswers).length > 0) {
-    // Check if we have valid categoryMapping data
+    // Check if we have valid data for RIASEC calculation
+    // College/after12/after10: questions have riasecType (R, I, A, S, E, C)
+    // Middle/high school: questions have categoryMapping
     const hasValidMapping = Object.values(assessmentData.riasecAnswers).some(
       (q: any) => q.categoryMapping && Object.keys(q.categoryMapping).length > 0
     );
+    const hasRiasecType = Object.values(assessmentData.riasecAnswers).some(
+      (q: any) => q.riasecType && typeof q.riasecType === 'string'
+    );
     
-    if (hasValidMapping) {
+    if (hasValidMapping || hasRiasecType) {
       precalculatedRiasec = calculateRiasecScores(assessmentData.riasecAnswers);
       canValidateRiasec = true;
       console.log('[ASSESSMENT-API] ✅ Pre-calculated RIASEC:', precalculatedRiasec.code);
+      console.log('[ASSESSMENT-API] ✅ RIASEC scores:', precalculatedRiasec.scores);
       console.log('[ASSESSMENT-API] ✅ RIASEC validation enabled');
     } else {
-      console.warn('[ASSESSMENT-API] ⚠️ riasecAnswers missing categoryMapping - cannot pre-calculate');
+      console.warn('[ASSESSMENT-API] ⚠️ riasecAnswers missing both categoryMapping and riasecType - cannot pre-calculate');
       console.warn('[ASSESSMENT-API] ⚠️ RIASEC validation DISABLED - will trust AI output');
       canValidateRiasec = false;
     }

@@ -1,0 +1,308 @@
+/* Network Error Page Styles */
+
+.network-error-container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow: hidden;
+}
+
+/* Animated Background */
+.network-error-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #0D1B2A 0%, #1a2332 100%);
+  z-index: 0;
+}
+
+.grain-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.radial-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(62, 207, 207, 0.15) 0%, transparent 70%);
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* Content Container */
+.network-error-content {
+  position: relative;
+  z-index: 1;
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+  animation: fade-in-up 0.6s ease-out;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Network Illustration */
+.network-illustration {
+  margin-bottom: 3rem;
+  display: flex;
+  justify-content: center;
+}
+
+.network-svg {
+  width: 200px;
+  height: 120px;
+  filter: drop-shadow(0 4px 20px rgba(62, 207, 207, 0.2));
+}
+
+.node {
+  fill: #3ECFCF;
+  animation: float 3s ease-in-out infinite;
+}
+
+.node-1 { animation-delay: 0s; }
+.node-2 { animation-delay: 0.3s; }
+.node-3 { animation-delay: 0.6s; }
+.node-4 { animation-delay: 0.9s; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.connection {
+  stroke: #3ECFCF;
+  stroke-width: 2;
+  opacity: 0.6;
+}
+
+.connection-solid {
+  animation: pulse-line 2s ease-in-out infinite;
+}
+
+.connection-broken {
+  stroke: #E8A838;
+  opacity: 0.8;
+  animation: dash-animation 1.5s linear infinite;
+}
+
+@keyframes pulse-line {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes dash-animation {
+  to {
+    stroke-dashoffset: -8;
+  }
+}
+
+.disconnect-icon {
+  animation: pulse-icon 2s ease-in-out infinite;
+}
+
+.disconnect-bg {
+  fill: rgba(232, 168, 56, 0.2);
+}
+
+@keyframes pulse-icon {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Text Content */
+.network-error-text {
+  margin-bottom: 2.5rem;
+}
+
+.network-error-title {
+  font-family: 'DM Serif Display', 'Fraunces', Georgia, serif;
+  font-size: 3rem;
+  font-weight: 400;
+  color: #F5F0EB;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.network-error-subtitle {
+  font-family: 'Sora', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 1.25rem;
+  color: #3ECFCF;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.network-error-body {
+  font-family: 'Sora', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 1rem;
+  color: rgba(245, 240, 235, 0.8);
+  line-height: 1.6;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* Action Buttons */
+.network-error-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  align-items: center;
+}
+
+.btn-primary,
+.btn-secondary {
+  font-family: 'Sora', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 0.875rem 2rem;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 200px;
+  justify-content: center;
+}
+
+.btn-primary {
+  background: #3ECFCF;
+  color: #0D1B2A;
+  box-shadow: 0 4px 16px rgba(62, 207, 207, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #35b8b8;
+  box-shadow: 0 6px 24px rgba(62, 207, 207, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: #E8A838;
+  border: 2px solid #E8A838;
+}
+
+.btn-secondary:hover {
+  background: rgba(232, 168, 56, 0.1);
+  border-color: #f0b647;
+  color: #f0b647;
+  transform: translateY(-2px);
+}
+
+.btn-icon {
+  flex-shrink: 0;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Footer */
+.network-error-footer {
+  font-family: 'Sora', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 0.875rem;
+  color: rgba(245, 240, 235, 0.6);
+  margin-top: 2rem;
+}
+
+.network-error-footer a {
+  color: #3ECFCF;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.network-error-footer a:hover {
+  color: #35b8b8;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (min-width: 640px) {
+  .network-error-actions {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 639px) {
+  .network-error-container {
+    padding: 1.5rem 1rem;
+  }
+
+  .network-svg {
+    width: 160px;
+    height: 96px;
+  }
+
+  .network-error-title {
+    font-size: 2.25rem;
+  }
+
+  .network-error-subtitle {
+    font-size: 1.125rem;
+  }
+
+  .network-error-body {
+    font-size: 0.9375rem;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+    max-width: 320px;
+  }
+}
+
+@media (max-width: 374px) {
+  .network-error-title {
+    font-size: 2rem;
+  }
+
+  .network-svg {
+    width: 140px;
+    height: 84px;
+  }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: light) {
+  .network-error-bg {
+    background: linear-gradient(135deg, #0D1B2A 0%, #1a2332 100%);
+  }
+}

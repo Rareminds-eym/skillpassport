@@ -629,7 +629,7 @@ const AssessmentTest = () => {
     const transformDbQuestion = (dbQ) => ({
         id: dbQ.id,
         text: dbQ.question_text,
-        type: dbQ.question_type || dbQ.subtype,  // question_type for input type (multiselect, singleselect, rating, text)
+        type: dbQ.type || dbQ.question_type || dbQ.subtype,  // For RIASEC: type is R/I/A/S/E/C; for others: question_type (multiselect, rating, etc.)
         subtype: dbQ.subtype,                    // Used for aptitude categorization (verbal, numerical, etc.)
         moduleTitle: dbQ.module_title,
         options: dbQ.options,
@@ -1845,7 +1845,8 @@ const AssessmentTest = () => {
                     const map = { 'riasec': 'hs_interest_explorer', 'aptitude': 'hs_aptitude_sampling', 'bigfive': 'hs_strengths_character', 'knowledge': 'hs_learning_preferences' };
                     return map[baseSection] || baseSection;
                 }
-                return baseSection; // after12 uses default section names
+                // after12 and college use default section names (riasec, bigfive, aptitude, values, employability, knowledge)
+                return baseSection;
             };
 
             // Build question banks - fetch AI-generated questions from database for proper scoring
