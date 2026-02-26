@@ -315,9 +315,10 @@ const MainSettings = () => {
     showInTalentPool: true,
   });
 
-  // Load student data into form
+  // Load student data into form - only update when studentData actually changes with valid data
   useEffect(() => {
-    if (studentData && !savingRef.current) {
+    // Only update if we have valid student data and we're not currently saving
+    if (studentData && studentData.id && !savingRef.current && !studentLoading) {
       setProfileData({
         name: studentData.name || "",
         email: studentData.email || userEmail || "",
@@ -401,7 +402,7 @@ const MainSettings = () => {
       // Education data is now handled automatically by the hook
       // No need to manually set education data
     }
-  }, [studentData, userEmail]);
+  }, [studentData, userEmail, studentLoading]);
 
   // Education data is now automatically available from studentDataWithEducation
   // No separate useEffect needed

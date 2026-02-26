@@ -34,16 +34,12 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
   const [activeTab, setActiveTab] = useState<'flow' | 'database' | 'input' | 'context' | 'adaptive' | 'output'>('flow');
   const [showSensitive, setShowSensitive] = useState(false);
 
-  // Show in development mode OR if URL has ?debug=true
+  // Show ONLY if URL has ?debug=true
   const urlParams = new URLSearchParams(window.location.search);
   const forceDebug = urlParams.get('debug') === 'true';
-  const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === 'development' || forceDebug;
   
   console.log('🔍 AssessmentDebugPanel:', {
-    isDevelopment,
     forceDebug,
-    mode: import.meta.env.MODE,
-    dev: import.meta.env.DEV,
     hasData: !!assessmentData,
     hasContext: !!studentContext,
     gradeLevel,
@@ -53,8 +49,8 @@ export const AssessmentDebugPanel: React.FC<AssessmentDebugPanelProps> = ({
     resultDataKeys: resultData ? Object.keys(resultData) : []
   });
 
-  if (!isDevelopment) {
-    console.log('Debug panel hidden - not in development mode');
+  if (!forceDebug) {
+    console.log('Debug panel hidden - add ?debug=true to URL to show');
     return null;
   }
 

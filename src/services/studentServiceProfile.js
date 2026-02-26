@@ -1,4 +1,4 @@
-import { supabase } from '../utils/api';
+import { supabase } from '../lib/supabaseClient';
 
 const generateUuid = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -2677,20 +2677,34 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
 
     // Determine which records to delete
     const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
+    console.log('🔍 Incoming IDs for experience:', Array.from(incomingIds));
+    console.log('🔍 Existing experience IDs:', (existingExperience || []).map(e => e.id));
+    
     const toDelete = (existingExperience || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
+    
+    console.log('🗑️ Experience IDs to delete:', toDelete);
 
     // Delete removed records
     if (toDelete.length > 0) {
-      const { error: deleteError } = await supabase
+      console.log(`🗑️ Deleting ${toDelete.length} experience record(s) from database...`);
+      console.log('🗑️ IDs to delete:', toDelete);
+      
+      const { error: deleteError, data: deleteData } = await supabase
         .from('experience')
         .delete()
-        .in('id', toDelete);
+        .in('id', toDelete)
+        .select();
 
       if (deleteError) {
+        console.error('❌ Delete error:', deleteError);
         return { success: false, error: deleteError.message };
       }
+      
+      console.log(`✅ Successfully deleted ${toDelete.length} experience record(s)`, deleteData);
+    } else {
+      console.log('ℹ️ No experience records to delete');
     }
 
     // Upsert experience records

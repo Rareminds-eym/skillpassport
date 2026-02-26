@@ -61,6 +61,12 @@ export function buildStudentContextXML(profile: StudentProfile): string {
 <soft>${softSkills}</soft>
 </student_skills>
 
+<education>
+${profile.education.length > 0 ? profile.education.slice(0, 2).map((e: any) => 
+  `<degree level="${e.level || e.degree_level || 'Not specified'}" field="${e.department || e.field || profile.department}" university="${e.university || profile.university}" year="${e.year_of_passing || ''}" cgpa="${e.cgpa || ''}"/>`
+).join('\n') : '<degree level="Not specified"/>'}
+</education>
+
 <background>
 <education_count>${profile.education.length}</education_count>
 <experience_count>${profile.experience.length}</experience_count>

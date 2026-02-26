@@ -20,6 +20,8 @@
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
 import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import { authenticateUser, AuthResult } from '../shared/auth';
+import { createAuthenticationError } from './utils/error-handling';
 
 // Import all handlers
 import { handleUpload } from './handlers/upload';
@@ -31,6 +33,29 @@ import { handleUploadPaymentReceipt, handleGetPaymentReceipt } from './handlers/
 import { handleCourseCertificate } from './handlers/certificate';
 import { handleExtractContent } from './handlers/extract-content';
 import { handleListFiles } from './handlers/list-files';
+
+// Define public endpoints that don't require authentication
+const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content'];
+
+/**
+ * Check if the given path is a public endpoint
+ */
+function isPublicEndpoint(path: string): boolean {
+  return PUBLIC_ENDPOINTS.includes(path);
+}
+
+// Extended context type with authentication
+export interface AuthenticatedContext {
+  request: Request;
+  env: any;
+  params?: Record<string, string>;
+  waitUntil?: (promise: Promise<any>) => void;
+  next?: () => Promise<Response>;
+  data?: Record<string, any>;
+  user?: AuthResult['user'];
+  supabase?: AuthResult['supabase'];
+  supabaseAdmin?: AuthResult['supabaseAdmin'];
+}
 
 export const onRequest: PagesFunction = async (context) => {
   const { request, env } = context;
@@ -44,6 +69,28 @@ export const onRequest: PagesFunction = async (context) => {
   const path = url.pathname.replace('/api/storage', '');
 
   try {
+    // Create authenticated context
+    let authenticatedContext: AuthenticatedContext = { ...context };
+
+    // Check if endpoint requires authentication
+    if (!isPublicEndpoint(path)) {
+      // Attempt authentication for protected endpoints
+      const authResult = await authenticateUser(request, env as unknown as Record<string, string>);
+      
+      if (!authResult) {
+        // Authentication failed - return 401 with standardized error
+        return createAuthenticationError(path, 'missing_token');
+      }
+
+      // Attach user context to the request
+      authenticatedContext = {
+        ...context,
+        user: authResult.user,
+        supabase: authResult.supabase,
+        supabaseAdmin: authResult.supabaseAdmin,
+      };
+    }
+
     // Health check
     if (!path || path === '/') {
       if (request.method === 'GET') {
@@ -76,49 +123,49 @@ export const onRequest: PagesFunction = async (context) => {
     if (filesMatch) {
       const [, courseId, lessonId] = filesMatch;
       return handleListFiles({
-        ...context,
+        ...authenticatedContext,
         params: { courseId, lessonId },
-      });
+      } as any);
     }
 
     // Route to handlers based on path
     switch (path) {
       case '/upload':
-        return handleUpload(context);
+        return handleUpload(authenticatedContext as any);
 
       case '/delete':
-        return handleDelete(context);
+        return handleDelete(authenticatedContext as any);
 
       case '/presigned':
-        return handlePresigned(context);
+        return handlePresigned(authenticatedContext as any);
 
       case '/confirm':
-        return handleConfirm(context);
+        return handleConfirm(authenticatedContext as any);
 
       case '/get-url':
       case '/get-file-url':
-        return handleGetFileUrl(context);
+        return handleGetFileUrl(authenticatedContext as any);
 
       case '/document-access':
-        return handleDocumentAccess(context);
+        return handleDocumentAccess(authenticatedContext as any);
 
       case '/signed-url':
-        return handleSignedUrl(context);
+        return handleSignedUrl(authenticatedContext as any);
 
       case '/signed-urls':
-        return handleSignedUrls(context);
+        return handleSignedUrls(authenticatedContext as any);
 
       case '/upload-payment-receipt':
-        return handleUploadPaymentReceipt(context);
+        return handleUploadPaymentReceipt(authenticatedContext as any);
 
       case '/payment-receipt':
-        return handleGetPaymentReceipt(context);
+        return handleGetPaymentReceipt(authenticatedContext as any);
 
       case '/course-certificate':
-        return handleCourseCertificate(context);
+        return handleCourseCertificate(authenticatedContext as any);
 
       case '/extract-content':
-        return handleExtractContent(context);
+        return handleExtractContent(authenticatedContext as any);
 
       default:
         return jsonResponse(

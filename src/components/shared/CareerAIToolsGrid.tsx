@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -10,8 +10,18 @@ import {
   TrendingUp,
   Users,
   Lightbulb,
-  Plus
+  Plus,
+  Sparkles,
+  Compass,
+  Star,
+  Heart,
+  Wrench,
+  GitBranch,
+  Calendar,
+  FileCheck,
+  MessageSquare
 } from 'lucide-react';
+import { supabase } from '../../lib/supabaseClient';
 
 export interface CareerAIAction {
   id: string;
@@ -22,16 +32,26 @@ export interface CareerAIAction {
   iconColor: string;
 }
 
-export const careerAIActions: CareerAIAction[] = [
-  { id: 'jobs', label: 'Find Jobs', icon: Briefcase, prompt: 'What jobs match my skills and experience?', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-  { id: 'skills', label: 'Skill Gap Analysis', icon: Target, prompt: 'Analyze my skill gaps for my target career', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-  { id: 'interview', label: 'Interview Prep', icon: BookOpen, prompt: 'Help me prepare for upcoming interviews', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-  { id: 'resume', label: 'Resume Review', icon: FileText, prompt: 'Review my resume and suggest improvements', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-  { id: 'learning', label: 'Learning Path', icon: GraduationCap, prompt: 'Create a learning roadmap for my career goals', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-  { id: 'career', label: 'Career Guidance', icon: TrendingUp, prompt: 'What career paths are best suited for me?', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-  { id: 'network', label: 'Networking Tips', icon: Users, prompt: 'Give me networking strategies for my field', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-  { id: 'advice', label: 'Career Advice', icon: Lightbulb, prompt: 'I need career advice and guidance', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-];
+// Icon mapping for dynamic icon names from backend
+const iconMap: Record<string, React.ElementType> = {
+  Briefcase,
+  Target,
+  BookOpen,
+  FileText,
+  GraduationCap,
+  TrendingUp,
+  Users,
+  Lightbulb,
+  Sparkles,
+  Compass,
+  Star,
+  Heart,
+  Wrench,
+  GitBranch,
+  Calendar,
+  FileCheck,
+  MessageSquare,
+};
 
 interface CareerAIToolsGridProps {
   onAction?: (prompt: string, label: string) => void;
@@ -47,6 +67,44 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
   navigateOnClick = false,
 }) => {
   const navigate = useNavigate();
+  const [actions, setActions] = useState<CareerAIAction[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchGradeAppropriateActions();
+  }, []);
+
+  const fetchGradeAppropriateActions = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('/api/career/get-actions', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.actions) {
+          // Map icon strings to actual icon components
+          const mappedActions = data.actions.map((action: any) => ({
+            ...action,
+            icon: iconMap[action.icon] || Lightbulb,
+          }));
+          setActions(mappedActions);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching grade-appropriate actions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleClick = (action: CareerAIAction) => {
     if (onAction) {
@@ -74,12 +132,22 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
     whileTap: { scale: 0.98 }
   } : {};
 
+  if (loading) {
+    return (
+      <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isCompact ? 'max-w-full' : 'max-w-2xl mx-auto'}`}>
+        {[...Array(6)].map((_, i) => (
+          <div key={i} className="bg-gray-100 animate-pulse rounded-2xl h-16" />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <Container 
       {...containerProps}
       className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${isCompact ? 'max-w-full' : 'max-w-2xl mx-auto'}`}
     >
-      {careerAIActions.map((action, index) => (
+      {actions.map((action, index) => (
         <Wrapper
           key={action.id}
           {...getButtonProps(index)}

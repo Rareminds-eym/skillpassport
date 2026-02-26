@@ -848,13 +848,6 @@ const AttendanceTracking: React.FC = () => {
     }));
   }, [filterOptions.faculty, subjectGroups]);
 
-  const subjectOptions = useMemo(() => {
-    return filterOptions.subjects.map(subj => ({
-      value: subj.course_name,
-      label: subj.course_name,
-    }));
-  }, [filterOptions.subjects]);
-
   // Filtered subject groups (now using API data)
   const filteredSubjectGroups = useMemo(() => {
     return subjectGroups; // Filtering is now done on the server side
@@ -1141,11 +1134,20 @@ const AttendanceTracking: React.FC = () => {
       const collegeId = facultyData.collegeId;  // ✅ Faculty's college_id
       const facultyName = `${facultyData.first_name} ${facultyData.last_name}`;
 
+      // Get the actual names from the selected IDs
+      const departmentName = departmentsData.find(d => d.id === sessionFormData.department)?.name || sessionFormData.department;
+      const programName = programsData.find(p => p.id === sessionFormData.course)?.name || sessionFormData.course;
+      const subjectData = coursesData.find(c => c.id === sessionFormData.subject);
+      const subjectName = subjectData ? `${subjectData.course_code} - ${subjectData.course_name}` : sessionFormData.subject;
+
       console.log('Creating session with CORRECT logic:', {
         facultyId: sessionFormData.faculty,
         facultyName: facultyName,
         collegeId: collegeId,  // ✅ This is now the faculty's college_id
-        createdBy: user.id     // ✅ Admin who created it
+        createdBy: user.id,     // ✅ Admin who created it
+        departmentName,
+        programName,
+        subjectName
       });
 
       const { error } = await supabase
@@ -1154,11 +1156,11 @@ const AttendanceTracking: React.FC = () => {
           date: sessionFormData.date,
           start_time: sessionFormData.startTime,
           end_time: sessionFormData.endTime,
-          subject_name: sessionFormData.subject,
+          subject_name: subjectName,
           faculty_id: sessionFormData.faculty, // Faculty member's ID
           faculty_name: facultyName, // Faculty member's actual name from database
-          department_name: sessionFormData.department,
-          program_name: sessionFormData.course,
+          department_name: departmentName,
+          program_name: programName,
           semester: parseInt(sessionFormData.semester),
           section: sessionFormData.section,
           room_number: sessionFormData.roomNumber,

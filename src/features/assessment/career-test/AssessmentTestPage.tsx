@@ -17,6 +17,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 
 // Auth & Database
 // @ts-ignore - JS file without type declarations
@@ -88,6 +89,9 @@ import {
   highSchoolAptitudeQuestions,
 } from '../../assessment/data/questions';
 import { supabase } from '@/lib/supabaseClient';
+
+// Tour context to detect when tour is running
+import { useTour } from '../../../components/Tours/TourProvider';
 
 /**
  * Get icon image path for a section based on section ID
@@ -259,6 +263,9 @@ const buildSectionsWithQuestions = (
 const AssessmentTestPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Tour hook - check if tour is running to pause timers
+  const { isTourRunning } = useTour();
 
   // Environment flags
   const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
@@ -645,7 +652,11 @@ const AssessmentTestPage: React.FC = () => {
       }
       
       // Adaptive session exists, check if it was successfully resumed and questions are loaded
-      if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
+      if (adaptiveAptitude.isTestComplete) {
+        console.log('✅ [ADAPTIVE RESUME] Test is complete, showing results');
+        // Test is complete, show results
+        flow.setCurrentScreen('results');
+      } else if (adaptiveAptitude.currentQuestion && !adaptiveAptitude.loading) {
         console.log('✅ [ADAPTIVE RESUME] Questions loaded, starting section immediately');
         // Adaptive session was already resumed in handleResumeAssessment
         // Questions are loaded, so we can start immediately
@@ -661,8 +672,10 @@ const AssessmentTestPage: React.FC = () => {
         flow.setCurrentScreen('assessment'); // Show assessment screen with loading state
       } else {
         console.error('❌ [ADAPTIVE RESUME] No questions loaded and not loading - session resume may have failed');
-        // Session resume failed or no questions available
-        flow.setError('Failed to resume adaptive test. Please refresh and try again.');
+        console.log('🔧 [ADAPTIVE RESUME] Showing section intro so user can restart the section');
+        // Session resume failed or no questions available - show intro so user can restart
+        flow.setCurrentQuestionIndex(0);
+        flow.setShowSectionIntro(true);
         flow.setCurrentScreen('section_intro');
       }
 
@@ -718,7 +731,8 @@ const AssessmentTestPage: React.FC = () => {
 
   // Timer effects
   useEffect(() => {
-    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting) {
+    // Pause timer when tour is running
+    if (flow.showSectionIntro || flow.showSectionComplete || flow.isSubmitting || isTourRunning) {
       return;
     }
 
@@ -763,7 +777,7 @@ const AssessmentTestPage: React.FC = () => {
     if (currentSection.isTimed && flow.timeRemaining === 0) {
       handleNextQuestion();
     }
-  }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections]);
+  }, [flow.showSectionIntro, flow.showSectionComplete, flow.isSubmitting, flow.currentSectionIndex, flow.timeRemaining, flow.elapsedTime, sections, isTourRunning]);
 
   // Aptitude and Knowledge per-question timer
   useEffect(() => {
@@ -772,7 +786,8 @@ const AssessmentTestPage: React.FC = () => {
     const hasIndividualTimer = (currentSection?.isAptitude && flow.aptitudePhase === 'individual') || currentSection?.isKnowledge;
 
     if (!hasIndividualTimer) return;
-    if (flow.showSectionIntro || flow.showSectionComplete) return;
+    // Pause timer when tour is running
+    if (flow.showSectionIntro || flow.showSectionComplete || isTourRunning) return;
 
     if (flow.aptitudeQuestionTimer > 0) {
       const interval = setInterval(() => {
@@ -783,13 +798,14 @@ const AssessmentTestPage: React.FC = () => {
       // Auto-advance when individual question time runs out
       handleNextQuestion();
     }
-  }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections]);
+  }, [flow.aptitudeQuestionTimer, flow.aptitudePhase, flow.showSectionIntro, flow.showSectionComplete, flow.currentSectionIndex, sections, isTourRunning]);
 
   // Adaptive aptitude per-question timer (90 seconds)
   useEffect(() => {
     const currentSection = sections[flow.currentSectionIndex];
     if (!currentSection?.isAdaptive) return;
-    if (flow.showSectionIntro || flow.showSectionComplete) return;
+    // Pause timer when tour is running
+    if (flow.showSectionIntro || flow.showSectionComplete || isTourRunning) return;
     if (adaptiveAptitude.loading || adaptiveAptitude.submitting) return;
     if (!adaptiveAptitude.currentQuestion) return;
 
@@ -1404,6 +1420,9 @@ const AssessmentTestPage: React.FC = () => {
     // Initialize adaptive test
     if (currentSection?.isAdaptive && !adaptiveAptitude.session) {
       console.log('🚀 [ADAPTIVE] Starting adaptive test...');
+      console.log('🚀 [ADAPTIVE] Student ID:', user?.id);
+      console.log('🚀 [ADAPTIVE] Current attempt ID:', currentAttempt?.id);
+      
       // Initialize adaptive timer based on section config
       setAdaptiveQuestionTimer(currentSection.individualTimeLimit || 60);
       
@@ -1419,12 +1438,20 @@ const AssessmentTestPage: React.FC = () => {
         
         // Start the adaptive test (async - questions will load in background)
         try {
+          console.log('🚀 [ADAPTIVE] Calling adaptiveAptitude.startTest()...');
           await adaptiveAptitude.startTest();
           console.log('✅ [ADAPTIVE] startTest completed successfully');
+          console.log('✅ [ADAPTIVE] Session ID:', adaptiveAptitude.session?.id);
+          console.log('✅ [ADAPTIVE] Current question:', adaptiveAptitude.currentQuestion?.id);
         } catch (err) {
           console.error('❌ [ADAPTIVE] Failed to start test:', err);
+          console.error('❌ [ADAPTIVE] Error details:', {
+            message: (err as Error)?.message,
+            stack: (err as Error)?.stack,
+            error: err
+          });
           adaptiveStartPendingRef.current = false;
-          flow.setError('Failed to initialize adaptive test. Please try again.');
+          flow.setError(`Failed to initialize adaptive test: ${(err as Error)?.message || 'Unknown error'}. Please refresh and try again.`);
           return;
         }
         
@@ -1688,6 +1715,7 @@ const AssessmentTestPage: React.FC = () => {
         timeRemaining: flow.timeRemaining,
         elapsedTime: flow.elapsedTime,
         selectedCategory: flow.selectedCategory,
+        studentProgram: studentProgram || null,
         antiCheatingReport: antiCheatingMonitor.getReport()
       });
     } else {
@@ -2346,6 +2374,18 @@ const AssessmentTestPage: React.FC = () => {
             </div>
           )}
           
+          {/* Adaptive Test Complete - Show section complete if adaptive test finished but flow.showSectionComplete not set yet */}
+          {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.isTestComplete && (
+            <SectionCompleteScreen
+              key={`complete-adaptive-${currentSection.id}`}
+              sectionTitle={currentSection.title}
+              nextSectionTitle={!flow.isLastSection && sections[flow.currentSectionIndex + 1]?.title}
+              elapsedTime={flow.sectionTimings[currentSection.id] || flow.elapsedTime}
+              isLastSection={flow.isLastSection}
+              onContinue={handleNextSection}
+            />
+          )}
+          
           {/* Adaptive Section Error - Show error if adaptive test fails to initialize */}
           {!flow.showSectionIntro && !flow.showSectionComplete && currentSection?.isAdaptive && adaptiveAptitude.error && (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
@@ -2426,19 +2466,31 @@ const AssessmentTestPage: React.FC = () => {
               >
                 {/* Question Content */}
                 <div className="flex-1 py-8">
-                  <QuestionRenderer
-                    question={currentQuestion}
-                    questionId={questionId}
-                    sectionId={currentSection?.id || ''}
-                    answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
-                    onAnswer={handleAnswerChange}
-                    responseScale={currentSection?.responseScale}
-                    isAdaptive={currentSection?.isAdaptive}
-                    adaptiveTimer={adaptiveQuestionTimer}
-                    adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
-                    adaptiveLoading={false}
-                    adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
-                  />
+                  {currentSection?.isAdaptive && !currentQuestion ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                      <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                      <p className="text-gray-600">Loading adaptive question...</p>
+                      {adaptiveAptitude.error && (
+                        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-red-700 text-sm">{adaptiveAptitude.error}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <QuestionRenderer
+                      question={currentQuestion}
+                      questionId={questionId}
+                      sectionId={currentSection?.id || ''}
+                      answer={currentSection?.isAdaptive ? adaptiveAptitudeAnswer : flow.answers[questionId]}
+                      onAnswer={handleAnswerChange}
+                      responseScale={currentSection?.responseScale}
+                      isAdaptive={currentSection?.isAdaptive}
+                      adaptiveTimer={adaptiveQuestionTimer}
+                      adaptiveDifficulty={adaptiveAptitude.currentQuestion?.difficulty || adaptiveAptitude.progress?.currentDifficulty}
+                      adaptiveLoading={false}
+                      adaptiveDisabled={currentSection?.isAdaptive ? adaptiveAptitude.submitting : false}
+                    />
+                  )}
                 </div>
 
                 {/* Navigation Buttons - Fixed at bottom */}

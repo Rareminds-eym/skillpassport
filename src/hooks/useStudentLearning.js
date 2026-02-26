@@ -28,6 +28,8 @@ export const useStudentLearning = (studentId, enabled = true) => {
         .from('trainings')
         .select('*')
         .eq('student_id', studentId)
+        .eq('enabled', true)
+        .in('approval_status', ['verified', 'approved'])
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;

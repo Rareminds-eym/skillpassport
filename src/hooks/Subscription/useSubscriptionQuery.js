@@ -18,17 +18,10 @@ const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 const formatSubscriptionData = (data) => {
   if (!data) return null;
 
-  // Map plan_type to plan ID - now matches database plan_code
-  const planTypeMap = {
-    'basic': 'basic',
-    'professional': 'professional',
-    'pro': 'professional',
-    'enterprise': 'enterprise',
-    'ecosystem': 'ecosystem'
-  };
-
-  const planType = data.plan_type?.toLowerCase() || data.plan_code?.toLowerCase() || 'basic';
-  const planId = planTypeMap[planType] || planType;
+  // The database `subscription_plans` is the source of truth for the plan code and name.
+  // Fallback to legacy `plan_type` text on the `subscriptions` table only if join data is missing.
+  const planId = data.subscription_plans?.plan_code || data.plan_type || data.plan_code;
+  const planName = data.subscription_plans?.name || data.plan_type;
 
   return {
     id: data.id, // Subscription ID for cancellation
@@ -40,7 +33,7 @@ const formatSubscriptionData = (data) => {
     autoRenew: data.auto_renew !== false,
     nextBillingDate: data.subscription_end_date,
     paymentStatus: data.status === 'active' ? 'success' : 'pending',
-    planName: data.plan_type,
+    planName,
     planPrice: data.plan_amount,
     fullName: data.full_name,
     email: data.email,
@@ -113,7 +106,7 @@ export const useSubscriptionQuery = () => {
   // Prefetch subscription data (useful for navigation)
   const prefetchSubscription = async () => {
     if (!user?.id) return;
-    
+
     await queryClient.prefetchQuery({
       queryKey: [SUBSCRIPTION_QUERY_KEY, user.id],
       queryFn: () => fetchSubscription(user.id),

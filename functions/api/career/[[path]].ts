@@ -21,6 +21,7 @@ import { handleAnalyzeAssessment } from './handlers/analyze-assessment';
 import { handleGenerateEmbedding } from './handlers/generate-embedding';
 import { handleGenerateFieldKeywords } from './handlers/field-keywords';
 import { handleParseResume } from './handlers/parse-resume';
+import { handleGetActions } from './handlers/get-actions';
 
 // Helper to get OpenRouter API key (uses shared utility)
 export const getOpenRouterKey = (env: any): string | undefined => {
@@ -80,6 +81,10 @@ export const onRequest: PagesFunction = async (context) => {
         return jsonResponse({ error: 'AI service not configured' }, 500);
       }
       return await handleParseResume(request, env as any);
+    }
+
+    if (path === '/get-actions' || path === '/actions') {
+      return await handleGetActions(request, env as any);
     }
 
     // Health check

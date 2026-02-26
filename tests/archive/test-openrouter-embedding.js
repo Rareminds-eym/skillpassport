@@ -2,7 +2,7 @@
  * Test OpenRouter embedding directly to see why it's failing
  */
 
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || 'your-key-here';
 
 async function testOpenRouterEmbedding() {
   console.log('=== Testing OpenRouter Embedding API ===\n');

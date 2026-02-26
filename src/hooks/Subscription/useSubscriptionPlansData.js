@@ -1,145 +1,152 @@
 /**
- * Hook to fetch subscription plans from Cloudflare Workers backend
- * Uses payments-api worker endpoints instead of direct Supabase calls
+ * useSubscriptionPlansData
+ * 
+ * Fetches subscription plans EXCLUSIVELY from the Cloudflare Worker backend.
+ * NO hardcoded pricing fallbacks. If the API fails, we show an error — not stale data.
+ * 
+ * State machine:
+ *   plans = null   → still loading (never been fetched / in-flight)
+ *   plans = []     → API returned 0 plans (unlikely, but handled)
+ *   plans = [...]  → successfully loaded
+ *   error = ...    → fetch failed
  */
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-// Payments API URL - uses environment variable or default
-const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
+const PAYMENTS_API_URL =
+  import.meta.env.VITE_PAYMENTS_API_URL ||
+  'https://payments-api.dark-mode-d021.workers.dev';
+
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1500;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /**
- * Fetch subscription plans from Cloudflare Worker backend
- * @param {Object} options - Filter options
- * @param {string} options.businessType - 'b2b' or 'b2c'
- * @param {string} options.entityType - 'school', 'college', 'university', 'recruitment', 'all'
- * @param {string} options.roleType - 'student', 'educator', 'admin', 'recruiter', 'all'
- * @param {number} options.featuresLimit - Limit features to this number (default: 4, null for all)
- * @returns {Object} { plans, features, loading, loadingMore, error, refetch, fetchAllFeatures }
+ * Fetch subscription plans from the Cloudflare Worker.
+ *
+ * @param {Object} options
+ * @param {string} options.businessType  - 'b2b' | 'b2c'
+ * @param {string} options.entityType    - 'school' | 'college' | 'university' | 'recruitment' | 'all'
+ * @param {string} options.roleType      - 'student' | 'educator' | 'admin' | 'recruiter' | 'all'
+ *
+ * @returns {{ plans, loading, error, refetch }}
  */
 export function useSubscriptionPlansData(options = {}) {
-  const { 
-    businessType = 'b2b', 
-    entityType = 'all', 
+  const {
+    businessType = 'b2b',
+    entityType = 'all',
     roleType = 'all',
-    featuresLimit = 4 // Default to 4 features initially
   } = options;
 
-  const [plans, setPlans] = useState([]);
-  const [allFeaturesPlans, setAllFeaturesPlans] = useState([]); // Store plans with all features
-  const [features, setFeatures] = useState({});
+  // null  = not yet loaded (show full-page spinner)
+  // []    = loaded, but API returned no plans
+  // [...] = loaded plans
+  const [plans, setPlans] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false); // Separate loading state for "Show more"
   const [error, setError] = useState(null);
-  const [showingAllFeatures, setShowingAllFeatures] = useState(false);
-  const hasFetchedAll = useRef(false); // Track if we've already fetched all features
 
-  const fetchPlans = useCallback(async (limit = featuresLimit, isLoadingMore = false) => {
-    // Use appropriate loading state
-    if (isLoadingMore) {
-      setLoadingMore(true);
-    } else {
+  // Stable fetch params so the effect only re-runs when they actually change
+  const fetchParams = useMemo(
+    () => ({ businessType, entityType, roleType }),
+    [businessType, entityType, roleType]
+  );
+
+  // Guard against setting state on unmounted component
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const fetchPlans = useCallback(
+    async (retryCount = 0) => {
+      if (!isMounted.current) return;
+
       setLoading(true);
-    }
-    setError(null);
+      setError(null);
 
-    try {
       const params = new URLSearchParams({
-        businessType,
-        entityType,
-        roleType
+        businessType: fetchParams.businessType,
+        entityType: fetchParams.entityType,
+        roleType: fetchParams.roleType,
+        // Fetch ALL features — no artificial limit
       });
-      
-      // Add featuresLimit if specified
-      if (limit !== null) {
-        params.append('featuresLimit', String(limit));
-      }
 
-      const response = await fetch(`${PAYMENTS_API_URL}/subscription-plans?${params}`);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
+      const url = `${PAYMENTS_API_URL}/subscription-plans?${params}`;
+      console.log('[useSubscriptionPlansData] Fetching from:', url);
 
-      const data = await response.json();
+      try {
+        const response = await fetch(url);
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to fetch plans');
-      }
-
-      // Group detailed features by plan_id
-      const featuresByPlan = {};
-      data.plans?.forEach(plan => {
-        if (plan.detailedFeatures) {
-          featuresByPlan[plan.dbId] = plan.detailedFeatures;
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(
+            errData.error || `HTTP ${response.status}: Failed to fetch plans`
+          );
         }
-      });
 
-      const fetchedPlans = data.plans || [];
-      
-      // If fetching all features, store separately
-      if (limit === null) {
-        setAllFeaturesPlans(fetchedPlans);
-        hasFetchedAll.current = true;
-        setShowingAllFeatures(true);
-      }
-      
-      setPlans(fetchedPlans);
-      setFeatures(featuresByPlan);
-      return fetchedPlans;
-    } catch (err) {
-      console.error('Error fetching subscription plans:', err);
-      setError(err);
-      return [];
-    } finally {
-      if (isLoadingMore) {
-        setLoadingMore(false);
-      } else {
+        const data = await response.json();
+        console.log('[useSubscriptionPlansData] API Response:', data);
+
+        if (!data.success) {
+          throw new Error(data.error || 'API returned unsuccessful response');
+        }
+
+        if (!isMounted.current) return;
+
+        const fetchedPlans = data.plans || [];
+        setPlans(fetchedPlans);
         setLoading(false);
+        return fetchedPlans;
+      } catch (err) {
+        if (!isMounted.current) return;
+
+        // Retry with exponential backoff
+        if (retryCount < MAX_RETRIES) {
+          console.warn(
+            `[SubscriptionPlans] Fetch failed (attempt ${retryCount + 1}/${MAX_RETRIES + 1}), retrying…`,
+            err.message
+          );
+          await sleep(RETRY_DELAY_MS * (retryCount + 1));
+          return fetchPlans(retryCount + 1);
+        }
+
+        console.error('[SubscriptionPlans] All fetch attempts failed:', err);
+        setError(err);
+        setPlans([]); // explicitly empty — not null — so caller knows we finished
+        setLoading(false);
+        return [];
       }
-    }
-  }, [businessType, entityType, roleType, featuresLimit]);
+    },
+    [fetchParams]
+  );
 
-  // Fetch all features (no limit) - call this when user clicks "Show more"
-  const fetchAllFeatures = useCallback(async () => {
-    // If we've already fetched all features, just switch to showing them
-    if (hasFetchedAll.current && allFeaturesPlans.length > 0) {
-      setPlans(allFeaturesPlans);
-      setShowingAllFeatures(true);
-      return allFeaturesPlans;
-    }
-    // Otherwise fetch from API
-    return fetchPlans(null, true); // true = isLoadingMore
-  }, [fetchPlans, allFeaturesPlans]);
-
-  // Show limited features (switch back without refetching)
-  const showLimitedFeatures = useCallback(async () => {
-    setShowingAllFeatures(false);
-    // Refetch with limit to get limited features
-    return fetchPlans(featuresLimit, true);
-  }, [fetchPlans, featuresLimit]);
+  // Track whether the initial fetch has run so we don't double-fire in StrictMode
+  const hasFetchedInitial = useRef(false);
 
   useEffect(() => {
+    if (hasFetchedInitial.current) return;
+    hasFetchedInitial.current = true;
     fetchPlans();
   }, [fetchPlans]);
 
   return {
-    plans,
-    features,
+    plans,   // null while loading, [] or [...] after
     loading,
-    loadingMore,
-    showingAllFeatures,
     error,
-    refetch: fetchPlans,
-    fetchAllFeatures,
-    showLimitedFeatures
+    refetch: () => {
+      hasFetchedInitial.current = false;
+      fetchPlans();
+    },
   };
 }
 
 /**
- * Fetch a single plan by plan_code from Cloudflare Worker
- * @param {string} planCode - The plan code (basic, professional, enterprise, ecosystem)
- * @returns {Object} { plan, features, loading, error }
+ * Fetch a single plan by plan_code from the Cloudflare Worker.
  */
 export function useSubscriptionPlan(planCode) {
   const [plan, setPlan] = useState(null);
@@ -148,21 +155,25 @@ export function useSubscriptionPlan(planCode) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function fetchPlan() {
-      if (!planCode) {
-        setLoading(false);
-        return;
-      }
+    if (!planCode) {
+      setLoading(false);
+      return;
+    }
 
+    let cancelled = false;
+
+    async function fetchPlan() {
       setLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(`${PAYMENTS_API_URL}/subscription-plan?planCode=${planCode}`);
-        
+        const response = await fetch(
+          `${PAYMENTS_API_URL}/subscription-plan?planCode=${encodeURIComponent(planCode)}`
+        );
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${response.status}`);
         }
 
         const data = await response.json();
@@ -171,25 +182,31 @@ export function useSubscriptionPlan(planCode) {
           throw new Error(data.error || 'Failed to fetch plan');
         }
 
-        setPlan(data.plan);
-        setFeatures(data.plan?.detailedFeatures || []);
+        if (!cancelled) {
+          setPlan(data.plan);
+          setFeatures(data.plan?.detailedFeatures || []);
+        }
       } catch (err) {
-        console.error('Error fetching subscription plan:', err);
-        setError(err);
+        if (!cancelled) {
+          console.error('[useSubscriptionPlan] Error:', err);
+          setError(err);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchPlan();
+    return () => {
+      cancelled = true;
+    };
   }, [planCode]);
 
   return { plan, features, loading, error };
 }
 
 /**
- * Get features comparison across all plans from Cloudflare Worker
- * @returns {Object} { comparison, plans, loading, error }
+ * Get features comparison across all plans from the Cloudflare Worker.
  */
 export function useSubscriptionFeaturesComparison() {
   const [comparison, setComparison] = useState([]);
@@ -198,35 +215,46 @@ export function useSubscriptionFeaturesComparison() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchComparison() {
       setLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(`${PAYMENTS_API_URL}/subscription-features`);
-        
+        const response = await fetch(
+          `${PAYMENTS_API_URL}/subscription-features`
+        );
+
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || `HTTP ${response.status}`);
         }
 
         const data = await response.json();
 
         if (!data.success) {
-          throw new Error(data.error || 'Failed to fetch features');
+          throw new Error(data.error || 'Failed to fetch features comparison');
         }
 
-        setPlans(data.plans || []);
-        setComparison(data.comparison || []);
+        if (!cancelled) {
+          setPlans(data.plans || []);
+          setComparison(data.comparison || []);
+        }
       } catch (err) {
-        console.error('Error fetching features comparison:', err);
-        setError(err);
+        if (!cancelled) {
+          console.error('[useSubscriptionFeaturesComparison] Error:', err);
+          setError(err);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetchComparison();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { comparison, plans, loading, error };

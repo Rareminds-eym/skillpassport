@@ -121,16 +121,13 @@ const fetchStudents = async () => {
             query = query.eq('school_id', schoolId);
         }
 
-        // Apply filters - check both root level and profile JSONB
+        // Apply filters
         if (filters.department !== 'all') {
-            query = query.or(
-                `branch_field.eq.${filters.department},profile->>department.eq.${filters.department}`
-            );
+            query = query.eq('branch_field', filters.department);
         }
         if (filters.year !== 'all') {
-            query = query.or(
-                `profile->>yearOfPassing.eq.${filters.year},profile->>year.eq.${filters.year}`
-            );
+            // Year filtering might need adjustment based on your schema
+            query = query.eq('grade', filters.year);
         }
         if (filters.search) {
             const searchTerm = filters.search.toLowerCase();
@@ -138,10 +135,7 @@ const fetchStudents = async () => {
                 `name.ilike.%${searchTerm}%,` +
                 `email.ilike.%${searchTerm}%,` +
                 `student_id.ilike.%${searchTerm}%,` +
-                `registration_number.ilike.%${searchTerm}%,` +
-                `profile->>name.ilike.%${searchTerm}%,` +
-                `profile->>email.ilike.%${searchTerm}%,` +
-                `profile->>passportId.ilike.%${searchTerm}%`
+                `registration_number.ilike.%${searchTerm}%`
             );
         }
 
@@ -152,26 +146,24 @@ const fetchStudents = async () => {
             throw error;
         }
 
-        // Transform data - prioritize root level fields, fall back to profile JSONB
+        // Transform data
         const transformedStudents = (data || []).map(student => {
-            const profile = student.profile || {};
-            
             return {
                 id: student.id || student.user_id,
                 user_id: student.user_id,
                 student_id: student.student_id,
-                name: student.name || profile.name || 'Unknown',
-                email: student.email || profile.email || '',
-                university: student.university || student.university_main || profile.university || '',
-                branch_field: student.branch_field || profile.department || profile.branch_field || '',
-                college_school_name: student.college_school_name || profile.collegeName || profile.college_school_name || '',
-                registration_number: student.registration_number || student.student_id || profile.passportId || profile.registrationNumber || profile.nm_id || '',
-                approval_status: student.approval_status || (profile.verified ? 'verified' : 'pending'),
-                contact_number: student.contact_number || student.contactNumber || profile.contact_number || '',
-                city: student.city || profile.district || '',
-                gender: student.gender || profile.gender || '',
-                age: student.age || profile.age || null,
-                bio: student.bio || profile.bio || ''
+                name: student.name || 'Unknown',
+                email: student.email || '',
+                university: student.university || student.university_main || '',
+                branch_field: student.branch_field || '',
+                college_school_name: student.college_school_name || '',
+                registration_number: student.registration_number || student.student_id || '',
+                approval_status: student.approval_status || 'pending',
+                contact_number: student.contact_number || student.contactNumber || '',
+                city: student.city || '',
+                gender: student.gender || '',
+                age: student.age || null,
+                bio: student.bio || ''
             };
         });
         

@@ -1054,6 +1054,14 @@ export const useAssessmentResults = () => {
                     // ✅ NEW: Check if data is in individual columns instead of gemini_results
                     let geminiResults = directResult.gemini_results;
 
+                    console.log('🔍 gemini_results check:', {
+                        hasGeminiResults: !!geminiResults,
+                        geminiResultsType: typeof geminiResults,
+                        geminiResultsKeys: geminiResults ? Object.keys(geminiResults) : null,
+                        hasRecommendedStream: !!geminiResults?.recommendedStream,
+                        geminiResultsLength: geminiResults ? Object.keys(geminiResults).length : 0
+                    });
+
                     // CRITICAL FIX: If gemini_results AND individual columns are ALL NULL, trigger regeneration
                     // Don't reconstruct empty objects - they pass validation but have no data
                     const hasIndividualColumns = directResult.riasec_scores || directResult.aptitude_scores || directResult.career_fit;
@@ -1108,6 +1116,8 @@ export const useAssessmentResults = () => {
                             profileSnapshot: directResult.profile_snapshot || '',
                             finalNote: directResult.final_note || '',
                             overallSummary: directResult.overall_summary || '',
+                            // Add recommended stream for after10 students
+                            recommendedStream: directResult.recommended_stream || undefined,
                             // Add adaptive aptitude results if they exist
                             adaptiveAptitudeResults: adaptiveAptitudeResults || undefined
                         };
@@ -1151,10 +1161,14 @@ export const useAssessmentResults = () => {
                             
                             const validatedResults = await applyValidation(geminiResults, {});
 
+                            // ✅ CRITICAL: Preserve gemini_results for normalizer
+                            validatedResults.gemini_results = geminiResults;
+
                             console.log('🔍 DEBUG - Before normalization (direct lookup):', {
                                 hasRiasec: !!validatedResults.riasec,
                                 riasecScores: validatedResults.riasec?.scores,
                                 hasGeminiResults: !!validatedResults.gemini_results,
+                                hasRecommendedStream: !!validatedResults.gemini_results?.recommendedStream,
                                 originalScores: validatedResults.gemini_results?.riasec?._originalScores
                             });
 
@@ -1938,15 +1952,18 @@ export const useAssessmentResults = () => {
 
             // 🔧 CRITICAL FIX: Fetch adaptive aptitude results if session ID exists
             // This ensures high school students get their adaptive test data included in AI analysis
-            if (answers.adaptive_aptitude_session_id) {
+            // Check both answers object and attempt object for session ID
+            const sessionId = answers.adaptive_aptitude_session_id || attempt.adaptive_aptitude_session_id;
+            
+            if (sessionId) {
                 console.log('🔍 Fetching adaptive aptitude results for AI analysis...');
-                console.log('   Session ID:', answers.adaptive_aptitude_session_id);
+                console.log('   Session ID:', sessionId);
 
                 try {
                     const { data: adaptiveData, error: adaptiveError } = await supabase
                         .from('adaptive_aptitude_results')
                         .select('*')
-                        .eq('session_id', answers.adaptive_aptitude_session_id)
+                        .eq('session_id', sessionId)
                         .maybeSingle();
 
                     if (adaptiveData && !adaptiveError) {
@@ -1960,11 +1977,13 @@ export const useAssessmentResults = () => {
                     } else if (adaptiveError) {
                         console.warn('⚠️ Error fetching adaptive results:', adaptiveError);
                     } else {
-                        console.warn('⚠️ No adaptive results found for session:', answers.adaptive_aptitude_session_id);
+                        console.warn('⚠️ No adaptive results found for session:', sessionId);
                     }
                 } catch (err) {
                     console.error('❌ Failed to fetch adaptive results:', err);
                 }
+            } else {
+                console.log('ℹ️ No adaptive aptitude session ID found - skipping adaptive results fetch');
             }
 
             // Force regenerate with AI - pass gradeLevel and student context
@@ -2023,26 +2042,32 @@ export const useAssessmentResults = () => {
                 validatedResults.adaptive_aptitude_results = answers.adaptive_aptitude_results;
             }
 
-            // ✅ Save to database only (no localStorage)
+            // ✅ Save to database - look up by attemptId, create if not exists
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
-                    // Get the latest result and update it
-                    const latestResult = await assessmentService.getLatestResult(user.id);
-                    if (latestResult) {
-                        // Extract individual scores from AI results for database columns
+                    // Look up existing result by attemptId (more reliable than getLatestResult)
+                    const { data: existingResult, error: lookupError } = await supabase
+                        .from('personal_assessment_results')
+                        .select('id')
+                        .eq('attempt_id', attemptId)
+                        .maybeSingle();
+
+                    if (lookupError) {
+                        console.error('❌ Error looking up result by attemptId:', lookupError.message);
+                    }
+
+                    if (existingResult) {
+                        // Result exists — update it with regenerated AI analysis
                         const updateData = {
                             gemini_results: validatedResults,
                             updated_at: new Date().toISOString()
                         };
 
-                        // Include adaptive_aptitude_session_id if available from attempt
                         if (attempt?.adaptive_aptitude_session_id) {
                             updateData.adaptive_aptitude_session_id = attempt.adaptive_aptitude_session_id;
-                            console.log('✅ Including adaptive_aptitude_session_id in update:', attempt.adaptive_aptitude_session_id);
                         }
 
-                        // Extract and store individual score components
                         if (validatedResults.riasec) {
                             updateData.riasec_scores = validatedResults.riasec.scores;
                             updateData.riasec_code = validatedResults.riasec.code;
@@ -2050,6 +2075,8 @@ export const useAssessmentResults = () => {
                         if (validatedResults.aptitude) {
                             updateData.aptitude_scores = validatedResults.aptitude.scores;
                             updateData.aptitude_overall = validatedResults.aptitude.overallScore;
+                            console.log('💾 Saving aptitude_scores to database:', JSON.stringify(validatedResults.aptitude.scores, null, 2));
+                            console.log('💾 Saving aptitude_overall to database:', validatedResults.aptitude.overallScore);
                         }
                         if (validatedResults.bigFive) {
                             updateData.bigfive_scores = validatedResults.bigFive;
@@ -2084,46 +2111,38 @@ export const useAssessmentResults = () => {
                             updateData.overall_summary = validatedResults.overallSummary;
                         }
 
-                        // 🔧 CRITICAL FIX: Ensure adaptive results are saved in gemini_results
-                        // This is needed for the validation check and display
-                        if (validatedResults.adaptiveAptitudeResults || validatedResults.adaptive_aptitude_results) {
-                            console.log('✅ Including adaptive results in database save');
-                            // Already in validatedResults, will be saved in gemini_results
-                        }
-
-                        // Update the existing result with new AI analysis
                         const { error: updateError } = await supabase
                             .from('personal_assessment_results')
                             .update(updateData)
-                            .eq('id', latestResult.id);
+                            .eq('id', existingResult.id);
 
                         if (updateError) {
-                            console.warn('Could not update database result:', updateError.message);
+                            console.error('❌ Could not update database result:', updateError.message);
                         } else {
                             console.log('✅ Database result updated with regenerated AI analysis');
                         }
-
-                        // DISABLED: Course recommendation saving
-                        // Courses are now generated on-demand when user clicks a job role
-                        /*
-                        // Save course recommendations
-                        if (validatedResults.platformCourses && validatedResults.platformCourses.length > 0) {
-                            try {
-                                await saveRecommendations(
-                                    user.id,
-                                    validatedResults.platformCourses,
-                                    latestResult.id,
-                                    'assessment'
-                                );
-                            } catch (recError) {
-                                console.log('Recommendations sync:', recError.message);
-                            }
+                    } else {
+                        // No result record exists — create one via completeAttempt
+                        // This handles cases where the initial save failed (e.g. FK violation)
+                        console.log('⚠️ No existing result for attemptId:', attemptId, '— creating new record');
+                        const studentRecordId = await getStudentRecordId(user.id);
+                        if (studentRecordId) {
+                            const newResult = await assessmentService.completeAttempt(
+                                attemptId,
+                                studentRecordId,
+                                stream,
+                                storedGradeLevel,
+                                validatedResults,
+                                sectionTimings
+                            );
+                            console.log('✅ New result record created:', newResult?.id);
+                        } else {
+                            console.error('❌ Cannot create result — student record not found for auth user:', user.id);
                         }
-                        */
                     }
                 }
             } catch (dbError) {
-                console.log('Could not update database:', dbError.message);
+                console.error('❌ Error saving results to database:', dbError.message);
             }
 
             // Update state with new results

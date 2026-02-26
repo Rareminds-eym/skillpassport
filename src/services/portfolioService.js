@@ -97,6 +97,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('trainings')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false }),
       
@@ -114,6 +115,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('certificates')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('issued_on', { ascending: false }),
       
@@ -122,6 +124,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('education')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('year_of_passing', { ascending: false }),
       
@@ -130,6 +133,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('experience')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false })
     ]);

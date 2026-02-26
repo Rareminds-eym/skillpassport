@@ -14,13 +14,13 @@
 /**
  * Grade level for the test - determines question complexity and context
  */
-export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary';
+export type GradeLevel = 'middle_school' | 'high_school' | 'higher_secondary' | 'after10' | 'after12' | 'undergraduate' | 'postgraduate';
 
 /**
  * Test phases in the adaptive aptitude test flow
- * - diagnostic_screener: Initial 8 questions to classify student tier (L/M/H)
- * - adaptive_core: Exactly 36 questions with adaptive difficulty adjustment
- * - stability_confirmation: Final 6 questions to confirm final aptitude level
+ * - diagnostic_screener: Initial 8 questions (Q1-Q8) to classify student tier (L/M/H) - all at difficulty 3
+ * - adaptive_core: 36 questions (Q9-Q44) with adaptive difficulty adjustment (+1 correct, -1 wrong)
+ * - stability_confirmation: Final 6 questions (Q45-Q50) to confirm final aptitude level - fixed at provisional difficulty
  */
 export type TestPhase = 'diagnostic_screener' | 'adaptive_core' | 'stability_confirmation';
 
@@ -378,11 +378,12 @@ export interface AdaptiveTestConfig {
 /**
  * Default configuration for the adaptive aptitude test
  * 
- * Question Pattern (EXACTLY 50 QUESTIONS):
+ * Question Pattern (50 QUESTIONS TOTAL):
  * - Phase 1 (Diagnostic Screener): Q1-Q8 all at Level 3 (baseline) - 8 questions
- * - Phase 2 (Adaptive Core): Q9-Q44 truly adaptive based on performance - 36 questions (FIXED, not variable)
+ * - Phase 2 (Adaptive Core): Q9-Q44 truly adaptive based on performance - 36 questions (FIXED)
  * - Phase 3 (Stability Confirmation): Q45-Q50 at final level - 6 questions
- * Total: EXACTLY 50 questions (8 + 36 + 6)
+ * 
+ * Total: 50 questions (8 diagnostic + 36 adaptive + 6 stability)
  */
 export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
   phases: {
@@ -401,14 +402,14 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     adaptive_core: {
       phase: 'adaptive_core',
       minQuestions: 36,
-      maxQuestions: 36,  // Exactly 36 questions for adaptive core (not a range)
+      maxQuestions: 36,  // FIXED 36 questions for adaptive core (Q9-Q44)
       maxConsecutiveSameSubtag: 3,
       maxConsecutiveSameDirectionJumps: 3,
     },
     stability_confirmation: {
       phase: 'stability_confirmation',
       minQuestions: 6,
-      maxQuestions: 6,  // 6 questions for stability
+      maxQuestions: 6,  // 6 questions for stability (Q45-Q50)
       maxConsecutiveSameSubtag: 2,
     },
   },
@@ -417,8 +418,8 @@ export const DEFAULT_ADAPTIVE_TEST_CONFIG: AdaptiveTestConfig = {
     M: 3,
     H: 4,
   },
-  minimumQuestionsForStop: 40,  // Not used - always complete exactly 36 adaptive core questions
-  consistencyWindowSize: 8,     // Used for analytics only
+  minimumQuestionsForStop: 44,  // Minimum 44 total questions (8 diagnostic + 36 adaptive)
+  consistencyWindowSize: 8,     // Check last 8 questions for consistency
   maxDirectionChangesForHighConfidence: 2,
   maxDirectionChangesForMediumConfidence: 4,
 };

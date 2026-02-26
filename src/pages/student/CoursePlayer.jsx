@@ -881,6 +881,13 @@ const CoursePlayer = () => {
       console.log('Modules count:', transformedModules.length);
       console.log('Total lessons:', transformedModules.reduce((acc, m) => acc + m.lessons.length, 0));
 
+      // Check if course has no lessons - redirect to coming soon page
+      const totalLessons = transformedModules.reduce((acc, m) => acc + m.lessons.length, 0);
+      if (totalLessons === 0) {
+        navigate('/student/coming-soon');
+        return;
+      }
+
       setCourse(fullCourse);
 
       // Update total_lessons in enrollment if needed
@@ -1506,23 +1513,7 @@ const CoursePlayer = () => {
                   </CardContent>
                 </Card>
               </motion.div>
-            ) : (
-              <Card className="shadow-xl border-0">
-                <CardContent className="p-12 text-center">
-                  <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No Lessons Available</h3>
-                  <p className="text-gray-600 mb-6">
-                    This course doesn't have any lessons yet.
-                  </p>
-                  <Button
-                    onClick={() => navigate(getBackPath())}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                  >
-                    Back to Courses
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
