@@ -7,6 +7,7 @@
  */
 
 import { getPagesApiUrl } from '../utils/pagesUrl';
+import { supabase } from '../lib/supabaseClient';
 
 interface UploadResponse {
   success: boolean;
@@ -45,18 +46,53 @@ class StorageService {
   }
 
   /**
+   * Helper function to get authentication token
+   */
+  private async getAuthToken(): Promise<string | null> {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error || !session) {
+        return null;
+      }
+      return session.access_token;
+    } catch (error) {
+      console.error('Error getting auth token:', error);
+      return null;
+    }
+  }
+
+  /**
    * Upload a file directly to R2 storage
    */
   async uploadFile(file: File, filename?: string): Promise<UploadResponse> {
     try {
+      const token = await this.getAuthToken();
+      
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication required. Please log in.'
+        };
+      }
+
       const formData = new FormData();
       formData.append('file', file);
       formData.append('filename', filename || file.name);
 
       const response = await fetch(`${this.baseUrl}/upload`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData,
       });
+
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: 'Authentication failed. Please refresh and log in again.'
+        };
+      }
 
       const result = await response.json();
       return result;
@@ -190,10 +226,20 @@ class StorageService {
    */
   async getPresignedUrl(filename: string, contentType: string, studentId: string): Promise<PresignedResponse> {
     try {
+      const token = await this.getAuthToken();
+      
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication required. Please log in.'
+        };
+      }
+
       const response = await fetch(`${this.baseUrl}/presigned`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           filename,
@@ -202,6 +248,13 @@ class StorageService {
           lessonId: studentId,
         }),
       });
+
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: 'Authentication failed. Please refresh and log in again.'
+        };
+      }
 
       const result = await response.json();
       return result;
@@ -219,10 +272,20 @@ class StorageService {
    */
   async confirmUpload(fileKey: string, fileName?: string, fileSize?: number, fileType?: string): Promise<ConfirmResponse> {
     try {
+      const token = await this.getAuthToken();
+      
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication required. Please log in.'
+        };
+      }
+
       const response = await fetch(`${this.baseUrl}/confirm`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           fileKey,
@@ -231,6 +294,13 @@ class StorageService {
           fileType,
         }),
       });
+
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: 'Authentication failed. Please refresh and log in again.'
+        };
+      }
 
       const result = await response.json();
       return result;
@@ -248,13 +318,30 @@ class StorageService {
    */
   async deleteFile(url: string): Promise<{ success: boolean; error?: string }> {
     try {
+      const token = await this.getAuthToken();
+      
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication required. Please log in.'
+        };
+      }
+
       const response = await fetch(`${this.baseUrl}/delete`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ url }),
       });
+
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: 'Authentication failed. Please refresh and log in again.'
+        };
+      }
 
       const result = await response.json();
       return result;
@@ -296,16 +383,33 @@ class StorageService {
    */
   async getSignedUrl(url: string, expiresIn: number = 3600): Promise<{ success: boolean; signedUrl?: string; error?: string }> {
     try {
+      const token = await this.getAuthToken();
+      
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication required. Please log in.'
+        };
+      }
+
       const response = await fetch(`${this.baseUrl}/signed-url`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ 
           url,
           expiresIn // seconds
         }),
       });
+
+      if (response.status === 401) {
+        return {
+          success: false,
+          error: 'Authentication failed. Please refresh and log in again.'
+        };
+      }
 
       const result = await response.json();
       return result;

@@ -9,13 +9,92 @@
  */
 
 import { R2Client } from '../utils/r2-client';
+import type { AuthenticatedContext } from '../[[path]]';
+import {
+  extractUserIdFromPath,
+  validatePaymentReceiptOwnership,
+  validateUploadOwnership,
+  type OwnershipValidationResult,
+} from '../utils/ownership';
+import {
+  createAuthenticationError,
+  createAuthorizationError,
+  logErrorSafely,
+} from '../utils/error-handling';
 
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
 
 /**
+ * Check if a document is public based on its path
+ * 
+ * Public documents:
+ * - Course certificates (certificates/...)
+ * - Course materials (courses/...)
+ * 
+ * Private documents:
+ * - Payment receipts (payment_pdf/...)
+ * - User uploads (uploads/...)
+ * 
+ * @param fileKey - The file key/path in R2 storage
+ * @returns True if the document is public, false if private
+ */
+function checkIfPublicDocument(fileKey: string): boolean {
+  if (!fileKey) return false;
+
+  // Course certificates are public
+  if (fileKey.startsWith('certificates/')) {
+    return true;
+  }
+
+  // Course materials are public
+  if (fileKey.startsWith('courses/')) {
+    return true;
+  }
+
+  // Everything else is private by default
+  return false;
+}
+
+/**
+ * Validate document ownership for private documents
+ * 
+ * @param fileKey - The file key/path in R2 storage
+ * @param userId - The authenticated user's ID
+ * @returns Validation result with ownership status and reason
+ */
+function validateDocumentOwnership(
+  fileKey: string,
+  userId: string
+): OwnershipValidationResult {
+  // Check payment receipts
+  if (fileKey.startsWith('payment_pdf/')) {
+    return validatePaymentReceiptOwnership(fileKey, userId);
+  }
+
+  // Check user uploads
+  if (fileKey.startsWith('uploads/')) {
+    return validateUploadOwnership(fileKey, userId);
+  }
+
+  // For other private documents, check if user ID is in path
+  const extractedUserId = extractUserIdFromPath(fileKey);
+  if (extractedUserId && extractedUserId === userId) {
+    return { isOwner: true };
+  }
+
+  return {
+    isOwner: false,
+    reason: 'User does not have permission to access this document',
+  };
+}
+
+/**
  * Proxy document from R2 storage
  */
-export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
+export const handleDocumentAccess: PagesFunction = async (context) => {
+  const { request, env } = context;
+  const authenticatedContext = context as AuthenticatedContext;
+
   if (request.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -43,6 +122,27 @@ export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
           headers: { 'Content-Type': 'application/json' },
         }
       );
+    }
+
+    // Check if document is public
+    const isPublic = checkIfPublicDocument(fileKey);
+
+    if (!isPublic) {
+      // Private document - require authentication
+      if (!authenticatedContext.user) {
+        return createAuthenticationError('/document-access', 'missing_token');
+      }
+
+      // Validate ownership
+      const ownership = validateDocumentOwnership(fileKey, authenticatedContext.user.id);
+      if (!ownership.isOwner) {
+        return createAuthorizationError(
+          authenticatedContext.user.id,
+          fileKey,
+          'ownership_mismatch',
+          ownership.reason || 'You do not have permission to access this document'
+        );
+      }
     }
 
     // Initialize R2 client
@@ -87,7 +187,7 @@ export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
       },
     });
   } catch (error) {
-    console.error('[DocumentAccess] Error proxying document:', error);
+    logErrorSafely('DocumentAccess', error);
     return new Response(
       JSON.stringify({
         error: 'Failed to access document',

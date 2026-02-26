@@ -73,7 +73,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - Test educator can delete course materials
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 5. Update payment receipt handler with ownership validation
+- [x] 5. Update payment receipt handler with ownership validation
   - Update `functions/api/storage/handlers/payment-receipt.ts`
   - Add authentication check to `handleGetPaymentReceipt()`
   - Return 401 if user context is missing
@@ -93,7 +93,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - Test access other user's receipt returns 403
   - _Requirements: 5.3, 5.4, 5.5_
 
-- [ ] 6. Update document access handler with authorization
+- [x] 6. Update document access handler with authorization
   - Update `functions/api/storage/handlers/document-access.ts`
   - Implement `checkIfPublicDocument()` helper function
   - Add authentication check for private documents
@@ -110,7 +110,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - Test public documents work without authentication
   - _Requirements: 6.2_
 
-- [ ] 7. Update presigned URL handlers with authentication
+- [x] 7. Update presigned URL handlers with authentication
   - Update `functions/api/storage/handlers/presigned.ts`
   - Add authentication check to `handlePresigned()`
   - Return 401 if user context is missing
@@ -134,7 +134,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - Verify ownership validation works correctly
   - Ask the user if questions arise
 
-- [ ] 9. Update cloudflareR2Upload.ts with token integration
+- [x] 9. Update cloudflareR2Upload.ts with token integration
   - Update `src/utils/cloudflareR2Upload.ts`
   - Import supabase client
   - Update `uploadToCloudflareR2()` to call `supabase.auth.getSession()`
@@ -146,7 +146,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - Handle authentication errors
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-- [ ] 10. Update storageApiService.ts with token integration
+- [x] 10. Update storageApiService.ts with token integration
   - Update `src/services/storageApiService.ts`
   - Import supabase client
   - Create `getAuthToken()` helper function using `supabase.auth.getSession()`
@@ -161,7 +161,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - Add error handling for missing authentication
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 11. Update fileUploadService.ts with token integration (if exists)
+- [x] 11. Update fileUploadService.ts with token integration (if exists)
   - Check if `src/services/fileUploadService.ts` exists
   - If exists, import supabase client
   - Update `uploadFile()` to retrieve and include authentication token
@@ -169,7 +169,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - Add error handling for 401 responses
   - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-- [ ] 12. Update storageService.ts with token integration (if exists)
+- [x] 12. Update storageService.ts with token integration (if exists)
   - Check if `src/services/storageService.ts` exists
   - If exists, import supabase client
   - Update `uploadFile()` to retrieve and include authentication token
@@ -178,7 +178,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - Add error handling for 401 responses
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_
 
-- [ ] 13. Add error response validation
+- [x] 13. Add error response validation
   - Update error responses to include clear messages
   - Ensure 401 responses include "Authentication required" message
   - Ensure 403 responses include "Access denied" or "Insufficient permissions" message
@@ -191,7 +191,7 @@ This implementation adds JWT-based authentication and ownership validation to th
   - **Property 10: Error responses include clear messages**
   - **Validates: Requirements 12.3, 12.4**
 
-- [ ] 14. Final checkpoint - Integration testing
+- [x] 14. Final checkpoint - Integration testing
   - Test complete upload flow with authentication
   - Test complete delete flow with ownership validation
   - Test payment receipt access with ownership validation
