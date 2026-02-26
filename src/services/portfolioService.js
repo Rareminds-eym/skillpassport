@@ -122,6 +122,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('education')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('year_of_passing', { ascending: false }),
       
