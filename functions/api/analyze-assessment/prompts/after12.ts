@@ -295,11 +295,33 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
 ## OUTPUT FORMAT
 ## ═══════════════════════════════════════════════════════════════════════════
 
+**🚨 BEFORE YOU START GENERATING THE JSON OUTPUT 🚨**
+
+**MANDATORY PRE-GENERATION CHECKLIST:**
+1. **Identify student's top 3 RIASEC types** (e.g., I=85%, R=75%, A=60%)
+2. **Identify student's stream** (Science/Commerce/Arts)
+3. **Create 3 SPECIFIC cluster titles** that combine RIASEC + Stream
+   - Example: Science + IRA → "Software Engineering & Development", "Data Science & Analytics", "Product Design & UX"
+   - Example: Science + ISR → "Biomedical Engineering & Medical Devices", "Healthcare & Clinical Research", "Biotechnology & Pharmaceuticals"
+4. **For EACH cluster, list roles that 100% belong to that domain**
+   - Test: Would a recruiter in [cluster title] recognize ALL these roles? If NO → Fix it
+5. **Verify NO role appears in wrong cluster**
+   - "Biomedical Engineer" belongs in "Biomedical Engineering", NOT in "Research & Development"
+   - "UX Designer" belongs in "Product Design & UX", NOT in "Creative Technology"
+6. **Create 3 degree programs that align with the 3 clusters**
+   - Program 1 → Cluster 1 (exact title match in "alignedWithCluster")
+   - Program 2 → Cluster 2 (exact title match in "alignedWithCluster")
+   - Program 3 → Cluster 3 (exact title match in "alignedWithCluster")
+
 **CRITICAL REQUIREMENTS:**
 1. Return ONLY a JSON object (no markdown)
 2. **MUST include "degreePrograms" array with EXACTLY 3 programs inside "careerFit"**
 3. Each program MUST be DERIVED from the student's 7-section profile (not selected from lists)
 4. Each program MUST include ALL required fields: programName, matchScore, fit, duration, roleDescription, topUniversities, alignedWithCluster, whyThisFitsYou, evidence
+5. **CRITICAL ALIGNMENT RULE: The "alignedWithCluster" field in each degree program MUST EXACTLY MATCH the "title" field of one of the 3 career clusters**
+   - Example: If cluster 1 has title "Technology & Innovation", then a program aligned with it must have alignedWithCluster: "Technology & Innovation"
+   - This ensures proper visual alignment in the UI between recommended programs and career tracks
+   - DO NOT use generic names - use the EXACT cluster title you created
 
 **JSON Structure:**
 
@@ -375,7 +397,7 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
         "matchScore": 88,
         "fit": "High",
         "description": "Comprehensive explanation of why this career path fits based on ALL 7 assessment sections",
-        "examples": ["6-8 specific career roles with brief descriptions"],
+        "examples": ["6-8 specific career roles with brief descriptions - MUST be semantically aligned with the cluster title"],
         "educationPath": "Specific college majors, degrees, and programs (e.g., B.Tech CSE, BCA, B.Sc Computer Science)",
         "whatYoullDo": "Day-to-day work and responsibilities in this field",
         "whyItFits": "Detailed connection between their complete profile and this career area",
@@ -389,11 +411,11 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
           "adaptiveAptitude": "Adaptive test results that validate this choice (MUST INCLUDE)"
         },
         "roles": {
-          "entry": ["5-6 entry-level positions"],
-          "mid": ["5-6 mid-career positions"],
-          "senior": ["4-5 senior/leadership positions"]
+          "entry": ["5-6 entry-level positions - MUST be directly related to the cluster title (e.g., if cluster is 'Software Development', include Junior Developer, Frontend Developer, Backend Developer, NOT unrelated roles)"],
+          "mid": ["5-6 mid-career positions - MUST progress from entry roles in the SAME domain"],
+          "senior": ["4-5 senior/leadership positions - MUST be leadership roles in the SAME domain"]
         },
-        "domains": ["Related specializations and sub-fields"],
+        "domains": ["Related specializations and sub-fields - MUST be sub-categories of the main cluster"],
         "salaryRange": {
           "entry": {"min": 4, "max": 8, "currency": "LPA"},
           "mid": {"min": 10, "max": 25, "currency": "LPA"},
@@ -641,8 +663,179 @@ For each career cluster, you MUST provide evidence from ALL 7 sections:
 }
 
 ## ═══════════════════════════════════════════════════════════════════════════
-## CRITICAL: CAREER CLUSTERS MUST ALIGN WITH STUDENT'S STREAM AND RIASEC
+## CRITICAL: SEMANTIC COHERENCE IN CAREER CLUSTERS
 ## ═══════════════════════════════════════════════════════════════════════════
+
+**🚨 MANDATORY RULE: CLUSTER TITLE MUST MATCH ALL ROLES WITHIN IT 🚨**
+
+**THE PROBLEM:**
+AI models often create clusters with mismatched titles and roles:
+- ❌ BAD: "Research & Development" containing "Biomedical Engineer, UX Designer, Game Developer"
+- ❌ BAD: "Creative Technology" containing "Product Designer, Digital Artist, Biotechnologist"
+- ❌ BAD: "Biomedical Engineering" containing "Research Scientist, Data Analyst"
+
+**THE SOLUTION:**
+Every role in a cluster MUST be a direct sub-category or specialization of the cluster title:
+- ✅ GOOD: "Software Development & Engineering" → Software Engineer, Full Stack Developer, Backend Developer, DevOps Engineer
+- ✅ GOOD: "Biomedical Engineering & Healthcare Technology" → Biomedical Engineer, Medical Device Engineer, Clinical Engineer, Healthcare IT Specialist
+- ✅ GOOD: "Research & Data Science" → Research Scientist, Data Scientist, Research Analyst, Lab Researcher
+
+**VALIDATION CHECKLIST FOR EACH CLUSTER:**
+Before finalizing a cluster, ask yourself:
+1. ✅ Can someone reading ONLY the cluster title predict 80% of the roles listed?
+2. ✅ Would a recruiter in this field recognize all these roles as belonging together?
+3. ✅ Do ALL roles share the same core domain/industry?
+4. ✅ Are the entry → mid → senior roles a logical progression in the SAME field?
+
+**STEP-BY-STEP CLUSTER CREATION PROCESS:**
+
+### STEP 1: Identify the Core Domain
+Based on student's RIASEC + Stream + Aptitude, identify 3 distinct domains:
+- Example: "Software Engineering", "Data Science", "Product Design"
+
+### STEP 2: Create Specific, Narrow Cluster Titles
+Make titles SPECIFIC enough that roles are obvious:
+- ❌ TOO BROAD: "Technology" (could mean anything)
+- ❌ TOO BROAD: "Engineering" (too many types)
+- ✅ SPECIFIC: "Software Development & Cloud Engineering"
+- ✅ SPECIFIC: "Data Science & Machine Learning"
+- ✅ SPECIFIC: "Biomedical Engineering & Medical Devices"
+
+### STEP 3: List Roles That Are 100% Aligned
+For each cluster, list ONLY roles that directly belong to that domain:
+
+**Example Cluster 1: "Software Development & Cloud Engineering"**
+- Entry: Junior Software Developer, Frontend Developer, Backend Developer, QA Engineer, DevOps Trainee
+- Mid: Senior Software Engineer, Full Stack Developer, Cloud Architect, DevOps Engineer, Technical Lead
+- Senior: Engineering Manager, Principal Engineer, VP of Engineering, CTO
+
+**Example Cluster 2: "Data Science & Analytics"**
+- Entry: Data Analyst, Junior Data Scientist, Business Intelligence Analyst, Analytics Associate
+- Mid: Data Scientist, Senior Data Analyst, ML Engineer, Analytics Manager
+- Senior: Lead Data Scientist, Head of Analytics, Chief Data Officer
+
+**Example Cluster 3: "Biomedical Engineering & Healthcare Technology"**
+- Entry: Biomedical Engineer, Medical Device Technician, Clinical Engineer, Healthcare IT Specialist
+- Mid: Senior Biomedical Engineer, Medical Device Designer, Clinical Systems Manager
+- Senior: Principal Biomedical Engineer, Director of Medical Technology, VP of Healthcare Innovation
+
+### STEP 4: Verify Semantic Coherence
+For each role, ask: "Does this role obviously belong in [Cluster Title]?"
+- If YES → Keep it
+- If NO → Move it to the correct cluster or remove it
+
+**COMMON MISTAKES TO AVOID:**
+
+❌ **Mistake 1: Mixing Unrelated Domains**
+- BAD: "Technology & Innovation" with roles: Software Engineer, Biomedical Engineer, Fashion Designer
+- WHY BAD: These are 3 completely different industries
+- FIX: Create separate clusters: "Software Engineering", "Biomedical Engineering", "Fashion & Design"
+
+❌ **Mistake 2: Generic Cluster Titles**
+- BAD: "Creative Technology" (too vague - could mean design, gaming, media, etc.)
+- FIX: Be specific: "Game Development & Interactive Media" OR "UX/UI Design & Product Design"
+
+❌ **Mistake 3: Roles Don't Match Title**
+- BAD: "Research & Development" → UX Designer, Game Developer (these aren't research roles)
+- FIX: "Research & Development" → Research Scientist, R&D Engineer, Clinical Researcher, Lab Manager
+
+❌ **Mistake 4: Cross-Domain Contamination**
+- BAD: "Biomedical Engineering" → Research Scientist, Data Analyst (too generic)
+- FIX: "Biomedical Engineering" → Biomedical Engineer, Medical Device Engineer, Clinical Engineer
+
+**CORRECT EXAMPLES BY STREAM:**
+
+### SCIENCE STREAM - RIASEC: IRA (Investigative, Realistic, Artistic)
+
+**Cluster 1: "Software Engineering & Application Development"** (88% match)
+- Entry: Junior Software Developer, Frontend Developer, Backend Developer, Mobile App Developer, QA Engineer
+- Mid: Senior Software Engineer, Full Stack Developer, Software Architect, Technical Lead, Engineering Manager
+- Senior: Principal Engineer, Director of Engineering, VP of Engineering, CTO
+- WHY COHERENT: All roles involve writing code and building software systems
+
+**Cluster 2: "Data Science & Machine Learning"** (78% match)
+- Entry: Data Analyst, Junior Data Scientist, ML Engineer Trainee, Business Intelligence Analyst
+- Mid: Data Scientist, Senior Data Analyst, Machine Learning Engineer, AI Researcher
+- Senior: Lead Data Scientist, Head of AI/ML, Chief Data Officer
+- WHY COHERENT: All roles involve data analysis, statistical modeling, and ML algorithms
+
+**Cluster 3: "Product Design & User Experience"** (68% match)
+- Entry: Junior UX Designer, UI Designer, Product Design Intern, UX Researcher
+- Mid: Senior UX Designer, Product Designer, Design Lead, UX Manager
+- Senior: Principal Designer, Head of Design, VP of Product Design
+- WHY COHERENT: All roles involve designing user interfaces and experiences
+
+### SCIENCE STREAM - RIASEC: ISR (Investigative, Social, Realistic)
+
+**Cluster 1: "Biomedical Engineering & Medical Devices"** (88% match)
+- Entry: Biomedical Engineer, Medical Device Technician, Clinical Engineer, Healthcare IT Specialist
+- Mid: Senior Biomedical Engineer, Medical Device Designer, Clinical Systems Manager, Regulatory Affairs Specialist
+- Senior: Principal Biomedical Engineer, Director of Medical Technology, VP of Healthcare Innovation
+- WHY COHERENT: All roles involve engineering solutions for healthcare and medical applications
+
+**Cluster 2: "Healthcare & Clinical Research"** (78% match)
+- Entry: Clinical Research Coordinator, Lab Technician, Research Assistant, Public Health Analyst
+- Mid: Clinical Research Manager, Medical Researcher, Epidemiologist, Clinical Trial Manager
+- Senior: Principal Investigator, Director of Clinical Research, Chief Medical Officer
+- WHY COHERENT: All roles involve medical research, clinical trials, and healthcare studies
+
+**Cluster 3: "Biotechnology & Pharmaceutical Sciences"** (68% match)
+- Entry: Biotechnologist, Lab Analyst, Quality Control Analyst, Pharmaceutical Researcher
+- Mid: Senior Biotechnologist, Bioprocess Engineer, Pharmaceutical Scientist, R&D Manager
+- Senior: Principal Scientist, Director of Biotechnology, VP of R&D
+- WHY COHERENT: All roles involve biological research and pharmaceutical development
+
+### COMMERCE STREAM - RIASEC: ECI (Enterprising, Conventional, Investigative)
+
+**Cluster 1: "Finance & Investment Banking"** (88% match)
+- Entry: Financial Analyst, Investment Banking Analyst, Junior Accountant, Financial Planner
+- Mid: Senior Financial Analyst, Investment Banker, Portfolio Manager, Finance Manager
+- Senior: VP of Finance, Managing Director, Chief Financial Officer, Investment Director
+- WHY COHERENT: All roles involve financial analysis, investment, and money management
+
+**Cluster 2: "Business Analytics & Consulting"** (78% match)
+- Entry: Business Analyst, Data Analyst, Junior Consultant, Market Research Analyst
+- Mid: Senior Business Analyst, Management Consultant, Strategy Analyst, Analytics Manager
+- Senior: Principal Consultant, Director of Strategy, Partner at Consulting Firm
+- WHY COHERENT: All roles involve analyzing business problems and providing strategic solutions
+
+**Cluster 3: "Accounting & Audit"** (68% match)
+- Entry: Junior Accountant, Audit Associate, Tax Analyst, Accounts Executive
+- Mid: Senior Accountant, Audit Manager, Tax Consultant, Financial Controller
+- Senior: Chief Accountant, Audit Partner, CFO, Director of Finance
+- WHY COHERENT: All roles involve accounting, auditing, and financial compliance
+
+### ARTS STREAM - RIASEC: ASE (Artistic, Social, Enterprising)
+
+**Cluster 1: "Digital Media & Content Creation"** (88% match)
+- Entry: Content Writer, Social Media Manager, Junior Video Editor, Graphic Designer
+- Mid: Content Strategist, Senior Video Producer, Creative Director, Media Manager
+- Senior: Head of Content, VP of Creative, Chief Content Officer
+- WHY COHERENT: All roles involve creating and managing digital content
+
+**Cluster 2: "Marketing & Brand Management"** (78% match)
+- Entry: Marketing Coordinator, Brand Assistant, Digital Marketing Executive, Market Research Analyst
+- Mid: Marketing Manager, Brand Manager, Digital Marketing Manager, Growth Manager
+- Senior: Head of Marketing, VP of Brand, Chief Marketing Officer
+- WHY COHERENT: All roles involve marketing strategy, brand building, and customer engagement
+
+**Cluster 3: "Psychology & Counseling Services"** (68% match)
+- Entry: Counseling Intern, Psychology Researcher, Mental Health Associate, HR Coordinator
+- Mid: Clinical Psychologist, Counselor, Organizational Psychologist, HR Manager
+- Senior: Senior Psychologist, Director of Counseling Services, Chief People Officer
+- WHY COHERENT: All roles involve psychology, mental health, and human behavior
+
+**FINAL VALIDATION RULE:**
+Before submitting your response, read each cluster title and its roles out loud:
+- "This student should pursue [CLUSTER TITLE], which includes roles like [ROLE 1], [ROLE 2], [ROLE 3]"
+- If this sentence sounds logical and coherent → ✅ GOOD
+- If this sentence sounds confusing or random → ❌ FIX IT
+
+**REMEMBER:**
+- Cluster title = The DOMAIN/INDUSTRY
+- Roles = SPECIFIC JOBS within that domain
+- ALL roles must be recognizable as belonging to that domain
+- Entry → Mid → Senior must show career progression in the SAME domain
 
 **IMPORTANT**: The student has already selected their stream during 12th grade. The 3 career clusters MUST:
 1. **Align with their chosen stream** (Science/Commerce/Arts)
@@ -1007,19 +1200,31 @@ For each program, you MUST cite evidence from:
 Before returning your response, verify:
 - [ ] All 7 sections analyzed (RIASEC, Big Five, Values, Employability, Aptitude, Knowledge, Adaptive Aptitude)
 - [ ] Career clusters MATCH student's stream (Science/Commerce/Arts)
+- [ ] **CRITICAL SEMANTIC COHERENCE: Read each cluster title and verify ALL roles listed belong to that exact domain**
+- [ ] **VALIDATION TEST: For each cluster, ask "Would a recruiter in [cluster title] recognize all these roles as part of their field?" - If NO, fix the cluster**
+- [ ] **NO CROSS-CONTAMINATION: Verify no role appears in wrong cluster (e.g., "Biomedical Engineer" should NOT be in "Research & Development" cluster)**
 - [ ] Programs are SPECIFIC (e.g., "B.Tech Computer Science & AI" not "Engineering")
 - [ ] Each program has evidence from ALL 7 sections in the derivation
 - [ ] Each career cluster has evidence from ALL 7 sections
 - [ ] Each degree program has "alignedWithCluster" field
+- [ ] **CRITICAL ALIGNMENT: Each degree program's "alignedWithCluster" value EXACTLY MATCHES one of the 3 career cluster titles**
+- [ ] **VERIFY: If career clusters are titled "Software Engineering & Cloud Computing", "Data Science & Analytics", "Product Design & UX", then degree programs must use EXACTLY these same titles in "alignedWithCluster"**
 - [ ] Each degree program has personalized "whyThisFitsYou" reasoning
 - [ ] **CRITICAL: Each degree program has "duration" field (e.g., "4 years", "3 years", "5.5 years")**
 - [ ] **CRITICAL: Each degree program has "roleDescription" field (2-3 sentences about what graduates do)**
 - [ ] **CRITICAL: Each degree program has "topUniversities" array (5-7 universities)**
 - [ ] If 'A' (Artistic) is in top 3 RIASEC, at least one creative career cluster AND one creative program included
+- [ ] **FINAL COHERENCE CHECK: Read the entire response and ensure cluster titles, roles, and degree programs form a logical, coherent career guidance package**
 
 **🚨 MANDATORY FIELDS FOR EACH DEGREE PROGRAM - DO NOT SKIP:**
 
 **CRITICAL: Programs must be DERIVED from the student's 7-section profile, NOT selected from predefined lists.**
+
+**CRITICAL ALIGNMENT REQUIREMENTS:**
+1. Each program MUST have a clear "alignedWithCluster" field that matches one of the 3 career clusters
+2. The "alignedWithCluster" value MUST be the EXACT title of one of the career clusters (e.g., "Technology & Innovation", "Research & Development")
+3. This ensures proper visual alignment in the UI between programs and their corresponding career tracks
+4. The program's content should directly support and align with the career cluster it references
 
 Example structure:
 {
@@ -1029,7 +1234,7 @@ Example structure:
   "duration": "4 years",  // ← REQUIRED - MUST BE PRESENT
   "roleDescription": "As a Computer Science graduate, you'll design and develop software applications...",  // ← REQUIRED - MUST BE PRESENT
   "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad"],  // ← REQUIRED - MUST BE PRESENT
-  "alignedWithCluster": "Technology & Innovation",
+  "alignedWithCluster": "Technology & Innovation",  // ← MUST EXACTLY MATCH one of the 3 career cluster titles
   "whyThisFitsYou": "Your Investigative and Realistic interests combined with exceptional numerical aptitude and abstract reasoning...",  // ← PERSONALIZED without percentages
   "evidence": {
     "interest": "High I (Investigative 85%) and R (Realistic 75%) indicate strong fit for technical problem-solving",
