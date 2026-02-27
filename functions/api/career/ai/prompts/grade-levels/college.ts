@@ -50,46 +50,15 @@ export const collegeConfig: GradePromptConfig = {
       userQuery: 'Which subjects align with my career goals?',
       chainOfThought: `
 <thinking>
-Step 1: Student is in COLLEGE → 🚨 NO ACADEMIC SUBJECTS (Calculus, Chemistry, etc.)
-Step 2: Check existing skills → Innovation (from profile)
-Step 3: Identify career interest → Not specified, need to infer from context
-Step 4: 🚨 CRITICAL → Recommend COURSES not SUBJECTS
-Step 5: Focus on industry skills → Data Science, Software Development, Product Management
-Step 6: Map to SPECIFIC COURSES → Coursera, Udemy, freeCodeCamp
-Step 7: Provide course names + platforms + timeline + outcomes
-Step 8: Verify → Did I avoid academic subjects? Did I give course names? ✓
+Step 1: Student is in COLLEGE → Recommend COURSES/CERTIFICATIONS, not academic subjects
+Step 2: Check their existing skills and field from profile
+Step 3: Identify career interests from query or profile
+Step 4: Map to industry-relevant skills and courses
+Step 5: Provide specific course names, platforms, timelines
+Step 6: Connect to job outcomes
+Step 7: Verify → Did I avoid academic subjects? Did I give actionable course recommendations?
 </thinking>`,
-      idealResponse: `Hey litikesh! I see you're in college studying Science (PCMB) with skills in Innovation. 🎯
-
-Since you're asking about career alignment, let me recommend **industry-relevant courses** (not academic subjects - you're already learning those in college!):
-
-**For Tech/Software Careers:**
-
-1. **Programming & Development**
-   - Course: CS50 (Harvard, free on edX)
-   - Course: The Web Developer Bootcamp (Udemy)
-   - Timeline: 3-4 months
-   - Outcome: Build web applications, ready for junior dev roles
-
-2. **Data Science & Analytics**
-   - Course: Google Data Analytics Certificate (Coursera)
-   - Course: Python for Data Science (freeCodeCamp)
-   - Timeline: 4-5 months
-   - Outcome: Analyze data, create visualizations, entry-level analyst roles
-
-**For Product/Business Careers:**
-
-3. **Product Management**
-   - Course: Digital Product Management (Coursera)
-   - Course: SQL for Data Analysis (Mode Analytics, free)
-   - Timeline: 2-3 months
-
-4. **Business Analytics**
-   - Course: Excel Skills for Business (Coursera)
-   - Course: Tableau for Beginners (Udemy)
-   - Timeline: 2 months
-
-**Your Innovation skill** is perfect for product roles! Want specific course links or a personalized learning roadmap? 🚀`,
+      idealResponse: `Recommend specific online courses and certifications (with platform names) that align with their career goals. Include timelines and expected outcomes. Focus on industry skills, not academic subjects they're already learning in college.`,
       reasoning: 'Recommends COURSES with platforms, NOT academic subjects. Provides actionable learning path.'
     },
     {
@@ -97,92 +66,31 @@ Since you're asking about career alignment, let me recommend **industry-relevant
       userQuery: 'What skill gaps do I have?',
       chainOfThought: `
 <thinking>
-Step 1: Check existing skills → profile.technicalSkills
-Step 2: Identify target role → Full Stack Developer
-Step 3: List required skills → Frontend, Backend, Database, DevOps
-Step 4: Compare → HAVE vs NEED
-Step 5: Identify gaps → Backend, Database, DevOps (missing)
-Step 6: Prioritize → HIGH (critical), MEDIUM (important)
-Step 7: Provide learning path → Courses, timeline, projects
-Step 8: Verify → Real gaps identified? Actionable plan provided? ✓
+Step 1: Check existing skills from profile
+Step 2: Identify target role (from query or infer from field)
+Step 3: List required skills for that role
+Step 4: Compare what they HAVE vs what they NEED
+Step 5: Identify and prioritize gaps (HIGH/MEDIUM priority)
+Step 6: Provide learning path with courses, timeline, projects
+Step 7: Verify → Real gaps identified? Actionable plan provided?
 </thinking>`,
-      idealResponse: `Based on your profile and target role (**Full Stack Developer**), here are your skill gaps: 🎯
-
-**You Have:** ${'{profile.technicalSkills}'}
-
-**Critical Gaps for Full Stack Roles:**
-
-1. **Backend Development** (HIGH PRIORITY)
-   - Missing: Node.js/Express OR Django/Flask
-   - Learn: freeCodeCamp Backend Certification (free)
-   - Timeline: 6-8 weeks
-
-2. **Database Management** (HIGH PRIORITY)
-   - Missing: SQL, MongoDB
-   - Learn: Mode Analytics SQL Tutorial, MongoDB University
-   - Timeline: 4 weeks
-
-3. **DevOps Basics** (MEDIUM PRIORITY)
-   - Missing: Docker, Git workflows, CI/CD
-   - Learn: Docker Mastery (Udemy), GitHub Actions
-   - Timeline: 3-4 weeks
-
-4. **System Design** (MEDIUM PRIORITY)
-   - For senior roles and interviews
-   - Learn: Grokking System Design, ByteByteGo
-   - Timeline: Ongoing
-
-**Action Plan:**
-Week 1-8: Backend framework (Node.js recommended)
-Week 9-12: Databases (SQL + MongoDB)
-Week 13-16: Build 2 full-stack projects
-Week 17-20: DevOps + Deploy projects
-
-**Projects to Build:**
-1. E-commerce site (frontend + backend + database)
-2. Real-time chat app (WebSockets)
-3. REST API with authentication
-
-After 5 months: Ready for Full Stack Developer interviews!`,
+      idealResponse: `Compare their existing skills against target role requirements. Identify critical gaps and prioritize them. Provide a learning roadmap with specific courses, timelines, and project ideas to fill those gaps.`,
       reasoning: 'Identifies actual gaps, prioritizes them, provides learning path with resources and timeline.'
     },
     {
       intent: 'interview',
       userQuery: 'Help me prepare for interviews',
-      idealResponse: `Let's prepare you for **Software Engineering interviews**: 💪
-
-**Technical Interview Prep:**
-
-1. **Data Structures & Algorithms** (60% of interview)
-   - Practice: LeetCode (150 problems minimum)
-   - Focus: Arrays, Strings, Trees, Graphs, DP
-   - Timeline: 2-3 months, 2 problems/day
-   - Resources: NeetCode roadmap, Blind 75
-
-2. **System Design** (20% for mid-level+)
-   - Study: Grokking System Design Interview
-   - Practice: Design Twitter, WhatsApp, Netflix
-   - Timeline: 1 month
-
-3. **Your Tech Stack Deep Dive** (20%)
-   - Based on your skills: ${'{profile.technicalSkills}'}
-   - Be ready to explain projects in depth
-   - Know trade-offs and alternatives
-
-**Behavioral Interview Prep:**
-- Prepare 5 STAR stories (Situation, Task, Action, Result)
-- Use your projects: ${'{profile.projects}'}
-- Practice: "Tell me about a time you..."
-
-**Mock Interviews:**
-- Pramp.com (free peer practice)
-- Interviewing.io (with engineers)
-- Schedule 2-3 per week
-
-**Timeline:** 3 months of focused prep
-**Outcome:** Ready for FAANG/product companies
-
-Want specific problem lists or mock interview tips?`,
+      chainOfThought: `
+<thinking>
+Step 1: Identify their field and target roles
+Step 2: Break down interview components (technical, behavioral, domain-specific)
+Step 3: Provide specific prep resources for each component
+Step 4: Include practice platforms and mock interview options
+Step 5: Reference their projects/skills for behavioral prep
+Step 6: Give realistic timeline
+Step 7: Verify → Comprehensive prep plan? Specific resources?
+</thinking>`,
+      idealResponse: `Provide interview prep strategy covering technical skills (with practice platforms), behavioral questions (using their projects), and domain-specific preparation. Include specific resources, practice platforms, and realistic timelines.`,
       reasoning: 'Comprehensive interview prep with specific resources, timelines, and practice strategies.'
     }
   ],
