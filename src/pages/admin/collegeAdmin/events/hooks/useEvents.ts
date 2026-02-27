@@ -25,13 +25,39 @@ export const useEvents = (collegeId: string | null) => {
   // Load registration counts
   const loadRegistrationCounts = useCallback(async () => {
     try {
-      const { data, error } = await supabase.from("college_event_registrations").select("event_id");
+      if (!collegeId) {
+        setEventRegCounts({});
+        return;
+      }
+      
+      // Get event IDs for this college first
+      const { data: collegeEvents, error: eventsError } = await supabase
+        .from("college_events")
+        .select("id")
+        .eq("college_id", collegeId);
+      
+      if (eventsError) throw eventsError;
+      
+      const eventIds = (collegeEvents || []).map(e => e.id);
+      
+      if (eventIds.length === 0) {
+        setEventRegCounts({});
+        return;
+      }
+      
+      // Now get registrations only for this college's events
+      const { data, error } = await supabase
+        .from("college_event_registrations")
+        .select("event_id")
+        .in("event_id", eventIds);
+      
       if (error) throw error;
+      
       const counts: Record<string, number> = {};
       (data || []).forEach((r) => { counts[r.event_id] = (counts[r.event_id] || 0) + 1; });
       setEventRegCounts(counts);
     } catch { console.error("Failed to load registration counts"); }
-  }, []);
+  }, [collegeId]);
 
   useEffect(() => {
     loadEvents();
