@@ -59,20 +59,20 @@ export class OrganizationEntitlementService {
         throw new Error('Subscription not found');
       }
 
-      // Get plan features
+      // Get plan features - need to get base_features from the plan
       const { data: plan } = await supabase
         .from('subscription_plans')
-        .select('features')
+        .select('base_features')
         .eq('id', subscription.subscription_plan_id)
         .single();
 
-      if (!plan || !plan.features) {
+      if (!plan || !plan.base_features) {
         throw new Error('Plan features not found');
       }
 
       // Grant entitlements for each feature
       const entitlements: UserEntitlement[] = [];
-      const features = Array.isArray(plan.features) ? plan.features : [];
+      const features = Array.isArray(plan.base_features) ? plan.base_features : [];
 
       for (const featureKey of features) {
         const { data, error } = await supabase

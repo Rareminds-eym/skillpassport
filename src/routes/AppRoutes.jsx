@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
+import ProtectedRoute from "../components/ProtectedRoute";
 import ScrollToTop from "../components/ScrollToTop";
 import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 import OrganizationGuard from "../components/organization/OrganizationGuard";
@@ -575,9 +576,9 @@ const AppRoutes = () => {
             path="/signup/university-admin"
             element={<UniversityAdmin />}
           />
-          <Route path="/subscription/plans" element={<SubscriptionPlans />} />
-          <Route path="/subscription/plans/:type" element={<SubscriptionPlans />} />
-          <Route path="/subscription/plans/:type/:mode" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
+          <Route path="/subscription/plans/:type" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
+          <Route path="/subscription/plans/:type/:mode" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
 
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
