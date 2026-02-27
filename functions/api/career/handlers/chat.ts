@@ -30,6 +30,7 @@ import { buildAssessmentContext } from '../context/assessment';
 import { buildCareerProgressContext } from '../context/progress';
 import { buildCourseContext } from '../context/courses';
 import { fetchOpportunities } from '../context/opportunities';
+import { fetchSmartOpportunities } from '../context/smart-opportunities';
 
 
 export async function handleCareerChat(request: Request, env: Record<string, string>): Promise<Response> {
@@ -126,8 +127,20 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     let opportunities: Opportunity[] = [];
     const jobRelatedIntents: CareerIntent[] = ['find-jobs', 'skill-gap', 'career-guidance', 'application-status'];
     if (jobRelatedIntents.includes(intentResult.intent)) {
-      opportunities = await fetchOpportunities(supabase, 50);
-      console.log(`[CONTEXT] Fetched ${opportunities.length} opportunities`);
+      // Use AI-driven context-aware fetching for job-related queries
+      opportunities = await fetchSmartOpportunities(supabase, {
+        userMessage: processedMessage,
+        conversationHistory: existingMessages,
+        studentProfile,
+        intent: intentResult.intent,
+        openRouterKey
+      });
+      console.log(`[CONTEXT] AI-fetched ${opportunities.length} opportunities`);
+      if (opportunities.length > 0) {
+        console.log(`[CONTEXT] Sample job: ${opportunities[0].title} at ${opportunities[0].company_name}`);
+      } else {
+        console.log(`[CONTEXT] ⚠️ WARNING: No opportunities returned from fetchSmartOpportunities`);
+      }
     }
 
     // ==================== BUILD ENHANCED SYSTEM PROMPT ====================

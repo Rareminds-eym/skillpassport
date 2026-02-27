@@ -182,18 +182,60 @@ ${courseContext.availableCourses.slice(0, 10).map(c =>
 
 export function buildOpportunitiesXML(intent: string, opportunities: Opportunity[]): string {
   const relevantIntents = ['find-jobs', 'skill-gap', 'career-guidance', 'application-status'];
-  if (!relevantIntents.includes(intent) || opportunities.length === 0) {
+  
+  // Always return the section for job-related intents, even if empty
+  if (!relevantIntents.includes(intent)) {
     return '';
   }
 
+  console.log(`📋 Building opportunities XML: ${opportunities.length} opportunities for intent: ${intent}`);
+
+  if (opportunities.length === 0) {
+    return `
+<opportunities count="0">
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 NO JOBS AVAILABLE - READ THIS CAREFULLY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+There are ZERO job opportunities in the database right now.
+
+YOU MUST respond with:
+"I don't see any active job opportunities in the database right now. Would you like me to help you prepare for future opportunities?"
+
+YOU MUST NOT:
+- Create fake job listings
+- Use placeholder text like "[From database]" or "(ID: X)"
+- Pretend jobs exist when they don't
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+</opportunities>`;
+  }
+
   const jobList = opportunities.slice(0, 15).map(opp => 
-    `- ID:${opp.id} | ${opp.title} | ${opp.company_name || 'Company N/A'} | ${opp.location || 'Location N/A'} | ${opp.employment_type || 'Type N/A'} | Skills: ${(opp.skills_required || []).slice(0, 5).join(', ')}`
+    `- ${opp.title} | ${opp.company_name || 'Company N/A'} | ${opp.location || 'Location N/A'} | ${opp.employment_type || 'Type N/A'} | Skills: ${(opp.skills_required || []).slice(0, 5).join(', ')}`
   ).join('\n');
 
   return `
 <opportunities count="${opportunities.length}">
-<IMPORTANT>These are the ONLY real jobs. Never mention jobs not in this list.</IMPORTANT>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 REAL JOBS BELOW - ONLY USE THESE EXACT LISTINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+These are the ONLY ${opportunities.length} real job opportunities available.
+NEVER create jobs not in this list.
+NEVER use placeholder text like "[From database]" or "(ID: X)".
+NEVER show internal job IDs in your responses.
+Use EXACT titles, companies, locations from below.
+
 ${jobList}
+
+EXAMPLE OF CORRECT RESPONSE:
+"Junior UX Designer: Make Apps Easier - Bangalore, India | Internship"
+
+EXAMPLE OF FORBIDDEN RESPONSE:
+"Software Developer (ID: X) - Company: [From database]"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 </opportunities>`;
 }
 

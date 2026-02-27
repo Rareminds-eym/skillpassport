@@ -1,8 +1,12 @@
-// Opportunities Fetcher
+// Opportunities Fetcher - Basic fetcher (use smart-opportunities.ts for context-aware fetching)
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Opportunity } from '../types';
 
+/**
+ * Basic opportunity fetcher - fetches all active opportunities
+ * For context-aware fetching, use fetchSmartOpportunities from smart-opportunities.ts
+ */
 export async function fetchOpportunities(
   supabase: SupabaseClient, 
   limit: number = 100
@@ -12,6 +16,7 @@ export async function fetchOpportunities(
       .from('opportunities')
       .select('*')
       .eq('is_active', true)
+      .eq('status', 'open')
       .order('created_at', { ascending: false })
       .limit(limit);
     
