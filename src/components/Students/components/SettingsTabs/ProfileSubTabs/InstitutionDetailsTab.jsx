@@ -396,10 +396,55 @@ const InstitutionDetailsTab = ({
                   setCustomProgramName(programName);
                   // Also update profileData.branch for immediate sync
                   handleInstitutionChange('branch', programName);
+                  
+                  // Auto-detect and set grade based on program name
+                  const lowerProgram = programName.toLowerCase();
+                  const trimmedProgram = programName.trim();
+                  
+                  // Smart detection: Check for B. or M. prefix (catches B.Tech, B.Com, B.A, B.Sc, BBA, etc.)
+                  const isBachelor = /^b\.?[a-z]/i.test(trimmedProgram) || lowerProgram.includes('bachelor') || 
+                                    lowerProgram.includes('ug') || lowerProgram.includes('undergraduate');
+                  const isMaster = /^m\.?[a-z]/i.test(trimmedProgram) || lowerProgram.includes('master') || 
+                                  lowerProgram.includes('pg') || lowerProgram.includes('postgraduate');
+                  const isDiploma = lowerProgram.includes('diploma');
+                  
+                  if (isBachelor) {
+                    // It's an undergraduate program - default to UG Year 1
+                    handleInstitutionChange('grade', 'UG Year 1');
+                  } else if (isMaster) {
+                    // It's a postgraduate program - default to PG Year 1
+                    handleInstitutionChange('grade', 'PG Year 1');
+                  } else if (isDiploma) {
+                    handleInstitutionChange('grade', 'Diploma');
+                  }
                 }}
-                placeholder="Enter program name (e.g., B.Tech Computer Science)"
+                placeholder="Enter program name (e.g., B.Tech Computer Science, BCA, MBA)"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
+              {customProgramName && (
+                <p className="text-xs text-gray-600 flex items-center gap-1">
+                  {(() => {
+                    const lowerProgram = customProgramName.toLowerCase();
+                    const trimmedProgram = customProgramName.trim();
+                    
+                    const isBachelor = /^b\.?[a-z]/i.test(trimmedProgram) || lowerProgram.includes('bachelor') || 
+                                      lowerProgram.includes('ug') || lowerProgram.includes('undergraduate');
+                    const isMaster = /^m\.?[a-z]/i.test(trimmedProgram) || lowerProgram.includes('master') || 
+                                    lowerProgram.includes('pg') || lowerProgram.includes('postgraduate');
+                    const isDiploma = lowerProgram.includes('diploma');
+                    
+                    if (isBachelor) {
+                      return <><span className="text-green-600">✓</span> Detected as Undergraduate (UG)</>;
+                    } else if (isMaster) {
+                      return <><span className="text-green-600">✓</span> Detected as Postgraduate (PG)</>;
+                    } else if (isDiploma) {
+                      return <><span className="text-green-600">✓</span> Detected as Diploma</>;
+                    } else {
+                      return <><span className="text-amber-600">⚠</span> Not detected - set grade manually in Academic Details</>;
+                    }
+                  })()}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -460,10 +505,57 @@ const InstitutionDetailsTab = ({
                   setCustomSemesterName(semesterText);
                   // Also update profileData.section for immediate sync
                   handleInstitutionChange('section', semesterText);
+                  
+                  // Auto-detect year from semester and update grade
+                  const lowerSemester = semesterText.toLowerCase();
+                  const currentGrade = profileData.grade || '';
+                  
+                  // Extract year number from semester text (e.g., "2nd year", "semester 3", "3rd sem")
+                  let yearNumber = null;
+                  
+                  // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
+                  const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
+                  if (yearMatch) {
+                    yearNumber = parseInt(yearMatch[1]);
+                  } else {
+                    // Check for semester numbers and convert to year (sem 1-2 = year 1, sem 3-4 = year 2, etc.)
+                    const semMatch = lowerSemester.match(/(?:semester|sem)\s*(\d+)/);
+                    if (semMatch) {
+                      const semNumber = parseInt(semMatch[1]);
+                      yearNumber = Math.ceil(semNumber / 2); // Convert semester to year
+                    }
+                  }
+                  
+                  // Update grade based on detected year and current program type
+                  if (yearNumber) {
+                    if (currentGrade.includes('UG')) {
+                      handleInstitutionChange('grade', `UG Year ${yearNumber}`);
+                    } else if (currentGrade.includes('PG')) {
+                      handleInstitutionChange('grade', `PG Year ${yearNumber}`);
+                    }
+                  }
                 }}
-                placeholder="Enter semester/section (e.g., Semester 3, 5th Sem)"
+                placeholder="Enter semester/section (e.g., 2nd year, Semester 3)"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
+              {customSemesterName && (
+                <p className="text-xs text-gray-600 flex items-center gap-1">
+                  {(() => {
+                    const lowerSemester = customSemesterName.toLowerCase();
+                    const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
+                    const semMatch = lowerSemester.match(/(?:semester|sem)\s*(\d+)/);
+                    
+                    if (yearMatch) {
+                      return <><span className="text-green-600">✓</span> Detected Year {yearMatch[1]}</>;
+                    } else if (semMatch) {
+                      const year = Math.ceil(parseInt(semMatch[1]) / 2);
+                      return <><span className="text-green-600">✓</span> Semester {semMatch[1]} = Year {year}</>;
+                    } else {
+                      return <><span className="text-amber-600">⚠</span> Year not detected - set grade manually</>;
+                    }
+                  })()}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => {

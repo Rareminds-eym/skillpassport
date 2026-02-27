@@ -85,35 +85,24 @@ const AcademicDetailsTab = ({
           inputClassName="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
 
-        {/* Grade */}
+        {/* Grade - Read Only (controlled by School Class or Program/Semester) */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
             Grade/Class <span className="text-red-500">*</span>
           </label>
-          <select
-            value={profileData.grade}
-            onChange={(e) =>
-              handleProfileChange("grade", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-          >
-            <option value="">Select Grade/Class</option>
-            <option value="Grade 6">Grade 6</option>
-            <option value="Grade 7">Grade 7</option>
-            <option value="Grade 8">Grade 8</option>
-            <option value="Grade 9">Grade 9</option>
-            <option value="Grade 10">Grade 10</option>
-            <option value="Grade 11">Grade 11</option>
-            <option value="Grade 12">Grade 12</option>
-            <option value="Diploma">Diploma</option>
-            <option value="UG Year 1">UG Year 1</option>
-            <option value="UG Year 2">UG Year 2</option>
-            <option value="UG Year 3">UG Year 3</option>
-            <option value="UG Year 4">UG Year 4</option>
-            <option value="PG Year 1">PG Year 1</option>
-            <option value="PG Year 2">PG Year 2</option>
-            <option value="PG">PG</option>
-          </select>
+          <input
+            type="text"
+            value={profileData.grade || ""}
+            readOnly
+            disabled
+            className="w-full px-4 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-600 cursor-not-allowed"
+            placeholder="Auto-set based on School Class or Program/Semester"
+          />
+          <p className="text-xs text-gray-500">
+            {(profileData.schoolId || profileData.schoolClassId) && !profileData.universityId && !profileData.universityCollegeId
+              ? 'Change this by selecting School Class in Institution Details tab'
+              : 'Change this by selecting Program and Semester in Institution Details tab'}
+          </p>
         </div>
 
         {/* Grade Start Date */}

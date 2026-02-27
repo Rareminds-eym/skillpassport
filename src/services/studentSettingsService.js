@@ -78,6 +78,9 @@ export const getStudentSettingsByEmail = async (email) => {
         aadhar_number,
         backlogs_history,
         current_backlogs,
+        interests,
+        languages,
+        hobbies,
         school:organizations!students_school_id_fkey (
           id,
           name,
@@ -187,6 +190,11 @@ export const getStudentSettingsByEmail = async (email) => {
       aadharNumber: data.aadhar_number || '',
       backlogsHistory: data.backlogs_history || '',
       currentBacklogs: data.current_backlogs || 0,
+
+      // New JSON fields - ensure they're returned as JSON strings for the form
+      interests: typeof data.interests === 'string' ? data.interests : JSON.stringify(data.interests || []),
+      languages: typeof data.languages === 'string' ? data.languages : JSON.stringify(data.languages || []),
+      hobbies: typeof data.hobbies === 'string' ? data.hobbies : JSON.stringify(data.hobbies || []),
 
       // Notification settings from user_settings table
       notificationSettings: userSettings?.notification_preferences || {
@@ -305,6 +313,10 @@ export const updateStudentSettings = async (email, updates) => {
       aadharNumber: 'aadhar_number',
       backlogsHistory: 'backlogs_history',
       currentBacklogs: 'current_backlogs',
+      // New JSON fields
+      interests: 'interests',
+      languages: 'languages',
+      hobbies: 'hobbies',
     };
 
     // Define numeric fields that should be null instead of empty string
@@ -355,6 +367,22 @@ export const updateStudentSettings = async (email, updates) => {
         // Handle nullable text fields - convert empty strings to null
         if (nullableTextFields.includes(key) && (value === '' || value === null || value === undefined)) {
           value = null;
+        }
+
+        // Handle JSON fields - parse string to JSON if needed
+        if (['interests', 'languages', 'hobbies'].includes(key)) {
+          if (typeof value === 'string') {
+            try {
+              value = JSON.parse(value);
+            } catch (e) {
+              console.warn(`Failed to parse ${key} as JSON:`, value);
+              value = [];
+            }
+          }
+          // Ensure it's an array
+          if (!Array.isArray(value)) {
+            value = [];
+          }
         }
 
         columnUpdates[fieldMapping[key]] = value;
