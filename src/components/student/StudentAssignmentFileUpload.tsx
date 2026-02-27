@@ -32,7 +32,7 @@ const StudentAssignmentFileUpload = React.forwardRef<
   
   // Notification modal state
   const [showNotification, setShowNotification] = useState(false);
-  const [notification, setNotification] = useState({ type: 'info' as const, title: '', message: '' });
+  const [notification, setNotification] = useState<{ type: 'error' | 'success' | 'warning' | 'info'; title: string; message: string }>({ type: 'info', title: '', message: '' });
 
   const showNotificationModal = (type: 'error' | 'success' | 'warning' | 'info', title: string, message: string) => {
     setNotification({ type, title, message });

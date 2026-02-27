@@ -192,35 +192,6 @@ async function completeCourse(
 
 ### Display Student Skills by Source
 
-```typescript
-async function getStudentSkillsBySource(studentId: string) {
-  const { data, error } = await supabase
-    .from('skills')
-    .select(`
-      *,
-      trainings (
-        title,
-        organization,
-        source,
-        start_date,
-        end_date,
-        course_id
-      )
-    `)
-    .eq('student_id', studentId)
-    .not('training_id', 'is', null);
-  
-  // Group by source
-  const grouped = data?.reduce((acc, skill) => {
-    const source = skill.trainings?.source || 'manual';
-    if (!acc[source]) acc[source] = [];
-    acc[source].push(skill);
-    return acc;
-  }, {} as Record<string, any[]>);
-  
-  return grouped;
-}
-```
 
 ## Benefits
 
