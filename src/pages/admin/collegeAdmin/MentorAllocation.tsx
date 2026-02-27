@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   UserGroupIcon,
   PlusCircleIcon,
@@ -13,6 +14,7 @@ import {
   ClockIcon,
 } from "@heroicons/react/24/outline";
 import toast from 'react-hot-toast';
+import { supabase } from "../../../lib/supabaseClient";
 // @ts-ignore - AuthContext is a .jsx file
 import { useAuth } from "../../../context/AuthContext";
 import { useMentorAllocation } from "../../../hooks/useMentorAllocation";
@@ -83,34 +85,43 @@ interface LegacyMentor {
 }
 
 const MentorAllocation: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth() as { user: any | null };
+  const [collegeId, setCollegeId] = useState<string>('');
   
-  // Get college ID from user context with better debugging
-  const collegeId = useMemo(() => {
-    if (!user) {
-      console.log('🔍 [MentorAllocation] No user context available');
-      return '';
-    }
-    
-    const id = user.college_id || 
-               user.universityCollegeId || 
-               (user as any).collegeId || 
-               (user as any).metadata?.college_id || 
-               '';
-               
-    console.log('🔍 [MentorAllocation] User context:', {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      college_id: user.college_id,
-      universityCollegeId: user.universityCollegeId,
-      collegeId: (user as any).collegeId,
-      metadata: (user as any).metadata,
-      extractedCollegeId: id,
-      fullUser: user
-    });
-    
-    return id;
+  // Fetch college ID
+  React.useEffect(() => {
+    const fetchCollegeId = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const { data: lecturerData } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (lecturerData?.collegeId) {
+          setCollegeId(lecturerData.collegeId);
+          return;
+        }
+
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('organization_type', 'college')
+          .maybeSingle();
+
+        if (orgData?.id) {
+          setCollegeId(orgData.id);
+        }
+      } catch (error) {
+        console.error('Error fetching college ID:', error);
+      }
+    };
+
+    fetchCollegeId();
   }, [user]);
   
   // Use the dynamic hook
@@ -1321,7 +1332,10 @@ const MentorAllocation: React.FC = () => {
                 <p className="text-gray-600 mb-4 max-w-md mx-auto">
                   No mentors are currently available for allocation. Please add mentors to get started with the mentoring program.
                 </p>
-                <button className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                <button 
+                  onClick={() => navigate('/college-admin/departments/educators')}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
                   Add Mentors
                 </button>
               </div>

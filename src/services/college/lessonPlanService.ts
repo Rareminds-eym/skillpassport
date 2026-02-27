@@ -62,13 +62,26 @@ async function getCurrentUserCollegeId(): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: lecturer } = await supabase
+  // Try college_lecturers first
+  const { data: lecturerData } = await supabase
     .from('college_lecturers')
     .select('collegeId')
-    .eq('user_id', user.id)
-    .single();
+    .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+    .maybeSingle();
 
-  return lecturer?.collegeId || null;
+  if (lecturerData?.collegeId) {
+    return lecturerData.collegeId;
+  }
+
+  // Try organizations table
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('admin_id', user.id)
+    .eq('organization_type', 'college')
+    .maybeSingle();
+
+  return orgData?.id || null;
 }
 
 export const lessonPlanService = {

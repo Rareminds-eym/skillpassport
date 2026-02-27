@@ -49,41 +49,28 @@ export const middleSchoolConfig: GradePromptConfig = {
       chainOfThought: `
 <thinking>
 Step 1: Identify student's grade level → Middle School (ages 11-14)
-Step 2: Check what they're asking → "subjects to focus on"
-Step 3: Critical check → Are they asking about INTERESTS or SKILLS?
-Step 4: Middle school approach → Map to interests/activities, NOT career planning
-Step 5: Avoid → Listing any technical skills or job-related subjects
-Step 6: Action → Ask about their interests first, then suggest school subjects
-Step 7: Verification → Did I keep it age-appropriate? Did I avoid career jargon? ✓
+Step 2: Understand the query → They're asking about subject choices
+Step 3: Middle school approach → Connect to interests/activities, not career planning
+Step 4: Avoid → Technical skills or job-related subjects
+Step 5: Action → Ask about their interests, then suggest school subjects
+Step 6: Verification → Is it age-appropriate? Did I avoid career jargon?
 </thinking>`,
-      idealResponse: `What activities make you lose track of time? 🤔
-
-If you love building things and figuring out how stuff works, Science and Math are super fun! If you enjoy reading stories and writing, English and Social Studies will be great for you.
-
-What are you most curious about in school right now?`,
-      reasoning: 'Maps subjects to interests/activities, not skills. Asks follow-up question to continue exploration.'
+      idealResponse: `Ask what activities they enjoy and what makes them curious. Then connect those interests to school subjects in a fun, exploratory way. Keep it short and end with an engaging question.`,
+      reasoning: 'Maps subjects to interests/activities, not skills. Encourages exploration through questions.'
     },
     {
       intent: 'explore',
       userQuery: 'What careers can I explore?',
       chainOfThought: `
 <thinking>
-Step 1: Student asks about "careers" → Too early for career planning at middle school
+Step 1: Student asks about "careers" → Too early for career planning
 Step 2: Reframe → Focus on activities and interests, not job titles
-Step 3: Approach → Use broad categories (creating, helping, solving, exploring)
-Step 4: Avoid → Specific career names like "Software Engineer" or "Doctor"
-Step 5: Action → Ask engaging questions about what they enjoy doing
-Step 6: Verification → Is this age-appropriate? Am I encouraging exploration? ✓
+Step 3: Use broad categories (creating, helping, solving, exploring)
+Step 4: Avoid → Specific career names
+Step 5: Action → Ask engaging questions about what they enjoy
+Step 6: Verification → Is this age-appropriate and encouraging?
 </thinking>`,
-      idealResponse: `Let's think about what you enjoy doing! 🌟
-
-Do you like:
-- Creating art or building things?
-- Helping people and working in teams?
-- Solving puzzles and figuring out problems?
-- Being outdoors and exploring nature?
-
-Tell me what sounds most fun, and I'll share some cool fields you might enjoy learning about!`,
+      idealResponse: `Reframe from careers to activities they enjoy. Use broad categories like creating, helping, solving problems, or exploring. Ask what sounds most fun to them.`,
       reasoning: 'Focuses on activities and interests, not career titles. Keeps it exploratory and age-appropriate.'
     },
     {
@@ -91,18 +78,14 @@ Tell me what sounds most fun, and I'll share some cool fields you might enjoy le
       userQuery: 'What are my strengths?',
       chainOfThought: `
 <thinking>
-Step 1: Check student profile → Look for interests, hobbies, activities
-Step 2: Avoid → Don't list technical skills as "strengths" for middle schoolers
-Step 3: Focus → Natural talents, things they enjoy, what comes easily
-Step 4: Approach → Acknowledge what they've shared, ask for more context
-Step 5: Action → Encourage them to reflect on recent achievements
-Step 6: Verification → Am I being encouraging? Am I asking good questions? ✓
+Step 1: Check profile for interests, hobbies, activities
+Step 2: Avoid → Don't list technical skills for middle schoolers
+Step 3: Focus → Natural talents, things they enjoy
+Step 4: Approach → Acknowledge what they've shared, ask for more
+Step 5: Action → Encourage reflection on recent achievements
+Step 6: Verification → Am I being encouraging and asking good questions?
 </thinking>`,
-      idealResponse: `I can see you have some great interests! 🎯
-
-Based on what you've shared, you seem to enjoy creative activities and problem-solving. These are awesome strengths!
-
-What's something you're really proud of doing recently? It could be a school project, a hobby, or anything you enjoyed!`,
+      idealResponse: `Acknowledge their interests from their profile. Focus on natural talents and things they enjoy. Ask about something they're proud of recently to continue the exploration.`,
       reasoning: 'Acknowledges existing information, asks for more context, keeps focus on activities not skills.'
     }
   ],

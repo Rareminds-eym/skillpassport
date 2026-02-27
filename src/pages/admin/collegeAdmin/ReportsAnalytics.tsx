@@ -220,26 +220,32 @@ const ReportsAnalytics: React.FC = () => {
     switch (selectedCategory) {
       case "attendance":
       case "exam-progress":
+        const hasLineData = reportData.chartData.values?.length > 0 && reportData.chartData.values.some((v: number) => v > 0);
         return {
           options: {
             chart: { type: "line", toolbar: { show: false } },
             stroke: { curve: "smooth", width: 3 },
             colors: ["#3b82f6"],
-            xaxis: { categories: reportData.chartData.labels },
+            xaxis: { categories: reportData.chartData.labels || [] },
             yaxis: { min: 0, max: 100 },
             grid: { show: true, borderColor: "#f1f5f9" },
-            tooltip: { theme: "light" }
+            tooltip: { theme: "light" },
+            noData: { text: "No data available" }
           } as ApexOptions,
-          series: [{ name: selectedCategory === "attendance" ? "Attendance %" : "Completion %", data: reportData.chartData.values }],
+          series: hasLineData ? [{ name: selectedCategory === "attendance" ? "Attendance %" : "Completion %", data: reportData.chartData.values }] : [],
           type: "line"
         };
 
       case "performance":
       case "skill-analytics":
+        const hasDonutData = reportData.chartData.values?.length > 0 && reportData.chartData.values.some((v: number) => v > 0);
+        const avgValue = hasDonutData 
+          ? Math.round(reportData.chartData.values.reduce((a: number, b: number) => a + b, 0) / reportData.chartData.values.length)
+          : 0;
         return {
           options: {
             chart: { type: "donut" },
-            labels: reportData.chartData.labels,
+            labels: reportData.chartData.labels || [],
             colors: ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b", "#ef4444"],
             legend: { position: "bottom" },
             plotOptions: {
@@ -251,42 +257,48 @@ const ReportsAnalytics: React.FC = () => {
                     total: {
                       show: true,
                       label: "Average",
-                      formatter: () => `${Math.round(reportData.chartData.values.reduce((a: number, b: number) => a + b, 0) / reportData.chartData.values.length)}%`
+                      formatter: () => `${avgValue}%`
                     }
                   }
                 }
               }
-            }
+            },
+            noData: { text: "No data available" }
           } as ApexOptions,
-          series: reportData.chartData.values,
+          series: hasDonutData ? reportData.chartData.values : [],
           type: "donut"
         };
 
       case "placement":
+        const hasPlacementData = (reportData.chartData.placements?.length > 0 && reportData.chartData.placements.some((v: number) => v > 0)) ||
+                                 (reportData.chartData.applications?.length > 0 && reportData.chartData.applications.some((v: number) => v > 0));
         return {
           options: {
             chart: { type: "bar", toolbar: { show: false } },
             colors: ["#10b981", "#3b82f6"],
-            xaxis: { categories: reportData.chartData.labels },
+            xaxis: { categories: reportData.chartData.labels || [] },
             plotOptions: {
               bar: { horizontal: false, columnWidth: "55%", borderRadius: 4 }
             },
             dataLabels: { enabled: false },
-            legend: { position: "top" }
+            legend: { position: "top" },
+            noData: { text: "No data available" }
           } as ApexOptions,
-          series: [
-            { name: "Placements", data: reportData.chartData.placements },
-            { name: "Applications", data: reportData.chartData.applications }
-          ],
+          series: hasPlacementData ? [
+            { name: "Placements", data: reportData.chartData.placements || [] },
+            { name: "Applications", data: reportData.chartData.applications || [] }
+          ] : [],
           type: "bar"
         };
 
       case "budget":
+        const hasBudgetData = (reportData.chartData.allocated?.length > 0 && reportData.chartData.allocated.some((v: number) => v > 0)) ||
+                              (reportData.chartData.spent?.length > 0 && reportData.chartData.spent.some((v: number) => v > 0));
         return {
           options: {
             chart: { type: "bar", toolbar: { show: false }, stacked: false },
             colors: ["#3b82f6", "#10b981"],
-            xaxis: { categories: reportData.chartData.labels },
+            xaxis: { categories: reportData.chartData.labels || [] },
             plotOptions: {
               bar: { horizontal: false, columnWidth: "60%", borderRadius: 4 }
             },
@@ -300,12 +312,13 @@ const ReportsAnalytics: React.FC = () => {
                   return `₹${val}`;
                 }
               }
-            }
+            },
+            noData: { text: "No data available" }
           } as ApexOptions,
-          series: [
-            { name: "Allocated", data: reportData.chartData.allocated },
-            { name: "Spent", data: reportData.chartData.spent }
-          ],
+          series: hasBudgetData ? [
+            { name: "Allocated", data: reportData.chartData.allocated || [] },
+            { name: "Spent", data: reportData.chartData.spent || [] }
+          ] : [],
           type: "bar"
         };
 

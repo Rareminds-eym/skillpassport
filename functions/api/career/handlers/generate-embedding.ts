@@ -127,6 +127,57 @@ export async function handleGenerateEmbedding(
   console.log(`[Embedding] Generating for ${type} #${id}`);
 
   try {
+    // SECURITY: Validate ownership before allowing embedding updates
+    if (!skipDatabaseUpdate) {
+      const userSupabase = auth.supabase;
+      
+      if (table === 'students') {
+        // For students table: user must own the record
+        if (id !== studentId) {
+          return jsonResponse({
+            success: false,
+            error: 'Unauthorized: Cannot update embedding for other users'
+          }, 403);
+        }
+      } else if (table === 'profiles') {
+        // For profiles table: verify user_id matches
+        const { data: profile } = await userSupabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', id)
+          .single();
+        
+        if (!profile || profile.user_id !== studentId) {
+          return jsonResponse({
+            success: false,
+            error: 'Unauthorized: Cannot update embedding for other users'
+          }, 403);
+        }
+      } else if (table === 'opportunities' || table === 'courses') {
+        // SECURITY: For opportunities and courses, verify user has admin privileges
+        const { data: adminCheck } = await userSupabase
+          .from('school_admins')
+          .select('id')
+          .eq('user_id', studentId)
+          .limit(1)
+          .maybeSingle();
+        
+        const { data: collegeAdminCheck } = await userSupabase
+          .from('college_admins')
+          .select('id')
+          .eq('user_id', studentId)
+          .limit(1)
+          .maybeSingle();
+        
+        if (!adminCheck && !collegeAdminCheck) {
+          return jsonResponse({
+            success: false,
+            error: 'Unauthorized: Admin access required for this operation'
+          }, 403);
+        }
+      }
+    }
+
     // Get OpenRouter API key
     const apiKeys = getAPIKeys(env);
     if (!apiKeys.openRouter) {
@@ -144,7 +195,7 @@ export async function handleGenerateEmbedding(
 
     console.log(`[Embedding] Generated ${embedding.length}-dimensional vector`);
 
-    // Update database if not skipped
+    // Update database if not skipped (after ownership validation)
     if (!skipDatabaseUpdate) {
       const supabase = createClient(
         env.SUPABASE_URL || env.VITE_SUPABASE_URL,
