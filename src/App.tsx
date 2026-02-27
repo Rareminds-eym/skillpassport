@@ -6,6 +6,7 @@ import { ToastProvider } from './components/Recruiter/components/Toast';
 import { Toaster } from './components/Students/components/ui/toaster';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
 import TourWrapper from './components/Tours/TourWrapper';
+import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotification';
 import { AuthProvider } from './context/AuthContext';
 import { SearchProvider } from './context/SearchContext';
 import { SubscriptionProvider } from './context/SubscriptionContext';
@@ -40,6 +41,7 @@ function App() {
                   <ToastProvider>
                     <TourWrapper>
                       <SubscriptionPrefetch />
+                      <TokenRefreshErrorNotification />
                       <AppRoutes />
                       <Toaster />
                     <HotToaster 
