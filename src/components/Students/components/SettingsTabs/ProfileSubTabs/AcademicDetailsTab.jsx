@@ -1,4 +1,3 @@
-import React from "react";
 import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle, Clock, Save } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
@@ -32,15 +31,33 @@ const AcademicDetailsTab = ({
   };
 
   return (
-    <div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <Briefcase className="w-5 h-5 text-blue-600" />
-        Academic Details
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
+          <Briefcase className="w-5 h-5 text-blue-600" />
+          Academic Details
+        </h3>
+        <p className="text-sm text-slate-500">Your educational qualifications and academic information</p>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-slate-700 mb-2 font-medium">
+          What to fill here:
+        </p>
+        <ul className="text-sm text-slate-600 space-y-1.5 ml-4 list-disc">
+          <li><span className="font-medium">Educational Level:</span> Your current academic year (e.g., Grade 10, UG Year 2)</li>
+          <li><span className="font-medium">Registration/Enrollment Numbers:</span> Your official student ID numbers</li>
+          <li><span className="font-medium">Current CGPA:</span> Your current grade point average</li>
+        </ul>
+        <p className="text-xs text-slate-500 mt-3">
+          Note: Your institution name and class section (like "10-A") are set in the Institution Details tab.
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Registration Number */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Registration Number
           </label>
           <input
@@ -49,14 +66,14 @@ const AcademicDetailsTab = ({
             onChange={(e) =>
               handleProfileChange("registrationNumber", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
             placeholder="Enter registration number"
           />
         </div>
 
         {/* Enrollment Number */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Enrollment Number
           </label>
           <input
@@ -65,7 +82,7 @@ const AcademicDetailsTab = ({
             onChange={(e) =>
               handleProfileChange("enrollmentNumber", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
             placeholder="Enter enrollment number"
           />
         </div>
@@ -85,40 +102,52 @@ const AcademicDetailsTab = ({
           inputClassName="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
 
-        {/* Grade */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Grade/Class <span className="text-red-500">*</span>
+        {/* Educational Level */}
+        <div className="space-y-2 md:col-span-2">
+          <label className="text-sm font-medium text-slate-700">
+            Current Academic Year/Level <span className="text-red-500">*</span>
           </label>
           <select
             value={profileData.grade}
             onChange={(e) =>
               handleProfileChange("grade", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
           >
-            <option value="">Select Grade/Class</option>
-            <option value="Grade 6">Grade 6</option>
-            <option value="Grade 7">Grade 7</option>
-            <option value="Grade 8">Grade 8</option>
-            <option value="Grade 9">Grade 9</option>
-            <option value="Grade 10">Grade 10</option>
-            <option value="Grade 11">Grade 11</option>
-            <option value="Grade 12">Grade 12</option>
-            <option value="Diploma">Diploma</option>
-            <option value="UG Year 1">UG Year 1</option>
-            <option value="UG Year 2">UG Year 2</option>
-            <option value="UG Year 3">UG Year 3</option>
-            <option value="UG Year 4">UG Year 4</option>
-            <option value="PG Year 1">PG Year 1</option>
-            <option value="PG Year 2">PG Year 2</option>
-            <option value="PG">PG</option>
+            <option value="">Select Your Current Academic Year</option>
+            <optgroup label="📚 Middle School (Ages 11-14)">
+              <option value="Grade 6">Grade 6</option>
+              <option value="Grade 7">Grade 7</option>
+              <option value="Grade 8">Grade 8</option>
+            </optgroup>
+            <optgroup label="📖 High School (Ages 14-16)">
+              <option value="Grade 9">Grade 9</option>
+              <option value="Grade 10">Grade 10</option>
+            </optgroup>
+            <optgroup label="📕 Higher Secondary (Ages 16-18)">
+              <option value="Grade 11">Grade 11</option>
+              <option value="Grade 12">Grade 12</option>
+            </optgroup>
+            <optgroup label="🎓 Diploma & Undergraduate (Ages 18-22)">
+              <option value="Diploma">Diploma</option>
+              <option value="UG Year 1">UG Year 1 (1st Year)</option>
+              <option value="UG Year 2">UG Year 2 (2nd Year)</option>
+              <option value="UG Year 3">UG Year 3 (3rd Year)</option>
+              <option value="UG Year 4">UG Year 4 (4th Year)</option>
+            </optgroup>
+            <optgroup label="🎯 Postgraduate (Ages 22+)">
+              <option value="PG Year 1">PG Year 1 (1st Year)</option>
+              <option value="PG Year 2">PG Year 2 (2nd Year)</option>
+            </optgroup>
           </select>
+          <p className="text-xs text-gray-500">
+            <span className="font-medium">Example:</span> If you're in 10th standard, select "Grade 10". If you're in 2nd year of B.Tech, select "UG Year 2".
+          </p>
         </div>
 
         {/* Grade Start Date */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Grade Start Date
           </label>
           <input
@@ -127,39 +156,42 @@ const AcademicDetailsTab = ({
             onChange={(e) =>
               handleProfileChange("gradeStartDate", e.target.value)
             }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
           />
         </div>
       </div>
 
       {/* Education Section */}
-      <div className="pt-8 border-t border-slate-100 mt-8">
+      <div className="pt-6 border-t border-slate-200">
         <div className="flex items-center justify-between mb-6">
-          <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-blue-600" />
-            Education
-          </h4>
+          <div>
+            <h4 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-1">
+              <GraduationCap className="w-5 h-5 text-blue-600" />
+              Education History
+            </h4>
+            <p className="text-sm text-slate-500">Your educational qualifications and degrees</p>
+          </div>
           <Button
             onClick={() => setShowEducationModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all button-press"
           >
             <Plus className="w-4 h-4" />
-            Add education
+            Add Education
           </Button>
         </div>
 
         {educationData.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-            <GraduationCap className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 text-base font-medium">
+          <div className="text-center py-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+            <GraduationCap className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+            <p className="text-slate-600 text-base font-medium">
               No education added yet
             </p>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-slate-500 text-sm mt-1">
               Add your educational qualifications to showcase your academic background
             </p>
           </div>
         ) : (
-          <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
+          <div className="space-y-3">
             {educationData
               .filter(edu => edu.enabled !== false) // Only show enabled education
               .map((education) => {
@@ -188,18 +220,18 @@ const AcademicDetailsTab = ({
               .map((education, idx) => (
                 <div
                   key={education.id || `edu-${idx}`}
-                  className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                  className="p-5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all duration-200 group"
                 >
-                  <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h4 className="text-base font-bold text-gray-900">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <h4 className="text-base font-semibold text-slate-900">
                           {education.degree || "N/A"}
                         </h4>
                         
                         {/* Verified Badge */}
                         {(education.approval_status === "verified" || education.approval_status === "approved") && !education._hasPendingEdit && (
-                          <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
+                          <Badge className="bg-green-50 text-green-700 border-green-200 flex items-center gap-1 text-xs">
                             <CheckCircle className="w-3 h-3" />
                             Verified
                           </Badge>
@@ -207,7 +239,7 @@ const AcademicDetailsTab = ({
 
                         {/* Pending Verification Badge - Show when has_pending_edit is true */}
                         {education._hasPendingEdit && (
-                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1 text-xs">
                             <Clock className="w-3 h-3" />
                             Pending Verification
                           </Badge>
@@ -215,80 +247,74 @@ const AcademicDetailsTab = ({
 
                         {/* Pending Verification Badge - Show for new pending records */}
                         {(!education.approval_status || education.approval_status === 'pending') && !education._hasPendingEdit && (
-                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                          <Badge className="bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1 text-xs">
                             <Clock className="w-3 h-3" />
                             Pending Verification
                           </Badge>
                         )}
-                        
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowEducationModal(true)}
-                            className="p-1 h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                          >
-                            <Edit className="w-3 h-3" />
-                          </Button>
-                          
-                          {/* Eye icon - only show for verified/approved education */}
-                          {(education.approval_status === 'verified' || education.approval_status === 'approved') && !education._hasPendingEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onToggleEducationEnabled && onToggleEducationEnabled(idx)}
-                              className="p-1 h-6 w-6 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
-                              title={education.enabled ? "Hide from profile" : "Show on profile"}
-                            >
-                              {education.enabled !== false ? (
-                                <Eye className="w-3 h-3" />
-                              ) : (
-                                <EyeOff className="w-3 h-3" />
-                              )}
-                            </Button>
-                          )}
-                          
-                          {/* Delete button */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onDeleteEducation && onDeleteEducation(idx)}
-                            className="p-1 h-6 w-6 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                            title="Delete education"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
                       </div>
                       
-                      <p className="text-sm text-gray-600 font-medium mb-1">
+                      <p className="text-sm text-slate-600 font-medium mb-1">
                         {education.university || education.institution || "N/A"}
                       </p>
                       
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-4 text-sm text-slate-500">
                         {education.yearOfPassing && (
                           <span>{education.yearOfPassing}</span>
                         )}
                         {education.cgpa && (
                           <>
-                            {education.yearOfPassing && <span>|</span>}
-                            <span className="font-medium">{education.cgpa}</span>
+                            {education.yearOfPassing && <span>•</span>}
+                            <span className="font-medium">CGPA: {education.cgpa}</span>
+                          </>
+                        )}
+                        {education.status && (
+                          <>
+                            <span>•</span>
+                            <span className="capitalize">{education.status}</span>
                           </>
                         )}
                       </div>
                     </div>
                     
-                    {education.status && (
-                      <Badge
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          education.status === "ongoing"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-green-100 text-green-700"
-                        }`}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowEducationModal(true)}
+                        className="p-2 h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
-                        {education.status}
-                      </Badge>
-                    )}
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      
+                      {/* Eye icon - only show for verified/approved education */}
+                      {(education.approval_status === 'verified' || education.approval_status === 'approved') && !education._hasPendingEdit && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onToggleEducationEnabled && onToggleEducationEnabled(idx)}
+                          className="p-2 h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title={education.enabled ? "Hide from profile" : "Show on profile"}
+                        >
+                          {education.enabled !== false ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
+                      
+                      {/* Delete button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeleteEducation && onDeleteEducation(idx)}
+                        className="p-2 h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete education"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -297,21 +323,11 @@ const AcademicDetailsTab = ({
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
+      <div className="flex justify-end pt-6 border-t border-slate-200">
         <Button
           onClick={handleSaveProfile}
           disabled={isSaving}
-          className={`
-            inline-flex items-center gap-2
-            bg-blue-600 hover:bg-blue-700 active:bg-blue-800
-            text-white font-medium
-            px-6 py-2.5 rounded-lg
-            shadow-[0_2px_6px_rgba(0,0,0,0.05)]
-            hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]
-            active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]
-            transition-all duration-200 ease-in-out
-            disabled:opacity-60 disabled:cursor-not-allowed
-          `}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 button-press disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Save className="w-4 h-4" />
           {isSaving ? "Saving..." : "Save Changes"}

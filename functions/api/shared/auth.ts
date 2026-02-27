@@ -16,7 +16,7 @@ export interface AuthResult {
 
 /**
  * Authenticate user from Authorization header
- * Tries JWT decode first, then falls back to Supabase auth
+ * SECURITY: Uses Supabase's built-in JWT verification for production-grade security
  */
 export async function authenticateUser(
   request: Request,
@@ -26,84 +26,70 @@ export async function authenticateUser(
   if (!authHeader) return null;
 
   const token = authHeader.replace('Bearer ', '');
-  let userId: string | null = null;
-
-  // Method 1: Decode JWT directly (faster)
-  let userEmail: string | undefined;
-  try {
-    const parts = token.split('.');
-    if (parts.length === 3) {
-      const payload = JSON.parse(atob(parts[1]));
-      if (payload.sub) {
-        userId = payload.sub;
-        userEmail = payload.email;
-        console.log(`Auth: User authenticated via JWT - ${userId}`);
-      }
-    }
-  } catch (jwtErr) {
-    console.warn('JWT decode failed:', jwtErr);
-  }
 
   // Get Supabase URL with fallback
   const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
   const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
   
-  // Debug logging
-  console.log('🔍 Auth Debug - Available env vars:', {
-    hasSupabaseUrl: !!env.SUPABASE_URL,
-    hasViteSupabaseUrl: !!env.VITE_SUPABASE_URL,
-    hasSupabaseAnonKey: !!env.SUPABASE_ANON_KEY,
-    hasViteSupabaseAnonKey: !!env.VITE_SUPABASE_ANON_KEY,
-    hasServiceRoleKey: !!env.SUPABASE_SERVICE_ROLE_KEY,
-    resolvedUrl: supabaseUrl ? 'present' : 'missing',
-    resolvedAnonKey: supabaseAnonKey ? 'present' : 'missing'
-  });
-  
-  if (!supabaseUrl) {
-    console.error('❌ Missing SUPABASE_URL or VITE_SUPABASE_URL environment variable');
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('❌ Missing Supabase configuration');
     return null;
   }
 
-  // Method 2: Fallback to Supabase auth with service role
-  if (!userId && env.SUPABASE_SERVICE_ROLE_KEY) {
-    try {
-      const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-      const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
-      
-      if (!authError && authUser) {
-        userId = authUser.id;
-        userEmail = authUser.email;
-        console.log(`Auth: User authenticated via service role - ${userId}`);
-      }
-    } catch (authErr) {
-      console.warn('Service role auth error:', authErr);
+  // SECURITY: Use Supabase's getUser() which validates JWT signature
+  // This prevents token forgery attacks
+  try {
+    const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
+    const { data: { user: authUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    
+    if (authError || !authUser) {
+      console.warn('Authentication failed:', authError?.message);
+      return null;
     }
+
+    const userId = authUser.id;
+    const userEmail = authUser.email;
+    
+    console.log(`✓ Auth: User authenticated - ${userId}`);
+
+    // Create Supabase clients
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    return {
+      user: { id: userId, email: userEmail },
+      supabase,
+      supabaseAdmin,
+    };
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return null;
   }
-
-  if (!userId) return null;
-
-  // Create Supabase clients
-  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  return {
-    user: { id: userId, email: userEmail },
-    supabase,
-    supabaseAdmin,
-  };
 }
 
 /**
- * Sanitize user input to prevent XSS and limit length
+ * Sanitize user input to prevent XSS, injection attacks, and limit length
+ * SECURITY: Enhanced validation for production use
  */
-export function sanitizeInput(input: string): string {
+export function sanitizeInput(input: string, maxLength: number = 2000): string {
+  if (typeof input !== 'string') return '';
+  
   return input
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/[<>]/g, '') // Remove angle brackets
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Remove angle brackets
+    .replace(/[<>]/g, '')
+    // Remove control characters except newline, tab, carriage return
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Normalize Unicode to prevent homograph attacks
+    .normalize('NFKC')
+    // Remove null bytes
+    .replace(/\0/g, '')
+    // Trim whitespace
     .trim()
-    .slice(0, 2000); // Limit length
+    // Limit length
+    .slice(0, maxLength);
 }
 
 /**
@@ -116,7 +102,33 @@ export function generateConversationTitle(message: string): string {
 
 /**
  * Validate UUID format
+ * SECURITY: Strict validation to prevent injection attacks
  */
 export function isValidUUID(uuid: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(uuid);
+  if (typeof uuid !== 'string') return false;
+  if (uuid.length !== 36) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
+}
+
+/**
+ * Validate request body size to prevent memory exhaustion attacks
+ * SECURITY: Enforce maximum request size
+ */
+export async function validateRequestSize(
+  request: Request,
+  maxSizeBytes: number = 1048576 // 1MB default
+): Promise<{ valid: boolean; error?: string }> {
+  const contentLength = request.headers.get('content-length');
+  
+  if (contentLength) {
+    const size = parseInt(contentLength, 10);
+    if (size > maxSizeBytes) {
+      return {
+        valid: false,
+        error: `Request body too large. Maximum size: ${maxSizeBytes} bytes`
+      };
+    }
+  }
+  
+  return { valid: true };
 }
