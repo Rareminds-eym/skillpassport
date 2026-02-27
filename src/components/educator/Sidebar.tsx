@@ -74,11 +74,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         { name: "Students", path: "/educator/students", icon: UserGroupIcon },
         // Show different navigation based on educator type
         ...(educatorType === 'college' 
-          ? [{ name: "Program Sections", path: "/educator/classes", icon: AcademicCapIcon }]
+          ? [{ name: "Program Sections", path: "#", icon: AcademicCapIcon, disabled: true }]
           : [{ name: "Classes", path: "/educator/classes", icon: AcademicCapIcon }]
         ),
-        { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon },
-        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon },
+        { name: "TimeTable", path: "#", icon: AcademicCapIcon, disabled: true },
+        { name: "Mark Attendance", path: "#", icon: ClipboardDocumentCheckIcon, disabled: true },
         { name: "Assessment Results", path: "/educator/assessment-results", icon: ClipboardDocumentListIcon },
         // { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
         { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon },
@@ -95,18 +95,20 @@ const Sidebar: React.FC<SidebarProps> = ({
         // },
         // Show different navigation based on educator type
         ...(educatorType === 'college' 
-          ? [{ name: "College Assignments", path: "/educator/college-assignments", icon: AcademicCapIcon }]
-          : [{ name: "Assignments", path: "/educator/assignments", icon: AcademicCapIcon }]
+          ? [{ name: "College Assignments", path: "#", icon: AcademicCapIcon, disabled: true }]
+          : [{ name: "Assignments", path: "#", icon: AcademicCapIcon, disabled: true }]
         ),
         {
           name: "Mentor Notes",
-          path: "/educator/mentornotes",
+          path: "#",
           icon: PencilSquareIcon,
+          disabled: true,
         },
         {
           name: "My Mentees",
-          path: "/educator/my-mentees",
+          path: "#",
           icon: UserGroupIcon,
+          disabled: true,
         },
         {
           name: "Verification",
@@ -121,13 +123,15 @@ const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           name: "Clubs & Compitetion",
-          path: "/educator/clubs",
+          path: "#",
           icon: ClipboardDocumentListIcon,
+          disabled: true,
         },
         {
           name: "badges",
-          path: "/educator/badges",
+          path: "#",
           icon: PencilSquareIcon,
+          disabled: true,
         },
       ],
     },
