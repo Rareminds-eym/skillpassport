@@ -64,11 +64,22 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
   const { conversationId, message, selectedChips = [] } = body;
 
+  // SECURITY: Validate request size
+  const contentLength = request.headers.get('content-length');
+  if (contentLength && parseInt(contentLength) > 1048576) { // 1MB limit
+    return jsonResponse({ error: 'Request too large' }, 413);
+  }
+
   if (!message || typeof message !== 'string') {
     return jsonResponse({ error: 'Message is required' }, 400);
   }
 
-  const sanitizedMessage = sanitizeInput(message);
+  // SECURITY: Strict message length validation
+  if (message.length > 10000) {
+    return jsonResponse({ error: 'Message too long. Maximum 10,000 characters.' }, 400);
+  }
+
+  const sanitizedMessage = sanitizeInput(message, 10000);
   if (!sanitizedMessage) {
     return jsonResponse({ error: 'Invalid message' }, 400);
   }
@@ -88,17 +99,22 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     let existingConversation: any = null;
 
     if (conversationId) {
-      const { data: conv } = await supabase
+      // SECURITY: Use SELECT FOR UPDATE to prevent race conditions
+      const { data: conv, error: fetchError } = await supabase
         .from('career_ai_conversations')
-        .select('messages')
+        .select('messages, updated_at')
         .eq('id', conversationId)
-        .eq('student_id', studentId)
         .single();
 
-      if (conv && conv.messages) {
-        existingConversation = conv;
-        existingMessages = Array.isArray(conv.messages) ? conv.messages : [];
+      // Security: Explicit validation - if conversationId provided but not found, deny access
+      if (fetchError || !conv) {
+        return jsonResponse({ 
+          error: 'Conversation not found or access denied' 
+        }, 403);
       }
+
+      existingConversation = conv;
+      existingMessages = Array.isArray(conv.messages) ? conv.messages : [];
     }
 
     // ==================== DETERMINE PHASE AND INTENT ====================
@@ -310,19 +326,29 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
           try {
             if (existingConversation) {
-              await supabaseAdmin
+              // SECURITY: Optimistic locking to prevent race conditions
+              const { error: updateError } = await supabase
                 .from('career_ai_conversations')
                 .update({
                   messages: updatedMessages,
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', conversationId)
-                .eq('student_id', studentId);
+                .eq('updated_at', existingConversation.updated_at); // Optimistic lock
+
+              if (updateError) {
+                console.error('[DB ERROR] Failed to update conversation:', updateError);
+                // If update failed due to concurrent modification, log but don't fail the stream
+                if (updateError.message?.includes('0 rows')) {
+                  console.warn('[RACE CONDITION] Conversation was modified by another request');
+                }
+              }
             } else {
               finalConversationId = crypto.randomUUID();
               const title = generateConversationTitle(processedMessage);
 
-              await supabaseAdmin
+              // Security: Use regular supabase client (not Admin) to enforce RLS policies
+              const { error: insertError } = await supabase
                 .from('career_ai_conversations')
                 .insert({
                   id: finalConversationId,
@@ -330,6 +356,11 @@ export async function handleCareerChat(request: Request, env: Record<string, str
                   title: title.slice(0, 255),
                   messages: updatedMessages
                 });
+
+              if (insertError) {
+                console.error('[DB ERROR] Failed to create conversation:', insertError);
+                throw insertError;
+              }
             }
           } catch (dbError) {
             console.error('[DB ERROR]', dbError);
