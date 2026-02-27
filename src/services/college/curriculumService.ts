@@ -76,43 +76,33 @@ async function getCurrentUserCollegeId(): Promise<string | null> {
 
   console.log(`🔍 Getting college ID for user: ${user.email}`);
 
-  // First try to get from users table (for college admins)
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('organizationId, role')
-    .eq('id', user.id)
-    .single();
-
-  if (userError) {
-    console.error('❌ Error fetching user data:', userError);
-    return null;
-  }
-
-  if (userData?.organizationId && userData?.role === 'college_admin') {
-    console.log(`✅ Found college ID from users table: ${userData.organizationId}`);
-    return userData.organizationId;
-  }
-
-  // Fallback: try college_lecturers table (for lecturers)
-  const { data: lecturer, error: lecturerError } = await supabase
+  // Try to get from college_lecturers table
+  const { data: lecturerData } = await supabase
     .from('college_lecturers')
     .select('collegeId')
-    .eq('user_id', user.id)
-    .single();
+    .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+    .maybeSingle();
 
-  if (lecturerError) {
-    console.log('ℹ️ User not found in college_lecturers table (this is normal for college admins)');
+  if (lecturerData?.collegeId) {
+    console.log(`✅ Found college ID from college_lecturers table: ${lecturerData.collegeId}`);
+    return lecturerData.collegeId;
   }
 
-  const collegeId = lecturer?.collegeId || null;
-  
-  if (collegeId) {
-    console.log(`✅ Found college ID from college_lecturers table: ${collegeId}`);
-  } else {
-    console.log('❌ No college ID found for user');
+  // Try organizations table by admin_id
+  const { data: orgData } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('admin_id', user.id)
+    .eq('organization_type', 'college')
+    .maybeSingle();
+
+  if (orgData?.id) {
+    console.log(`✅ Found college ID from organizations table: ${orgData.id}`);
+    return orgData.id;
   }
 
-  return collegeId;
+  console.log('❌ No college ID found for user');
+  return null;
 }
 
 export const curriculumService = {
