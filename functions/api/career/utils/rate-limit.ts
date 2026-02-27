@@ -1,12 +1,30 @@
 // Rate Limiting for Career API
-// SECURITY: In-memory cache with automatic cleanup to prevent memory leaks
+// SECURITY: Uses Cloudflare's distributed Rate Limiting API for production
+// Falls back to in-memory cache for local development
 
+// Cloudflare Rate Limiting API (production)
+export async function checkRateLimit(userId: string, env?: any): Promise<boolean> {
+  // Production: Use Cloudflare Rate Limiting API (distributed across edge)
+  if (env?.CAREER_AI_RATE_LIMITER) {
+    try {
+      const { success } = await env.CAREER_AI_RATE_LIMITER.limit({ key: userId });
+      return success;
+    } catch (error) {
+      console.error('[Rate Limit] Cloudflare API error:', error);
+      // Fail open: allow request if rate limiter fails
+      return true;
+    }
+  }
+
+  // Development: Fallback to in-memory cache
+  return checkRateLimitLocal(userId);
+}
+
+// Local development fallback (in-memory)
 const rateLimitCache = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT = 30; // requests per minute
+const RATE_LIMIT = 5; // requests per minute
 const RATE_WINDOW = 60000; // 1 minute
 const CLEANUP_INTERVAL = 300000; // Clean up every 5 minutes
-
-// Periodic cleanup to prevent memory leaks
 let lastCleanup = Date.now();
 
 function cleanupExpiredEntries() {
@@ -21,7 +39,7 @@ function cleanupExpiredEntries() {
   lastCleanup = now;
 }
 
-export function checkRateLimit(userId: string): boolean {
+function checkRateLimitLocal(userId: string): boolean {
   cleanupExpiredEntries();
   
   const now = Date.now();

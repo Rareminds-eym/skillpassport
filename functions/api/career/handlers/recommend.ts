@@ -313,7 +313,7 @@ export async function handleRecommendOpportunities(request: Request, env: Record
     return jsonResponse({ error: 'Invalid studentId format', recommendations: [] }, 400);
   }
 
-  if (!checkRateLimit(studentId)) {
+  if (!await checkRateLimit(studentId, env as any)) {
     return jsonResponse({ error: 'Rate limit exceeded', recommendations: [] }, 429);
   }
 

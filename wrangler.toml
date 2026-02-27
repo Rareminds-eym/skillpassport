@@ -5,5 +5,15 @@ name = "skill-passport-portal"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Rate Limiting for Career AI
+# Distributed rate limiting using Cloudflare's edge infrastructure
+[[ratelimits]]
+name = "CAREER_AI_RATE_LIMITER"
+namespace_id = "1001"
+
+[ratelimits.simple]
+limit = 5
+period = 60
+
 # Environment variables for local development
 # These will be loaded from .dev.vars file
