@@ -20,6 +20,7 @@ import {
   Video,
 } from "lucide-react";
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabaseClient';
 import { opportunitiesService } from '@/services/opportunitiesService';
 import type { Opportunity } from '@/services/opportunitiesService';
 import { applicationTrackingService } from '@/services/applicationTrackingService';
@@ -110,10 +111,55 @@ const ApplicationTracking: React.FC = () => {
       setIsLoadingApplications(true);
       setApplicationError(null);
 
-      // Load applications, stats, companies, and departments in parallel
+      // Get current user's college ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Not authenticated');
+      }
+
+      // Check college_lecturers table first
+      const { data: lecturerData } = await supabase
+        .from('college_lecturers')
+        .select('collegeId')
+        .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+        .maybeSingle();
+
+      let collegeId = lecturerData?.collegeId;
+
+      // If not found, check organizations table
+      if (!collegeId) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('organization_type', 'college')
+          .maybeSingle();
+
+        collegeId = orgData?.id;
+      }
+
+      if (!collegeId) {
+        console.error('❌ No college ID found for current user');
+        setApplications([]);
+        setApplicationStats({
+          total: 0,
+          applied: 0,
+          viewed: 0,
+          under_review: 0,
+          interview_scheduled: 0,
+          interviewed: 0,
+          offer_received: 0,
+          accepted: 0,
+          rejected: 0,
+          withdrawn: 0
+        });
+        return;
+      }
+
+      // Load applications and stats with college_id filter
       const [applicationsData, statsData] = await Promise.all([
-        applicationTrackingService.getAllApplications(),
-        applicationTrackingService.getApplicationStats()
+        applicationTrackingService.getAllApplications({ college_id: collegeId }),
+        applicationTrackingService.getApplicationStats({ college_id: collegeId })
       ]);
 
       setApplications(applicationsData);

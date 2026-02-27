@@ -352,6 +352,9 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         throw new Error('You are not logged in. Please login and try again.')
       }
 
+      // Get authenticated user once for reuse
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+
       // Get schoolId or collegeId from localStorage
       let schoolId = null
       let collegeId = null
@@ -378,33 +381,31 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         if (org?.id) {
           schoolId = org.id
           console.log('✅ Found schoolId from organizations:', schoolId)
-        } else {
+        } else if (authUser?.id) {
           // Also try school_educators table
           console.log('🔍 Trying school_educators table...')
-          const { data: { user: authUser } } = await supabase.auth.getUser()
-          if (authUser?.id) {
-            const { data: educator } = await supabase
-              .from('school_educators')
-              .select('school_id')
-              .eq('user_id', authUser.id)
-              .maybeSingle()
-            
-            if (educator?.school_id) {
-              schoolId = educator.school_id
-              console.log('✅ Found schoolId from school_educators:', schoolId)
-            }
+          const { data: educator } = await supabase
+            .from('school_educators')
+            .select('school_id')
+            .eq('user_id', authUser.id)
+            .maybeSingle()
+          
+          if (educator?.school_id) {
+            schoolId = educator.school_id
+            console.log('✅ Found schoolId from school_educators:', schoolId)
           }
         }
       }
 
       // If collegeId not in localStorage but user is college_admin, fetch from organizations table
-      if (!collegeId && userRole === 'college_admin' && userEmail) {
-        console.log('🔍 Fetching collegeId from organizations table for college admin:', userEmail)
+      if (!collegeId && userRole === 'college_admin' && authUser?.id) {
+        console.log('🔍 Fetching collegeId from organizations table for college admin')
+        
         const { data: org } = await supabase
           .from('organizations')
           .select('id')
           .eq('organization_type', 'college')
-          .ilike('email', userEmail)
+          .eq('admin_id', authUser.id)
           .maybeSingle()
 
         if (org?.id) {

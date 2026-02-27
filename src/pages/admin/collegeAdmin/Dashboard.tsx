@@ -57,14 +57,29 @@ const Dashboard: React.FC = () => {
       
       setLoading(true);
       try {
-        // Get college_id for current user from college_lecturers table
+        // Get college_id for current user
+        let collegeId = null;
+
+        // First check college_lecturers table
         const { data: collegeLecturer } = await supabase
           .from('college_lecturers')
           .select('collegeId')
-          .eq('user_id', user.id)
-          .single();
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
 
-        const collegeId = collegeLecturer?.collegeId;
+        collegeId = collegeLecturer?.collegeId;
+
+        // If not found, check organizations table for college admin
+        if (!collegeId) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('admin_id', user.id)
+            .eq('organization_type', 'college')
+            .maybeSingle();
+
+          collegeId = org?.id;
+        }
 
         if (!collegeId) {
           console.log('No college_id found for user');
