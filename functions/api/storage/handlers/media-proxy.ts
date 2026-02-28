@@ -10,7 +10,8 @@
 import { validateFileKey } from '../utils/course-authorization';
 import { validateMediaToken } from '../utils/token-crypto';
 import { R2Client } from '../utils/r2-client';
-import { hashToken, isTokenUsed, markTokenAsUsed, cleanupExpiredTokens } from '../utils/token-usage-tracker';
+import { validateDeviceFingerprint, validateReferer } from '../utils/fingerprint-validator';
+import { generateDeviceMismatchPage, generateTokenExpiredPage, generateUnauthorizedPage } from '../utils/error-pages';
 
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
 
@@ -26,9 +27,6 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
   }
 
   try {
-    // Periodic cleanup of expired tokens
-    cleanupExpiredTokens();
-    
     const url = new URL(request.url);
     const token = url.searchParams.get('token');
 
@@ -37,21 +35,6 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
         JSON.stringify({ error: 'Authentication token required' }),
         {
           status: 401,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Check if token has already been used (single-use tokens for PDFs only)
-    const tokenHash = await hashToken(token);
-    const fileKeyFromToken = token.split('.')[0]; // Get payload part
-    const isVideoFile = fileKeyFromToken.match(/\.(mp4|webm|mov|avi|mkv)/i);
-    
-    if (!isVideoFile && isTokenUsed(tokenHash)) {
-      return new Response(
-        JSON.stringify({ error: 'This link has already been used. Please refresh the page to get a new link.' }),
-        {
-          status: 403,
           headers: { 'Content-Type': 'application/json' },
         }
       );
@@ -81,12 +64,66 @@ export const handleMediaProxy: PagesFunction = async ({ request, env }) => {
       );
     }
 
-    const { userId, courseId, lessonId, fileKey } = validation.payload;
+    const { userId, courseId, lessonId, fileKey, fingerprint, userAgent: tokenUserAgent, sessionId: tokenSessionId } = validation.payload;
 
-    // Only mark as used for non-video files (videos need multiple requests for streaming)
-    const isVideo = fileKey.match(/\.(mp4|webm|mov|avi|mkv)$/i);
-    if (!isVideo) {
-      markTokenAsUsed(tokenHash, userId, fileKey);
+    // Fingerprint and User-Agent validation
+    const requestFingerprint = url.searchParams.get('fp');
+    const requestUserAgent = request.headers.get('User-Agent') || '';
+
+    if (!fingerprint || !tokenUserAgent) {
+      console.error('[MediaProxy] Token missing security data');
+      return new Response(
+        JSON.stringify({ error: 'Invalid token - security validation required' }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    if (!requestFingerprint) {
+      console.error('[MediaProxy] Request missing fingerprint');
+      return new Response(
+        JSON.stringify({ error: 'Device verification required' }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
+    const deviceValidation = validateDeviceFingerprint(
+      fingerprint,
+      requestFingerprint,
+      tokenUserAgent,
+      requestUserAgent
+    );
+
+    if (!deviceValidation.valid) {
+      console.error('[MediaProxy] Device validation failed:', deviceValidation.reason);
+      return new Response(generateDeviceMismatchPage(deviceValidation.reason || 'Unknown error'), {
+        status: 403,
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      });
+    }
+
+    // Validate Referer header
+    const referer = request.headers.get('Referer');
+    const requestUrl = new URL(request.url);
+    const allowedDomains = [requestUrl.hostname, 'localhost', '127.0.0.1'];
+    
+    const refererValidation = validateReferer(referer, allowedDomains);
+    if (!refererValidation.valid) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Invalid request origin',
+          details: refererValidation.reason 
+        }),
+        {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     if (!validateFileKey(fileKey, courseId, lessonId)) {

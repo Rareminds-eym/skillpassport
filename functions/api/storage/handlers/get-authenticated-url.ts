@@ -20,7 +20,8 @@ interface RequestBody {
   fileKey?: string;
   courseId: string;
   lessonId?: string;
-  expiresIn?: number;
+  fingerprint?: string;
+  sessionId?: string;
 }
 
 /**
@@ -70,7 +71,7 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
 
     // Parse request body
     const body = (await request.json()) as RequestBody;
-    const { fileUrl, fileKey: providedKey, courseId, lessonId, expiresIn = 3600 } = body;
+    const { fileUrl, fileKey: providedKey, courseId, lessonId, fingerprint, sessionId } = body;
 
     if (!courseId) {
       return new Response(
@@ -110,7 +111,7 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
       );
     }
 
-    // Generate authenticated token
+    // Generate authenticated token with fingerprint
     const signingSecret = env.SIGNING_SECRET;
     if (!signingSecret) {
       console.error('[GetAuthUrl] SIGNING_SECRET not configured');
@@ -123,13 +124,18 @@ export const handleGetAuthenticatedUrl: PagesFunction = async ({ request, env })
       );
     }
 
+    const userAgent = request.headers.get('User-Agent') || '';
+    
     const token = await generateMediaToken(
       user.id,
       courseId,
       fileKey,
       signingSecret,
       300,
-      lessonId
+      lessonId,
+      fingerprint,
+      userAgent,
+      sessionId
     );
 
     const baseUrl = new URL(request.url).origin;

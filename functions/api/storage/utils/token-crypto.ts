@@ -12,6 +12,9 @@ interface TokenPayload {
   fileKey: string;
   exp: number;
   iat: number;
+  fingerprint?: string;
+  userAgent?: string;
+  sessionId?: string;
 }
 
 /**
@@ -58,7 +61,10 @@ export async function generateMediaToken(
   fileKey: string,
   secret: string,
   expiresInSeconds: number = 3600,
-  lessonId?: string
+  lessonId?: string,
+  fingerprint?: string,
+  userAgent?: string,
+  sessionId?: string
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   
@@ -69,6 +75,9 @@ export async function generateMediaToken(
     fileKey,
     exp: now + expiresInSeconds,
     iat: now,
+    fingerprint,
+    userAgent,
+    sessionId,
   };
 
   const payloadStr = JSON.stringify(payload);

@@ -2,10 +2,11 @@
  * Authenticated Media Service
  * 
  * Handles fetching authenticated URLs for course media (videos, PDFs, etc.)
- * Ensures media can only be accessed by enrolled users.
+ * Ensures media can only be accessed by enrolled users on their registered device.
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getBrowserFingerprint, getDeviceContext } from '../utils/fingerprint';
 
 interface AuthenticatedUrlResponse {
   success: boolean;
@@ -20,7 +21,7 @@ interface AuthenticatedUrlResponse {
  * @param fileUrl - Original file URL or key
  * @param courseId - Course ID
  * @param lessonId - Optional lesson ID
- * @returns Authenticated URL that only works for the current user
+ * @returns Authenticated URL that only works for the current user and device
  */
 export async function getAuthenticatedMediaUrl(
   fileUrl: string,
@@ -36,6 +37,11 @@ export async function getAuthenticatedMediaUrl(
       return null;
     }
 
+    // Get browser fingerprint and session ID
+    const fingerprint = await getBrowserFingerprint();
+    const deviceContext = getDeviceContext();
+    const sessionId = deviceContext.sessionId;
+
     // Call authenticated URL endpoint
     const response = await fetch('/api/storage/get-authenticated-url', {
       method: 'POST',
@@ -47,7 +53,8 @@ export async function getAuthenticatedMediaUrl(
         fileUrl,
         courseId,
         lessonId,
-        expiresIn: 3600, // 1 hour
+        fingerprint,
+        sessionId,
       }),
     });
 
@@ -64,7 +71,9 @@ export async function getAuthenticatedMediaUrl(
       return null;
     }
 
-    return data.url;
+    // Append fingerprint to URL for validation (NOT session ID - that's validated separately)
+    const urlWithFp = `${data.url}&fp=${encodeURIComponent(fingerprint)}`;
+    return urlWithFp;
   } catch (error) {
     console.error('[AuthMedia] Error getting authenticated URL:', error);
     return null;
