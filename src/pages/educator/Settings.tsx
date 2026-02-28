@@ -274,9 +274,9 @@ const SettingSelect: React.FC<{
 );
 
 const Settings: React.FC = () => {
-  const { user, userRole } = useAuth();
+  const { user, userRole, loading: authLoading } = useAuth();
   const userEmail = (user as any)?.email;
-  const userId = (user as any)?.id;
+  const userId = (user as any)?.user_id || (user as any)?.id;
   
   // Add loading and error states
   const [loading, setLoading] = useState(true);
@@ -903,10 +903,10 @@ const Settings: React.FC = () => {
 
   // Load data on component mount
   useEffect(() => {
-    if (userId) {
+    if (!authLoading && userId) {
       fetchEducatorData();
     }
-  }, [userId]);
+  }, [userId, authLoading]);
 
   const handleSave = async () => {
     if (!userEmail || !educatorData) {
@@ -1198,7 +1198,7 @@ const Settings: React.FC = () => {
           {activeTab === 'profile' && (
             <div className="space-y-6">
               {/* Loading State */}
-              {loading && (
+              {(loading || authLoading) && (
                 <div className="flex items-center justify-center py-12">
                   <ArrowPathIcon className="h-8 w-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-gray-600">Loading profile...</span>
@@ -1222,7 +1222,7 @@ const Settings: React.FC = () => {
               )}
 
               {/* Profile Content - Only show when not loading and no error */}
-              {!loading && !error && (
+              {!loading && !authLoading && !error && (
                 <div className="space-y-6">
                   {/* Avatar Section */}
                   <AccordionSection
