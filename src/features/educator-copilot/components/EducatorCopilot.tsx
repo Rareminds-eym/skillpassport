@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square } from 'lucide-react';
-import { educatorIntelligenceEngine } from '../services/educatorIntelligenceEngine';
 import { educatorWelcomeConfig, educatorChatConfig } from '../config/educatorConfig';
-import { useAuth } from '../../../context/AuthContext';
 import { StudentInsightCard } from './EducatorCards';
+import { supabase } from '../../../lib/supabaseClient';
 
 interface Message {
   id: string;
@@ -15,14 +14,12 @@ interface Message {
 }
 
 const EducatorCopilot: React.FC = () => {
-  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -153,7 +150,6 @@ const EducatorCopilot: React.FC = () => {
     }
     setIsTyping(false);
     setLoading(false);
-    setAutoScrollEnabled(true);
     userInteractedRef.current = false;
     isScrollingRef.current = false;
   };
@@ -178,8 +174,32 @@ const EducatorCopilot: React.FC = () => {
     setUserScrolledUp(false);
 
     try {
-      const educatorId = user?.id || 'demo-educator';
+      // Get session token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        throw new Error('Please log in to use Educator AI');
+      }
+
       const id = (Date.now() + 1).toString();
+
+      // Call backend API with streaming
+      const response = await fetch('/api/educator/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          message: userInput,
+          conversationId: undefined // TODO: Track conversation ID
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API error: ${response.status}`);
+      }
       
       // Create empty assistant message for streaming
       const aiMessage: Message = {
@@ -193,30 +213,60 @@ const EducatorCopilot: React.FC = () => {
       setLoading(false);
       setIsTyping(true);
 
-      // Stream response from LLM in real-time
-      const result = await educatorIntelligenceEngine.processQueryStream(
-        userInput,
-        educatorId,
-        (chunk: string) => {
-          // Update message content as chunks arrive from LLM
-          setMessages(prev => prev.map(m => 
-            m.id === id ? { ...m, content: m.content + chunk } : m
-          ));
-          
-          // Auto-scroll if user hasn't scrolled up
-          if (!userInteractedRef.current && !isScrollingRef.current) {
-            requestAnimationFrame(() => {
-              messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-            });
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine.startsWith('data: ')) continue;
+
+          const data = trimmedLine.replace('data: ', '').trim();
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            
+            if (parsed.content) {
+              // Update message content as chunks arrive
+              setMessages(prev => prev.map(m => 
+                m.id === id ? { ...m, content: m.content + parsed.content } : m
+              ));
+              
+              // Auto-scroll if user hasn't scrolled up
+              if (!userInteractedRef.current && !isScrollingRef.current) {
+                requestAnimationFrame(() => {
+                  messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+                });
+              }
+            }
+
+            if (parsed.done) {
+              // Stream complete
+              console.log('Stream complete');
+            }
+
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+          } catch (e) {
+            // Skip invalid JSON
           }
         }
-      );
-
-      // Update with interactive elements if any
-      if (result.interactive) {
-        setMessages(prev => prev.map(m => 
-          m.id === id ? { ...m, interactive: result.interactive } : m
-        ));
       }
     } catch (error) {
       console.error('Educator AI Error:', error);
@@ -224,7 +274,7 @@ const EducatorCopilot: React.FC = () => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm sorry, I encountered an error. Please make sure your OpenAI API key is configured correctly.",
+        content: `I'm sorry, I encountered an error: ${(error as Error).message || 'Unknown error'}. Please try again.`,
         timestamp: new Date().toISOString()
       };
       
@@ -472,7 +522,6 @@ const EducatorCopilot: React.FC = () => {
                   whileTap={{ y: 0 }}
                   onClick={() => {
                     setUserScrolledUp(false);
-                    setAutoScrollEnabled(true);
                     userInteractedRef.current = false;
                     scrollToBottom(true);
                   }}
@@ -518,7 +567,6 @@ const EducatorCopilot: React.FC = () => {
                   whileTap={{ y: 0 }}
                   onClick={() => {
                     setUserScrolledUp(false);
-                    setAutoScrollEnabled(true);
                     userInteractedRef.current = false;
                     scrollToBottom(true);
                   }}
@@ -542,16 +590,16 @@ const EducatorCopilot: React.FC = () => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
               placeholder={educatorChatConfig.placeholder}
-              disabled={true}
+              disabled={loading || isTyping}
               className="w-full px-5 py-4 pr-16 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
             />
             
             <div className="absolute right-2 top-1/2 -translate-y-1/2">
               <button
                 onClick={handleSend}
-                disabled={true}
+                disabled={loading || isTyping || !input.trim()}
                 className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
                 title="Send message"
               >
