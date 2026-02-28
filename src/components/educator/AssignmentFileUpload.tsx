@@ -12,6 +12,8 @@ import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { supabase } from '../../lib/supabaseClient';
 import ConfirmationModal from '../ui/ConfirmationModal';
 import NotificationModal from '../ui/NotificationModal';
+import { validateFileSize, getValidationErrorMessage } from '../../utils/fileValidation';
+import { getFileSizeLimit } from '../../config/fileSizeLimits';
 
 interface FileUploadProps {
   assignmentId?: string; // If provided, files will be uploaded immediately
@@ -95,9 +97,10 @@ const AssignmentFileUpload = React.forwardRef<
       return `File type ${fileExtension} is not allowed. Accepted types: ${acceptedTypes.join(', ')}`;
     }
 
-    // Check file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      return `File ${file.name} is too large. Maximum size is 10MB.`;
+    // Validate file size using centralized validation
+    const sizeValidation = validateFileSize(file, { context: 'assignment' });
+    if (!sizeValidation.valid) {
+      return getValidationErrorMessage(sizeValidation);
     }
 
     return null;
@@ -377,7 +380,7 @@ const AssignmentFileUpload = React.forwardRef<
           Drag and drop files here, or click to browse
         </p>
         <p className="text-xs text-gray-400">
-          {acceptedTypes.join(', ')} • Max {maxFiles} files total • 10MB each
+          {acceptedTypes.join(', ')} • Max {maxFiles} files total • {getFileSizeLimit('assignment').displaySize} each
         </p>
         
         <input

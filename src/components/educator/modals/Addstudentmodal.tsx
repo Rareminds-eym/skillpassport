@@ -5,6 +5,8 @@ import { supabase } from '../../../lib/supabaseClient'
 import storageService from '../../../services/storageService'
 import userApiService from '../../../services/userApiService'
 import { usePermission } from '../../../hooks/usePermissions'
+import { validateFileSize, getValidationErrorMessage } from '../../../utils/fileValidation'
+import { getFileSizeLimit } from '../../../config/fileSizeLimits'
 
 interface DocumentUploadProgress {
   file: string
@@ -630,12 +632,13 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     const files = Array.from(e.target.files || [])
     const validFiles = files.filter(file => {
       const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
-      const maxSize = 5 * 1024 * 1024 // 5MB
-      return validTypes.includes(file.type) && file.size <= maxSize
+      // Validate file size using centralized validation
+      const sizeValidation = validateFileSize(file, { context: 'document' })
+      return validTypes.includes(file.type) && sizeValidation.valid
     })
 
     if (validFiles.length !== files.length) {
-      setError('Some files were rejected. Only PDF, JPG, PNG files under 5MB are allowed.')
+      setError(`Some files were rejected. Only PDF, JPG, PNG files under ${getFileSizeLimit('document').displaySize} are allowed.`)
     }
 
     if (validFiles.length === 0) return
@@ -1707,7 +1710,7 @@ const AddStudentModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Upload Documents <span className="text-red-500">*</span>
-                    <span className="text-xs text-gray-500 ml-1">(PDF, JPG, PNG - Max 5MB each, up to 5 files)</span>
+                    <span className="text-xs text-gray-500 ml-1">(PDF, JPG, PNG - Max {getFileSizeLimit('document').displaySize} each, up to 5 files)</span>
                   </label>
 
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
