@@ -17,6 +17,8 @@ import AddStudentModal from '../../../components/educator/modals/Addstudentmodal
 import { AdmissionNoteModal } from '@/components/shared/StudentProfileDrawer/modals';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import AssessmentReportDrawer from '@/components/shared/AssessmentReportDrawer';
+// @ts-ignore - JS file without types
+import { getLatestResult } from '../../../services/assessmentService';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -84,11 +86,12 @@ const StatusBadgeComponent = ({ status }: { status: string }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
+const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath, loadingAssessmentForStudent }: {
   student: any;
   onViewProfile: (student: any) => void;
   onAddNote: (student: any) => void;
   onViewCareerPath: (student: any) => void;
+  loadingAssessmentForStudent: string | null;
 }) => {
 
 
@@ -141,11 +144,12 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
           </button>
           <button
             onClick={() => onViewCareerPath(student)}
-            className="inline-flex items-center px-2 py-1 border border-yellow-300 rounded text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+            className="inline-flex items-center px-2 py-1 border border-yellow-300 rounded text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
             title="View Assessment Report"
+            disabled={loadingAssessmentForStudent === student.id}
           >
             <SparklesIcon className="h-3 w-3 mr-1" />
-            Career
+            {loadingAssessmentForStudent === student.id ? 'Loading...' : 'Career'}
           </button>
           <button
             onClick={() => onAddNote(student)}
@@ -169,6 +173,8 @@ const StudentDataAdmission = () => {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showAssessmentReport, setShowAssessmentReport] = useState(false);
   const [studentForReport, setStudentForReport] = useState<any>(null);
+  const [assessmentResult, setAssessmentResult] = useState<any>(null);
+  const [loadingAssessmentForStudent, setLoadingAssessmentForStudent] = useState<string | null>(null);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [studentForNote, setStudentForNote] = useState<any>(null);
@@ -376,9 +382,42 @@ const StudentDataAdmission = () => {
   };
 
   // Opens the Assessment Report drawer to show the student's completed assessment report
-  const handleViewCareerPath = (student: any) => {
-    setStudentForReport(student);
-    setShowAssessmentReport(true);
+  const handleViewCareerPath = async (student: any) => {
+    try {
+      setLoadingAssessmentForStudent(student.id);
+      setStudentForReport(student);
+      
+      // Fetch the student's latest assessment result
+      // Try both student.id and student.user_id as getLatestResult can handle both
+      let result = null;
+      
+      if (student.user_id) {
+        result = await getLatestResult(student.user_id);
+      }
+      
+      // If no result found with user_id, try with student.id
+      if (!result && student.id) {
+        result = await getLatestResult(student.id);
+      }
+      
+      if (result) {
+        console.log('✅ Found assessment result for student:', student.name);
+        setAssessmentResult(result);
+        setShowAssessmentReport(true);
+      } else {
+        console.warn('⚠️ No assessment result found for student:', student.name);
+        // Still show the drawer but with no assessment data - it will show appropriate message
+        setAssessmentResult(null);
+        setShowAssessmentReport(true);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching assessment result:', error);
+      // Still show the drawer but with error state
+      setAssessmentResult(null);
+      setShowAssessmentReport(true);
+    } finally {
+      setLoadingAssessmentForStudent(null);
+    }
   };
 
 
@@ -620,6 +659,7 @@ const StudentDataAdmission = () => {
                     onViewProfile={handleViewProfile}
                     onAddNote={handleAddNoteClick}
                     onViewCareerPath={handleViewCareerPath}
+                    loadingAssessmentForStudent={loadingAssessmentForStudent}
                   />
                 ))}
                 {!loading && paginatedStudents.length === 0 && !error && (
@@ -764,10 +804,11 @@ const StudentDataAdmission = () => {
                           </button>
                           <button
                             onClick={() => handleViewCareerPath(student)}
-                            className="text-yellow-600 hover:text-yellow-900"
+                            className="text-yellow-600 hover:text-yellow-900 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="View Assessment Report"
+                            disabled={loadingAssessmentForStudent === student.id}
                           >
-                            Career
+                            {loadingAssessmentForStudent === student.id ? 'Loading...' : 'Career'}
                           </button>
                           <button
                             onClick={() => handleAddNoteClick(student)}
@@ -809,11 +850,27 @@ const StudentDataAdmission = () => {
 
       {/* Assessment Report Drawer - Shows the student's completed assessment report */}
       <AssessmentReportDrawer
-        student={studentForReport}
+        student={studentForReport ? {
+          id: studentForReport.id,
+          user_id: studentForReport.user_id || studentForReport.id,
+          name: studentForReport.name || undefined,
+          email: studentForReport.email || undefined,
+          college: studentForReport.college || undefined,
+          college_name: studentForReport.college || undefined,
+          grade: studentForReport.grade || studentForReport.student_grade || undefined,
+          school_name: studentForReport.college || undefined,
+          roll_number: studentForReport.enrollmentNumber || studentForReport.roll_number || 'N/A',
+          student_grade: studentForReport.student_grade || studentForReport.grade || undefined,
+          program_id: studentForReport.program_id || undefined,
+          program_name: studentForReport.program_name || undefined,
+          stream_name: studentForReport.stream_name || undefined
+        } : undefined}
+        assessmentResult={assessmentResult}
         isOpen={showAssessmentReport}
         onClose={() => {
           setShowAssessmentReport(false);
           setStudentForReport(null);
+          setAssessmentResult(null);
         }}
       />
 

@@ -12,6 +12,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../../lib/supabaseClient';
 import { calculateMonthsInGrade, getGradeLevelFromGrade } from '../../utils/gradeUtils';
+import { isCollegeStudent as checkIsCollegeStudent } from '../../../../utils/studentType';
 import type { GradeLevel } from '../config/sections';
 
 interface StudentGradeData {
@@ -101,16 +102,20 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
         // Save student ID
         setStudentId(student.id);
 
-        // Check if student is a college student
-        const isCollege = Boolean(student.university_college_id && !student.school_id);
+        // Check if student is a college student (using centralized utility)
+        const isCollege = checkIsCollegeStudent(student);
         setIsCollegeStudent(isCollege);
 
         // Set program name if available
-        // Priority: branch_field (from settings) > program.name > program.code > course_name (legacy)
-        const programName = student.branch_field ||
-          (student.program as any)?.name ||
+        // Priority: 
+        // 1. program.name (structured program from programs table)
+        // 2. program.code (structured program code)
+        // 3. course_name (custom program entered by user OR synced from program)
+        // 4. branch_field (legacy field, synced with course_name)
+        const programName = (student.program as any)?.name ||
           (student.program as any)?.code ||
-          student.course_name;
+          student.course_name ||
+          student.branch_field;
         if (programName) {
           setStudentProgram(programName);
         }

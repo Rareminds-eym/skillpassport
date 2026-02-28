@@ -1,30 +1,30 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
-    AlertCircle,
-    Award,
-    Bell,
-    Briefcase,
-    Building2,
-    Calendar,
-    CheckCircle2,
-    Clock,
-    Eye,
-    FileText,
-    Filter,
-    Grid3x3,
-    List,
-    MapPin,
-    MessageSquare,
-    RefreshCw,
-    Search,
-    Sparkles,
-    Target,
-    TrendingUp,
-    Users,
-    Video,
-    X,
-    XCircle
+  AlertCircle,
+  Award,
+  Bell,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Eye,
+  FileText,
+  Filter,
+  Grid3x3,
+  List,
+  MapPin,
+  MessageSquare,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Target,
+  TrendingUp,
+  Users,
+  Video,
+  X,
+  XCircle
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -40,6 +40,7 @@ import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
+import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
 
 // Import Applications component content
 import useMessageNotifications from '../../hooks/useMessageNotifications';
@@ -95,15 +96,15 @@ const Opportunities = () => {
 
   // Memoize student type to prevent unnecessary recalculations
   const studentType = React.useMemo(() => {
-    const isSchoolStudent = !!(studentData?.school_id || studentData?.school_class_id);
-    const isUniversityStudent = !!(studentData?.university_college_id || studentData?.universityId);
-    return { isSchoolStudent, isUniversityStudent };
-  }, [studentData?.school_id, studentData?.school_class_id, studentData?.university_college_id, studentData?.universityId]);
+    const isSchool = isSchoolStudent(studentData);
+    const isUniversity = isCollegeStudent(studentData);
+    return { isSchoolStudent: isSchool, isUniversityStudent: isUniversity };
+  }, [studentData]);
 
   // Build server-side filters (excluding skills which needs client-side filtering)
   const serverFilters = React.useMemo(() => {
     const filters = {};
-    
+
     // Employment type filter - for school students, force internship only
     // NOTE: Database stores employment_type with capital first letter (e.g., "Internship", "Full-time")
     if (studentType.isSchoolStudent) {
@@ -111,7 +112,7 @@ const Opportunities = () => {
     } else if (advancedFilters.employmentType.length > 0) {
       filters.employmentType = advancedFilters.employmentType;
     }
-    
+
     if (advancedFilters.experienceLevel.length > 0) {
       filters.experienceLevel = advancedFilters.experienceLevel;
     }
@@ -130,19 +131,19 @@ const Opportunities = () => {
     if (advancedFilters.postedWithin) {
       filters.postedWithin = advancedFilters.postedWithin;
     }
-    
+
     return filters;
   }, [advancedFilters, studentType.isSchoolStudent]);
 
   // Fetch opportunities with server-side pagination
   // IMPORTANT: Only fetch after studentData is loaded to ensure correct filters
   const [isLoading, setIsLoading] = useState(true);
-  const { 
-    opportunities, 
-    loading: dataLoading, 
+  const {
+    opportunities,
+    loading: dataLoading,
     error,
     totalCount,
-    totalPages 
+    totalPages
   } = useOpportunities({
     fetchOnMount: !!studentData, // Only fetch when studentData is available
     activeOnly: true,
@@ -159,11 +160,11 @@ const Opportunities = () => {
     if (advancedFilters.skills.length === 0) {
       return opportunities;
     }
-    
+
     return opportunities.filter(opp => {
       const oppSkills = opp.required_skills || opp.skills_required || [];
       return advancedFilters.skills.some(skill =>
-        oppSkills.some(oppSkill => 
+        oppSkills.some(oppSkill =>
           oppSkill.toLowerCase().includes(skill.toLowerCase())
         )
       );
@@ -228,13 +229,13 @@ const Opportunities = () => {
   useEffect(() => {
     const loadJobsData = async () => {
       if (!studentId) return;
-      
+
       try {
         const [applicationsData, savedIds] = await Promise.all([
           AppliedJobsService.getStudentApplications(studentId),
           SavedJobsService.getSavedJobIds(studentId)
         ]);
-        
+
         setAppliedJobs(new Set(applicationsData.map(app => app.opportunity_id)));
         setSavedJobs(new Set(savedIds));
       } catch (error) {
@@ -355,7 +356,7 @@ const Opportunities = () => {
 
     try {
       const result = await SavedJobsService.toggleSaveJob(studentId, opportunity.id);
-      
+
       if (result.success) {
         if (result.isSaved) {
           setSavedJobs(prev => new Set([...prev, opportunity.id]));
@@ -396,11 +397,11 @@ const Opportunities = () => {
       if (opportunity.application_link) {
         // Save application to profile for tracking
         const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
-        
+
         if (result.success) {
           setAppliedJobs(prev => new Set([...prev, opportunity.id]));
         }
-        
+
         // Open external link
         window.open(opportunity.application_link, '_blank');
         setIsApplying(false);
@@ -409,7 +410,7 @@ const Opportunities = () => {
 
       // Handle regular application
       const result = await AppliedJobsService.applyToJob(studentId, opportunity.id);
-      
+
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
       } else {
@@ -466,24 +467,20 @@ const Opportunities = () => {
                 {/* My Jobs Tab */}
                 <button
                   onClick={() => setActiveTab('my-jobs')}
-                  className={`relative text-left p-4 rounded-lg transition-all ${
-                    activeTab === 'my-jobs'
+                  className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-jobs'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'bg-white hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-100'
-                    }`}>
-                      <Briefcase className={`w-6 h-6 ${
-                        activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'
-                      }`} />
+                    <div className={`p-2 rounded-lg ${activeTab === 'my-jobs' ? 'bg-indigo-600' : 'bg-gray-100'
+                      }`}>
+                      <Briefcase className={`w-6 h-6 ${activeTab === 'my-jobs' ? 'text-white' : 'text-gray-600'
+                        }`} />
                     </div>
                     <div className="flex-1">
-                      <h1 className={`font-bold text-2xl ${
-                        activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-900'
-                      }`}>
+                      <h1 className={`font-bold text-2xl ${activeTab === 'my-jobs' ? 'text-indigo-600' : 'text-gray-900'
+                        }`}>
                         My Jobs
                       </h1>
                       <p className="text-sm text-gray-600 mt-1">
@@ -496,24 +493,20 @@ const Opportunities = () => {
                 {/* My Applications Tab */}
                 <button
                   onClick={() => setActiveTab('my-applications')}
-                  className={`relative text-left p-4 rounded-lg transition-all ${
-                    activeTab === 'my-applications'
+                  className={`relative text-left p-4 rounded-lg transition-all ${activeTab === 'my-applications'
                       ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
                       : 'bg-white hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-100'
-                    }`}>
-                      <FileText className={`w-6 h-6 ${
-                        activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'
-                      }`} />
+                    <div className={`p-2 rounded-lg ${activeTab === 'my-applications' ? 'bg-indigo-600' : 'bg-gray-100'
+                      }`}>
+                      <FileText className={`w-6 h-6 ${activeTab === 'my-applications' ? 'text-white' : 'text-gray-600'
+                        }`} />
                     </div>
                     <div className="flex-1">
-                      <h1 className={`font-bold text-lg ${
-                        activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-900'
-                      }`}>
+                      <h1 className={`font-bold text-lg ${activeTab === 'my-applications' ? 'text-indigo-600' : 'text-gray-900'
+                        }`}>
                         My Applications
                       </h1>
                       <p className="text-sm text-gray-600 mt-1">
@@ -806,17 +799,15 @@ const MyJobsContent = ({
             <div className="flex items-center bg-white border border-slate-200/60 rounded-2xl p-1 shadow-sm h-12">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
-                  viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                }`}
+                className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${viewMode === 'grid' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  }`}
               >
                 <Grid3x3 className="w-4 h-4 mx-auto" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${
-                  viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
-                }`}
+                className={`flex-1 sm:flex-none p-2.5 rounded-xl transition-all duration-200 ${viewMode === 'list' ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                  }`}
               >
                 <List className="w-4 h-4 mx-auto" />
               </button>
@@ -856,23 +847,23 @@ const MyJobsContent = ({
             advancedFilters.salaryMin ||
             advancedFilters.salaryMax ||
             advancedFilters.postedWithin) && (
-            <button
-              onClick={() => setAdvancedFilters({
-                employmentType: [],
-                experienceLevel: [],
-                mode: [],
-                salaryMin: '',
-                salaryMax: '',
-                skills: [],
-                department: [],
-                postedWithin: '',
-              })}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-            >
-              <X className="w-3 h-3" />
-              Clear all filters
-            </button>
-          )}
+              <button
+                onClick={() => setAdvancedFilters({
+                  employmentType: [],
+                  experienceLevel: [],
+                  mode: [],
+                  salaryMin: '',
+                  salaryMax: '',
+                  skills: [],
+                  department: [],
+                  postedWithin: '',
+                })}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Clear all filters
+              </button>
+            )}
         </div>
       </div>
 
@@ -1167,7 +1158,7 @@ const MyApplicationsContent = ({
     }
 
     setMessagingApplicationId(app.id);
-    
+
     try {
       const conversation = await MessageService.getOrCreateConversation(
         String(studentId), // Ensure string
@@ -1176,7 +1167,7 @@ const MyApplicationsContent = ({
         app.opportunityId, // opportunityId
         `Application: ${app.jobTitle}` // subject
       );
-      
+
       navigate('/student/messages', {
         state: {
           conversationId: conversation.id,
@@ -1334,15 +1325,14 @@ const MyApplicationsContent = ({
                                   <div key={stageKey} className="flex flex-col items-center flex-1 relative">
                                     {/* Stage Number Circle */}
                                     <div className="relative z-10 mb-2">
-                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
-                                        isCompleted
+                                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${isCompleted
                                           ? 'bg-green-500 text-white shadow-lg shadow-green-200'
                                           : isCurrent
                                             ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 ring-4 ring-blue-200 animate-pulse'
                                             : isRejected && index > getStageOrder('sourced')
                                               ? 'bg-gray-200 text-gray-400'
                                               : 'bg-white text-gray-400 border-2 border-gray-300'
-                                      }`}>
+                                        }`}>
                                         {isCompleted ? (
                                           <CheckCircle2 className="w-6 h-6" />
                                         ) : (
@@ -1353,19 +1343,17 @@ const MyApplicationsContent = ({
 
                                     {/* Connecting Line */}
                                     {index < array.length - 1 && (
-                                      <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${
-                                        isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                                      }`} style={{ transform: 'translateY(-50%)' }} />
+                                      <div className={`absolute top-5 left-1/2 w-full h-0.5 -z-0 transition-all ${isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                                        }`} style={{ transform: 'translateY(-50%)' }} />
                                     )}
 
                                     {/* Stage Label */}
-                                    <div className={`text-xs font-medium text-center px-1 transition-all ${
-                                      isCurrent
+                                    <div className={`text-xs font-medium text-center px-1 transition-all ${isCurrent
                                         ? 'text-blue-700 font-bold'
                                         : isCompleted
                                           ? 'text-green-700'
                                           : 'text-gray-500'
-                                    }`}>
+                                      }`}>
                                       {stageLabel}
                                     </div>
                                   </div>
@@ -1504,7 +1492,7 @@ const MyApplicationsContent = ({
                         <Eye className="w-4 h-4" />
                         {showPipelineStatus[app.id] ? 'Hide Details' : 'View Details'}
                       </button>
-                      
+
                       {app.recruiterId && (
                         <button
                           onClick={() => handleMessage(app)}

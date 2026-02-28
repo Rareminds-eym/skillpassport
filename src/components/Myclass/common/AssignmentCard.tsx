@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Star
 } from 'lucide-react';
+import { getPagesApiUrl } from '../../../utils/pagesUrl';
 
 export interface Assignment {
   assignment_id: string;
@@ -206,27 +207,20 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
   };
 
   // Helper function to open file with error handling
-  const openFile = async (fileUrl: string, fileName: string = 'file') => {
-    try {
-      console.log(`Opening ${fileName}:`, fileUrl);
-      
-      const accessibleUrl = getAccessibleFileUrl(fileUrl);
-      console.log('Generated accessible URL:', accessibleUrl);
-      
-      // Test if the URL is accessible
-      const testResponse = await fetch(accessibleUrl, { method: 'HEAD' });
-      console.log('File accessibility test status:', testResponse.status);
-      
-      if (testResponse.ok) {
-        window.open(accessibleUrl, '_blank');
-      } else {
-        console.warn('File not accessible via proxy, trying direct URL');
-        window.open(fileUrl, '_blank');
-      }
-    } catch (error) {
-      // Fallback to direct URL
-      window.open(fileUrl, '_blank');
-    }
+  const openFile = (fileUrl: string, fileName: string = 'file') => {
+    console.log(`Opening ${fileName}:`, fileUrl);
+    
+    const storageApiUrl = getPagesApiUrl('storage');
+    
+    // Generate proxy URL
+    const accessibleUrl = fileUrl.includes('/document-access') 
+      ? fileUrl 
+      : `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
+    
+    console.log('Opening URL:', accessibleUrl);
+    
+    // Open directly without testing
+    window.open(accessibleUrl, '_blank');
   };
 
   const overdueStatus = isAssignmentOverdue(assignment);

@@ -55,6 +55,7 @@ const StudentCollegeAdminCommunication = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const markedAsReadRef = useRef<Set<string>>(new Set());
   const tabDropdownRef = useRef<HTMLDivElement>(null);
+  const isSendingRef = useRef(false); // Local ref to prevent duplicate sends
   
   // Tab management - students and college educators
   const [activeTab, setActiveTab] = useState<'students' | 'college_educators'>('students');
@@ -739,7 +740,26 @@ const StudentCollegeAdminCommunication = () => {
 
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageInput.trim() || !currentChat || !collegeAdminId) return;
+    
+    // Basic validation
+    if (!messageInput.trim() || !currentChat || !collegeAdminId) {
+      return;
+    }
+    
+    // Check if already sending
+    if (isSending || isSendingRef.current) {
+      console.log('⚠️ Already sending message, ignoring duplicate call');
+      return;
+    }
+    
+    // Set ref to prevent duplicate calls
+    isSendingRef.current = true;
+    
+    // Store the message text before clearing
+    const messageToSend = messageInput.trim();
+    
+    // Clear input immediately
+    setMessageInput('');
     
     try {
       if (activeTab === 'students') {
@@ -749,7 +769,7 @@ const StudentCollegeAdminCommunication = () => {
           senderType: 'college_admin',
           receiverId: currentChat.studentId,
           receiverType: 'student',
-          messageText: messageInput,
+          messageText: messageToSend,
           subject: currentChat.subject
         });
         
@@ -757,7 +777,7 @@ const StudentCollegeAdminCommunication = () => {
         try {
           await sendNotification(currentChat.studentId, {
             title: 'New Message from College Admin',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message: messageToSend.length > 50 ? messageToSend.substring(0, 50) + '...' : messageToSend,
             type: 'message',
             link: `/student/messages?tab=college_admin&conversation=${selectedConversationId}`
           });
@@ -771,7 +791,7 @@ const StudentCollegeAdminCommunication = () => {
           senderType: 'college_admin',
           receiverId: currentChat.educatorId,
           receiverType: 'college_educator',
-          messageText: messageInput,
+          messageText: messageToSend,
           subject: currentChat.subject
         });
         
@@ -779,7 +799,7 @@ const StudentCollegeAdminCommunication = () => {
         try {
           await sendNotification(currentChat.educatorId, {
             title: 'New Message from College Admin',
-            message: messageInput.length > 50 ? messageInput.substring(0, 50) + '...' : messageInput,
+            message: messageToSend.length > 50 ? messageToSend.substring(0, 50) + '...' : messageToSend,
             type: 'message',
             link: `/educator/messages?tab=college_admin&conversation=${selectedConversationId}`
           });
@@ -788,12 +808,20 @@ const StudentCollegeAdminCommunication = () => {
         }
       }
       
-      setMessageInput('');
       setTyping(false);
     } catch (error) {
       console.error('Error sending message:', error);
+      // Restore message on error (unless it was a duplicate)
+      if (error.message !== 'DUPLICATE_MESSAGE') {
+        setMessageInput(messageToSend);
+      }
+    } finally {
+      // Reset ref after a delay
+      setTimeout(() => {
+        isSendingRef.current = false;
+      }, 500);
     }
-  }, [messageInput, currentChat, collegeAdminId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
+  }, [messageInput, currentChat, collegeAdminId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab, isSending]);
 
   // Handle typing in input
   const handleInputChange = useCallback((value: string) => {
@@ -1262,6 +1290,7 @@ const StudentCollegeAdminCommunication = () => {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
+                            e.stopPropagation(); // Stop event from bubbling to form
                             handleSendMessage(e);
                           }
                         }}
@@ -1280,11 +1309,11 @@ const StudentCollegeAdminCommunication = () => {
                     </div>
                     <button
                       type="submit"
-                      disabled={!messageInput.trim() || isSending}
+                      disabled={!messageInput.trim() || isSending || isSendingRef.current}
                       className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-lg"
                       title="Send"
                     >
-                      {isSending ? (
+                      {(isSending || isSendingRef.current) ? (
                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <PaperAirplaneIcon className="w-5 h-5" />

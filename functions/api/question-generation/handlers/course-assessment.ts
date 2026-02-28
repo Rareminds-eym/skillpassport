@@ -63,7 +63,11 @@ export async function generateAssessment(
         .replace(/\{\{LEVEL\}\}/g, level)
         .replace(/\{\{QUESTION_COUNT\}\}/g, questionCount.toString());
 
-    const systemPrompt = `You are an expert assessment creator for ${courseName}. Generate EXACTLY ${questionCount} questions. Generate ONLY valid JSON.`;
+    const systemPrompt = `You are an expert assessment creator for ${courseName}. 
+
+🎯 CRITICAL: You MUST generate EXACTLY ${questionCount} questions. This is a strict requirement.
+
+Before responding, verify you have EXACTLY ${questionCount} questions. Generate ONLY valid JSON with no markdown.`;
 
     // Use OpenRouter with automatic retry and fallback
     console.log(`🔑 Using OpenRouter with retry for ${questionCount} questions`);
@@ -82,7 +86,58 @@ export async function generateAssessment(
 
     console.log(`✅ Generated ${questions.length} questions for ${courseName}`);
 
-    // Validate and fix questions
+    // STRICT validation: Filter out invalid questions
+    const validQuestions: any[] = [];
+    let filteredCount = 0;
+    
+    for (let idx = 0; idx < questions.length; idx++) {
+        const q = questions[idx];
+        const questionText = q.question?.toLowerCase().trim() || q.text?.toLowerCase().trim() || '';
+        
+        // Check for image references
+        const imageKeywords = [
+            'graph', 'chart', 'table', 'diagram', 'image', 'picture', 'figure', 
+            'shown below', 'shown above', 'visual', 'illustration', 'drawing',
+            'sketch', 'photo', 'photograph', 'display', 'depicts', 'shows',
+            'given figure', 'following figure', 'above figure', 'below figure',
+            'mirror image', 'reflection', 'rotate', 'flip', 'shape', 'pattern',
+            'look at', 'observe', 'see the', 'view the', 'refer to',
+            'as shown', 'as depicted', 'as illustrated'
+        ];
+        if (imageKeywords.some(keyword => questionText.includes(keyword))) {
+            console.warn(`⚠️ Question ${idx + 1} has image reference, filtering out`);
+            filteredCount++;
+            continue;
+        }
+        
+        // Validate options if MCQ
+        if (q.type === 'mcq' && q.options) {
+            const optionValues = Array.isArray(q.options) 
+                ? q.options.map((v: any) => String(v).toLowerCase().trim())
+                : Object.values(q.options).map((v: any) => String(v).toLowerCase().trim());
+            
+            const uniqueOptions = new Set(optionValues);
+            
+            if (uniqueOptions.size < optionValues.length) {
+                console.warn(`⚠️ Question ${idx + 1} has duplicate options, filtering out`);
+                filteredCount++;
+                continue;
+            }
+            
+            if (optionValues.some(v => !v || v.length === 0)) {
+                console.warn(`⚠️ Question ${idx + 1} has empty options, filtering out`);
+                filteredCount++;
+                continue;
+            }
+        }
+        
+        validQuestions.push(q);
+    }
+    
+    console.log(`🔍 After validation: ${validQuestions.length}/${questions.length} valid questions (filtered: ${filteredCount})`);
+    questions = validQuestions;
+
+    // Use sequential numeric IDs for consistency
     questions = questions.map((q: any, idx: number) => {
         // Add missing correct_answer (use first option as fallback)
         if (!q.correct_answer && q.options?.length > 0) {
@@ -103,8 +158,9 @@ export async function generateAssessment(
         }
 
         return {
-            id: generateUUID(),
             ...q,
+            id: idx + 1, // Sequential numeric ID
+            uuid: generateUUID(), // Keep UUID for database uniqueness
             course_name: courseName,
             level,
             created_at: new Date().toISOString()

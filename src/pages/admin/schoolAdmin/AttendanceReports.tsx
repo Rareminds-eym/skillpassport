@@ -23,6 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
+import toast from 'react-hot-toast';
 import KPICard from "../../../components/admin/KPICard";
 import Pagination from "../../../components/admin/Pagination";
 import SearchBar from "../../../components/common/SearchBar";
@@ -582,7 +583,7 @@ const AttendanceReports: React.FC = () => {
               onClick={() => {
                 console.log('📥 Exporting CSV with', filteredRecords.length, 'records');
                 if (filteredRecords.length === 0) {
-                  alert('No data to export. Please adjust your filters or date range.');
+                  toast.error('No data to export. Please adjust your filters or date range.');
                   return;
                 }
                 exportToCSV(filteredRecords.map(r => ({
@@ -1540,7 +1541,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
       time: meetingTime,
       notes: meetingNotes,
     });
-    alert(`Parent meeting scheduled for ${selectedStudentForAction.studentName} on ${meetingDate} at ${meetingTime}`);
+    toast.success(`Parent meeting scheduled for ${selectedStudentForAction.studentName} on ${meetingDate} at ${meetingTime}`);
     setShowMeetingModal(false);
     setMeetingDate("");
     setMeetingTime("");
@@ -1553,7 +1554,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
       student: selectedStudentForAction,
       counselor: selectedCounselor,
     });
-    alert(`Counselor ${selectedCounselor} assigned to ${selectedStudentForAction.studentName}`);
+    toast.success(`Counselor ${selectedCounselor} assigned to ${selectedStudentForAction.studentName}`);
     setShowCounselorModal(false);
     setSelectedCounselor("");
   };
@@ -1689,7 +1690,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
                     <button 
                       className="inline-flex items-center justify-center h-8 w-8 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
                       title="Send notification to parent"
-                      onClick={() => alert(`Notification sent to parent of ${row.studentName}`)}
+                      onClick={() => toast.success(`Notification sent to parent of ${row.studentName}`)}
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />

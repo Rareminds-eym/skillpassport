@@ -16,6 +16,10 @@ import { useAuth } from "../../../../context/AuthContext";
 import { useStudentSettings } from "../../../../hooks/useStudentSettings";
 import { useStudentDataByEmail } from "../../../../hooks/useStudentDataByEmail";
 import { useStudentCertificates } from "../../../../hooks/useStudentCertificates";
+import { useStudentProjects } from "../../../../hooks/useStudentProjects";
+import { useStudentExperience } from "../../../../hooks/useStudentExperience";
+import { useStudentEducation } from "../../../../hooks/useStudentEducation";
+import { useStudentTechnicalSkills, useStudentSoftSkills } from "../../../../hooks/useStudentSkills";
 import { useInstitutions } from "../../../../hooks/useInstitutions";
 import { SubscriptionSettingsSection } from "../../../Subscription/SubscriptionSettingsSection";
 import { 
@@ -32,6 +36,7 @@ import { useStudentUnreadCount } from "../../../../hooks/useStudentMessages";
 import { useStudentRealtimeActivities } from "../../../../hooks/useStudentRealtimeActivities";
 import ResumeParser from "../ResumeParser";
 import { mergeResumeData } from "../../../../services/resumeParserService";
+import { safeSave } from "../../../../utils/settingsErrorHandler";
 
 // Import tab components
 import ProfileTab from "./ProfileTab";
@@ -77,6 +82,46 @@ const MainSettings = () => {
     refresh: refreshCertificates
   } = useStudentCertificates(studentId, !!studentId);
 
+  // Fetch projects from dedicated table
+  const {
+    projects: tableProjects,
+    loading: projectsLoading,
+    error: projectsError,
+    refresh: refreshProjects
+  } = useStudentProjects(studentId, !!studentId);
+
+  // Fetch experience from dedicated table
+  const {
+    experience: tableExperience,
+    loading: experienceLoading,
+    error: experienceError,
+    refresh: refreshExperience
+  } = useStudentExperience(studentId, !!studentId);
+
+  // Fetch education from dedicated table
+  const {
+    education: tableEducation,
+    loading: educationTableLoading,
+    error: educationTableError,
+    refresh: refreshEducation
+  } = useStudentEducation(studentId, !!studentId);
+
+  // Fetch technical skills from dedicated table
+  const {
+    skills: tableTechnicalSkills,
+    loading: technicalSkillsLoading,
+    error: technicalSkillsError,
+    refresh: refreshTechnicalSkills
+  } = useStudentTechnicalSkills(studentId, !!studentId);
+
+  // Fetch soft skills from dedicated table
+  const {
+    skills: tableSoftSkills,
+    loading: softSkillsLoading,
+    error: softSkillsError,
+    refresh: refreshSoftSkills
+  } = useStudentSoftSkills(studentId, !!studentId);
+
   // Setup message notifications with hot-toast
   useStudentMessageNotifications({
     studentId,
@@ -113,18 +158,37 @@ const MainSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
-  // Education management state - now using real data
-  const educationData = studentDataWithEducation?.education || [];
+  // Education management state - now using real data from dedicated table
+  const educationData = Array.isArray(tableEducation) && tableEducation.length > 0 
+    ? tableEducation 
+    : studentDataWithEducation?.education || [];
+  
+  // Debug: Log education data source
+  console.log('🔍 MainSettings - Education data source:', {
+    tableEducationLength: tableEducation?.length || 0,
+    tableEducation: tableEducation,
+    fallbackLength: (studentDataWithEducation?.education || []).length,
+    usingTableData: Array.isArray(tableEducation) && tableEducation.length > 0,
+    finalEducationData: educationData
+  });
+  
   const [showEducationModal, setShowEducationModal] = useState(false);
 
   // Profile sections data - now using real data from studentDataWithEducation
-  const softSkillsData = studentDataWithEducation?.softSkills || [];
+  const softSkillsData = Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0 
+    ? tableSoftSkills 
+    : studentDataWithEducation?.softSkills || [];
   const [showSoftSkillsModal, setShowSoftSkillsModal] = useState(false);
   
-  const technicalSkillsData = studentDataWithEducation?.technicalSkills || [];
+  const technicalSkillsData = Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0 
+    ? tableTechnicalSkills 
+    : studentDataWithEducation?.technicalSkills || [];
   const [showTechnicalSkillsModal, setShowTechnicalSkillsModal] = useState(false);
   
-  const experienceData = studentDataWithEducation?.experience || [];
+  // Use experience from dedicated table, fallback to profile data
+  const experienceData = Array.isArray(tableExperience) && tableExperience.length > 0 
+    ? tableExperience 
+    : studentDataWithEducation?.experience || [];
   const [showExperienceModal, setShowExperienceModal] = useState(false);
   
   // Use certificates from dedicated table, fallback to profile data
@@ -133,7 +197,10 @@ const MainSettings = () => {
     : studentDataWithEducation?.certificates || [];
   const [showCertificatesModal, setShowCertificatesModal] = useState(false);
   
-  const projectsData = studentDataWithEducation?.projects || [];
+  // Use projects from dedicated table, fallback to profile data
+  const projectsData = Array.isArray(tableProjects) && tableProjects.length > 0 
+    ? tableProjects 
+    : studentDataWithEducation?.projects || [];
   const [showProjectsModal, setShowProjectsModal] = useState(false);
 
   // Resume parser state
@@ -405,9 +472,20 @@ const MainSettings = () => {
     try {
       setIsSaving(true);
       
+      console.log('💾 MainSettings: Saving education list:', educationList);
+      
       const result = await updateEducation(educationList);
       
+      console.log('✅ MainSettings: Education save result:', result);
+      
       if (result.success) {
+        // Refresh education data from table to get updated versioning fields
+        if (refreshEducation && typeof refreshEducation === 'function') {
+          console.log('🔄 MainSettings: Refreshing education data...');
+          await refreshEducation();
+          console.log('✅ MainSettings: Education data refreshed');
+        }
+        
         setShowEducationModal(false);
         
         toast({
@@ -417,7 +495,9 @@ const MainSettings = () => {
         
         try {
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-            await refreshRecentUpdates();
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
           }
         } catch (refreshError) {
           console.warn('Could not refresh recent updates:', refreshError);
@@ -426,12 +506,13 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update education');
       }
     } catch (error) {
-      console.error('Education save error:', error);
+      console.error('❌ Error saving education:', error);
       toast({
         title: "Error",
-        description: "Failed to update education. Please try again.",
+        description: error.message || "Failed to save education",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
@@ -447,6 +528,11 @@ const MainSettings = () => {
       if (result.success) {
         setShowSoftSkillsModal(false);
         
+        // Refresh soft skills data from table to get updated versioning fields
+        if (refreshSoftSkills && typeof refreshSoftSkills === 'function') {
+          await refreshSoftSkills();
+        }
+        
         toast({
           title: "Success",
           description: "Soft skills updated successfully",
@@ -455,12 +541,13 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update soft skills');
       }
     } catch (error) {
-      console.error('Soft skills save error:', error);
+      console.error('❌ Error saving soft skills:', error);
       toast({
         title: "Error",
-        description: "Failed to update soft skills. Please try again.",
+        description: error.message || "Failed to save soft skills",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
@@ -485,6 +572,11 @@ const MainSettings = () => {
       if (result.success) {
         setShowTechnicalSkillsModal(false);
         
+        // Refresh technical skills data from table to get updated versioning fields
+        if (refreshTechnicalSkills && typeof refreshTechnicalSkills === 'function') {
+          await refreshTechnicalSkills();
+        }
+        
         toast({
           title: "Success",
           description: "Technical skills updated successfully",
@@ -493,12 +585,13 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update technical skills');
       }
     } catch (error) {
-      console.error('Technical skills save error:', error);
+      console.error('❌ Error saving technical skills:', error);
       toast({
         title: "Error",
-        description: "Failed to update technical skills. Please try again.",
+        description: error.message || "Failed to save technical skills",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
@@ -509,9 +602,20 @@ const MainSettings = () => {
     try {
       setIsSaving(true);
       
+      console.log('💾 MainSettings: Saving experience list:', experienceList);
+      
       const result = await updateExperience(experienceList);
       
+      console.log('✅ MainSettings: Experience save result:', result);
+      
       if (result.success) {
+        // Refresh experience from table
+        if (refreshExperience) {
+          console.log('🔄 MainSettings: Refreshing experience data...');
+          await refreshExperience();
+          console.log('✅ MainSettings: Experience data refreshed');
+        }
+        
         setShowExperienceModal(false);
         
         toast({
@@ -522,12 +626,13 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update experience');
       }
     } catch (error) {
-      console.error('Experience save error:', error);
+      console.error('❌ Error saving experience:', error);
       toast({
         title: "Error",
-        description: "Failed to update experience. Please try again.",
+        description: error.message || "Failed to save experience",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
@@ -535,36 +640,26 @@ const MainSettings = () => {
 
   // Certificates management functions
   const handleCertificatesSave = async (certificatesList) => {
-    try {
-      setIsSaving(true);
-      
-      const result = await updateCertificates(certificatesList);
-      
-      if (result.success) {
-        setShowCertificatesModal(false);
-        
-        // Refresh certificates from table
-        if (refreshCertificates) {
-          refreshCertificates();
-        }
-        
-        toast({
-          title: "Success",
-          description: "Certificates updated successfully",
-        });
-      } else {
-        throw new Error(result.error || 'Failed to update certificates');
+    setIsSaving(true);
+
+    const result = await safeSave(
+      () => updateCertificates(certificatesList),
+      {
+        section: 'certificates',
+        action: 'update_certificates',
+        data: certificatesList,
+        toast,
+        onSuccess: () => {
+          setShowCertificatesModal(false);
+          if (refreshCertificates) {
+            refreshCertificates();
+          }
+        },
       }
-    } catch (error) {
-      console.error('Certificates save error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update certificates. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    );
+
+    setIsSaving(false);
+    return result;
   };
 
   // Projects management functions
@@ -577,6 +672,11 @@ const MainSettings = () => {
       if (result.success) {
         setShowProjectsModal(false);
         
+        // Refresh projects from table
+        if (refreshProjects) {
+          refreshProjects();
+        }
+        
         toast({
           title: "Success",
           description: "Projects updated successfully",
@@ -585,20 +685,130 @@ const MainSettings = () => {
         throw new Error(result.error || 'Failed to update projects');
       }
     } catch (error) {
-      console.error('Projects save error:', error);
+      console.error('❌ Error saving projects:', error);
       toast({
         title: "Error",
-        description: "Failed to update projects. Please try again.",
+        description: error.message || "Failed to save projects",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
     }
   };
 
+  // Technical Skills toggle enabled handler
+  const handleToggleTechnicalSkillEnabled = async (index) => {
+    const skill = tableTechnicalSkills[index];
+    if (!skill) return;
+    
+    const newState = !skill.enabled;
+    
+    // Don't allow hiding/showing items that are pending verification or approval
+    if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
+      toast({ 
+        title: "Cannot Hide/Show", 
+        description: "You cannot hide or show skills that are pending verification or approval.",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
+    try {
+      // Import supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('skills')
+        .update({ enabled: newState })
+        .eq('id', skill.id);
+      
+      if (error) throw error;
+      
+      // Refresh technical skills to get updated data
+      if (refreshTechnicalSkills) {
+        await refreshTechnicalSkills();
+      }
+      
+      toast({ 
+        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+        description: `Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error toggling technical skill visibility:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to update visibility. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // Soft Skills toggle enabled handler
+  const handleToggleSoftSkillEnabled = async (index) => {
+    const skill = tableSoftSkills[index];
+    if (!skill) return;
+    
+    const newState = !skill.enabled;
+    
+    // Don't allow hiding/showing items that are pending verification or approval
+    if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
+      toast({ 
+        title: "Cannot Hide/Show", 
+        description: "You cannot hide or show skills that are pending verification or approval.",
+        variant: "destructive",
+        duration: 4000,
+      });
+      return;
+    }
+    
+    try {
+      // Import supabase client
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+      
+      // Update only the enabled field directly in database
+      const { error } = await supabase
+        .from('skills')
+        .update({ enabled: newState })
+        .eq('id', skill.id);
+      
+      if (error) throw error;
+      
+      // Refresh soft skills to get updated data
+      if (refreshSoftSkills) {
+        await refreshSoftSkills();
+      }
+      
+      toast({ 
+        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+        description: `Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error toggling soft skill visibility:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to update visibility. Please try again.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // General profile save handler - validates and saves all profile data
   const handleSaveProfile = async () => {
-    // Validate Aadhar number before saving
-    if (profileData.aadharNumber) {
+    // Validate Aadhar number before saving (only if it has a value and is not empty)
+    if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
       if (profileData.aadharNumber.length !== 12) {
         toast({
           title: "Validation Error",
@@ -617,7 +827,7 @@ const MainSettings = () => {
         return;
       }
     }
-    
+
     setIsSaving(true);
     try {
       await updateProfile(profileData);
@@ -639,29 +849,328 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error updating profile:', error);
-      
-      // Show specific error message if available
-      let errorMessage = "Failed to update profile";
-      
-      if (error.message) {
-        // Check for specific error types
-        if (error.message.includes('Aadhar') || error.message.includes('aadhar')) {
-          errorMessage = error.message;
-        } else if (error.message.includes('Invalid') || error.message.includes('required')) {
-          errorMessage = error.message;
-        } else {
-          errorMessage = `Failed to update profile: ${error.message}`;
-        }
-      }
-      
       toast({
         title: "Error",
-        description: errorMessage,
+        description: error.message || "Failed to update profile",
         variant: "destructive",
       });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Tab-specific save handlers - only save relevant fields for each tab
+  
+  // Personal Info Tab - save basic personal information
+  const handleSavePersonalInfo = async () => {
+    setIsSaving(true);
+    
+    const personalInfoFields = {
+      name: profileData.name,
+      phone: profileData.phone,
+      alternatePhone: profileData.alternatePhone,
+      address: profileData.address,
+      location: profileData.location,
+      state: profileData.state,
+      country: profileData.country,
+      pincode: profileData.pincode,
+      dateOfBirth: profileData.dateOfBirth,
+      age: profileData.age,
+      gender: profileData.gender,
+      bloodGroup: profileData.bloodGroup,
+    };
+
+    const result = await safeSave(
+      () => updateProfile(personalInfoFields),
+      {
+        section: 'personal',
+        action: 'update_personal_info',
+        validationFields: ['phone', 'alternatePhone', 'pincode', 'age'],
+        data: personalInfoFields,
+        toast,
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('student_settings_updated', {
+            detail: { type: 'profile_updated', data: personalInfoFields }
+          }));
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  // Additional Info Tab - save additional fields including Aadhar
+  const handleSaveAdditionalInfo = async () => {
+    setIsSaving(true);
+    
+    // Merge custom institution fields into profileData before saving
+    const dataToSave = { ...profileData };
+    
+    if (showCustomProgram && customProgramName) {
+      dataToSave.branch = customProgramName;
+      dataToSave.programId = null;
+    }
+    
+    if (showCustomCollege && customCollegeName) {
+      dataToSave.college = customCollegeName;
+      dataToSave.universityCollegeId = null;
+    }
+    
+    if (showCustomUniversity && customUniversityName) {
+      dataToSave.university = customUniversityName;
+      dataToSave.universityId = null;
+    }
+    
+    if (showCustomSchool && customSchoolName) {
+      dataToSave.college = customSchoolName;
+      dataToSave.schoolId = null;
+    }
+    
+    if (showCustomSemester && customSemesterName) {
+      dataToSave.section = customSemesterName;
+      dataToSave.programSectionId = null;
+    }
+    
+    if (showCustomSchoolClass && customSchoolClassName) {
+      dataToSave.section = customSchoolClassName;
+      dataToSave.schoolClassId = null;
+    }
+
+    const result = await safeSave(
+      () => updateProfile(dataToSave),
+      {
+        section: 'additional',
+        action: 'update_additional_info',
+        validationFields: ['aadhar'],
+        data: dataToSave,
+        toast,
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('student_settings_updated', {
+            detail: { type: 'profile_updated', data: dataToSave }
+          }));
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  // Institution Details Tab - save institution information
+  const handleSaveInstitutionDetails = async () => {
+    setIsSaving(true);
+    
+    try {
+      const dataToSave = { ...profileData };
+      
+      // Convert empty string IDs to null
+      if (dataToSave.programId === '') dataToSave.programId = null;
+      if (dataToSave.universityCollegeId === '') dataToSave.universityCollegeId = null;
+      if (dataToSave.schoolId === '') dataToSave.schoolId = null;
+      if (dataToSave.schoolClassId === '') dataToSave.schoolClassId = null;
+      if (dataToSave.collegeId === '') dataToSave.collegeId = null;
+      if (dataToSave.universityId === '') dataToSave.universityId = null;
+      if (dataToSave.programSectionId === '') dataToSave.programSectionId = null;
+      
+      // Convert empty course_name to null
+      if (dataToSave.courseName === '' || dataToSave.courseName === undefined) {
+        dataToSave.courseName = null;
+      }
+      
+      // Custom program name → branch field (for assessment tests)
+      if (showCustomProgram && customProgramName) {
+        dataToSave.branch = customProgramName;
+        dataToSave.programId = null;
+      }
+      
+      // Custom college name → college field
+      if (showCustomCollege && customCollegeName) {
+        dataToSave.college = customCollegeName;
+        dataToSave.universityCollegeId = null;
+      }
+      
+      // Custom university name → university field
+      if (showCustomUniversity && customUniversityName) {
+        dataToSave.university = customUniversityName;
+        dataToSave.universityId = null;
+      }
+      
+      // Custom school name → college field (school uses same field)
+      if (showCustomSchool && customSchoolName) {
+        dataToSave.college = customSchoolName;
+        dataToSave.schoolId = null;
+      }
+      
+      // Custom semester → section field
+      if (showCustomSemester && customSemesterName) {
+        dataToSave.section = customSemesterName;
+        dataToSave.programSectionId = null;
+      }
+      
+      // Custom school class → section field
+      if (showCustomSchoolClass && customSchoolClassName) {
+        dataToSave.section = customSchoolClassName;
+        dataToSave.schoolClassId = null;
+      }
+      
+      await updateProfile(dataToSave);
+      toast({
+        title: "Success",
+        description: "Institution details updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: dataToSave }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating institution details:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update institution details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Academic Details Tab - save academic-related fields
+  const handleSaveAcademicDetails = async () => {
+    setIsSaving(true);
+    try {
+      const academicFields = {
+        registrationNumber: profileData.registrationNumber,
+        enrollmentNumber: profileData.enrollmentNumber,
+        currentCgpa: profileData.currentCgpa,
+        grade: profileData.grade,
+        gradeStartDate: profileData.gradeStartDate,
+      };
+      
+      await updateProfile(academicFields);
+      toast({
+        title: "Success",
+        description: "Academic details updated successfully",
+      });
+      
+      window.dispatchEvent(new CustomEvent('student_settings_updated', {
+        detail: { type: 'profile_updated', data: academicFields }
+      }));
+      
+      try {
+        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+          await refreshRecentUpdates();
+        }
+      } catch (refreshError) {
+        console.warn('Could not refresh recent updates:', refreshError);
+      }
+    } catch (error) {
+      console.error('❌ Error updating academic details:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update academic details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Guardian Info Tab - save guardian information
+  const handleSaveGuardianInfo = async () => {
+    setIsSaving(true);
+    
+    const guardianFields = {
+      guardianName: profileData.guardianName,
+      guardianPhone: profileData.guardianPhone,
+      guardianEmail: profileData.guardianEmail,
+      guardianRelation: profileData.guardianRelation,
+    };
+
+    const result = await safeSave(
+      () => updateProfile(guardianFields),
+      {
+        section: 'guardian',
+        action: 'update_guardian_info',
+        validationFields: ['email'],
+        data: { email: guardianFields.guardianEmail },
+        toast,
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('student_settings_updated', {
+            detail: { type: 'profile_updated', data: guardianFields }
+          }));
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
+  };
+
+  // Social Links Tab - save social media and bio
+  const handleSaveSocialLinks = async () => {
+    setIsSaving(true);
+    
+    const socialFields = {
+      bio: profileData.bio,
+      linkedIn: profileData.linkedIn,
+      github: profileData.github,
+      twitter: profileData.twitter,
+      facebook: profileData.facebook,
+      instagram: profileData.instagram,
+      portfolio: profileData.portfolio,
+    };
+
+    const result = await safeSave(
+      () => updateProfile(socialFields),
+      {
+        section: 'social',
+        action: 'update_social_links',
+        validationFields: ['url'],
+        data: socialFields,
+        toast,
+        onSuccess: () => {
+          window.dispatchEvent(new CustomEvent('student_settings_updated', {
+            detail: { type: 'profile_updated', data: socialFields }
+          }));
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
+      }
+    );
+
+    setIsSaving(false);
+    return result;
   };
 
   const handleSavePassword = async () => {
@@ -712,120 +1221,98 @@ const MainSettings = () => {
     }
 
     setIsSaving(true);
-    try {
-      const result = await updatePassword(
-        passwordData.currentPassword,
-        passwordData.newPassword
-      );
-      
-      if (result && result.success === false) {
-        toast({
-          title: "Password Change Failed",
-          description: result.error || "Failed to update password",
-          variant: "destructive",
-        });
-        return;
+
+    const result = await safeSave(
+      () => updatePassword(passwordData.currentPassword, passwordData.newPassword),
+      {
+        section: 'password',
+        action: 'update_password',
+        toast,
+        enableRetry: false, // Don't retry password changes
+        onSuccess: () => {
+          setPasswordData({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          });
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
       }
-      
-      toast({
-        title: "Success",
-        description: "Password updated successfully! You can now use your new password to log in.",
-      });
-      
-      setPasswordData({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      
-      try {
-        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-          await refreshRecentUpdates();
-        }
-      } catch (refreshError) {
-        console.warn('Could not refresh recent updates:', refreshError);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update password. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
+    );
+
+    setIsSaving(false);
+    return result;
   };
 
   const handleSaveNotifications = async () => {
     setIsSaving(true);
     savingRef.current = true;
-    try {
-      const currentSettings = { ...notificationSettings };
-      
-      await updateProfile({ notificationSettings: currentSettings });
-      
-      toast({
-        title: "Success",
-        description: "Notification preferences updated",
-      });
-      
-      setNotificationSettings(currentSettings);
-      
-      try {
-        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-          await refreshRecentUpdates();
-        }
-      } catch (refreshError) {
-        console.warn('Could not refresh recent updates:', refreshError);
+
+    const currentSettings = { ...notificationSettings };
+
+    const result = await safeSave(
+      () => updateProfile({ notificationSettings: currentSettings }),
+      {
+        section: 'notifications',
+        action: 'update_notification_settings',
+        data: currentSettings,
+        toast,
+        onSuccess: () => {
+          setNotificationSettings(currentSettings);
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update notification preferences",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-      setTimeout(() => {
-        savingRef.current = false;
-      }, 1000);
-    }
+    );
+
+    setIsSaving(false);
+    setTimeout(() => {
+      savingRef.current = false;
+    }, 1000);
+    
+    return result;
   };
 
   const handleSavePrivacy = async () => {
     setIsSaving(true);
     savingRef.current = true;
-    try {
-      const currentSettings = { ...privacySettings };
-      
-      await updateProfile({ privacySettings: currentSettings });
-      
-      toast({
-        title: "Success",
-        description: "Privacy settings updated",
-      });
-      
-      setPrivacySettings(currentSettings);
-      
-      try {
-        if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
-          await refreshRecentUpdates();
-        }
-      } catch (refreshError) {
-        console.warn('Could not refresh recent updates:', refreshError);
+
+    const currentSettings = { ...privacySettings };
+
+    const result = await safeSave(
+      () => updateProfile({ privacySettings: currentSettings }),
+      {
+        section: 'privacy',
+        action: 'update_privacy_settings',
+        data: currentSettings,
+        toast,
+        onSuccess: () => {
+          setPrivacySettings(currentSettings);
+          
+          if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
+            refreshRecentUpdates().catch(err => 
+              console.warn('Could not refresh recent updates:', err)
+            );
+          }
+        },
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update privacy settings",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-      setTimeout(() => {
-        savingRef.current = false;
-      }, 1000);
-    }
+    );
+
+    setIsSaving(false);
+    setTimeout(() => {
+      savingRef.current = false;
+    }, 1000);
+    
+    return result;
   };
 
   // Handle resume data extraction and auto-fill
@@ -860,7 +1347,6 @@ const MainSettings = () => {
         console.warn('Could not refresh recent updates:', refreshError);
       }
     } catch (error) {
-      console.error('❌ Error saving resume data:', error);
       toast({
         title: "Error",
         description: "Failed to auto-fill profile from resume. Please try again.",
@@ -914,9 +1400,15 @@ const MainSettings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50/50 py-0 relative overflow-hidden">
       <style dangerouslySetInnerHTML={{
         __html: `
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          
+          * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          }
+          
           .scrollbar-hide {
             -ms-overflow-style: none;
             scrollbar-width: none;
@@ -924,126 +1416,181 @@ const MainSettings = () => {
           .scrollbar-hide::-webkit-scrollbar {
             display: none;
           }
+          
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          
+          @keyframes scaleIn {
+            from {
+              opacity: 0;
+              transform: scale(0.95);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+          
+          @keyframes slideRight {
+            from {
+              transform: translateX(-4px);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          
+          .animate-fade-in-up {
+            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .animate-scale-in {
+            animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+          }
+          
+          .input-focus-ring {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .input-focus-ring:focus {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15), 0 0 0 3px rgba(59, 130, 246, 0.1);
+          }
+          
+          .button-press {
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .button-press:active {
+            transform: scale(0.98);
+          }
+          
+          .nav-item-hover {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .nav-item-hover:hover {
+            transform: translateX(4px);
+          }
+          
+          .subtle-glow {
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(59, 130, 246, 0.08);
+          }
+          
+          .subtle-glow-hover:hover {
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 4px 16px rgba(59, 130, 246, 0.12);
+          }
         `
       }} />
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6 lg:mb-10">
-          <div className="flex items-center gap-3 lg:gap-4 mb-3">
-            <div className="p-2.5 lg:p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl lg:rounded-2xl shadow-sm shadow-blue-500/20">
-              <SettingsIcon className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-            </div>
+      
+      {/* Subtle Background Gradient */}
+      <div className="fixed inset-0 pointer-events-none opacity-40">
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-br from-blue-100 via-transparent to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-indigo-50 via-transparent to-transparent rounded-full blur-3xl" />
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        {/* Minimal Header */}
+        <div className="mb-8 animate-fade-in-up">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-3xl font-semibold text-slate-900 tracking-tight mb-1">
                 Settings
               </h1>
-              <p className="text-sm lg:text-base text-gray-600 mt-0.5">
-                Manage your account preferences
+              <p className="text-sm text-slate-500">
+                Manage your account and preferences
               </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-slate-200/60">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-medium text-slate-600">All changes saved</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
-          {/* LEFT SIDEBAR - Navigation */}
-          <div className="lg:col-span-1 space-y-6 order-2 lg:order-1">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-scale-in">
+          {/* LEFT SIDEBAR - Minimal Navigation */}
+          <div className="lg:col-span-1 order-2 lg:order-1">
             <div className="sticky top-8">
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
-                <CardHeader className="pb-4 border-b border-gray-100">
-                  <CardTitle className="text-sm font-semibold text-gray-800 tracking-wide flex items-center gap-2">
-                    <SettingsIcon className="w-4 h-4 text-blue-600" />
-                    Account Settings
-                  </CardTitle>
-                </CardHeader>
+              <nav className="space-y-1">
+                {tabs.map((tab, index) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
 
-                <CardContent className="pt-4 px-3">
-                  <nav className="space-y-3">
-                    {tabs.map((tab) => {
-                      const Icon = tab.icon;
-                      const isActive = activeTab === tab.id;
-
-                      return (
-                        <button
-                          key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`w-full rounded-xl transition-all duration-300 group relative
-                            ${
-                              isActive
-                                ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
-                                : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
-                            }
-                          `}
-                        >
-                          <div className="flex items-center justify-between px-3 py-3">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`
-                                  p-2 rounded-lg transition-all duration-300
-                                  ${
-                                    isActive
-                                      ? "bg-blue-500"
-                                      : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
-                                  }
-                                `}
-                              >
-                                <Icon
-                                  className={`
-                                    w-4 h-4 transition-colors
-                                    ${
-                                      isActive
-                                        ? "text-white"
-                                        : "text-gray-600 group-hover:text-gray-800"
-                                    }
-                                  `}
-                                />
-                              </div>
-
-                              <div className="text-left">
-                                <p
-                                  className={`
-                                    font-medium text-[0.9rem] transition-colors leading-tight
-                                    ${
-                                      isActive
-                                        ? "text-gray-900"
-                                        : "text-gray-700 group-hover:text-gray-900"
-                                    }
-                                  `}
-                                >
-                                  {tab.label}
-                                </p>
-                              </div>
-                            </div>
-
-                            <ChevronRight
-                              className={`
-                                w-4 h-4 transition-all duration-300
-                                ${
-                                  isActive
-                                    ? "text-blue-500 translate-x-1"
-                                    : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
-                                }
-                              `}
-                            />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </nav>
-                </CardContent>
-              </Card>
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      style={{ animationDelay: `${index * 50}ms` }}
+                      className={`w-full group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 nav-item-hover button-press
+                        ${
+                          isActive
+                            ? "bg-white text-slate-900 shadow-sm"
+                            : "text-slate-600 hover:bg-white/50 hover:text-slate-900"
+                        }
+                      `}
+                    >
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" 
+                             style={{ animation: 'slideRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} />
+                      )}
+                      <div className={`p-2 rounded-lg transition-all duration-200 ${
+                        isActive 
+                          ? "bg-blue-50" 
+                          : "bg-slate-100/50 group-hover:bg-slate-100"
+                      }`}>
+                        <Icon className={`w-4 h-4 transition-colors ${
+                          isActive ? "text-blue-600" : "text-slate-500 group-hover:text-slate-700"
+                        }`} />
+                      </div>
+                      <span className={`text-sm font-medium transition-colors ${
+                        isActive ? "text-slate-900" : "text-slate-600 group-hover:text-slate-900"
+                      }`}>
+                        {tab.label}
+                      </span>
+                      {isActive && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600" />
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
           </div>
 
           {/* RIGHT CONTENT AREA */}
           <div className="lg:col-span-3 order-1 lg:order-2">
-            {/* Profile Settings */}
-            {activeTab === "profile" && (
+            <div className="glass-effect rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+              {/* Profile Settings */}
+              {activeTab === "profile" && (
               <ProfileTab
                 profileData={profileData}
                 handleProfileChange={handleProfileChange}
                 handleInstitutionChange={handleInstitutionChange}
                 isSaving={isSaving}
-                handleSaveProfile={handleSaveProfile}
+                // Tab-specific save handlers
+                handleSavePersonalInfo={handleSavePersonalInfo}
+                handleSaveAdditionalInfo={handleSaveAdditionalInfo}
+                handleSaveInstitutionDetails={handleSaveInstitutionDetails}
+                handleSaveAcademicDetails={handleSaveAcademicDetails}
+                handleSaveGuardianInfo={handleSaveGuardianInfo}
+                handleSaveSocialLinks={handleSaveSocialLinks}
                 setShowResumeParser={setShowResumeParser}
                 schools={schools}
                 colleges={colleges}
@@ -1091,6 +1638,9 @@ const MainSettings = () => {
                 projectsData={projectsData}
                 setShowProjectsModal={setShowProjectsModal}
                 studentData={studentData}
+                // Toggle handlers for skills
+                onToggleTechnicalSkillEnabled={handleToggleTechnicalSkillEnabled}
+                onToggleSoftSkillEnabled={handleToggleSoftSkillEnabled}
               />
             )}
 
@@ -1129,81 +1679,82 @@ const MainSettings = () => {
             {activeTab === "subscription" && (
               <SubscriptionSettingsSection />
             )}
+            </div>
           </div>
         </div>
+
+        {/* Education Edit Modal */}
+        {showEducationModal && (
+          <EducationEditModal
+            isOpen={showEducationModal}
+            onClose={() => setShowEducationModal(false)}
+            data={educationData}
+            onSave={handleEducationSave}
+          />
+        )}
+
+        {/* Soft Skills Edit Modal */}
+        {showSoftSkillsModal && (
+          <SoftSkillsEditModal
+            isOpen={showSoftSkillsModal}
+            onClose={() => setShowSoftSkillsModal(false)}
+            data={softSkillsData}
+            onSave={handleSoftSkillsSave}
+          />
+        )}
+
+        {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
+        {showTechnicalSkillsModal && (
+          <SkillsEditModal
+            isOpen={showTechnicalSkillsModal}
+            onClose={() => setShowTechnicalSkillsModal(false)}
+            data={technicalSkillsData || []}
+            onSave={handleTechnicalSkillsSave}
+            title="Skills"
+          />
+        )}
+
+        {/* Experience Edit Modal */}
+        {showExperienceModal && (
+          <ExperienceEditModal
+            isOpen={showExperienceModal}
+            onClose={() => setShowExperienceModal(false)}
+            data={experienceData}
+            onSave={handleExperienceSave}
+          />
+        )}
+
+        {/* Certificates Edit Modal */}
+        {showCertificatesModal && (
+          <CertificatesEditModal
+            isOpen={showCertificatesModal}
+            onClose={() => setShowCertificatesModal(false)}
+            data={certificatesData}
+            onSave={handleCertificatesSave}
+          />
+        )}
+
+        {/* Projects Edit Modal */}
+        {showProjectsModal && (
+          <ProjectsEditModal
+            isOpen={showProjectsModal}
+            onClose={() => setShowProjectsModal(false)}
+            data={projectsData}
+            onSave={handleProjectsSave}
+          />
+        )}
+
+        {/* Resume Parser Modal */}
+        {showResumeParser && (
+          <ResumeParser
+            onDataExtracted={handleResumeDataExtracted}
+            onClose={() => setShowResumeParser(false)}
+            userEmail={userEmail}
+            studentData={studentData}
+            user={user}
+          />
+        )}
       </div>
-
-      {/* Education Edit Modal */}
-      {showEducationModal && (
-        <EducationEditModal
-          isOpen={showEducationModal}
-          onClose={() => setShowEducationModal(false)}
-          data={educationData}
-          onSave={handleEducationSave}
-        />
-      )}
-
-      {/* Soft Skills Edit Modal */}
-      {showSoftSkillsModal && (
-        <SoftSkillsEditModal
-          isOpen={showSoftSkillsModal}
-          onClose={() => setShowSoftSkillsModal(false)}
-          data={softSkillsData}
-          onSave={handleSoftSkillsSave}
-        />
-      )}
-
-      {/* Technical Skills Edit Modal - Using same modal type as Dashboard */}
-      {showTechnicalSkillsModal && (
-        <SkillsEditModal
-          isOpen={showTechnicalSkillsModal}
-          onClose={() => setShowTechnicalSkillsModal(false)}
-          data={technicalSkillsData || []}
-          onSave={handleTechnicalSkillsSave}
-          title="Skills"
-        />
-      )}
-
-      {/* Experience Edit Modal */}
-      {showExperienceModal && (
-        <ExperienceEditModal
-          isOpen={showExperienceModal}
-          onClose={() => setShowExperienceModal(false)}
-          data={experienceData}
-          onSave={handleExperienceSave}
-        />
-      )}
-
-      {/* Certificates Edit Modal */}
-      {showCertificatesModal && (
-        <CertificatesEditModal
-          isOpen={showCertificatesModal}
-          onClose={() => setShowCertificatesModal(false)}
-          data={certificatesData}
-          onSave={handleCertificatesSave}
-        />
-      )}
-
-      {/* Projects Edit Modal */}
-      {showProjectsModal && (
-        <ProjectsEditModal
-          isOpen={showProjectsModal}
-          onClose={() => setShowProjectsModal(false)}
-          data={projectsData}
-          onSave={handleProjectsSave}
-        />
-      )}
-
-      {/* Resume Parser Modal */}
-      {showResumeParser && (
-        <ResumeParser
-          onDataExtracted={handleResumeDataExtracted}
-          onClose={() => setShowResumeParser(false)}
-          userEmail={userEmail}
-          studentData={studentData}
-          user={user}
-        />
-      )}
     </div>
   );
 };

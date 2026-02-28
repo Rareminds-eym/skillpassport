@@ -3,6 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2024-01-01"
 account_id = "8c79b0992cfe6e720d17d0a2394ef0fd"
 
+[dev]
+port = 9003
+inspector_port = 9233
+
 [vars]
 ENVIRONMENT = "production"
 STORAGE_API_URL = "https://storage-api.dark-mode-d021.workers.dev"

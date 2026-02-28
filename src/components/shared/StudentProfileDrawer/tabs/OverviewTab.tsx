@@ -40,11 +40,6 @@ const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; count?: nu
   </div>
 );
 
-// Helper component for empty state
-const EmptyState: React.FC<{ message: string }> = ({ message }) => (
-  <p className="text-sm text-gray-500 italic">{message}</p>
-);
-
 // Helper component for status badge
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const colors: Record<string, string> = {
@@ -241,14 +236,36 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
         .limit(20);
       setCourseProgress(progressData || []);
 
-      // Fetch Quiz Progress
-      const { data: quizData } = await supabase
+      // Fetch Quiz Progress - Note: No FK relationship exists between student_quiz_progress and quizzes
+      // So we need to fetch quiz details separately
+      const { data: quizProgressData, error: quizProgressError } = await supabase
         .from('student_quiz_progress')
-        .select('*, quiz:quizzes(title)')
+        .select('*')
         .eq('student_id', student.user_id)
         .order('started_at', { ascending: false })
         .limit(10);
-      setQuizProgress(quizData || []);
+
+      if (quizProgressError) {
+        console.warn('Error fetching quiz progress:', quizProgressError);
+        setQuizProgress([]);
+      } else if (quizProgressData && quizProgressData.length > 0) {
+        // Fetch quiz titles separately
+        const quizIds = [...new Set(quizProgressData.map(q => q.quiz_id))];
+        const { data: quizzesData } = await supabase
+          .from('quizzes')
+          .select('id, title')
+          .in('id', quizIds);
+
+        // Map quiz titles to progress data
+        const quizMap = new Map(quizzesData?.map(q => [q.id, q.title]) || []);
+        const enrichedQuizData = quizProgressData.map(progress => ({
+          ...progress,
+          quiz: { title: quizMap.get(progress.quiz_id) || 'Unknown Quiz' }
+        }));
+        setQuizProgress(enrichedQuizData);
+      } else {
+        setQuizProgress([]);
+      }
 
       // Fetch Career AI Conversations
       const { data: careerData } = await supabase
@@ -1146,11 +1163,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       )}
 
       {/* Hobbies & Interests */}
-      {(student.hobbies?.length > 0 || student.interests?.length > 0) && (
+      {((student.hobbies && student.hobbies.length > 0) || (student.interests && student.interests.length > 0)) && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <SectionHeader icon={<StarIcon className="h-5 w-5" />} title="Hobbies & Interests" />
           <div className="space-y-3">
-            {student.hobbies?.length > 0 && (
+            {student.hobbies && student.hobbies.length > 0 && (
               <div>
                 <div className="text-xs text-gray-500 mb-2">Hobbies</div>
                 <div className="flex flex-wrap gap-2">
@@ -1162,7 +1179,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
                 </div>
               </div>
             )}
-            {student.interests?.length > 0 && (
+            {student.interests && student.interests.length > 0 && (
               <div>
                 <div className="text-xs text-gray-500 mb-2">Interests</div>
                 <div className="flex flex-wrap gap-2">
@@ -1179,7 +1196,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ student }) => {
       )}
 
       {/* Languages */}
-      {student.languages?.length > 0 && (
+      {student.languages && student.languages.length > 0 && (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <SectionHeader icon={<UserGroupIcon className="h-5 w-5" />} title="Languages" count={student.languages.length} />
           <div className="flex flex-wrap gap-2">

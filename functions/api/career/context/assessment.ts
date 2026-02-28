@@ -56,8 +56,8 @@ export async function buildAssessmentContext(
       personalityInterpretation: interpretBigFive(bigFiveScores),
       employabilityScores: assessment.employability_scores || {},
       employabilityReadiness: assessment.employability_readiness || 'Not assessed',
-      careerFit: assessment.career_fit || [],
-      skillGaps: assessment.skill_gap || [],
+      careerFit: assessment.career_fit || null,
+      skillGaps: assessment.skill_gap || null,
       roadmap: assessment.roadmap,
       overallSummary: assessment.overall_summary || '',
       coursesByType

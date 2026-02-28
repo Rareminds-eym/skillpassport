@@ -43,44 +43,44 @@ const ANALYSIS_STAGES: Record<AnalysisStageId, {
   progressRange: [number, number];
 }> = {
   preparing: {
-    title: 'Preparing your responses',
-    description: 'Organizing assessment data for analysis...',
+    title: 'Preparing Assessment Data',
+    description: 'Organizing your responses and calculating scores...',
     icon: FileText,
     progressRange: [0, 10],
   },
   sending: {
-    title: 'Connecting to AI',
-    description: 'Sending your responses to our AI engine...',
+    title: 'Connecting to AI Engine',
+    description: 'Securely transmitting your data for analysis...',
     icon: Sparkles,
     progressRange: [10, 20],
   },
   analyzing: {
     title: 'AI Analysis in Progress',
-    description: 'Our AI is analyzing your interests, personality, and aptitudes...',
+    description: 'Analyzing your interests, personality, aptitudes, and career fit...',
     icon: Brain,
     progressRange: [20, 70],
   },
   processing: {
-    title: 'Processing Results',
-    description: 'Generating career matches and recommendations...',
+    title: 'Generating Career Matches',
+    description: 'Creating personalized career recommendations based on your profile...',
     icon: Target,
     progressRange: [70, 85],
   },
   courses: {
-    title: 'Finding Courses',
-    description: 'Matching you with relevant learning opportunities...',
+    title: 'Finding Learning Paths',
+    description: 'Matching you with courses and skill development opportunities...',
     icon: Briefcase,
     progressRange: [85, 95],
   },
   saving: {
-    title: 'Saving Your Report',
-    description: 'Storing your personalized career profile...',
+    title: 'Saving Your Career Profile',
+    description: 'Securely storing your personalized assessment results...',
     icon: Lightbulb,
     progressRange: [95, 100],
   },
   complete: {
     title: 'Analysis Complete!',
-    description: 'Redirecting to your results...',
+    description: 'Your career profile is ready. Redirecting to results...',
     icon: CheckCircle,
     progressRange: [100, 100],
   },
@@ -141,12 +141,18 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
   const [startTime] = useState(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [analyzingStartTime, setAnalyzingStartTime] = useState<number | null>(null);
+  const [analyzingElapsed, setAnalyzingElapsed] = useState(0);
 
   // Listen for progress updates from the submission process
   useEffect(() => {
+    console.log('🎬 [AnalyzingScreen] Component mounted - LOADER 1 DISPLAYED');
+    console.log('🎬 [AnalyzingScreen] Initial stage:', controlledStage || 'preparing');
+    console.log('🎬 [AnalyzingScreen] Initial progress:', controlledProgress || 0);
+    
     const handleProgressUpdate = (event: CustomEvent<{ stage: AnalysisStageId; message?: string }>) => {
-      const { stage: newStage } = event.detail;
-      console.log('📊 Analysis progress update:', newStage);
+      const { stage: newStage, message } = event.detail;
+      console.log('📊 [AnalyzingScreen] Progress update received:', { stage: newStage, message });
       setStage(newStage);
     };
 
@@ -154,10 +160,12 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     
     // Check for initial progress
     if (window.analysisProgress?.stage) {
+      console.log('📊 [AnalyzingScreen] Found existing progress:', window.analysisProgress.stage);
       setStage(window.analysisProgress.stage);
     }
 
     return () => {
+      console.log('🎬 [AnalyzingScreen] Component unmounting - LOADER 1 HIDDEN');
       window.removeEventListener('analysisProgressUpdate', handleProgressUpdate as EventListener);
     };
   }, []);
@@ -174,6 +182,7 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
     if (!stageConfig) return;
 
     const [minProgress, maxProgress] = stageConfig.progressRange;
+    console.log(`📊 [AnalyzingScreen] Stage changed to: ${stage} (${minProgress}% - ${maxProgress}%)`);
     
     // Animate progress within the stage range
     const interval = setInterval(() => {
@@ -183,7 +192,10 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
         const next = prev + increment;
         
         // Don't exceed the max for this stage (unless complete)
-        if (stage === 'complete') return 100;
+        if (stage === 'complete') {
+          console.log('✅ [AnalyzingScreen] Analysis complete - should redirect soon');
+          return 100;
+        }
         if (stage === 'error') return prev;
         
         return Math.min(next, maxProgress - 2); // Leave room for next stage
@@ -195,6 +207,29 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
 
     return () => clearInterval(interval);
   }, [stage]);
+
+  // Track elapsed time for analyzing stage specifically
+  useEffect(() => {
+    if (stage === 'analyzing' && !analyzingStartTime) {
+      console.log('⏱️ [AnalyzingScreen] Starting analyzing timer');
+      setAnalyzingStartTime(Date.now());
+    }
+    
+    if (stage === 'analyzing' && analyzingStartTime) {
+      const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - analyzingStartTime) / 1000);
+        setAnalyzingElapsed(elapsed);
+        console.log(`⏱️ [AnalyzingScreen] AI analyzing... ${elapsed}s elapsed`);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+    
+    // Reset timer when leaving analyzing stage
+    if (stage !== 'analyzing' && analyzingStartTime) {
+      console.log(`⏱️ [AnalyzingScreen] Analyzing complete. Total: ${analyzingElapsed}s`);
+      setAnalyzingStartTime(null);
+    }
+  }, [stage, analyzingStartTime, analyzingElapsed]);
 
   // Track elapsed time
   useEffect(() => {
@@ -244,52 +279,27 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
           <div className="flex justify-center mb-8">
             <motion.div
               animate={isError ? {} : { 
-                scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0]
+                scale: [1, 1.05, 1],
+                rotate: [0, 2, -2, 0]
               }}
               transition={{ 
-                duration: 2,
+                duration: 3,
                 repeat: isError ? 0 : Infinity,
                 ease: "easeInOut"
               }}
               className="relative"
             >
-              <div className={`w-24 h-24 ${isError ? 'bg-red-500' : 'bg-gradient-to-br from-indigo-500 to-purple-600'} rounded-2xl flex items-center justify-center shadow-lg ${isError ? 'shadow-red-500/30' : 'shadow-indigo-500/30'}`}>
-                {stage === 'analyzing' ? (
-                  <Loader2 className="w-12 h-12 text-white animate-spin" />
+              <div className={`w-32 h-32 ${isError ? 'bg-red-500' : 'bg-gradient-to-br from-indigo-500 to-purple-600'} rounded-2xl flex items-center justify-center shadow-lg ${isError ? 'shadow-red-500/30' : 'shadow-indigo-500/30'} p-4`}>
+                {isError ? (
+                  <StageIcon className="w-16 h-16 text-white" />
                 ) : (
-                  <StageIcon className="w-12 h-12 text-white" />
+                  <img 
+                    src="/assets/HomePage/Ai Logo.png" 
+                    alt="AI Analysis" 
+                    className="w-full h-full object-contain"
+                  />
                 )}
               </div>
-              {/* Sparkle effects - only show when not error */}
-              {!isError && (
-                <>
-                  <motion.div
-                    animate={{ 
-                      opacity: [0, 1, 0],
-                      scale: [0.5, 1, 0.5],
-                      x: [-10, -20, -10],
-                      y: [-10, -20, -10]
-                    }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0 }}
-                    className="absolute -top-2 -left-2"
-                  >
-                    <Sparkles className="w-6 h-6 text-amber-400" />
-                  </motion.div>
-                  <motion.div
-                    animate={{ 
-                      opacity: [0, 1, 0],
-                      scale: [0.5, 1, 0.5],
-                      x: [10, 20, 10],
-                      y: [-10, -20, -10]
-                    }}
-                    transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                    className="absolute -top-2 -right-2"
-                  >
-                    <Sparkles className="w-5 h-5 text-pink-400" />
-                  </motion.div>
-                </>
-              )}
             </motion.div>
           </div>
 
@@ -331,24 +341,31 @@ export const AnalyzingScreen: React.FC<AnalyzingScreenProps> = ({
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className={`${isError ? 'bg-red-50' : 'bg-indigo-50'} rounded-xl p-4 mb-6`}
+              className={`${isError ? 'bg-red-50' : stage === 'analyzing' ? 'bg-gradient-to-r from-indigo-50 to-purple-50' : 'bg-indigo-50'} rounded-xl p-4 mb-6 ${stage === 'analyzing' ? 'ring-2 ring-indigo-200' : ''}`}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 ${isError ? 'bg-red-100' : 'bg-indigo-100'} rounded-lg flex items-center justify-center`}>
+                <div className={`w-10 h-10 ${isError ? 'bg-red-100' : stage === 'analyzing' ? 'bg-gradient-to-br from-indigo-100 to-purple-100' : 'bg-indigo-100'} rounded-lg flex items-center justify-center ${stage === 'analyzing' ? 'animate-pulse' : ''}`}>
                   {stage === 'analyzing' ? (
                     <Loader2 className="w-5 h-5 text-indigo-600 animate-spin" />
                   ) : (
                     <StageIcon className={`w-5 h-5 ${isError ? 'text-red-600' : 'text-indigo-600'}`} />
                   )}
                 </div>
-                <div>
-                  <p className={`font-semibold ${isError ? 'text-red-900' : 'text-indigo-900'}`}>
+                <div className="flex-1">
+                  <p className={`font-semibold ${isError ? 'text-red-900' : stage === 'analyzing' ? 'text-indigo-900' : 'text-indigo-900'}`}>
                     {stageConfig?.title}
                   </p>
-                  <p className={`text-sm ${isError ? 'text-red-600' : 'text-indigo-600'}`}>
+                  <p className={`text-sm ${isError ? 'text-red-600' : stage === 'analyzing' ? 'text-indigo-600' : 'text-indigo-600'}`}>
                     {stageConfig?.description}
                   </p>
                 </div>
+                {/* Show elapsed time for analyzing stage */}
+                {stage === 'analyzing' && analyzingElapsed > 0 && (
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-indigo-600">{analyzingElapsed}s</p>
+                    <p className="text-xs text-indigo-500">elapsed</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </AnimatePresence>

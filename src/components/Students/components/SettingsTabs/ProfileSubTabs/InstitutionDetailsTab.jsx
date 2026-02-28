@@ -1,6 +1,7 @@
 import React from "react";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Save } from "lucide-react";
 import { Badge } from "../../ui/badge";
+import { Button } from "../../ui/button";
 
 const InstitutionDetailsTab = ({
   profileData,
@@ -37,6 +38,8 @@ const InstitutionDetailsTab = ({
   customSemesterName,
   setCustomSemesterName,
   studentData,
+  handleSaveProfile,
+  isSaving,
 }) => {
   return (
     <div>
@@ -45,6 +48,25 @@ const InstitutionDetailsTab = ({
           <Briefcase className="w-5 h-5 text-blue-600" />
           Institution Details
         </h3>
+      </div>
+      
+      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+        <p className="text-sm text-gray-700 mb-3">
+          <span className="font-semibold">📍 This tab is for your institution information only:</span>
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+          <div className="bg-white/60 rounded-lg p-3">
+            <p className="font-semibold text-gray-800 mb-1">🏫 School Students (Grade 6-12)</p>
+            <p className="text-gray-600 text-xs">Fill: School name + Your section (like "A", "B", "C")</p>
+          </div>
+          <div className="bg-white/60 rounded-lg p-3">
+            <p className="font-semibold text-gray-800 mb-1">🎓 College Students (Diploma/UG/PG)</p>
+            <p className="text-gray-600 text-xs">Fill: University → College → Program → Semester</p>
+          </div>
+        </div>
+        <p className="text-xs text-amber-700 mt-3 bg-amber-50 rounded px-2 py-1">
+          ⚠️ Your academic year (Grade 10, UG Year 2, etc.) goes in the <span className="font-semibold">Academic Details</span> tab, not here.
+        </p>
       </div>
 
       {/* Organization Membership Card - Shows when assigned via invitation */}
@@ -105,7 +127,7 @@ const InstitutionDetailsTab = ({
         {/* School */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
-            School <span className="text-red-500">*</span>
+            School Name <span className="text-gray-400 text-xs font-normal">(For Grade 6-12 students)</span>
           </label>
           {!showCustomSchool ? (
             <>
@@ -166,7 +188,7 @@ const InstitutionDetailsTab = ({
         {/* School Class */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
-            School Class
+            Section <span className="text-gray-400 text-xs font-normal">(Your classroom section)</span>
           </label>
           {!showCustomSchoolClass ? (
             <>
@@ -179,7 +201,7 @@ const InstitutionDetailsTab = ({
                 disabled={(!profileData.schoolId && !showCustomSchool && !customSchoolName) || !!profileData.universityId || showCustomUniversity || !!customUniversityName}
               >
                 <option value="">
-                  {(profileData.schoolId || showCustomSchool || customSchoolName) ? 'Select Class' : 'Select a school first'}
+                  {(profileData.schoolId || showCustomSchool || customSchoolName) ? 'Select Section (A, B, C, etc.)' : 'Select a school first'}
                 </option>
                 {schoolClasses
                   .filter(sc => !profileData.schoolId || sc.school_id === profileData.schoolId)
@@ -190,7 +212,7 @@ const InstitutionDetailsTab = ({
                   ))}
                 {(profileData.schoolId || showCustomSchool || customSchoolName) && !(profileData.universityId || showCustomUniversity || customUniversityName) && (
                   <option value="add_new" className="font-semibold text-blue-600">
-                    + Add Custom Class
+                    + Add Custom Section
                   </option>
                 )}
               </select>
@@ -207,7 +229,7 @@ const InstitutionDetailsTab = ({
                   const className = e.target.value;
                   setCustomSchoolClassName(className);
                 }}
-                placeholder="Enter class/section (e.g., Grade 10-A)"
+                placeholder="Enter your section (e.g., A, B, C, Section-1)"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
               />
               <button
@@ -227,7 +249,7 @@ const InstitutionDetailsTab = ({
         {/* University */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
-            University <span className="text-red-500">*</span>
+            University Name <span className="text-gray-400 text-xs font-normal">(For Diploma/UG/PG students)</span>
           </label>
           {!showCustomUniversity ? (
             <>
@@ -265,6 +287,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const universityName = e.target.value;
                   setCustomUniversityName(universityName);
+                  // Also update profileData.university for immediate sync
+                  handleInstitutionChange('university', universityName);
                 }}
                 placeholder="Enter your university name"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -274,6 +298,7 @@ const InstitutionDetailsTab = ({
                 onClick={() => {
                   setShowCustomUniversity(false);
                   setCustomUniversityName('');
+                  handleInstitutionChange('university', '');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
@@ -286,7 +311,7 @@ const InstitutionDetailsTab = ({
         {/* College (University College) */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
-            College <span className="text-red-500">*</span>
+            College Name <span className="text-gray-400 text-xs font-normal">(Within your university)</span>
           </label>
           {!showCustomCollege ? (
             <>
@@ -326,6 +351,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const collegeName = e.target.value;
                   setCustomCollegeName(collegeName);
+                  // Also update profileData.college for immediate sync
+                  handleInstitutionChange('college', collegeName);
                 }}
                 placeholder="Enter your college name"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -335,6 +362,7 @@ const InstitutionDetailsTab = ({
                 onClick={() => {
                   setShowCustomCollege(false);
                   setCustomCollegeName('');
+                  handleInstitutionChange('college', '');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
@@ -347,7 +375,7 @@ const InstitutionDetailsTab = ({
         {/* Program */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
-            Program <span className="text-red-500">*</span>
+            Program/Course Name <span className="text-gray-400 text-xs font-normal">(e.g., B.Tech CS, BBA)</span>
           </label>
           {!showCustomProgram ? (
             <>
@@ -385,6 +413,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const programName = e.target.value;
                   setCustomProgramName(programName);
+                  // Also update profileData.branch for immediate sync
+                  handleInstitutionChange('branch', programName);
                 }}
                 placeholder="Enter program name (e.g., B.Tech Computer Science)"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -394,6 +424,7 @@ const InstitutionDetailsTab = ({
                 onClick={() => {
                   setShowCustomProgram(false);
                   setCustomProgramName('');
+                  handleInstitutionChange('branch', '');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
@@ -406,7 +437,7 @@ const InstitutionDetailsTab = ({
         {/* Semester/Section */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
-            Semester / Section <span className="text-red-500">*</span>
+            Current Semester & Section <span className="text-gray-400 text-xs font-normal">(e.g., Sem 3-A)</span>
           </label>
           {!showCustomSemester ? (
             <>
@@ -415,7 +446,7 @@ const InstitutionDetailsTab = ({
                 onChange={(e) =>
                   handleInstitutionChange("programSectionId", e.target.value)
                 }
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm disabled:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-500"
                 disabled={!profileData.programId && !showCustomProgram}
               >
                 <option value="">
@@ -435,7 +466,7 @@ const InstitutionDetailsTab = ({
                 )}
               </select>
               {!profileData.programId && !showCustomProgram && (
-                <p className="text-xs text-gray-500">Please select a program first</p>
+                <p className="text-xs text-red-500">⚠️ Please select a program first</p>
               )}
             </>
           ) : (
@@ -446,6 +477,8 @@ const InstitutionDetailsTab = ({
                 onChange={(e) => {
                   const semesterText = e.target.value;
                   setCustomSemesterName(semesterText);
+                  // Also update profileData.section for immediate sync
+                  handleInstitutionChange('section', semesterText);
                 }}
                 placeholder="Enter semester/section (e.g., Semester 3, 5th Sem)"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
@@ -455,6 +488,7 @@ const InstitutionDetailsTab = ({
                 onClick={() => {
                   setShowCustomSemester(false);
                   setCustomSemesterName('');
+                  handleInstitutionChange('section', '');
                 }}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
@@ -463,6 +497,28 @@ const InstitutionDetailsTab = ({
             </>
           )}
         </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
+        <Button
+          onClick={handleSaveProfile}
+          disabled={isSaving}
+          className={`
+            inline-flex items-center gap-2
+            bg-blue-600 hover:bg-blue-700 active:bg-blue-800
+            text-white font-medium
+            px-6 py-2.5 rounded-lg
+            shadow-[0_2px_6px_rgba(0,0,0,0.05)]
+            hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]
+            active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]
+            transition-all duration-200 ease-in-out
+            disabled:opacity-60 disabled:cursor-not-allowed
+          `}
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   );

@@ -79,8 +79,11 @@ const CareerSection = ({ careerFit }) => {
                                         {[
                                             { label: 'Interest', value: cluster.evidence.interest, icon: Target },
                                             { label: 'Aptitude', value: cluster.evidence.aptitude, icon: TrendingUp },
-                                            { label: 'Personality', value: cluster.evidence.personality, icon: Briefcase }
-                                        ].map((item, i) => (
+                                            { label: 'Personality', value: cluster.evidence.personality, icon: Briefcase },
+                                            { label: 'Values', value: cluster.evidence.values, icon: Award },
+                                            { label: 'Employability', value: cluster.evidence.employability, icon: CheckCircle },
+                                            { label: 'Adaptive Test', value: cluster.evidence.adaptiveAptitude, icon: Target }
+                                        ].filter(item => item.value).map((item, i) => (
                                             <div key={i} className="bg-white p-4 rounded-lg">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <item.icon className="w-4 h-4 text-indigo-500" />

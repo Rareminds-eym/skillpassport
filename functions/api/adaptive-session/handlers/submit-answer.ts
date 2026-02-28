@@ -86,9 +86,26 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       );
     }
 
-    // Verify session ownership
-    if (sessionData.student_id !== auth.user.id) {
-      console.error('❌ [SubmitAnswerHandler] Session ownership verification failed');
+    // Verify session ownership by checking if the student's user_id matches the authenticated user
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('user_id')
+      .eq('id', sessionData.student_id)
+      .single();
+
+    if (studentError || !studentData) {
+      console.error('❌ [SubmitAnswerHandler] Failed to fetch student:', studentError);
+      return jsonResponse(
+        { error: 'Student not found' },
+        404
+      );
+    }
+
+    if (studentData.user_id !== auth.user.id) {
+      console.error('❌ [SubmitAnswerHandler] Session ownership verification failed', {
+        studentUserId: studentData.user_id,
+        authUserId: auth.user.id
+      });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },
         403
@@ -118,7 +135,20 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     }
 
     // Check if answer is correct
-    const isCorrect = selectedAnswer === currentQuestion.correctAnswer;
+    // Normalize both answers to uppercase for comparison to avoid case sensitivity issues
+    const normalizedSelected = String(selectedAnswer).trim().toUpperCase();
+    const normalizedCorrect = String(currentQuestion.correctAnswer).trim().toUpperCase();
+    const isCorrect = normalizedSelected === normalizedCorrect;
+    
+    console.log('🔍 [SubmitAnswerHandler] Answer comparison:', {
+      selectedAnswer,
+      correctAnswer: currentQuestion.correctAnswer,
+      normalizedSelected,
+      normalizedCorrect,
+      isCorrect,
+      questionId,
+      questionText: currentQuestion.text?.substring(0, 50),
+    });
 
     // Calculate new difficulty (only during adaptive_core phase)
     let newDifficulty = currentDifficulty;
@@ -128,32 +158,49 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       const adjustment = AdaptiveEngine.adjustDifficulty(currentDifficulty, isCorrect);
       newDifficulty = adjustment.newDifficulty;
       difficultyChange = adjustment.change;
+      
+      console.log('🎯 [SubmitAnswerHandler] Difficulty adjustment:', {
+        currentDifficulty,
+        isCorrect,
+        newDifficulty,
+        difficultyChange,
+        questionNumber: sessionData.questions_answered + 1,
+      });
+    } else {
+      console.log('ℹ️ [SubmitAnswerHandler] Not in adaptive_core phase, difficulty unchanged:', {
+        currentPhase,
+        currentDifficulty,
+        questionNumber: sessionData.questions_answered + 1,
+      });
     }
 
-    // Update difficulty path
-    const newDifficultyPath = [...difficultyPath, currentDifficulty];
+    // Update difficulty path - add the NEW difficulty after adjustment
+    const newDifficultyPath = [...difficultyPath, newDifficulty];
 
     // Create response record with full question content
     const sequenceNumber = sessionData.questions_answered + 1;
 
+    const responseData = {
+      session_id: sessionId,
+      question_id: questionId,
+      selected_answer: selectedAnswer,
+      is_correct: isCorrect,
+      response_time_ms: responseTimeMs,
+      difficulty_at_time: currentDifficulty,
+      subtag: currentQuestion.subtag,
+      phase: currentPhase,
+      sequence_number: sequenceNumber,
+      // Store full question content for audit trail
+      question_text: currentQuestion.text,
+      question_options: currentQuestion.options,
+      correct_answer: currentQuestion.correctAnswer,
+      explanation: currentQuestion.explanation || null,
+    };
+
+    // Insert into adaptive_aptitude_responses table
     const { error: responseError } = await supabase
       .from('adaptive_aptitude_responses')
-      .insert({
-        session_id: sessionId,
-        question_id: questionId,
-        selected_answer: selectedAnswer,
-        is_correct: isCorrect,
-        response_time_ms: responseTimeMs,
-        difficulty_at_time: currentDifficulty,
-        subtag: currentQuestion.subtag,
-        phase: currentPhase,
-        sequence_number: sequenceNumber,
-        // Store full question content for audit trail
-        question_text: currentQuestion.text,
-        question_options: currentQuestion.options,
-        correct_answer: currentQuestion.correctAnswer,
-        explanation: currentQuestion.explanation || null,
-      })
+      .insert(responseData)
       .select()
       .single();
 
@@ -161,6 +208,20 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       console.error('❌ [SubmitAnswerHandler] Failed to record response:', responseError);
       throw new Error(`Failed to record response: ${responseError.message}`);
     }
+
+    // Also update all_responses JSONB column in session
+    const existingResponses = (sessionData.all_responses as any[]) || [];
+    const updatedResponses = [...existingResponses, {
+      question_id: questionId,
+      selected_answer: selectedAnswer,
+      is_correct: isCorrect,
+      response_time_ms: responseTimeMs,
+      difficulty_at_time: currentDifficulty,
+      subtag: currentQuestion.subtag,
+      phase: currentPhase,
+      sequence_number: sequenceNumber,
+      timestamp: new Date().toISOString(),
+    }];
 
     // Update session
     const newQuestionsAnswered = sessionData.questions_answered + 1;
@@ -194,7 +255,24 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     }
 
     // Check if phase is complete
-    const phaseComplete = newQuestionIndex >= currentPhaseQuestions.length;
+    let phaseComplete = false;
+    
+    if (currentPhase === 'diagnostic_screener') {
+      // Diagnostic: complete when all 8 questions answered
+      phaseComplete = newQuestionIndex >= DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions;
+    } else if (currentPhase === 'adaptive_core') {
+      // Adaptive core: complete when 36 questions answered (not based on array length)
+      const adaptiveCoreQuestionsAnswered = newQuestionsAnswered - DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions;
+      phaseComplete = adaptiveCoreQuestionsAnswered >= DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions;
+      console.log('🎯 [SubmitAnswerHandler] Adaptive core progress:', {
+        adaptiveCoreQuestionsAnswered,
+        maxQuestions: DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions,
+        phaseComplete
+      });
+    } else if (currentPhase === 'stability_confirmation') {
+      // Stability: complete when all 6 questions answered
+      phaseComplete = newQuestionIndex >= DEFAULT_ADAPTIVE_TEST_CONFIG.phases.stability_confirmation.maxQuestions;
+    }
 
     // Check stop conditions for adaptive core
     let stopCondition: StopConditionResult | null = null;
@@ -215,11 +293,12 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
         responses
       );
 
-      if (stopCondition.shouldStop) {
-        // Move to stability confirmation or complete test
-        if (phaseComplete) {
-          nextPhase = 'stability_confirmation';
-        }
+      // CRITICAL: Always complete exactly 36 adaptive core questions
+      // Only transition to stability after completing all 36 questions
+      const adaptiveCoreQuestionsAnswered = newQuestionsAnswered - DEFAULT_ADAPTIVE_TEST_CONFIG.phases.diagnostic_screener.maxQuestions;
+      if (adaptiveCoreQuestionsAnswered >= DEFAULT_ADAPTIVE_TEST_CONFIG.phases.adaptive_core.maxQuestions) {
+        nextPhase = 'stability_confirmation';
+        console.log('🎯 [SubmitAnswerHandler] Completed 36 adaptive core questions, transitioning to stability');
       }
     }
 
@@ -235,6 +314,12 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     } else if (currentPhase === 'stability_confirmation' && phaseComplete) {
       testComplete = true;
     }
+    
+    // CRITICAL: If we're transitioning to next phase, test is NOT complete yet
+    if (nextPhase) {
+      testComplete = false;
+      console.log('🔄 [SubmitAnswerHandler] Phase transition pending, test NOT complete yet');
+    }
 
     // Update session in database
     const updateData: Record<string, unknown> = {
@@ -244,6 +329,7 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       current_difficulty: newDifficulty,
       difficulty_path: newDifficultyPath,
       provisional_band: provisionalBand,
+      all_responses: updatedResponses,
       updated_at: new Date().toISOString(),
     };
 

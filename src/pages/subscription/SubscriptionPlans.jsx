@@ -531,12 +531,14 @@ function SubscriptionPlans() {
   const [isOrgPurchaseLoading, setIsOrgPurchaseLoading] = useState(false);
 
   // Compute whether redirect should occur
-  // Don't redirect if user is in upgrade mode or organization mode - they want to see plans
-  // CRITICAL FIX: Also don't redirect if managePath is null (prevents redirect loop)
-  const shouldRedirect = useMemo(
-    () => isAuthenticated && hasActiveOrPausedSubscription && !isUpgradeMode && !isOrganizationMode && managePath !== null,
-    [isAuthenticated, hasActiveOrPausedSubscription, isUpgradeMode, isOrganizationMode, managePath]
-  );
+  // CRITICAL: Never redirect from plans page to manage page
+  // Users with expired/revoked subscriptions NEED to stay on plans page to purchase
+  // Only redirect if user navigated directly to plans page while having active subscription
+  const shouldRedirect = useMemo(() => {
+    // Never redirect - let users stay on plans page
+    // If they have active subscription and want to manage it, they can use the navigation
+    return false;
+  }, []);
 
   // Show welcome message from signup flow (only once)
   useEffect(() => {

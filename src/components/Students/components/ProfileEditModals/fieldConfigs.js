@@ -6,6 +6,7 @@ export const FIELD_CONFIGS = {
     title: "Education",
     icon: GraduationCap,
     listKey: "educationList",
+    tableName: "education", // Database table name for direct updates
     emptyMessage: "No education records yet",
     addButtonText: "Add Education",
     fields: [
@@ -94,6 +95,7 @@ export const FIELD_CONFIGS = {
     title: "Experience",
     icon: Briefcase,
     listKey: "experiences",
+    tableName: "experience", // Database table name for direct updates
     emptyMessage: "No experience records yet",
     addButtonText: "Add Experience",
     fields: [
@@ -119,6 +121,7 @@ export const FIELD_CONFIGS = {
     title: "Projects",
     icon: FolderGit2,
     listKey: "projectsList",
+    tableName: "projects", // Database table name for direct updates
     emptyMessage: "No projects yet",
     addButtonText: "Add Project",
     fields: [
@@ -150,6 +153,7 @@ export const FIELD_CONFIGS = {
     title: "Certificates",
     icon: Award,
     listKey: "certificates",
+    tableName: "certificates", // Database table name for direct updates
     emptyMessage: "No certificates yet",
     addButtonText: "Add Certificate",
     fields: [
@@ -186,6 +190,7 @@ export const FIELD_CONFIGS = {
     title: "Skills",
     icon: CheckCircle,
     listKey: "skillsList",
+    tableName: "skills", // Database table name for direct updates
     emptyMessage: "No skills added yet",
     addButtonText: "Add Skill",
     fields: [
@@ -229,6 +234,7 @@ export const FIELD_CONFIGS = {
     title: "Soft Skills",
     icon: CheckCircle,
     listKey: "softSkillsList",
+    tableName: "skills", // Database table name for direct updates
     emptyMessage: "No soft skills added yet",
     addButtonText: "Add Soft Skill",
     fields: [
@@ -266,6 +272,7 @@ export const FIELD_CONFIGS = {
     title: "Technical Skills",
     icon: CheckCircle,
     listKey: "technicalSkillsList",
+    tableName: "skills", // Database table name for direct updates
     emptyMessage: "No technical skills added yet",
     addButtonText: "Add Technical Skill",
     fields: [

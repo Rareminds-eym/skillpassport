@@ -1,7 +1,39 @@
 import React from "react";
-import { FileText } from "lucide-react";
+import { FileText, Save, AlertCircle } from "lucide-react";
+import { Button } from "../../ui/button";
+import { useFormValidation } from "../../../../../hooks/useFormValidation";
+import FormField from "../FormField";
 
-const AdditionalInfoTab = ({ profileData, handleProfileChange }) => {
+const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
+  const {
+    validateSingleField,
+    touchField,
+    getFieldError,
+    hasErrors,
+  } = useFormValidation();
+
+  const handleFieldChange = (field, value) => {
+    handleProfileChange(field, value);
+    validateSingleField(field, value);
+  };
+
+  const handleFieldBlur = (field, value) => {
+    touchField(field);
+    validateSingleField(field, value);
+  };
+
+  const handleSaveWithValidation = async () => {
+    // Touch all fields to show errors
+    touchField('aadhar');
+    
+    // Validate before saving
+    if (hasErrors()) {
+      return;
+    }
+    
+    await handleSaveProfile();
+  };
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -9,30 +41,23 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange }) => {
         Additional Information
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Aadhar Number */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Aadhar Number <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={profileData.aadharNumber}
-            onChange={(e) => {
-              // Only allow digits and limit to 12 characters
-              const value = e.target.value.replace(/\D/g, '').slice(0, 12);
-              handleProfileChange("aadharNumber", value);
-            }}
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            placeholder="Enter 12-digit Aadhar number"
-            maxLength="12"
-          />
-          {profileData.aadharNumber && profileData.aadharNumber.length !== 12 && (
-            <p className="text-xs text-red-500">Aadhar number must be exactly 12 digits</p>
-          )}
-          {profileData.aadharNumber && profileData.aadharNumber.length === 12 && (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) && (
-            <p className="text-xs text-red-500">Aadhar number cannot start with 0 or 1</p>
-          )}
-        </div>
+        {/* Aadhar Number with FormField */}
+        <FormField
+          label="Aadhar Number"
+          name="aadhar"
+          type="text"
+          value={profileData.aadharNumber}
+          onChange={(name, value) => {
+            const cleanValue = value.replace(/\D/g, '').slice(0, 12);
+            handleFieldChange("aadharNumber", cleanValue);
+          }}
+          onBlur={handleFieldBlur}
+          error={getFieldError('aadhar')}
+          placeholder="Enter 12-digit Aadhar number"
+          maxLength={12}
+          required
+          helpText="Aadhar number must be 12 digits and cannot start with 0 or 1"
+        />
 
         {/* Gap in Studies */}
         <div className="space-y-2">
@@ -144,6 +169,34 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange }) => {
             placeholder="Describe your academic backlogs history, subjects, reasons, and how you cleared them (if applicable)"
           />
         </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
+        {hasErrors() && (
+          <div className="flex items-center gap-2 text-amber-600 text-sm mr-4">
+            <AlertCircle className="w-4 h-4" />
+            <span>Please fix validation errors before saving</span>
+          </div>
+        )}
+        <Button
+          onClick={handleSaveWithValidation}
+          disabled={isSaving || hasErrors()}
+          className={`
+            inline-flex items-center gap-2
+            bg-blue-600 hover:bg-blue-700 active:bg-blue-800
+            text-white font-medium
+            px-6 py-2.5 rounded-lg
+            shadow-[0_2px_6px_rgba(0,0,0,0.05)]
+            hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]
+            active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]
+            transition-all duration-200 ease-in-out
+            disabled:opacity-60 disabled:cursor-not-allowed
+          `}
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   );

@@ -165,7 +165,8 @@ export const handleConfirm: PagesFunction = async ({ request, env }) => {
 };
 
 /**
- * Get public URL from file key
+ * Get presigned URL from file key for downloading/viewing
+ * Returns a temporary signed URL valid for 7 days
  */
 export const handleGetUrl: PagesFunction = async ({ request, env }) => {
   if (request.method !== 'POST') {
@@ -193,13 +194,13 @@ export const handleGetUrl: PagesFunction = async ({ request, env }) => {
     // Initialize R2 client
     const r2Client = new R2Client(env);
 
-    // Generate public URL
-    const fileUrl = r2Client.getPublicUrl(fileKey);
+    // Generate presigned URL for GET request (7 days expiry for course content)
+    const presignedUrl = await r2Client.generatePresignedGetUrl(fileKey, 604800); // 7 days in seconds
 
     return new Response(
       JSON.stringify({
         success: true,
-        url: fileUrl,
+        url: presignedUrl,
       }),
       {
         status: 200,

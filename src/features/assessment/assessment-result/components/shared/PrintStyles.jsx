@@ -57,6 +57,20 @@ const PrintStyles = () => (
           overflow: hidden;
         }
         
+        /* Add header and footer to each page */
+        @page {
+          @top-center {
+            content: "Career Assessment Report - Confidential";
+            font-size: 9px;
+            color: #6b7280;
+          }
+          @bottom-center {
+            content: "© 2026 Skill Passport. All rights reserved. | Page " counter(page);
+            font-size: 8px;
+            color: #9ca3af;
+          }
+        }
+        
         /* Table-based repeating header/footer structure */
         .print-table-wrapper {
           display: table;
@@ -105,7 +119,7 @@ const PrintStyles = () => (
         
         .print-content-cell {
           display: table-cell;
-          padding: 15mm 12mm;
+          padding: 0;
         }
         
         /* Notebook label print styles */
@@ -162,22 +176,68 @@ const PrintStyles = () => (
         
         /* Prevent orphaned content */
         h1, h2, h3, h4, h5, h6 {
-          page-break-after: avoid;
-          break-after: avoid;
-          orphans: 3;
-          widows: 3;
+          page-break-after: avoid !important;
+          break-after: avoid !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          page-break-before: auto !important;
+          break-before: auto !important;
+          orphans: 4;
+          widows: 4;
         }
         
         /* Keep cards and sections together */
         .card, .info-box, .summary-box {
-          page-break-inside: avoid;
-          break-inside: avoid;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
         }
         
         /* Prevent large gaps before page breaks */
-        p, div {
-          orphans: 2;
-          widows: 2;
+        p, div, ul, ol {
+          orphans: 3;
+          widows: 3;
+          page-break-before: auto !important;
+          break-before: auto !important;
+        }
+        
+        /* Allow sections to flow naturally */
+        section, article, div {
+          page-break-before: auto !important;
+          break-before: auto !important;
+        }
+        
+        /* Optimize spacing for compact layout */
+        h2 {
+          margin-top: 10px !important;
+          margin-bottom: 8px !important;
+          padding-bottom: 3px !important;
+        }
+        
+        h3 {
+          margin-top: 8px !important;
+          margin-bottom: 6px !important;
+        }
+        
+        /* Reduce paragraph spacing */
+        p {
+          margin-top: 0 !important;
+          margin-bottom: 6px !important;
+        }
+        
+        /* Compact list spacing */
+        ul, ol {
+          margin-top: 0 !important;
+          margin-bottom: 6px !important;
+        }
+        
+        /* Prevent empty pages by avoiding breaks after short content */
+        div[style*="pageBreakAfter"] {
+          min-height: 0 !important;
+        }
+        
+        /* Remove any default padding/margins that create gaps */
+        * {
+          box-sizing: border-box;
         }
       }
       

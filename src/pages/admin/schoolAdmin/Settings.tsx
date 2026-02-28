@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/lib/supabaseClient";
+import toast from 'react-hot-toast';
 import {
     AcademicCapIcon,
     ArrowDownTrayIcon,
@@ -592,7 +593,7 @@ const SystemConfigModal = ({
 
   const handleSubmit = async () => {
     if (!schoolId) {
-      alert("School ID not found");
+      toast.error("School ID not found");
       return;
     }
 
@@ -612,15 +613,16 @@ const SystemConfigModal = ({
 
       if (error) {
         console.error("Error updating school:", error);
-        alert("Failed to update school information");
+        toast.error("Failed to update school information");
         return;
       }
 
       onSaved(formData);
       onClose();
+      toast.success("School information updated successfully");
     } catch (error) {
       console.error("Error in handleSubmit:", error);
-      alert("Failed to update school information");
+      toast.error("Failed to update school information");
     } finally {
       setSubmitting(false);
     }
@@ -2403,18 +2405,19 @@ const Settings = () => {
 
         if (error) {
           console.error("Error updating educator:", error);
-          alert("Failed to update user");
+          toast.error("Failed to update user");
           return;
         }
 
         setUsers(users.map((u) => (u.id === user.id ? user : u)));
+        toast.success("User updated successfully");
       } else {
         // Create new educator - Note: This requires creating a user in auth first
-        alert("Creating new users requires additional setup. Please use the user management system.");
+        toast.error("Creating new users requires additional setup. Please use the user management system.");
       }
     } catch (error) {
       console.error("Error saving user:", error);
-      alert("Failed to save user");
+      toast.error("Failed to save user");
     }
   };
 
@@ -2435,7 +2438,7 @@ const Settings = () => {
 
       if (error) {
         console.error("Error updating user status:", error);
-        alert("Failed to update user status");
+        toast.error("Failed to update user status");
         return;
       }
 
@@ -2445,9 +2448,10 @@ const Settings = () => {
         }
         return u;
       }));
+      toast.success(`User status updated to ${newStatus}`);
     } catch (error) {
       console.error("Error in handleToggleUserStatus:", error);
-      alert("Failed to update user status");
+      toast.error("Failed to update user status");
     }
   };
 
@@ -2480,11 +2484,12 @@ const Settings = () => {
 
         if (error) {
           console.error("Error updating academic year:", error);
-          alert("Failed to update academic year");
+          toast.error("Failed to update academic year");
           return;
         }
 
         setAcademicYears(academicYears.map((y) => (y.id === year.id ? year : y)));
+        toast.success("Academic year updated successfully");
       } else {
         // Create new academic year
         const { data, error } = await supabase
@@ -2502,15 +2507,16 @@ const Settings = () => {
 
         if (error) {
           console.error("Error creating academic year:", error);
-          alert("Failed to create academic year");
+          toast.error("Failed to create academic year");
           return;
         }
 
         setAcademicYears([...academicYears, { ...year, id: data.id }]);
+        toast.success("Academic year created successfully");
       }
     } catch (error) {
       console.error("Error saving academic year:", error);
-      alert("Failed to save academic year");
+      toast.error("Failed to save academic year");
     }
   };
 
@@ -2532,7 +2538,7 @@ const Settings = () => {
 
       if (error) {
         console.error("Error activating academic year:", error);
-        alert("Failed to activate academic year");
+        toast.error("Failed to activate academic year");
         return;
       }
 
@@ -2540,9 +2546,10 @@ const Settings = () => {
         ...y,
         isActive: y.id === yearId,
       })));
+      toast.success("Academic year activated successfully");
     } catch (error) {
       console.error("Error in handleActivateAcademicYear:", error);
-      alert("Failed to activate academic year");
+      toast.error("Failed to activate academic year");
     }
   };
 
@@ -2557,14 +2564,15 @@ const Settings = () => {
 
       if (error) {
         console.error("Error deleting academic year:", error);
-        alert("Failed to delete academic year");
+        toast.error("Failed to delete academic year");
         return;
       }
 
       setAcademicYears(academicYears.filter((y) => y.id !== yearId));
+      toast.success("Academic year deleted successfully");
     } catch (error) {
       console.error("Error in handleDeleteAcademicYear:", error);
-      alert("Failed to delete academic year");
+      toast.error("Failed to delete academic year");
     }
   };
 
@@ -2642,11 +2650,12 @@ const Settings = () => {
 
         if (error) {
           console.error("Error updating class:", error);
-          alert("Failed to update class");
+          toast.error("Failed to update class");
           return;
         }
 
         setClasses(classes.map((c) => (c.id === cls.id ? cls : c)));
+        toast.success("Class updated successfully");
       } else {
         // Create new class(es) - one for each section
         const classInserts = cls.sections.map((section) => ({
@@ -2665,16 +2674,17 @@ const Settings = () => {
 
         if (error) {
           console.error("Error creating class:", error);
-          alert("Failed to create class");
+          toast.error("Failed to create class");
           return;
         }
 
         // Refresh classes
         fetchSchoolClasses();
+        toast.success("Class created successfully");
       }
     } catch (error) {
       console.error("Error saving class:", error);
-      alert("Failed to save class");
+      toast.error("Failed to save class");
     }
   };
 
@@ -2689,7 +2699,7 @@ const Settings = () => {
 
       if (error) {
         console.error("Error deleting class:", error);
-        alert("Failed to delete class");
+        toast.error("Failed to delete class");
         return;
       }
 
@@ -2698,9 +2708,10 @@ const Settings = () => {
         ...s,
         classes: s.classes.filter((c) => c !== classId),
       })));
+      toast.success("Class deleted successfully");
     } catch (error) {
       console.error("Error in handleDeleteClass:", error);
-      alert("Failed to delete class");
+      toast.error("Failed to delete class");
     }
   };
 
@@ -2732,11 +2743,12 @@ const Settings = () => {
 
         if (error) {
           console.error("Error updating subject:", error);
-          alert("Failed to update subject");
+          toast.error("Failed to update subject");
           return;
         }
 
         setSubjects(subjects.map((s) => (s.id === subject.id ? subject : s)));
+        toast.success("Subject updated successfully");
       } else {
         // Create new subject
         const { data, error } = await supabase
@@ -2753,15 +2765,16 @@ const Settings = () => {
 
         if (error) {
           console.error("Error creating subject:", error);
-          alert("Failed to create subject");
+          toast.error("Failed to create subject");
           return;
         }
 
         setSubjects([...subjects, { ...subject, id: data.id }]);
+        toast.success("Subject created successfully");
       }
     } catch (error) {
       console.error("Error saving subject:", error);
-      alert("Failed to save subject");
+      toast.error("Failed to save subject");
     }
   };
 
@@ -2780,14 +2793,15 @@ const Settings = () => {
 
       if (error) {
         console.error("Error deleting subject:", error);
-        alert("Failed to delete subject");
+        toast.error("Failed to delete subject");
         return;
       }
 
       setSubjects(subjects.filter((s) => s.id !== subjectId));
+      toast.success("Subject deleted successfully");
     } catch (error) {
       console.error("Error in handleDeleteSubject:", error);
-      alert("Failed to delete subject");
+      toast.error("Failed to delete subject");
     }
   };
 

@@ -294,8 +294,8 @@ export default function RadialOrbitalTimeline({
                   }`}
                   style={{
                     background: theme === "light" 
-                      ? `radial-gradient(circle, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 70%)`
-                      : `radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)`,
+                      ? `radial-gradient(circle at center, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 70%)`
+                      : `radial-gradient(circle at center, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)`,
                     width: `${item.energy * 0.6 + 60}px`,
                     height: `${item.energy * 0.6 + 60}px`,
                     left: `-${(item.energy * 0.6 + 60 - 64) / 2}px`,

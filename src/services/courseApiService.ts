@@ -6,12 +6,14 @@
 import { getPagesApiUrl, getAuthHeaders } from '../utils/pagesUrl';
 
 const API_URL = getPagesApiUrl('course');
+const STORAGE_API_URL = getPagesApiUrl('storage');
 
 /**
  * Get presigned URL for R2 file
+ * Note: This uses the Storage API, not Course API, as file URL generation is a storage concern
  */
 export async function getFileUrl(fileKey: string): Promise<string> {
-  const response = await fetch(`${API_URL}/get-file-url`, {
+  const response = await fetch(`${STORAGE_API_URL}/get-file-url`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ fileKey }),

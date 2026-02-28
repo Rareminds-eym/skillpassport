@@ -1,7 +1,8 @@
-import React, { useState } from "react";
-import { User, MapPin, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { User, MapPin, AlertCircle, Save } from "lucide-react";
+import { Button } from "../../ui/button";
 
-const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
+const PersonalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const [errors, setErrors] = useState({});
 
   // Validation functions
@@ -101,61 +102,61 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
   };
 
   return (
-    <div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-        <User className="w-5 h-5 text-blue-600" />
-        Personal Information
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
+          <User className="w-5 h-5 text-blue-600" />
+          Personal Information
+        </h3>
+        <p className="text-sm text-slate-500">Your basic identity and contact details</p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Name */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Full Name <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={profileData.name}
-            onChange={(e) =>
-              handleProfileChange("name", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            onChange={(e) => handleProfileChange("name", e.target.value)}
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
             placeholder="Enter your full name"
           />
         </div>
 
         {/* Email */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Email Address <span className="text-red-500">*</span>
           </label>
           <input
             type="email"
             value={profileData.email}
             disabled
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-500 cursor-not-allowed text-sm"
           />
         </div>
 
         {/* Phone */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Phone Number <span className="text-red-500">*</span>
           </label>
           <input
             type="tel"
             value={profileData.phone}
-            onChange={(e) =>
-              handleValidatedChange("phone", e.target.value)
-            }
-            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
-              errors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+            onChange={(e) => handleValidatedChange("phone", e.target.value)}
+            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${
+              errors.phone ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
             }`}
-            placeholder="Enter 10-digit phone number"
+            placeholder="10-digit number"
             maxLength="10"
           />
           {errors.phone && (
-            <div className="flex items-center gap-1 text-red-600 text-xs">
-              <AlertCircle className="w-3 h-3" />
+            <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg animate-fade-in-up">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{errors.phone}</span>
             </div>
           )}
@@ -163,24 +164,22 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
 
         {/* Alternate Phone */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Alternate Phone
           </label>
           <input
             type="tel"
             value={profileData.alternatePhone}
-            onChange={(e) =>
-              handleValidatedChange("alternatePhone", e.target.value)
-            }
-            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
-              errors.alternatePhone ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+            onChange={(e) => handleValidatedChange("alternatePhone", e.target.value)}
+            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${
+              errors.alternatePhone ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
             }`}
-            placeholder="Enter 10-digit alternate phone number"
+            placeholder="10-digit number"
             maxLength="10"
           />
           {errors.alternatePhone && (
-            <div className="flex items-center gap-1 text-red-600 text-xs">
-              <AlertCircle className="w-3 h-3" />
+            <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg animate-fade-in-up">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{errors.alternatePhone}</span>
             </div>
           )}
@@ -188,23 +187,21 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
 
         {/* Date of Birth */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Date of Birth
           </label>
           <input
             type="date"
             value={profileData.dateOfBirth}
-            onChange={(e) =>
-              handleValidatedChange("dateOfBirth", e.target.value)
-            }
-            className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
-              errors.dateOfBirth ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+            onChange={(e) => handleValidatedChange("dateOfBirth", e.target.value)}
+            className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 transition-all input-focus-ring text-sm ${
+              errors.dateOfBirth ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
             }`}
-            max={new Date().toISOString().split('T')[0]} // Prevent future dates
+            max={new Date().toISOString().split('T')[0]}
           />
           {errors.dateOfBirth && (
-            <div className="flex items-center gap-1 text-red-600 text-xs">
-              <AlertCircle className="w-3 h-3" />
+            <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg animate-fade-in-up">
+              <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{errors.dateOfBirth}</span>
             </div>
           )}
@@ -212,15 +209,13 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
 
         {/* Gender */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Gender
           </label>
           <select
             value={profileData.gender}
-            onChange={(e) =>
-              handleProfileChange("gender", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            onChange={(e) => handleProfileChange("gender", e.target.value)}
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
           >
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
@@ -231,15 +226,13 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
 
         {/* Blood Group */}
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
+          <label className="text-sm font-medium text-slate-700">
             Blood Group
           </label>
           <select
             value={profileData.bloodGroup}
-            onChange={(e) =>
-              handleProfileChange("bloodGroup", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+            onChange={(e) => handleProfileChange("bloodGroup", e.target.value)}
+            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
           >
             <option value="">Select Blood Group</option>
             <option value="A+">A+</option>
@@ -254,102 +247,104 @@ const PersonalInfoTab = ({ profileData, handleProfileChange }) => {
         </div>
       </div>
 
-      {/* Address Information */}
-      <div className="pt-6 border-t border-slate-100 mt-8">
-        <h4 className="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-blue-500" />
-          Address Information
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Address Section */}
+      <div className="pt-6 border-t border-slate-200">
+        <div className="mb-6">
+          <h4 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-1">
+            <MapPin className="w-4 h-4 text-blue-600" />
+            Address Information
+          </h4>
+          <p className="text-sm text-slate-500">Your residential address details</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Address */}
           <div className="space-y-2 md:col-span-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-medium text-slate-700">
               Address
             </label>
             <textarea
               value={profileData.address}
-              onChange={(e) =>
-                handleProfileChange("address", e.target.value)
-              }
+              onChange={(e) => handleProfileChange("address", e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none text-sm"
               placeholder="Enter your full address"
             />
           </div>
 
-          {/* City */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-medium text-slate-700">
               City <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={profileData.location}
-              onChange={(e) =>
-                handleProfileChange("location", e.target.value)
-              }
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              onChange={(e) => handleProfileChange("location", e.target.value)}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
               placeholder="Enter city"
             />
           </div>
 
-          {/* State */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-medium text-slate-700">
               State <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={profileData.state}
-              onChange={(e) =>
-                handleProfileChange("state", e.target.value)
-              }
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              onChange={(e) => handleProfileChange("state", e.target.value)}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
               placeholder="Enter state"
             />
           </div>
 
-          {/* Country */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-medium text-slate-700">
               Country
             </label>
             <input
               type="text"
               value={profileData.country}
-              onChange={(e) =>
-                handleProfileChange("country", e.target.value)
-              }
-              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              onChange={(e) => handleProfileChange("country", e.target.value)}
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
               placeholder="Enter country"
             />
           </div>
 
-          {/* Pincode */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold text-gray-700">
+            <label className="text-sm font-medium text-slate-700">
               Pincode
             </label>
             <input
               type="text"
               value={profileData.pincode}
-              onChange={(e) =>
-                handleValidatedChange("pincode", e.target.value)
-              }
-              className={`w-full px-4 py-2.5 bg-white border rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm ${
-                errors.pincode ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200'
+              onChange={(e) => handleValidatedChange("pincode", e.target.value)}
+              className={`w-full px-4 py-2.5 bg-white border rounded-lg text-slate-900 placeholder-slate-400 transition-all input-focus-ring text-sm ${
+                errors.pincode ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'
               }`}
-              placeholder="Enter 6-digit pincode"
+              placeholder="6-digit pincode"
               maxLength="6"
             />
             {errors.pincode && (
-              <div className="flex items-center gap-1 text-red-600 text-xs">
-                <AlertCircle className="w-3 h-3" />
+              <div className="flex items-center gap-2 text-red-600 text-xs bg-red-50 px-3 py-2 rounded-lg animate-fade-in-up">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
                 <span>{errors.pincode}</span>
               </div>
             )}
           </div>
         </div>
+      </div>
+
+      {/* Save Button */}
+      <div className="flex justify-end pt-6 border-t border-slate-200">
+        <Button
+          onClick={handleSaveProfile}
+          disabled={isSaving}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 button-press disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          <Save className="w-4 h-4" />
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
       </div>
     </div>
   );

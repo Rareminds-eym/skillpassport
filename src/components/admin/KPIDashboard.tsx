@@ -320,7 +320,7 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
   return (
     <div className="space-y-4">
       {/* Last Updated Indicator */}
-      {lastUpdated && (
+      {/* {lastUpdated && (
         <div className="flex items-center justify-between text-sm text-gray-500">
           <div className="flex items-center space-x-2">
             <ClockIcon className="h-4 w-4" />
@@ -333,7 +333,7 @@ const KPIDashboard: React.FC<KPIDashboardProps> = ({
             Refresh Now
           </button>
         </div>
-      )}
+      )} */}
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

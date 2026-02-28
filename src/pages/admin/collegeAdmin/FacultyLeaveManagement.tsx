@@ -19,6 +19,7 @@ import {
   Trash2,
   Edit,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface FacultyLeaveManagementProps {
   collegeId: string | null;
@@ -313,7 +314,7 @@ const FacultyLeaveManagement: React.FC<FacultyLeaveManagementProps> = ({ college
       .eq('id', lecturerId);
 
     if (error) {
-      alert(`Error deleting lecturer: ${error.message}`);
+      toast.error(`Error deleting lecturer: ${error.message}`);
       return;
     }
 
@@ -1275,7 +1276,7 @@ const AddLeaveModal: React.FC<{
 
   const handleSubmit = async () => {
     if (!form.faculty_id || !form.leave_type_id || !form.start_date || !form.end_date) {
-      alert('Please fill all required fields');
+      toast.error('Please fill all required fields');
       return;
     }
 
@@ -1295,7 +1296,7 @@ const AddLeaveModal: React.FC<{
       if (error) throw error;
       onSave();
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setSaving(false);
     }
@@ -1659,7 +1660,7 @@ const AddLecturerModal: React.FC<{
 
   const handleSubmit = async () => {
     if (!form.first_name || !form.last_name) {
-      alert('First name and last name are required');
+      toast.error('First name and last name are required');
       return;
     }
 
@@ -1682,7 +1683,7 @@ const AddLecturerModal: React.FC<{
       // Leave balances are automatically created by the database trigger
       onSave();
     } catch (error: any) {
-      alert(`Error adding lecturer: ${error.message}`);
+      toast.error(`Error adding lecturer: ${error.message}`);
     } finally {
       setSaving(false);
     }
@@ -1819,7 +1820,7 @@ const EditLecturerModal: React.FC<{
 
   const handleSubmit = async () => {
     if (!form.first_name || !form.last_name) {
-      alert('First name and last name are required');
+      toast.error('First name and last name are required');
       return;
     }
 
@@ -1842,7 +1843,7 @@ const EditLecturerModal: React.FC<{
       if (error) throw error;
       onSave();
     } catch (error: any) {
-      alert(`Error updating lecturer: ${error.message}`);
+      toast.error(`Error updating lecturer: ${error.message}`);
     } finally {
       setSaving(false);
     }

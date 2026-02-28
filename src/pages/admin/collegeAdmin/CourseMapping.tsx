@@ -18,6 +18,7 @@ import {
     ClipboardDocumentListIcon,
     ChevronDownIcon,
 } from "@heroicons/react/24/outline";
+import toast from 'react-hot-toast';
 import SearchBar from "../../../components/common/SearchBar";
 import KPICard from "../../../components/admin/KPICard";
 import Pagination from "../../../components/admin/Pagination";
@@ -1151,7 +1152,7 @@ const CourseMapping: React.FC = () => {
             setShowDeleteConfirm(false);
             setDeletingMappingId(null);
         } catch (err: any) {
-            alert(err.message || 'Failed to delete course mapping');
+            toast.error(err.message || 'Failed to delete course mapping');
         } finally {
             setDeleteLoading(false);
         }
@@ -1190,7 +1191,7 @@ const CourseMapping: React.FC = () => {
             }
             setIsLocked(!isLocked);
         } catch (err: any) {
-            alert(err.message || 'Failed to toggle semester lock');
+            toast.error(err.message || 'Failed to toggle semester lock');
         }
     };
 

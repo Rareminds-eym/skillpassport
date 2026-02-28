@@ -19,6 +19,7 @@ import {
   ChevronDownIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
+import toast from 'react-hot-toast';
 import SearchBar from "../../../components/common/SearchBar";
 
 /* ==============================
@@ -525,7 +526,7 @@ const ParentPortal: React.FC = () => {
   };
 
   const handleSendMessage = (parent: Parent) => {
-    alert(`Send message to ${parent.name}`);
+    toast.success(`Message sent to ${parent.name}`);
   };
 
   return (

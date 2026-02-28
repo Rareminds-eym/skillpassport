@@ -25,9 +25,9 @@ export const printStyles = {
     fontWeight: 'bold',
     color: '#1e293b',
     borderBottom: '2px solid #4f46e5',
-    paddingBottom: '2px',
-    marginTop: '8px',
-    marginBottom: '6px',
+    paddingBottom: '3px',
+    marginTop: '10px',
+    marginBottom: '8px',
     pageBreakAfter: 'avoid',
     breakAfter: 'avoid',
   },
@@ -35,8 +35,8 @@ export const printStyles = {
     fontSize: '10px',
     fontWeight: 'bold',
     color: '#374151',
-    marginTop: '6px',
-    marginBottom: '4px',
+    marginTop: '8px',
+    marginBottom: '6px',
     pageBreakAfter: 'avoid',
     breakAfter: 'avoid',
   },
@@ -62,8 +62,8 @@ export const printStyles = {
   card: {
     border: '1px solid #e2e8f0',
     borderRadius: '6px',
-    padding: '4px',
-    marginBottom: '3px',
+    padding: '6px',
+    marginBottom: '4px',
     background: '#ffffff',
     pageBreakInside: 'avoid',
     breakInside: 'avoid',
@@ -103,7 +103,7 @@ export const printStyles = {
   twoCol: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
-    gap: '6px',
+    gap: '8px',
   },
 };
 

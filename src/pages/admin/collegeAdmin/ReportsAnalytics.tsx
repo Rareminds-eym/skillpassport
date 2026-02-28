@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
+import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
 interface FilterState {
@@ -334,7 +335,7 @@ const ReportsAnalytics: React.FC = () => {
   // Export to Excel function
   const exportToExcel = () => {
     if (!reportData) {
-      alert('No data to export');
+      toast.error('No data to export');
       return;
     }
 
@@ -425,14 +426,14 @@ const ReportsAnalytics: React.FC = () => {
       console.log('✅ Excel file exported successfully:', filename);
     } catch (error) {
       console.error('❌ Error exporting to Excel:', error);
-      alert('Failed to export Excel file. Please try again.');
+      toast.error('Failed to export Excel file. Please try again.');
     }
   };
 
   // Export to CSV function
   const exportToCSV = () => {
     if (!reportData) {
-      alert('No data to export');
+      toast.error('No data to export');
       return;
     }
 
@@ -507,14 +508,14 @@ const ReportsAnalytics: React.FC = () => {
       console.log('✅ CSV file exported successfully:', filename);
     } catch (error) {
       console.error('❌ Error exporting to CSV:', error);
-      alert('Failed to export CSV file. Please try again.');
+      toast.error('Failed to export CSV file. Please try again.');
     }
   };
 
   // Export to PDF function (placeholder)
   const exportToPDF = () => {
     if (!reportData) {
-      alert('No data to export');
+      toast.error('No data to export');
       return;
     }
 
@@ -748,7 +749,7 @@ const ReportsAnalytics: React.FC = () => {
       console.log('✅ PDF file exported successfully:', filename);
     } catch (error) {
       console.error('❌ Error exporting to PDF:', error);
-      alert('Failed to export PDF file. Please try again.');
+      toast.error('Failed to export PDF file. Please try again.');
     }
   };
 

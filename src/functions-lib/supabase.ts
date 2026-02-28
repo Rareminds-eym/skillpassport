@@ -39,11 +39,14 @@ export function createSupabaseClient(env: PagesEnv): SupabaseClient {
  * Create a Supabase admin client with service role key (for privileged operations)
  */
 export function createSupabaseAdminClient(env: PagesEnv): SupabaseClient {
-  if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+  const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
     throw new Error('Missing required Supabase admin environment variables');
   }
 
-  return createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

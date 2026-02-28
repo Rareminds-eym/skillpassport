@@ -60,9 +60,26 @@ export const getResultsHandler: PagesFunction = async (context) => {
       return jsonResponse({ results: null }, 200);
     }
 
-    // Verify session ownership (check student_id matches authenticated user)
-    if (data.student_id !== auth.user.id) {
-      console.error('❌ [GetResultsHandler] Session ownership verification failed');
+    // Verify session ownership by checking if the student's user_id matches the authenticated user
+    const { data: studentData, error: studentError } = await supabase
+      .from('students')
+      .select('user_id')
+      .eq('id', data.student_id)
+      .single();
+
+    if (studentError || !studentData) {
+      console.error('❌ [GetResultsHandler] Failed to fetch student:', studentError);
+      return jsonResponse(
+        { error: 'Student not found' },
+        404
+      );
+    }
+
+    if (studentData.user_id !== auth.user.id) {
+      console.error('❌ [GetResultsHandler] Session ownership verification failed', {
+        studentUserId: studentData.user_id,
+        authUserId: auth.user.id
+      });
       return jsonResponse(
         { error: 'Unauthorized: You do not own this session' },
         403

@@ -20,6 +20,23 @@ interface Teacher {
   degree_certificate_url?: string;
   id_proof_url?: string;
   experience_letters_url?: string[];
+  // Additional fields from onboarding
+  designation?: string;
+  department?: string;
+  specialization?: string;
+  experience_years?: number;
+  date_of_joining?: string;
+  qualification?: string;
+  subjects_handled?: string[];
+  // New additional fields
+  employee_id?: string;
+  gender?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  dob?: string;
+  country?: string;
+  pincode?: string;
   metadata?: {
     temporary_password?: string;
     password_created_at?: string;
@@ -276,9 +293,9 @@ const TeacherListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Content - 2 Column Layout */}
+      {/* Content - 3 Column Layout */}
       <div className="p-4">
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-3 gap-4 mb-4">
           {/* Left Column */}
           <div className="space-y-3">
             {/* Contact Info */}
@@ -317,6 +334,41 @@ const TeacherListPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Middle Column */}
+          <div className="space-y-3">
+            {/* Employee ID */}
+            <div>
+              <div className="text-xs font-medium text-gray-700 mb-2">Employee ID</div>
+              <div className="text-xs text-gray-900 font-mono">
+                {teacher.employee_id || 'Not assigned'}
+              </div>
+            </div>
+
+            {/* Designation & Department */}
+            <div>
+              <div className="text-xs font-medium text-gray-700 mb-2">Position</div>
+              <div className="space-y-1">
+                {teacher.designation && (
+                  <div className="text-xs text-gray-900 font-medium">{teacher.designation}</div>
+                )}
+                {teacher.department && (
+                  <div className="text-xs text-gray-600">{teacher.department}</div>
+                )}
+                {!teacher.designation && !teacher.department && (
+                  <div className="text-xs text-gray-400 italic">Not specified</div>
+                )}
+              </div>
+            </div>
+
+            {/* Experience */}
+            <div>
+              <div className="text-xs font-medium text-gray-700 mb-2">Experience</div>
+              <div className="text-xs text-gray-600">
+                {teacher.experience_years ? `${teacher.experience_years} years` : 'Not specified'}
+              </div>
+            </div>
+          </div>
+
           {/* Right Column */}
           <div className="space-y-3">
             {/* Subjects */}
@@ -342,15 +394,33 @@ const TeacherListPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Created Date */}
+            {/* Location & Joining Date */}
+            <div>
+              <div className="text-xs font-medium text-gray-700 mb-2">Location</div>
+              <div className="text-xs text-gray-600">
+                {teacher.city && teacher.country 
+                  ? `${teacher.city}, ${teacher.country}`
+                  : teacher.city || teacher.country || 'Not specified'
+                }
+              </div>
+            </div>
+
+            {/* Joining Date */}
             <div>
               <div className="text-xs font-medium text-gray-700 mb-2">Joined</div>
               <div className="text-xs text-gray-600">
-                {new Date(teacher.created_at).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
+                {teacher.date_of_joining 
+                  ? new Date(teacher.date_of_joining).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })
+                  : new Date(teacher.created_at).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })
+                }
               </div>
             </div>
           </div>
@@ -654,6 +724,9 @@ const TeacherListPage: React.FC = () => {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Employee ID
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Teacher ID
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -663,10 +736,13 @@ const TeacherListPage: React.FC = () => {
                           Email
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Position
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Role
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Subjects
+                          Experience
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Status
@@ -679,14 +755,43 @@ const TeacherListPage: React.FC = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {paginatedTeachers.map((teacher) => (
                         <tr key={teacher.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                            {teacher.employee_id || <span className="text-gray-400 italic">Not assigned</span>}
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {teacher.teacher_id || <span className="text-gray-400 italic">Not assigned</span>}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {teacher.first_name} {teacher.last_name}
+                            <div>
+                              <div className="font-medium">{teacher.first_name} {teacher.last_name}</div>
+                              <div className="text-xs text-gray-500 space-x-2">
+                                {teacher.gender && (
+                                  <span className="capitalize">{teacher.gender.replace('_', ' ')}</span>
+                                )}
+                                {teacher.dob && (
+                                  <span>
+                                    {teacher.gender && ' • '}
+                                    Age {Math.floor((new Date().getTime() - new Date(teacher.dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25))}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                             {teacher.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            <div>
+                              {teacher.designation && (
+                                <div className="font-medium text-gray-900">{teacher.designation}</div>
+                              )}
+                              {teacher.department && (
+                                <div className="text-gray-500 text-xs">{teacher.department}</div>
+                              )}
+                              {!teacher.designation && !teacher.department && (
+                                <span className="text-gray-400 italic">Not specified</span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -703,22 +808,8 @@ const TeacherListPage: React.FC = () => {
                                'Subject Teacher'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">
-                            <div className="flex flex-wrap gap-1">
-                              {teacher.subject_expertise?.slice(0, 2).map((subject: any, idx: number) => (
-                                <span
-                                  key={idx}
-                                  className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded text-xs"
-                                >
-                                  {subject.name}
-                                </span>
-                              ))}
-                              {teacher.subject_expertise?.length > 2 && (
-                                <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                                  +{teacher.subject_expertise.length - 2}
-                                </span>
-                              )}
-                            </div>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            {teacher.experience_years ? `${teacher.experience_years} years` : 'Not specified'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {getStatusBadge(teacher.onboarding_status)}
@@ -824,6 +915,126 @@ const TeacherListPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* Professional Information */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Professional Information</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Employee ID:</span>{" "}
+                      <span className="text-gray-900">{selectedTeacher.employee_id || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Designation:</span>{" "}
+                      <span className="text-gray-900">{selectedTeacher.designation || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Department:</span>{" "}
+                      <span className="text-gray-900">{selectedTeacher.department || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Qualification:</span>{" "}
+                      <span className="text-gray-900">{selectedTeacher.qualification || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Specialization:</span>{" "}
+                      <span className="text-gray-900">{selectedTeacher.specialization || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Experience:</span>{" "}
+                      <span className="text-gray-900">
+                        {selectedTeacher.experience_years ? `${selectedTeacher.experience_years} years` : "N/A"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Date of Joining:</span>{" "}
+                      <span className="text-gray-900">
+                        {selectedTeacher.date_of_joining 
+                          ? new Date(selectedTeacher.date_of_joining).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })
+                          : "N/A"
+                        }
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Gender:</span>{" "}
+                      <span className="text-gray-900 capitalize">{selectedTeacher.gender?.replace('_', ' ') || "N/A"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Personal Information */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Personal Information</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Date of Birth:</span>{" "}
+                      <span className="text-gray-900">
+                        {selectedTeacher.dob 
+                          ? new Date(selectedTeacher.dob).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })
+                          : "N/A"
+                        }
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Age:</span>{" "}
+                      <span className="text-gray-900">
+                        {selectedTeacher.dob 
+                          ? `${Math.floor((new Date().getTime() - new Date(selectedTeacher.dob).getTime()) / (1000 * 60 * 60 * 24 * 365.25))} years`
+                          : "N/A"
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Address Information */}
+                {(selectedTeacher.address || selectedTeacher.city || selectedTeacher.state || selectedTeacher.country || selectedTeacher.pincode) && (
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-3">Address Information</h4>
+                    <div className="text-sm space-y-2">
+                      {selectedTeacher.address && (
+                        <div>
+                          <span className="text-gray-600">Address:</span>{" "}
+                          <span className="text-gray-900">{selectedTeacher.address}</span>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-2 gap-4">
+                        {selectedTeacher.city && (
+                          <div>
+                            <span className="text-gray-600">City:</span>{" "}
+                            <span className="text-gray-900">{selectedTeacher.city}</span>
+                          </div>
+                        )}
+                        {selectedTeacher.state && (
+                          <div>
+                            <span className="text-gray-600">State:</span>{" "}
+                            <span className="text-gray-900">{selectedTeacher.state}</span>
+                          </div>
+                        )}
+                        {selectedTeacher.country && (
+                          <div>
+                            <span className="text-gray-600">Country:</span>{" "}
+                            <span className="text-gray-900">{selectedTeacher.country}</span>
+                          </div>
+                        )}
+                        {selectedTeacher.pincode && (
+                          <div>
+                            <span className="text-gray-600">Pincode:</span>{" "}
+                            <span className="text-gray-900 font-mono">{selectedTeacher.pincode}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Login Credentials */}
                 {selectedTeacher.metadata && (selectedTeacher.metadata as any).temporary_password && (

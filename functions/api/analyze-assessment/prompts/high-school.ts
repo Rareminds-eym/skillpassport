@@ -1,5 +1,6 @@
 /**
- * High School (Grades 9-12) Assessment Prompt Builder
+ * High School (Grades 9-12) Assessment Prompt Builder - CLEAN VERSION
+ * This version relies on real-time job market data instead of hardcoded career clusters
  */
 
 import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
@@ -7,11 +8,7 @@ import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
 /**
  * Pre-process adaptive aptitude results into actionable insights
  */
-function processAdaptiveResults(results: AdaptiveAptitudeResults): {
-  section: string;
-  isHighAptitude: boolean;
-  topStrengths: string[];
-} {
+function processAdaptiveResults(results: AdaptiveAptitudeResults): string {
   const level = results.aptitudeLevel;
   const accuracy = results.overallAccuracy;
   const isHighAptitude = level >= 4 || accuracy >= 75;
@@ -43,71 +40,89 @@ function processAdaptiveResults(results: AdaptiveAptitudeResults): {
     .slice(0, 2)
     .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
 
-  // Career mapping for high school (more specific)
-  const careerMapping: Record<string, string[]> = {
-    'numerical reasoning': ['Data Scientist', 'Quantitative Analyst', 'Actuary', 'Financial Engineer', 'ISRO Scientist', 'CA'],
-    'logical reasoning': ['Software Architect', 'AI/ML Engineer', 'Corporate Lawyer', 'IAS Officer', 'Management Consultant'],
-    'verbal reasoning': ['Journalist', 'Diplomat (IFS)', 'Content Strategist', 'Professor', 'Supreme Court Advocate'],
-    'spatial reasoning': ['Architect', 'Surgeon', 'Game Developer', 'Aerospace Engineer', 'VR/AR Designer'],
-    'pattern recognition': ['Cybersecurity Expert', 'Research Scientist', 'Algorithmic Trader', 'Cryptographer', 'Data Engineer'],
-    'data interpretation': ['Business Analyst', 'Economist', 'Market Research Director', 'Policy Advisor', 'Statistician']
-  };
-
-  const recommendedCareers = new Set<string>();
-  sortedSubtags.slice(0, 2).forEach(s => {
-    const careers = careerMapping[s.name.toLowerCase()] || [];
-    careers.forEach(c => recommendedCareers.add(c));
-  });
-
-  const section = `
-## ADAPTIVE APTITUDE TEST RESULTS (Pre-Analyzed):
+  return `
+## ADAPTIVE APTITUDE TEST RESULTS:
 - **Aptitude Level**: ${level}/5 (${levelLabels[level] || 'Unknown'})
 - **Overall Accuracy**: ${Math.round(accuracy)}%
 - **Confidence**: ${results.confidenceTag}
 - **Performance Trend**: ${results.pathClassification}
 
-**COGNITIVE STRENGTHS** (prioritize careers matching these):
+**COGNITIVE STRENGTHS**:
 ${topStrengths.length > 0 ? topStrengths.map(s => `- ${s}`).join('\n') : '- Balanced across all areas'}
 
 **AREAS FOR DEVELOPMENT**:
 ${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No significant gaps'}
 
-**RECOMMENDED CAREER DIRECTIONS**:
-${Array.from(recommendedCareers).slice(0, 6).map(c => `- ${c}`).join('\n')}
-
 ${isHighAptitude ? `
 **⭐ HIGH-APTITUDE STUDENT** (Level ${level}, ${Math.round(accuracy)}% accuracy)
-MUST include competitive/prestigious paths:
-- UPSC: IAS, IPS, IFS, IRS (start preparation in 11th-12th)
-- Defence: NDA, CDS, AFCAT pathways
+Consider competitive/prestigious paths:
+- UPSC: IAS, IPS, IFS, IRS
+- Defence: NDA, CDS, AFCAT
 - Medical Elite: AIIMS, top medical colleges (NEET)
 - Engineering Elite: IIT (JEE Advanced), ISRO, DRDO
 - Legal: NLSIU, top NLUs (CLAT)
 - Finance: CA, CFA, Investment Banking
 - Research: PhD at IISc, IITs, international universities
 ` : ''}`;
-
-  return { section, isHighAptitude, topStrengths };
 }
 
 export function buildHighSchoolPrompt(assessmentData: AssessmentData, answersHash: number): string {
-  const adaptiveData = assessmentData.adaptiveAptitudeResults 
+  const adaptiveSection = assessmentData.adaptiveAptitudeResults 
     ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
-    : null;
-  
-  const adaptiveSection = adaptiveData?.section || '';
+    : '';
 
-  return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.
+  // Extract actual grade from student context
+  const studentGrade = assessmentData.studentContext?.rawGrade || assessmentData.studentContext?.grade;
+  const gradeInfo = studentGrade ? ` The student is currently in grade ${studentGrade}.` : '';
 
-## CRITICAL: This must be DETERMINISTIC - same input = same output always
-Session ID: ${answersHash}
+  return `You are a career counselor for high school and higher secondary students (grades 9-12). Analyze this student's career exploration assessment and provide guidance appropriate for their age and academic level.${gradeInfo}
 
-## Interest Explorer Responses:
+**CRITICAL - AGE-APPROPRIATE GUIDANCE:**
+${studentGrade && (studentGrade === '9' || studentGrade === 9 || studentGrade === '10' || studentGrade === 10) ? `
+**THIS STUDENT IS IN GRADE ${studentGrade} (9th-10th) - USE SIMPLIFIED CAREERS ONLY:**
+- Focus on BROAD career fields, NOT specific job titles
+- Use simple language: "Creative/Design" NOT "Creative Industries & Media"
+- Use simple language: "Technology" NOT "Technology & Digital Innovation"  
+- Use simple language: "Business/Management" NOT "Business, Finance & Consulting"
+- Focus on stream selection (Science/Commerce/Arts) and exploration
+- DO NOT mention specific colleges, entrance exams (JEE, NEET, CLAT), or detailed salary ranges
+- Keep career titles simple and relatable for teenagers
+` : `
+**THIS STUDENT IS IN GRADE ${studentGrade} (11th-12th) - USE DETAILED CAREERS:**
+- Include specific college programs, entrance exams (JEE, NEET, CLAT), and detailed career paths
+- Provide detailed salary ranges and market insights
+- Focus on college preparation and entrance exam strategies
+`}
+
+## 🔥 CRITICAL: USE REAL-TIME JOB MARKET DATA
+
+**IF real-time Indian job market data is provided above** (marked with "REAL-TIME INDIAN JOB MARKET DATA"):
+1. ✅ Use ONLY the salary ranges from that data
+2. ✅ Use ONLY the job roles listed in that data
+3. ✅ Use ONLY the career categories provided in the real-time data
+4. ✅ Copy the "Why Better" descriptions exactly as provided
+5. ✅ Use the exact salary format: "₹X-YL entry, ₹X-YL mid, ₹X-YL senior"
+6. ✅ Prioritize HIGH demand roles over medium/low demand
+7. ✅ Consider growth rates when ranking career recommendations
+8. ✅ The categories above were SPECIFICALLY SELECTED for this student's RIASEC profile
+
+**The real-time data includes:**
+- Current 2026 Indian salary ranges
+- Demand levels (high/medium/low)
+- Growth rates and market trends
+- Categories matched to this student's RIASEC combination
+
+**YOU MUST use these categories as your TRACK 1, TRACK 2, and TRACK 3 recommendations.**
+
+---
+
+## STUDENT ASSESSMENT DATA
+
+### Session ID: ${answersHash}
+${studentGrade ? `### Student Grade: ${studentGrade}` : ''}
+
+### Interest Explorer (RIASEC):
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
-
-**CRITICAL RIASEC SCORING INSTRUCTIONS:**
-Each question includes a "categoryMapping" field that maps answer options to RIASEC types (R, I, A, S, E, C).
-You MUST use this mapping to calculate scores precisely:
 
 **RIASEC Type Meanings:**
 - **R (Realistic)**: Building, fixing, tools, outdoor work, sports, hands-on activities
@@ -117,70 +132,65 @@ You MUST use this mapping to calculate scores precisely:
 - **E (Enterprising)**: Leading, organizing, persuading, selling, being in charge, starting projects
 - **C (Conventional)**: Organizing, following rules, keeping things neat, detailed work, lists
 
-**EXACT SCORING ALGORITHM:**
-1. For each question with categoryMapping:
-   - If answer is an array (multiselect): For each selected option, look up its RIASEC type in categoryMapping and add 2 points to that type
-   - If answer is a single string (singleselect): Look up the RIASEC type in categoryMapping and add 2 points to that type
-   - If answer is a number 1-5 (rating): Use strengthType or context to determine RIASEC type, then:
-     * Response 1-3: 0 points
-     * Response 4: 1 point
-     * Response 5: 2 points
-2. Sum all points for each RIASEC type (R, I, A, S, E, C)
-3. Calculate maxScore = 20 (or highest score among all types if higher)
-4. Calculate percentage for each type: (score / maxScore) × 100
-5. Identify top 3 types by score
+**RIASEC SCORING INSTRUCTIONS:**
+1. For each question with categoryMapping, look up the RIASEC type for the student's answer
+2. Add 2 points for each answer to the corresponding RIASEC type
+3. Calculate percentage: (score / maxScore) × 100
+4. Identify top 3 types by score
+5. The RIASEC code is the top 3 types (e.g., "IES", "ASR", "RIC")
 
-## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
-**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
-
-**MANDATORY for High Artistic (A) Students:**
-- Music & Entertainment: Music Producer, Sound Designer, DJ, Film Score Composer, Concert Manager
-- Visual Arts: Digital Artist, Animator, Art Director, Fashion Designer, Art Gallery Curator
-- Performing Arts: Actor, Dancer, Choreographer, Theatre Director, Voice Actor
-- Media & Content: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter
-- Design: Graphic Designer, UX/UI Designer, Game Designer, Interior Designer, Brand Designer
-
-**DO NOT default to only Technology/Science careers for Artistic students!**
-**The student's creative interests MUST be reflected in their career recommendations.**
-
-## Strengths & Character Responses (1-4 scale):
+### Character Strengths:
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
 
-**STRENGTHS SCORING**: These are VIA character strengths (Curiosity, Perseverance, Honesty, Creativity, Resilience, Kindness, Self-Discipline, Responsibility, Leadership, Self-Awareness).
+**VIA Character Strengths**: Curiosity, Perseverance, Honesty, Creativity, Resilience, Kindness, Self-Discipline, Responsibility, Leadership, Self-Awareness
 - Rating 1 = Not me, 2 = A bit, 3 = Mostly, 4 = Strongly me
 - Identify top 3-4 strengths (ratings 3-4)
-- Note text responses about challenges overcome and what others appreciate
 
-## Aptitude Sampling (Self-Assessment of Task Types):
+### Aptitude Self-Assessment:
 ${JSON.stringify(assessmentData.aptitudeAnswers, null, 2)}
 Pre-calculated scores: ${JSON.stringify(assessmentData.aptitudeScores, null, 2)}
 
-**APTITUDE SAMPLING SCORING**:
-Students rated EASE (1-4) and ENJOYMENT (1-4) for 4 task types:
-- Analytical (data interpretation, logic, stats)
-- Creative (design, storytelling, media)
-- Technical (coding, building, prototyping)
-- Social (leadership, conflict resolution, mentoring)
-Higher ratings = stronger aptitude and interest in that area
+**Task Types**: Analytical, Creative, Technical, Social
+- Students rated EASE (1-4) and ENJOYMENT (1-4) for each type
+- Higher ratings = stronger aptitude and interest
+
 ${adaptiveSection}
 
-## Learning & Work Preferences:
+### Learning & Work Preferences:
 ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 
-**LEARNING PREFERENCES**: Reveals how they learn best, task preferences, work style, and team contribution.
-- Use to personalize career recommendations and development roadmap
+---
 
-**IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure for HIGH SCHOOL (9-10):
+## OUTPUT REQUIREMENTS
+
+**Return ONLY a JSON object (no markdown).**
+
+**CRITICAL DATABASE COMPATIBILITY:**
+1. riasec.code MUST be a 3-letter string (e.g., "IES"), NOT an array
+2. aptitude.scores MUST exist with standard categories (verbal, numerical, abstract, spatial, clerical)
+3. aptitude.overallScore MUST be a number (0-100)
+4. bigFive MUST be a flat object with O, C, E, A, N keys (NO nested "scores" wrapper)
+
+**JSON Structure:**
 
 {
   "riasec": {
-    "topThree": ["Top 3 RIASEC codes"],
+    "code": "ABC",
     "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "maxScore": 20,
-    "interpretation": "2-3 sentences about what their interests mean for stream selection and career paths"
+    "interpretation": "2-3 sentences about what their interests mean for stream selection and career paths",
+    "topThree": ["Top 3 RIASEC codes"]
   },
   "aptitude": {
+    "scores": {
+      "verbal": { "correct": 0, "total": 0, "percentage": 0 },
+      "numerical": { "correct": 0, "total": 0, "percentage": 0 },
+      "abstract": { "correct": 0, "total": 0, "percentage": 0 },
+      "spatial": { "correct": 0, "total": 0, "percentage": 0 },
+      "clerical": { "correct": 0, "total": 0, "percentage": 0 }
+    },
+    "overallScore": 0,
     "selfAssessment": {
       "Analytical": {"ease": 0, "enjoyment": 0, "average": 0},
       "Creative": {"ease": 0, "enjoyment": 0, "average": 0},
@@ -195,18 +205,16 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
       "pattern_recognition": {"accuracy": 0}
     },
     "topStrengths": ["2-3 strengths combining self-assessment AND adaptive test results"],
-    "overallScore": 0,
-    "cognitiveProfile": "How they think and solve problems based on both assessments",
+    "cognitiveProfile": "How they think and solve problems",
     "adaptiveLevel": 0,
     "adaptiveConfidence": "high/medium/low"
   },
   "characterStrengths": {
-    "topStrengths": ["Top 3-4 character strengths (Curiosity, Creativity, Perseverance, Leadership, etc.)"],
+    "topStrengths": ["Top 3-4 character strengths"],
     "strengthDescriptions": [
-      {"name": "Strength 1", "rating": 4, "description": "How this shows in their responses"},
-      {"name": "Strength 2", "rating": 4, "description": "Evidence from assessment"}
+      {"name": "Strength 1", "rating": 4, "description": "How this shows in their responses"}
     ],
-    "challengeOvercome": "Summary of challenge they described and strengths used",
+    "challengeOvercome": "Summary of challenge they described",
     "othersAppreciate": "What others appreciate about them"
   },
   "learningStyle": {
@@ -221,45 +229,43 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
   },
   "workValues": {
     "topThree": [
-      {"value": "Inferred from interests, strengths, and preferences", "score": 4.0},
-      {"value": "Second value", "score": 3.5},
-      {"value": "Third value", "score": 3.0}
+      {"value": "Inferred from interests, strengths, and preferences", "score": 4.0}
     ]
   },
   "employability": {
-    "strengthAreas": ["Soft skills they're demonstrating (e.g., Leadership, Communication, Critical Thinking)"],
+    "strengthAreas": ["Soft skills they're demonstrating"],
     "improvementAreas": ["Skills to develop - phrase constructively"],
-    "overallReadiness": "Their current career readiness level with specific context"
+    "overallReadiness": "Their current career readiness level"
   },
   "knowledge": { "score": 70, "correctCount": 7, "totalQuestions": 10 },
   "careerFit": {
     "clusters": [
       {
-        "title": "Career cluster #1 (e.g., Healthcare & Medicine, Technology & Engineering, Business & Entrepreneurship)",
+        "title": "Career cluster #1 from real-time data above",
         "matchScore": 85,
         "fit": "High",
-        "description": "3-4 sentences explaining WHY this fits based on their assessment. Be specific about how their interests, aptitudes, and personality align with this career path.",
-        "examples": ["5-6 specific careers with brief role descriptions"],
+        "description": "3-4 sentences explaining WHY this fits based on their RIASEC, aptitude, and personality",
+        "examples": ["5-6 specific careers from the real-time data"],
         "educationPath": "Specific college majors and degree programs",
-        "whatYoullDo": "Day-to-day activities and responsibilities in this field",
-        "whyItFits": "Detailed connection between their assessment results and this career area",
+        "whatYoullDo": "Day-to-day activities in this field",
+        "whyItFits": "Detailed connection between their profile and this career area",
         "evidence": {
           "interest": "How their RIASEC scores support this path",
           "aptitude": "Which cognitive strengths make them a good fit",
-          "personality": "Personality traits that align with success in this field"
+          "personality": "Personality traits that align with success"
         },
         "roles": {
-          "entry": ["4-5 entry-level jobs (e.g., Junior Developer, Lab Assistant, Marketing Intern)"],
-          "mid": ["4-5 mid-career jobs (e.g., Senior Engineer, Research Scientist, Marketing Manager)"]
+          "entry": ["4-5 entry-level jobs from real-time data"],
+          "mid": ["4-5 mid-career jobs from real-time data"]
         },
-        "domains": ["Related fields (e.g., Software, Hardware, AI, Cybersecurity)"]
+        "domains": ["Related fields"]
       },
       {
-        "title": "Career cluster #2",
+        "title": "Career cluster #2 from real-time data above",
         "matchScore": 75,
         "fit": "Medium",
         "description": "Specific explanation connecting their profile to this career area",
-        "examples": ["4-5 career options"],
+        "examples": ["4-5 career options from real-time data"],
         "educationPath": "Relevant majors and programs",
         "whatYoullDo": "Overview of work in this field",
         "whyItFits": "How their strengths translate here",
@@ -269,260 +275,279 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
           "personality": "Personality fit"
         },
         "roles": {
-          "entry": ["3-4 entry-level positions"],
-          "mid": ["3-4 mid-level careers"]
+          "entry": ["3-4 entry-level positions from real-time data"],
+          "mid": ["3-4 mid-level careers from real-time data"]
         },
-        "domains": ["Related industries and specializations"]
+        "domains": ["Related industries"]
       },
       {
-        "title": "Career cluster #3",
+        "title": "Career cluster #3 from real-time data above",
         "matchScore": 65,
         "fit": "Explore",
-        "description": "Why this is worth exploring despite lower match score",
-        "examples": ["3-4 careers to consider"],
+        "description": "Why this is worth exploring",
+        "examples": ["3-4 careers from real-time data"],
         "educationPath": "Potential degree paths",
-        "whatYoullDo": "What professionals in this area do",
-        "whyItFits": "Potential growth areas that could make this a fit",
+        "whatYoullDo": "What professionals do",
+        "whyItFits": "Potential growth areas",
         "evidence": {
           "interest": "Interest connections",
           "aptitude": "Transferable skills",
           "personality": "Personality considerations"
         },
         "roles": {
-          "entry": ["2-3 starting positions"],
-          "mid": ["2-3 advanced roles"]
+          "entry": ["2-3 starting positions from real-time data"],
+          "mid": ["2-3 advanced roles from real-time data"]
         },
         "domains": ["Related career paths"]
       }
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "Career title 1", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 2", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 3", "salary": {"min": 4, "max": 10}},
-        {"name": "Career title 4", "salary": {"min": 4, "max": 10}}
+        {"name": "Career from real-time data", "salary": {"min": 5, "max": 12}}
       ],
       "mediumFit": [
-        {"name": "Career title 1", "salary": {"min": 3, "max": 8}},
-        {"name": "Career title 2", "salary": {"min": 3, "max": 8}},
-        {"name": "Career title 3", "salary": {"min": 3, "max": 8}}
+        {"name": "Career from real-time data", "salary": {"min": 4, "max": 10}}
       ],
       "exploreLater": [
-        {"name": "Career title 1", "salary": {"min": 3, "max": 7}},
-        {"name": "Career title 2", "salary": {"min": 3, "max": 7}}
+        {"name": "Career from real-time data", "salary": {"min": 3, "max": 8}}
       ]
     }
   },
   "skillGap": {
     "priorityA": [
-      {"skill": "Critical skill #1", "reason": "2-3 sentences explaining WHY this skill is essential for their target careers", "targetLevel": "Intermediate", "currentLevel": "Beginner", "howToBuild": "Specific action steps"},
-      {"skill": "Critical skill #2", "reason": "Detailed explanation of how this skill impacts their career readiness", "targetLevel": "Intermediate", "currentLevel": "Beginner", "howToBuild": "Concrete ways to develop this"}
+      {"skill": "Critical skill", "reason": "Why essential", "targetLevel": "Intermediate", "currentLevel": "Beginner", "howToBuild": "Action steps"}
     ],
     "priorityB": [
-      {"skill": "Important skill", "reason": "Clear explanation of why this skill matters for their career goals", "targetLevel": "Intermediate", "currentLevel": "Beginner"}
+      {"skill": "Important skill", "reason": "Why it matters", "targetLevel": "Intermediate", "currentLevel": "Beginner"}
     ],
     "currentStrengths": ["3-4 skills they already demonstrate"],
-    "recommendedTrack": "Clear development path with rationale"
+    "recommendedTrack": "Clear development path"
   },
   "roadmap": {
     "twelveMonthJourney": {
       "phase1": {
         "months": "Months 1-3",
         "title": "Foundation Building",
-        "goals": ["Master core skills", "Identify specific career interests", "Build initial portfolio"],
-        "activities": ["Specific classes or online courses to take", "Projects to start", "Competitions to enter"],
-        "outcome": "Clear career direction and foundational skills"
+        "goals": ["Master core skills", "Identify career interests", "Build portfolio"],
+        "activities": ["Specific courses", "Projects", "Competitions"],
+        "outcome": "Clear career direction"
       },
       "phase2": {
         "months": "Months 4-6",
         "title": "Skill Development",
-        "goals": ["Earn certifications", "Build portfolio projects", "Network with professionals"],
-        "activities": ["Specific certifications to pursue", "Portfolio work to complete", "Mentors to connect with"],
-        "outcome": "Demonstrable skills and professional network"
+        "goals": ["Earn certifications", "Build projects", "Network"],
+        "activities": ["Certifications", "Portfolio work", "Mentors"],
+        "outcome": "Demonstrable skills"
       },
       "phase3": {
         "months": "Months 7-9",
         "title": "Experience & Application",
-        "goals": ["Secure internship/shadowing", "Lead school projects", "Apply skills in real contexts"],
-        "activities": ["Internship applications", "Leadership opportunities", "Competitions or showcases"],
-        "outcome": "Real-world experience and leadership roles"
+        "goals": ["Secure internship", "Lead projects", "Apply skills"],
+        "activities": ["Internships", "Leadership", "Competitions"],
+        "outcome": "Real-world experience"
       },
       "phase4": {
         "months": "Months 10-12",
         "title": "College & Career Prep",
-        "goals": ["Finalize college plans", "Perfect portfolio", "Interview preparation"],
-        "activities": ["College application work", "Portfolio refinement", "Mock interviews"],
-        "outcome": "College-ready with strong applications"
+        "goals": ["Finalize college plans", "Perfect portfolio", "Interview prep"],
+        "activities": ["Applications", "Portfolio refinement", "Mock interviews"],
+        "outcome": "College-ready"
       }
     },
     "projects": [
       {
         "title": "Portfolio project #1",
-        "description": "Detailed description of the project (3-4 sentences)",
-        "skills": ["Specific technical and soft skills they'll develop"],
+        "description": "Detailed description",
+        "skills": ["Skills to develop"],
         "timeline": "3-4 months",
         "difficulty": "Intermediate",
-        "purpose": "How this project demonstrates career readiness",
-        "output": "What they'll have to show",
-        "steps": ["Step 1: Research and planning", "Step 2: Development/creation", "Step 3: Testing and refinement", "Step 4: Presentation"],
-        "resources": ["Specific tools, platforms, or courses needed"]
-      },
-      {
-        "title": "Project #2",
-        "description": "Another substantive portfolio project",
-        "skills": ["Skills to master"],
-        "timeline": "3-4 months",
-        "difficulty": "Intermediate",
-        "purpose": "Career relevance",
+        "purpose": "Career readiness",
         "output": "Deliverable",
-        "steps": ["4-5 actionable steps"],
-        "resources": ["Tools and learning resources"]
-      },
-      {
-        "title": "Project #3",
-        "description": "Advanced or capstone project",
-        "skills": ["Advanced skills"],
-        "timeline": "4-6 months",
-        "difficulty": "Intermediate-Advanced",
-        "purpose": "Why it's impressive for college/internships",
-        "output": "Portfolio piece",
-        "steps": ["Detailed action plan"],
-        "resources": ["Required resources"]
+        "steps": ["Step 1", "Step 2", "Step 3", "Step 4"],
+        "resources": ["Tools and platforms"]
       }
     ],
     "internship": {
-      "types": ["Specific internship types matching their career interests"],
+      "types": ["Internship types matching their interests"],
       "timing": "When and how long",
       "preparation": {
         "resume": "What to include",
         "portfolio": "What to showcase",
         "interview": "How to prepare"
       },
-      "whereToApply": ["Specific companies, programs, or platforms to use"]
+      "whereToApply": ["Companies and platforms"]
     },
     "exposure": {
-      "activities": ["Specific clubs to join", "Competitions to enter", "Events to attend"],
-      "certifications": ["Specific certifications to earn", "Why each certificate matters"],
-      "onlineLearning": ["Specific courses on Coursera, edX, Khan Academy"],
-      "networking": ["How to connect with professionals in their field"]
+      "activities": ["Clubs", "Competitions", "Events"],
+      "certifications": ["Certifications to earn"],
+      "onlineLearning": ["Specific courses"],
+      "networking": ["How to connect with professionals"]
     }
   },
   "finalNote": {
-    "advantage": "Their strongest competitive advantage for college and careers",
-    "growthFocus": "One key area to focus development in the next 6-12 months"
+    "advantage": "Their strongest competitive advantage",
+    "growthFocus": "One key area to focus development"
   },
   "profileSnapshot": {
     "keyPatterns": {
-      "enjoyment": "What they enjoy based on RIASEC interest results",
-      "strength": "Their aptitude strengths from the assessment",
-      "workStyle": "How they work and collaborate (from personality traits)",
-      "motivation": "What drives them (from work values)"
+      "enjoyment": "What they enjoy based on RIASEC",
+      "strength": "Their aptitude strengths",
+      "workStyle": "How they work",
+      "motivation": "What drives them"
     },
     "aptitudeStrengths": [
-      {"name": "Cognitive strength #1", "description": "How this shows in assessment"},
-      {"name": "Cognitive strength #2", "description": "Evidence from results"}
+      {"name": "Cognitive strength", "description": "Evidence"}
     ],
-    "interestHighlights": ["Top 2-3 RIASEC interest areas with descriptions"],
-    "personalityInsights": ["2-3 key personality traits that shape their career fit"]
+    "interestHighlights": ["Top 2-3 RIASEC areas"],
+    "personalityInsights": ["2-3 key personality traits"]
   },
-  "overallSummary": "3-4 sentences: Acknowledge their readiness level, affirm their direction, highlight unique strengths, and provide clear encouragement for next steps"
+  "overallSummary": "3-4 sentences: Acknowledge readiness, affirm direction, highlight strengths, provide encouragement"
 }
 
-**JOB ROLE GUIDELINES FOR HIGH SCHOOL (Gen Z Focus - 2030+ Workforce):**
+---
 
-**FUTURISTIC & EMERGING CAREERS (Prioritize these):**
-- AI/ML Engineer, Prompt Engineer, AI Ethics Officer, Robotics Engineer, Computer Vision Specialist
-- Metaverse Developer, VR/AR Designer, Digital Twin Engineer, Extended Reality Architect
-- Space Tech: Satellite Engineer, Space Tourism Manager, Asteroid Mining Specialist, Mars Habitat Designer
-- Autonomous Systems: Self-Driving Car Engineer, Drone Fleet Manager, Smart City Planner
-- Biotech: Gene Therapy Researcher, Synthetic Biologist, Longevity Scientist, Personalized Medicine Specialist
-- Climate Tech: Carbon Capture Engineer, Renewable Energy Consultant, Sustainability Analyst
-- Web3/Blockchain: Smart Contract Developer, DeFi Analyst, Tokenomics Designer
-- Cybersecurity: Ethical Hacker, Security Architect, Digital Forensics Expert, Zero Trust Specialist
-- Quantum Computing: Quantum Software Developer, Quantum Cryptographer
-- Creator Economy: Professional Content Creator, Influencer Marketing Director, Community Manager
+## CAREER MATCHING GUIDELINES
 
-**HIGH-PAYING TRADITIONAL CAREERS (For studious/high-aptitude students):**
-- Government Services: IAS Officer (₹56K-2.5L/month + perks), IPS Officer, IFS Diplomat, IRS Officer
-- Defence: Army/Navy/Air Force Officer, DRDO Scientist, ISRO Scientist, Intelligence Officer (RAW/IB)
-- Judiciary: High Court Judge, Supreme Court Advocate, Corporate Lawyer, Legal Counsel
-- Medical Elite: Surgeon (₹15-50L/year), Cardiologist, Neurologist, Oncologist, Medical Researcher
-- Engineering Elite: IIT Professor, Senior Scientist, Nuclear Engineer, Aerospace Engineer at HAL/ISRO
-- Finance Elite: Investment Banker (₹20-80L/year), Hedge Fund Manager, Chartered Accountant, Actuary
-- Management: IIM Graduate roles, Management Consultant (McKinsey/BCG), Strategy Director
-- Research: PhD at top universities, Research Fellow, Think Tank Analyst, Policy Advisor
+**IF REAL-TIME DATA IS PROVIDED ABOVE:**
+1. **Use ONLY the career categories provided in the real-time data**
+2. **Use the salary ranges and demand levels from the real-time data**
+3. **Prioritize HIGH demand roles with strong growth rates**
 
-**🎨 CREATIVE + SOCIAL CAREERS (For students high in Artistic 'A' + Social 'S' RIASEC):**
+**IF NO REAL-TIME DATA IS PROVIDED (FALLBACK):**
+Use these market-aligned career clusters for 2025-2030:
 
-MUSIC & ENTERTAINMENT INDUSTRY:
-- Music Producer (₹5-50L/year), Sound Designer, Audio Engineer, DJ/Electronic Music Artist
-- Spotify/Apple Music Curator, Music Licensing Manager, Concert Tour Manager, Artist Manager
-- Film Score Composer, Jingle Writer for Ads, Podcast Sound Designer, Foley Artist
-- K-Pop/Bollywood Choreographer, Music Video Director, Live Event Producer
-- AI Music Creator, Virtual Concert Designer, Hologram Performance Director
-- Music Therapist, Sound Healing Practitioner, Music Education Director
+**TRACK 1 (HIGH FIT) - Top Career Clusters:**
 
-ART & VISUAL MEDIA:
-- Art Gallery Curator (₹4-15L/year), Museum Experience Designer, Art Auction Specialist (Christie's/Sotheby's)
-- Digital Artist, NFT Creator, AI Art Director, Generative Art Designer
-- Animation Director (₹8-40L/year), Pixar/DreamWorks Animator, Anime Creator, VFX Supervisor
-- Fashion Designer (₹5-30L/year), Costume Designer for Films, Sustainable Fashion Innovator
-- Art Therapist, Creative Director at Ad Agencies, Brand Visual Strategist
-- Art Restoration Specialist, Cultural Heritage Consultant, Art Investment Advisor
+${studentGrade && (studentGrade === '9' || studentGrade === 9 || studentGrade === '10' || studentGrade === 10) ? `
+**FOR GRADES 9-10 - USE THESE SIMPLIFIED CAREER FIELDS:**
 
-ENTERTAINMENT & MEDIA:
-- Film Director, Cinematographer (₹10-80L/year), Documentary Filmmaker, OTT Content Creator
-- YouTuber (₹2L-2Cr/year), Instagram Creator, TikTok Influencer, Podcast Host
-- Screenwriter (₹5-50L/year), Dialogue Writer, Story Artist, Narrative Designer for Games
-- Talent Manager, Celebrity Stylist, Entertainment Lawyer, Casting Director
-- Virtual Influencer Creator, Metaverse Event Planner, Digital Experience Designer
-- Film Critic, Entertainment Journalist, Red Carpet Correspondent
+**🎨 Creative/Design** (For students interested in art, creativity, and visual expression)
+- **Examples**: Graphic Designer, Content Creator, Art Director, Fashion Designer, Photographer
+- **What You'll Do**: Create visual content, design products, express ideas through art
+- **Stream**: Any stream (Science/Commerce/Arts all work)
 
-SOCIAL + CREATIVE HYBRID:
-- Community Manager for Gaming/Music Brands (₹6-20L/year), Fan Experience Designer
-- Social Media Strategist for Artists, Influencer Marketing Director
-- Event Designer (₹4-25L/year), Destination Wedding Planner, Festival Curator
-- Creative Therapist, Drama Therapist, Expressive Arts Therapist
-- Cultural Ambassador, Arts Education Director, Creative Writing Coach
-- Brand Storyteller, Content Strategist, User Experience Designer
+**💻 Technology** (For students interested in computers, coding, and innovation)
+- **Examples**: Software Developer, Game Designer, App Creator, Tech Support, Web Designer
+- **What You'll Do**: Build apps and websites, solve tech problems, create digital solutions
+- **Stream**: Science (PCM) or Commerce with Computer Science
 
-**PROFESSIONAL CAREER PATHS BY STREAM:**
+**💼 Business/Management** (For students interested in leadership, organization, and entrepreneurship)
+- **Examples**: Marketing Assistant, Event Coordinator, Business Analyst, Sales Manager, Entrepreneur
+- **What You'll Do**: Organize events, manage teams, start businesses, help companies grow
+- **Stream**: Commerce or Arts
 
-**SCIENCE STREAM (PCM/PCB):**
-- Engineering: Software Engineer, AI/ML Engineer, Data Scientist, Robotics Engineer, Aerospace Engineer
-- Medical: Doctor (MBBS), Surgeon, Dentist, Pharmacist, Medical Researcher
-- Research: ISRO Scientist, DRDO Scientist, Biotechnologist, Quantum Researcher
-- Technology: Cloud Architect, Cybersecurity Specialist, Blockchain Developer
+**🏥 Healthcare** (For students interested in helping people and medicine)
+- **Examples**: Doctor, Nurse, Pharmacist, Physiotherapist, Medical Lab Technician
+- **What You'll Do**: Help sick people get better, work in hospitals, research medicines
+- **Stream**: Science (PCB - Physics, Chemistry, Biology)
 
-**COMMERCE STREAM:**
-- Finance: Chartered Accountant, CFA, Investment Banker, Financial Analyst, Actuary
-- Business: Management Consultant, Business Analyst, Product Manager, Startup Founder
-- Banking: Bank Manager, Credit Analyst, Risk Manager, Fintech Specialist
+**🎓 Education/Teaching** (For students who enjoy explaining things and helping others learn)
+- **Examples**: Teacher, Tutor, Educational Content Creator, School Counselor, Coach
+- **What You'll Do**: Teach students, create learning materials, help people understand subjects
+- **Stream**: Any stream based on what you want to teach
 
-**ARTS/HUMANITIES STREAM:**
-- Law: Corporate Lawyer, Civil Rights Lawyer, Legal Tech Specialist, International Law Expert
-- Civil Services: IAS, IFS, IPS through UPSC
-- Media: Digital Journalist, Documentary Filmmaker, Podcast Producer, Content Strategist
-- Psychology: Clinical Psychologist, UX Researcher, Organizational Psychologist
-- Creative Arts: Film Director, Music Producer, Fashion Designer, Art Gallery Curator
+**⚖️ Law/Government** (For students interested in justice, rules, and helping society)
+- **Examples**: Lawyer, Judge, Government Officer, Policy Maker, Social Worker
+- **What You'll Do**: Help people with legal problems, work for government, make society better
+- **Stream**: Arts or Commerce (Law doesn't require Science)
 
-**GUIDELINES:**
-- Suggest FUTURISTIC roles that will dominate 2030-2040 job market
-- For HIGH APTITUDE students (level 4-5): Include competitive exam pathways (UPSC, JEE Advanced, NEET, CLAT, CAT, GATE)
-- For CREATIVE + SOCIAL students (high A + S in RIASEC): Prioritize Music, Entertainment, Art, Media careers
-- Include DIVERSE options: Tech, Government, Defence, Healthcare, Finance, Research, Creative, Entertainment
-- Show EDUCATION PATH for each career (specific degrees, entrance exams, portfolio requirements)
-- PERSONALIZE based on RIASEC interests AND adaptive aptitude results
-- Salary ranges should reflect 2025-2030 projections in India
-- For studious students: Emphasize careers requiring dedication, discipline, and competitive preparation
-- For creative students: Emphasize portfolio-building, internships, and industry connections
+**USE ONLY THESE SIMPLIFIED CATEGORIES FOR GRADES 9-10. DO NOT use the detailed categories below.**
+` : `
+**FOR GRADES 11-12 - USE THESE DETAILED CAREER CLUSTERS:**
+`}
 
-CRITICAL: You MUST provide exactly 3 career clusters with ALL fields filled including evidence, roles, and domains!
+**🚀 TECHNOLOGY & DIGITAL INNOVATION** (For I+R+E types, high numerical/logical aptitude)
+- **Hot Roles**: AI/ML Engineer (₹8-25L entry, ₹25-80L mid), Full Stack Developer (₹6-18L entry, ₹18-50L mid), Data Scientist (₹7-20L entry, ₹20-60L mid), Cloud Architect (₹10-25L entry, ₹25-70L mid), Cybersecurity Analyst (₹6-15L entry, ₹15-45L mid)
+- **Education Path**: BTech CS/IT, Online certifications (AWS, Google Cloud), Bootcamps, Self-taught + portfolio
+- **Market Reality**: 70% of tech jobs don't require IIT degree. Portfolio + skills > college brand. Remote work = global salaries
 
-**⚠️ FINAL CHECK - ARTISTIC CAREER REQUIREMENT:**
+**💼 BUSINESS, FINANCE & CONSULTING** (For E+C+I types, high numerical/analytical aptitude)
+- **Hot Roles**: Business Analyst (₹6-15L entry, ₹15-40L mid), Management Consultant (₹8-20L entry, ₹20-60L mid), Product Manager (₹10-25L entry, ₹25-80L mid), Financial Analyst (₹5-12L entry, ₹12-35L mid), Investment Banking Analyst (₹10-25L entry, ₹25-1Cr mid)
+- **Education Path**: BCom/BBA + MBA from top B-schools, CA (5 years), CFA (3-4 years), Economics/Finance degree
+- **Market Reality**: MBA from top 20 B-schools = ₹20-35L starting. CA = stable ₹8-15L start, ₹30-80L after 8-10 years
+
+**🏥 HEALTHCARE & LIFE SCIENCES** (For I+S types, high verbal/analytical aptitude, PCB stream)
+- **Hot Roles**: Doctor/MBBS (₹6-15L entry, ₹15-80L mid), Dentist (₹5-12L entry, ₹12-50L mid), Pharmacist (₹3-8L entry, ₹8-25L mid), Biotech Researcher (₹4-10L entry, ₹10-35L mid), Medical Device Engineer (₹5-12L entry, ₹12-40L mid)
+- **Education Path**: NEET → MBBS (5.5 years) → MD/MS (3 years), BDS (5 years), BPharm (4 years), BTech Biomedical
+- **Market Reality**: MBBS = 10-year commitment. Private practice = ₹50L-2Cr after 10-15 years. Government jobs = stable ₹10-25L
+
+**🎨 CREATIVE INDUSTRIES & MEDIA** (For A+E types, high creative/verbal aptitude)
+- **Hot Roles**: UX/UI Designer (₹5-15L entry, ₹15-45L mid), Content Creator/YouTuber (₹2-10L entry, ₹10L-2Cr mid), Graphic Designer (₹3-8L entry, ₹8-25L mid), Video Editor (₹4-10L entry, ₹10-35L mid), Digital Marketing Manager (₹5-12L entry, ₹12-40L mid)
+- **Education Path**: BDes from NID/NIFT/Srishti, Mass Comm/Journalism, Self-taught + portfolio, Online courses
+- **Market Reality**: Portfolio > degree. Freelancing = ₹50K-5L/month. In-house at tech companies = best pay (₹15-50L)
+
+**⚖️ LAW & GOVERNANCE** (For I+E+S types, high verbal/logical aptitude)
+- **Hot Roles**: Corporate Lawyer (₹6-18L entry, ₹18-80L mid), Legal Consultant (₹5-15L entry, ₹15-50L mid), Compliance Officer (₹5-12L entry, ₹12-35L mid), Patent Attorney (₹6-15L entry, ₹15-45L mid)
+- **Education Path**: CLAT → 5-year BA LLB from NLU, 3-year LLB after graduation, LLM for specialization
+- **Market Reality**: Top law firms = ₹15-25L start. Tier 2 firms = ₹8-15L. Corporate in-house = ₹10-30L after 5 years
+
+**🏛️ CIVIL SERVICES & GOVERNMENT** (For high aptitude students, I+S+C types)
+- **Hot Roles**: IAS Officer (₹56K-2.5L/month + perks), IPS Officer (₹56K-2L/month + perks), IFS Diplomat (₹56K-2L/month + perks), IRS Officer (₹56K-2L/month + perks)
+- **Education Path**: Any graduation + UPSC CSE (2-3 years prep), NDA for defence (after 12th), State PSC exams
+- **Market Reality**: UPSC success rate = 0.1%. Requires 2-3 years dedicated preparation. Lifetime job security + prestige
+
+**TRACK 2 (MEDIUM FIT) - Emerging & Specialized:**
+
+**🔬 RESEARCH & ACADEMIA** (For I+C types, very high analytical aptitude)
+- **Hot Roles**: Research Scientist (₹5-12L entry, ₹12-40L mid), PhD Scholar (₹31K-35K/month stipend), Professor (₹6-15L entry, ₹15-50L mid), Data Analyst (₹4-10L entry, ₹10-30L mid)
+- **Education Path**: BSc → MSc → PhD (8-10 years), BTech → MTech → PhD, Research fellowships
+- **Market Reality**: Long education path. Academic jobs = stable but lower pay. Industry research = ₹15-60L
+
+**🏗️ ENGINEERING & INFRASTRUCTURE** (For R+I types, high spatial/numerical aptitude, PCM stream)
+- **Hot Roles**: Civil Engineer (₹3-8L entry, ₹8-25L mid), Mechanical Engineer (₹4-10L entry, ₹10-30L mid), Electrical Engineer (₹4-10L entry, ₹10-35L mid), Aerospace Engineer (₹6-15L entry, ₹15-50L mid)
+- **Education Path**: BTech from Tier 1-2 colleges, Diploma + BTech lateral entry, MTech for specialization
+- **Market Reality**: Core engineering = lower pay than software. PSUs = stable ₹8-15L. Private = project-based
+
+**🎓 EDUCATION & TRAINING** (For S+I types, high verbal aptitude)
+- **Hot Roles**: Teacher (₹3-8L entry, ₹8-20L mid), Corporate Trainer (₹5-12L entry, ₹12-35L mid), EdTech Content Creator (₹4-10L entry, ₹10-30L mid), Curriculum Designer (₹5-12L entry, ₹12-30L mid)
+- **Education Path**: BEd (2 years after graduation), MEd, Subject degree + teaching certification
+- **Market Reality**: Government teacher = ₹3-8L (stable). EdTech = ₹8-25L. Freelance tutoring = ₹50K-3L/month
+
+**TRACK 3 (EXPLORE) - For Social Students with Decent Aptitude:**
+
+**🎉 EVENT & EXPERIENCE MANAGEMENT** (BEST for A+S or E+S combinations)
+- **Why Better**: India's experience economy booming (₹10,000+ crore wedding industry, 15-20% YoY growth). Entrepreneurial potential.
+- **Hot Roles**: Wedding Planner (₹4-7L entry + ₹50K-2L per event, ₹10-25L mid, ₹25L-1Cr senior/own business), Event Coordinator (₹4-8L entry, ₹8-15L mid), Hospitality Manager (₹4-7L entry, ₹7-14L mid), Experience Designer (₹5-9L entry, ₹9-18L mid)
+- **Education Path**: Hotel Management diploma/degree, Event Management certification, or start with internships
+- **Market Reality**: Wedding packages ₹2L-5L+. Corporate events ₹5L-50L. Own event company after 5-7 years = ₹20L-1Cr revenue
+
+**🏥 HEALTHCARE COORDINATION** (BEST for S+I combinations)
+- **Why Better**: Healthcare sector added 7.5M jobs (62% YoY growth). Entry-level roles growing 25% annually. Stable, recession-proof.
+- **Hot Roles**: Patient Care Coordinator (₹4-7L entry, ₹7-13L mid), Healthcare Customer Support (₹3.5-6L entry, ₹6-11L mid), Medical Representative (₹4-8L entry + incentives, ₹8-18L mid), Wellness Program Coordinator (₹4-7L entry, ₹7-14L mid), Health Coach (₹4-7L entry, ₹7-15L mid)
+- **Education Path**: Healthcare administration diploma, Medical representative training, Wellness coaching certification
+- **Market Reality**: Telemedicine creating 8,000+ opportunities. Healthcare IT roles ₹8-25L. Hospital administration ₹10-30L after 5-8 years
+
+**💻 DIGITAL CONTENT & COMMUNITY** (BEST for A+S combinations)
+- **Why Better**: Orange economy creating 10-20M jobs by 2026. Remote work opportunities. Creative expression + audience engagement.
+- **Hot Roles**: Social Media Manager (₹3-6L entry, ₹6-13L mid), Community Manager (₹4-7L entry, ₹7-15L mid), Content Coordinator (₹3-6L entry, ₹6-12L mid), Customer Success Manager (₹4-8L entry, ₹8-16L mid), Content Creator (₹3-8L entry + brand deals, ₹8-20L mid)
+- **Education Path**: Digital marketing certification, Content creation courses, Social media management training
+- **Market Reality**: Remote work = global opportunities. Freelancing ₹50K-5L/month. In-house at tech companies = ₹15-50L
+
+**💰 SALES & ACCOUNT MANAGEMENT** (BEST for E+S combinations)
+- **Why Better**: Every company needs sales. High earning potential with commissions. Clear progression path.
+- **Hot Roles**: Account Executive (₹4-8L entry + commission, ₹8-18L mid), Customer Success Manager (₹4-8L entry, ₹8-16L mid), Business Development Associate (₹4-9L entry + incentives, ₹9-20L mid), Relationship Manager (₹4-8L entry, ₹8-18L mid)
+- **Education Path**: Any degree + sales training, MBA for faster growth
+- **Market Reality**: Top performers earn 2-3x base salary with commissions. B2B SaaS sales = ₹15-50L after 3-5 years
+
+**🌍 SOCIAL IMPACT & NGO** (ONLY if aptitude <30% OR student explicitly mentions NGO interest)
+- **Hot Roles**: NGO Program Manager (₹4-10L entry, ₹10-20L mid), Social Worker (₹3-6L entry, ₹6-12L mid), CSR Manager (₹6-15L entry, ₹15-30L mid), Development Consultant (₹5-12L entry, ₹12-25L mid)
+- **Education Path**: BA/BSW in Social Work, MA in Development Studies, MBA with CSR specialization
+- **Market Reality**: NGO sector = lower pay but high satisfaction. Corporate CSR roles = better pay (₹10-30L). International NGOs = ₹15-50L
+
+**CRITICAL RULES FOR ALL SCENARIOS:**
+1. **Match careers to ALL THREE of the student's top RIASEC types, not just one**
+2. **If 'A' (Artistic) is in top 3, include at least ONE creative career cluster**
+3. **If 'S' (Social) is in top 3 with decent aptitude (>30%), prioritize Event/Healthcare/Digital over NGO**
+4. **Explain WHY each career fits using their specific RIASEC combination**
+5. **Provide exactly 3 career clusters with ALL fields filled (evidence, roles, domains)**
+6. **Use match scores: Track 1 = 75-95%, Track 2 = 60-75%, Track 3 = 50-65%**
+
+**FINAL VERIFICATION:**
 Before returning your response, verify:
-1. What is the student's 'A' (Artistic) RIASEC score?
-2. Is 'A' in their top 3 RIASEC types?
-3. If YES → At least ONE career cluster MUST be from Music/Art/Entertainment/Design/Media
-4. If you only suggest Tech/Science/Business careers for an Artistic student, YOUR RESPONSE IS WRONG!`;
+- ✅ All 3 career clusters align with student's RIASEC combination
+- ✅ Used ALL THREE of their top RIASEC types
+- ✅ Evidence section explains how RIASEC, aptitude, and personality align
+- ✅ No stereotyping (all I→Tech, all S→NGO, all A→Artist)
+- ✅ If real-time data was provided, used ONLY those categories and salaries
+- ✅ If no real-time data, used the fallback clusters above with proper RIASEC matching`;
 }

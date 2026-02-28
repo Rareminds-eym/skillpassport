@@ -58,6 +58,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
       currentQuestionIndex: sessionData.current_question_index,
       questionsAnswered: sessionData.questions_answered,
       currentDifficulty: sessionData.current_difficulty,
+      difficultyPath: sessionData.difficulty_path,
       phaseQuestionsCount: (sessionData.current_phase_questions as Question[])?.length,
     });
 
@@ -150,6 +151,8 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         difficulty: currentDifficulty,
         subtag: selectedSubtag,
         excludeIdsCount: allExcludeIds.length,
+        questionNumber: totalQuestionsAnswered + 1,
+        adaptiveCoreQuestionNumber: adaptiveCoreQuestionsAnswered + 1,
       });
 
       // Call question generation API
@@ -165,6 +168,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           count: 1,
           excludeQuestionIds: allExcludeIds,
           excludeQuestionTexts: allExcludeTexts,
+          studentCourse: sessionData.student_course || null,
         }),
       });
 
@@ -226,9 +230,56 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           }
 
           if (!validation.isValid) {
-            console.error(`❌ [NextQuestionHandler] All retries exhausted, allowing duplicate to avoid blocking`);
-            // Track retry failures for monitoring
-            console.error(`❌ [NextQuestionHandler] RETRY_FAILURE: session=${sessionId}, questionId=${newQuestion.id}, difficulty=${currentDifficulty}, subtag=${selectedSubtag}`);
+            console.error(`❌ [NextQuestionHandler] All retries exhausted with subtag ${selectedSubtag}`);
+            console.error(`❌ [NextQuestionHandler] Attempting fallback with different subtag...`);
+            
+            // Try one more time with a completely different subtag
+            const fallbackSubtags = ALL_SUBTAGS.filter(s => s !== selectedSubtag && s !== lastSubtag);
+            const fallbackSubtag = fallbackSubtags[Math.floor(Math.random() * fallbackSubtags.length)];
+            
+            console.log(`🔄 [NextQuestionHandler] Fallback attempt with subtag: ${fallbackSubtag}`);
+            
+            const fallbackResponse = await fetch(questionGenUrl.toString(), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                gradeLevel,
+                phase: 'adaptive_core',
+                difficulty: currentDifficulty,
+                subtag: fallbackSubtag,
+                count: 1,
+                excludeQuestionIds: [...allExcludeIds, newQuestion.id],
+                excludeQuestionTexts: [...allExcludeTexts, newQuestion.text],
+              }),
+            });
+            
+            if (fallbackResponse.ok) {
+              const fallbackResult = await fallbackResponse.json();
+              if (fallbackResult.questions && fallbackResult.questions.length > 0) {
+                const fallbackQuestion = fallbackResult.questions[0];
+                const fallbackValidation = validateQuestionNotDuplicate(fallbackQuestion, allExcludeIds, allExcludeTexts);
+                
+                if (fallbackValidation.isValid) {
+                  console.log(`✅ [NextQuestionHandler] Fallback successful with different subtag`);
+                  newQuestion = fallbackQuestion;
+                  validation = fallbackValidation;
+                } else {
+                  console.warn(`⚠️ [NextQuestionHandler] Fallback also returned similar question`);
+                  console.warn(`⚠️ [NextQuestionHandler] Allowing question to proceed to avoid blocking test`);
+                  // CHANGED: Allow the question to proceed with a warning instead of blocking
+                  newQuestion = fallbackQuestion;
+                  validation = { isValid: true, reason: 'Allowed with warning after all retries' };
+                }
+              }
+            }
+            
+            // If we still have a duplicate after fallback, allow it with warning
+            if (!validation.isValid) {
+              console.warn(`⚠️ [NextQuestionHandler] Using best available question after all attempts`);
+              console.warn(`⚠️ [NextQuestionHandler] Question may be similar to previous questions`);
+              // CHANGED: Allow the test to continue instead of returning error
+              validation = { isValid: true, reason: 'Allowed with warning - best available after retries' };
+            }
           }
 
           // Update session with the new question
@@ -241,6 +292,9 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           console.log('✅ [NextQuestionHandler] Generated adaptive question:', {
             questionId: newQuestion.id,
             difficulty: newQuestion.difficulty,
+            subtag: newQuestion.subtag,
+            sessionDifficulty: currentDifficulty,
+            match: newQuestion.difficulty === currentDifficulty ? '✅' : '❌ MISMATCH!',
           });
 
           const result: NextQuestionResult = {
@@ -254,7 +308,16 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
             },
           };
           return jsonResponse(result);
+        } else {
+          // No questions returned - move to next phase instead of error
+          console.warn('⚠️ [NextQuestionHandler] No more questions available, moving to next phase');
+          // Fall through to phase transition logic below
         }
+      } else {
+        // Question generation failed - check if it's because no questions available
+        const errorData = await questionGenResponse.json().catch(() => ({}));
+        console.warn('⚠️ [NextQuestionHandler] Question generation failed, moving to next phase:', errorData);
+        // Fall through to phase transition logic below
       }
     }
 
@@ -348,6 +411,7 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
           count: 10,
           excludeQuestionIds: existingQuestionIds,
           excludeQuestionTexts: existingQuestionTexts,
+          studentCourse: sessionData.student_course || null,
         }),
       });
 
@@ -367,18 +431,43 @@ export const nextQuestionHandler: PagesFunction = async (context) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gradeLevel,
-          difficulty: band,
-          count: 5,
+          provisionalBand: band,  // Fixed: was 'difficulty', should be 'provisionalBand'
+          count: 6,  // 6 questions for stability confirmation phase
           excludeQuestionIds: existingQuestionIds,
           excludeQuestionTexts: existingQuestionTexts,
+          studentCourse: sessionData.student_course || null,
         }),
       });
 
       if (!questionGenResponse.ok) {
-        throw new Error('Failed to generate stability confirmation questions');
+        const errorText = await questionGenResponse.text();
+        console.error('❌ [NextQuestionHandler] Stability generation failed:', {
+          status: questionGenResponse.status,
+          statusText: questionGenResponse.statusText,
+          error: errorText
+        });
+        throw new Error(`Failed to generate stability confirmation questions: ${questionGenResponse.statusText}`);
       }
 
       const questionResult = await questionGenResponse.json();
+      console.log('📊 [NextQuestionHandler] Stability generation result:', {
+        questionsReceived: questionResult.questions?.length || 0,
+        expectedCount: 6,
+        fromCache: questionResult.fromCache,
+        generatedCount: questionResult.generatedCount
+      });
+      
+      if (!questionResult.questions || questionResult.questions.length === 0) {
+        console.error('❌ [NextQuestionHandler] No stability questions generated!');
+        throw new Error('Stability generation returned no questions');
+      }
+      
+      // Log warning if fewer than 6 questions but continue with what we have
+      if (questionResult.questions.length < 6) {
+        console.warn(`⚠️ [NextQuestionHandler] Expected 6 stability questions but got ${questionResult.questions.length}`);
+        console.warn(`⚠️ [NextQuestionHandler] Test will complete with ${questionResult.questions.length} stability questions`);
+      }
+      
       newQuestions = questionResult.questions;
     }
 

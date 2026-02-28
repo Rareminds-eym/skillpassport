@@ -6,6 +6,7 @@ import type { AssessmentData, GradeLevel } from '../types';
 import { generateAnswersHash } from '../utils/hash';
 import { buildMiddleSchoolPrompt } from './middle-school';
 import { buildHighSchoolPrompt } from './high-school';
+import { buildAfter10Prompt } from './after10';
 import { buildHigherSecondaryPrompt } from './higher-secondary';
 import { buildAfter12Prompt } from './after12';
 import { buildCollegePrompt } from './college';
@@ -29,7 +30,12 @@ export function buildAnalysisPrompt(assessmentData: AssessmentData): string {
     return buildHighSchoolPrompt(assessmentData, answersHash);
   }
 
-  // Higher secondary (grades 11-12) - Separate prompt with all 6 sections required
+  // After 10th (stream selection for 11th-12th)
+  if (gradeLevel === 'after10') {
+    return buildAfter10Prompt(assessmentData, answersHash);
+  }
+
+  // Higher secondary (grades 11-12)
   if (gradeLevel === 'higher_secondary') {
     return buildHigherSecondaryPrompt(assessmentData, answersHash);
   }
@@ -39,7 +45,7 @@ export function buildAnalysisPrompt(assessmentData: AssessmentData): string {
     return buildAfter12Prompt(assessmentData, answersHash);
   }
 
-  // College (university students) or After 10th (after10) - fallback to college prompt
+  // College (university students) - fallback to college prompt
   return buildCollegePrompt(assessmentData, answersHash);
 }
 
@@ -56,6 +62,19 @@ CRITICAL REQUIREMENTS:
 2) You MUST provide EXACTLY 3 career clusters (High fit, Medium fit, Explore fit) - this is MANDATORY.
 3) Ensure all arrays and objects are properly closed.
 4) Each cluster must have description, evidence, roles, domains, and whyItFits fields filled.
+5) **CRITICAL**: You MUST include the "overallSummary" field at the end of the JSON - this is MANDATORY and must be 3-4 sentences.
+6) **SALARY RANGES MUST VARY**: Each career must have DIFFERENT salary ranges based on the actual industry standards. DO NOT use the same salary range for all careers!
+
+SALARY GUIDELINES (India, 2025-2030, in LPA):
+- Engineering/Tech: Entry 4-8, Mid 10-15, Senior 15-25
+- Medical/Healthcare: Entry 5-10, Mid 12-20, Senior 20-40
+- Finance/Banking: Entry 4-8, Mid 10-18, Senior 18-35
+- Creative/Design: Entry 3-6, Mid 8-12, Senior 12-20
+- Teaching/Education: Entry 3-6, Mid 7-10, Senior 10-15
+- Law/Legal: Entry 4-8, Mid 12-25, Senior 25-50
+- Business/Management: Entry 4-8, Mid 10-20, Senior 20-40
+- Research/Academia: Entry 4-8, Mid 10-15, Senior 15-25
+**IMPORTANT**: Adjust based on specific role seniority and specialization!
 
 CRITICAL JSON FORMAT RULES:
 1. Start your response with { (opening brace) - NOT with [ (bracket)
@@ -66,16 +85,18 @@ CRITICAL JSON FORMAT RULES:
 6. Ensure all strings are properly quoted with double quotes
 7. Ensure all commas are in the right places
 8. Ensure all nested objects and arrays are properly closed
-9. Keep text concise to avoid token limits
-10. If approaching token limit, prioritize completing the JSON structure over adding more detail
-11. NEVER truncate mid-object - always close all braces and brackets
+9. NEVER truncate mid-object - always close all braces and brackets
+10. ALL SECTIONS ARE MANDATORY - do not skip employability, knowledge, skillGap, roadmap, or finalNote
+11. If you must be concise, shorten descriptions but INCLUDE ALL SECTIONS
 
 EXAMPLE OF CORRECT FORMAT:
 {
   "profileSnapshot": {...},
   "riasec": {...},
   "aptitude": {...},
-  "careerFit": {...}
+  "careerFit": {...},
+  "finalNote": {...},
+  "overallSummary": "This is a 3-4 sentence summary that MUST be included."
 }
 
 WRONG FORMAT (DO NOT USE):
@@ -84,14 +105,31 @@ WRONG FORMAT (DO NOT USE):
   {"name": "..."}
 ]
 
-Return ONLY the JSON object (starting with {), nothing else.`;
+Return ONLY the JSON object (starting with {), nothing else. ENSURE "overallSummary" is included at the end!`;
+
+  const collegeStudentProgramValidation = `
+
+🚨 CRITICAL FOR COLLEGE STUDENTS: PROGRAM ALIGNMENT IS MANDATORY 🚨
+
+If the student provides their program/degree information (e.g., "Bsc Physics", "B.Tech CS", "MBA"), you MUST:
+1. Identify the program field (Physics, Computer Science, Business, etc.)
+2. Generate ALL 3 career clusters from careers related to that field ONLY
+3. DO NOT recommend careers from unrelated fields (e.g., Creative Arts for Physics students)
+4. Validate your response before returning: Are all 3 clusters related to the student's program?
+
+If you ignore the program and recommend unrelated careers, your response will be REJECTED and you will be asked to try again.`;
 
   if (gradeLevel === 'middle') {
     return `${baseMessage} You are speaking to middle school students (grades 6-8). Use encouraging, age-appropriate language. Focus on exploration and discovery rather than specific career paths.${requirements}`;
   }
 
-  if (gradeLevel === 'highschool' || gradeLevel === 'higher_secondary') {
+  if (gradeLevel === 'highschool' || gradeLevel === 'after10' || gradeLevel === 'higher_secondary') {
     return `${baseMessage} You are speaking to high school students (grades 9-12). Provide guidance on college majors and career paths. Be aspirational but realistic.${requirements}`;
+  }
+
+  // College students - add program validation
+  if (gradeLevel === 'college') {
+    return `${baseMessage}${collegeStudentProgramValidation}${requirements}`;
   }
 
   return `${baseMessage}${requirements}`;

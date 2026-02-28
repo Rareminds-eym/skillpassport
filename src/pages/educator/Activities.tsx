@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   FunnelIcon,
-  ViewColumnsIcon,
   TableCellsIcon,
   Squares2X2Icon,
   EyeIcon,
@@ -26,6 +25,40 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false }
 });
 
+// Add animation styles
+const modalAnimationStyles = `
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes scaleIn {
+    from { 
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to { 
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out;
+  }
+  
+  .animate-scaleIn {
+    animation: scaleIn 0.3s ease-out;
+  }
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.textContent = modalAnimationStyles;
+  document.head.appendChild(styleSheet);
+}
+
 interface Activity {
   id: string;
   student_id: string;
@@ -35,7 +68,7 @@ interface Activity {
   status: 'pending' | 'sent_to_admin' | 'approved' | 'rejected';
   date: string;
   description: string;
-  remarks?: string;
+  approval_notes?: string;
   tech_stack?: string[];
   demo_link?: string;
   github_link?: string;
@@ -54,7 +87,7 @@ interface Activity {
   document_url?: string;
 }
 
-const FilterSection = ({ title, children, defaultOpen = false }) => {
+const FilterSection = ({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
   return (
@@ -71,7 +104,7 @@ const FilterSection = ({ title, children, defaultOpen = false }) => {
   );
 };
 
-const CheckboxGroup = ({ options, selectedValues, onChange }) => {
+const CheckboxGroup = ({ options, selectedValues, onChange }: { options: any[]; selectedValues: string[]; onChange: (values: string[]) => void }) => {
   return (
     <div className="space-y-2">
       {options.map((option) => (
@@ -98,26 +131,33 @@ const CheckboxGroup = ({ options, selectedValues, onChange }) => {
   );
 };
 
-const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) => {
+const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject, onShowError }: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  activity: Activity | null; 
+  onVerify: (id: string, remark: string) => Promise<void>; 
+  onReject: (id: string, remark: string) => Promise<void>;
+  onShowError: (msg: string) => void;
+}) => {
   const [remark, setRemark] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen && activity) {
-      setRemark(activity.remarks || '');
+      setRemark(activity.approval_notes || '');
     }
   }, [isOpen, activity]);
 
   const handleVerify = async () => {
+    if (!activity) return;
+    
     if (!remark.trim() && activity.status === 'pending') {
-      alert('Please provide remarks before taking action');
+      onShowError('Please provide remarks before taking action');
       return;
     }
     
     setLoading(true);
     try {
-      // Simulate loading for 1 second
-      await new Promise(resolve => setTimeout(resolve, 1000));
       await onVerify(activity.id, remark);
     } finally {
       setLoading(false);
@@ -125,15 +165,15 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
   };
 
   const handleReject = async () => {
+    if (!activity) return;
+    
     if (!remark.trim() && activity.status === 'pending') {
-      alert('Please provide remarks before taking action');
+      onShowError('Please provide remarks before taking action');
       return;
     }
     
     setLoading(true);
     try {
-      // Simulate loading for 1 second
-      await new Promise(resolve => setTimeout(resolve, 1000));
       await onReject(activity.id, remark);
     } finally {
       setLoading(false);
@@ -151,11 +191,11 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+        <div className="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full animate-scaleIn">
           <div className="bg-white px-4 pt-5 pb-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -367,10 +407,10 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
                 />
               </div>
 
-              {activity.remarks && activity.status !== 'pending' && (
+              {activity.approval_notes && activity.status !== 'pending' && (
                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                   <label className="block text-sm font-medium text-blue-900 mb-1">Previous Remarks</label>
-                  <p className="text-sm text-blue-800">{activity.remarks}</p>
+                  <p className="text-sm text-blue-800">{activity.approval_notes}</p>
                 </div>
               )}
             </div>
@@ -433,9 +473,14 @@ const ActivityDetailModal = ({ isOpen, onClose, activity, onVerify, onReject }) 
   );
 };
 
-const ActivityCard = ({ activity, onViewDetails, onVerify, onReject, isSelected, onSelect }) => {
-  const [loading, setLoading] = useState(false);
-
+const ActivityCard = ({ activity, onViewDetails, isSelected, onSelect }: { 
+  activity: Activity; 
+  onViewDetails: (activity: Activity) => void; 
+  onVerify: (id: string, remark: string) => Promise<void>; 
+  onReject: (id: string, remark: string) => Promise<void>;
+  isSelected: boolean;
+  onSelect: (id: string, checked: boolean) => void;
+}) => {
   const getTypeColor = () => {
     switch (activity.type) {
       case 'Project': return 'bg-blue-100 text-blue-800';
@@ -459,28 +504,6 @@ const ActivityCard = ({ activity, onViewDetails, onVerify, onReject, isSelected,
       case 'sent_to_admin': return 'Sent to Admin';
       case 'approved': return 'Approved';
       case 'rejected': return 'Rejected';
-    }
-  };
-
-  const handleVerify = async () => {
-    setLoading(true);
-    try {
-      // Simulate loading for 1 second
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      await onVerify(activity.id, '');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReject = async () => {
-    setLoading(true);
-    try {
-      // Simulate loading for 1 second
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      await onReject(activity.id, '');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -542,11 +565,23 @@ const Activities = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<{
+    types: string[];
+    dateRange: { start: string; end: string };
+  }>({
     types: [],
     dateRange: { start: '', end: '' }
   });
   const [sortBy, setSortBy] = useState('date_desc');
+
+  // Modal states for notifications and confirmations
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showBulkVerifyConfirm, setShowBulkVerifyConfirm] = useState(false);
+  const [showBulkRejectConfirm, setShowBulkRejectConfirm] = useState(false);
+  const [bulkRemark, setBulkRemark] = useState('');
 
   // Get educator's school information with class assignments
   const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
@@ -643,7 +678,7 @@ const Activities = () => {
           certificate_url: p.certificate_url,
           video_url: p.video_url,
           ppt_url: p.ppt_url,
-          remarks: p.remarks,
+          approval_notes: p.approval_notes,
         })),
         ...(trainings || []).map((t: any) => ({
           id: t.id,
@@ -658,7 +693,7 @@ const Activities = () => {
           start_date: t.start_date,
           end_date: t.end_date,
           duration: t.duration,
-          remarks: t.remarks,
+          approval_notes: t.approval_notes,
         })),
         ...(certificates || []).map((c: any) => ({
           id: c.id,
@@ -675,7 +710,7 @@ const Activities = () => {
           link: c.link,
           issued_on: c.issued_on,
           document_url: c.document_url,
-          remarks: c.remarks,
+          approval_notes: c.approval_notes,
         })),
       ];
 
@@ -688,7 +723,7 @@ const Activities = () => {
   };
 
   const typeOptions = useMemo(() => {
-    const typeCounts = {};
+    const typeCounts: Record<string, number> = {};
     activities.forEach(activity => {
       typeCounts[activity.type] = (typeCounts[activity.type] || 0) + 1;
     });
@@ -765,121 +800,245 @@ const Activities = () => {
     }
   };
 
-  const handleBulkVerify = async () => {
+  const handleBulkVerify = () => {
     if (selectedActivities.length === 0) return;
+    setBulkRemark('');
+    setShowBulkVerifyConfirm(true);
+  };
+
+  const confirmBulkVerify = async () => {
+    console.log('🔵 [BULK VERIFY] Starting bulk verification...');
+    console.log('🔵 [BULK VERIFY] Selected activities:', selectedActivities);
+    console.log('🔵 [BULK VERIFY] Bulk remark:', bulkRemark);
     
-    const remark = prompt('Enter remarks for bulk verification:');
-    if (remark === null) return;
+    if (!bulkRemark.trim()) {
+      console.warn('⚠️ [BULK VERIFY] Remarks empty!');
+      setErrorMessage('Please provide remarks for bulk verification');
+      setShowErrorModal(true);
+      return;
+    }
 
     try {
       for (const id of selectedActivities) {
+        console.log(`🔵 [BULK VERIFY] Processing activity: ${id}`);
+        
         const activity = activities.find(a => a.id === id);
-        if (!activity) continue;
+        if (!activity) {
+          console.warn(`⚠️ [BULK VERIFY] Activity ${id} not found, skipping...`);
+          continue;
+        }
         
         const table = activity.type === 'Project' ? 'projects' : 
                      activity.type === 'Training' ? 'trainings' : 'certificates';
         
-        await supabase
+        console.log(`🔵 [BULK VERIFY] Updating ${table} for activity ${id}`);
+        
+        const { data, error } = await supabase
           .from(table)
           .update({ 
             approval_status: 'sent_to_admin',
-            remarks: remark || null,
+            approval_notes: bulkRemark,
             updated_at: new Date().toISOString()
           })
           .eq('id', id);
+
+        if (error) {
+          console.error(`❌ [BULK VERIFY] Error updating ${id}:`, error);
+          throw error;
+        }
+        
+        console.log(`✅ [BULK VERIFY] Successfully updated ${id}`);
       }
       
+      console.log('✅ [BULK VERIFY] All activities verified!');
       await fetchActivities();
       setSelectedActivities([]);
-      alert('Activities verified successfully!');
+      setShowBulkVerifyConfirm(false);
+      setBulkRemark('');
+      setSuccessMessage(`${selectedActivities.length} ${selectedActivities.length === 1 ? 'activity' : 'activities'} verified successfully!`);
+      setShowSuccessModal(true);
     } catch (error) {
-      console.error('Error bulk verifying:', error);
-      alert('Failed to verify activities');
+      console.error('❌ [BULK VERIFY] Bulk verification failed:', error);
+      setShowBulkVerifyConfirm(false);
+      setErrorMessage('Failed to verify activities. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
-  const handleBulkReject = async () => {
+  const handleBulkReject = () => {
     if (selectedActivities.length === 0) return;
+    setBulkRemark('');
+    setShowBulkRejectConfirm(true);
+  };
+
+  const confirmBulkReject = async () => {
+    console.log('🔴 [BULK REJECT] Starting bulk rejection...');
+    console.log('🔴 [BULK REJECT] Selected activities:', selectedActivities);
+    console.log('🔴 [BULK REJECT] Bulk remark:', bulkRemark);
     
-    const remark = prompt('Enter remarks for bulk rejection:');
-    if (remark === null) return;
+    if (!bulkRemark.trim()) {
+      console.warn('⚠️ [BULK REJECT] Remarks empty!');
+      setErrorMessage('Please provide remarks for bulk rejection');
+      setShowErrorModal(true);
+      return;
+    }
 
     try {
       for (const id of selectedActivities) {
+        console.log(`🔴 [BULK REJECT] Processing activity: ${id}`);
+        
         const activity = activities.find(a => a.id === id);
-        if (!activity) continue;
+        if (!activity) {
+          console.warn(`⚠️ [BULK REJECT] Activity ${id} not found, skipping...`);
+          continue;
+        }
         
         const table = activity.type === 'Project' ? 'projects' : 
                      activity.type === 'Training' ? 'trainings' : 'certificates';
         
-        await supabase
+        console.log(`🔴 [BULK REJECT] Updating ${table} for activity ${id}`);
+        
+        const { data, error } = await supabase
           .from(table)
           .update({ 
             approval_status: 'rejected',
-            remarks: remark || null,
+            approval_notes: bulkRemark,
             updated_at: new Date().toISOString()
           })
           .eq('id', id);
+
+        if (error) {
+          console.error(`❌ [BULK REJECT] Error updating ${id}:`, error);
+          throw error;
+        }
+        
+        console.log(`✅ [BULK REJECT] Successfully updated ${id}`);
       }
       
+      console.log('✅ [BULK REJECT] All activities rejected!');
       await fetchActivities();
       setSelectedActivities([]);
-      alert('Activities rejected successfully!');
+      setShowBulkRejectConfirm(false);
+      setBulkRemark('');
+      setSuccessMessage(`${selectedActivities.length} ${selectedActivities.length === 1 ? 'activity' : 'activities'} rejected successfully!`);
+      setShowSuccessModal(true);
     } catch (error) {
-      console.error('Error bulk rejecting:', error);
-      alert('Failed to reject activities');
+      console.error('❌ [BULK REJECT] Bulk rejection failed:', error);
+      setShowBulkRejectConfirm(false);
+      setErrorMessage('Failed to reject activities. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
   const handleVerify = async (id: string, remark: string) => {
+    console.log('🔵 [VERIFY] Starting verification process...');
+    console.log('🔵 [VERIFY] Activity ID:', id);
+    console.log('🔵 [VERIFY] Remark:', remark);
+    
     try {
       const activity = activities.find(a => a.id === id);
-      if (!activity) return;
+      console.log('🔵 [VERIFY] Found activity:', activity);
+      
+      if (!activity) {
+        console.error('❌ [VERIFY] Activity not found!');
+        return;
+      }
       
       const table = activity.type === 'Project' ? 'projects' : 
                    activity.type === 'Training' ? 'trainings' : 'certificates';
       
-      await supabase
+      console.log('🔵 [VERIFY] Table to update:', table);
+      console.log('🔵 [VERIFY] Update payload:', {
+        approval_status: 'sent_to_admin',
+        approval_notes: remark || null,
+        updated_at: new Date().toISOString()
+      });
+
+      const { data, error } = await supabase
         .from(table)
         .update({ 
           approval_status: 'sent_to_admin',
-          remarks: remark || null,
+          approval_notes: remark || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
 
+      if (error) {
+        console.error('❌ [VERIFY] Supabase error:', error);
+        console.error('❌ [VERIFY] Error code:', error.code);
+        console.error('❌ [VERIFY] Error message:', error.message);
+        console.error('❌ [VERIFY] Error details:', error.details);
+        console.error('❌ [VERIFY] Error hint:', error.hint);
+        throw error;
+      }
+
+      console.log('✅ [VERIFY] Update successful! Response:', data);
+
       await fetchActivities();
       setDetailModal(null);
-      alert('Activity verified successfully!');
+      setSuccessMessage('Activity verified successfully!');
+      setShowSuccessModal(true);
+      console.log('✅ [VERIFY] Verification complete!');
     } catch (error) {
-      console.error('Error verifying:', error);
-      alert('Failed to verify activity');
+      console.error('❌ [VERIFY] Catch block error:', error);
+      setErrorMessage('Failed to verify activity. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
   const handleReject = async (id: string, remark: string) => {
+    console.log('🔴 [REJECT] Starting rejection process...');
+    console.log('🔴 [REJECT] Activity ID:', id);
+    console.log('🔴 [REJECT] Remark:', remark);
+    
     try {
       const activity = activities.find(a => a.id === id);
-      if (!activity) return;
+      console.log('🔴 [REJECT] Found activity:', activity);
+      
+      if (!activity) {
+        console.error('❌ [REJECT] Activity not found!');
+        return;
+      }
       
       const table = activity.type === 'Project' ? 'projects' : 
                    activity.type === 'Training' ? 'trainings' : 'certificates';
       
-      await supabase
+      console.log('🔴 [REJECT] Table to update:', table);
+      console.log('🔴 [REJECT] Update payload:', {
+        approval_status: 'rejected',
+        approval_notes: remark || null,
+        updated_at: new Date().toISOString()
+      });
+
+      const { data, error } = await supabase
         .from(table)
         .update({ 
           approval_status: 'rejected',
-          remarks: remark || null,
+          approval_notes: remark || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
 
+      if (error) {
+        console.error('❌ [REJECT] Supabase error:', error);
+        console.error('❌ [REJECT] Error code:', error.code);
+        console.error('❌ [REJECT] Error message:', error.message);
+        console.error('❌ [REJECT] Error details:', error.details);
+        console.error('❌ [REJECT] Error hint:', error.hint);
+        throw error;
+      }
+
+      console.log('✅ [REJECT] Update successful! Response:', data);
+
       await fetchActivities();
       setDetailModal(null);
-      alert('Activity rejected successfully!');
+      setSuccessMessage('Activity rejected successfully!');
+      setShowSuccessModal(true);
+      console.log('✅ [REJECT] Rejection complete!');
     } catch (error) {
-      console.error('Error rejecting:', error);
-      alert('Failed to reject activity');
+      console.error('❌ [REJECT] Catch block error:', error);
+      setErrorMessage('Failed to reject activity. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
@@ -1070,7 +1229,7 @@ const Activities = () => {
                   <CheckboxGroup
                     options={typeOptions}
                     selectedValues={filters.types}
-                    onChange={(values) => setFilters({...filters, types: values})}
+                    onChange={(values: string[]) => setFilters({...filters, types: values})}
                   />
                 </FilterSection>
 
@@ -1322,7 +1481,153 @@ const Activities = () => {
         activity={detailModal}
         onVerify={handleVerify}
         onReject={handleReject}
+        onShowError={(msg) => {
+          setErrorMessage(msg);
+          setShowErrorModal(true);
+        }}
       />
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl transform animate-scaleIn">
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-4 shadow-lg">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Success!</h3>
+                <p className="text-gray-600 mb-6">{successMessage}</p>
+              </div>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl transform animate-scaleIn">
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-4 shadow-lg">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Oops!</h3>
+                <p className="text-gray-600 mb-6">{errorMessage}</p>
+              </div>
+              <button
+                onClick={() => setShowErrorModal(false)}
+                className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Verify Confirmation Modal */}
+      {showBulkVerifyConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl transform animate-scaleIn">
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-4 shadow-lg">
+                  <CheckIcon className="w-8 h-8 text-white" strokeWidth={2.5} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Verify Activities?</h3>
+                <p className="text-gray-600 mb-4">
+                  You are about to verify {selectedActivities.length} {selectedActivities.length === 1 ? 'activity' : 'activities'}. Please provide remarks.
+                </p>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Remarks *</label>
+                <textarea
+                  value={bulkRemark}
+                  onChange={(e) => setBulkRemark(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your remarks for verification..."
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowBulkVerifyConfirm(false);
+                    setBulkRemark('');
+                  }}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmBulkVerify}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
+                >
+                  Verify
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Reject Confirmation Modal */}
+      {showBulkRejectConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl transform animate-scaleIn">
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-4 shadow-lg">
+                  <XMarkIcon className="w-8 h-8 text-white" strokeWidth={2.5} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Reject Activities?</h3>
+                <p className="text-gray-600 mb-4">
+                  You are about to reject {selectedActivities.length} {selectedActivities.length === 1 ? 'activity' : 'activities'}. Please provide remarks.
+                </p>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Remarks *</label>
+                <textarea
+                  value={bulkRemark}
+                  onChange={(e) => setBulkRemark(e.target.value)}
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter your remarks for rejection..."
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowBulkRejectConfirm(false);
+                    setBulkRemark('');
+                  }}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all duration-200 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmBulkReject}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-semibold shadow-md hover:shadow-lg"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

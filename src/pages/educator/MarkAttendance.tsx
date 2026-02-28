@@ -99,27 +99,64 @@ const MarkAttendance: React.FC = () => {
   const [itemsPerPage] = useState(6);
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const [educatorType, setEducatorType] = useState<'school' | 'college' | null>(null);
+  const [collegeId, setCollegeId] = useState<string | null>(null);
 
-  // Get current educator and school
+  // Get current educator info (school or college)
   useEffect(() => {
     const fetchEducatorInfo = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) {
+          console.log('🔍 [MarkAttendance] No user found');
+          return;
+        }
 
-        const { data: educator } = await supabase
+        console.log('🔍 [MarkAttendance] Fetching educator info for user:', user.id);
+
+        // First check if they are a school educator
+        const { data: schoolEducator } = await supabase
           .from("school_educators")
           .select("id, school_id, user_id")
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (educator) {
-          setEducatorId(educator.id);
-          setEducatorUserId(educator.user_id);
-          setSchoolId(educator.school_id);
+        if (schoolEducator) {
+          console.log('🏫 [MarkAttendance] Found school educator:', schoolEducator);
+          setEducatorId(schoolEducator.id);
+          setEducatorUserId(schoolEducator.user_id);
+          setSchoolId(schoolEducator.school_id);
+          setEducatorType('school');
+          return;
         }
+
+        // If not school educator, check if they are a college lecturer
+        const { data: collegeLecturer } = await supabase
+          .from("college_lecturers")
+          .select("id, collegeId, user_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        console.log('🎓 [MarkAttendance] College lecturer query result:', { data: collegeLecturer });
+
+        if (collegeLecturer) {
+          console.log('🎓 [MarkAttendance] Found college lecturer:', collegeLecturer);
+          console.log('🎓 [MarkAttendance] Setting state:', {
+            educatorId: collegeLecturer.id,
+            educatorUserId: collegeLecturer.user_id,
+            collegeId: collegeLecturer.collegeId,
+            educatorType: 'college'
+          });
+          setEducatorId(collegeLecturer.id);
+          setEducatorUserId(collegeLecturer.user_id);
+          setCollegeId(collegeLecturer.collegeId);
+          setEducatorType('college');
+          return;
+        }
+
+        console.log('❌ [MarkAttendance] No educator record found for user:', user.id);
       } catch (error) {
-        // Silently handle error - user will see no schedule if educator info fails
+        console.error('❌ [MarkAttendance] Error fetching educator info:', error);
       }
     };
 
@@ -128,61 +165,168 @@ const MarkAttendance: React.FC = () => {
 
   // Load today's schedule
   useEffect(() => {
-    if (educatorId && schoolId) {
+    console.log('🔍 [MarkAttendance] Schedule loading effect triggered:', {
+      educatorId,
+      schoolId,
+      collegeId,
+      educatorType,
+      selectedDate
+    });
+    
+    if (educatorId && (schoolId || collegeId) && educatorType) {
+      console.log('✅ [MarkAttendance] All conditions met, loading schedule');
       loadTodaySchedule();
+    } else {
+      console.log('❌ [MarkAttendance] Conditions not met for loading schedule:', {
+        hasEducatorId: !!educatorId,
+        hasSchoolOrCollege: !!(schoolId || collegeId),
+        hasEducatorType: !!educatorType
+      });
     }
-  }, [educatorId, schoolId, selectedDate]);
+  }, [educatorId, schoolId, collegeId, selectedDate, educatorType]);
 
   const loadTodaySchedule = async () => {
-    if (!educatorId || !schoolId) return;
+    if (!educatorId || (!schoolId && !collegeId) || !educatorType) return;
 
     setLoading(true);
     try {
-      const date = new Date(selectedDate);
-      const dayOfWeek = date.getDay();
-
-      const currentYear = new Date().getFullYear();
-      const { data: timetables } = await supabase
-        .from("timetables")
-        .select("id")
-        .eq("school_id", schoolId)
-        .eq("academic_year", `${currentYear}-${currentYear + 1}`)
-        .eq("status", "published")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      const timetable = timetables?.[0];
-
-      if (!timetable) {
-        setTodaySlots([]);
-        return;
+      if (educatorType === 'school') {
+        await loadSchoolSchedule();
+      } else if (educatorType === 'college') {
+        await loadCollegeSchedule();
       }
+    } catch (error) {
+      console.error("Error loading schedule:", error);
+      setTodaySlots([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      const { data: slots, error } = await supabase
-        .from("timetable_slots")
-        .select(`
-          id,
-          day_of_week,
-          period_number,
-          start_time,
-          end_time,
-          subject_name,
-          room_number,
-          class_id,
-          school_classes (
-            name,
-            grade,
-            section,
-            current_students
-          )
-        `)
-        .eq("timetable_id", timetable.id)
-        .eq("educator_id", educatorId)
-        .eq("day_of_week", dayOfWeek)
-        .order("period_number");
+  const loadSchoolSchedule = async () => {
+    const date = new Date(selectedDate);
+    const dayOfWeek = date.getDay();
 
-      if (error) throw error;
+    const currentYear = new Date().getFullYear();
+    const { data: timetables } = await supabase
+      .from("timetables")
+      .select("id")
+      .eq("school_id", schoolId)
+      .eq("academic_year", `${currentYear}-${currentYear + 1}`)
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(1);
 
+    const timetable = timetables?.[0];
+
+    if (!timetable) {
+      setTodaySlots([]);
+      return;
+    }
+
+    const { data: slots, error } = await supabase
+      .from("timetable_slots")
+      .select(`
+        id,
+        day_of_week,
+        period_number,
+        start_time,
+        end_time,
+        subject_name,
+        room_number,
+        class_id,
+        school_classes (
+          name,
+          grade,
+          section,
+          current_students
+        )
+      `)
+      .eq("timetable_id", timetable.id)
+      .eq("educator_id", educatorId)
+      .eq("day_of_week", dayOfWeek)
+      .order("period_number");
+
+    if (error) throw error;
+
+    // Process school slots (existing logic)
+    await processSchoolSlots(slots || []);
+  };
+
+  const loadCollegeSchedule = async () => {
+    console.log('🎓 [MarkAttendance] Loading college schedule:', {
+      educatorId,
+      selectedDate,
+      collegeId
+    });
+
+    // Check if there are existing college attendance sessions for today
+    const { data: existingSessions, error: sessionsError } = await supabase
+      .from("college_attendance_sessions")
+      .select(`
+        id,
+        date,
+        start_time,
+        end_time,
+        subject_name,
+        subject_code,
+        course_type,
+        department_name,
+        program_name,
+        semester,
+        section,
+        academic_year,
+        room_number,
+        total_students,
+        present_count,
+        absent_count,
+        status
+      `)
+      .eq("faculty_id", educatorId)
+      .eq("date", selectedDate)
+      .eq("college_id", collegeId)
+      .order("start_time");
+
+    console.log('🎓 [MarkAttendance] College sessions query result:', {
+      data: existingSessions,
+      error: sessionsError,
+      query: {
+        faculty_id: educatorId,
+        date: selectedDate,
+        college_id: collegeId
+      }
+    });
+
+    if (sessionsError) {
+      console.error('❌ [MarkAttendance] Error loading college sessions:', sessionsError);
+      throw sessionsError;
+    }
+
+    // Convert college sessions to TimetableSlot format
+    const collegeSlots: TimetableSlot[] = (existingSessions || []).map((session: any, index: number) => ({
+      id: session.id,
+      day_of_week: new Date(selectedDate).getDay(),
+      period_number: index + 1,
+      start_time: session.start_time,
+      end_time: session.end_time,
+      subject_name: session.subject_name,
+      room_number: session.room_number || '',
+      class_id: `${session.department_name}-${session.program_name}-${session.semester}-${session.section}`,
+      class_name: `${session.program_name} - Sem ${session.semester} ${session.section}`,
+      class_grade: `Semester ${session.semester}`,
+      class_section: session.section,
+      total_students: session.total_students || 0,
+      attendance_marked: session.status === 'completed',
+      is_locked: isSlotLocked(selectedDate)
+    }));
+
+    console.log('🎓 [MarkAttendance] Converted college slots:', collegeSlots);
+
+    setTodaySlots(collegeSlots);
+  };
+
+  const processSchoolSlots = async (slots: any[]) => {
+    try {
       // Optimize: Fetch all class IDs at once
       const classIds = slots?.map((slot: any) => slot.class_id) || [];
       
@@ -266,81 +410,264 @@ const MarkAttendance: React.FC = () => {
     
     setLoading(true);
     try {
-      // First get all students in this class
-      const { data: classStudents } = await supabase
-        .from("students")
-        .select("id")
-        .eq("school_class_id", slot.class_id)
-        .eq("is_deleted", false);
-
-      const classStudentIds = classStudents?.map(s => s.id) || [];
-
-      // Check if attendance already exists for these students on this date and slot
-      const { data: existingRecords } = await supabase
-        .from("attendance_records")
-        .select("*")
-        .eq("school_id", schoolId)
-        .eq("date", selectedDate)
-        .eq("slot_id", slot.id)
-        .in("student_id", classStudentIds);
-
-      const existingForThisSlot = existingRecords || [];
-      const isSubmitted = existingForThisSlot.length > 0;
-
-      const { data: students, error } = await supabase
-        .from("students")
-        .select("id, name, roll_number, grade, section, profilePicture")
-        .eq("school_class_id", slot.class_id)
-        .eq("is_deleted", false)
-        .order("roll_number");
-
-      if (error) throw error;
-
-      const formattedStudents: Student[] = (students || []).map((s: any) => ({
-        id: s.id,
-        name: s.name,
-        roll_number: s.roll_number || "N/A",
-        grade: s.grade || slot.class_grade,
-        section: s.section || slot.class_section,
-        profile_picture: s.profilePicture,
-      }));
-
-      const recordsMap = new Map<string, AttendanceRecord>();
-      
-      if (isSubmitted) {
-        existingForThisSlot.forEach((record: any) => {
-          recordsMap.set(record.student_id, {
-            student_id: record.student_id,
-            status: record.status,
-            time_in: record.time_in,
-            remarks: record.remarks,
-          });
-        });
-      } else {
-        formattedStudents.forEach((student) => {
-          recordsMap.set(student.id, {
-            student_id: student.id,
-            status: "present",
-            time_in: undefined,
-            remarks: "",
-          });
-        });
+      if (educatorType === 'school') {
+        await startSchoolAttendanceSession(slot);
+      } else if (educatorType === 'college') {
+        await startCollegeAttendanceSession(slot);
       }
-
-      setActiveSession({
-        slot,
-        students: formattedStudents,
-        records: recordsMap,
-        isSubmitted,
-        submittedAt: isSubmitted ? existingForThisSlot[0]?.created_at : undefined,
-      });
-
-      setViewMode("marking");
     } catch (error) {
       alert("Failed to load students. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const startSchoolAttendanceSession = async (slot: TimetableSlot) => {
+    // First get all students in this class
+    const { data: classStudents } = await supabase
+      .from("students")
+      .select("id")
+      .eq("school_class_id", slot.class_id)
+      .eq("is_deleted", false);
+
+    const classStudentIds = classStudents?.map(s => s.id) || [];
+
+    // Check if attendance already exists for these students on this date and slot
+    const { data: existingRecords } = await supabase
+      .from("attendance_records")
+      .select("*")
+      .eq("school_id", schoolId)
+      .eq("date", selectedDate)
+      .eq("slot_id", slot.id)
+      .in("student_id", classStudentIds);
+
+    const existingForThisSlot = existingRecords || [];
+    const isSubmitted = !!(existingForThisSlot.length > 0);
+
+    const { data: students, error } = await supabase
+      .from("students")
+      .select("id, name, roll_number, grade, section, profilePicture")
+      .eq("school_class_id", slot.class_id)
+      .eq("is_deleted", false)
+      .order("roll_number");
+
+    if (error) throw error;
+
+    const formattedStudents: Student[] = (students || []).map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      roll_number: s.roll_number || "N/A",
+      grade: s.grade || slot.class_grade,
+      section: s.section || slot.class_section,
+      profile_picture: s.profilePicture,
+    }));
+
+    const recordsMap = new Map<string, AttendanceRecord>();
+    
+    if (isSubmitted) {
+      existingForThisSlot.forEach((record: any) => {
+        recordsMap.set(record.student_id, {
+          student_id: record.student_id,
+          status: record.status,
+          time_in: record.time_in,
+          remarks: record.remarks,
+        });
+      });
+    } else {
+      formattedStudents.forEach((student) => {
+        recordsMap.set(student.id, {
+          student_id: student.id,
+          status: "present",
+          time_in: undefined,
+          remarks: "",
+        });
+      });
+    }
+
+    setActiveSession({
+      slot,
+      students: formattedStudents,
+      records: recordsMap,
+      isSubmitted,
+      submittedAt: isSubmitted ? existingForThisSlot[0]?.created_at : undefined,
+    });
+
+    setViewMode("marking");
+  };
+
+  const startCollegeAttendanceSession = async (slot: TimetableSlot) => {
+    // Check if attendance already exists for this session
+    const { data: existingRecords } = await supabase
+      .from("college_attendance_records")
+      .select("*")
+      .eq("session_id", slot.id)
+      .eq("date", selectedDate);
+
+    const isSubmitted = !!(existingRecords && existingRecords.length > 0);
+
+    // Parse class_id - handle both old format (names) and new format (UUIDs)
+    const classParts = slot.class_id.split('-');
+    
+    let semester: number;
+    let section: string;
+    let program_id: string;
+    
+    // Check if this is the old format (names) or new format (UUIDs)
+    // Old format: "Department Name-Program Name-1-A" (4 parts)
+    // New format: "college_id-department_id-program_id-semester-section" (multiple UUID parts)
+    
+    // Simple heuristic: if the second-to-last part is a number, it's likely old format
+    const secondToLast = classParts[classParts.length - 2];
+    const isOldFormat = !isNaN(parseInt(secondToLast)) && secondToLast.length <= 2;
+    
+    if (isOldFormat) {
+      // Old format: "Department Name-Program Name-1-A"
+      console.log('🎓 [startCollegeAttendanceSession] Detected OLD format (names)');
+      section = classParts[classParts.length - 1];
+      semester = parseInt(classParts[classParts.length - 2]);
+      
+      // Program name is everything except the last 2 parts and first part (department)
+      const programNameParts = classParts.slice(1, classParts.length - 2);
+      const programName = programNameParts.join('-');
+      
+      console.log('🎓 [startCollegeAttendanceSession] Parsed OLD format:', {
+        programName,
+        semester,
+        section,
+        originalClassId: slot.class_id
+      });
+      
+      // Look up program by name instead of ID
+      const { data: programData, error: programError } = await supabase
+        .from("programs")
+        .select("id, name, departments(name)")
+        .eq("name", programName)
+        .maybeSingle();
+      
+      if (programError || !programData) {
+        console.error('❌ [startCollegeAttendanceSession] Failed to find program by name:', programError);
+        throw new Error(`Failed to find program: ${programName}`);
+      }
+      
+      program_id = programData.id;
+      
+      console.log('🎓 [startCollegeAttendanceSession] Found program ID:', program_id);
+    } else {
+      // New format: UUID-based
+      console.log('🎓 [startCollegeAttendanceSession] Detected NEW format (UUIDs)');
+      section = classParts[classParts.length - 1];
+      semester = parseInt(classParts[classParts.length - 2]);
+      
+      // Extract program_id (5 parts before semester-section)
+      const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
+      program_id = programIdParts.join('-');
+      
+      console.log('🎓 [startCollegeAttendanceSession] Parsed NEW format:', {
+        program_id,
+        semester,
+        section,
+        originalClassId: slot.class_id
+      });
+    }
+
+    // Get program and department names from program_sections
+    console.log('🎓 [startCollegeAttendanceSession] Looking up program details...');
+    
+    const { data: programSections, error: programError } = await supabase
+      .from("program_sections")
+      .select("program_id, id, programs(name, departments(name))")
+      .eq("program_id", program_id)
+      .eq("semester", semester)
+      .eq("section", section);
+
+    console.log('🎓 [startCollegeAttendanceSession] Program section lookup result:', {
+      programSections,
+      error: programError,
+      query: {
+        program_id,
+        semester,
+        section
+      }
+    });
+
+    if (programError) {
+      console.error('❌ [startCollegeAttendanceSession] Failed to get program details:', programError);
+      throw new Error('Failed to find program information for this session');
+    }
+
+    if (!programSections || programSections.length === 0) {
+      throw new Error('No program found for this semester and section');
+    }
+
+    // Use the first program section if multiple exist
+    const programSection = programSections[0];
+    console.log('🎓 [startCollegeAttendanceSession] Using program section:', programSection);
+
+    if (!programSection?.program_id) {
+      throw new Error('No program_id found in program section');
+    }
+
+    // Now find students using the correct program_id
+    console.log('🎓 [startCollegeAttendanceSession] Searching students with program_id:', programSection.program_id);
+    
+    const { data: students, error } = await supabase
+      .from("students")
+      .select("id, name, roll_number, grade, section, profilePicture, program_id")
+      .eq("is_deleted", false)
+      .eq("program_id", programSection.program_id)
+      .eq("semester", semester)
+      .eq("section", section)
+      .order("roll_number");
+
+    console.log('🎓 [startCollegeAttendanceSession] Students query result:', {
+      studentsFound: students?.length || 0,
+      error,
+      queryType: 'program_id_lookup',
+      program_id: programSection.program_id
+    });
+
+    if (error) throw error;
+
+    const formattedStudents: Student[] = (students || []).map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      roll_number: s.roll_number || "N/A",
+      grade: `Semester ${semester}`,
+      section: s.section || section,
+      profile_picture: s.profilePicture,
+    }));
+
+    const recordsMap = new Map<string, AttendanceRecord>();
+    
+    if (isSubmitted) {
+      existingRecords.forEach((record: any) => {
+        recordsMap.set(record.student_id, {
+          student_id: record.student_id,
+          status: record.status,
+          time_in: record.time_in,
+          remarks: record.remarks,
+        });
+      });
+    } else {
+      formattedStudents.forEach((student) => {
+        recordsMap.set(student.id, {
+          student_id: student.id,
+          status: "present",
+          time_in: undefined,
+          remarks: "",
+        });
+      });
+    }
+
+    setActiveSession({
+      slot,
+      students: formattedStudents,
+      records: recordsMap,
+      isSubmitted,
+      submittedAt: isSubmitted ? existingRecords[0]?.marked_at : undefined,
+    });
+
+    setViewMode("marking");
   };
 
   const updateAttendanceRecord = (
@@ -406,106 +733,217 @@ const MarkAttendance: React.FC = () => {
   };
 
   const submitAttendance = async () => {
-    if (!activeSession || !educatorUserId || !schoolId) return;
+    if (!activeSession || !educatorUserId || (!schoolId && !collegeId)) return;
 
     if (!activeSession.slot.id) {
       alert("Error: Invalid slot information. Please refresh and try again.");
       return;
     }
 
-    if (!confirm("Submit attendance? This will save the records.")) return;
+    // if (!confirm(activeSession.isSubmitted ? "Update attendance? This will replace the existing records." : "Submit attendance? This will save the records.")) return;
 
     setSubmitting(true);
     try {
-      if (activeSession.isSubmitted) {
-        await supabase
-          .from("attendance_records")
-          .delete()
-          .eq("school_id", schoolId)
-          .eq("date", selectedDate)
-          .eq("slot_id", activeSession.slot.id);
+      if (educatorType === 'school') {
+        await submitSchoolAttendance();
+      } else if (educatorType === 'college') {
+        await submitCollegeAttendance();
       }
-
-      let slotId = activeSession.slot.id;
-      
-      // If slot_id is missing, query it from database
-      if (!slotId && educatorId && schoolId) {
-        try {
-          const dayOfWeek = new Date(selectedDate).getDay();
-          
-          const { data: slotData } = await supabase
-            .from("timetable_slots")
-            .select("id")
-            .eq("educator_id", educatorId)
-            .eq("period_number", activeSession.slot.period_number)
-            .eq("day_of_week", dayOfWeek)
-            .eq("subject_name", activeSession.slot.subject_name)
-            .eq("class_id", activeSession.slot.class_id)
-            .maybeSingle();
-            
-          if (slotData?.id) {
-            slotId = slotData.id;
-          }
-        } catch (error) {
-          console.error("Failed to retrieve slot_id from database:", error);
-        }
-      }
-      
-      // Final fallback: try to find slot from current slots
-      if (!slotId) {
-        const matchingSlot = todaySlots.find(s => 
-          s.period_number === activeSession.slot.period_number &&
-          s.subject_name === activeSession.slot.subject_name &&
-          s.class_id === activeSession.slot.class_id
-        );
-        
-        if (matchingSlot?.id) {
-          slotId = matchingSlot.id;
-        } else {
-          throw new Error("Unable to determine slot information. Please refresh the page and try again.");
-        }
-      }
-
-      const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
-        student_id: record.student_id,
-        school_id: schoolId,
-        date: selectedDate,
-        status: record.status,
-        time_in: record.time_in || null,
-        time_out: null,
-        marked_by: educatorUserId,
-        remarks: record.remarks || null,
-        mode: "manual",
-        otp_verified: false,
-        slot_id: slotId,
-      }));
-
-      // Validate that all records have slot_id before inserting
-      const invalidRecords = recordsToInsert.filter(record => !record.slot_id);
-      if (invalidRecords.length > 0) {
-        throw new Error("Invalid slot information detected. Please refresh and try again.");
-      }
-
-      const { error } = await supabase
-        .from("attendance_records")
-        .insert(recordsToInsert);
-
-      if (error) throw error;
-
-      alert("Attendance submitted successfully!");
-      setActiveSession({
-        ...activeSession,
-        isSubmitted: true,
-        submittedAt: new Date().toISOString(),
-      });
-      setViewMode("schedule");
-      loadTodaySchedule();
     } catch (error) {
       console.error("Attendance submission error:", error);
       alert("Failed to submit attendance. Please try again.");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const submitSchoolAttendance = async () => {
+    if (!activeSession || !educatorUserId || !schoolId) return;
+
+    if (activeSession.isSubmitted) {
+      await supabase
+        .from("attendance_records")
+        .delete()
+        .eq("school_id", schoolId)
+        .eq("date", selectedDate)
+        .eq("slot_id", activeSession.slot.id);
+    }
+
+    let slotId = activeSession.slot.id;
+    
+    // If slot_id is missing, query it from database
+    if (!slotId && educatorId && schoolId) {
+      try {
+        const dayOfWeek = new Date(selectedDate).getDay();
+        
+        const { data: slotData } = await supabase
+          .from("timetable_slots")
+          .select("id")
+          .eq("educator_id", educatorId)
+          .eq("period_number", activeSession.slot.period_number)
+          .eq("day_of_week", dayOfWeek)
+          .eq("subject_name", activeSession.slot.subject_name)
+          .eq("class_id", activeSession.slot.class_id)
+          .maybeSingle();
+          
+        if (slotData?.id) {
+          slotId = slotData.id;
+        }
+      } catch (error) {
+        console.error("Failed to retrieve slot_id from database:", error);
+      }
+    }
+    
+    // Final fallback: try to find slot from current slots
+    if (!slotId) {
+      const matchingSlot = todaySlots.find(s => 
+        s.period_number === activeSession.slot.period_number &&
+        s.subject_name === activeSession.slot.subject_name &&
+        s.class_id === activeSession.slot.class_id
+      );
+      
+      if (matchingSlot?.id) {
+        slotId = matchingSlot.id;
+      } else {
+        throw new Error("Unable to determine slot information. Please refresh the page and try again.");
+      }
+    }
+
+    const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
+      student_id: record.student_id,
+      school_id: schoolId,
+      date: selectedDate,
+      status: record.status,
+      time_in: record.time_in || null,
+      time_out: null,
+      marked_by: educatorUserId,
+      remarks: record.remarks || null,
+      mode: "manual",
+      otp_verified: false,
+      slot_id: slotId,
+    }));
+
+    // Validate that all records have slot_id before inserting
+    const invalidRecords = recordsToInsert.filter(record => !record.slot_id);
+    if (invalidRecords.length > 0) {
+      throw new Error("Invalid slot information detected. Please refresh and try again.");
+    }
+
+    const { error: insertError } = await supabase
+      .from("attendance_records")
+      .insert(recordsToInsert);
+
+    if (insertError) throw insertError;
+
+    // alert(activeSession.isSubmitted ? "Attendance updated successfully!" : "Attendance submitted successfully!");
+    setActiveSession({
+      ...activeSession,
+      isSubmitted: true,
+      submittedAt: new Date().toISOString(),
+    });
+    setViewMode("schedule");
+    loadTodaySchedule();
+  };
+
+  const submitCollegeAttendance = async () => {
+    if (!activeSession || !educatorUserId || !collegeId) return;
+
+    // Delete existing records if resubmitting
+    if (activeSession.isSubmitted) {
+      await supabase
+        .from("college_attendance_records")
+        .delete()
+        .eq("session_id", activeSession.slot.id)
+        .eq("date", selectedDate);
+    }
+
+    // Parse class_id format: "college_id-department_id-program_id-semester-section"
+    const classParts = activeSession.slot.class_id.split('-');
+    
+    // Extract the last two parts (semester and section)
+    const section = classParts[classParts.length - 1];
+    const semester = parseInt(classParts[classParts.length - 2]);
+    
+    // Extract program_id (5 parts before semester-section)
+    const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
+    const program_id = programIdParts.join('-');
+
+    // Get program and department names
+    const { data: programData } = await supabase
+      .from("programs")
+      .select("name, department_id, departments(name)")
+      .eq("id", program_id)
+      .single();
+
+    const programName = programData?.name || "Unknown Program";
+    const departmentName = (programData?.departments as any)?.name || "Unknown Department";
+
+    // Get faculty name
+    const { data: facultyData, error: facultyError } = await supabase
+      .from("college_lecturers")
+      .select("first_name, last_name")
+      .eq("id", educatorId)
+      .single();
+
+    if (facultyError) {
+      console.error('Failed to get faculty name:', facultyError);
+    }
+
+    const facultyName = facultyData ? `${facultyData.first_name} ${facultyData.last_name}` : "Unknown Faculty";
+
+    // Prepare attendance records
+    const recordsToInsert = Array.from(activeSession.records.values()).map((record) => ({
+      session_id: activeSession.slot.id,
+      student_id: record.student_id,
+      student_name: activeSession.students.find(s => s.id === record.student_id)?.name || "Unknown",
+      roll_number: activeSession.students.find(s => s.id === record.student_id)?.roll_number || "N/A",
+      department_name: departmentName,
+      program_name: programName,
+      semester: semester,
+      section: section,
+      date: selectedDate,
+      status: record.status,
+      time_in: record.time_in || null,
+      time_out: null,
+      subject_name: activeSession.slot.subject_name,
+      subject_code: activeSession.slot.subject_name, // You might want to get actual subject code
+      faculty_id: educatorId,
+      faculty_name: facultyName,
+      location: activeSession.slot.room_number,
+      remarks: record.remarks || null,
+      marked_by: educatorUserId,
+      marked_at: new Date().toISOString(),
+      college_id: collegeId,
+    }));
+
+    // Insert attendance records
+    const { error: recordsError } = await supabase
+      .from("college_attendance_records")
+      .insert(recordsToInsert);
+
+    if (recordsError) throw recordsError;
+
+    // Update session status to completed
+    const { error: sessionUpdateError } = await supabase
+      .from("college_attendance_sessions")
+      .update({
+        status: 'completed',
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", activeSession.slot.id);
+
+    if (sessionUpdateError) {
+      console.error('Failed to update session status:', sessionUpdateError);
+    }
+
+    // alert(activeSession.isSubmitted ? "Attendance updated successfully!" : "Attendance submitted successfully!");
+    setActiveSession({
+      ...activeSession,
+      isSubmitted: true,
+      submittedAt: new Date().toISOString(),
+    });
+    setViewMode("schedule");
+    loadTodaySchedule();
   };
 
   const filteredStudents = useMemo(() => {
@@ -1199,9 +1637,8 @@ const MarkingView: React.FC<MarkingViewProps> = ({
             />
           </div>
 
-          {/* Quick Actions */}
-          {!session.isSubmitted && (
-            <div className="flex gap-2">
+          {/* Quick Actions - Always show to allow editing */}
+          <div className="flex gap-2">
               <button
                 onClick={() => markAllAs("present")}
                 className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700 transition-colors"
@@ -1217,7 +1654,6 @@ const MarkingView: React.FC<MarkingViewProps> = ({
                 All Absent
               </button>
             </div>
-          )}
         </div>
       </div>
 
@@ -1250,7 +1686,7 @@ const MarkingView: React.FC<MarkingViewProps> = ({
                     key={student.id}
                     student={student}
                     record={record}
-                    isDisabled={session.isSubmitted}
+                    isDisabled={false} // Allow editing even after submission
                     onUpdate={updateAttendanceRecord}
                   />
                 );
@@ -1259,9 +1695,8 @@ const MarkingView: React.FC<MarkingViewProps> = ({
           </div>
         </div>
 
-        {/* Submit Button */}
-        {!session.isSubmitted && (
-          <div className="mt-6 flex justify-end">
+        {/* Submit Button - Always show to allow resubmission */}
+        <div className="mt-6 flex justify-end">
             <button
               onClick={submitAttendance}
               disabled={submitting}
@@ -1275,12 +1710,11 @@ const MarkingView: React.FC<MarkingViewProps> = ({
               ) : (
                 <>
                   <CheckCircleIcon className="h-5 w-5" />
-                  Submit Attendance
+                  {session.isSubmitted ? 'Update Attendance' : 'Submit Attendance'}
                 </>
               )}
             </button>
-          </div>
-        )}
+        </div>
 
         {session.isSubmitted && session.submittedAt && (
           <div className="mt-6 bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">

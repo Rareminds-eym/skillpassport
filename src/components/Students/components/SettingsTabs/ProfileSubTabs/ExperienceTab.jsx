@@ -77,6 +77,28 @@ const ExperienceTab = ({
       ) : (
         <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
           {(experienceData || [])
+            .filter(exp => exp.enabled !== false) // Only show enabled experience
+            .map((experience) => {
+              // VERSIONING: If experience has pending edit, show verified_data
+              const displayExp = experience.has_pending_edit && experience.verified_data 
+                ? {
+                    ...experience,
+                    role: experience.verified_data.role,
+                    organization: experience.verified_data.organization,
+                    start_date: experience.verified_data.start_date,
+                    startDate: experience.verified_data.startDate || experience.verified_data.start_date,
+                    end_date: experience.verified_data.end_date,
+                    endDate: experience.verified_data.endDate || experience.verified_data.end_date,
+                    duration: experience.verified_data.duration,
+                    description: experience.verified_data.description,
+                    // Keep original approval_status for badge display
+                    approval_status: experience.verified_data.approval_status || 'verified',
+                    _hasPendingEdit: false // Don't show pending badge for verified version
+                  }
+                : experience;
+              
+              return displayExp;
+            })
             .sort((a, b) => {
               // Sort by start date, most recent first
               const dateA = new Date(a.start_date || a.startDate || 0);
@@ -94,6 +116,22 @@ const ExperienceTab = ({
                       <h4 className="text-base font-bold text-gray-900">
                         {experience.role || experience.position || experience.title || experience.jobTitle || "Position"}
                       </h4>
+                      
+                      {/* Badge Display Logic */}
+                      {(experience.approval_status === "verified" || experience.approval_status === "approved") && !experience._hasPendingEdit && (
+                        <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" />
+                          Verified
+                        </Badge>
+                      )}
+                      
+                      {(!experience.approval_status || experience.approval_status === 'pending') && !experience._hasPendingEdit && (
+                        <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Pending Verification
+                        </Badge>
+                      )}
+                      
                       <Button
                         variant="ghost"
                         size="sm"
@@ -102,6 +140,7 @@ const ExperienceTab = ({
                       >
                         <Edit className="w-3 h-3" />
                       </Button>
+                      
                       {isCurrentRole(experience.end_date || experience.endDate) && (
                         <Badge className="bg-blue-100 text-blue-700 border-blue-200 px-2 py-1 text-xs">
                           Current

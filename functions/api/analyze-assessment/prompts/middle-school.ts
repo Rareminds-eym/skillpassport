@@ -5,6 +5,158 @@
 import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
 
 /**
+ * Calculate RIASEC scores from raw assessment answers
+ * This ensures deterministic scoring before sending to AI
+ */
+function calculateRIASECScores(riasecAnswers: any): Record<string, number> {
+  const scores: Record<string, number> = {
+    R: 0, I: 0, A: 0, S: 0, E: 0, C: 0
+  };
+
+  console.log('[RIASEC-CALC] Starting calculation...');
+  console.log('[RIASEC-CALC] Input type:', typeof riasecAnswers);
+  console.log('[RIASEC-CALC] Is array?', Array.isArray(riasecAnswers));
+  console.log('[RIASEC-CALC] Raw input:', JSON.stringify(riasecAnswers).substring(0, 500));
+
+  // Hardcoded category mappings for middle school questions (ms1-ms5)
+  // These match the actual questions in src/features/assessment/data/questions/middleSchoolQuestions.ts
+  const middleSchoolMappings: Record<string, Record<string, string>> = {
+    'ms1': {
+      'Building/making something with your hands': 'R',
+      'Drawing/painting/designing': 'A',
+      'Solving puzzles or brain games': 'I',
+      'Helping someone learn or feel better': 'S',
+      'Organizing a class event or selling something': 'E',
+      'Being outdoors / with animals / nature': 'R'
+    },
+    'ms2': {
+      'Science experiments': 'I',
+      'Math games / logic puzzles': 'I',
+      'Writing stories / poems': 'A',
+      'Art / craft / design': 'A',
+      'Sports / dance / drama': 'R',
+      'Group discussions / debates': 'S',
+      'Coding / robotics / tinkering': 'I',
+      'Community / volunteering': 'S',
+      'Business fairs / buying-selling projects': 'E',
+      'Gardening / environment clubs': 'R'
+    },
+    'ms3': {
+      'How things work / inventions': 'I',
+      'Art / music / creativity': 'A',
+      'Mysteries / problem-solving': 'I',
+      'People stories / emotions / friendships': 'S',
+      'Money/business / "how to grow" ideas': 'E',
+      'Nature / space / animals / earth': 'R'
+    },
+    'ms4': {
+      'Make a model / build something': 'R',
+      'Make it look beautiful / creative': 'A',
+      'Find facts and explain clearly': 'I',
+      'Work with friends and share roles': 'S',
+      'Plan it, lead it, present it': 'E',
+      'Connect it to real life / society / environment': 'S'
+    },
+    'ms5': {
+      'Writing long answers': 'A',
+      'Doing calculations': 'I',
+      'Speaking in front of people': 'E',
+      'Working in groups': 'S',
+      'Doing neat/design work': 'A',
+      'Doing hands-on/building tasks': 'R'
+    }
+  };
+
+  // Handle if riasecAnswers is an object instead of array
+  // If it's an object, convert to array while preserving the keys as questionId
+  const answersArray = Array.isArray(riasecAnswers) 
+    ? riasecAnswers 
+    : Object.entries(riasecAnswers || {}).map(([key, value]) => ({
+        ...value,
+        questionId: value.questionId || key // Use existing questionId or the object key
+      }));
+
+  console.log('[RIASEC-CALC] Answers array length:', answersArray.length);
+  console.log('[RIASEC-CALC] Sample answer:', JSON.stringify(answersArray[0]).substring(0, 200));
+
+  answersArray.forEach((answer, index) => {
+    if (!answer) {
+      console.log(`[RIASEC-CALC] Question ${index}: Skipped (null/undefined)`);
+      return;
+    }
+    
+    // Extract question ID if available (e.g., "ms1", "ms2")
+    const questionId = answer.questionId || answer.id || `q${index}`;
+    const categoryMapping = answer.categoryMapping || middleSchoolMappings[questionId];
+    const response = answer.answer;
+    
+    // ms5 is INVERSE - asking what they AVOID (subtract points instead of add)
+    const isInverseQuestion = questionId === 'ms5';
+
+    console.log(`[RIASEC-CALC] Question ${questionId}:`, {
+      hasMapping: !!categoryMapping,
+      responseType: typeof response,
+      response: Array.isArray(response) ? response.length + ' items' : response,
+      isInverse: isInverseQuestion
+    });
+
+    if (!categoryMapping) {
+      console.log(`[RIASEC-CALC] Question ${questionId}: No categoryMapping found`);
+      return;
+    }
+
+    // Handle array responses (multiselect)
+    if (Array.isArray(response)) {
+      console.log(`[RIASEC-CALC] Question ${questionId}: Array response with ${response.length} items`);
+      response.forEach(selected => {
+        const riasecType = categoryMapping[selected];
+        if (riasecType && scores[riasecType] !== undefined) {
+          if (isInverseQuestion) {
+            // For ms5 (what they avoid), subtract points
+            scores[riasecType] = Math.max(0, scores[riasecType] - 2);
+            console.log(`[RIASEC-CALC] Subtracted 2 points from ${riasecType} (they avoid "${selected}")`);
+          } else {
+            scores[riasecType] += 2;
+            console.log(`[RIASEC-CALC] Added 2 points to ${riasecType} (from "${selected}")`);
+          }
+        } else {
+          console.log(`[RIASEC-CALC] No mapping found for "${selected}"`);
+        }
+      });
+    }
+    // Handle single string responses
+    else if (typeof response === 'string') {
+      const riasecType = categoryMapping[response];
+      console.log(`[RIASEC-CALC] Question ${questionId}: String response "${response}" -> ${riasecType}`);
+      if (riasecType && scores[riasecType] !== undefined) {
+        if (isInverseQuestion) {
+          scores[riasecType] = Math.max(0, scores[riasecType] - 2);
+          console.log(`[RIASEC-CALC] Subtracted 2 points from ${riasecType}`);
+        } else {
+          scores[riasecType] += 2;
+          console.log(`[RIASEC-CALC] Added 2 points to ${riasecType}`);
+        }
+      }
+    }
+    // Handle rating responses (1-4)
+    else if (typeof response === 'number') {
+      const strengthType = answer.strengthType || answer.context;
+      console.log(`[RIASEC-CALC] Question ${questionId}: Number response ${response}, strengthType: ${strengthType}`);
+      if (strengthType && scores[strengthType] !== undefined) {
+        if (response >= 3) {
+          const points = response === 4 ? 2 : 1;
+          scores[strengthType] += points;
+          console.log(`[RIASEC-CALC] Added ${points} points to ${strengthType}`);
+        }
+      }
+    }
+  });
+
+  console.log('[RIASEC-CALC] Final scores:', scores);
+  return scores;
+}
+
+/**
  * Pre-process adaptive aptitude results into actionable insights
  * This reduces token usage and gives AI clearer direction
  */
@@ -101,10 +253,196 @@ export function buildMiddleSchoolPrompt(assessmentData: AssessmentData, answersH
   
   const adaptiveSection = adaptiveData?.section || '';
 
+  // Calculate RIASEC scores dynamically from responses
+  const riasecScores = calculateRIASECScores(assessmentData.riasecAnswers);
+  
+  // Calculate percentages (highest score = 100%)
+  const maxScore = Math.max(...Object.values(riasecScores), 1);
+  const riasecPercentages: Record<string, number> = {};
+  Object.entries(riasecScores).forEach(([type, score]) => {
+    riasecPercentages[type] = Math.round((score / maxScore) * 100);
+  });
+  
+  // Sort by score to get top 3
+  const sortedTypes = Object.entries(riasecScores)
+    .sort(([,a], [,b]) => b - a)
+    .map(([type]) => type);
+  
+  // Check if all scores are zero - if so, don't assign a Holland code
+  const allScoresZero = Object.values(riasecScores).every(score => score === 0);
+  
+  const topThreeTypes = allScoresZero ? [] : sortedTypes.slice(0, 3);
+  const hollandCode = allScoresZero ? '' : topThreeTypes.join('');
+
+  // Check if we have valid RIASEC data
+  const hasValidRiasec = !allScoresZero && topThreeTypes.length === 3;
+
+  // Generate dynamic cluster suggestions based on RIASEC combinations
+  const generateClusterSuggestions = () => {
+    if (!hasValidRiasec) return '';
+
+    const [first, second, third] = topThreeTypes;
+    const combo = `${first}${second}`;
+
+    // RIASEC combination to personalized cluster mapping
+    const comboMapping: Record<string, string> = {
+      // Realistic combinations
+      'RI': 'Engineering & Applied Science',
+      'RA': 'Creative Technology & Design',
+      'RS': 'Healthcare Technology & Support',
+      'RE': 'Construction & Project Management',
+      'RC': 'Technical Operations & Quality Control',
+      
+      // Investigative combinations
+      'IR': 'Research & Development Engineering',
+      'IA': 'Scientific Communication & Design',
+      'IS': 'Healthcare & Medical Research',
+      'IE': 'Data Science & Business Analytics',
+      'IC': 'Research & Information Systems',
+      
+      // Artistic combinations
+      'AR': 'Industrial Design & Innovation',
+      'AI': 'Creative Research & Media',
+      'AS': 'Arts Education & Therapy',
+      'AE': 'Creative Business & Entertainment',
+      'AC': 'Graphic Design & Digital Media',
+      
+      // Social combinations
+      'SR': 'Occupational Therapy & Rehabilitation',
+      'SI': 'Psychology & Behavioral Science',
+      'SA': 'Arts & Creative Therapy',
+      'SE': 'Human Resources & Training',
+      'SC': 'Education & Administration',
+      
+      // Enterprising combinations
+      'ER': 'Engineering Management & Operations',
+      'EI': 'Business Strategy & Consulting',
+      'EA': 'Marketing & Brand Management',
+      'ES': 'Sales & Customer Relations',
+      'EC': 'Business Administration & Finance',
+      
+      // Conventional combinations
+      'CR': 'Technical Documentation & Systems',
+      'CI': 'Data Management & Analysis',
+      'CA': 'Publishing & Content Management',
+      'CS': 'Administrative Services & Support',
+      'CE': 'Accounting & Financial Services'
+    };
+
+    const suggestedCluster = comboMapping[combo] || `${first}-${second} Hybrid Careers`;
+    
+    // Generate cluster 2 and 3 suggestions
+    const combo2 = `${second}${third}`;
+    const combo3 = `${first}${third}`;
+    const suggestedCluster2 = comboMapping[combo2] || `${second}-${third} Hybrid Careers`;
+    const suggestedCluster3 = comboMapping[combo3] || `${first}-${third} Hybrid Careers`;
+
+    return `
+## 🎯 DYNAMIC CAREER CLUSTER GUIDANCE:
+
+**Your RIASEC Profile:** ${hollandCode} (${first}: ${riasecPercentages[first]}%, ${second}: ${riasecPercentages[second]}%, ${third}: ${riasecPercentages[third]}%)
+
+**Suggested Cluster Titles (PERSONALIZE THESE):**
+
+**Cluster 1 (Highest Match - ${riasecPercentages[first]}%):** ${suggestedCluster}
+- Combines your TOP TWO interests: ${first} + ${second}
+- This should be the most prominent career direction
+- Example personalization: Make it specific to modern careers (e.g., "AI & Creative Technology" instead of just "Technology")
+
+**Cluster 2 (Medium Match - ${riasecPercentages[second]}%):** ${suggestedCluster2}
+- Emphasizes your SECOND and THIRD interests: ${second} + ${third}
+- This offers an alternative path that still aligns with your profile
+- Example personalization: Show how these interests complement each other
+
+**Cluster 3 (Explore - ${riasecPercentages[third]}%):** ${suggestedCluster3}
+- Explores the ${first} + ${third} combination OR pure ${third} careers
+- This is for exploration and discovering new possibilities
+- Can be more adventurous or emerging career fields
+
+**IMPORTANT - CREATE PERSONALIZED CLUSTER TITLES:**
+- Don't just copy these suggestions - make them SPECIFIC to this student
+- Consider their adaptive aptitude strengths when naming clusters
+- Use modern, exciting language that middle schoolers relate to
+- Combine interests creatively to show unique career paths
+
+**Examples of GOOD personalized titles:**
+- "Creative Technology & Game Design" (for R+A with high scores in both)
+- "Healthcare Science & Research" (for I+S with strong investigative and social interests)
+- "Business Innovation & Entrepreneurship" (for E+I with leadership and analytical strengths)
+- "Social Media & Digital Marketing" (for A+E with creative and enterprising talents)
+- "Environmental Engineering & Sustainability" (for R+I with practical and scientific interests)
+
+**Examples of BAD generic titles:**
+- "Engineering & Technology" (too generic, doesn't show personality)
+- "Science & Research" (boring, doesn't reflect the student's unique combination)
+- "Art & Design" (misses the opportunity to show how interests combine)
+`;
+  };
+
   return `You are a career counselor for middle school students (grades 6-8). Analyze this student's interest exploration assessment using the EXACT scoring rules below.
 
 ## CRITICAL: This must be DETERMINISTIC - same input = same output always
 Session ID: ${answersHash}
+
+## ⚠️ PRE-CALCULATED RIASEC DATA (YOU MUST USE THESE EXACT VALUES):
+
+**Raw Scores:**
+${JSON.stringify(riasecScores, null, 2)}
+
+**Calculated Percentages (Highest = 100%):**
+${JSON.stringify(riasecPercentages, null, 2)}
+
+**Holland Code (Top 3 Types):** ${hollandCode || 'NONE - All scores are zero'}
+
+${allScoresZero ? `
+## ⚠️ CRITICAL WARNING: NO VALID RIASEC DATA
+All RIASEC scores are zero, which means the student did not complete the interest exploration section or there was an error in data collection.
+
+**YOU MUST:**
+1. Set riasec.code to empty string ""
+2. Set riasec.topThree to empty array []
+3. Set all riasec.percentages to 0
+4. In riasec.interpretation, explain that interest data is missing and career recommendations are based ONLY on adaptive aptitude results
+5. Base ALL career recommendations ONLY on their adaptive aptitude cognitive strengths (numerical, logical, verbal, spatial, pattern recognition, data interpretation)
+6. Create personalized cluster titles based on cognitive strengths (e.g., "Analytical Problem Solving" for high logical reasoning, "Creative Communication" for high verbal + pattern recognition)
+7. Match scores should be based on cognitive aptitude alignment, not interest alignment
+` : `
+**Sorted RIASEC Types (Highest to Lowest):**
+${sortedTypes.map((type, i) => `${i + 1}. ${type} - ${riasecPercentages[type]}%`).join('\n')}
+
+${generateClusterSuggestions()}`}
+
+**⚠️ CRITICAL RULES:**
+
+**MATCH SCORE CALCULATION (MANDATORY - DO NOT USE FIXED VALUES):**
+Calculate matchScore dynamically using this formula:
+- **RIASEC alignment: 50% weight** - How well top 3 RIASEC codes match career requirements
+- **Adaptive Aptitude: 50% weight** - Cognitive strengths (numerical, logical, verbal, spatial, pattern recognition) alignment with career demands
+
+**Example calculations:**
+- Student with high I+R RIASEC + high logical/numerical aptitude → Science/Research = 90% (45% RIASEC + 45% aptitude)
+- Student with high I+R RIASEC + medium aptitude → Science/Research = 73% (45% RIASEC + 28% aptitude)
+- Student with high A RIASEC + high verbal/creative aptitude → Creative Arts = 88% (42% RIASEC + 46% aptitude)
+- Student with high A RIASEC + low verbal aptitude → Creative Arts = 68% (42% RIASEC + 26% aptitude)
+
+**YOU MUST CALCULATE UNIQUE SCORES FOR EACH STUDENT - DO NOT USE 85, 75, 65 FOR EVERY ASSESSMENT**
+
+${hasValidRiasec ? `
+- You MUST create PERSONALIZED cluster titles based on BOTH the student's RIASEC combination AND cognitive aptitude strengths
+- Match scores MUST combine RIASEC fit (50%) + Aptitude fit (50%)
+- Do NOT use generic single-letter titles like "Engineering & Technology" - make them specific to THIS student's combination
+- Do NOT recommend Music/Entertainment if 'A' is NOT in top 3
+- Do NOT recommend Science/Research if 'I' is NOT in top 3
+- Do NOT recommend Business/Sales if 'E' is NOT in top 3
+- COMBINE interests AND cognitive strengths creatively (e.g., R+A + high spatial = "Robotics & Creative Design", I+S + high verbal = "Medical Research & Patient Communication")
+- Use adaptive aptitude to differentiate within RIASEC categories (e.g., high A + high verbal → Writing/Content, high A + high spatial → Animation/Design)
+` : `
+- NO VALID RIASEC DATA - Base recommendations ONLY on adaptive aptitude cognitive strengths
+- Create personalized cluster titles based on cognitive profile (e.g., "Analytical Problem Solving" for high logical reasoning)
+- Match scores should reflect cognitive aptitude alignment (e.g., high numerical reasoning → Data Science/Finance)
+- Do NOT assign arbitrary RIASEC-based clusters
+- Explain in each cluster why the cognitive profile fits that career area
+`}
 
 ## Interest Explorer Responses:
 ${JSON.stringify(assessmentData.riasecAnswers, null, 2)}
@@ -134,18 +472,36 @@ You MUST use this mapping to calculate scores precisely:
 4. Calculate percentage for each type: (score / maxScore) × 100
 5. Identify top 3 types by score
 
-## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
-**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
+## ⚠️ CRITICAL: ARTISTIC (A) RIASEC + ADAPTIVE APTITUDE MATCHING ⚠️
+**IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST:**
 
-**MANDATORY for High Artistic (A) Students:**
-- Music & Entertainment: Music Producer, Sound Designer, DJ, Singer, Musician, Concert Manager
-- Visual Arts: Digital Artist, Animator, Art Director, Fashion Designer, Art Gallery Curator
-- Performing Arts: Actor, Dancer, Choreographer, Theatre Director, Voice Actor
-- Media & Content: YouTuber, Content Creator, Podcast Host, Film Director, Screenwriter
-- Design: Graphic Designer, Game Designer, Interior Designer, Brand Designer
+1. **Include at least ONE artistic career cluster**
+2. **Use ADAPTIVE APTITUDE to differentiate within artistic careers** (50% weight):
 
-**DO NOT default to only Technology/Science careers for Artistic students!**
-**The student's creative interests MUST be reflected in their career recommendations.**
+**ADAPTIVE APTITUDE → ARTISTIC CAREER MAPPING:**
+- **High Verbal + Pattern Recognition** → Writing, Content Creation, Journalism, Screenwriting, Podcasting
+- **High Spatial + Visual Processing** → Animation, 3D Design, Architecture, Game Design, Visual Effects
+- **High Logical + Creative** → Music Production, Sound Engineering, Creative Technology, UX Design
+- **High Numerical + Artistic** → Data Visualization, Infographics, Financial Design, Analytics Design
+- **High Pattern Recognition + Auditory** → Music Composition, DJ, Audio Engineering, Sound Design
+- **High Social + Artistic** → Performance Arts, Theatre, Teaching Arts, Art Therapy
+
+**EXAMPLES - DO NOT USE THESE AS TEMPLATES, CREATE UNIQUE RECOMMENDATIONS:**
+- Student: A+I RIASEC + High Spatial (85%) + High Logical (80%) → "Creative Technology & Design" (Animation, Game Development, VR Design)
+- Student: A+S RIASEC + High Verbal (90%) + Medium Spatial (60%) → "Storytelling & Communication" (Content Creation, Writing, Journalism)
+- Student: A+E RIASEC + High Logical (75%) + High Verbal (70%) → "Creative Business & Media" (Marketing, Brand Design, Social Media Strategy)
+
+**DO NOT:**
+- Use predefined lists as templates
+- Recommend same artistic careers for all high-A students
+- Ignore adaptive aptitude when selecting specific roles
+- Default to only Technology/Science careers for Artistic students
+
+**YOU MUST:**
+- Analyze their specific cognitive strengths from adaptive aptitude
+- Match artistic career types to their cognitive profile
+- Explain WHY their aptitude fits the recommended artistic careers
+- Create personalized cluster titles combining RIASEC + aptitude (e.g., "Visual Storytelling & Design" not just "Arts")
 
 ## Strengths & Character Responses (1-4 scale):
 ${JSON.stringify(assessmentData.bigFiveAnswers, null, 2)}
@@ -162,43 +518,120 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
 - Use this to personalize career recommendations and learning roadmap
 - NOT a scored test - just preferences
 
+${assessmentData.studentProfile ? `
+## ═══════════════════════════════════════════════════════════════════════════
+## STUDENT PROFILE DATA (REAL EXPERIENCE & ACHIEVEMENTS)
+## ═══════════════════════════════════════════════════════════════════════════
+
+**CRITICAL: This is REAL data about what the student has actually done. Use this to:**
+1. **Validate aptitude scores** - Projects/certificates confirm cognitive strengths
+2. **Personalize recommendations** - Suggest careers aligned with existing experience
+3. **Identify skill gaps** - Compare what they have vs what they need
+4. **Provide evidence** - Reference specific projects/skills in career recommendations
+
+${assessmentData.studentProfile.skills && assessmentData.studentProfile.skills.length > 0 ? `
+### Skills (${assessmentData.studentProfile.skills.length} total):
+${JSON.stringify(assessmentData.studentProfile.skills, null, 2)}
+
+**How to use**: Match skills to career requirements. High proficiency = stronger fit.
+` : ''}
+
+${assessmentData.studentProfile.projects && assessmentData.studentProfile.projects.length > 0 ? `
+### Projects (${assessmentData.studentProfile.projects.length} total):
+${JSON.stringify(assessmentData.studentProfile.projects, null, 2)}
+
+**How to use**: Projects show applied skills. Reference specific projects when explaining career fit.
+Example: "Your game development project demonstrates strong spatial reasoning and creative problem-solving, perfect for Animation & Game Design careers."
+` : ''}
+
+${assessmentData.studentProfile.certificates && assessmentData.studentProfile.certificates.length > 0 ? `
+### Certificates (${assessmentData.studentProfile.certificates.length} total):
+${JSON.stringify(assessmentData.studentProfile.certificates, null, 2)}
+
+**How to use**: Certificates validate skills and show commitment. Prioritize verified certificates.
+` : ''}
+
+${assessmentData.studentProfile.internships && assessmentData.studentProfile.internships.length > 0 ? `
+### Internships/Experience (${assessmentData.studentProfile.internships.length} total):
+${JSON.stringify(assessmentData.studentProfile.internships, null, 2)}
+
+**How to use**: Real work experience is the strongest predictor. Recommend careers aligned with their experience.
+` : ''}
+
+${assessmentData.studentProfile.education && assessmentData.studentProfile.education.length > 0 ? `
+### Education (${assessmentData.studentProfile.education.length} records):
+${JSON.stringify(assessmentData.studentProfile.education, null, 2)}
+
+**How to use**: Academic background shows preparation level and interests.
+` : ''}
+
+**WEIGHTING FORMULA WITH PROFILE DATA:**
+- RIASEC (interests): 35%
+- Adaptive Aptitude (cognitive): 35%
+- Profile Data (experience): 30%
+
+**If student has NO profile data, use original 50/50 split (RIASEC 50% + Aptitude 50%)**
+` : ''}
+
+**CRITICAL INSTRUCTIONS - NO FALLBACK VALUES ALLOWED:**
+1. You MUST generate COMPLETE, PERSONALIZED information for EVERY field
+2. NEVER use placeholder text like "Career name 1", "Brief description", "Example text"
+3. NEVER use generic descriptions - make everything specific to THIS student's results
+4. ALL role overviews, descriptions, and evidence MUST be fully generated based on their assessment
+5. If you cannot generate complete information, the response is INVALID
+
 **IMPORTANT**: Return ONLY a JSON object (no markdown). Use this EXACT structure for MIDDLE SCHOOL (6-8):
+
+**CRITICAL DATABASE COMPATIBILITY REQUIREMENTS:**
+1. riasec.code MUST be a 3-letter string (e.g., "RIA"), NOT an array
+2. aptitude.scores MUST exist with standard categories (verbal, numerical, abstract, spatial, clerical)
+3. aptitude.overallScore MUST be a number (0-100)
+4. bigFive MUST be a flat object with O, C, E, A, N keys (NO nested "scores" wrapper)
 
 {
   "riasec": {
+    "code": "RIA",
     "topThree": ["R", "I", "A"],
     "scores": { "R": 12, "I": 10, "A": 8, "S": 5, "E": 4, "C": 3 },
     "percentages": { "R": 60, "I": 50, "A": 40, "S": 25, "E": 20, "C": 15 },
     "maxScore": 20,
-    "interpretation": "Brief, encouraging explanation of what their interests mean for future careers"
+    "interpretation": "MUST BE PERSONALIZED - explain what THEIR specific interests mean for future careers based on their top RIASEC types"
   },
   "aptitude": {
     "scores": {
-      "numerical_reasoning": {"accuracy": 0, "description": "Math and number skills"},
-      "logical_reasoning": {"accuracy": 0, "description": "Problem-solving ability"},
-      "verbal_reasoning": {"accuracy": 0, "description": "Language and word skills"},
-      "spatial_reasoning": {"accuracy": 0, "description": "Visual thinking"},
-      "pattern_recognition": {"accuracy": 0, "description": "Finding patterns"}
+      "verbal": { "correct": 0, "total": 0, "percentage": 0 },
+      "numerical": { "correct": 0, "total": 0, "percentage": 0 },
+      "abstract": { "correct": 0, "total": 0, "percentage": 0 },
+      "spatial": { "correct": 0, "total": 0, "percentage": 0 },
+      "clerical": { "correct": 0, "total": 0, "percentage": 0 }
     },
-    "topStrengths": ["2-3 strengths from adaptive test results above"],
     "overallScore": 0,
-    "cognitiveProfile": "How they think and solve problems based on adaptive test",
+    "adaptiveTest": {
+      "numerical_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their math and number skills based on test results"},
+      "logical_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their problem-solving ability based on test results"},
+      "verbal_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their language and word skills based on test results"},
+      "spatial_reasoning": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their visual thinking based on test results"},
+      "data_interpretation": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their ability to analyze and understand data based on test results"},
+      "pattern_recognition": {"accuracy": 0, "description": "MUST BE PERSONALIZED - Describe their pattern-finding ability based on test results"}
+    },
+    "topStrengths": ["MUST BE REAL STRENGTHS - List 2-3 cognitive strengths from their adaptive test results (e.g., 'Strong numerical reasoning (85%)', 'Excellent pattern recognition (92%)')"],
+    "cognitiveProfile": "MUST BE PERSONALIZED - Explain how they think and solve problems based on their adaptive test performance",
     "adaptiveLevel": 0,
     "adaptiveConfidence": "high/medium/low"
   },
   "characterStrengths": {
-    "topStrengths": ["Top 3-4 character strengths from Strengths & Character section (e.g., Curiosity, Creativity, Perseverance)"],
+    "topStrengths": ["MUST BE REAL STRENGTHS - List their top 3-4 character strengths from assessment (e.g., Curiosity, Creativity, Perseverance, Leadership)"],
     "strengthDescriptions": [
-      {"name": "Strength 1", "rating": 4, "description": "How this shows in their responses"},
-      {"name": "Strength 2", "rating": 4, "description": "Evidence from assessment"}
+      {"name": "MUST BE REAL STRENGTH NAME", "rating": 4, "description": "MUST BE PERSONALIZED - Explain how this strength shows in their specific responses"},
+      {"name": "MUST BE REAL STRENGTH NAME", "rating": 4, "description": "MUST BE PERSONALIZED - Provide evidence from their assessment"}
     ],
-    "growthAreas": ["1-2 areas they rated lower that could be developed"]
+    "growthAreas": ["MUST BE REAL AREAS - List 1-2 areas they rated lower that could be developed"]
   },
   "learningStyle": {
-    "preferredMethods": ["How they learn best (visual, hands-on, discussion, etc.)"],
-    "workPreference": "Solo / With partner / In groups",
-    "teamRole": "Their natural role in group work",
-    "problemSolvingApproach": "How they handle challenges"
+    "preferredMethods": ["MUST BE SPECIFIC - List how they learn best based on their responses (visual, hands-on, discussion, reading, etc.)"],
+    "workPreference": "MUST BE SPECIFIC - Solo / With partner / In groups (based on their responses)",
+    "teamRole": "MUST BE SPECIFIC - Their natural role in group work based on assessment",
+    "problemSolvingApproach": "MUST BE SPECIFIC - How they handle challenges based on their responses"
   },
   "bigFive": {
     "O": 3.5, "C": 3.2, "E": 3.8, "A": 4.0, "N": 2.5,
@@ -206,200 +639,200 @@ ${JSON.stringify(assessmentData.knowledgeAnswers, null, 2)}
   },
   "workValues": {
     "topThree": [
-      {"value": "Inferred from interests and strengths (e.g., Helping Others, Creativity, Learning)", "score": 4.0},
-      {"value": "Second value", "score": 3.5},
-      {"value": "Third value", "score": 3.0}
+      {"value": "MUST BE REAL VALUE - Inferred from their interests and strengths (e.g., Helping Others, Creativity, Learning, Independence)", "score": 4.0},
+      {"value": "MUST BE REAL VALUE - Second value based on their profile", "score": 3.5},
+      {"value": "MUST BE REAL VALUE - Third value based on their profile", "score": 3.0}
     ]
   },
   "employability": {
-    "strengthAreas": ["2-3 soft skills they're showing (from character strengths and learning preferences)"],
-    "improvementAreas": ["1-2 areas to grow (phrase positively)"]
+    "strengthAreas": ["MUST BE REAL SKILLS - List 2-3 soft skills they're showing from character strengths and learning preferences"],
+    "improvementAreas": ["MUST BE REAL AREAS - List 1-2 areas to grow, phrased positively"]
   },
   "knowledge": { "score": 0, "correctCount": 0, "totalQuestions": 0 },
   "careerFit": {
     "clusters": [
       {
-        "title": "Broad career area #1 (e.g., Creative Arts & Design, Science & Technology, Helping People)",
+        "title": "MUST BE SPECIFIC - Name the actual career area based on their RIASEC top 3 (e.g., 'Music & Entertainment', 'Healthcare & Medicine', 'Technology & Engineering')",
         "matchScore": 85,
         "fit": "High",
-        "description": "2-3 sentences explaining WHY this career area matches their interests AND aptitude test results. Make it personal and specific.",
-        "examples": ["4-5 specific jobs in this area they can understand"],
-        "whatYoullDo": "Brief description of typical activities in this career area",
-        "whyItFits": "Connects to their RIASEC interests, adaptive aptitude strengths, and character traits",
+        "description": "MUST BE PERSONALIZED - Write 2-3 sentences explaining WHY this specific career area matches THEIR interests AND adaptive aptitude results. Reference their actual RIASEC scores and cognitive strengths.",
+        "examples": ["MUST BE REAL JOBS - List 4-5 actual, specific job titles in this career area that a middle schooler can understand (NOT 'Job 1', 'Job 2')"],
+        "whatYoullDo": "MUST BE DESCRIPTIVE - Explain what people actually DO in this career area day-to-day (NOT generic text)",
+        "whyItFits": "MUST CONNECT TO THEIR DATA - Explain how their specific RIASEC interests, adaptive aptitude strengths, and character traits make this a good fit",
         "evidence": {
-          "interest": "How their RIASEC scores support this path",
-          "aptitude": "Which adaptive test strengths (numerical, logical, verbal, spatial, pattern) make them a good fit",
-          "personality": "Character strengths that align with success in this field"
+          "interest": "MUST REFERENCE THEIR RIASEC - Explain which of their RIASEC types (R/I/A/S/E/C) and scores support this career path",
+          "aptitude": "MUST REFERENCE THEIR COGNITIVE STRENGTHS - Explain which adaptive test strengths (numerical/logical/verbal/spatial/pattern recognition) from their results make them suited for this",
+          "personality": "MUST REFERENCE THEIR CHARACTER - Explain which of their character strengths from the assessment align with success in this field"
         },
         "roles": {
-          "entry": ["3-4 jobs they could do right after school or training (e.g., Camp Counselor, Junior Designer)"],
-          "mid": ["3-4 jobs they could work towards (e.g., Art Teacher, Game Developer, Graphic Designer)"]
+          "entry": ["MUST BE REAL ENTRY JOBS - List 3-4 actual jobs they could do right after school or basic training (e.g., 'Camp Counselor', 'Junior Graphic Designer', 'Coding Tutor')"],
+          "mid": ["MUST BE REAL CAREER JOBS - List 3-4 actual jobs they could work towards with more experience (e.g., 'Art Teacher', 'Game Developer', 'UX Designer')"]
         },
-        "domains": ["Related areas like Design, Technology, Education, Entertainment"]
+        "domains": ["MUST BE REAL DOMAINS - List related career areas and industries (e.g., 'Design', 'Technology', 'Education', 'Entertainment')"]
       },
       {
-        "title": "Broad career area #2",
+        "title": "MUST BE SPECIFIC - Name the second career area based on their profile",
         "matchScore": 75,
         "fit": "Medium",
-        "description": "Specific explanation of how their assessment AND adaptive aptitude connects to this career path",
-        "examples": ["3-4 specific jobs"],
-        "whatYoullDo": "What work in this area looks like",
-        "whyItFits": "How their interests and cognitive strengths apply here",
+        "description": "MUST BE PERSONALIZED - Explain how THEIR specific assessment results AND adaptive aptitude connect to this career path",
+        "examples": ["MUST BE REAL JOBS - List 3-4 actual, specific job titles"],
+        "whatYoullDo": "MUST BE DESCRIPTIVE - Explain what work in this area actually looks like",
+        "whyItFits": "MUST CONNECT TO THEIR DATA - Explain how their interests and cognitive strengths apply to this area",
         "evidence": {
-          "interest": "Interest alignment",
-          "aptitude": "Relevant cognitive strengths from adaptive test",
-          "personality": "Personality fit"
+          "interest": "MUST REFERENCE THEIR RIASEC - Explain their interest alignment with specific scores",
+          "aptitude": "MUST REFERENCE THEIR COGNITIVE STRENGTHS - Explain relevant cognitive strengths from their adaptive test",
+          "personality": "MUST REFERENCE THEIR CHARACTER - Explain their personality fit with specific traits"
         },
         "roles": {
-          "entry": ["2-3 entry-level jobs"],
-          "mid": ["2-3 career-level jobs"]
+          "entry": ["MUST BE REAL ENTRY JOBS - List 2-3 actual entry-level jobs"],
+          "mid": ["MUST BE REAL CAREER JOBS - List 2-3 actual career-level jobs"]
         },
-        "domains": ["Related fields and industries"]
+        "domains": ["MUST BE REAL DOMAINS - List related fields and industries"]
       },
       {
-        "title": "Broad career area #3",
+        "title": "MUST BE SPECIFIC - Name the third career area to explore",
         "matchScore": 65,
         "fit": "Explore",
-        "description": "Why this could be interesting to explore based on their results",
-        "examples": ["3-4 jobs to consider"],
-        "whatYoullDo": "Overview of work in this area",
-        "whyItFits": "Potential connections to their interests",
+        "description": "MUST BE PERSONALIZED - Explain why this could be interesting to explore based on THEIR specific results",
+        "examples": ["MUST BE REAL JOBS - List 3-4 actual jobs to consider"],
+        "whatYoullDo": "MUST BE DESCRIPTIVE - Give a real overview of work in this area",
+        "whyItFits": "MUST CONNECT TO THEIR DATA - Explain potential connections to their interests and strengths",
         "evidence": {
-          "interest": "Interest connections",
-          "aptitude": "Transferable strengths",
-          "personality": "Personality considerations"
+          "interest": "MUST REFERENCE THEIR RIASEC - Explain interest connections with their scores",
+          "aptitude": "MUST REFERENCE THEIR COGNITIVE STRENGTHS - Explain transferable strengths from their test",
+          "personality": "MUST REFERENCE THEIR CHARACTER - Explain personality considerations from their assessment"
         },
         "roles": {
-          "entry": ["2-3 starter jobs"],
-          "mid": ["2-3 growth opportunities"]
+          "entry": ["MUST BE REAL ENTRY JOBS - List 2-3 actual starter jobs"],
+          "mid": ["MUST BE REAL CAREER JOBS - List 2-3 actual growth opportunities"]
         },
-        "domains": ["Related career areas"]
+        "domains": ["MUST BE REAL DOMAINS - List related career areas"]
       }
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "Career name 1", "salary": {"min": 3, "max": 6}},
-        {"name": "Career name 2", "salary": {"min": 3, "max": 6}},
-        {"name": "Career name 3", "salary": {"min": 3, "max": 6}}
+        {"name": "MUST BE REAL JOB TITLE - e.g., Game Developer", "salary": {"min": 5, "max": 12}},
+        {"name": "MUST BE REAL JOB TITLE - e.g., Animator", "salary": {"min": 4, "max": 10}},
+        {"name": "MUST BE REAL JOB TITLE - e.g., YouTuber/Content Creator", "salary": {"min": 3, "max": 15}}
       ],
       "mediumFit": [
-        {"name": "Career name 1", "salary": {"min": 3, "max": 5}},
-        {"name": "Career name 2", "salary": {"min": 3, "max": 5}}
+        {"name": "MUST BE REAL JOB TITLE - e.g., Graphic Designer", "salary": {"min": 3, "max": 8}},
+        {"name": "MUST BE REAL JOB TITLE - e.g., Teacher", "salary": {"min": 3, "max": 7}}
       ],
       "exploreLater": [
-        {"name": "Career name 1", "salary": {"min": 2, "max": 5}},
-        {"name": "Career name 2", "salary": {"min": 2, "max": 5}}
+        {"name": "MUST BE REAL JOB TITLE - e.g., Photographer", "salary": {"min": 2, "max": 8}},
+        {"name": "MUST BE REAL JOB TITLE - e.g., Chef", "salary": {"min": 2, "max": 6}}
       ]
     }
   },
   "skillGap": {
     "priorityA": [
-      {"skill": "Key foundational skill #1", "reason": "2-3 sentences explaining WHY this skill matters for their career interests", "targetLevel": "Beginner", "currentLevel": "Starting"},
-      {"skill": "Key foundational skill #2", "reason": "Specific explanation of how developing this skill supports their goals", "targetLevel": "Beginner", "currentLevel": "Starting"}
+      {"skill": "MUST BE REAL SKILL - Name a key foundational skill they need", "reason": "MUST BE PERSONALIZED - Write 2-3 sentences explaining WHY this specific skill matters for THEIR career interests", "targetLevel": "Beginner", "currentLevel": "Starting"},
+      {"skill": "MUST BE REAL SKILL - Name another key skill", "reason": "MUST BE PERSONALIZED - Explain how developing this skill supports THEIR specific goals", "targetLevel": "Beginner", "currentLevel": "Starting"}
     ],
     "priorityB": [
-      {"skill": "Additional skill to explore", "reason": "Clear explanation of why this skill is valuable", "targetLevel": "Beginner"}
+      {"skill": "MUST BE REAL SKILL - Name an additional skill to explore", "reason": "MUST BE PERSONALIZED - Explain why this skill is valuable for THEIR profile", "targetLevel": "Beginner"}
     ],
-    "currentStrengths": ["2-3 skills they're already showing"],
-    "recommendedTrack": "Clear learning path (e.g., Creative Exploration, STEM Discovery, People & Communication)"
+    "currentStrengths": ["MUST BE REAL STRENGTHS - List 2-3 skills they're already showing based on assessment"],
+    "recommendedTrack": "MUST BE SPECIFIC - Name a clear learning path based on their interests (e.g., 'Creative Exploration', 'STEM Discovery', 'People & Communication', 'Business & Leadership')"
   },
   "roadmap": {
     "twelveMonthJourney": {
       "phase1": {
         "months": "Months 1-3",
         "title": "Discover & Explore",
-        "goals": ["Learn about careers", "Try new activities", "Discover what you enjoy"],
-        "activities": ["2-3 specific things to do"],
-        "outcome": "What they'll achieve"
+        "goals": ["MUST BE SPECIFIC - List concrete goals like 'Learn about 3 different careers', 'Try 2 new activities'"],
+        "activities": ["MUST BE ACTIONABLE - List 2-3 specific things they can actually do"],
+        "outcome": "MUST BE CLEAR - Describe what they'll achieve by end of phase"
       },
       "phase2": {
         "months": "Months 4-6",
         "title": "Learn & Practice",
-        "goals": ["Build basic skills", "Join clubs or groups", "Start small projects"],
-        "activities": ["2-3 specific activities"],
-        "outcome": "Skills they'll gain"
+        "goals": ["MUST BE SPECIFIC - List concrete goals like 'Build 2 basic skills', 'Join 1 club'"],
+        "activities": ["MUST BE ACTIONABLE - List 2-3 specific activities they can do"],
+        "outcome": "MUST BE CLEAR - Describe skills they'll gain"
       },
       "phase3": {
         "months": "Months 7-9",
         "title": "Create & Share",
-        "goals": ["Make something", "Share with others", "Get feedback"],
-        "activities": ["2-3 hands-on projects"],
-        "outcome": "What they'll create"
+        "goals": ["MUST BE SPECIFIC - List concrete goals like 'Complete 1 project', 'Share work with 5 people'"],
+        "activities": ["MUST BE ACTIONABLE - List 2-3 hands-on projects they can do"],
+        "outcome": "MUST BE CLEAR - Describe what they'll create"
       },
       "phase4": {
         "months": "Months 10-12",
         "title": "Grow & Reflect",
-        "goals": ["Review progress", "Set new goals", "Plan next steps"],
-        "activities": ["2-3 reflection activities"],
-        "outcome": "Path forward"
+        "goals": ["MUST BE SPECIFIC - List concrete goals like 'Review progress', 'Set 3 new goals'"],
+        "activities": ["MUST BE ACTIONABLE - List 2-3 reflection activities"],
+        "outcome": "MUST BE CLEAR - Describe their path forward"
       }
     },
     "projects": [
       {
-        "title": "Beginner-friendly project #1",
-        "description": "What they'll do (2-3 sentences, make it exciting and doable)",
-        "skills": ["Skills they'll learn"],
+        "title": "MUST BE SPECIFIC - Name a beginner-friendly project related to their interests",
+        "description": "MUST BE EXCITING - Describe what they'll do in 2-3 sentences, make it doable and exciting for a middle schooler",
+        "skills": ["MUST BE REAL SKILLS - List skills they'll learn from this project"],
         "timeline": "2-3 months",
         "difficulty": "Beginner",
-        "purpose": "Why this project matters",
-        "output": "What they'll have when done",
-        "steps": ["Step 1: Start here", "Step 2: Then do this", "Step 3: Finish with this"]
+        "purpose": "MUST BE CLEAR - Explain why this project matters for their development",
+        "output": "MUST BE SPECIFIC - Describe what they'll have when done",
+        "steps": ["MUST BE ACTIONABLE - Step 1: Specific action to start", "MUST BE ACTIONABLE - Step 2: Next specific action", "MUST BE ACTIONABLE - Step 3: Final action"]
       },
       {
-        "title": "Project #2",
-        "description": "Another age-appropriate activity",
-        "skills": ["Skills to build"],
+        "title": "MUST BE SPECIFIC - Name another age-appropriate project",
+        "description": "MUST BE EXCITING - Describe another engaging activity",
+        "skills": ["MUST BE REAL SKILLS - List skills to build"],
         "timeline": "2-3 months",
         "difficulty": "Beginner",
-        "purpose": "Learning goal",
-        "output": "Final product",
-        "steps": ["3-4 simple steps"]
+        "purpose": "MUST BE CLEAR - Explain the learning goal",
+        "output": "MUST BE SPECIFIC - Describe the final product",
+        "steps": ["MUST BE ACTIONABLE - 3-4 simple, specific steps"]
       },
       {
-        "title": "Project #3",
-        "description": "Third exploration project",
-        "skills": ["More skills"],
+        "title": "MUST BE SPECIFIC - Name a third exploration project",
+        "description": "MUST BE EXCITING - Describe the third project",
+        "skills": ["MUST BE REAL SKILLS - List more skills"],
         "timeline": "3-4 months",
         "difficulty": "Beginner",
-        "purpose": "Why it's valuable",
-        "output": "What they'll create",
-        "steps": ["Clear action steps"]
+        "purpose": "MUST BE CLEAR - Explain why it's valuable",
+        "output": "MUST BE SPECIFIC - Describe what they'll create",
+        "steps": ["MUST BE ACTIONABLE - Clear, specific action steps"]
       }
     ],
     "internship": {
-      "types": ["Job shadowing opportunities", "School clubs to join", "Volunteer activities", "Summer camps"],
-      "timing": "When to pursue these (school year, summer, etc.)",
+      "types": ["MUST BE SPECIFIC - List actual opportunities like 'Shadow a graphic designer', 'Join coding club', 'Volunteer at animal shelter'"],
+      "timing": "MUST BE SPECIFIC - Explain when to pursue these (e.g., 'Summer break for camps', 'School year for clubs')",
       "preparation": {
-        "resume": "Not needed yet - focus on exploring",
-        "portfolio": "Keep notes about what you try and learn",
-        "interview": "Practice talking about what interests you"
+        "resume": "MUST BE AGE-APPROPRIATE - Advice for middle schoolers (e.g., 'Not needed yet - focus on exploring')",
+        "portfolio": "MUST BE ACTIONABLE - Specific advice (e.g., 'Keep a journal of what you try and learn')",
+        "interview": "MUST BE PRACTICAL - Real advice (e.g., 'Practice talking about what interests you and why')"
       }
     },
     "exposure": {
-      "activities": ["Specific clubs, field trips, events to attend"],
-      "certifications": ["Age-appropriate certificates to earn (e.g., Online badges, Typing certification, Basic computer skills)"],
-      "resources": ["Books to read", "Websites to explore", "Videos to watch"]
+      "activities": ["MUST BE SPECIFIC - List actual clubs, field trips, events they can attend"],
+      "certifications": ["MUST BE REAL - List age-appropriate certificates (e.g., 'Typing.com Certificate', 'Khan Academy Badges', 'Scratch Programming Certificate')"],
+      "resources": ["MUST BE SPECIFIC - List actual books, websites, videos they can use"]
     }
   },
   "finalNote": {
-    "advantage": "Their standout strength or characteristic based on the assessment",
-    "growthFocus": "One clear, encouraging next step"
+    "advantage": "MUST BE PERSONALIZED - Describe their standout strength or characteristic based on THEIR assessment",
+    "growthFocus": "MUST BE ACTIONABLE - Provide one clear, encouraging next step specific to THEIR profile"
   },
   "profileSnapshot": {
     "keyPatterns": {
-      "enjoyment": "What they enjoy based on interest responses (RIASEC top types)",
-      "strength": "Their character strengths from the assessment",
-      "workStyle": "How they work and learn best (from personality traits)",
-      "motivation": "What motivates them (from work values)"
+      "enjoyment": "MUST BE PERSONALIZED - Describe what they enjoy based on their RIASEC top types",
+      "strength": "MUST BE PERSONALIZED - Describe their character strengths from their assessment",
+      "workStyle": "MUST BE PERSONALIZED - Describe how they work and learn best from their personality traits",
+      "motivation": "MUST BE PERSONALIZED - Describe what motivates them from their work values"
     },
     "aptitudeStrengths": [
-      {"name": "Character strength #1 (e.g., Curiosity, Creativity, Perseverance)", "description": "How this shows up in their responses"},
-      {"name": "Character strength #2", "description": "Evidence from assessment"}
+      {"name": "MUST BE REAL STRENGTH - Name a character strength (e.g., Curiosity, Creativity, Perseverance)", "description": "MUST BE PERSONALIZED - Explain how this shows up in THEIR responses"},
+      {"name": "MUST BE REAL STRENGTH - Name another character strength", "description": "MUST BE PERSONALIZED - Provide evidence from THEIR assessment"}
     ],
-    "interestHighlights": ["Top 2-3 interest areas from RIASEC"],
-    "personalityInsights": ["2-3 key personality traits that impact career fit"]
+    "interestHighlights": ["MUST BE SPECIFIC - List their top 2-3 interest areas from THEIR RIASEC results"],
+    "personalityInsights": ["MUST BE PERSONALIZED - List 2-3 key personality traits from THEIR assessment that impact career fit"]
   },
-  "overallSummary": "3-4 sentences: Affirm their interests, celebrate their strengths, paint an exciting picture of possible futures, encourage continued exploration"
+  "overallSummary": "MUST BE PERSONALIZED - Write 3-4 sentences that: 1) Affirm THEIR specific interests, 2) Celebrate THEIR unique strengths, 3) Paint an exciting picture of THEIR possible futures, 4) Encourage continued exploration"
 }
 
 **JOB ROLE GUIDELINES FOR MIDDLE SCHOOL (Gen Z & Gen Alpha Focus):**
@@ -471,6 +904,22 @@ SOCIAL + CREATIVE HYBRID:
 - For studious students: Emphasize careers requiring dedication, discipline, and long-term preparation
 
 CRITICAL: You MUST provide exactly 3 career clusters with ALL fields filled including evidence, roles, and domains!
+
+**⚠️ VALIDATION CHECKLIST - YOUR RESPONSE WILL BE REJECTED IF:**
+1. Any field contains placeholder text like "Career name", "Brief description", "Example", "Job 1", etc.
+2. Any "title" field is generic like "Broad career area #1" instead of specific like "Music & Entertainment"
+3. Any "description" field is less than 2 complete sentences or doesn't reference their specific RIASEC/aptitude scores
+4. Any "evidence" fields don't reference their actual assessment data (RIASEC scores, cognitive strengths, character traits)
+5. Any "examples" or "roles" arrays contain generic job titles instead of real, specific careers
+6. Any "whatYoullDo" or "whyItFits" fields are generic instead of personalized to their profile
+7. The "specificOptions" contains "Career name 1" instead of actual job titles
+
+**BEFORE RETURNING YOUR RESPONSE:**
+- Verify EVERY career cluster has a specific, descriptive title (NOT "Broad career area #1")
+- Verify EVERY description references their actual RIASEC scores and adaptive aptitude results
+- Verify EVERY job title in examples/roles is a real, specific career (NOT "Career name 1")
+- Verify ALL evidence fields reference their actual assessment data
+- If ANY field contains placeholder text, REGENERATE that field with real, personalized content
 
 **⚠️ FINAL CHECK - ARTISTIC CAREER REQUIREMENT:**
 Before returning your response, verify:

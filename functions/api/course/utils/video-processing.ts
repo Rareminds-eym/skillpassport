@@ -12,7 +12,7 @@ import type {
   QuizQuestion,
   Flashcard
 } from '../types/video';
-import { callOpenRouterWithRetry } from '../../shared/ai-config';
+import { callOpenRouterWithRetry, repairAndParseJSON } from '../../shared/ai-config';
 
 /**
  * Generate comprehensive video summary with AI
@@ -35,19 +35,19 @@ Return JSON: {"summary": "...", "keyPoints": ["..."], "chapters": [{"timestamp":
 
   try {
     const content = await callOpenRouterWithRetry(
-      env.VITE_OPENROUTER_API_KEY,
+      env.OPENROUTER_API_KEY,
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       {
-        models: ['openai/gpt-4o-mini'],
+        models: ['google/gemini-2.0-flash-exp:free', 'openai/gpt-4o-mini'],
         maxTokens: 4000,
         temperature: 0.3
       }
     );
     
-    const parsed = JSON.parse(content);
+    const parsed = repairAndParseJSON(content, true);
     return {
       summary: parsed.summary || '',
       keyPoints: parsed.keyPoints || [],
@@ -79,19 +79,19 @@ Return JSON: {"quotes": [{"text": "exact quote", "timestamp": seconds, "context"
 
   try {
     const content = await callOpenRouterWithRetry(
-      env.VITE_OPENROUTER_API_KEY,
+      env.OPENROUTER_API_KEY,
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       {
-        models: ['openai/gpt-4o-mini'],
+        models: ['google/gemini-2.0-flash-exp:free', 'openai/gpt-4o-mini'],
         maxTokens: 2000,
         temperature: 0.3
       }
     );
     
-    const parsed = JSON.parse(content);
+    const parsed = repairAndParseJSON(content, true);
     return parsed.quotes || [];
   } catch (error) {
     console.error('Failed to extract notable quotes:', error);
@@ -115,19 +115,19 @@ Return JSON: {"questions": [{"question": "...", "options": ["A", "B", "C", "D"],
 
   try {
     const content = await callOpenRouterWithRetry(
-      env.VITE_OPENROUTER_API_KEY,
+      env.OPENROUTER_API_KEY,
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       {
-        models: ['openai/gpt-4o-mini'],
+        models: ['google/gemini-2.0-flash-exp:free', 'openai/gpt-4o-mini'],
         maxTokens: 3000,
         temperature: 0.3
       }
     );
     
-    const parsed = JSON.parse(content);
+    const parsed = repairAndParseJSON(content, true);
     return parsed.questions || [];
   } catch (error) {
     console.error('Failed to generate quiz questions:', error);
@@ -151,19 +151,19 @@ Return JSON: {"flashcards": [{"front": "Question or term", "back": "Answer or de
 
   try {
     const content = await callOpenRouterWithRetry(
-      env.VITE_OPENROUTER_API_KEY,
+      env.OPENROUTER_API_KEY,
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
       {
-        models: ['openai/gpt-4o-mini'],
+        models: ['google/gemini-2.0-flash-exp:free', 'openai/gpt-4o-mini'],
         maxTokens: 3000,
         temperature: 0.3
       }
     );
     
-    const parsed = JSON.parse(content);
+    const parsed = repairAndParseJSON(content, true);
     return parsed.flashcards || [];
   } catch (error) {
     console.error('Failed to generate flashcards:', error);

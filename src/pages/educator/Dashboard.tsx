@@ -688,7 +688,7 @@ const Dashboard = () => {
 
           {/* Analytics Module */}
           <div
-            onClick={() => navigate('/educator/analytics')}
+            onClick={() => navigate('/educator/reports')}
             className="group bg-white rounded-lg border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-purple-200 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-4">
@@ -1016,7 +1016,7 @@ const Dashboard = () => {
               </button>
 
               <button
-                onClick={() => navigate('/educator/import')}
+                onClick={() => navigate('/educator/students')}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-purple-200 hover:bg-purple-50 transition-all group"
                 data-testid="quick-action-import"
               >

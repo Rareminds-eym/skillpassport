@@ -37,7 +37,7 @@ export {
 // Grade Level Types
 // ============================================
 
-export type GradeLevel = 
+export type GradeLevel =
   | 'middle'           // Grades 6-8
   | 'highschool'       // Grades 9-10
   | 'higher_secondary' // Grades 11-12
@@ -75,7 +75,7 @@ export interface CategoryOption {
 // Question Types
 // ============================================
 
-export type QuestionType = 
+export type QuestionType =
   | 'mcq'           // Multiple choice
   | 'likert'        // Rating scale
   | 'sjt'           // Situational judgment
@@ -129,11 +129,11 @@ export interface SJTAnswer {
   worst: string;
 }
 
-export type AnswerValue = 
-  | number 
-  | string 
-  | string[] 
-  | SJTAnswer 
+export type AnswerValue =
+  | number
+  | string
+  | string[]
+  | SJTAnswer
   | undefined;
 
 export interface Answers {
@@ -149,7 +149,7 @@ export type AttemptStatus = 'in_progress' | 'completed' | 'abandoned';
 export interface AssessmentAttempt {
   id: string;
   student_id: string;
-  stream_id: string;
+  stream_id: string | null;
   grade_level: GradeLevel;
   status: AttemptStatus;
   current_section_index: number;
@@ -201,12 +201,28 @@ export interface BigFiveScores {
   N?: number; // Neuroticism
 }
 
+export interface CareerClusterEvidence {
+  interest?: string;
+  aptitude?: string;
+  personality?: string;
+  values?: string;
+  employability?: string;
+  adaptiveAptitude?: string;
+}
+
 export interface CareerCluster {
   title: string;
   description: string;
   matchScore: number;
+  fit?: 'High' | 'Medium' | 'Explore';
   whyItFits?: string;
   whatYoullDo?: string;
+  evidence?: CareerClusterEvidence;
+  roles?: {
+    entry?: string[];
+    mid?: string[];
+  };
+  domains?: string[];
 }
 
 export interface CareerFitResult {
@@ -369,7 +385,7 @@ export interface Education {
 // Assessment Flow State Types
 // ============================================
 
-export type AssessmentFlowStatus = 
+export type AssessmentFlowStatus =
   | 'idle'
   | 'checkingEligibility'
   | 'gradeSelection'
