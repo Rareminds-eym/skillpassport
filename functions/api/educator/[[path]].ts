@@ -19,8 +19,8 @@ export const onRequest: PagesFunction = async (context) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const pathSegments = context.params.path as string[] | undefined;
-  const path = '/' + (Array.isArray(pathSegments) ? pathSegments.join('/') : '');
+  const pathSegments = context.params.path;
+  const path = '/' + (Array.isArray(pathSegments) ? pathSegments.join('/') : pathSegments || '');
 
   // Validate environment
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -39,8 +39,8 @@ export const onRequest: PagesFunction = async (context) => {
 
     // Health check with KV validation
     if (path === '/health') {
-      const kvStatus = env.EDUCATOR_AI_RATE_LIMITER ? 'connected' : 'missing (using in-memory fallback)';
-      const isProduction = !!env.EDUCATOR_AI_RATE_LIMITER;
+      const kvStatus = (env as any).EDUCATOR_AI_RATE_LIMITER ? 'connected' : 'missing (using in-memory fallback)';
+      const isProduction = !!(env as any).EDUCATOR_AI_RATE_LIMITER;
       
       return jsonResponse({
         status: 'ok',
