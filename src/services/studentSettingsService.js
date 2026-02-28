@@ -96,6 +96,14 @@ export const getStudentSettingsByEmail = async (email) => {
           city,
           state,
           organization_type
+        ),
+        university:organizations!students_universityid_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
         )
       `)
       .eq('email', email)
