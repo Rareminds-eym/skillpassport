@@ -37,13 +37,24 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleEducatorChat(request, env as any);
     }
 
-    // Health check
+    // Health check with KV validation
     if (path === '/health') {
+      const kvStatus = env.EDUCATOR_AI_RATE_LIMITER ? 'connected' : 'missing (using in-memory fallback)';
+      const isProduction = !!env.EDUCATOR_AI_RATE_LIMITER;
+      
       return jsonResponse({
         status: 'ok',
         service: 'educator-api',
         version: '1.0-pages-function',
         endpoints: ['/chat'],
+        rateLimiter: {
+          kv: kvStatus,
+          production: isProduction
+        },
+        environment: {
+          supabase: !!env.SUPABASE_URL,
+          openRouter: !!getAPIKeys(env as any).openRouter
+        },
         timestamp: new Date().toISOString()
       });
     }

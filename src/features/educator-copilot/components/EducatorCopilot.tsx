@@ -5,6 +5,11 @@ import { educatorWelcomeConfig, educatorChatConfig } from '../config/educatorCon
 import { StudentInsightCard } from './EducatorCards';
 import { supabase } from '../../../lib/supabaseClient';
 
+// Development-only logging
+const isDev = import.meta.env.DEV;
+const devLog = (...args: any[]) => isDev && console.log(...args);
+const devWarn = (...args: any[]) => isDev && console.warn(...args);
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -20,6 +25,7 @@ const EducatorCopilot: React.FC = () => {
   const [showWelcome, setShowWelcome] = useState(true);
   const [isTyping, setIsTyping] = useState(false);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -29,6 +35,7 @@ const EducatorCopilot: React.FC = () => {
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<number | null>(null);
   const lastScrollTopRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = (force = false) => {
     if (force || !userScrolledUp) {
@@ -144,6 +151,12 @@ const EducatorCopilot: React.FC = () => {
   }, [isTyping]);
 
   const stopTyping = () => {
+    // Abort ongoing fetch request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
@@ -173,6 +186,10 @@ const EducatorCopilot: React.FC = () => {
     setShowWelcome(false);
     setUserScrolledUp(false);
 
+    // Create abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
       // Get session token
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -183,7 +200,7 @@ const EducatorCopilot: React.FC = () => {
 
       const id = (Date.now() + 1).toString();
 
-      // Call backend API with streaming
+      // Call backend API with streaming and abort signal
       const response = await fetch('/api/educator/chat', {
         method: 'POST',
         headers: {
@@ -192,8 +209,9 @@ const EducatorCopilot: React.FC = () => {
         },
         body: JSON.stringify({
           message: userInput,
-          conversationId: undefined // TODO: Track conversation ID
-        })
+          conversationId: conversationId // Track conversation ID across messages
+        }),
+        signal: abortController.signal
       });
 
       if (!response.ok) {
@@ -256,8 +274,16 @@ const EducatorCopilot: React.FC = () => {
             }
 
             if (parsed.done) {
-              // Stream complete
-              console.log('Stream complete');
+              // Stream complete - save conversation ID for next message
+              if (parsed.conversationId) {
+                setConversationId(parsed.conversationId);
+                devLog('Stream complete - ConvID:', parsed.conversationId.slice(0, 8));
+              }
+            }
+
+            if (parsed.warning) {
+              // Non-fatal warning from backend
+              devWarn('Backend warning:', parsed.warning);
             }
 
             if (parsed.error) {
@@ -269,6 +295,13 @@ const EducatorCopilot: React.FC = () => {
         }
       }
     } catch (error) {
+      // Check if error was due to abort
+      if ((error as Error).name === 'AbortError') {
+        devLog('Request aborted by user');
+        // Don't show error message for user-initiated abort
+        return;
+      }
+      
       console.error('Educator AI Error:', error);
       
       const errorMessage: Message = {
@@ -282,6 +315,7 @@ const EducatorCopilot: React.FC = () => {
     } finally {
       setLoading(false);
       setIsTyping(false);
+      abortControllerRef.current = null;
       if (typingTimerRef.current) {
         clearTimeout(typingTimerRef.current);
         typingTimerRef.current = null;
@@ -408,7 +442,7 @@ const EducatorCopilot: React.FC = () => {
                             priority={card.data.priority}
                             actionItems={card.data.actionItems}
                             onViewProfile={() => {
-                              console.log('View profile:', card.data.studentId);
+                              devLog('View profile:', card.data.studentId);
                               // TODO: Navigate to student profile
                             }}
                           />

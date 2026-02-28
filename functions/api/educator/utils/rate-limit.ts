@@ -23,6 +23,8 @@
  * @module rate-limit
  */
 
+import { logger } from '../../shared/logger';
+
 interface RateLimitData {
   count: number;
   resetAt: number;
@@ -72,7 +74,7 @@ export async function checkRateLimit(userId: string, env?: any): Promise<boolean
     try {
       return await checkRateLimitKV(userId, env.EDUCATOR_AI_RATE_LIMITER);
     } catch (error) {
-      console.error('[Rate Limit] KV error, falling back to in-memory:', error);
+      logger.error('[Rate Limit] KV error, falling back to in-memory:', error);
       // Fall through to in-memory as backup
     }
   }
@@ -106,14 +108,14 @@ async function checkRateLimitKV(userId: string, kv: any): Promise<boolean> {
   if (!data || now > data.resetAt) {
     data = { count: 1, resetAt: now + RATE_WINDOW };
     await kv.put(key, JSON.stringify(data), { expirationTtl: 120 }); // 2min TTL for cleanup
-    console.log(`[Rate Limit KV] ${userId}: 1/${RATE_LIMIT} requests used`);
+    logger.log(`[Rate Limit KV] ${userId}: 1/${RATE_LIMIT} requests used`);
     return true;
   }
 
   // Case 2: Limit exceeded - reject request
   if (data.count >= RATE_LIMIT) {
     const timeLeft = Math.ceil((data.resetAt - now) / 1000);
-    console.log(`[Rate Limit KV] ${userId}: BLOCKED - ${data.count}/${RATE_LIMIT} requests. Reset in ${timeLeft}s`);
+    logger.log(`[Rate Limit KV] ${userId}: BLOCKED - ${data.count}/${RATE_LIMIT} requests. Reset in ${timeLeft}s`);
     return false;
   }
 
@@ -121,7 +123,7 @@ async function checkRateLimitKV(userId: string, kv: any): Promise<boolean> {
   data.count++;
   await kv.put(key, JSON.stringify(data), { expirationTtl: 120 });
   const timeLeft = Math.ceil((data.resetAt - now) / 1000);
-  console.log(`[Rate Limit KV] ${userId}: ${data.count}/${RATE_LIMIT} requests used. Reset in ${timeLeft}s`);
+  logger.log(`[Rate Limit KV] ${userId}: ${data.count}/${RATE_LIMIT} requests used. Reset in ${timeLeft}s`);
   return true;
 }
 
@@ -152,21 +154,21 @@ function checkRateLimitLocal(userId: string): boolean {
   // Case 1: No existing data or window expired - start fresh
   if (!userLimit || now > userLimit.resetAt) {
     rateLimitCache.set(userId, { count: 1, resetAt: now + RATE_WINDOW });
-    console.log(`[Rate Limit Local] ${userId}: 1/${RATE_LIMIT} requests used`);
+    logger.log(`[Rate Limit Local] ${userId}: 1/${RATE_LIMIT} requests used`);
     return true;
   }
 
   // Case 2: Limit exceeded - reject request
   if (userLimit.count >= RATE_LIMIT) {
     const timeLeft = Math.ceil((userLimit.resetAt - now) / 1000);
-    console.log(`[Rate Limit Local] ${userId}: BLOCKED - ${userLimit.count}/${RATE_LIMIT} requests. Reset in ${timeLeft}s`);
+    logger.log(`[Rate Limit Local] ${userId}: BLOCKED - ${userLimit.count}/${RATE_LIMIT} requests. Reset in ${timeLeft}s`);
     return false;
   }
 
   // Case 3: Within limit - increment and allow
   userLimit.count++;
   const timeLeft = Math.ceil((userLimit.resetAt - now) / 1000);
-  console.log(`[Rate Limit Local] ${userId}: ${userLimit.count}/${RATE_LIMIT} requests used. Reset in ${timeLeft}s`);
+  logger.log(`[Rate Limit Local] ${userId}: ${userLimit.count}/${RATE_LIMIT} requests used. Reset in ${timeLeft}s`);
   return true;
 }
 
