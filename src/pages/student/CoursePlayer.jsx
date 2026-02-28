@@ -28,6 +28,7 @@ import { generateCourseCertificate } from '../../services/certificateService';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
 import { courseProgressService } from '../../services/courseProgressService';
 import { fileService } from '../../services/fileService';
+import { getAuthenticatedMediaUrl, needsAuthentication } from '../../services/authenticatedMediaService';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -671,34 +672,6 @@ const CoursePlayer = () => {
     setLessonResources([]);
     setVideoLoading(true);
 
-    // Helper function to extract R2 file key from presigned URL
-    const extractFileKeyFromUrl = (url) => {
-      if (!url) return null;
-      try {
-        // Check if it's an R2 presigned URL
-        if (url.includes('r2.cloudflarestorage.com')) {
-          const urlObj = new URL(url);
-          const pathname = urlObj.pathname;
-          // Remove leading slash to get the file key
-          // URL format: /courses/courseId/lessons/lessonId/filename.mp4
-          const fileKey = pathname.replace(/^\//, '');
-          if (fileKey.startsWith('courses/')) {
-            return fileKey;
-          }
-        }
-        // Check if URL contains courses/ path (might be different R2 URL format)
-        if (url.includes('/courses/')) {
-          const match = url.match(/\/?(courses\/[^?]+)/);
-          if (match) {
-            return match[1];
-          }
-        }
-      } catch (e) {
-        console.log('Could not parse URL:', e);
-      }
-      return null;
-    };
-
     try {
       // Check if lesson has resources from educator upload
       if (currentLesson.resources && currentLesson.resources.length > 0) {
@@ -719,36 +692,25 @@ const CoursePlayer = () => {
           } else if (videoResource.url) {
             console.log('🎬 Video resource URL for lesson:', currentLesson.title, ':', videoResource.url);
             
-            // Try to extract file key and get fresh presigned URL
-            const fileKey = extractFileKeyFromUrl(videoResource.url);
-            console.log('Extracted file key:', fileKey);
-            
-            if (fileKey) {
-              try {
-                console.log('Fetching fresh URL for file key:', fileKey);
-                const freshUrl = await fileService.getFileUrl(fileKey);
-                console.log('🎬 Setting fresh video URL for lesson:', currentLesson.title);
-                setLessonVideoUrl(freshUrl);
-              } catch (error) {
-                console.error('Error fetching fresh video URL:', error);
-                // Don't fallback to expired URL - it won't work anyway
-                console.log('Could not refresh video URL - video may not be available');
+            // Check if URL needs authentication
+            if (needsAuthentication(videoResource.url)) {
+              console.log('🔒 Getting authenticated URL for video');
+              const authUrl = await getAuthenticatedMediaUrl(
+                videoResource.url,
+                courseId,
+                currentLesson.id
+              );
+              
+              if (authUrl) {
+                console.log('🎬 Setting authenticated video URL for lesson:', currentLesson.title);
+                setLessonVideoUrl(authUrl);
+              } else {
+                console.error('Failed to get authenticated URL for video');
               }
-            } else if (videoResource.url.startsWith('courses/')) {
-              // It's already a file key
-              try {
-                console.log('URL is already a file key, fetching fresh URL');
-                const freshUrl = await fileService.getFileUrl(videoResource.url);
-                setLessonVideoUrl(freshUrl);
-              } catch (error) {
-                console.error('Error fetching fresh video URL:', error);
-              }
-            } else if (!videoResource.url.includes('r2.cloudflarestorage.com')) {
-              // Use the stored URL directly (external link or other non-R2 URL)
-              console.log('Using external URL directly');
-              setLessonVideoUrl(videoResource.url);
             } else {
-              console.log('Could not extract file key from R2 URL');
+              // External URL or already authenticated
+              console.log('Using URL directly (no auth needed)');
+              setLessonVideoUrl(videoResource.url);
             }
           }
         }
@@ -759,18 +721,27 @@ const CoursePlayer = () => {
         );
 
         if (otherResources.length > 0) {
-          // Also refresh URLs for other resources if they're R2 files
+          // Get authenticated URLs for R2 resources
           const refreshedResources = await Promise.all(
             otherResources.map(async (r) => {
               let url = r.url;
-              const fileKey = extractFileKeyFromUrl(r.url);
-              if (fileKey && r.type !== 'youtube' && r.type !== 'link') {
+              
+              // Get authenticated URL for R2 files
+              if (needsAuthentication(r.url) && r.type !== 'youtube' && r.type !== 'link') {
                 try {
-                  url = await fileService.getFileUrl(fileKey);
+                  const authUrl = await getAuthenticatedMediaUrl(
+                    r.url,
+                    courseId,
+                    currentLesson.id
+                  );
+                  if (authUrl) {
+                    url = authUrl;
+                  }
                 } catch (e) {
-                  console.log('Could not refresh URL for resource:', r.name);
+                  console.log('Could not get authenticated URL for resource:', r.name);
                 }
               }
+              
               return {
                 title: r.name,
                 url: url,

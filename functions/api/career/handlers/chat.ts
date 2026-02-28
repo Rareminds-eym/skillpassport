@@ -50,7 +50,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
   const studentId = user.id;
 
   // Rate limiting
-  if (!checkRateLimit(studentId)) {
+  if (!await checkRateLimit(studentId, env)) {
     return jsonResponse({ error: 'Too many requests. Please wait a moment.' }, 429);
   }
 

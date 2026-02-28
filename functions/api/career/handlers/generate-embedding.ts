@@ -73,7 +73,7 @@ export async function handleGenerateEmbedding(
   const { user } = auth;
   const studentId = user.id;
 
-  if (!checkRateLimit(studentId)) {
+  if (!await checkRateLimit(studentId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded' }, 429);
   }
 
