@@ -418,6 +418,8 @@ interface UseStudentsOptions {
   classIds?: string[]; // Add class IDs for filtering
   educatorType?: 'school' | 'college' | null; // Add educator type
   userId?: string | null; // Add user ID for college lecturers
+  sortBy?: 'name' | 'updated_at' | 'created_at'; // Add sorting option
+  sortOrder?: 'asc' | 'desc'; // Add sort order
 }
 
 export function useStudents(options?: UseStudentsOptions) {
@@ -429,6 +431,8 @@ export function useStudents(options?: UseStudentsOptions) {
   const classIds = options?.classIds
   const educatorType = options?.educatorType
   const userId = options?.userId
+  const sortBy = options?.sortBy || 'updated_at'
+  const sortOrder = options?.sortOrder || 'desc'
 
   const fetchStudents = async () => {
     setLoading(true)
@@ -626,7 +630,7 @@ export function useStudents(options?: UseStudentsOptions) {
       }
 
       const { data, error } = await query
-        .order('updated_at', { ascending: false })
+        .order(sortBy, { ascending: sortOrder === 'asc' })
         .limit(500)
 
       if (error) throw error
@@ -655,7 +659,7 @@ export function useStudents(options?: UseStudentsOptions) {
       isMounted = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, collegeId, classIds, educatorType, userId])
+  }, [schoolId, collegeId, classIds, educatorType, userId, sortBy, sortOrder])
 
   const stats = useMemo(() => ({ count: data.length }), [data])
 

@@ -286,7 +286,9 @@ const StudentsPage = () => {
     collegeId: educatorCollege?.id,
     classIds: (educatorType === 'school' && educatorRole !== 'admin') || (educatorType === 'college' && educatorRole !== 'admin') ? assignedClassIds : undefined,
     educatorType: educatorType,
-    userId: educatorType === 'college' ? (user as any)?.id : undefined
+    userId: educatorType === 'college' ? (user as any)?.id : undefined,
+    sortBy: sortBy === 'last_updated' ? 'updated_at' : sortBy === 'name' ? 'name' : 'updated_at',
+    sortOrder: sortBy === 'name' ? 'asc' : 'desc'
   });
 
   // Reset to page 1 when filters or search change
@@ -358,7 +360,7 @@ const StudentsPage = () => {
       .slice(0, 20);
   }, [students, searchQuery, filters.minScore, filters.maxScore]);
 
-  // Enhanced filter and sort with comprehensive search
+  // Enhanced filter with comprehensive search (sorting now handled by database)
   const filteredAndSortedStudents = useMemo(() => {
     let result = [...students];
 
@@ -404,30 +406,9 @@ const StudentsPage = () => {
       return true;
     });
 
-    // Apply sorting
-    if (!searchQuery || searchQuery.trim() === '') {
-      const sortedResult = [...result];
-      switch (sortBy) {
-        case 'ai_score':
-          sortedResult.sort((a, b) => (b.ai_score_overall || 0) - (a.ai_score_overall || 0));
-          break;
-        case 'name':
-          sortedResult.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-          break;
-        case 'last_updated':
-          sortedResult.sort((a, b) =>
-            new Date(b.last_updated || 0).getTime() - new Date(a.last_updated || 0).getTime()
-          );
-          break;
-        case 'relevance':
-        default:
-          break;
-      }
-      return sortedResult;
-    }
-
+    // Note: Sorting is now handled at database level for better performance
     return result;
-  }, [students, searchQuery, filters, sortBy]);
+  }, [students, searchQuery, filters]);
 
   // Calculate pagination
   const totalItems = filteredAndSortedStudents.length;
