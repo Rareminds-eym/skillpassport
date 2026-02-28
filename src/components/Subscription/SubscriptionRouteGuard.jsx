@@ -10,7 +10,7 @@ import { isActiveOrPaused, isManageable } from '../../utils/subscriptionHelpers'
  */
 function getManagePath(userRole) {
   if (!userRole) return null; // Return null to prevent wrong redirects
-  
+
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -97,7 +97,9 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
 
       case 'payment':
         // Payment page - redirect if user has active subscription
-        if (hasActiveSubscription && managePath) {
+        // BUT: Allow through if user is upgrading or renewing
+        const isPaymentIntent = location.state?.isUpgrade === true || location.state?.isRenewal === true;
+        if (hasActiveSubscription && managePath && !isPaymentIntent) {
           setRedirecting(true);
           navigate(managePath, { replace: true });
         }
@@ -111,7 +113,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
           const userType = getUserTypeFromPath(location.pathname);
           const plansUrlNoUser = `/subscription/plans?type=${userType}`;
           setRedirecting(true);
-          navigate(addQueryParams(plansUrlNoUser), { 
+          navigate(addQueryParams(plansUrlNoUser), {
             replace: true,
             state: { from: location.pathname }
           });
@@ -120,7 +122,7 @@ const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
           const userType = getUserTypeFromPath(location.pathname);
           const plansUrl = `/subscription/plans?type=${userType}`;
           setRedirecting(true);
-          navigate(addQueryParams(plansUrl), { 
+          navigate(addQueryParams(plansUrl), {
             replace: true,
             state: { from: location.pathname, message: 'no-subscription' }
           });

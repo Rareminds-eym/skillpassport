@@ -12,44 +12,17 @@ import BulkPurchaseWizard, { PurchaseData } from '../../components/Subscription/
 import useAuth from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabaseClient';
 import { organizationMemberService } from '../../services/organization/organizationMemberService';
-
-// Sample plans - in production, fetch from subscription service
-const AVAILABLE_PLANS = [
-  {
-    id: 'basic',
-    name: 'Basic',
-    price: 299,
-    duration: 'month',
-    features: ['Core features', 'Email support', 'Basic analytics'],
-    description: 'Perfect for small teams',
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
-    price: 599,
-    duration: 'month',
-    features: ['All Basic features', 'Priority support', 'Advanced analytics', 'API access'],
-    description: 'Best for growing organizations',
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 999,
-    duration: 'month',
-    features: ['All Professional features', 'Dedicated support', 'Custom integrations', 'SSO', 'SLA'],
-    description: 'For large institutions',
-  },
-];
+import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 
 function BulkPurchasePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isAuthenticated } = useAuth();
-  
+
   // Get mode from search params (e.g., ?mode=add-seats&subscriptionId=xxx)
   const mode = searchParams.get('mode');
   const existingSubscriptionId = searchParams.get('subscriptionId');
-  
+
   // Determine organization context
   const organizationType = useMemo(() => {
     const role = user?.role || '';
@@ -58,7 +31,7 @@ function BulkPurchasePage() {
     if (role.includes('university')) return 'university' as const;
     return 'school' as const;
   }, [user?.role]);
-  
+
   // State for organization ID (needs to be fetched for school_admin)
   const [organizationId, setOrganizationId] = useState<string>('');
   const [availableMembers, setAvailableMembers] = useState<Array<{
@@ -70,12 +43,12 @@ function BulkPurchasePage() {
     grade?: string;
   }>>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
-  
+
   // Fetch organization ID
   useEffect(() => {
     const fetchOrganizationId = async () => {
       console.log('[BulkPurchasePage] Fetching organization ID, user:', user);
-      
+
       // First check user object
       if (user?.school_id) { console.log('[BulkPurchasePage] Found school_id:', user.school_id); setOrganizationId(String(user.school_id)); return; }
       if (user?.college_id) { console.log('[BulkPurchasePage] Found college_id:', user.college_id); setOrganizationId(String(user.college_id)); return; }
@@ -83,7 +56,7 @@ function BulkPurchasePage() {
       if (user?.schoolId) { console.log('[BulkPurchasePage] Found schoolId:', user.schoolId); setOrganizationId(String(user.schoolId)); return; }
       if (user?.collegeId) { console.log('[BulkPurchasePage] Found collegeId:', user.collegeId); setOrganizationId(String(user.collegeId)); return; }
       if (user?.universityId) { console.log('[BulkPurchasePage] Found universityId:', user.universityId); setOrganizationId(String(user.universityId)); return; }
-      
+
       // Fallback to localStorage
       const storedUser = localStorage.getItem('user');
       console.log('[BulkPurchasePage] Checking localStorage user:', storedUser);
@@ -95,23 +68,23 @@ function BulkPurchasePage() {
           if (userData.universityId) { console.log('[BulkPurchasePage] Found universityId in localStorage:', userData.universityId); setOrganizationId(userData.universityId); return; }
         } catch (e) { /* ignore */ }
       }
-      
+
       // Fetch from database
       const userId = user?.id;
       let userEmail = user?.email;
-      
+
       // Fallback to localStorage for email
       if (!userEmail) {
         userEmail = localStorage.getItem('userEmail') || undefined;
       }
-      
+
       console.log('[BulkPurchasePage] Fetching from database, userId:', userId, 'userEmail:', userEmail);
-      
+
       if (!userId && !userEmail) {
         console.log('[BulkPurchasePage] No userId or userEmail, cannot fetch organization');
         return;
       }
-      
+
       try {
         // Try school_educators table first for school admins
         if (organizationType === 'school' && userId) {
@@ -121,16 +94,16 @@ function BulkPurchasePage() {
             .select('school_id')
             .eq('user_id', userId)
             .maybeSingle();
-          
+
           console.log('[BulkPurchasePage] school_educators result:', educatorData, educatorError);
-          
+
           if (educatorData?.school_id) {
             console.log('[BulkPurchasePage] Found school_id from school_educators:', educatorData.school_id);
             setOrganizationId(educatorData.school_id);
             return;
           }
         }
-        
+
         // Try college_lecturers table for college admins
         if (organizationType === 'college' && userId) {
           console.log('[BulkPurchasePage] Querying college_lecturers by user_id:', userId);
@@ -139,16 +112,16 @@ function BulkPurchasePage() {
             .select('collegeId')
             .eq('user_id', userId)
             .maybeSingle();
-          
+
           console.log('[BulkPurchasePage] college_lecturers result:', lecturerData, lecturerError);
-          
+
           if (lecturerData?.collegeId) {
             console.log('[BulkPurchasePage] Found collegeId from college_lecturers:', lecturerData.collegeId);
             setOrganizationId(lecturerData.collegeId);
             return;
           }
         }
-        
+
         // Try organizations table by email
         if (userEmail) {
           console.log('[BulkPurchasePage] Querying organizations by email:', userEmail, 'type:', organizationType);
@@ -158,16 +131,16 @@ function BulkPurchasePage() {
             .eq('organization_type', organizationType)
             .ilike('email', userEmail)
             .maybeSingle();
-          
+
           console.log('[BulkPurchasePage] Organizations by email result:', orgByEmail, emailError);
-          
+
           if (orgByEmail?.id) {
             console.log('[BulkPurchasePage] Found organization by email:', orgByEmail.id);
             setOrganizationId(orgByEmail.id);
             return;
           }
         }
-        
+
         // Try by admin_id
         if (userId) {
           console.log('[BulkPurchasePage] Querying organizations by admin_id:', userId);
@@ -177,25 +150,44 @@ function BulkPurchasePage() {
             .eq('organization_type', organizationType)
             .eq('admin_id', userId)
             .maybeSingle();
-          
+
           console.log('[BulkPurchasePage] Organizations by admin_id result:', orgByAdminId, adminError);
-          
+
           if (orgByAdminId?.id) {
             console.log('[BulkPurchasePage] Found organization by admin_id:', orgByAdminId.id);
             setOrganizationId(orgByAdminId.id);
             return;
           }
         }
-        
+
         console.log('[BulkPurchasePage] Could not find organization ID');
       } catch (err) {
         console.error('[BulkPurchasePage] Error fetching organization ID:', err);
       }
     };
-    
+
     fetchOrganizationId();
   }, [user, organizationType]);
-  
+
+  // Fetch B2B plans directly from the API
+  const { plans: dbPlans, loading: plansLoading } = useSubscriptionPlansData({
+    businessType: 'b2b',
+    entityType: 'all',
+    roleType: 'all'
+  });
+
+  const availablePlans = useMemo(() => {
+    if (!dbPlans) return [];
+    return dbPlans.map((plan: any) => ({
+      id: plan.id,
+      name: plan.name,
+      price: plan.price ? parseInt(plan.price) : 0,
+      duration: 'month', // Assuming monthly billing for bulk org purchase display
+      features: plan.features || [],
+      description: plan.tagline || plan.positioning || '',
+    }));
+  }, [dbPlans]);
+
   // Fetch members when organizationId is available
   const fetchMembers = useCallback(async () => {
     console.log('[BulkPurchasePage] fetchMembers called, organizationId:', organizationId);
@@ -203,7 +195,7 @@ function BulkPurchasePage() {
       console.log('[BulkPurchasePage] No organizationId, skipping member fetch');
       return;
     }
-    
+
     setIsLoadingMembers(true);
     try {
       console.log('[BulkPurchasePage] Fetching members for org:', organizationId, 'type:', organizationType);
@@ -214,11 +206,11 @@ function BulkPurchasePage() {
         includeAssignmentStatus: false,
         limit: 500,
       });
-      
+
       console.log('[BulkPurchasePage] Members fetched:', result.members.length, 'total:', result.total);
-      
+
       // Transform to the format expected by BulkPurchaseWizard
-      const transformedMembers = result.members.map(m => ({
+      const transformedMembers = result.members.map((m: any) => ({
         id: m.id,
         name: m.name,
         email: m.email,
@@ -226,7 +218,7 @@ function BulkPurchasePage() {
         department: m.department,
         grade: m.grade,
       }));
-      
+
       setAvailableMembers(transformedMembers);
     } catch (err) {
       console.error('[BulkPurchasePage] Error fetching members:', err);
@@ -234,13 +226,13 @@ function BulkPurchasePage() {
       setIsLoadingMembers(false);
     }
   }, [organizationId, organizationType]);
-  
+
   useEffect(() => {
     fetchMembers();
   }, [fetchMembers]);
-  
+
   const organizationName = user?.school_name || user?.college_name || user?.university_name || 'Your Organization';
-  
+
   // Get base path for navigation
   const basePath = useMemo(() => {
     if (organizationType === 'school') return '/school-admin';
@@ -248,13 +240,13 @@ function BulkPurchasePage() {
     if (organizationType === 'university') return '/university-admin';
     return '/school-admin';
   }, [organizationType]);
-  
+
   const handleComplete = useCallback(async (purchaseData: PurchaseData) => {
     try {
       // Navigate to organization payment page with purchase data
       navigate(`${basePath}/subscription/organization-payment`, {
         state: {
-          plan: AVAILABLE_PLANS.find(p => p.id === purchaseData.planId),
+          plan: availablePlans.find((p: any) => p.id === purchaseData.planId),
           isOrganizationPurchase: true,
           mode: mode || 'new',
           existingSubscriptionId,
@@ -280,11 +272,11 @@ function BulkPurchasePage() {
       toast.error('Failed to process purchase. Please try again.');
     }
   }, [navigate, basePath, mode, existingSubscriptionId]);
-  
+
   const handleCancel = useCallback(() => {
     navigate(`${basePath}/subscription/organization`);
   }, [navigate, basePath]);
-  
+
   // Check if user is authenticated
   if (!isAuthenticated || !user) {
     return (
@@ -302,13 +294,21 @@ function BulkPurchasePage() {
       </div>
     );
   }
-  
+
+  if (plansLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <BulkPurchaseWizard
       organizationId={organizationId}
       organizationType={organizationType}
       organizationName={organizationName}
-      availablePlans={AVAILABLE_PLANS}
+      availablePlans={availablePlans}
       availableMembers={availableMembers}
       onComplete={handleComplete}
       onCancel={handleCancel}

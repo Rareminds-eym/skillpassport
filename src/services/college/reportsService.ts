@@ -263,10 +263,10 @@ export const reportsService = {
         attendanceRate = Math.round((presentCount / totalRecords) * 100);
         console.log('✅ [Reports] Using REAL attendance data - Rate:', attendanceRate + '%');
       } else {
-        // Fallback to calculated data
-        chartValues = months.map(() => Math.floor(85 + Math.random() * 13));
-        attendanceRate = Math.round(chartValues.reduce((a, b) => a + b, 0) / chartValues.length);
-        console.log('⚠️ [Reports] Using FALLBACK data - Rate:', attendanceRate + '%');
+        // No data - show zeros
+        chartValues = months.map(() => 0);
+        attendanceRate = 0;
+        console.log('⚠️ [Reports] No attendance data - showing zeros');
       }
 
       // Fetch departments
@@ -286,25 +286,21 @@ export const reportsService = {
             r => r.status === 'present' || r.status === 'late' || r.status === 'excused'
           ).length;
           const deptRate = deptTotal > 0 ? (deptPresent / deptTotal) * 100 : 0;
-          const change = (Math.random() * 4 - 2).toFixed(1);
 
           return {
             period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
             department: dept.name,
             value: `${deptRate.toFixed(1)}%`,
-            change: `${parseFloat(change) >= 0 ? '+' : ''}${change}%`,
-            status: getStatus(deptRate)
+            change: '0%',
+            status: deptTotal > 0 ? getStatus(deptRate) : 'No Data'
           };
         } else {
-          // Fallback data
-          const deptAttendance = 85 + Math.random() * 13;
-          const change = (Math.random() * 4 - 2).toFixed(1);
           return {
             period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
             department: dept.name,
-            value: `${deptAttendance.toFixed(1)}%`,
-            change: `${parseFloat(change) >= 0 ? '+' : ''}${change}%`,
-            status: getStatus(deptAttendance)
+            value: '0%',
+            change: '0%',
+            status: 'No Data'
           };
         }
       });
@@ -348,13 +344,47 @@ export const reportsService = {
         collegeId = await getCollegeIdForCurrentUser() || '';
       }
 
-      const { data: markEntries } = await supabase
+      // First, get students from this college to filter mark entries
+      let studentsQuery = supabase.from('students').select('id');
+      if (collegeId) {
+        studentsQuery = studentsQuery.eq('college_id', collegeId);
+      }
+      const { data: collegeStudents } = await studentsQuery;
+      const studentIds = collegeStudents?.map(s => s.id) || [];
+
+      // Fetch mark entries only for this college's students
+      let markEntriesQuery = supabase
         .from('mark_entries')
         .select('marks_obtained, grade, student_id, assessment_id');
 
-      const { data: assessments } = await supabase
+      // Filter by student IDs from this college
+      if (studentIds.length > 0) {
+        markEntriesQuery = markEntriesQuery.in('student_id', studentIds);
+      } else {
+        // No students in this college, so no mark entries
+        markEntriesQuery = markEntriesQuery.eq('student_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
+      }
+
+      const { data: markEntries } = await markEntriesQuery;
+
+      // Get departments from this college to filter assessments
+      let deptQuery = supabase.from('departments').select('id, name');
+      if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
+      const { data: departments } = await deptQuery;
+      const departmentIds = departments?.map(d => d.id) || [];
+
+      // Fetch assessments only for this college's departments
+      let assessmentsQuery = supabase
         .from('assessments')
         .select('id, total_marks, pass_marks, department_id');
+
+      if (departmentIds.length > 0) {
+        assessmentsQuery = assessmentsQuery.in('department_id', departmentIds);
+      } else {
+        assessmentsQuery = assessmentsQuery.eq('department_id', '00000000-0000-0000-0000-000000000000');
+      }
+
+      const { data: assessments } = await assessmentsQuery;
 
       let passCount = 0;
       const totalEntries = markEntries?.length || 0;
@@ -364,47 +394,38 @@ export const reportsService = {
         if (assessment && entry.marks_obtained >= assessment.pass_marks) passCount++;
       });
 
-      const passRate = totalEntries > 0 ? Math.round((passCount / totalEntries) * 100) : 94;
+      const passRate = totalEntries > 0 ? Math.round((passCount / totalEntries) * 100) : 0;
 
-      let deptQuery = supabase.from('departments').select('id, name');
-      if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
-      const { data: departments } = await deptQuery;
-
-      const avgGPA = 3.2 + Math.random() * 0.5;
+      const hasRealData = totalEntries > 0;
+      const avgGPA = 0; // Will be calculated from real data when available
       const topPerformers = markEntries?.filter(e => e.grade === 'O' || e.grade === 'A+').length || 0;
       const needSupport = markEntries?.filter(e => e.grade === 'C' || e.grade === 'F').length || 0;
 
       const chartLabels = (departments || []).slice(0, 5).map(d => d.name);
-      const chartValues = chartLabels.map(() => 85 + Math.random() * 13);
+      const chartValues = chartLabels.map(() => 0); // Real calculation needed
 
       const tableData = (departments || []).slice(0, 5).map(dept => {
-        const deptPassRate = 85 + Math.random() * 13;
-        const change = (Math.random() * 4 - 2).toFixed(1);
         return {
           period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
           department: dept.name,
-          value: `${deptPassRate.toFixed(1)}%`,
-          change: `${parseFloat(change) >= 0 ? '+' : ''}${change}%`,
-          status: getStatus(deptPassRate)
+          value: '0%',
+          change: '0%',
+          status: 'No Data'
         };
       });
 
       return {
         kpis: [
-          { title: 'Average GPA', value: avgGPA.toFixed(2), change: '+0.12', trend: 'up', color: 'green' },
-          { title: 'Pass Rate', value: `${passRate}%`, change: '+1.8%', trend: 'up', color: 'blue' },
-          { title: 'Top Performers', value: topPerformers.toString() || '125', change: '+15', trend: 'up', color: 'purple' },
-          { title: 'Need Support', value: needSupport.toString() || '34', change: '-8', trend: 'down', color: 'orange' }
+          { title: 'Average GPA', value: hasRealData ? avgGPA.toFixed(2) : '0.00', change: '0', trend: 'neutral', color: 'green' },
+          { title: 'Pass Rate', value: `${passRate}%`, change: '0%', trend: 'neutral', color: 'blue' },
+          { title: 'Top Performers', value: topPerformers.toString(), change: '0', trend: 'neutral', color: 'purple' },
+          { title: 'Need Support', value: needSupport.toString(), change: '0', trend: 'neutral', color: 'orange' }
         ],
         chartData: {
-          labels: chartLabels.length > 0 ? chartLabels : ['CS', 'ECE', 'Mech', 'Civil', 'MBA'],
-          values: chartValues.length > 0 ? chartValues : [94.2, 87.5, 91.8, 89.3, 96.1]
+          labels: chartLabels.length > 0 ? chartLabels : [],
+          values: chartValues.length > 0 ? chartValues : []
         },
-        tableData: tableData.length > 0 ? tableData : [
-          { period: 'Jan 2026', department: 'Computer Science', value: '94.2%', change: '+2.1%', status: 'Good' },
-          { period: 'Jan 2026', department: 'Electronics', value: '91.8%', change: '+1.5%', status: 'Good' },
-          { period: 'Jan 2026', department: 'Mechanical', value: '89.3%', change: '-0.8%', status: 'Average' }
-        ]
+        tableData
       };
     } catch (error) {
       console.error('Error fetching performance report:', error);
@@ -422,22 +443,53 @@ export const reportsService = {
         collegeId = await getCollegeIdForCurrentUser() || '';
       }
 
-      const { data: candidates } = await supabase
+      // First, get students from this college to filter candidates
+      let studentsQuery = supabase.from('students').select('id');
+      if (collegeId) {
+        studentsQuery = studentsQuery.eq('college_id', collegeId);
+      }
+      const { data: collegeStudents } = await studentsQuery;
+      const studentIds = collegeStudents?.map(s => s.id) || [];
+
+      // Fetch candidates only for this college's students
+      let candidatesQuery = supabase
         .from('pipeline_candidates')
         .select('id, stage, status, added_at, student_id')
         .gte('added_at', startDate)
         .lte('added_at', endDate);
 
+      // Filter by student IDs from this college
+      if (studentIds.length > 0) {
+        candidatesQuery = candidatesQuery.in('student_id', studentIds);
+      } else {
+        // No students in this college, so no candidates
+        candidatesQuery = candidatesQuery.eq('student_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
+      }
+
+      const { data: candidates } = await candidatesQuery;
+
       const totalCandidates = candidates?.length || 0;
       const hiredCount = candidates?.filter(c => c.stage === 'hired').length || 0;
-      const placementRate = totalCandidates > 0 ? Math.round((hiredCount / totalCandidates) * 100) : 87;
+      const placementRate = totalCandidates > 0 ? Math.round((hiredCount / totalCandidates) * 100) : 0;
 
-      const { data: requisitions } = await supabase
-        .from('requisitions')
-        .select('id, company_name')
-        .gte('created_at', startDate);
+      // Get companies count from companies table (same as placement page)
+      let uniqueCompanies = 0;
+      try {
+        const { data: companies, error: companiesError } = await supabase
+          .from('companies')
+          .select('id');
 
-      const uniqueCompanies = new Set(requisitions?.map(r => r.company_name)).size;
+        if (companiesError) {
+          console.warn('⚠️ [Reports] Companies table error:', companiesError.message);
+          uniqueCompanies = 0;
+        } else {
+          uniqueCompanies = companies?.length || 0;
+        }
+      } catch (error) {
+        console.warn('⚠️ [Reports] Could not fetch companies:', error);
+        uniqueCompanies = 0;
+      }
+
       const offersCount = candidates?.filter(c => c.stage === 'offer' || c.stage === 'offered').length || 0;
 
       // Fetch real placement offers for average package
@@ -452,9 +504,13 @@ export const reportsService = {
         offersQuery = offersQuery.eq('college_id', collegeId);
       }
 
-      const { data: placementOffers } = await offersQuery;
+      const { data: placementOffers, error: offersError } = await offersQuery;
       
-      let avgPackage = '₹6.8L';
+      if (offersError) {
+        console.warn('⚠️ [Reports] Placement offers table error:', offersError.message);
+      }
+      
+      let avgPackage = '₹0';
       if (placementOffers && placementOffers.length > 0) {
         const totalPackage = placementOffers.reduce((sum, o) => sum + Number(o.package_amount), 0);
         const avgAmount = totalPackage / placementOffers.length;
@@ -469,38 +525,52 @@ export const reportsService = {
       }
 
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      const placements = months.map(() => Math.floor(50 + Math.random() * 50));
-      const applications = months.map(() => Math.floor(100 + Math.random() * 80));
+      
+      // Calculate real monthly placement data
+      const hasRealData = totalCandidates > 0;
+      const placements = hasRealData 
+        ? months.map((_, idx) => {
+            const monthCandidates = candidates?.filter(c => {
+              const candidateMonth = new Date(c.added_at).getMonth();
+              return candidateMonth === idx && c.stage === 'hired';
+            }).length || 0;
+            return monthCandidates;
+          })
+        : months.map(() => 0);
+      
+      const applications = hasRealData
+        ? months.map((_, idx) => {
+            const monthCandidates = candidates?.filter(c => {
+              const candidateMonth = new Date(c.added_at).getMonth();
+              return candidateMonth === idx;
+            }).length || 0;
+            return monthCandidates;
+          })
+        : months.map(() => 0);
 
       let deptQuery = supabase.from('departments').select('id, name');
       if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
       const { data: departments } = await deptQuery;
 
       const tableData = (departments || []).slice(0, 5).map(dept => {
-        const deptPlacement = 75 + Math.random() * 20;
-        const change = (Math.random() * 6 - 1).toFixed(1);
         return {
           period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
           department: dept.name,
-          value: `${deptPlacement.toFixed(1)}%`,
-          change: `${parseFloat(change) >= 0 ? '+' : ''}${change}%`,
-          status: getStatus(deptPlacement, 85)
+          value: '0%',
+          change: '0%',
+          status: 'No Data'
         };
       });
 
       return {
         kpis: [
-          { title: 'Placement Rate', value: `${placementRate}%`, change: '+5.2%', trend: 'up', color: 'green' },
-          { title: 'Avg Package', value: avgPackage, change: '+₹0.9L', trend: 'up', color: 'blue' },
-          { title: 'Companies', value: (uniqueCompanies || 45).toString(), change: '+12', trend: 'up', color: 'purple' },
-          { title: 'Offers Made', value: ((offersCount + hiredCount) || 234).toString(), change: '+45', trend: 'up', color: 'orange' }
+          { title: 'Placement Rate', value: `${placementRate}%`, change: '0%', trend: 'neutral', color: 'green' },
+          { title: 'Avg Package', value: avgPackage, change: '₹0', trend: 'neutral', color: 'blue' },
+          { title: 'Companies', value: uniqueCompanies.toString(), change: '0', trend: 'neutral', color: 'purple' },
+          { title: 'Offers Made', value: (offersCount + hiredCount).toString(), change: '0', trend: 'neutral', color: 'orange' }
         ],
         chartData: { labels: months, placements, applications },
-        tableData: tableData.length > 0 ? tableData : [
-          { period: 'Jan 2026', department: 'Computer Science', value: '92.5%', change: '+4.2%', status: 'Excellent' },
-          { period: 'Jan 2026', department: 'Electronics', value: '85.3%', change: '+2.1%', status: 'Good' },
-          { period: 'Jan 2026', department: 'Mechanical', value: '78.6%', change: '-1.5%', status: 'Average' }
-        ]
+        tableData
       };
     } catch (error) {
       console.error('Error fetching placement report:', error);
@@ -516,51 +586,74 @@ export const reportsService = {
         collegeId = await getCollegeIdForCurrentUser() || '';
       }
 
-      const { data: enrollments } = await supabase
+      // First, get students from this college to filter enrollments
+      let studentsQuery = supabase.from('students').select('id');
+      if (collegeId) {
+        studentsQuery = studentsQuery.eq('college_id', collegeId);
+      }
+      const { data: collegeStudents } = await studentsQuery;
+      const studentIds = collegeStudents?.map(s => s.id) || [];
+
+      // Fetch enrollments only for this college's students
+      let enrollmentsQuery = supabase
         .from('course_enrollments')
         .select('id, status, progress, course_id, student_id, created_at');
+
+      // Filter by student IDs from this college
+      if (studentIds.length > 0) {
+        enrollmentsQuery = enrollmentsQuery.in('student_id', studentIds);
+      } else {
+        // No students in this college, so no enrollments
+        enrollmentsQuery = enrollmentsQuery.eq('student_id', '00000000-0000-0000-0000-000000000000'); // Non-existent ID
+      }
+
+      const { data: enrollments, error: enrollmentsError } = await enrollmentsQuery;
+
+      if (enrollmentsError) {
+        console.warn('⚠️ [Reports] Course enrollments error:', enrollmentsError.message);
+      }
 
       const totalEnrollments = enrollments?.length || 0;
       const completedCount = enrollments?.filter(e => e.status === 'completed').length || 0;
       const inProgressCount = enrollments?.filter(e => e.status === 'in_progress').length || 0;
-      const completionRate = totalEnrollments > 0 ? Math.round((completedCount / totalEnrollments) * 100) : 78;
+      const completionRate = totalEnrollments > 0 ? Math.round((completedCount / totalEnrollments) * 100) : 0;
 
-      const { data: courses } = await supabase.from('courses').select('id, title, category');
+      const { data: courses, error: coursesError } = await supabase.from('courses').select('id, title, category');
+      
+      if (coursesError) {
+        console.warn('⚠️ [Reports] Courses table error:', coursesError.message);
+      }
+      
       const totalCourses = courses?.length || 0;
-      const avgProgress = enrollments?.reduce((sum, e) => sum + (e.progress || 0), 0) / (totalEnrollments || 1);
+      const avgProgress = totalEnrollments > 0 ? enrollments?.reduce((sum, e) => sum + (e.progress || 0), 0) / totalEnrollments : 0;
 
+      const hasRealData = totalEnrollments > 0;
       const categories = ['Technical', 'Soft Skills', 'Domain', 'Certification', 'Language'];
-      const chartValues = categories.map(() => Math.floor(60 + Math.random() * 35));
+      const chartValues = categories.map(() => 0);
 
       let deptQuery = supabase.from('departments').select('id, name');
       if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
       const { data: departments } = await deptQuery;
 
       const tableData = (departments || []).slice(0, 5).map(dept => {
-        const deptCompletion = 65 + Math.random() * 30;
-        const change = (Math.random() * 8 - 2).toFixed(1);
         return {
           period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
           department: dept.name,
-          value: `${deptCompletion.toFixed(1)}%`,
-          change: `${parseFloat(change) >= 0 ? '+' : ''}${change}%`,
-          status: getStatus(deptCompletion, 75)
+          value: '0%',
+          change: '0%',
+          status: 'No Data'
         };
       });
 
       return {
         kpis: [
-          { title: 'Completion Rate', value: `${completionRate}%`, change: '+4.5%', trend: 'up', color: 'green' },
-          { title: 'Active Courses', value: (totalCourses || 156).toString(), change: '+23', trend: 'up', color: 'blue' },
-          { title: 'In Progress', value: (inProgressCount || 1247).toString(), change: '+89', trend: 'up', color: 'purple' },
-          { title: 'Avg Progress', value: `${Math.round(avgProgress || 68)}%`, change: '+5.2%', trend: 'up', color: 'indigo' }
+          { title: 'Completion Rate', value: `${completionRate}%`, change: '0%', trend: 'neutral', color: 'green' },
+          { title: 'Active Courses', value: totalCourses.toString(), change: '0', trend: 'neutral', color: 'blue' },
+          { title: 'In Progress', value: inProgressCount.toString(), change: '0', trend: 'neutral', color: 'purple' },
+          { title: 'Avg Progress', value: `${Math.round(avgProgress)}%`, change: '0%', trend: 'neutral', color: 'indigo' }
         ],
         chartData: { labels: categories, values: chartValues },
-        tableData: tableData.length > 0 ? tableData : [
-          { period: 'Jan 2026', department: 'Computer Science', value: '82.5%', change: '+6.2%', status: 'Good' },
-          { period: 'Jan 2026', department: 'Electronics', value: '75.3%', change: '+3.1%', status: 'Average' },
-          { period: 'Jan 2026', department: 'Mechanical', value: '68.6%', change: '-2.5%', status: 'Needs Attention' }
-        ]
+        tableData
       };
     } catch (error) {
       console.error('Error fetching skill analytics report:', error);
@@ -591,12 +684,8 @@ export const reportsService = {
         });
       });
 
-      if (totalAllocated === 0) {
-        totalAllocated = 50000000;
-        totalSpent = 35000000;
-      }
-
-      const utilizationRate = totalAllocated > 0 ? Math.round((totalSpent / totalAllocated) * 100) : 70;
+      const hasRealData = totalAllocated > 0;
+      const utilizationRate = totalAllocated > 0 ? Math.round((totalSpent / totalAllocated) * 100) : 0;
       const remaining = totalAllocated - totalSpent;
 
       let deptQuery = supabase.from('departments').select('id, name');
@@ -604,18 +693,16 @@ export const reportsService = {
       const { data: departments } = await deptQuery;
 
       const deptNames = (departments || []).slice(0, 6).map(d => d.name);
-      const allocated = deptNames.map(() => Math.floor(5000000 + Math.random() * 10000000));
-      const spent = allocated.map(a => Math.floor(a * (0.5 + Math.random() * 0.4)));
+      const allocated = deptNames.map(() => 0);
+      const spent = deptNames.map(() => 0);
 
       const tableData = (departments || []).slice(0, 5).map(dept => {
-        const deptUtilization = 50 + Math.random() * 45;
-        const change = (Math.random() * 10 - 3).toFixed(1);
         return {
           period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
           department: dept.name,
-          value: `${deptUtilization.toFixed(1)}%`,
-          change: `${parseFloat(change) >= 0 ? '+' : ''}${change}%`,
-          status: deptUtilization > 90 ? 'Over Budget' : deptUtilization > 70 ? 'On Track' : 'Under Utilized'
+          value: '0%',
+          change: '0%',
+          status: 'No Data'
         };
       });
 
@@ -627,21 +714,17 @@ export const reportsService = {
 
       return {
         kpis: [
-          { title: 'Total Allocated', value: formatCurrency(totalAllocated), change: '+12%', trend: 'up', color: 'blue' },
-          { title: 'Total Spent', value: formatCurrency(totalSpent), change: '+8%', trend: 'up', color: 'green' },
-          { title: 'Utilization', value: `${utilizationRate}%`, change: '+5%', trend: 'up', color: 'purple' },
-          { title: 'Remaining', value: formatCurrency(remaining), change: '-8%', trend: 'down', color: 'orange' }
+          { title: 'Total Allocated', value: formatCurrency(totalAllocated), change: '0%', trend: 'neutral', color: 'blue' },
+          { title: 'Total Spent', value: formatCurrency(totalSpent), change: '0%', trend: 'neutral', color: 'green' },
+          { title: 'Utilization', value: `${utilizationRate}%`, change: '0%', trend: 'neutral', color: 'purple' },
+          { title: 'Remaining', value: formatCurrency(remaining), change: '0%', trend: 'neutral', color: 'orange' }
         ],
         chartData: {
-          labels: deptNames.length > 0 ? deptNames : ['CS', 'ECE', 'Mech', 'Civil', 'MBA', 'Admin'],
-          allocated: allocated.length > 0 ? allocated : [8000000, 7500000, 6000000, 5500000, 4000000, 3000000],
-          spent: spent.length > 0 ? spent : [6500000, 5800000, 4200000, 4800000, 2800000, 2100000]
+          labels: deptNames.length > 0 ? deptNames : [],
+          allocated: allocated.length > 0 ? allocated : [],
+          spent: spent.length > 0 ? spent : []
         },
-        tableData: tableData.length > 0 ? tableData : [
-          { period: 'Jan 2026', department: 'Computer Science', value: '81.2%', change: '+5.2%', status: 'On Track' },
-          { period: 'Jan 2026', department: 'Electronics', value: '77.3%', change: '+3.1%', status: 'On Track' },
-          { period: 'Jan 2026', department: 'Mechanical', value: '70.0%', change: '-2.5%', status: 'Under Utilized' }
-        ]
+        tableData
       };
     } catch (error) {
       console.error('Error fetching budget report:', error);
@@ -669,38 +752,38 @@ export const reportsService = {
       const { data: registrations } = await supabase.from('exam_registrations').select('id, status, fee_paid');
       const totalRegistrations = registrations?.length || 0;
 
+      const hasRealData = totalExams > 0;
       const statuses = ['Completed', 'Ongoing', 'Scheduled', 'Draft'];
-      const chartValues = [completedExams || 15, ongoingExams || 5, scheduledExams || 8, Math.max(0, totalExams - completedExams - ongoingExams - scheduledExams) || 3];
+      const chartValues = [
+        completedExams, 
+        ongoingExams, 
+        scheduledExams, 
+        Math.max(0, totalExams - completedExams - ongoingExams - scheduledExams)
+      ];
 
       let deptQuery = supabase.from('departments').select('id, name');
       if (collegeId) deptQuery = deptQuery.eq('college_id', collegeId);
       const { data: departments } = await deptQuery;
 
       const tableData = (departments || []).slice(0, 5).map(dept => {
-        const examCompletion = 70 + Math.random() * 28;
-        const change = (Math.random() * 6 - 1).toFixed(1);
         return {
           period: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
           department: dept.name,
-          value: `${examCompletion.toFixed(1)}%`,
-          change: `${parseFloat(change) >= 0 ? '+' : ''}${change}%`,
-          status: getStatus(examCompletion, 85)
+          value: '0%',
+          change: '0%',
+          status: 'No Data'
         };
       });
 
       return {
         kpis: [
-          { title: 'Total Exams', value: (totalExams || 31).toString(), change: '+5', trend: 'up', color: 'blue' },
-          { title: 'Completed', value: (completedExams || 15).toString(), change: '+3', trend: 'up', color: 'green' },
-          { title: 'Ongoing', value: (ongoingExams || 5).toString(), change: '0', trend: 'neutral', color: 'purple' },
-          { title: 'Registrations', value: (totalRegistrations || 2847).toLocaleString(), change: '+234', trend: 'up', color: 'orange' }
+          { title: 'Total Exams', value: totalExams.toString(), change: '0', trend: 'neutral', color: 'blue' },
+          { title: 'Completed', value: completedExams.toString(), change: '0', trend: 'neutral', color: 'green' },
+          { title: 'Ongoing', value: ongoingExams.toString(), change: '0', trend: 'neutral', color: 'purple' },
+          { title: 'Registrations', value: totalRegistrations.toLocaleString(), change: '0', trend: 'neutral', color: 'orange' }
         ],
         chartData: { labels: statuses, values: chartValues },
-        tableData: tableData.length > 0 ? tableData : [
-          { period: 'Jan 2026', department: 'Computer Science', value: '95.2%', change: '+2.1%', status: 'Excellent' },
-          { period: 'Jan 2026', department: 'Electronics', value: '88.3%', change: '+1.5%', status: 'Good' },
-          { period: 'Jan 2026', department: 'Mechanical', value: '82.6%', change: '-0.8%', status: 'Average' }
-        ]
+        tableData
       };
     } catch (error) {
       console.error('Error fetching exam progress report:', error);

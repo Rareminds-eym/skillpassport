@@ -23,12 +23,22 @@ import { supabase } from '../utils/api';
  */
 export const getStudentPortfolioByEmail = async (email) => {
   try {
+    console.log('🔍 getStudentPortfolioByEmail called for:', email);
+    
     // First, get the student record to get their user_id
     const { data: student, error: studentError } = await supabase
       .from('students')
       .select(`
         *,
         school:organizations!students_school_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
+        college:organizations!students_college_id_fkey (
           id,
           name,
           code,
@@ -71,6 +81,47 @@ export const getStudentPortfolioByEmail = async (email) => {
       return { success: false, error: 'Student not found' };
     }
 
+    console.log('📊 Student data fetched:', {
+      school_id: student.school_id,
+      school: student.school,
+      college_id: student.college_id,
+      college: student.college
+    });
+
+    // If school relationship didn't load but school_id exists, fetch it separately
+    if (student.school_id && !student.school) {
+      console.log('🔄 Fetching school data separately for school_id:', student.school_id);
+      const { data: schoolData, error: schoolError } = await supabase
+        .from('organizations')
+        .select('id, name, code, city, state, organization_type')
+        .eq('id', student.school_id)
+        .single();
+      
+      if (!schoolError && schoolData) {
+        student.school = schoolData;
+        console.log('✅ School data fetched:', schoolData);
+      } else {
+        console.error('❌ Error fetching school:', schoolError);
+      }
+    }
+
+    // If college relationship didn't load but college_id exists, fetch it separately
+    if (student.college_id && !student.college) {
+      console.log('🔄 Fetching college data separately for college_id:', student.college_id);
+      const { data: collegeData, error: collegeError } = await supabase
+        .from('organizations')
+        .select('id, name, code, city, state, organization_type')
+        .eq('id', student.college_id)
+        .single();
+      
+      if (!collegeError && collegeData) {
+        student.college = collegeData;
+        console.log('✅ College data fetched:', collegeData);
+      } else {
+        console.error('❌ Error fetching college:', collegeError);
+      }
+    }
+
     const userId = student.id;
 
     // Fetch all related data in parallel for performance
@@ -97,6 +148,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('trainings')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false }),
       
@@ -114,6 +166,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('certificates')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('issued_on', { ascending: false }),
       
@@ -122,6 +175,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('education')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('year_of_passing', { ascending: false }),
       
@@ -130,6 +184,7 @@ export const getStudentPortfolioByEmail = async (email) => {
         .from('experience')
         .select('*')
         .eq('student_id', userId)
+        .eq('enabled', true)
         .in('approval_status', ['verified', 'approved'])
         .order('start_date', { ascending: false })
     ]);

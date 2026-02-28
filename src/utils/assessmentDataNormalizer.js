@@ -28,6 +28,9 @@ export const normalizeAssessmentResults = (results) => {
         riasecScores: normalized.riasec?.scores,
         riasecOriginal: normalized.riasec?._originalScores,
         hasGeminiResults: !!normalized.gemini_results,
+        geminiResultsType: typeof normalized.gemini_results,
+        geminiResultsKeys: normalized.gemini_results ? Object.keys(normalized.gemini_results) : null,
+        hasGeminiRecommendedStream: !!normalized.gemini_results?.recommendedStream,
         geminiRiasec: normalized.gemini_results?.riasec,
         geminiOriginal: normalized.gemini_results?.riasec?._originalScores
     });
@@ -117,6 +120,16 @@ export const normalizeAssessmentResults = (results) => {
     if (normalized.gemini_results?.careerFit && !normalized.careerFit) {
         console.log('🔧 Lifting careerFit from gemini_results to top level');
         normalized.careerFit = normalized.gemini_results.careerFit;
+    }
+
+    // 🔧 CRITICAL FIX: Lift recommendedStream to streamRecommendation for after10 students
+    if (normalized.gemini_results?.recommendedStream && !normalized.streamRecommendation) {
+        console.log('🔧 Lifting recommendedStream from gemini_results to streamRecommendation');
+        normalized.streamRecommendation = normalized.gemini_results.recommendedStream;
+        console.log('✅ streamRecommendation now available:', {
+            stream: normalized.streamRecommendation.stream,
+            displayName: normalized.streamRecommendation.displayName
+        });
     }
 
     // 🔧 Lift timingAnalysis to top level for PDF components

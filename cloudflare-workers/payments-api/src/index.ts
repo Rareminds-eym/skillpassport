@@ -765,9 +765,10 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     planName?: string;
     userEmail?: string;
     userName?: string;
+    isUpgrade?: boolean;
   };
 
-  const { amount, currency, planId, planName, userEmail, userName } = body;
+  const { amount, currency, planId, planName, userEmail, userName, isUpgrade } = body;
 
   // Validate required fields
   if (!amount || !currency || !userEmail || !planId || !planName) {
@@ -804,7 +805,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     .gte('subscription_end_date', new Date().toISOString())
     .maybeSingle();
 
-  if (existingSubscription) {
+  if (existingSubscription && !isUpgrade) {
     // User already has a valid subscription (active or cancelled but not expired)
     const message = existingSubscription.status === 'cancelled'
       ? `You have a cancelled subscription that is still active until ${new Date(existingSubscription.subscription_end_date).toLocaleDateString()}`
@@ -1234,16 +1235,17 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
 
 // ==================== VERIFY PAYMENT ====================
 
-// Helper to calculate subscription end date
-function calculateSubscriptionEndDate(billingCycle: string): string {
-  const now = new Date();
-  if (billingCycle.toLowerCase().includes('year')) {
-    now.setFullYear(now.getFullYear() + 1);
+// Helper to calculate subscription end date - ALWAYS 1 month or 1 year from NOW
+function calculateSubscriptionEndDate(billingCycle: string, fromDate?: Date): string {
+  const baseDate = fromDate ? new Date(fromDate) : new Date();
+  // Only accept yearly/annual - everything else is monthly (1 month)
+  if (billingCycle === 'yearly' || billingCycle === 'annual') {
+    baseDate.setFullYear(baseDate.getFullYear() + 1);
   } else {
-    // Default to 1 month
-    now.setMonth(now.getMonth() + 1);
+    // Always 1 month for monthly billing
+    baseDate.setMonth(baseDate.getMonth() + 1);
   }
-  return now.toISOString();
+  return baseDate.toISOString();
 }
 
 async function handleVerifyPayment(request: Request, env: Env): Promise<Response> {
@@ -1367,14 +1369,8 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   const userEmail = userData?.email || order.user_email || '';
   const userPhone = userData?.phone || null;
 
-  // Determine billing cycle from plan or order notes
-  // Fix: Use proper parentheses to avoid operator precedence issues
-  let billingCycle = 'month'; // Default to month
-  if (plan?.duration) {
-    billingCycle = plan.duration;
-  } else if (order.plan_name?.toLowerCase().includes('year')) {
-    billingCycle = 'year';
-  }
+  // FORCE YEARLY BILLING ONLY - ignore frontend input
+  const billingCycle = 'yearly';
   const planAmount = (plan?.price || paymentAmount / 100); // Convert paise to rupees if needed
   const planType = plan?.name || order.plan_name || 'Standard Plan';
 
@@ -1396,14 +1392,15 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     if (isSamePlan) {
       // Same plan - extend the subscription end date and update payment info
       const currentEndDate = new Date(existingActiveSubscription.subscription_end_date);
-      const extensionDate = new Date(Math.max(currentEndDate.getTime(), Date.now()));
+      const now = Date.now();
 
-      // Add billing cycle duration to the later of current end date or now
-      if (billingCycle.toLowerCase().includes('year')) {
-        extensionDate.setFullYear(extensionDate.getFullYear() + 1);
-      } else {
-        extensionDate.setMonth(extensionDate.getMonth() + 1);
-      }
+      // If current end date is in the past, start from now; otherwise extend from end date
+      const extensionBaseDate = currentEndDate.getTime() > now ? currentEndDate : new Date();
+
+      // Calculate new end date by adding 1 year/month to the base date
+      const extensionDate = new Date(calculateSubscriptionEndDate(billingCycle, extensionBaseDate));
+
+      console.log(`[VERIFY-PAYMENT] Renewing subscription: currentEnd=${currentEndDate.toISOString()}, baseDate=${extensionBaseDate.toISOString()}, newEnd=${extensionDate.toISOString()}`);
 
       const { data: updatedSubscription, error: updateError } = await supabaseAdmin
         .from('subscriptions')
@@ -1465,26 +1462,22 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
         new_end_date: extensionDate.toISOString(),
       });
     } else {
-      // Different plan type - user is trying to subscribe to a different plan
-      // Return existing subscription info without creating duplicate
-      console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, tried to get ${planType}`);
+      // DIFFERENT PLAN TYPE - THIS IS AN UPGRADE/DOWNGRADE
+      console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, upgrading to ${planType}`);
 
-      return jsonResponse({
-        success: true,
-        verified: true,
-        message: `You already have an active ${existingActiveSubscription.plan_type} subscription. Payment was processed but no new subscription created.`,
-        payment_id: razorpay_payment_id,
-        order_id: razorpay_order_id,
-        user_id: existingActiveSubscription.user_id,
-        user_name: existingActiveSubscription.full_name,
-        user_email: existingActiveSubscription.email,
-        payment_method: paymentMethod,
-        amount: paymentAmount,
-        subscription: existingActiveSubscription,
-        already_processed: true,
-        is_existing_subscription: true,
-        note: 'Contact support if you need to change your plan.',
-      });
+      const upgradeTimestamp = new Date().toISOString();
+
+      // 1. Deactivate the old subscription
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          status: 'cancelled',
+          updated_at: upgradeTimestamp,
+        })
+        .eq('id', existingActiveSubscription.id);
+
+      // (We don't return here. We let the execution fall through to create the NEW subscription record below!)
+      // To ensure the new record gets created, we break out of this if-block by doing nothing more.
     }
   }
 
@@ -1494,24 +1487,19 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   const planCode = plan?.id; // Frontend sends plan_code as 'id' (e.g., 'basic', 'professional')
 
   if (planCode) {
-    // Map frontend plan codes to database plan_codes
-    // Frontend uses 'professional', database uses 'pro'
-    const dbPlanCode = planCode === 'professional' ? 'pro' : planCode;
-
     // Lookup plan_id from subscription_plans by plan_code
+    // The frontend may pass mapped or legacy names, but usually 'basic', 'professional', 'enterprise', 'ecosystem'
     const { data: planRecord } = await supabaseAdmin
       .from('subscription_plans')
       .select('id')
-      .eq('plan_code', dbPlanCode)
-      .eq('role_type', 'student')
-      .eq('business_type', 'b2c')
+      .eq('plan_code', planCode)
       .maybeSingle();
 
     if (planRecord) {
       planId = planRecord.id;
-      console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_code "${dbPlanCode}"`);
+      console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_code "${planCode}"`);
     } else {
-      console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_code "${dbPlanCode}"`);
+      console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_code "${planCode}"`);
     }
   }
 
@@ -1521,8 +1509,6 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       .from('subscription_plans')
       .select('id')
       .ilike('name', planType)
-      .eq('role_type', 'student')
-      .eq('business_type', 'b2c')
       .maybeSingle();
 
     if (planRecord) {
@@ -1534,7 +1520,11 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   }
 
   // CREATE SUBSCRIPTION RECORD
-  const now = new Date().toISOString();
+  const now = new Date();
+  const subscriptionEndDate = calculateSubscriptionEndDate(billingCycle);
+
+  console.log(`[VERIFY-PAYMENT] Creating new subscription: billingCycle=${billingCycle}, start=${now.toISOString()}, end=${subscriptionEndDate}`);
+
   const subscriptionData = {
     user_id: order.user_id,
     full_name: fullName,
@@ -1547,11 +1537,11 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     razorpay_payment_id: razorpay_payment_id,
     razorpay_order_id: razorpay_order_id,
     status: 'active' as const,
-    subscription_start_date: now,
-    subscription_end_date: calculateSubscriptionEndDate(billingCycle),
+    subscription_start_date: now.toISOString(),
+    subscription_end_date: subscriptionEndDate,
     auto_renew: false,
-    created_at: now,
-    updated_at: now,
+    created_at: now.toISOString(),
+    updated_at: now.toISOString(),
   };
 
   const { data: subscription, error: subError } = await supabaseAdmin
@@ -1588,7 +1578,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     currency: 'INR',
     status: 'success',
     payment_method: paymentMethod,
-    created_at: now,
+    created_at: now.toISOString(),
   };
 
   const { error: txnError } = await supabaseAdmin
@@ -1602,7 +1592,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       razorpay_payment_id: razorpay_payment_id,
       payment_method: paymentMethod,
       subscription_id: subscription.id,
-      updated_at: now,
+      updated_at: now.toISOString(),
     })
     .eq('order_id', razorpay_order_id);
 
@@ -1637,7 +1627,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       userName: fullName,
       userEmail: userEmail,
       paymentMethod: paymentMethod,
-      paymentDate: formatDate(now),
+      paymentDate: formatDate(now.toISOString()),
     });
     console.log(`[VERIFY-PAYMENT] Receipt PDF base64 generated, length: ${receiptPdfBase64.length}`);
 
@@ -2333,6 +2323,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     .eq('user_id', user.id)
     .in('status', ['active', 'paused', 'cancelled'])
     .gte('subscription_end_date', gracePeriodDate.toISOString())
+    .order('status', { ascending: true }) // 'active' comes before 'cancelled'
     .order('subscription_end_date', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -2429,7 +2420,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   }
 
   // Case 3: Active and not expired
-  if (endDate > now) {
+  if (subscription.status === 'active' && endDate > now) {
     const showExpiringWarning = daysUntilExpiry <= 7;
 
     const response: SubscriptionAccessResponse = {
@@ -2691,7 +2682,7 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   // Update registration with order ID and payment history
   await supabaseAdmin
     .from(tableName)
-    .update({ 
+    .update({
       razorpay_order_id: order.id,
       payment_history: paymentHistory
     })

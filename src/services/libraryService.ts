@@ -433,9 +433,22 @@ class LibraryService {
       .from('library_stats_college')
       .select('*')
       .eq('college_id', collegeId)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    
+    // Return default stats if no data exists for new colleges
+    if (!data) {
+      return {
+        total_books: 0,
+        available_books: 0,
+        issued_books: 0,
+        overdue_books: 0,
+        total_members: 0,
+        active_members: 0
+      } as LibraryStats;
+    }
+    
     return data as LibraryStats;
   }
 

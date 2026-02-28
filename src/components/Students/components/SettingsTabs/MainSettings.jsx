@@ -285,6 +285,10 @@ const MainSettings = () => {
     currentBacklogs: 0,
     backlogsHistory: "",
     workExperience: "",
+    // New JSON fields
+    interests: "",
+    languages: "",
+    hobbies: "",
   });
 
   // Password settings state
@@ -315,9 +319,10 @@ const MainSettings = () => {
     showInTalentPool: true,
   });
 
-  // Load student data into form
+  // Load student data into form - only update when studentData actually changes with valid data
   useEffect(() => {
-    if (studentData && !savingRef.current) {
+    // Only update if we have valid student data and we're not currently saving
+    if (studentData && studentData.id && !savingRef.current && !studentLoading) {
       setProfileData({
         name: studentData.name || "",
         email: studentData.email || userEmail || "",
@@ -368,22 +373,54 @@ const MainSettings = () => {
         aadharNumber: studentData.aadharNumber || "",
         backlogsHistory: studentData.backlogsHistory || "",
         currentBacklogs: studentData.currentBacklogs || 0,
+        // New JSON fields
+        interests: studentData.interests || "",
+        languages: studentData.languages || "",
+        hobbies: studentData.hobbies || "",
       });
 
       // Detect custom entries (B2C students) and show custom input fields
-      if (studentData.college && !studentData.universityCollegeId) {
+      // Check if it's a school path (has schoolId or schoolClassId) vs university path
+      const isSchoolPath = studentData.schoolId || studentData.schoolClassId || (!studentData.universityId && !studentData.universityCollegeId && !studentData.programId);
+      const isUniversityPath = studentData.universityId || studentData.universityCollegeId || studentData.programId;
+      
+      // Custom school name (stored in college field when no schoolId)
+      if (studentData.college && !studentData.schoolId && !isUniversityPath) {
+        setShowCustomSchool(true);
+        setCustomSchoolName(studentData.college);
+      }
+      
+      // Custom school class - derive from grade field, NOT from section
+      // Section field should remain independent for roll numbers
+      if (studentData.grade && !studentData.schoolClassId && (studentData.schoolId || studentData.college) && !isUniversityPath) {
+        // Extract numeric grade from grade field (e.g., "Grade 10" -> "10")
+        const gradeMatch = studentData.grade.match(/Grade\s*(\d+)/i);
+        if (gradeMatch) {
+          setShowCustomSchoolClass(true);
+          setCustomSchoolClassName(gradeMatch[1]); // Just the number, e.g., "10"
+        }
+      }
+      
+      // Custom college name (only for university path)
+      if (studentData.college && !studentData.universityCollegeId && isUniversityPath) {
         setShowCustomCollege(true);
         setCustomCollegeName(studentData.college);
       }
+      
+      // Custom university name
       if (studentData.university && !studentData.universityId) {
         setShowCustomUniversity(true);
         setCustomUniversityName(studentData.university);
       }
+      
+      // Custom program name
       if (studentData.branch && !studentData.programId) {
         setShowCustomProgram(true);
         setCustomProgramName(studentData.branch);
       }
-      if (studentData.section && !studentData.programSectionId) {
+      
+      // Custom semester (only for university path)
+      if (studentData.section && !studentData.programSectionId && isUniversityPath) {
         setShowCustomSemester(true);
         setCustomSemesterName(studentData.section);
       }
@@ -401,7 +438,7 @@ const MainSettings = () => {
       // Education data is now handled automatically by the hook
       // No need to manually set education data
     }
-  }, [studentData, userEmail]);
+  }, [studentData, userEmail, studentLoading]);
 
   // Education data is now automatically available from studentDataWithEducation
   // No separate useEffect needed
@@ -461,6 +498,33 @@ const MainSettings = () => {
         description: `Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`,
       });
       return;
+    }
+    
+    // Sync School Class with grade field ONLY for school students
+    if (field === 'schoolClassId' && value) {
+      // Check if this is a school student (not university path)
+      const isUniversityPath = profileData.universityId || profileData.universityCollegeId || profileData.programId;
+      
+      if (!isUniversityPath) {
+        const selectedClass = schoolClasses.find(sc => sc.id === value);
+        if (selectedClass && selectedClass.grade) {
+          // Map school class grade to Academic Details grade format
+          const gradeMapping = {
+            '6': 'Grade 6',
+            '7': 'Grade 7',
+            '8': 'Grade 8',
+            '9': 'Grade 9',
+            '10': 'Grade 10',
+            '11': 'Grade 11',
+            '12': 'Grade 12',
+          };
+          const mappedGrade = gradeMapping[selectedClass.grade] || `Grade ${selectedClass.grade}`;
+          handleProfileChange('grade', mappedGrade);
+          
+          // Don't update section field - it should remain independent
+          // The schoolClassId foreign key is sufficient for tracking the class
+        }
+      }
     }
     
     // Handle cascading logic and field updates
@@ -939,8 +1003,9 @@ const MainSettings = () => {
     }
     
     if (showCustomSchoolClass && customSchoolClassName) {
-      dataToSave.section = customSchoolClassName;
+      // Don't store custom class in section field - section should remain independent
       dataToSave.schoolClassId = null;
+      // Only update grade based on custom class, not section
     }
 
     const result = await safeSave(
@@ -975,6 +1040,45 @@ const MainSettings = () => {
     
     try {
       const dataToSave = { ...profileData };
+      
+      // Determine which path the student is on
+      const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName || 
+                               dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
+                               dataToSave.programId || showCustomProgram || customProgramName;
+      const isSchoolPath = dataToSave.schoolId || showCustomSchool || customSchoolName ||
+                           dataToSave.schoolClassId || showCustomSchoolClass || customSchoolClassName;
+      
+      // Clear school fields if on university path
+      if (isUniversityPath) {
+        dataToSave.schoolId = null;
+        dataToSave.schoolClassId = null;
+        // Don't clear college field as it's used for university college name
+      }
+      
+      // Clear university fields if on school path
+      if (isSchoolPath && !isUniversityPath) {
+        dataToSave.universityId = null;
+        dataToSave.universityCollegeId = null;
+        dataToSave.programId = null;
+        dataToSave.programSectionId = null;
+        dataToSave.university = null;
+        dataToSave.branch = null;
+        
+        // IMPORTANT: Clear section field for school students
+        // Section should only be used for university students (semester/section)
+        // For school students, class info comes from schoolClassId or grade
+        if (!dataToSave.programSectionId && !showCustomSemester) {
+          dataToSave.section = null;
+        }
+      }
+      
+      // Clear grade if no program/class is selected
+      if (isUniversityPath && !dataToSave.programId && !showCustomProgram && !customProgramName) {
+        dataToSave.grade = null;
+      }
+      if (isSchoolPath && !dataToSave.schoolClassId && !showCustomSchoolClass && !customSchoolClassName) {
+        dataToSave.grade = null;
+      }
       
       // Convert empty string IDs to null
       if (dataToSave.programId === '') dataToSave.programId = null;
@@ -1014,16 +1118,61 @@ const MainSettings = () => {
         dataToSave.schoolId = null;
       }
       
-      // Custom semester → section field
+      // Custom semester → section field AND sync grade for university students
       if (showCustomSemester && customSemesterName) {
         dataToSave.section = customSemesterName;
         dataToSave.programSectionId = null;
+        
+        // Auto-detect year from semester and update grade for university students
+        const lowerSemester = customSemesterName.toLowerCase();
+        let yearNumber = null;
+        
+        // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
+        const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
+        if (yearMatch) {
+          yearNumber = parseInt(yearMatch[1]);
+        } else {
+          // Check for semester numbers and convert to year
+          const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
+          if (semMatch) {
+            const semNumber = parseInt(semMatch[1]);
+            yearNumber = Math.ceil(semNumber / 2);
+          }
+        }
+        
+        // Update grade based on detected year and current program type
+        if (yearNumber && dataToSave.grade) {
+          if (dataToSave.grade.includes('UG')) {
+            dataToSave.grade = `UG Year ${yearNumber}`;
+          } else if (dataToSave.grade.includes('PG')) {
+            dataToSave.grade = `PG Year ${yearNumber}`;
+          }
+        }
       }
       
-      // Custom school class → section field
+      // Custom school class → sync to grade ONLY (ONLY for school students)
+      // NOTE: We do NOT store custom class in section field - section should remain independent
       if (showCustomSchoolClass && customSchoolClassName) {
-        dataToSave.section = customSchoolClassName;
         dataToSave.schoolClassId = null;
+        
+        // Only sync grade for school students (not university path)
+        const isUniversityPath = dataToSave.universityId || dataToSave.universityCollegeId || dataToSave.programId;
+        if (!isUniversityPath) {
+          // Extract grade from custom class name (e.g., "Grade 10-A" or "10" -> "Grade 10")
+          const gradeMatch = customSchoolClassName.match(/(?:Grade\s*)?(\d+)/i);
+          if (gradeMatch) {
+            const numericGrade = gradeMatch[1];
+            dataToSave.grade = `Grade ${numericGrade}`;
+          }
+        }
+        // Store custom class name in a display field if needed, but NOT in section
+        // The section field should remain independent for roll number/section assignment
+      }
+      
+      // If schoolClassId is selected from dropdown, clear custom class
+      if (dataToSave.schoolClassId && dataToSave.schoolClassId !== null) {
+        // Don't override section if it's a valid schoolClassId
+        // The section field should only be used for custom entries
       }
       
       await updateProfile(dataToSave);

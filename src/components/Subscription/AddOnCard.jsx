@@ -58,12 +58,12 @@ export function AddOnCard({
   return (
     <div
       className={`
-        relative bg-white rounded-xl border transition-all duration-300
+        relative bg-white rounded-3xl border-2 transition-all duration-300 shadow-lg hover:shadow-2xl
         ${isOwned 
-          ? 'border-green-200 bg-green-50/30' 
+          ? 'border-emerald-500 bg-emerald-50/30' 
           : isHovered 
-            ? 'border-indigo-300 shadow-lg shadow-indigo-100' 
-            : 'border-gray-200 hover:border-indigo-200'
+            ? 'border-slate-900 shadow-slate-900/10 scale-105' 
+            : 'border-slate-200 hover:border-slate-300'
         }
         ${className}
       `}
@@ -72,76 +72,76 @@ export function AddOnCard({
     >
       {/* Owned Badge */}
       {isOwned && (
-        <div className="absolute -top-3 left-4 px-3 py-1 bg-green-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
-          <Check className="w-3 h-3" />
-          Owned
+        <div className="absolute -top-3 left-6 px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-xs font-bold rounded-full flex items-center gap-1.5 shadow-xl">
+          <Check className="w-3.5 h-3.5" />
+          Active
         </div>
       )}
 
       {/* Annual Savings Badge */}
       {!isOwned && billingPeriod === 'annual' && savingsPercentage > 0 && (
-        <div className="absolute -top-3 right-4 px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-medium rounded-full">
+        <div className="absolute -top-3 right-6 px-4 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 text-xs font-bold rounded-full shadow-xl">
           Save {savingsPercentage}%
         </div>
       )}
 
-      <div className="p-5">
+      <div className="p-6">
         {/* Header */}
-        <div className="flex items-start gap-3 mb-4">
+        <div className="flex items-start gap-4 mb-5">
           {/* Icon */}
           <div className={`
-            w-10 h-10 rounded-lg flex items-center justify-center
+            w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg
             ${isOwned 
-              ? 'bg-green-100 text-green-600' 
-              : 'bg-indigo-100 text-indigo-600'
+              ? 'bg-gradient-to-br from-emerald-400 to-emerald-500' 
+              : 'bg-gradient-to-br from-slate-700 to-slate-800'
             }
           `}>
-            <CategoryIcon className="w-5 h-5" />
+            <CategoryIcon className="w-6 h-6 text-white" />
           </div>
 
           {/* Title & Category */}
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate">
+            <h3 className="font-light text-xl text-slate-900 mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
               {addOn.feature_name}
             </h3>
-            <span className="text-xs text-gray-500 capitalize">
+            <span className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
               {addOn.category?.replace(/_/g, ' ')}
             </span>
           </div>
         </div>
 
         {/* Description */}
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+        <p className="text-sm text-slate-600 mb-6 line-clamp-2 leading-relaxed font-light">
           {addOn.addon_description || 'Enhance your experience with this premium feature.'}
         </p>
 
         {/* Pricing */}
-        <div className="mb-4">
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold text-gray-900">
+        <div className="mb-6">
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
               ₹{currentPrice}
             </span>
-            <span className="text-gray-500 text-sm">
+            <span className="text-slate-500 text-sm font-light">
               /{billingPeriod === 'monthly' ? 'mo' : 'yr'}
             </span>
           </div>
           
           {/* Show monthly equivalent for annual */}
           {billingPeriod === 'annual' && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-slate-500 mt-2 font-medium">
               ₹{Math.round(annualPrice / 12)}/mo billed annually
             </p>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           {isOwned ? (
             <button
               disabled
-              className="flex-1 py-2.5 px-4 bg-green-100 text-green-700 font-medium rounded-lg flex items-center justify-center gap-2"
+              className="flex-1 py-3.5 px-4 bg-emerald-100 text-emerald-700 font-semibold rounded-2xl flex items-center justify-center gap-2 border-2 border-emerald-200"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-5 h-5" />
               Active
             </button>
           ) : (
@@ -149,17 +149,17 @@ export function AddOnCard({
               {showAddToCart && onAddToCart && (
                 <button
                   onClick={() => onAddToCart(addOn)}
-                  className="p-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="p-3.5 border-2 border-slate-200 rounded-2xl hover:bg-slate-50 transition-all shadow-sm hover:shadow-lg"
                   title="Add to cart"
                 >
-                  <ShoppingCart className="w-5 h-5 text-gray-600" />
+                  <ShoppingCart className="w-5 h-5 text-slate-600" />
                 </button>
               )}
               
               <button
                 onClick={() => onPurchase?.(addOn.feature_key, billingPeriod)}
                 disabled={isPurchasing}
-                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 px-4 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-semibold rounded-2xl hover:from-slate-900 hover:to-black transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-105"
               >
                 {isPurchasing ? (
                   <>
@@ -199,19 +199,19 @@ export function AddOnCardCompact({
 
   return (
     <div className={`
-      flex items-center justify-between p-4 bg-white rounded-lg border
-      ${isOwned ? 'border-green-200 bg-green-50/30' : 'border-gray-200'}
+      flex items-center justify-between p-5 bg-white rounded-2xl border-2 shadow-lg hover:shadow-xl transition-all
+      ${isOwned ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200 hover:border-slate-300'}
       ${className}
     `}>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         {isOwned && (
-          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-            <Check className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <Check className="w-4 w-4 text-white" strokeWidth={3} />
           </div>
         )}
         <div>
-          <h4 className="font-medium text-gray-900">{addOn.feature_name}</h4>
-          <p className="text-sm text-gray-500">
+          <h4 className="font-light text-lg text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{addOn.feature_name}</h4>
+          <p className="text-sm text-slate-500 font-medium mt-0.5">
             ₹{currentPrice}/{billingPeriod === 'monthly' ? 'mo' : 'yr'}
           </p>
         </div>
@@ -220,7 +220,7 @@ export function AddOnCardCompact({
       {!isOwned && (
         <button
           onClick={() => onPurchase?.(addOn.feature_key, billingPeriod)}
-          className="px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+          className="px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black rounded-2xl transition-all shadow-lg hover:shadow-xl hover:scale-105"
         >
           Add
         </button>

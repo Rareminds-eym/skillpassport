@@ -314,6 +314,85 @@ class ApplicationTrackingService {
    */
   async getApplicationStats(filters: ApplicationFilters = {}): Promise<ApplicationStats> {
     try {
+      // If college_id filter is provided, we need to filter by students from that college
+      if (filters.college_id) {
+        // First get student IDs from the college
+        const { data: students, error: studentsError } = await supabase
+          .from('students')
+          .select('id')
+          .eq('college_id', filters.college_id);
+
+        if (studentsError) {
+          console.error('Error fetching students for stats:', studentsError);
+          throw studentsError;
+        }
+
+        const studentIds = (students || []).map(s => s.id);
+
+        if (studentIds.length === 0) {
+          return {
+            total: 0,
+            applied: 0,
+            viewed: 0,
+            under_review: 0,
+            interview_scheduled: 0,
+            interviewed: 0,
+            offer_received: 0,
+            accepted: 0,
+            rejected: 0,
+            withdrawn: 0
+          };
+        }
+
+        // Now query applied_jobs for these students
+        let query = supabase
+          .from('applied_jobs')
+          .select('application_status')
+          .in('student_id', studentIds);
+
+        // Apply other filters
+        if (filters.status) {
+          query = query.eq('application_status', filters.status);
+        }
+
+        if (filters.date_from) {
+          query = query.gte('applied_at', filters.date_from);
+        }
+
+        if (filters.date_to) {
+          query = query.lte('applied_at', filters.date_to);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error fetching application stats:', error);
+          throw error;
+        }
+
+        const stats: ApplicationStats = {
+          total: data?.length || 0,
+          applied: 0,
+          viewed: 0,
+          under_review: 0,
+          interview_scheduled: 0,
+          interviewed: 0,
+          offer_received: 0,
+          accepted: 0,
+          rejected: 0,
+          withdrawn: 0
+        };
+
+        data?.forEach(app => {
+          if (app.application_status && stats.hasOwnProperty(app.application_status)) {
+            stats[app.application_status as keyof ApplicationStats]++;
+          }
+        });
+
+        return stats;
+      }
+
+      // Original logic for when no college_id filter
       let query = supabase
         .from('applied_jobs')
         .select('application_status');

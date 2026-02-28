@@ -153,7 +153,7 @@ function validateQuestionMetadata(question: Question): {
   }
 
   // Check gradeLevel
-  const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary'];
+  const validGradeLevels: GradeLevel[] = ['middle_school', 'high_school', 'higher_secondary', 'after10', 'after12', 'undergraduate', 'postgraduate'];
   if (!validGradeLevels.includes(question.gradeLevel)) {
     errors.push('gradeLevel must be a valid GradeLevel');
   }

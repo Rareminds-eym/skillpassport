@@ -25,6 +25,7 @@ export const studentEnrollmentService = {
    * Get all enrolled students with filters (using students table directly)
    */
   async getEnrolledStudents(filters?: {
+    college_id?: string;
     department_id?: string;
     program_id?: string;
     semester?: number;
@@ -62,6 +63,9 @@ export const studentEnrollmentService = {
         .not('program_id', 'is', null)
         .order('name', { ascending: true });
 
+      if (filters?.college_id) {
+        query = query.eq('college_id', filters.college_id);
+      }
       if (filters?.program_id) {
         query = query.eq('program_id', filters.program_id);
       }

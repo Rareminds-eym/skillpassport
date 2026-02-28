@@ -672,6 +672,8 @@ const OpportunityPreview = ({
   isApplying = false,
   canApplyToJobs = true,
   needsProfileCompletion = false,
+  missingFields = [],
+  completionPercentage = 0,
   navigate,
   studentData
 }) => {
@@ -1379,8 +1381,19 @@ const OpportunityPreview = ({
                       // Don't allow application if student has current backlogs
                       return;
                     } else if (needsProfileCompletion && !isApplied) {
-                      // Navigate to settings page if profile is incomplete
-                      if (navigate) {
+                      // Show alert with missing fields before navigating
+                      const missingFieldsList = missingFields && missingFields.length > 0 
+                        ? missingFields.join(', ') 
+                        : 'some required fields';
+                      
+                      const shouldNavigate = window.confirm(
+                        `Your profile is ${completionPercentage || 0}% complete.\n\n` +
+                        `Missing fields: ${missingFieldsList}\n\n` +
+                        `Please complete your profile to apply for jobs.\n\n` +
+                        `Click OK to go to Settings page.`
+                      );
+                      
+                      if (shouldNavigate && navigate) {
                         navigate('/student/settings');
                       }
                     } else if (!isApplied && !isApplying) {

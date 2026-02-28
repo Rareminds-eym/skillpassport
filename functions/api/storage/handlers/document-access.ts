@@ -9,6 +9,18 @@
  */
 
 import { R2Client } from '../utils/r2-client';
+import type { AuthenticatedContext } from '../[[path]]';
+import {
+  extractUserIdFromPath,
+  validatePaymentReceiptOwnership,
+  validateUploadOwnership,
+  type OwnershipValidationResult,
+} from '../utils/ownership';
+import {
+  createAuthenticationError,
+  createAuthorizationError,
+  logErrorSafely,
+} from '../utils/error-handling';
 
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
 
@@ -16,7 +28,10 @@ type PagesFunction = (context: { request: Request; env: any }) => Promise<Respon
  * Proxy document from R2 storage (LEGACY - NO AUTH)
  * WARNING: This endpoint does not validate authentication
  */
-export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
+export const handleDocumentAccess: PagesFunction = async (context) => {
+  const { request, env } = context;
+  const authenticatedContext = context as AuthenticatedContext;
+
   if (request.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -43,6 +58,27 @@ export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
           headers: { 'Content-Type': 'application/json' },
         }
       );
+    }
+
+    // Check if document is public
+    const isPublic = checkIfPublicDocument(fileKey);
+
+    if (!isPublic) {
+      // Private document - require authentication
+      if (!authenticatedContext.user) {
+        return createAuthenticationError('/document-access', 'missing_token');
+      }
+
+      // Validate ownership
+      const ownership = validateDocumentOwnership(fileKey, authenticatedContext.user.id);
+      if (!ownership.isOwner) {
+        return createAuthorizationError(
+          authenticatedContext.user.id,
+          fileKey,
+          'ownership_mismatch',
+          ownership.reason || 'You do not have permission to access this document'
+        );
+      }
     }
 
     // Initialize R2 client
@@ -87,7 +123,7 @@ export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
       },
     });
   } catch (error) {
-    console.error('[DocumentAccess] Error proxying document:', error);
+    logErrorSafely('DocumentAccess', error);
     return new Response(
       JSON.stringify({
         error: 'Failed to access document',

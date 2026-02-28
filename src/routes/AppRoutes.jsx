@@ -98,6 +98,9 @@ const SkillPassportPreRegistration = lazy(() =>
   import("../pages/register/SkillPassportPreRegistration")
 );
 
+// Network Error Page
+const NetworkError = lazy(() => import("../pages/NetworkError"));
+
 // Internal Testing Registration
 const InternalTestingRegistration = lazy(() =>
   import("../pages/register/InternalTestingRegistration")
@@ -157,6 +160,7 @@ const MyLearning = lazy(() => import("../pages/student/MyLearning"));
 const MyExperience = lazy(() => import("../pages/student/MyExperience"));
 const Courses = lazy(() => import("../pages/student/Courses"));
 const CoursePlayer = lazy(() => import("../pages/student/CoursePlayer"));
+const ComingSoon = lazy(() => import("../pages/student/ComingSoon"));
 const Opportunities = lazy(() => import("../pages/student/Opportunities"));
 const SavedJobs = lazy(() => import("../pages/student/SavedJobs"));
 const Applications = lazy(() => import("../pages/student/Applications"));
@@ -583,6 +587,7 @@ const AppRoutes = () => {
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
+          <Route path="/network-error" element={<NetworkError />} />
           <Route
             path="/student/profile/:studentId"
             element={<StudentPublicViewer />}
@@ -887,6 +892,7 @@ const AppRoutes = () => {
           <Route path="my-experience" element={<MyExperience />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
+          <Route path="coming-soon" element={<ComingSoon />} />
           <Route path="opportunities" element={<Opportunities />} />
           <Route path="saved-jobs" element={<SavedJobs />} />
           <Route path="applications" element={<Applications />} />
