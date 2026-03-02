@@ -242,6 +242,9 @@ const CareerAssistantContainer: React.FC = () => {
     setUserScrolledUp(false);
     userInteractedRef.current = false;
 
+    // Track the temporary message ID for cleanup
+    let tempMessageId: string | null = null;
+    
     try {
       const studentId = user?.id;
       if (!studentId) {
@@ -249,6 +252,7 @@ const CareerAssistantContainer: React.FC = () => {
       }
 
       const id = (Date.now() + 1).toString();
+      tempMessageId = id; // Track for cleanup
       
       const aiMessage: Message = {
         id,
@@ -285,9 +289,15 @@ const CareerAssistantContainer: React.FC = () => {
       );
       
       if (!result.success && result.error) {
+        // Remove the empty loading message before showing error
+        setMessages(prev => prev.filter(m => m.id !== id));
+        tempMessageId = null; // Clear since we removed it
         throw new Error(result.error);
       }
 
+      // Success - update message with backend's messageId
+      tempMessageId = null; // Clear since message is now permanent
+      
       if (result.conversationId && result.conversationId !== currentConversationId) {
         setCurrentConversationId(result.conversationId);
         fetchConversations();
@@ -306,6 +316,20 @@ const CareerAssistantContainer: React.FC = () => {
       ));
     } catch (error: any) {
       console.error('Career AI Error:', error);
+      
+      // Check if error is from abort (user stopped generation)
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        // Remove any temporary loading message
+        if (tempMessageId) {
+          setMessages(prev => prev.filter(m => m.id !== tempMessageId));
+        }
+        return;
+      }
+      
+      // Remove temporary loading message if it still exists
+      if (tempMessageId) {
+        setMessages(prev => prev.filter(m => m.id !== tempMessageId));
+      }
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
