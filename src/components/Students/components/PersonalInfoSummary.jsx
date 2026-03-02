@@ -25,8 +25,16 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
 
   // Determine institution from studentData
   const institution = React.useMemo(() => {
-    // Priority: school_id takes precedence if both exist
-    if (studentData?.school_id && studentData?.school) {
+    // Priority: college_id takes precedence if both exist (College → School)
+    if (studentData?.college_id && studentData?.college) {
+      return {
+        type: 'College',
+        name: studentData.college.name,
+        code: studentData.college.code,
+        city: studentData.college.city,
+        state: studentData.college.state,
+      };
+    } else if (studentData?.school_id && studentData?.school) {
       return {
         type: 'School',
         name: studentData.school.name,
@@ -46,6 +54,46 @@ const PersonalInfoSummary = ({ data, studentData, isOwnProfile = true }) => {
         city: university?.district, // Location comes from parent university
         state: university?.state,
       };
+    } else if (studentData?.university || studentData?.college || studentData?.college_school_name) {
+      // Fallback to individual columns if no foreign key relationships (custom entries)
+      // Determine type based on what fields are filled
+      let type = 'Institution';
+      let name = null;
+      
+      // Check if it's a university path (has university or program/branch)
+      const isUniversityPath = studentData?.university || studentData?.branch;
+      // Check if it's a school path (has grade but no university)
+      const isSchoolPath = studentData?.grade && !isUniversityPath;
+      
+      if (isUniversityPath) {
+        // University student - show college name if available, otherwise university
+        if (studentData?.college) {
+          type = 'College';
+          name = studentData.college;
+        } else if (studentData?.university) {
+          type = 'University';
+          name = studentData.university;
+        }
+      } else if (isSchoolPath) {
+        // School student - show school name from college field
+        if (studentData?.college) {
+          type = 'School';
+          name = studentData.college;
+        }
+      } else {
+        // Fallback - use whatever is available
+        name = studentData.college_school_name || studentData.college || studentData.university;
+      }
+      
+      if (name) {
+        return {
+          type: type,
+          name: name,
+          code: null,
+          city: studentData.city,
+          state: studentData.state,
+        };
+      }
     }
     return null;
   }, [studentData]);

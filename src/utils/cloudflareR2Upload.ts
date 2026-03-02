@@ -4,6 +4,7 @@
  */
 
 import { getPagesApiUrl } from './pagesUrl';
+import { supabase } from '../lib/supabaseClient';
 
 // Storage API worker URL
 const STORAGE_API_URL = getPagesApiUrl('storage');
@@ -25,6 +26,16 @@ export async function uploadToCloudflareR2(
   folder: string = 'courses'
 ): Promise<R2UploadResponse> {
   try {
+    // Get authentication token
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      return {
+        success: false,
+        error: 'Authentication required. Please log in.'
+      };
+    }
+
     // Validate file type
     if (!file.type.startsWith('image/')) {
       return {
@@ -56,8 +67,18 @@ export async function uploadToCloudflareR2(
 
     const response = await fetch(`${STORAGE_API_URL}/upload`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      },
       body: formData
     });
+
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: 'Authentication failed. Please refresh and log in again.'
+      };
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -92,13 +113,27 @@ export async function uploadToCloudflareR2(
  */
 export async function deleteFromCloudflareR2(url: string): Promise<boolean> {
   try {
+    // Get authentication token
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error('Authentication required');
+      return false;
+    }
+
     const response = await fetch(`${STORAGE_API_URL}/delete`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
       },
       body: JSON.stringify({ url })
     });
+
+    if (response.status === 401) {
+      console.error('Authentication failed. Please refresh and log in again.');
+      return false;
+    }
 
     if (!response.ok) {
       console.error('Error deleting from R2:', await response.text());

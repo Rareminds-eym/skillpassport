@@ -183,22 +183,28 @@ const PassportPage: React.FC = () => {
                 </div>
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">
-                    {student?.student_type === 'school-student' ? 'School' : 'University'}
+                    {student?.school_id 
+                      ? 'School' 
+                      : student?.college_id 
+                        ? 'College' 
+                        : 'University'}
                   </p>
                   <p className="font-semibold text-gray-800">
-                    {student?.student_type === 'school-student'
+                    {student?.school_id
                       ? (student?.school?.name || student?.college_school_name || 'N/A')
-                      : (student?.university || student?.universityInfo?.name || 'N/A')
+                      : student?.college_id
+                        ? (student?.college_school_name || 'N/A')
+                        : (student?.university || student?.universityInfo?.name || 'N/A')
                     }
                   </p>
                 </div>
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">
-                    {student?.student_type === 'school-student' ? 'Grade/Section' : 'Field of Study'}
+                    {student?.school_id ? 'Grade/Section' : 'Field of Study'}
                   </p>
                   <p className="font-semibold text-gray-800">
-                    {student?.student_type === 'school-student'
-                      ? (student?.grade && student?.section ? `Grade ${student.grade} - ${student.section}` : 'N/A')
+                    {student?.school_id
+                      ? (student?.section || student?.grade || 'N/A')
                       : (student?.branch_field || 'N/A')
                     }
                   </p>
@@ -357,17 +363,23 @@ const PassportPage: React.FC = () => {
           </div>
           
           <div className="space-y-3">
-            {student?.profile.languages?.map((language, index) => (
-              <div key={index} className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between border-l-4 border-green-500">
-                <div className="flex items-center space-x-3">
-                  <Globe className="w-5 h-5 text-green-600" />
-                  <span className="font-semibold text-gray-900">{language.name}</span>
+            {student?.profile.languages?.map((language, index) => {
+              // Handle both string format and object format
+              const languageName = typeof language === 'string' ? language : language.name;
+              const proficiency = typeof language === 'string' ? 'Proficient' : (language.proficiency || 'Proficient');
+              
+              return (
+                <div key={index} className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between border-l-4 border-green-500">
+                  <div className="flex items-center space-x-3">
+                    <Globe className="w-5 h-5 text-green-600" />
+                    <span className="font-semibold text-gray-900">{languageName}</span>
+                  </div>
+                  <span className="text-sm font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
+                    {proficiency}
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
-                  {language.proficiency}
-                </span>
-              </div>
-            ))}
+              );
+            })}
             
             {(!student?.profile.languages || student.profile.languages.length === 0) && (
               <div className="text-center text-gray-500 py-12">

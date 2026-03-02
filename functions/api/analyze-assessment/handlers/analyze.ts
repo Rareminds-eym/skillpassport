@@ -27,6 +27,7 @@ import {
   generateJobMarketSection, 
   extractCareerCategories 
 } from '../services/job-market-data';
+import { buildAfter12Prompt } from '../prompts/after12';
 
 interface RequestBody {
   assessmentData: AssessmentData;
@@ -46,6 +47,117 @@ const ASSESSMENT_CONFIG = {
   maxTokens: 32000,  // Increased to handle complete responses with all sections (employability, knowledge, skillGap, roadmap, finalNote)
   maxRetries: API_CONFIG.RETRY.maxRetries,
 };
+
+/**
+ * Pre-calculate RIASEC scores from answers
+ * This ensures accuracy before AI processing
+ */
+function calculateRiasecScores(riasecAnswers: Record<string, any>): { 
+  scores: { R: number; I: number; A: number; S: number; E: number; C: number }; 
+  percentages: { R: number; I: number; A: number; S: number; E: number; C: number }; 
+  code: string; 
+  maxScore: number 
+} {
+  const scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+  let totalQuestions = 0;
+  
+  console.log('[RIASEC] === CALCULATING RIASEC SCORES ===');
+  console.log('[RIASEC] riasecAnswers type:', typeof riasecAnswers);
+  console.log('[RIASEC] riasecAnswers is null?', riasecAnswers === null);
+  console.log('[RIASEC] riasecAnswers is undefined?', riasecAnswers === undefined);
+  console.log('[RIASEC] riasecAnswers keys:', riasecAnswers ? Object.keys(riasecAnswers) : 'N/A');
+  console.log('[RIASEC] Total questions received:', Object.keys(riasecAnswers || {}).length);
+  
+  // Log first 3 questions to debug structure
+  Object.entries(riasecAnswers || {}).slice(0, 3).forEach(([id, question]: [string, any]) => {
+    console.log(`[RIASEC] Sample ${id}:`, {
+      answer: question.answer,
+      answerType: typeof question.answer,
+      riasecType: question.riasecType,
+      hasCategoryMapping: !!question.categoryMapping
+    });
+  });
+  
+  // Process each question
+  Object.values(riasecAnswers).forEach((question: any) => {
+    const answer = question.answer;
+    const mapping = question.categoryMapping;
+    const riasecType = question.riasecType; // Direct RIASEC type from question
+    let questionAnswered = false;
+    
+    // Handle numeric rating answers (1-5 scale) - for college/after12/after10
+    if (typeof answer === 'number' && riasecType && scores.hasOwnProperty(riasecType)) {
+      // Rating scale scoring:
+      // 1-2: 0 points
+      // 3: 1 point
+      // 4: 2 points
+      // 5: 3 points
+      let points = 0;
+      if (answer >= 3) {
+        points = answer - 2; // 3->1, 4->2, 5->3
+      }
+      
+      console.log(`[RIASEC] Processing: type=${riasecType}, answer=${answer}, points=${points}, before=${scores[riasecType]}`);
+      
+      scores[riasecType] += points;
+      questionAnswered = true;
+      totalQuestions++;
+      
+      console.log(`[RIASEC] After: type=${riasecType}, score=${scores[riasecType]}`);
+    }
+    // Handle array answers (multiselect) - for middle/high school
+    else if (Array.isArray(answer) && answer.length > 0 && mapping) {
+      answer.forEach((option: string) => {
+        const mappedType = mapping[option];
+        if (mappedType && scores.hasOwnProperty(mappedType)) {
+          scores[mappedType] += 2;
+          questionAnswered = true;
+        }
+      });
+      if (questionAnswered) {
+        totalQuestions++;
+      }
+    }
+    // Handle single string answer with mapping
+    else if (typeof answer === 'string' && answer.length > 0 && mapping) {
+      const mappedType = mapping[answer];
+      if (mappedType && scores.hasOwnProperty(mappedType)) {
+        scores[mappedType] += 2;
+        questionAnswered = true;
+        totalQuestions++;
+      }
+    }
+  });
+  
+  // Calculate max possible score (2 points per question)
+  const maxScore = totalQuestions * 2;
+  
+  // Calculate percentages
+  const percentages = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+  (Object.keys(scores) as Array<keyof typeof scores>).forEach(key => {
+    percentages[key] = maxScore > 0 ? Math.round((scores[key] / maxScore) * 100) : 0;
+  });
+  
+  // Determine RIASEC code (top 3 types by score, alphabetical order for ties)
+  const sortedTypes = Object.entries(scores)
+    .sort(([typeA, scoreA], [typeB, scoreB]) => {
+      // First sort by score (descending)
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+      // If scores are equal, sort alphabetically
+      return typeA.localeCompare(typeB);
+    })
+    .slice(0, 3)
+    .map(([type]) => type);
+  const code = sortedTypes.join('');
+  
+  console.log('[RIASEC] Pre-calculated scores:', scores);
+  console.log('[RIASEC] Percentages:', percentages);
+  console.log('[RIASEC] Code:', code);
+  
+  return { scores, percentages, code, maxScore };
+}
 
 /**
  * Generate deterministic seed from assessment data
@@ -78,7 +190,7 @@ function generateSeed(data: AssessmentData): number {
  * Validate assessment response structure
  * Ensures the response has all required fields with correct types
  */
-function validateAssessmentStructure(result: any): { valid: boolean; errors: string[]; warnings: string[] } {
+function validateAssessmentStructure(result: any, gradeLevel?: string): { valid: boolean; errors: string[]; warnings: string[] } {
   // ============================================================================
   // ENHANCED LOGGING: Log validation start (Requirement 4.3, 4.5)
   // ============================================================================
@@ -86,6 +198,7 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
   console.log('[VALIDATION] Response type:', typeof result);
   console.log('[VALIDATION] Is array:', Array.isArray(result));
   console.log('[VALIDATION] Response keys:', result ? Object.keys(result).join(', ') : 'null');
+  console.log('[VALIDATION] Grade level:', gradeLevel);
   
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -228,6 +341,63 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
         }
       });
     }
+    
+    // Validate degreePrograms (CRITICAL for after12 students ONLY)
+    if (gradeLevel === 'after12') {
+      if (!result.careerFit.degreePrograms || !Array.isArray(result.careerFit.degreePrograms)) {
+        const error = 'careerFit.degreePrograms must be an array (required for after12 students)';
+        errors.push(error);
+        console.error('[VALIDATION] ❌', error);
+      } else {
+        if (result.careerFit.degreePrograms.length !== 3) {
+          const error = `careerFit.degreePrograms must have exactly 3 programs, got ${result.careerFit.degreePrograms.length}`;
+          errors.push(error);
+          console.error('[VALIDATION] ❌', error);
+        } else {
+          console.log('[VALIDATION] ✅ careerFit.degreePrograms has 3 programs');
+        }
+        
+        // Validate each program
+        result.careerFit.degreePrograms.forEach((program: any, index: number) => {
+          const programNum = index + 1;
+          if (!program || typeof program !== 'object') {
+            const error = `Program ${programNum} must be an object`;
+            errors.push(error);
+            console.error('[VALIDATION] ❌', error);
+            return;
+          }
+          
+          const requiredProgramFields = ['programName', 'matchScore', 'fit', 'duration', 'roleDescription', 'topUniversities', 'alignedWithCluster', 'whyThisFitsYou', 'evidence'];
+          const missingProgramFields: string[] = [];
+          requiredProgramFields.forEach(field => {
+            if (!program[field]) {
+              const error = `Program ${programNum} missing REQUIRED field: ${field}`;
+              errors.push(error);
+              missingProgramFields.push(field);
+              console.error('[VALIDATION] ❌', error);
+            }
+          });
+          
+          if (missingProgramFields.length === 0) {
+            console.log(`[VALIDATION] ✅ Program ${programNum} has all required fields`);
+          }
+          
+          // Validate evidence structure (all 7 sections required)
+          if (program.evidence && typeof program.evidence === 'object') {
+            const requiredEvidence = ['interest', 'aptitude', 'personality', 'values', 'employability', 'knowledge', 'adaptiveAptitude'];
+            requiredEvidence.forEach(field => {
+              if (!program.evidence[field]) {
+                const error = `Program ${programNum} evidence missing REQUIRED field: ${field}`;
+                errors.push(error);
+                console.error('[VALIDATION] ❌', error);
+              }
+            });
+          }
+        });
+      }
+    } else {
+      console.log('[VALIDATION] ℹ️ Skipping degreePrograms validation (not required for', gradeLevel, ')');
+    }
   }
   
   // Validate RIASEC structure
@@ -289,6 +459,13 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
     const missingAptitudeTypes: string[] = [];
     const emptyAptitudeTypes: string[] = [];
     
+    // Check if this is a grade level that uses adaptive aptitude (scored)
+    // vs rating-based aptitude (not scored)
+    // High school uses BOTH: hs_aptitude_sampling (rating) AND adaptive_aptitude (scored)
+    // Middle school uses adaptive_aptitude (scored)
+    // After10, after12, college, higher_secondary use adaptive_aptitude (scored)
+    const usesAdaptiveAptitude = true; // All grade levels now use adaptive aptitude
+    
     aptitudeTypes.forEach(type => {
       if (!result.aptitude.scores[type]) {
         const warning = `aptitude.scores.${type} missing`;
@@ -299,10 +476,15 @@ function validateAssessmentStructure(result: any): { valid: boolean; errors: str
         // Check if aptitude score is empty or all zeros
         const score = result.aptitude.scores[type];
         if (score.correct === 0 && score.total === 0) {
-          const warning = `⚠️ SUSPICIOUS PATTERN: aptitude.scores.${type} is empty (0/0) - indicates no questions answered`;
-          warnings.push(warning);
-          emptyAptitudeTypes.push(type);
-          console.warn('[VALIDATION]', warning);
+          // Only warn if this grade level uses scored adaptive aptitude
+          if (usesAdaptiveAptitude) {
+            const warning = `⚠️ SUSPICIOUS PATTERN: aptitude.scores.${type} is empty (0/0) - indicates no questions answered`;
+            warnings.push(warning);
+            emptyAptitudeTypes.push(type);
+            console.warn('[VALIDATION]', warning);
+          } else {
+            console.log(`[VALIDATION] ℹ️ aptitude.scores.${type} is empty (0/0) - expected for rating-based aptitude`);
+          }
         }
       }
     });
@@ -380,10 +562,47 @@ async function analyzeAssessment(
   
   console.log(`[ASSESSMENT] === STARTING AI ANALYSIS ===`);
   console.log(`[ASSESSMENT] Grade Level: ${gradeLevel}`);
+  // ============================================================================
+  // STEP 0: Pre-calculate RIASEC scores for accuracy
+  // ============================================================================
+  console.log('[ASSESSMENT] 🧮 Pre-calculating RIASEC scores from answers...');
+  const precalculatedRiasec = calculateRiasecScores(assessmentData.riasecAnswers);
+  console.log('[ASSESSMENT] ✅ RIASEC pre-calculation complete');
+  console.log('[ASSESSMENT] 📊 RIASEC Code:', precalculatedRiasec.code);
+  console.log('[ASSESSMENT] 📊 RIASEC Percentages:', precalculatedRiasec.percentages);
   
   // ============================================================================
-  // STEP 1: Build prompt WITHOUT pre-fetching job market data
-  // Let AI determine RIASEC first, then we can fetch targeted data if needed
+  // STEP 0.5: Fetch real-time job market data for higher_secondary and after12
+  // ============================================================================
+  let jobMarketSection = '';
+  
+  if (gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') {
+    console.log('[ASSESSMENT] 🌐 Fetching real-time job market data...');
+    
+    // Extract career categories based on RIASEC profile
+    const aptitudeLevel = assessmentData.adaptiveAptitudeResults?.aptitudeLevel || 3;
+    const categories = extractCareerCategories(
+      precalculatedRiasec.code,
+      aptitudeLevel,
+      [],
+      assessmentData.stream // Pass stream for psychology detection
+    );
+    
+    console.log('[ASSESSMENT] 📊 Selected categories for', precalculatedRiasec.code, ':', categories.join(', '));
+    
+    // Fetch real-time data
+    const jobMarketData = await fetchJobMarketData(env, categories);
+    
+    if (Object.keys(jobMarketData).length > 0) {
+      console.log('[ASSESSMENT] ✅ Real-time job market data fetched successfully');
+      jobMarketSection = generateJobMarketSection(jobMarketData, precalculatedRiasec.code);
+    } else {
+      console.log('[ASSESSMENT] ⚠️ No job market data fetched, using hardcoded fallback');
+    }
+  }
+  
+  // ============================================================================
+  // STEP 1: Build prompt with real-time job market data
   // ============================================================================
   
   // Generate deterministic hash for consistent results
@@ -405,13 +624,17 @@ async function analyzeAssessment(
     basePrompt = buildAfter10Prompt(assessmentData, seed);
     console.log(`[ASSESSMENT] ✅ Using AFTER 10TH prompt (stream selection for 11th-12th)`);
   } else if (gradeLevel === 'higher_secondary') {
-    // Grades 11-12: Use higher secondary prompt
-    basePrompt = buildHigherSecondaryPrompt(assessmentData, seed);
+    // Grades 11-12: Use higher secondary prompt with real-time job market data
+    basePrompt = buildHigherSecondaryPrompt(assessmentData, seed, jobMarketSection);
     console.log(`[ASSESSMENT] ✅ Using HIGHER SECONDARY prompt (grades 11-12)`);
+  } else if (gradeLevel === 'after12') {
+    // After 12th (College-Bound): Use after12 prompt with degreePrograms requirement
+    basePrompt = buildAfter12Prompt(assessmentData, seed);
+    console.log(`[ASSESSMENT] ✅ Using AFTER 12TH prompt (college-bound with degree programs)`);
   } else {
-    // College/After 12th: Use college prompt
+    // College/University students: Use college prompt
     basePrompt = buildCollegePrompt(assessmentData, seed);
-    console.log(`[ASSESSMENT] ✅ Using COLLEGE prompt (after 12th/college)`);
+    console.log(`[ASSESSMENT] ✅ Using COLLEGE prompt (university students)`);
   }
   console.log('[ASSESSMENT] 📊 AI will analyze raw answers and calculate RIASEC scores');
   console.log('[ASSESSMENT] 🎯 Career recommendations will be based on AI-calculated RIASEC');
@@ -477,145 +700,97 @@ async function analyzeAssessment(
       console.log(`[ASSESSMENT] 📊 Result keys:`, Object.keys(result).join(', '));
       
       // ============================================================================
-      // ADAPTIVE APTITUDE FIX: Override AI's zero scores with pre-calculated scores
-      // If adaptive aptitude results exist and AI returned zeros, use pre-calculated scores
-      // This fixes the issue where AI ignores pre-calculated scores in the prompt
+      // ADAPTIVE APTITUDE FIX: Override AI's scores with actual adaptive test results
+      // The AI often returns zeros or incorrect scores - we must use the real adaptive data
       // ============================================================================
       console.log('[ASSESSMENT] 🔍 Checking for adaptive aptitude fix...');
       console.log('[ASSESSMENT] 🔍 Has adaptiveAptitudeResults:', !!assessmentData.adaptiveAptitudeResults);
       console.log('[ASSESSMENT] 🔍 Has result.aptitude:', !!result.aptitude);
       console.log('[ASSESSMENT] 🔍 Has result.aptitude.scores:', !!result.aptitude?.scores);
       
-      if (assessmentData.adaptiveAptitudeResults && result.aptitude && result.aptitude.scores) {
+      if (assessmentData.adaptiveAptitudeResults && result.aptitude) {
         const adaptiveResults = assessmentData.adaptiveAptitudeResults;
-        const aiScores = result.aptitude.scores;
         
-        console.log('[ASSESSMENT] 🔍 AI returned scores:', JSON.stringify(aiScores));
-        console.log('[ASSESSMENT] 🔍 Adaptive results:', JSON.stringify(adaptiveResults));
+        console.log('[ASSESSMENT] 🔧 Overriding AI aptitude scores with adaptive test results');
+        console.log('[ASSESSMENT] 🔍 Adaptive results structure:', JSON.stringify(adaptiveResults, null, 2));
         
-        // Check if AI returned all zeros (indicates it ignored pre-calculated scores)
-        const allZeros = Object.values(aiScores).every((score: any) => 
-          score && score.percentage === 0
-        );
+        // Handle both camelCase (from frontend) and snake_case (from database)
+        const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
+        const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
+        const overallAccuracy = (adaptiveResults as any).overallAccuracy || (adaptiveResults as any).overall_accuracy || 0;
+        const accuracyBySubtag = (adaptiveResults as any).accuracyBySubtag || (adaptiveResults as any).accuracy_by_subtag || {};
+        const aptitudeLevel = (adaptiveResults as any).aptitudeLevel || (adaptiveResults as any).aptitude_level || 1;
+        const confidenceTag = (adaptiveResults as any).confidenceTag || (adaptiveResults as any).confidence_tag || 'low';
         
-        console.log('[ASSESSMENT] 🔍 All zeros check:', allZeros);
+        // Map subtags to traditional aptitude categories
+        // This creates the structure expected by the frontend
+        const subtagMapping: Record<string, string> = {
+          'verbal_reasoning': 'verbal',
+          'numerical_reasoning': 'numerical',
+          'logical_reasoning': 'abstract',
+          'pattern_recognition': 'abstract',
+          'spatial_reasoning': 'spatial',
+          'data_interpretation': 'numerical'
+        };
         
-        if (allZeros) {
-          console.warn('[ASSESSMENT] ⚠️ AI returned all zero aptitude scores despite adaptive results existing');
-          console.log('[ASSESSMENT] 🔧 Applying backend fix: Converting adaptive results to standard format');
-          
-          // Convert adaptive results to standard format
-          // Handle both camelCase (from frontend) and snake_case (from database)
-          const accuracyBySubtag = (adaptiveResults as any).accuracyBySubtag || (adaptiveResults as any).accuracy_by_subtag || {};
-          
-          console.log('[ASSESSMENT] 🔍 accuracyBySubtag keys:', Object.keys(accuracyBySubtag));
-          console.log('[ASSESSMENT] 🔍 accuracyBySubtag data:', JSON.stringify(accuracyBySubtag));
-          
-          // Calculate converted scores
-          const verbal = accuracyBySubtag.verbal_reasoning?.accuracy || 0;
-          
-          // Numerical = average of numerical_reasoning and data_interpretation
-          const numericalTotal = (accuracyBySubtag.numerical_reasoning?.total || 0) + 
-                                 (accuracyBySubtag.data_interpretation?.total || 0);
-          const numericalCorrect = (accuracyBySubtag.numerical_reasoning?.correct || 0) + 
-                                   (accuracyBySubtag.data_interpretation?.correct || 0);
-          const numerical = numericalTotal > 0 ? (numericalCorrect / numericalTotal * 100) : 0;
-          
-          // Abstract = average of logical_reasoning and pattern_recognition
-          const abstractTotal = (accuracyBySubtag.logical_reasoning?.total || 0) + 
-                                (accuracyBySubtag.pattern_recognition?.total || 0);
-          const abstractCorrect = (accuracyBySubtag.logical_reasoning?.correct || 0) + 
-                                  (accuracyBySubtag.pattern_recognition?.correct || 0);
-          const abstract = abstractTotal > 0 ? (abstractCorrect / abstractTotal * 100) : 0;
-          
-          // Spatial = spatial_reasoning
-          const spatial = accuracyBySubtag.spatial_reasoning?.accuracy || 0;
-          
-          // Override AI's scores with converted scores
-          result.aptitude.scores = {
-            verbal: {
-              total: accuracyBySubtag.verbal_reasoning?.total || 0,
-              correct: accuracyBySubtag.verbal_reasoning?.correct || 0,
-              percentage: Math.round(verbal)
-            },
-            numerical: {
-              total: numericalTotal,
-              correct: numericalCorrect,
-              percentage: Math.round(numerical)
-            },
-            abstract: {
-              total: abstractTotal,
-              correct: abstractCorrect,
-              percentage: Math.round(abstract)
-            },
-            spatial: {
-              total: accuracyBySubtag.spatial_reasoning?.total || 0,
-              correct: accuracyBySubtag.spatial_reasoning?.correct || 0,
-              percentage: Math.round(spatial)
-            },
-            clerical: {
-              total: 0,
-              correct: 0,
-              percentage: 0
-            }
-          };
-          
-          // Calculate overall aptitude score
-          // Handle both camelCase and snake_case
-          const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
-          const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
-          result.aptitude.overall = totalQuestions > 0 ? 
-            Math.round((totalCorrect / totalQuestions) * 100) : 0;
-          
-          console.log('[ASSESSMENT] ✅ Backend fix applied successfully');
-          console.log('[ASSESSMENT] 📊 Converted scores:', {
-            verbal: Math.round(verbal),
-            numerical: Math.round(numerical),
-            abstract: Math.round(abstract),
-            spatial: Math.round(spatial),
-            overall: result.aptitude.overall
-          });
-        } else {
-          console.log('[ASSESSMENT] ✅ AI correctly used pre-calculated aptitude scores (not all zeros)');
+        // Initialize scores structure
+        const mappedScores: Record<string, { correct: number; total: number; percentage: number }> = {
+          verbal: { correct: 0, total: 0, percentage: 0 },
+          numerical: { correct: 0, total: 0, percentage: 0 },
+          abstract: { correct: 0, total: 0, percentage: 0 },
+          spatial: { correct: 0, total: 0, percentage: 0 },
+          clerical: { correct: 0, total: 0, percentage: 0 }
+        };
+        
+        // Map subtag scores to traditional categories
+        for (const [subtag, data] of Object.entries(accuracyBySubtag)) {
+          const category = subtagMapping[subtag];
+          if (category && typeof data === 'object' && data !== null) {
+            const subtagData = data as any;
+            const correct = subtagData.correct || 0;
+            const total = subtagData.total || 0;
+            
+            mappedScores[category].correct += correct;
+            mappedScores[category].total += total;
+          }
         }
         
-        // ============================================================================
-        // ADAPTIVE APTITUDE OVERALL SCORE FIX
-        // Even if individual scores are correct, AI sometimes returns overall = 0
-        // Always set overall score from adaptive results when available
-        // Set both 'overall' and 'overallScore' for compatibility
-        // Check BOTH fields since AI might set one but not the other
-        // ============================================================================
-        const needsOverallFix = result.aptitude && (
-          !result.aptitude.overall || 
-          result.aptitude.overall === 0 ||
-          !result.aptitude.overallScore ||
-          result.aptitude.overallScore === 0
-        );
-        
-        if (needsOverallFix) {
-          const totalQuestions = (adaptiveResults as any).totalQuestions || (adaptiveResults as any).total_questions || 0;
-          const totalCorrect = (adaptiveResults as any).totalCorrect || (adaptiveResults as any).total_correct || 0;
-          const calculatedOverall = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
-          
-          console.log('[ASSESSMENT] 🔧 Fixing overall aptitude score:');
-          console.log('[ASSESSMENT]    AI returned overall:', result.aptitude.overall);
-          console.log('[ASSESSMENT]    AI returned overallScore:', result.aptitude.overallScore);
-          console.log('[ASSESSMENT]    Calculated from adaptive:', calculatedOverall);
-          console.log('[ASSESSMENT]    Total questions:', totalQuestions, 'Total correct:', totalCorrect);
-          
-          // Set both fields for compatibility
-          result.aptitude.overall = calculatedOverall;
-          result.aptitude.overallScore = calculatedOverall;
-          console.log('[ASSESSMENT] ✅ Overall aptitude score fixed to:', calculatedOverall);
-          console.log('[ASSESSMENT] ✅ Both overall and overallScore now set to:', calculatedOverall);
+        // Calculate percentages
+        for (const category of Object.keys(mappedScores)) {
+          if (mappedScores[category].total > 0) {
+            mappedScores[category].percentage = Math.round(
+              (mappedScores[category].correct / mappedScores[category].total) * 100
+            );
+          }
         }
+        
+        console.log('[ASSESSMENT] 🔧 Mapped scores:', JSON.stringify(mappedScores, null, 2));
+        
+        // Override AI scores with adaptive test results
+        result.aptitude.scores = mappedScores;
+        result.aptitude.overall = Math.round(overallAccuracy);
+        result.aptitude.overallScore = Math.round(overallAccuracy);
+        result.aptitude.adaptiveLevel = aptitudeLevel;
+        result.aptitude.adaptiveConfidence = confidenceTag;
+        
+        // Add adaptive test details for reference
+        result.aptitude.adaptiveTest = accuracyBySubtag;
+        
+        console.log('[ASSESSMENT] ✅ Aptitude scores overridden with adaptive results');
+        console.log('[ASSESSMENT] ✅ Overall score:', result.aptitude.overall);
+        console.log('[ASSESSMENT] ✅ Adaptive level:', aptitudeLevel);
+        console.log('[ASSESSMENT] ✅ Confidence:', confidenceTag);
+        console.log('[ASSESSMENT] ✅ Final aptitude.scores:', JSON.stringify(result.aptitude.scores, null, 2));
+      } else {
+        console.log('[ASSESSMENT] ℹ️ Skipping adaptive aptitude override');
+        console.log('[ASSESSMENT] ℹ️ Has adaptiveAptitudeResults:', !!assessmentData.adaptiveAptitudeResults);
+        console.log('[ASSESSMENT] ℹ️ Has result.aptitude:', !!result.aptitude);
       }
       
       // ============================================================================
       // STRICT VALIDATION (Requirement 7.2, 7.3)
       // ============================================================================
-      const validation = validateAssessmentStructure(result);
+      const validation = validateAssessmentStructure(result, gradeLevel);
       
       // ============================================================================
       // VALIDATION FAILURE HANDLING (Requirement 7.4)
@@ -796,6 +971,8 @@ export async function handleAnalyzeAssessment(
   console.log('[ASSESSMENT-API] Student ID:', studentId);
   console.log('[ASSESSMENT-API] Stream:', assessmentData.stream);
   console.log('[ASSESSMENT-API] Grade Level:', assessmentData.gradeLevel);
+  console.log('[ASSESSMENT-API] Has RIASEC Answers:', !!assessmentData.riasecAnswers);
+  console.log('[ASSESSMENT-API] RIASEC Answers count:', assessmentData.riasecAnswers ? Object.keys(assessmentData.riasecAnswers).length : 0);
   console.log('[ASSESSMENT-API] Has Student Context:', !!assessmentData.studentContext);
   if (assessmentData.studentContext) {
     console.log('[ASSESSMENT-API] Student Context:', {
@@ -806,6 +983,58 @@ export async function handleAnalyzeAssessment(
     });
   }
   console.log('[ASSESSMENT-API] Has Adaptive Results:', !!assessmentData.adaptiveAptitudeResults);
+  
+  // Log all assessment sections
+  console.log('[ASSESSMENT-API] === ASSESSMENT SECTIONS CHECK ===');
+  console.log('[ASSESSMENT-API] Has riasecAnswers:', !!assessmentData.riasecAnswers, 'Count:', Object.keys(assessmentData.riasecAnswers || {}).length);
+  console.log('[ASSESSMENT-API] Has bigFiveAnswers:', !!assessmentData.bigFiveAnswers, 'Count:', Object.keys(assessmentData.bigFiveAnswers || {}).length);
+  console.log('[ASSESSMENT-API] Has workValuesAnswers:', !!assessmentData.workValuesAnswers, 'Count:', Object.keys(assessmentData.workValuesAnswers || {}).length);
+  console.log('[ASSESSMENT-API] Has employabilityAnswers:', !!assessmentData.employabilityAnswers);
+  console.log('[ASSESSMENT-API] Has aptitudeScores:', !!assessmentData.aptitudeScores);
+  console.log('[ASSESSMENT-API] Has knowledgeAnswers:', !!assessmentData.knowledgeAnswers, 'Count:', Object.keys(assessmentData.knowledgeAnswers || {}).length);
+  console.log('[ASSESSMENT-API] Total Knowledge Questions:', assessmentData.totalKnowledgeQuestions);
+  console.log('[ASSESSMENT-API] Total Aptitude Questions:', assessmentData.totalAptitudeQuestions);
+
+  // Pre-calculate RIASEC scores for validation
+  console.log('[ASSESSMENT-API] 🧮 Pre-calculating RIASEC scores...');
+  console.log('[ASSESSMENT-API] Has riasecAnswers:', !!assessmentData.riasecAnswers);
+  console.log('[ASSESSMENT-API] riasecAnswers keys:', assessmentData.riasecAnswers ? Object.keys(assessmentData.riasecAnswers).length : 0);
+  
+  const emptyRiasec = { 
+    scores: { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 }, 
+    percentages: { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 }, 
+    code: '', 
+    maxScore: 0 
+  };
+  let precalculatedRiasec = emptyRiasec;
+  let canValidateRiasec = false;
+  
+  if (assessmentData.riasecAnswers && Object.keys(assessmentData.riasecAnswers).length > 0) {
+    // Check if we have valid data for RIASEC calculation
+    // College/after12/after10: questions have riasecType (R, I, A, S, E, C)
+    // Middle/high school: questions have categoryMapping
+    const hasValidMapping = Object.values(assessmentData.riasecAnswers).some(
+      (q: any) => q.categoryMapping && Object.keys(q.categoryMapping).length > 0
+    );
+    const hasRiasecType = Object.values(assessmentData.riasecAnswers).some(
+      (q: any) => q.riasecType && typeof q.riasecType === 'string'
+    );
+    
+    if (hasValidMapping || hasRiasecType) {
+      precalculatedRiasec = calculateRiasecScores(assessmentData.riasecAnswers);
+      canValidateRiasec = true;
+      console.log('[ASSESSMENT-API] ✅ Pre-calculated RIASEC:', precalculatedRiasec.code);
+      console.log('[ASSESSMENT-API] ✅ RIASEC scores:', precalculatedRiasec.scores);
+      console.log('[ASSESSMENT-API] ✅ RIASEC validation enabled');
+    } else {
+      console.warn('[ASSESSMENT-API] ⚠️ riasecAnswers missing both categoryMapping and riasecType - cannot pre-calculate');
+      console.warn('[ASSESSMENT-API] ⚠️ RIASEC validation DISABLED - will trust AI output');
+      canValidateRiasec = false;
+    }
+  } else {
+    console.warn('[ASSESSMENT-API] ⚠️ No riasecAnswers provided - RIASEC validation DISABLED');
+    canValidateRiasec = false;
+  }
 
   // ============================================================================
   // FETCH STUDENT PROFILE DATA
@@ -894,6 +1123,153 @@ export async function handleAnalyzeAssessment(
     }
 
     console.log(`[ASSESSMENT] Successfully analyzed for student ${studentId}`);
+    
+    // ============================================================================
+    // RIASEC SCORE PRESERVATION (Frontend Bug Workaround)
+    // Ensure RIASEC scores are preserved in multiple locations to prevent
+    // frontend corruption. Store in both standard location and backup fields.
+    // ============================================================================
+    if (results.riasec) {
+      console.log('[ASSESSMENT] 🔒 Preserving RIASEC scores to prevent frontend corruption');
+      console.log('[ASSESSMENT] Original scores:', JSON.stringify(results.riasec.scores || {}));
+      console.log('[ASSESSMENT] Original code:', results.riasec.code);
+      console.log('[ASSESSMENT] Can validate RIASEC:', canValidateRiasec);
+      
+      // Ensure scores object exists
+      if (!results.riasec.scores) {
+        console.warn('[ASSESSMENT] ⚠️ AI did not return scores object - creating empty one');
+        results.riasec.scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+      }
+      
+      // Only validate if we have valid pre-calculated data
+      if (canValidateRiasec) {
+        console.log('[ASSESSMENT] 🔍 Validating RIASEC against pre-calculated scores...');
+        
+        // Check if AI returned all zeros (bug) - if so, use pre-calculated scores
+        const allZeros = Object.values(results.riasec.scores).every(score => score === 0);
+        if (allZeros) {
+          console.warn('[ASSESSMENT] ⚠️ AI returned all zero scores - using pre-calculated scores');
+          results.riasec.scores = { ...precalculatedRiasec.scores };
+          results.riasec.percentages = { ...precalculatedRiasec.percentages };
+          results.riasec.maxScore = precalculatedRiasec.maxScore;
+          console.log('[ASSESSMENT] ✅ Using pre-calculated scores:', JSON.stringify(results.riasec.scores));
+        }
+        
+        // ALWAYS validate code against pre-calculated (source of truth)
+        const correctCode = precalculatedRiasec.code;
+        console.log('[ASSESSMENT] AI returned code:', results.riasec.code);
+        console.log('[ASSESSMENT] Correct code (pre-calculated):', correctCode);
+        
+        if (results.riasec.code !== correctCode) {
+          console.warn(`[ASSESSMENT] ❌ RIASEC code mismatch detected!`);
+          console.warn(`[ASSESSMENT] AI code: "${results.riasec.code}" | Correct code: "${correctCode}"`);
+          console.warn('[ASSESSMENT] AI scores:', JSON.stringify(results.riasec.scores));
+          console.warn('[ASSESSMENT] Pre-calculated scores:', JSON.stringify(precalculatedRiasec.scores));
+          console.warn('[ASSESSMENT] 🔧 CORRECTING code to match pre-calculated top 3 scores');
+          
+          results.riasec._originalCode = results.riasec.code;
+          results.riasec.code = correctCode;
+          results.riasec._corrected = true;
+          results.riasec._wasCorrect = false;
+          
+          console.log('[ASSESSMENT] ✅ Code corrected to:', correctCode);
+          
+          // Also correct the scores if they don't match
+          const scoresMatch = Object.keys(precalculatedRiasec.scores).every(
+            key => results.riasec.scores[key] === precalculatedRiasec.scores[key]
+          );
+          if (!scoresMatch) {
+            console.warn('[ASSESSMENT] ❌ Scores also mismatch - replacing with pre-calculated scores');
+            results.riasec._originalScores = { ...results.riasec.scores };
+            results.riasec.scores = { ...precalculatedRiasec.scores };
+            results.riasec.percentages = { ...precalculatedRiasec.percentages };
+            console.log('[ASSESSMENT] ✅ Scores corrected to:', JSON.stringify(results.riasec.scores));
+          }
+        } else {
+          console.log('[ASSESSMENT] ✅ RIASEC code is correct');
+          results.riasec._corrected = false;
+          results.riasec._wasCorrect = true;
+        }
+      } else {
+        console.log('[ASSESSMENT] ℹ️ RIASEC validation skipped - trusting AI output');
+        console.log('[ASSESSMENT] This happens during regenerate when original answers are not available');
+        results.riasec._corrected = false;
+        results.riasec._wasCorrect = null; // Unknown
+        results.riasec._validationSkipped = true;
+      }
+      
+      // Add backup fields that frontend should use if main scores are corrupted
+      results.riasec._preservedScores = { ...results.riasec.scores };
+      results.riasec._scoreBackup = { ...results.riasec.scores };
+      
+      // Add flag to indicate scores are valid
+      results.riasec._scoresValid = true;
+      results.riasec._timestamp = new Date().toISOString();
+      
+      console.log('[ASSESSMENT] ✅ RIASEC scores preserved in backup fields');
+      console.log('[ASSESSMENT] 📊 Final RIASEC data being returned:');
+      console.log('[ASSESSMENT]   - Code:', results.riasec.code);
+      console.log('[ASSESSMENT]   - Scores:', JSON.stringify(results.riasec.scores));
+      console.log('[ASSESSMENT]   - Percentages:', JSON.stringify(results.riasec.percentages));
+    } else {
+      console.error('[ASSESSMENT] ❌ CRITICAL: results.riasec is missing!');
+      
+      // Only create from pre-calculated if we have valid data
+      if (canValidateRiasec && precalculatedRiasec.code) {
+        console.error('[ASSESSMENT] Creating RIASEC structure from pre-calculated data');
+        results.riasec = {
+          code: precalculatedRiasec.code,
+          scores: { ...precalculatedRiasec.scores },
+          percentages: { ...precalculatedRiasec.percentages },
+          maxScore: precalculatedRiasec.maxScore,
+          topThree: precalculatedRiasec.code.split(''),
+          interpretation: `Your interests indicate strengths in ${precalculatedRiasec.code.split('').join(', ')} areas.`,
+          _preservedScores: { ...precalculatedRiasec.scores },
+          _scoreBackup: { ...precalculatedRiasec.scores },
+          _scoresValid: true,
+          _timestamp: new Date().toISOString(),
+          _corrected: true,
+          _wasCorrect: false
+        };
+        console.log('[ASSESSMENT] ✅ Created RIASEC structure from scratch');
+      } else {
+        console.error('[ASSESSMENT] ❌ Cannot create RIASEC - no valid pre-calculated data');
+        console.error('[ASSESSMENT] This will result in missing RIASEC in the response');
+      }
+    }
+    
+    // ============================================================================
+    // ADAPTIVE APTITUDE TEST POPULATION
+    // Ensure adaptiveTest field is populated from adaptiveAptitudeResults
+    // ============================================================================
+    if (assessmentData.adaptiveAptitudeResults && results.aptitude) {
+      console.log('[ASSESSMENT] 🧮 Populating adaptiveTest from adaptiveAptitudeResults');
+      
+      const adaptiveResults = assessmentData.adaptiveAptitudeResults;
+      const accuracyBySubtag = adaptiveResults.accuracyBySubtag || {};
+      
+      // Check if AI returned empty adaptiveTest
+      if (!results.aptitude.adaptiveTest || Object.keys(results.aptitude.adaptiveTest).length === 0) {
+        console.warn('[ASSESSMENT] ⚠️ AI returned empty adaptiveTest - populating from source data');
+        results.aptitude.adaptiveTest = {};
+      }
+      
+      // Populate each subtag
+      Object.entries(accuracyBySubtag).forEach(([subtag, data]: [string, any]) => {
+        const accuracy = typeof data === 'number' ? data : data?.accuracy || 0;
+        results.aptitude.adaptiveTest[subtag] = { accuracy };
+      });
+      
+      // Also populate level and confidence if missing
+      if (!results.aptitude.adaptiveLevel || results.aptitude.adaptiveLevel === 0) {
+        results.aptitude.adaptiveLevel = adaptiveResults.aptitudeLevel;
+      }
+      if (!results.aptitude.adaptiveConfidence) {
+        results.aptitude.adaptiveConfidence = adaptiveResults.confidenceTag;
+      }
+      
+      console.log('[ASSESSMENT] ✅ Adaptive test data populated:', Object.keys(results.aptitude.adaptiveTest).length, 'subtags');
+    }
     
     const response: AnalysisResult = {
       success: true,

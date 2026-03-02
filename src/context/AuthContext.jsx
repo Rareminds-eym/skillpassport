@@ -14,9 +14,6 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const isRefreshing = useRef(false);
-  const refreshAttempts = useRef(0);
-  const MAX_REFRESH_ATTEMPTS = 3;
 
   // Helper to restore user from localStorage
   const restoreUserFromStorage = useCallback((sessionUser) => {
@@ -63,9 +60,11 @@ export const AuthProvider = ({ children }) => {
           parsedUser.email === sessionUser.email;
         
         if (userMatches) {
-          // Always update role from session to ensure it's current
+          // CRITICAL FIX: Always use session user ID (auth user ID), not stored ID
+          // The stored ID might be a student record ID, which breaks queries
           return {
             ...parsedUser,
+            id: sessionUser.id,  // Force auth user ID
             role: sessionRole,
           };
         }
@@ -82,64 +81,34 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  // Attempt to refresh the session when it becomes invalid
-  const attemptSessionRefresh = useCallback(async () => {
-    if (isRefreshing.current || refreshAttempts.current >= MAX_REFRESH_ATTEMPTS) {
-      return null;
-    }
-
-    isRefreshing.current = true;
-    refreshAttempts.current += 1;
-    
+  // Check if session is valid without manual refresh (Supabase handles auto-refresh)
+  const checkSessionValidity = useCallback(async () => {
     try {
-      console.log('Attempting session refresh...');
-      const { data, error } = await supabase.auth.refreshSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
-        console.warn('Session refresh failed:', error.message);
+        console.error('Session check error:', error);
         return null;
       }
       
-      if (data?.session) {
-        console.log('Session refreshed successfully');
-        refreshAttempts.current = 0; // Reset on success
-        return data.session;
-      }
-      
-      return null;
+      return session;
     } catch (err) {
-      console.error('Session refresh error:', err);
+      console.error('Session validity check failed:', err);
       return null;
-    } finally {
-      isRefreshing.current = false;
     }
   }, []);
 
   useEffect(() => {
     let mounted = true;
 
-    // Initialize auth state
+    // Initialize auth state (trust Supabase auto-refresh)
     const initializeAuth = async () => {
       try {
-        // First, check if there's an active Supabase session
+        // Check if there's an active Supabase session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('Error getting session:', error);
-          
-          // If 403 error, try to refresh the session
-          if (error.status === 403 || error.message?.includes('403')) {
-            console.log('Session invalid (403), attempting refresh...');
-            const refreshedSession = await attemptSessionRefresh();
-            
-            if (refreshedSession?.user && mounted) {
-              const userData = restoreUserFromStorage(refreshedSession.user);
-              setUser(userData);
-              localStorage.setItem('user', JSON.stringify(userData));
-              setLoading(false);
-              return;
-            }
-          }
         }
 
         if (!mounted) return;
@@ -151,7 +120,6 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('user', JSON.stringify(userData));
         } else {
           // No session - clear any stale user data
-          // This prevents showing "authenticated" state when user doesn't exist in Supabase
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
             try {
@@ -184,11 +152,14 @@ export const AuthProvider = ({ children }) => {
         console.error('Error initializing auth:', err);
         if (!mounted) return;
         
-        // Fallback to localStorage
+        // Fallback to localStorage for demo users only
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           try {
-            setUser(JSON.parse(storedUser));
+            const parsedUser = JSON.parse(storedUser);
+            if (parsedUser.isDemoMode || parsedUser.id?.includes('-001')) {
+              setUser(parsedUser);
+            }
           } catch (e) {
             console.warn('Failed to parse stored user:', e);
           }
@@ -219,7 +190,6 @@ export const AuthProvider = ({ children }) => {
           }
           
           // User signed in - update state
-          refreshAttempts.current = 0; // Reset refresh attempts on successful sign in
           const userData = restoreUserFromStorage(session.user);
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
@@ -241,11 +211,10 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('user');
           localStorage.removeItem('userEmail');
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-          // Token refreshed - ensure user state is still valid
-          console.log('Token refreshed successfully');
-          refreshAttempts.current = 0; // Reset refresh attempts on successful refresh
+          // Token automatically refreshed by Supabase - update user state
+          console.log('✅ Token auto-refreshed by Supabase');
           
-          // Always update user state on token refresh to ensure consistency
+          // Update user state to ensure consistency
           const userData = restoreUserFromStorage(session.user);
           setUser(userData);
           localStorage.setItem('user', JSON.stringify(userData));
@@ -289,7 +258,7 @@ export const AuthProvider = ({ children }) => {
       mounted = false;
       subscription?.unsubscribe();
     };
-  }, [attemptSessionRefresh, restoreUserFromStorage]);
+  }, [restoreUserFromStorage]);
 
   const login = (userData) => {
     setUser(userData);
@@ -319,7 +288,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: !!user,
     role: user?.role || null,
-  }), [user, loading]);
+    checkSessionValidity, // Expose session check utility
+  }), [user, loading, checkSessionValidity]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

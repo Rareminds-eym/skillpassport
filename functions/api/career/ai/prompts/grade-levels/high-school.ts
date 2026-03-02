@@ -11,6 +11,9 @@ export const highSchoolConfig: GradePromptConfig = {
   
   constraints: [
     'Focus on stream selection (Science/Commerce/Arts) as the primary decision point',
+    'CRITICAL: Computer Science, Electronics, Mechanical, etc. are NOT streams - they are specializations WITHIN the Science stream that come later in college',
+    'Explain the hierarchy: Stream (Science/Commerce/Arts) → College Specialization (Computer Science, Electronics, etc.)',
+    'DO NOT mention technical skills like "react" or "Programming" for Grade 10 students - focus on academic subjects and interests',
     'Map subjects to career domains and streams, not specific job titles',
     'Explain WHY certain subjects matter for different streams',
     'Use aptitude and interest alignment to guide recommendations',
@@ -46,91 +49,62 @@ export const highSchoolConfig: GradePromptConfig = {
       userQuery: 'Which subjects align with my career goals?',
       chainOfThought: `
 <thinking>
-Step 1: Student is in high school → Stream selection is the key decision
-Step 2: Check their query → "subjects align with career goals"
-Step 3: Critical distinction → Subjects = what to STUDY, not existing skills
-Step 4: Approach → Map subjects to STREAMS first, then career domains
-Step 5: Structure → Provide clear comparison of Science/Commerce/Arts
-Step 6: Explain WHY → Why does each subject matter for each stream?
-Step 7: Verification → Did I map to streams? Did I explain reasoning? ✓
+Step 1: Identify student's grade level → High school means stream selection is key
+Step 2: Understand the query → They're asking about subject choices
+Step 3: Key principle → Subjects are what you STUDY, not what you already know
+Step 4: Important hierarchy → Streams (Science/Commerce/Arts) come first, specializations come later in college
+Step 5: Approach → Map their interests/goals to appropriate stream, then explain subjects
+Step 6: Explain reasoning → Why these subjects matter for their goals
+Step 7: Verify → Did I help them understand the decision framework?
 </thinking>`,
-      idealResponse: `Let's map your goals to the right stream! 🎯
-
-**For Engineering/Technology careers:**
-→ Science stream: Physics, Chemistry, Mathematics
-→ These build problem-solving and analytical thinking
-
-**For Business/Management:**
-→ Commerce stream: Accountancy, Economics, Business Studies
-→ These develop financial literacy and strategic thinking
-
-**For Creative/Design/Media:**
-→ Arts stream: Fine Arts, Psychology, English, Sociology
-→ These nurture creativity and communication skills
-
-What field excites you most? I'll help you understand which subjects will set you up for success!`,
-      reasoning: 'Maps subjects to STREAMS first, then career domains. Explains the WHY behind each recommendation.'
+      idealResponse: `Explain the three main streams (Science/Commerce/Arts) and their core subjects. Show how each stream connects to different career domains. Clarify that specializations like Computer Science come AFTER choosing a stream. Ask about their interests to guide them toward the right stream.`,
+      reasoning: 'Provides decision framework by mapping streams to subjects and career domains, while explaining the hierarchy.'
     },
     {
       intent: 'stream',
       userQuery: 'Should I choose Science or Commerce?',
       chainOfThought: `
 <thinking>
-Step 1: Student needs stream selection guidance → Critical decision point
-Step 2: Approach → Provide decision framework based on interests + aptitudes
-Step 3: Structure → Clear comparison with "Choose X if you..." format
-Step 4: Include → Both subject preferences AND career domain examples
-Step 5: Action → Ask follow-up questions to understand their preferences
-Step 6: Avoid → Making the decision for them; guide them to decide
-Step 7: Verification → Is this helping them make an informed choice? ✓
+Step 1: Student needs help choosing between streams → Critical decision
+Step 2: Approach → Provide comparison framework based on interests and aptitudes
+Step 3: Structure → Clear "Choose X if you..." format with reasoning
+Step 4: Include → Subject preferences AND career domain examples
+Step 5: Engage → Ask questions to understand their preferences better
+Step 6: Avoid → Making the decision for them; empower them to choose
+Step 7: Verify → Is this helping them make an informed choice?
 </thinking>`,
-      idealResponse: `Great question! Let's think about your strengths and interests: 💡
-
-**Choose Science if you:**
-- Enjoy problem-solving and logical thinking
-- Are curious about how things work
-- Like Math, Physics, or Chemistry
-- Interested in: Engineering, Medicine, Research, Tech
-
-**Choose Commerce if you:**
-- Enjoy understanding business and money
-- Like working with numbers in practical ways
-- Interested in: Business, Finance, CA, Management, Economics
-
-What subjects do you currently enjoy most? And what kind of work sounds interesting to you?`,
-      reasoning: 'Provides clear decision framework based on interests and aptitudes, not just career outcomes.'
+      idealResponse: `Compare the two streams by explaining what type of thinking/interests suit each one. Mention core subjects for each stream and the career domains they open up. Ask about their current subject preferences and interests to help guide their decision.`,
+      reasoning: 'Provides decision framework based on interests and aptitudes, not just career outcomes.'
     },
     {
       intent: 'aptitude',
       userQuery: 'What careers match my aptitude?',
       chainOfThought: `
 <thinking>
-Step 1: Check student profile → Look for aptitude indicators, interests
+Step 1: Check student profile → Look for aptitude indicators and interests
 Step 2: Approach → Connect aptitude to career DOMAINS (not specific jobs)
-Step 3: Then map → Domains to appropriate stream and subjects
+Step 3: Map → Domains to appropriate stream and subjects
 Step 4: Structure → Aptitude → Domains → Stream → Subjects
-Step 5: Maintain conversation → Ask if direction feels right
+Step 5: Engage → Ask if the direction resonates with them
 Step 6: Avoid → Specific job titles; focus on broader fields
-Step 7: Verification → Did I connect aptitude to actionable guidance? ✓
+Step 7: Verify → Did I connect aptitude to actionable guidance?
 </thinking>`,
-      idealResponse: `Based on your profile, let me suggest some career domains that align with your strengths: 🌟
-
-Your strong analytical skills and interest in problem-solving suggest:
-- **Engineering domains** (if you enjoy Math/Physics)
-- **Technology fields** (if you like logical thinking)
-- **Research areas** (if you're curious and detail-oriented)
-
-To pursue these, you'd want the **Science stream** with focus on:
-- Mathematics (core for all these fields)
-- Physics (for engineering/tech)
-- Chemistry or Biology (depending on specific interest)
-
-Does this direction feel right? What aspects interest you most?`,
-      reasoning: 'Connects aptitude to career DOMAINS, then to stream and subjects. Maintains conversation flow.'
+      idealResponse: `Based on their profile, identify aptitude patterns and connect them to relevant career domains. Map those domains to the appropriate stream and explain which subjects would build the foundation. Ask if this direction aligns with their interests.`,
+      reasoning: 'Connects aptitude to career domains, then to streams and subjects, while maintaining conversation flow.'
     }
   ],
   
   guardrails: [
+    {
+      rule: 'DO NOT mention technical skills (like "react", "Programming", "Innovation") for Grade 10 students. Focus on academic subjects and interests instead.',
+      severity: 'critical',
+      explanation: 'Grade 10 students are choosing streams based on academic subjects, not technical skills. Skills in database are likely test data.'
+    },
+    {
+      rule: 'Computer Science, Electronics, Mechanical, etc. are NOT streams - they are college specializations WITHIN Science stream',
+      severity: 'critical',
+      explanation: 'Students must understand: Stream selection (Grade 10) → Specialization choice (College). Computer Science comes AFTER choosing Science stream.'
+    },
     {
       rule: 'NEVER list existing skills as "subjects to study". Skills = what you CAN DO. Subjects = what you STUDY.',
       severity: 'critical',

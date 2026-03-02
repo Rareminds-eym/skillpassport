@@ -99,6 +99,9 @@ const SkillPassportPreRegistration = lazy(() =>
   import("../pages/register/SkillPassportPreRegistration")
 );
 
+// Network Error Page
+const NetworkError = lazy(() => import("../pages/NetworkError"));
+
 // Internal Testing Registration
 const InternalTestingRegistration = lazy(() =>
   import("../pages/register/InternalTestingRegistration")
@@ -585,6 +588,7 @@ const AppRoutes = () => {
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
+          <Route path="/network-error" element={<NetworkError />} />
           <Route
             path="/student/profile/:studentId"
             element={<StudentPublicViewer />}

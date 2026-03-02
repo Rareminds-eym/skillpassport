@@ -9,8 +9,15 @@
  */
 
 import { R2Client } from '../utils/r2-client';
+import { jsonResponse } from '../../../../src/functions-lib';
+import type { AuthenticatedContext } from '../[[path]]';
+import {
+  createAuthenticationError,
+  createAuthorizationError,
+  logErrorSafely,
+} from '../utils/error-handling';
 
-type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
+type PagesFunction = (context: AuthenticatedContext) => Promise<Response> | Response;
 
 interface PresignedRequestBody {
   filename: string;
@@ -34,7 +41,14 @@ interface GetUrlRequestBody {
 /**
  * Generate presigned URL for client-side upload
  */
-export const handlePresigned: PagesFunction = async ({ request, env }) => {
+export const handlePresigned: PagesFunction = async (context) => {
+  const { request, env, user } = context;
+
+  // Require authentication
+  if (!user) {
+    return createAuthenticationError('/presigned', 'missing_token');
+  }
+
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -63,11 +77,11 @@ export const handlePresigned: PagesFunction = async ({ request, env }) => {
     // Initialize R2 client
     const r2Client = new R2Client(env);
 
-    // Generate unique file key
+    // Generate unique file key with user ID
     const timestamp = Date.now();
     const randomString = crypto.randomUUID().replace(/-/g, '').substring(0, 16);
     const extension = filename.substring(filename.lastIndexOf('.'));
-    const fileKey = `courses/${courseId}/lessons/${lessonId}/${timestamp}-${randomString}${extension}`;
+    const fileKey = `courses/${courseId}/lessons/${lessonId}/${user.id}/${timestamp}-${randomString}${extension}`;
 
     // Generate presigned URL with proper parameters
     const presignedData = await r2Client.generatePresignedUrl(fileKey, contentType, 3600);
@@ -87,7 +101,7 @@ export const handlePresigned: PagesFunction = async ({ request, env }) => {
       }
     );
   } catch (error) {
-    console.error('[Presigned] Error generating presigned URL:', error);
+    logErrorSafely('Presigned', error);
     return new Response(
       JSON.stringify({
         error: 'Failed to generate presigned URL',
@@ -104,7 +118,14 @@ export const handlePresigned: PagesFunction = async ({ request, env }) => {
 /**
  * Confirm upload completion and return public URL
  */
-export const handleConfirm: PagesFunction = async ({ request, env }) => {
+export const handleConfirm: PagesFunction = async (context) => {
+  const { request, env, user } = context;
+
+  // Require authentication
+  if (!user) {
+    return createAuthenticationError('/confirm', 'missing_token');
+  }
+
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -124,6 +145,16 @@ export const handleConfirm: PagesFunction = async ({ request, env }) => {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
         }
+      );
+    }
+
+    // Validate that fileKey contains authenticated user's ID
+    if (!fileKey.includes(user.id)) {
+      return createAuthorizationError(
+        user.id,
+        fileKey,
+        'user_id_mismatch',
+        'File key does not match authenticated user'
       );
     }
 
@@ -150,7 +181,7 @@ export const handleConfirm: PagesFunction = async ({ request, env }) => {
       }
     );
   } catch (error) {
-    console.error('[Confirm] Error confirming upload:', error);
+    logErrorSafely('Confirm', error);
     return new Response(
       JSON.stringify({
         error: 'Failed to confirm upload',
@@ -168,7 +199,9 @@ export const handleConfirm: PagesFunction = async ({ request, env }) => {
  * Get presigned URL from file key for downloading/viewing
  * Returns a temporary signed URL valid for 7 days
  */
-export const handleGetUrl: PagesFunction = async ({ request, env }) => {
+export const handleGetUrl: PagesFunction = async (context) => {
+  const { request, env } = context;
+
   if (request.method !== 'POST') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -208,7 +241,7 @@ export const handleGetUrl: PagesFunction = async ({ request, env }) => {
       }
     );
   } catch (error) {
-    console.error('[GetUrl] Error getting URL:', error);
+    logErrorSafely('GetUrl', error);
     return new Response(
       JSON.stringify({
         error: 'Failed to get URL',

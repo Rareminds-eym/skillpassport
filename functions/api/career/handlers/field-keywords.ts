@@ -12,10 +12,26 @@
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { getOpenRouterKey } from '../[[path]]';
 import { getModelForUseCase, callOpenRouterWithRetry } from '../../shared/ai-config';
+import { authenticateUser } from '../../shared/auth';
+import { checkRateLimit } from '../utils/rate-limit';
 
 export async function handleGenerateFieldKeywords(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+
+  // Security: Require authentication to prevent abuse
+  const auth = await authenticateUser(request, env);
+  if (!auth) {
+    return jsonResponse({ error: 'Authentication required' }, 401);
+  }
+
+  const { user } = auth;
+  const userId = user.id;
+
+  // Security: Rate limiting to prevent API abuse
+  if (!await checkRateLimit(userId, env)) {
+    return jsonResponse({ error: 'Rate limit exceeded. Please try again later.' }, 429);
   }
 
   let body: { field: string };

@@ -279,6 +279,7 @@ const EnhancedSubjectCard = ({ subjectGroup, onView }: any) => {
 
 // ==================== MAIN COMPONENT ====================
 const AttendanceTracking: React.FC = () => {
+  const [collegeId, setCollegeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -351,12 +352,15 @@ const AttendanceTracking: React.FC = () => {
 
   // Supabase Functions
   const fetchSubjectGroups = async () => {
+    if (!collegeId) return;
+    
     try {
       setLoading(true);
       
       let query = supabase
         .from('college_subject_attendance_summary')
-        .select('*');
+        .select('*')
+        .eq('college_id', collegeId);
 
       // Add search filter
       if (searchQuery) {
@@ -434,6 +438,8 @@ const AttendanceTracking: React.FC = () => {
   };
 
   const fetchAnalytics = async () => {
+    if (!collegeId) return;
+    
     try {
       const { data, error } = await supabase
         .from('college_attendance_sessions')
@@ -445,6 +451,7 @@ const AttendanceTracking: React.FC = () => {
           present_count,
           absent_count
         `)
+        .eq('college_id', collegeId)
         .gte('date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]); // Last 30 days
 
       if (error) throw error;
@@ -481,77 +488,70 @@ const AttendanceTracking: React.FC = () => {
       let currentCollegeId = null;
       
       if (user) {
-        // Try to get college_id from user metadata or users table
-        if (user.user_metadata?.college_id) {
-          currentCollegeId = user.user_metadata.college_id;
+        // Try to get from college_lecturers table
+        const { data: lecturerData } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (lecturerData?.collegeId) {
+          currentCollegeId = lecturerData.collegeId;
         } else {
-          const { data: userProfile } = await supabase
-            .from('users')
-            .select('college_id')
-            .eq('id', user.id)
-            .single();
-          currentCollegeId = userProfile?.college_id;
+          // Try organizations table by admin_id
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('admin_id', user.id)
+            .eq('organization_type', 'college')
+            .maybeSingle();
+
+          if (orgData?.id) {
+            currentCollegeId = orgData.id;
+          }
         }
       }
 
       console.log('Current user college_id:', currentCollegeId);
 
-      // Get departments from program_sections_view (filtered by college if available)
-      let departmentsQuery = supabase
+      // Get departments from program_sections_view
+      const departmentsQuery = supabase
         .from('program_sections_view')
-        .select('department_name')
+        .select('department_name, department_id')
         .eq('status', 'active')
         .not('department_name', 'is', null);
-      
-      if (currentCollegeId) {
-        // Add college filter if we have college_id
-        departmentsQuery = departmentsQuery.eq('college_id', currentCollegeId);
-      }
 
       const { data: departmentsData } = await departmentsQuery;
 
-      // Get programs/courses from program_sections_view (filtered by college)
-      let programsQuery = supabase
+      // Get programs/courses from program_sections_view
+      const programsQuery = supabase
         .from('program_sections_view')
-        .select('program_name')
+        .select('program_name, program_id')
         .eq('status', 'active')
         .not('program_name', 'is', null);
-      
-      if (currentCollegeId) {
-        programsQuery = programsQuery.eq('college_id', currentCollegeId);
-      }
 
       const { data: programsData } = await programsQuery;
 
-      // Get semesters from program_sections_view (filtered by college)
-      let semestersQuery = supabase
+      // Get semesters from program_sections_view
+      const semestersQuery = supabase
         .from('program_sections_view')
         .select('semester')
         .eq('status', 'active')
         .not('semester', 'is', null);
-      
-      if (currentCollegeId) {
-        semestersQuery = semestersQuery.eq('college_id', currentCollegeId);
-      }
 
       const { data: semestersData } = await semestersQuery;
 
-      // Get sections from program_sections_view (filtered by college)
-      let sectionsQuery = supabase
+      // Get sections from program_sections_view
+      const sectionsQuery = supabase
         .from('program_sections_view')
         .select('section')
         .eq('status', 'active')
         .not('section', 'is', null);
-      
-      if (currentCollegeId) {
-        sectionsQuery = sectionsQuery.eq('college_id', currentCollegeId);
-      }
 
       const { data: sectionsData } = await sectionsQuery;
 
       // Get faculty from college_lecturers table (filtered by college)
-      // Note: colleges table doesn't exist - fetch college name from organizations separately
-      let facultyQuery = supabase
+      const facultyQuery = supabase
         .from('college_lecturers')
         .select(`
           id,
@@ -561,25 +561,19 @@ const AttendanceTracking: React.FC = () => {
           department,
           "collegeId"
         `)
-        .eq('"accountStatus"', 'active');
-
-      if (currentCollegeId) {
-        facultyQuery = facultyQuery.eq('"collegeId"', currentCollegeId);
-      }
+        .eq('"accountStatus"', 'active')
+        .eq('"collegeId"', currentCollegeId);
 
       const { data: facultyData, error: facultyError } = await facultyQuery;
 
       console.log('Faculty query result:', { data: facultyData, error: facultyError });
 
       // Get subjects from college_courses (filtered by college)
-      let subjectsQuery = supabase
+      const subjectsQuery = supabase
         .from('college_courses')
         .select('course_name, course_code, id, college_id')
-        .eq('is_active', true);
-
-      if (currentCollegeId) {
-        subjectsQuery = subjectsQuery.eq('college_id', currentCollegeId);
-      }
+        .eq('is_active', true)
+        .eq('college_id', currentCollegeId);
 
       const { data: subjectsData } = await subjectsQuery;
 
@@ -764,14 +758,53 @@ const AttendanceTracking: React.FC = () => {
 
   // useEffect hooks
   useEffect(() => {
-    fetchSubjectGroups();
-  }, [searchQuery, filters, dateRange, currentPage]);
+    const fetchCollegeId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      try {
+        const { data: lecturerData } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (lecturerData?.collegeId) {
+          setCollegeId(lecturerData.collegeId);
+          return;
+        }
+
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('organization_type', 'college')
+          .maybeSingle();
+
+        if (orgData?.id) {
+          setCollegeId(orgData.id);
+        }
+      } catch (error) {
+        console.error('Error fetching college ID:', error);
+      }
+    };
+
+    fetchCollegeId();
+  }, []);
 
   useEffect(() => {
-    fetchAnalytics();
-    fetchFilterOptions();
-    loadDepartments(); // Load departments on mount
-  }, []);
+    if (collegeId) {
+      fetchSubjectGroups();
+    }
+  }, [collegeId, searchQuery, filters, dateRange, currentPage]);
+
+  useEffect(() => {
+    if (collegeId) {
+      fetchAnalytics();
+      fetchFilterOptions();
+      loadDepartments();
+    }
+  }, [collegeId]);
 
   // Cascading dropdown effects (similar to curriculum builder)
   useEffect(() => {

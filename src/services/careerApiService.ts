@@ -4,8 +4,10 @@
  */
 
 import { getPagesApiUrl, getAuthHeaders } from '../utils/pagesUrl';
+import { getGlobalCareerApiInterceptor } from './careerApiInterceptor';
 
 const API_URL = getPagesApiUrl('career');
+const interceptor = getGlobalCareerApiInterceptor();
 
 interface CareerChatParams {
   conversationId?: string;
@@ -33,13 +35,16 @@ export async function sendCareerChatMessage(
   token: string,
   onToken?: (content: string) => void,
   onDone?: (data: unknown) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  abortSignal?: AbortSignal
 ): Promise<void> {
   try {
-    const response = await fetch(`${API_URL}/chat`, {
+    // Use interceptor to handle token validation and refresh
+    const response = await interceptor.fetch(`${API_URL}/chat`, {
       method: 'POST',
       headers: getAuthHeaders(token),
       body: JSON.stringify({ conversationId, message, selectedChips }),
+      signal: abortSignal,
     });
 
     if (!response.ok) {
@@ -92,6 +97,10 @@ export async function sendCareerChatMessage(
       }
     }
   } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      console.log('Stream aborted by user');
+      return;
+    }
     onError?.(error as Error);
   }
 }
@@ -103,7 +112,7 @@ export async function getRecommendations(
   studentId: string,
   { forceRefresh = false, limit = 20 }: RecommendationsParams = {}
 ): Promise<unknown> {
-  const response = await fetch(`${API_URL}/recommend-opportunities`, {
+  const response = await interceptor.fetch(`${API_URL}/recommend-opportunities`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ studentId, forceRefresh, limit }),
@@ -142,7 +151,7 @@ export async function generateEmbedding({
   id,
   type = 'opportunity'
 }: GenerateEmbeddingParams): Promise<unknown> {
-  const response = await fetch(`${API_URL}/generate-embedding`, {
+  const response = await interceptor.fetch(`${API_URL}/generate-embedding`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ text, table, id, type }),

@@ -101,7 +101,7 @@ const SocialLinksTab = ({ profileData, handleProfileChange, handleSaveProfile, i
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end pt-6 border-t border-slate-100 mt-6">
+      <div className="flex justify-end pt-6 mt-6">
         <Button
           onClick={handleSaveProfile}
           disabled={isSaving}

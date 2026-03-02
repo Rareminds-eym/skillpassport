@@ -1684,15 +1684,71 @@ const StudentDashboard = () => {
         city: studentData.school.city,
         state: studentData.school.state,
       };
-    } else if (studentData?.university || studentData?.college_school_name) {
-      // Fallback to individual columns if no foreign key relationships
+    } else if (studentData?.university_college_id && studentData?.universityCollege) {
+      // University college with parent university info
+      const college = studentData.universityCollege;
+      const university = college.universities; // nested university data
       return {
-        type: 'Institution',
-        name: studentData.college_school_name || studentData.university,
-        code: 'N/A',
-        city: studentData.city,
-        state: studentData.state,
+        type: 'University College',
+        name: college.name,
+        code: college.code,
+        universityName: university?.name,
+        city: university?.district,
+        state: university?.state,
       };
+    } else if (studentData?.university || studentData?.college_school_name) {
+      // Fallback to individual columns if no foreign key relationships (custom entries)
+      let type = 'Institution';
+      let name = null;
+      
+      // Check grade to determine if school or college student
+      const grade = studentData?.grade || '';
+      const isSchoolGrade = grade && (
+        grade.includes('Grade') || 
+        grade.includes('6') || grade.includes('7') || grade.includes('8') || 
+        grade.includes('9') || grade.includes('10') || grade.includes('11') || grade.includes('12')
+      );
+      const isCollegeGrade = grade && (
+        grade.includes('UG') || grade.includes('PG') || 
+        grade.includes('Diploma') || grade.includes('Year')
+      );
+      
+      // Check if it's a university path (has university or program/branch)
+      const hasUniversity = studentData?.university;
+      const hasBranch = studentData?.branch_field;
+      
+      if (hasUniversity && studentData?.college_school_name) {
+        // Has both university and college - show college
+        type = 'College';
+        name = studentData.college_school_name;
+      } else if (hasUniversity) {
+        // Has only university
+        type = 'University';
+        name = studentData.university;
+      } else if (studentData?.college_school_name) {
+        // Has only college_school_name field - determine if it's school or college based on grade
+        if (isSchoolGrade) {
+          type = 'School';
+          name = studentData.college_school_name;
+        } else if (isCollegeGrade || hasBranch) {
+          type = 'College';
+          name = studentData.college_school_name;
+        } else {
+          // Default to college if unclear
+          type = 'College';
+          name = studentData.college_school_name;
+        }
+      }
+      
+      if (name) {
+        return {
+          type: type,
+          name: name,
+          code: 'N/A',
+          city: studentData.location || studentData.city,
+          state: studentData.state,
+        };
+      }
     }
 
     // Fallback: Show error if ID exists but data is null (broken foreign key)
@@ -2366,6 +2422,68 @@ const StudentDashboard = () => {
                   recommendations={assessmentRecommendations}
                   showAll={showAllTraining}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* My Learning Section - Enrolled Courses */}
+          {tableTraining && tableTraining.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                My Learning
+              </h3>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 blue-scrollbar">
+                {tableTraining.map((course, idx) => (
+                  <div
+                    key={course.id || `course-${idx}`}
+                    className="p-4 rounded-xl bg-white border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => navigate('/student/my-learning')}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h4 className="text-base font-bold text-gray-900 flex-1">
+                        {course.course}
+                      </h4>
+                      {course.verified && (
+                        <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-2 py-1 text-xs font-semibold rounded-full">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-3">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm text-gray-600">{course.provider}</span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    {course.progress !== undefined && (
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-600 font-medium">Progress</span>
+                          <span className="text-xs text-gray-900 font-semibold">{Math.round(course.progress)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all"
+                            style={{ width: `${course.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-3 mt-3">
+                      {course.duration && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Clock className="w-4 h-4" />
+                          <span>{course.duration}</span>
+                        </div>
+                      )}
+                      <span className="text-sm text-blue-600 font-medium">Continue Learning →</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
