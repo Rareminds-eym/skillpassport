@@ -28,8 +28,6 @@ import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import CareerAIToolsGrid from '../../../components/shared/CareerAIToolsGrid';
-import { LoadingSpinner } from './LoadingSpinner';
-import { TypingIndicator } from './TypingIndicator';
 
 // Import optimized hooks
 import { useOptimizedMessages, Message } from '../hooks/useOptimizedMessages';
@@ -182,6 +180,7 @@ const CareerAssistantContainer: React.FC = () => {
   /**
    * Stop AI response generation
    * Aborts the current request and cleans up state
+   * FIX: Remove empty assistant messages when stopping
    */
   const stopTyping = useCallback(() => {
     if (abortControllerRef.current) {
@@ -192,10 +191,16 @@ const CareerAssistantContainer: React.FC = () => {
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
     }
+    
+    // Remove any empty assistant messages (loading indicators)
+    setMessages(prev => prev.filter(m => 
+      !(m.role === 'assistant' && m.content.trim() === '')
+    ));
+    
     setIsTyping(false);
     setLoading(false);
     userInteractedRef.current = false;
-  }, []);
+  }, [setMessages]);
 
   /**
    * Send user message to AI
@@ -596,7 +601,8 @@ const CareerAssistantUI: React.FC = () => {
                         <SimpleMessage content={message.content} timestamp={message.timestamp} isUser={true} />
                       ) : message.interactive ? (
                         <EnhancedMessage response={{ success: true, message: message.content, interactive: message.interactive }} timestamp={message.timestamp} onSendQuery={onSendQuery} />
-                      ) : message.content === '' && isTyping ? (
+                      ) : message.content === '' ? (
+                        // Show loading indicator only for empty messages (actively typing)
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start mb-6">
                           <div className="bg-gray-100 rounded-2xl px-6 py-4">
                             <div className="flex gap-2">
