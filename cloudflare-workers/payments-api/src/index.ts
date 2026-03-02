@@ -1238,6 +1238,10 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
 // Helper to calculate subscription end date - ALWAYS 1 month or 1 year from NOW
 function calculateSubscriptionEndDate(billingCycle: string, fromDate?: Date): string {
   const baseDate = fromDate ? new Date(fromDate) : new Date();
+  const startYear = baseDate.getFullYear();
+  
+  console.log(`[CALC-END-DATE] Input: billingCycle=${billingCycle}, fromDate=${fromDate?.toISOString()}, startYear=${startYear}`);
+  
   // Only accept yearly/annual - everything else is monthly (1 month)
   if (billingCycle === 'yearly' || billingCycle === 'annual') {
     baseDate.setFullYear(baseDate.getFullYear() + 1);
@@ -1245,6 +1249,10 @@ function calculateSubscriptionEndDate(billingCycle: string, fromDate?: Date): st
     // Always 1 month for monthly billing
     baseDate.setMonth(baseDate.getMonth() + 1);
   }
+  
+  const endYear = baseDate.getFullYear();
+  console.log(`[CALC-END-DATE] Output: ${baseDate.toISOString()}, endYear=${endYear}, diff=${endYear - startYear} years`);
+  
   return baseDate.toISOString();
 }
 
@@ -1521,7 +1529,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
 
   // CREATE SUBSCRIPTION RECORD
   const now = new Date();
-  const subscriptionEndDate = calculateSubscriptionEndDate(billingCycle);
+  const subscriptionEndDate = calculateSubscriptionEndDate(billingCycle, now);
 
   console.log(`[VERIFY-PAYMENT] Creating new subscription: billingCycle=${billingCycle}, start=${now.toISOString()}, end=${subscriptionEndDate}`);
 

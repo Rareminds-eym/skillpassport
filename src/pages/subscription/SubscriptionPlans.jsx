@@ -709,9 +709,10 @@ function SubscriptionPlans() {
 
   // Combined loading state — wait for auth, subscription, AND plans from API.
   // plansLoading stays true until the first API response arrives (plans === null → loading).
+  // For unauthenticated users, skip subscription loading check
   const isFullyLoaded = useMemo(
-    () => !authLoading && !subscriptionLoading && !plansLoading,
-    [authLoading, subscriptionLoading, plansLoading]
+    () => !authLoading && !plansLoading && (isAuthenticated ? !subscriptionLoading : true),
+    [authLoading, subscriptionLoading, plansLoading, isAuthenticated]
   );
 
   // Memoize subscription status checks for better performance

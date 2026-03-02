@@ -363,17 +363,23 @@ const PassportPage: React.FC = () => {
           </div>
           
           <div className="space-y-3">
-            {student?.profile.languages?.map((language, index) => (
-              <div key={index} className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between border-l-4 border-green-500">
-                <div className="flex items-center space-x-3">
-                  <Globe className="w-5 h-5 text-green-600" />
-                  <span className="font-semibold text-gray-900">{language.name}</span>
+            {student?.profile.languages?.map((language, index) => {
+              // Handle both string format and object format
+              const languageName = typeof language === 'string' ? language : language.name;
+              const proficiency = typeof language === 'string' ? 'Proficient' : (language.proficiency || 'Proficient');
+              
+              return (
+                <div key={index} className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between border-l-4 border-green-500">
+                  <div className="flex items-center space-x-3">
+                    <Globe className="w-5 h-5 text-green-600" />
+                    <span className="font-semibold text-gray-900">{languageName}</span>
+                  </div>
+                  <span className="text-sm font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
+                    {proficiency}
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
-                  {language.proficiency}
-                </span>
-              </div>
-            ))}
+              );
+            })}
             
             {(!student?.profile.languages || student.profile.languages.length === 0) && (
               <div className="text-center text-gray-500 py-12">

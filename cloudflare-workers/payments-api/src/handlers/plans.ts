@@ -11,73 +11,35 @@ import { createSupabaseAdmin } from '../helpers';
 
 /**
  * GET /subscription-plans - Get all active subscription plans
- * Query params: businessType, entityType, roleType, featuresLimit (optional, default 4)
+ * Query params: businessType, entityType, featuresLimit (optional, default 4)
  */
 export async function handleGetSubscriptionPlans(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const businessType = url.searchParams.get('businessType') || 'b2b';
   const entityType = url.searchParams.get('entityType') || 'all';
-  const roleType = url.searchParams.get('roleType') || 'all';
   const featuresLimit = url.searchParams.get('featuresLimit'); // null = all features, number = limit
 
   const supabaseAdmin = createSupabaseAdmin(env);
 
   try {
-    // Fetch plans
-    let query = supabaseAdmin
-      .from('subscription_plans')
-      .select('*')
-      .eq('business_type', businessType)
-      .eq('is_active', true)
-      .order('display_order', { ascending: true });
-
-    // Filter by entity_type (match specific or 'all')
-    if (entityType !== 'all') {
-      query = query.or(`entity_type.eq.${entityType},entity_type.eq.all`);
-    }
-
-    // Filter by role_type (match specific or 'all')
-    if (roleType !== 'all') {
-      query = query.or(`role_type.eq.${roleType},role_type.eq.all`);
-    }
-
-    const { data: plans, error: plansError } = await query;
+    // Use helper function to get plans for entity with business_type filter
+    const { data: plansJson, error: plansError } = await supabaseAdmin
+      .rpc('get_all_plans_for_entity', { 
+        p_entity_type: entityType,
+        p_business_type: businessType
+      });
 
     if (plansError) {
       console.error('[SUBSCRIPTION-PLANS] Error fetching plans:', plansError);
       return jsonResponse({ error: plansError.message }, 500);
     }
 
-    // Fetch features for all plans
-    const planIds = plans?.map(p => p.id) || [];
-    let features: any[] = [];
-    
-    if (planIds.length > 0) {
-      const { data: featuresData, error: featuresError } = await supabaseAdmin
-        .from('subscription_plan_features')
-        .select('*')
-        .in('plan_id', planIds)
-        .order('display_order', { ascending: true });
-
-      if (!featuresError) {
-        features = featuresData || [];
-      }
-    }
-
-    // Group features by plan_id
-    const featuresByPlan: Record<string, any[]> = {};
-    features.forEach(f => {
-      if (!featuresByPlan[f.plan_id]) {
-        featuresByPlan[f.plan_id] = [];
-      }
-      featuresByPlan[f.plan_id].push(f);
-    });
+    const plans = plansJson || [];
 
     // Transform plans to frontend format
-    // Apply features limit if specified
     const limit = featuresLimit ? parseInt(featuresLimit, 10) : null;
     
-    const transformedPlans = plans?.map(plan => {
+    const transformedPlans = plans.map((plan: any) => {
       const allFeatures = plan.features || [];
       const totalFeatures = allFeatures.length;
       const isLimited = limit !== null && limit < totalFeatures;
@@ -105,14 +67,14 @@ export async function handleGetSubscriptionPlans(request: Request, env: Env): Pr
         color: plan.color || 'bg-slate-600',
         recommended: plan.is_recommended || false,
         contactSales: plan.price_monthly === 0,
-        detailedFeatures: featuresByPlan[plan.id] || []
+        detailedFeatures: []
       };
-    }) || [];
+    });
 
     return jsonResponse({
       success: true,
       plans: transformedPlans,
-      meta: { businessType, entityType, roleType, count: transformedPlans.length }
+      meta: { businessType, entityType, count: transformedPlans.length }
     });
   } catch (error) {
     console.error('[SUBSCRIPTION-PLANS] Error:', error);
@@ -122,12 +84,13 @@ export async function handleGetSubscriptionPlans(request: Request, env: Env): Pr
 
 /**
  * GET /subscription-plan - Get a single subscription plan by plan_code
- * Query params: planCode, featuresLimit (optional)
+ * Query params: planCode, entityType, featuresLimit (optional)
  */
 export async function handleGetSubscriptionPlan(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const planCode = url.searchParams.get('planCode');
-  const featuresLimit = url.searchParams.get('featuresLimit'); // null = all features
+  const entityType = url.searchParams.get('entityType') || 'all';
+  const featuresLimit = url.searchParams.get('featuresLimit');
 
   if (!planCode) {
     return jsonResponse({ error: 'planCode is required' }, 400);
@@ -136,57 +99,53 @@ export async function handleGetSubscriptionPlan(request: Request, env: Env): Pro
   const supabaseAdmin = createSupabaseAdmin(env);
 
   try {
-    const { data: plan, error: planError } = await supabaseAdmin
-      .from('subscription_plans')
-      .select('*')
-      .eq('plan_code', planCode)
-      .eq('is_active', true)
-      .single();
+    // Use helper function to get plan for entity with business_type filter
+    const { data: planJson, error: planError } = await supabaseAdmin
+      .rpc('get_plan_for_entity', { 
+        p_plan_code: planCode,
+        p_entity_type: entityType,
+        p_business_type: url.searchParams.get('businessType') || null
+      });
 
     if (planError) {
-      if (planError.code === 'PGRST116') {
-        return jsonResponse({ error: 'Plan not found' }, 404);
-      }
+      console.error('[SUBSCRIPTION-PLAN] Error fetching plan:', planError);
       return jsonResponse({ error: planError.message }, 500);
     }
 
-    // Fetch features
-    const { data: features } = await supabaseAdmin
-      .from('subscription_plan_features')
-      .select('*')
-      .eq('plan_id', plan.id)
-      .order('display_order', { ascending: true });
+    if (!planJson) {
+      return jsonResponse({ error: 'Plan not found' }, 404);
+    }
 
     // Apply features limit
-    const allFeatures = plan.features || [];
+    const allFeatures = planJson.features || [];
     const totalFeatures = allFeatures.length;
     const limit = featuresLimit ? parseInt(featuresLimit, 10) : null;
     const isLimited = limit !== null && limit < totalFeatures;
     const displayFeatures = isLimited ? allFeatures.slice(0, limit) : allFeatures;
 
     const transformedPlan = {
-      id: plan.plan_code,
-      dbId: plan.id,
-      name: plan.name,
-      tagline: plan.tagline || plan.description,
-      price: plan.price_monthly === 0 ? null : String(plan.price_monthly),
-      priceYearly: plan.price_yearly ? String(plan.price_yearly) : null,
-      duration: plan.price_monthly === 0 ? 'custom' : 'person',
-      currency: plan.currency || 'INR',
+      id: planJson.plan_code,
+      dbId: planJson.id,
+      name: planJson.name,
+      tagline: planJson.tagline || planJson.description,
+      price: planJson.price_monthly === 0 ? null : String(planJson.price_monthly),
+      priceYearly: planJson.price_yearly ? String(planJson.price_yearly) : null,
+      duration: planJson.price_monthly === 0 ? 'custom' : 'person',
+      currency: planJson.currency || 'INR',
       features: displayFeatures,
       totalFeatures: totalFeatures,
       hasMoreFeatures: isLimited,
       limits: {
-        learners: plan.max_users,
-        admins: plan.max_admins,
-        storage: plan.storage_limit,
-        idealFor: plan.ideal_for
+        learners: planJson.max_users,
+        admins: planJson.max_admins,
+        storage: planJson.storage_limit,
+        idealFor: planJson.ideal_for
       },
-      positioning: plan.positioning || plan.description,
-      color: plan.color || 'bg-slate-600',
-      recommended: plan.is_recommended || false,
-      contactSales: plan.price_monthly === 0,
-      detailedFeatures: features || []
+      positioning: planJson.positioning || planJson.description,
+      color: planJson.color || 'bg-slate-600',
+      recommended: planJson.is_recommended || false,
+      contactSales: planJson.price_monthly === 0,
+      detailedFeatures: []
     };
 
     return jsonResponse({ success: true, plan: transformedPlan });

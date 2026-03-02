@@ -8,7 +8,7 @@
   /* Scrollbar width compensation is handled dynamically in JavaScript */
 }
 
-@layer base {
+@layer base { 
   :root {
     --gradient-color: #8350e8;
     --sparkles-color: #8350e8;

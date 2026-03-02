@@ -21,7 +21,7 @@ AWS_REGION=ap-south-1
 CLOUDFLARE_ACCOUNT_ID=your_cloudflare_account_id_here
 CLOUDFLARE_R2_ACCESS_KEY_ID=your_r2_access_key_here
 CLOUDFLARE_R2_SECRET_ACCESS_KEY=your_r2_secret_key_here
-CLOUDFLARE_R2_BUCKET_NAME=skill-echosystem
+CLOUDFLARE_R2_BUCKET_NAME=skill-echosystem 
 
 # ==================== NOTES ====================
 # 
