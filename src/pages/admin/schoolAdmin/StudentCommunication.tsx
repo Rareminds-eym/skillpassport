@@ -146,6 +146,7 @@ const StudentCommunication = () => {
     queryKey: ['school-admin-conversations', schoolId, 'active'],
     queryFn: async () => {
       if (!schoolId) return [];
+      
       const { data, error } = await supabase
         .from('conversations')
         .select(`
@@ -591,16 +592,41 @@ const StudentCommunication = () => {
   
   // Mark messages as read when conversation is selected
   useEffect(() => {
-    if (!selectedConversationId || !schoolAdminId) return;
+    console.log('🔍 [MARK-AS-READ] === CONVERSATION SELECTION DEBUG START ===');
+    console.log('📋 Selected conversation ID:', selectedConversationId);
+    console.log('📋 School admin ID:', schoolAdminId);
+    console.log('📋 Active tab:', activeTab);
+    console.log('📋 All conversations:', conversations);
+    
+    if (!selectedConversationId || !schoolAdminId) {
+      console.log('❌ Missing conversation ID or admin ID, skipping mark as read');
+      console.log('🔍 [MARK-AS-READ] === CONVERSATION SELECTION DEBUG END ===');
+      return;
+    }
     
     const conversation = conversations.find(c => c.id === selectedConversationId);
-    const hasUnread = (conversation?.admin_unread_count || 0) > 0;
+    console.log('📋 Found conversation:', conversation);
     
-    if (!hasUnread) return;
+    const hasUnread = (conversation?.admin_unread_count || 0) > 0;
+    console.log('📋 Has unread:', hasUnread);
+    console.log('📋 Unread count:', conversation?.admin_unread_count);
+    
+    if (!hasUnread) {
+      console.log('✅ No unread messages, skipping mark as read');
+      console.log('🔍 [MARK-AS-READ] === CONVERSATION SELECTION DEBUG END ===');
+      return;
+    }
     
     const markKey = `${selectedConversationId}-${conversation?.admin_unread_count}`;
-    if (markedAsReadRef.current.has(markKey)) return;
+    if (markedAsReadRef.current.has(markKey)) {
+      console.log('✅ Already marked as read, skipping');
+      console.log('🔍 [MARK-AS-READ] === CONVERSATION SELECTION DEBUG END ===');
+      return;
+    }
     markedAsReadRef.current.add(markKey);
+    
+    console.log('🚀 Marking conversation as read...');
+    console.log('🔍 [MARK-AS-READ] === CONVERSATION SELECTION DEBUG END ===');
     
     // Optimistically update the UI
     queryClient.setQueryData<typeof conversations>(
@@ -1132,31 +1158,27 @@ const StudentCommunication = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // const displayMessages = useMemo(() => 
-  //   messages.map((msg: any) => ({
-  //     id: msg.id,
-  //     text: msg.message_text,
-  //     sender: msg.sender_type === 'school_admin' ? 'me' : 'them',
-  //     time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
-  //     status: msg.is_read ? 'read' : 'delivered'
-  //   })),
-  //   [messages]
-  // );
   const displayMessages = useMemo(() => {
+  if (!messages || messages.length === 0) {
+    return [];
+  }
+  
   // First, deduplicate messages by ID
   const uniqueMessages = messages.filter((msg, index, arr) => 
     arr.findIndex(m => m.id === msg.id) === index
   );
   
   // Then map to display format
-  return uniqueMessages.map((msg: any) => ({
+  const displayMsgs = uniqueMessages.map((msg: any) => ({
     id: msg.id,
     text: msg.message_text,
     sender: msg.sender_type === 'school_admin' ? 'me' : 'them',
     time: formatDistanceToNow(new Date(msg.created_at), { addSuffix: true }),
     status: msg.is_read ? 'read' : 'delivered'
   }));
-}, [messages]);
+  
+  return displayMsgs;
+}, [messages, selectedConversationId, activeTab]);
 
 
   const renderStatusIcon = useCallback((status: string) => (

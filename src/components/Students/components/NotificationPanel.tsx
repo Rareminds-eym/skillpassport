@@ -17,6 +17,7 @@ import {
   NotificationType,
 } from "../../../hooks/useNotifications";
 import { useAuth } from "../../../context/AuthContext";
+import { supabase } from "../../../lib/supabaseClient";
 
 import { useNavigate } from "react-router-dom";
 
@@ -62,6 +63,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const [newNotificationIds, setNewNotificationIds] = useState<Set<string>>(new Set());
   const [showNewNotificationToast, setShowNewNotificationToast] = useState(false);
   const prevIdsRef = useRef<Set<string>>(new Set());
+  
+  // Cache for sender names and roles
+  const [senderNamesCache, setSenderNamesCache] = useState<Map<string, { name: string; role?: string }>>(new Map());
 
 
   // Close when clicking outside
@@ -104,13 +108,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       markRead(notification.id);
     }
 
-    // Navigate based on type
+    // Navigate FIRST - this must happen before closing the panel
     switch (notification.type) {
       case "new_message":
       case "message_reply":
-        // Extract conversation ID if available in metadata, or just go to messages
-        // For now, just go to messages page
-        navigate("/student/messages");
+        navigate("/student/messages?tab=recruiters");
         break;
 
       case "course_added":
@@ -148,9 +150,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         break;
     }
 
-    // Close panel
+    // Close panel AFTER navigation
     onClose();
-  };
+  }
 
   const filteredNotifications = notifications.filter((n) => {
     switch (selectedFilter) {
@@ -310,6 +312,216 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     return date.toLocaleDateString();
   };
 
+  // Fetch sender name from database using message record linked to notification
+  const fetchSenderName = async (notification: any): Promise<{ name: string; role?: string } | null> => {
+    try {
+      // Get the authenticated user's UUID
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (!authUser?.id) {
+        console.error('No authenticated user found');
+        return null;
+      }
+
+      // Extract timestamp from notification to find the corresponding message
+      const notificationTime = new Date(notification.created_at);
+      
+      // Query messages around the notification creation time (within 5 seconds)
+      const timeWindowStart = new Date(notificationTime.getTime() - 5000).toISOString();
+      const timeWindowEnd = new Date(notificationTime.getTime() + 5000).toISOString();
+
+      const { data: messageData, error: messageError } = await supabase
+        .from('messages')
+        .select('sender_id, sender_type')
+        .eq('receiver_id', authUser.id)
+        .gte('created_at', timeWindowStart)
+        .lte('created_at', timeWindowEnd)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (messageError || !messageData) {
+        console.error('Error fetching message for notification:', notification.id, messageError);
+        return null;
+      }
+
+      const { sender_id, sender_type } = messageData;
+
+      // Fetch sender name and role based on sender_type
+      let senderName: string | null = null;
+      let senderRole: string | undefined = undefined;
+
+      if (sender_type === 'student') {
+        const { data, error } = await supabase
+          .from('students')
+          .select('profile')
+          .eq('id', sender_id)
+          .maybeSingle();
+        
+        if (!error && data?.profile?.name) {
+          senderName = data.profile.name;
+          senderRole = 'Student';
+        }
+      } else if (sender_type === 'educator' || sender_type === 'school_educator') {
+        // First get educator name from school_educators
+        const { data: educatorData, error: educatorError } = await supabase
+          .from('school_educators')
+          .select('first_name, last_name, user_id')
+          .eq('user_id', sender_id)
+          .maybeSingle();
+        
+        if (!educatorError && educatorData) {
+          const fullName = `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim();
+          if (fullName) {
+            senderName = fullName;
+            
+            // Fetch role from users table using user_id
+            if (educatorData.user_id) {
+              const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('role')
+                .eq('id', educatorData.user_id)
+                .maybeSingle();
+              
+              if (!userError && userData?.role) {
+                senderRole = userData.role;
+              } else {
+                senderRole = 'Educator';
+              }
+            } else {
+              senderRole = 'Educator';
+            }
+          }
+        }
+      } else if (sender_type === 'school_admin' || sender_type === 'college_admin') {
+        const { data, error } = await supabase
+          .from('users')
+          .select('firstName, lastName, role')
+          .eq('id', sender_id)
+          .maybeSingle();
+        
+        if (!error && data) {
+          const fullName = `${data.firstName || ''} ${data.lastName || ''}`.trim();
+          if (fullName) {
+            senderName = fullName;
+            senderRole = data.role || (sender_type === 'school_admin' ? 'School Admin' : 'College Admin');
+          }
+        }
+      } else if (sender_type === 'recruiter') {
+        const { data, error } = await supabase
+          .from('recruiters')
+          .select('name')
+          .eq('id', sender_id)
+          .maybeSingle();
+        
+        if (!error && data?.name) {
+          senderName = data.name;
+          senderRole = 'Recruiter';
+        }
+      }
+
+      if (senderName) {
+        return { name: senderName, role: senderRole };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error in fetchSenderName:', error);
+      return null;
+    }
+  };
+
+  // Parse sender from notification title as fallback
+  const parseSenderFromTitle = (title: string): string => {
+    // Extract sender from "New message from <sender>"
+    const match = title.match(/New message from (.+)/i);
+    if (!match) return 'Unknown User';
+
+    const sender = match[1].trim();
+
+    // If it's "Someone", keep it as is
+    if (sender.toLowerCase() === 'someone') {
+      return 'Someone';
+    }
+
+    // Check if sender is an email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (emailRegex.test(sender)) {
+      // Extract username part before @
+      const username = sender.split('@')[0];
+      
+      // Convert username to readable name
+      const nameParts = username
+        .split(/[._-]/)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .join(' ');
+      
+      return nameParts;
+    }
+
+    // Return the sender as-is if it's already a name
+    return sender;
+  };
+
+  // Fetch sender names for message notifications
+  useEffect(() => {
+    const fetchSenderNames = async () => {
+      const messageNotifications = notifications.filter(
+        n => (n.type === 'new_message' || n.type === 'message_reply') && !senderNamesCache.has(n.id)
+      );
+
+      if (messageNotifications.length === 0) return;
+
+      const newCache = new Map(senderNamesCache);
+
+      // Process each notification independently
+      for (const notification of messageNotifications) {
+        // Try to fetch from database first, passing the full notification object
+        const senderData = await fetchSenderName(notification);
+        
+        if (senderData) {
+          // Database lookup succeeded - cache by notification.id
+          newCache.set(notification.id, senderData);
+        } else {
+          // Database lookup failed, parse from title as fallback
+          const fallbackName = parseSenderFromTitle(notification.title);
+          newCache.set(notification.id, { name: fallbackName });
+        }
+      }
+
+      setSenderNamesCache(newCache);
+    };
+
+    fetchSenderNames();
+  }, [notifications]);
+
+  const formatNotificationTitle = (notification: any) => {
+    const { title, type, id } = notification;
+
+    // Only format message notifications
+    if (type !== "new_message" && type !== "message_reply") {
+      return title;
+    }
+
+    // Use cached sender data if available
+    const senderData = senderNamesCache.get(id);
+    if (senderData) {
+      const { name, role } = senderData;
+      if (role) {
+        // Format role: convert underscores to spaces and capitalize each word
+        const formattedRole = role
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
+        return `New message from ${name} (${formattedRole})`;
+      }
+      return `New message from ${name}`;
+    }
+
+    // Fallback to original title while loading
+    return title;
+  };
+
   if (!isOpen) {
     return null;
   }
@@ -407,7 +619,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     {getNotificationIcon(n.type)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${n.read ? "text-gray-700" : "text-gray-900"}`}>{n.title}</p>
+                    <p className={`text-sm font-medium ${n.read ? "text-gray-700" : "text-gray-900"}`}>
+                      {formatNotificationTitle(n)}
+                    </p>
                     <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-[11px] text-gray-400">{formatRelativeTime(n.created_at)}</span>

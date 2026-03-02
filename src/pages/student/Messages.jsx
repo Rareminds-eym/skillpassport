@@ -40,23 +40,15 @@ import MessageService from '../../services/messageService';
 const Messages = () => {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const conversationIdFromUrl = searchParams.get('conversation');
-
-  const [selectedConversationId, setSelectedConversationId] = useState(conversationIdFromUrl);
+  
+  // URL is the single source of truth - no state synchronization
+  const activeTab = searchParams.get('tab') || 'recruiters';
+  const selectedConversationId = searchParams.get('conversation');
+  
   const [messageInput, setMessageInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [adminUserIds, setAdminUserIds] = useState({});
   const [showMenu, setShowMenu] = useState(null);
-  // Read tab from URL parameter, default based on available tabs
-  const tabFromUrl = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(() => {
-    // If tab is specified in URL, use it (will be validated later)
-    if (tabFromUrl && ['recruiters', 'educators', 'admin', 'college_admin'].includes(tabFromUrl)) {
-      return tabFromUrl;
-    }
-    // Default to recruiters (always available)
-    return 'recruiters';
-  });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, conversationId: null, contactName: '' });
   const [showNewConversationModal, setShowNewConversationModal] = useState(false);
   const [showNewEducatorConversationModal, setShowNewEducatorConversationModal] = useState(false);
@@ -100,18 +92,6 @@ const Messages = () => {
 
     return tabs;
   }, [hasSchoolId, hasCollegeId]);
-
-  // Ensure activeTab is valid for current student
-  useEffect(() => {
-    if (!loadingStudentData && availableTabs.length > 0) {
-      // If current activeTab is not available, switch to first available tab
-      if (!availableTabs.includes(activeTab)) {
-        console.log('🔄 Current tab not available, switching to:', availableTabs[0]);
-        setActiveTab(availableTabs[0]);
-        setSearchParams({ tab: availableTabs[0] }, { replace: true });
-      }
-    }
-  }, [activeTab, availableTabs, loadingStudentData, setSearchParams]);
 
   // Fetch recruiter conversations
   const {
@@ -185,121 +165,6 @@ const Messages = () => {
         activeTab === 'college_admin' ? clearCollegeAdminUnreadCount :
           () => { };
 
-  // Force refetch on mount if we have a conversation ID in URL
-  // This ensures we have fresh data when navigating from Applications page
-  useEffect(() => {
-    if (conversationIdFromUrl && studentId && !loadingStudentData) {
-      console.log('🔄 URL has conversation ID, forcing fresh fetch...');
-      refetchConversations();
-    }
-  }, []); // Empty deps - only run once on mount
-
-  // Track if we've already handled this conversation URL to prevent loops
-  const hasHandledConversationUrl = useRef(false);
-  const retryAttempts = useRef(0);
-  const MAX_RETRIES = 3;
-
-  // Auto-select conversation from URL parameter with improved retry logic
-  useEffect(() => {
-    // Early exit conditions
-    if (!conversationIdFromUrl || !studentId || loadingStudentData) {
-      return;
-    }
-
-    // Prevent redundant processing of the same URL after successful selection
-    if (hasHandledConversationUrl.current) {
-      return;
-    }
-
-    // Check if conversation exists in current list
-    const conversationExists = conversations.find(c => c.id === conversationIdFromUrl);
-
-    if (conversationExists) {
-      // Success! Conversation found
-      console.log('✅ Conversation found in list:', conversationIdFromUrl);
-      hasHandledConversationUrl.current = true;
-      setSelectedConversationId(conversationIdFromUrl);
-      retryAttempts.current = 0; // Reset retry counter
-
-      // Clear URL parameter after selecting
-      const timeoutId = setTimeout(() => {
-        setSearchParams({});
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    } else if (!loadingConversations && retryAttempts.current < MAX_RETRIES) {
-      // Conversation not found - try refetching with faster backoff
-      // (Cache should be pre-populated from Applications page, so this is just a safety net)
-      retryAttempts.current += 1;
-      console.log(`⌛ Conversation not in list yet, retry attempt ${retryAttempts.current}/${MAX_RETRIES}...`);
-
-      const delay = retryAttempts.current * 200; // 200ms, 400ms, 600ms (faster since cache is optimistic)
-      const timeoutId = setTimeout(() => {
-        refetchConversations();
-      }, delay);
-
-      return () => clearTimeout(timeoutId);
-    } else if (retryAttempts.current >= MAX_RETRIES) {
-      // Max retries reached - select anyway and let user see empty state
-      console.warn('⚠️ Max retries reached, selecting conversation anyway:', conversationIdFromUrl);
-      hasHandledConversationUrl.current = true;
-      setSelectedConversationId(conversationIdFromUrl);
-      retryAttempts.current = 0;
-
-      const timeoutId = setTimeout(() => {
-        setSearchParams({});
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [conversationIdFromUrl, conversations, studentId, loadingConversations, loadingStudentData, refetchConversations, setSearchParams]);
-
-  // Reset handler when URL changes
-  useEffect(() => {
-    hasHandledConversationUrl.current = false;
-    retryAttempts.current = 0; // Also reset retry counter for new URLs
-  }, [conversationIdFromUrl]);
-
-  // Handle tab changes from URL parameter and trigger data fetch
-  useEffect(() => {
-    const tabFromUrl = searchParams.get('tab');
-    const newTab = tabFromUrl === 'educators' ? 'educators' :
-      tabFromUrl === 'admin' ? 'admin' :
-        tabFromUrl === 'college_admin' ? 'college_admin' :
-          'recruiters';
-
-    if (newTab !== activeTab) {
-      console.log('🔄 Tab switching from', activeTab, 'to', newTab);
-      setIsTabSwitching(true);
-      setActiveTab(newTab);
-      setSelectedConversationId(null); // Clear selection when switching tabs
-
-      // Force fetch data for the new tab if we have studentId
-      if (studentId && !loadingStudentData) {
-        console.log('🚀 Triggering fetch for new tab:', newTab);
-
-        // Trigger appropriate refetch based on new tab - with safety checks
-        let fetchPromise = Promise.resolve();
-
-        if (newTab === 'recruiters' && refetchRecruiterConversations) {
-          fetchPromise = refetchRecruiterConversations();
-        } else if (newTab === 'educators' && refetchEducatorConversations) {
-          fetchPromise = refetchEducatorConversations();
-        } else if (newTab === 'admin' && refetchAdminConversations) {
-          fetchPromise = refetchAdminConversations();
-        } else if (newTab === 'college_admin' && refetchCollegeAdminConversations) {
-          fetchPromise = refetchCollegeAdminConversations();
-        }
-
-        // Clear tab switching state after fetch completes
-        fetchPromise.finally(() => {
-          setTimeout(() => setIsTabSwitching(false), 300); // Small delay for smooth UX
-        });
-      } else {
-        setIsTabSwitching(false);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, activeTab, studentId, loadingStudentData]);
-
   // Debug logging - only when there's an issue
   useEffect(() => {
     if (!studentId && !loadingStudentData && userEmail) {
@@ -367,6 +232,8 @@ const Messages = () => {
   }, []);
 
   // Fetch admin user IDs dynamically
+  const conversationIdsRef = useRef(new Set());
+  
   useEffect(() => {
     const fetchAdminUserIds = async () => {
       if (!conversations || conversations.length === 0) return;
@@ -378,15 +245,26 @@ const Messages = () => {
       
       if (adminConversations.length === 0) return;
       
+      // Check if we've already processed these conversation IDs
+      const newConversationIds = adminConversations.map(c => c.id).join(',');
+      const processedIds = Array.from(conversationIdsRef.current).join(',');
+      
+      if (newConversationIds === processedIds) {
+        return; // Already processed these conversations
+      }
+      
       console.log('🔍 [Student Messages] Fetching admin user IDs for conversations:', adminConversations.length);
       
       const newAdminUserIds = { ...adminUserIds };
+      let hasChanges = false;
       
       for (const conv of adminConversations) {
         try {
           const adminUserId = await getSchoolAdminUserId(conv);
-          if (adminUserId) {
+          if (adminUserId && newAdminUserIds[conv.id] !== adminUserId) {
             newAdminUserIds[conv.id] = adminUserId;
+            hasChanges = true;
+            conversationIdsRef.current.add(conv.id);
             console.log('✅ [Student Messages] Found admin ID for conversation:', conv.id, adminUserId);
           }
         } catch (error) {
@@ -394,11 +272,13 @@ const Messages = () => {
         }
       }
       
-      setAdminUserIds(newAdminUserIds);
+      if (hasChanges) {
+        setAdminUserIds(newAdminUserIds);
+      }
     };
     
     fetchAdminUserIds();
-  }, [conversations, adminUserIds, getSchoolAdminUserId]);
+  }, [conversations.length, activeTab]); // Only depend on length and activeTab, not the array itself
 
   // Fetch messages for selected conversation - call all hooks unconditionally
   const recruiterMessages = useStudentMessages({
@@ -466,13 +346,7 @@ const Messages = () => {
     }
     return false;
   }, [globalOnlineUsers, adminUserIds]);
-// ADD THIS DEBUG LOG HERE:
-console.log('🔍 [STUDENT] GlobalPresence Debug:', {
-  isUserOnlineGlobal: typeof isUserOnlineGlobal,
-  globalOnlineUsers: globalOnlineUsers,
-  currentUserId: studentId,
-  currentUserName: studentName
-});
+
   // Presence tracking for current conversation (for chat header)
   const { isUserOnline, getUserStatus, onlineUsers } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
@@ -647,8 +521,6 @@ console.log('🔍 [STUDENT] GlobalPresence Debug:', {
 
   // Transform conversations for display based on active tab
   const contacts = useMemo(() => {
-    console.log('🔄 Recalculating contacts memo, conversations:', (conversations || []).length, 'tab:', activeTab);
-
     // Ensure conversations is always an array
     const safeConversations = conversations || [];
 
@@ -1124,7 +996,7 @@ console.log('🔍 Checking online for educator:', {
 
     // Clear selection if deleting current conversation
     if (selectedConversationId === conversationId) {
-      setSelectedConversationId(null);
+      setSearchParams({ tab: activeTab });
     }
 
     // Close modal immediately for snappy UX
@@ -1403,16 +1275,12 @@ console.log('🔍 Checking online for educator:', {
                       {/* Recruiters Tab - Always available */}
                       <button
                         onClick={async () => {
-                          console.log('🔄 Switching to recruiters tab');
                           setIsTabSwitching(true);
-                          setActiveTab('recruiters');
-                          setSelectedConversationId(null);
-                          setSearchParams({ tab: 'recruiters' }, { replace: true });
+                          setSearchParams({ tab: 'recruiters' });
                           setShowTabDropdown(false);
 
                           // Force refetch for recruiters tab
                           if (studentId && !loadingStudentData && refetchRecruiterConversations) {
-                            console.log('🚀 Refetching recruiter conversations');
                             try {
                               await refetchRecruiterConversations();
                             } finally {
@@ -1440,16 +1308,12 @@ console.log('🔍 Checking online for educator:', {
                       {/* Educators Tab - Always available */}
                       <button
                         onClick={async () => {
-                          console.log('🔄 Switching to educators tab');
                           setIsTabSwitching(true);
-                          setActiveTab('educators');
-                          setSelectedConversationId(null);
-                          setSearchParams({ tab: 'educators' }, { replace: true });
+                          setSearchParams({ tab: 'educators' });
                           setShowTabDropdown(false);
 
                           // Force refetch for educators tab
                           if (studentId && !loadingStudentData && refetchEducatorConversations) {
-                            console.log('🚀 Refetching educator conversations');
                             try {
                               await refetchEducatorConversations();
                             } finally {
@@ -1478,16 +1342,12 @@ console.log('🔍 Checking online for educator:', {
                       {hasSchoolId && (
                         <button
                           onClick={async () => {
-                            console.log('🔄 Switching to admin tab');
                             setIsTabSwitching(true);
-                            setActiveTab('admin');
-                            setSelectedConversationId(null);
-                            setSearchParams({ tab: 'admin' }, { replace: true });
+                            setSearchParams({ tab: 'admin' });
                             setShowTabDropdown(false);
 
                             // Force refetch for admin tab
                             if (studentId && !loadingStudentData && refetchAdminConversations) {
-                              console.log('🚀 Refetching admin conversations');
                               try {
                                 await refetchAdminConversations();
                               } finally {
@@ -1517,16 +1377,12 @@ console.log('🔍 Checking online for educator:', {
                       {hasCollegeId && (
                         <button
                           onClick={async () => {
-                            console.log('🔄 Switching to college_admin tab');
                             setIsTabSwitching(true);
-                            setActiveTab('college_admin');
-                            setSelectedConversationId(null);
                             setSearchParams({ tab: 'college_admin' });
                             setShowTabDropdown(false);
 
                             // Force refetch for college admin tab
                             if (studentId && !loadingStudentData && refetchCollegeAdminConversations) {
-                              console.log('🚀 Refetching college admin conversations');
                               try {
                                 await refetchCollegeAdminConversations();
                               } finally {
@@ -1666,7 +1522,7 @@ console.log('🔍 Checking online for educator:', {
               >
                 <div
                   className="flex items-start gap-3 flex-1"
-                  onClick={() => setSelectedConversationId(contact.id)}
+                  onClick={() => setSearchParams({ tab: activeTab, conversation: contact.id })}
                 >
                   <div className="relative flex-shrink-0">
                     <img
@@ -1931,8 +1787,6 @@ console.log('🔍 Checking online for educator:', {
         studentId={studentId}
         onConversationCreated={async ({ educatorId, educatorType, classId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating conversation with educator:', { educatorId, educatorType, classId, subject, initialMessage });
-            
             let conversation;
             if (educatorType === 'college_lecturer') {
               // Create college lecturer conversation
@@ -1943,7 +1797,6 @@ console.log('🔍 Checking online for educator:', {
                 null, // programSectionId - will be set by backend if available
                 subject
               );
-              console.log('✅ College lecturer conversation created:', conversation);
             } else {
               // Create school educator conversation
               conversation = await MessageService.getOrCreateStudentEducatorConversation(
@@ -1952,7 +1805,6 @@ console.log('🔍 Checking online for educator:', {
                 classId,
                 subject
               );
-              console.log('✅ School educator conversation created:', conversation);
             }
 
             // Send the initial message
@@ -1970,27 +1822,20 @@ console.log('🔍 Checking online for educator:', {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial message sent to college lecturer');
               } else {
                 await MessageService.sendStudentEducatorMessage(
                   conversation.id,
                   studentId,
                   initialMessage.trim()
                 );
-                console.log('✅ Initial message sent to school educator');
               }
             }
 
             // First refetch conversations to get the new conversation in the list
             await refetchConversations();
 
-            // Then set the conversation ID (this ensures currentChat will be found)
-            setSelectedConversationId(conversation.id);
-
-            // Force a small delay to ensure UI updates
-            setTimeout(() => {
-              console.log('📝 Conversation should now be selected:', conversation.id);
-            }, 100);
+            // Then set the conversation ID in URL (this ensures currentChat will be found)
+            setSearchParams({ tab: activeTab, conversation: conversation.id });
 
             const educatorTypeText = educatorType === 'college_lecturer' ? 'college lecturer' : 'school teacher';
             toast.success(`Conversation started with ${educatorTypeText}!`);
@@ -2023,13 +1868,11 @@ console.log('🔍 Checking online for educator:', {
         studentId={studentId}
         onConversationCreated={async ({ schoolId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating admin conversation with:', { schoolId, subject, initialMessage });
             const conversation = await MessageService.getOrCreateStudentAdminConversation(
               studentId,
               schoolId,
               subject
             );
-            console.log('✅ Admin conversation created:', conversation);
 
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
@@ -2055,23 +1898,17 @@ console.log('🔍 Checking online for educator:', {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial admin message sent');
               } else {
                 console.warn('No school admin found for school:', schoolId);
               }
             }
 
             // Switch to admin tab and refetch conversations
-            setActiveTab('admin');
+            setSearchParams({ tab: 'admin' });
             await refetchAdminConversations();
 
             // Select the new conversation
-            setSelectedConversationId(conversation.id);
-
-            // Force a small delay to ensure UI updates
-            setTimeout(() => {
-              console.log('📝 Admin conversation should now be selected:', conversation.id);
-            }, 100);
+            setSearchParams({ tab: 'admin', conversation: conversation.id });
 
             toast.success('Message sent to school administration!');
           } catch (error) {
@@ -2109,7 +1946,6 @@ console.log('🔍 Checking online for educator:', {
               collegeId,
               subject
             );
-            console.log('✅ College admin conversation created:', conversation);
 
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
@@ -2151,23 +1987,17 @@ console.log('🔍 Checking online for educator:', {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial college admin message sent');
               } else {
                 console.warn('No college admin found for college:', collegeId);
               }
             }
 
             // Switch to college admin tab and refetch conversations
-            setActiveTab('college_admin');
+            setSearchParams({ tab: 'college_admin' });
             await refetchCollegeAdminConversations();
 
             // Select the new conversation
-            setSelectedConversationId(conversation.id);
-
-            // Force a small delay to ensure UI updates
-            setTimeout(() => {
-              console.log('📝 College admin conversation should now be selected:', conversation.id);
-            }, 100);
+            setSearchParams({ tab: 'college_admin', conversation: conversation.id });
 
             toast.success('Message sent to college administration!');
           } catch (error) {
