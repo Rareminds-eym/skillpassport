@@ -1,4 +1,4 @@
-# Career API Environment Variables 
+# Career API Environment Variables
 # Copy this to .dev.vars and fill in your actual values
 
 # Supabase Configuration (REQUIRED)
