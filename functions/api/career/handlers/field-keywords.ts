@@ -30,7 +30,7 @@ export async function handleGenerateFieldKeywords(request: Request, env: Record<
   const userId = user.id;
 
   // Security: Rate limiting to prevent API abuse
-  if (!checkRateLimit(userId)) {
+  if (!await checkRateLimit(userId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded. Please try again later.' }, 429);
   }
 

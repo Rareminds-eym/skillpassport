@@ -1,8 +1,8 @@
 /**
- * Document Access Handler
+ * Document Access Handler (Legacy - Unauthenticated)
  * 
- * Proxies documents from R2 storage with proper headers for viewing or downloading.
- * Supports multiple URL formats and modes (inline/download).
+ * DEPRECATED: Use media-proxy for authenticated access
+ * This endpoint is kept for backward compatibility but should not be used for sensitive content.
  * 
  * GET /document-access?key={fileKey}&mode={inline|download}
  * GET /document-access?url={fileUrl}&mode={inline|download}
@@ -25,71 +25,8 @@ import {
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
 
 /**
- * Check if a document is public based on its path
- * 
- * Public documents:
- * - Course certificates (certificates/...)
- * - Course materials (courses/...)
- * 
- * Private documents:
- * - Payment receipts (payment_pdf/...)
- * - User uploads (uploads/...)
- * 
- * @param fileKey - The file key/path in R2 storage
- * @returns True if the document is public, false if private
- */
-function checkIfPublicDocument(fileKey: string): boolean {
-  if (!fileKey) return false;
-
-  // Course certificates are public
-  if (fileKey.startsWith('certificates/')) {
-    return true;
-  }
-
-  // Course materials are public
-  if (fileKey.startsWith('courses/')) {
-    return true;
-  }
-
-  // Everything else is private by default
-  return false;
-}
-
-/**
- * Validate document ownership for private documents
- * 
- * @param fileKey - The file key/path in R2 storage
- * @param userId - The authenticated user's ID
- * @returns Validation result with ownership status and reason
- */
-function validateDocumentOwnership(
-  fileKey: string,
-  userId: string
-): OwnershipValidationResult {
-  // Check payment receipts
-  if (fileKey.startsWith('payment_pdf/')) {
-    return validatePaymentReceiptOwnership(fileKey, userId);
-  }
-
-  // Check user uploads
-  if (fileKey.startsWith('uploads/')) {
-    return validateUploadOwnership(fileKey, userId);
-  }
-
-  // For other private documents, check if user ID is in path
-  const extractedUserId = extractUserIdFromPath(fileKey);
-  if (extractedUserId && extractedUserId === userId) {
-    return { isOwner: true };
-  }
-
-  return {
-    isOwner: false,
-    reason: 'User does not have permission to access this document',
-  };
-}
-
-/**
- * Proxy document from R2 storage
+ * Proxy document from R2 storage (LEGACY - NO AUTH)
+ * WARNING: This endpoint does not validate authentication
  */
 export const handleDocumentAccess: PagesFunction = async (context) => {
   const { request, env } = context;
@@ -105,12 +42,11 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
   try {
     const url = new URL(request.url);
     let fileKey = url.searchParams.get('key');
-    const mode = url.searchParams.get('mode') || 'inline'; // 'inline' for viewing, 'download' for downloading
+    const mode = url.searchParams.get('mode') || 'inline';
 
     // Also support extracting key from full URL
     const fileUrl = url.searchParams.get('url');
     if (!fileKey && fileUrl) {
-      // Extract key from various URL formats
       fileKey = R2Client.extractKeyFromUrl(fileUrl);
     }
 
@@ -182,7 +118,7 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
         'Content-Type': contentType,
         'Content-Disposition': contentDisposition,
         'Content-Length': fileContent.byteLength.toString(),
-        'Cache-Control': 'private, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'private, max-age=3600',
         'ETag': etag,
       },
     });

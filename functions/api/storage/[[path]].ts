@@ -8,9 +8,11 @@
  * - POST /presigned - Generate presigned URL for upload
  * - POST /confirm - Confirm upload completion
  * - POST /get-url, /get-file-url - Get file URL from key
- * - GET /document-access - Proxy document access
+ * - GET /document-access - Proxy document access (LEGACY - NO AUTH)
  * - POST /signed-url - Generate signed URL for document
  * - POST /signed-urls - Batch generate signed URLs
+ * - POST /get-authenticated-url - Generate authenticated URL (SECURE)
+ * - GET /media-proxy - Proxy authenticated media (SECURE)
  * - POST /upload-payment-receipt - Upload payment receipt PDF
  * - GET /payment-receipt - Get payment receipt
  * - GET /course-certificate - Get course certificate
@@ -33,6 +35,8 @@ import { handleUploadPaymentReceipt, handleGetPaymentReceipt } from './handlers/
 import { handleCourseCertificate } from './handlers/certificate';
 import { handleExtractContent } from './handlers/extract-content';
 import { handleListFiles } from './handlers/list-files';
+import { handleGetAuthenticatedUrl } from './handlers/get-authenticated-url';
+import { handleMediaProxy } from './handlers/media-proxy';
 
 // Define public endpoints that don't require authentication
 const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content'];
@@ -104,9 +108,11 @@ export const onRequest: PagesFunction = async (context) => {
             '/confirm',
             '/get-url',
             '/get-file-url',
-            '/document-access',
+            '/document-access (LEGACY)',
             '/signed-url',
             '/signed-urls',
+            '/get-authenticated-url (SECURE)',
+            '/media-proxy (SECURE)',
             '/upload-payment-receipt',
             '/payment-receipt',
             '/course-certificate',
@@ -167,6 +173,12 @@ export const onRequest: PagesFunction = async (context) => {
       case '/extract-content':
         return handleExtractContent(authenticatedContext as any);
 
+      case '/get-authenticated-url':
+        return handleGetAuthenticatedUrl(context);
+
+      case '/media-proxy':
+        return handleMediaProxy(context);
+
       default:
         return jsonResponse(
           {
@@ -178,9 +190,11 @@ export const onRequest: PagesFunction = async (context) => {
               '/confirm',
               '/get-url',
               '/get-file-url',
-              '/document-access',
+              '/document-access (LEGACY)',
               '/signed-url',
               '/signed-urls',
+              '/get-authenticated-url (SECURE)',
+              '/media-proxy (SECURE)',
               '/upload-payment-receipt',
               '/payment-receipt',
               '/course-certificate',

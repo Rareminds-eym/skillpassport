@@ -28,7 +28,7 @@ export async function handleParseResume(request: Request, env: Record<string, st
   const { user } = auth;
   const studentId = user.id;
 
-  if (!checkRateLimit(studentId)) {
+  if (!await checkRateLimit(studentId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded' }, 429);
   }
 

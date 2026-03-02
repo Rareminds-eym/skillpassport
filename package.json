@@ -41,6 +41,7 @@
     "embed-courses": "node scripts/embedCourses.js"
   },
   "dependencies": {
+    "@fingerprintjs/fingerprintjs": "^5.1.0",
     "@casl/ability": "^6.8.0",
     "@casl/react": "^5.0.1",
     "@google/generative-ai": "^0.24.1",
