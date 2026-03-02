@@ -746,18 +746,32 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // Prepare data for insertion - explicitly extract each field
   const riasecScoresRaw = geminiResults?.riasec?.scores || null;
   
-  // FIX: If RIASEC scores are all zeros but _originalScores exists, use those instead
-  // This handles cases where AI returns zeros in scores but has calculated values in _originalScores
-  const riasecScores = riasecScoresRaw && 
-    Object.values(riasecScoresRaw).every(v => v === 0) && 
-    geminiResults?.riasec?._originalScores
-    ? geminiResults.riasec._originalScores  // Use original scores if current scores are all zeros
-    : riasecScoresRaw;
+  console.log('🔍 [completeAttempt] RIASEC extraction:');
+  console.log('   riasecScoresRaw:', JSON.stringify(riasecScoresRaw));
+  console.log('   _originalScores:', JSON.stringify(geminiResults?.riasec?._originalScores));
+  console.log('   _preservedScores:', JSON.stringify(geminiResults?.riasec?._preservedScores));
+  console.log('   _scoreBackup:', JSON.stringify(geminiResults?.riasec?._scoreBackup));
   
-  if (riasecScoresRaw && Object.values(riasecScoresRaw).every(v => v === 0) && geminiResults?.riasec?._originalScores) {
-    console.log('⚠️ [AssessmentService] RIASEC scores were all zeros, using _originalScores instead');
-    console.log('   Original (zeros):', riasecScoresRaw);
-    console.log('   Corrected:', riasecScores);
+  // FIX: If RIASEC scores are all zeros, try backup fields from backend
+  // The backend API adds these backup fields to prevent frontend corruption
+  let riasecScores = riasecScoresRaw;
+  
+  if (riasecScoresRaw && Object.values(riasecScoresRaw).every(v => v === 0)) {
+    console.warn('⚠️ [completeAttempt] RIASEC scores are all zeros, checking backup fields...');
+    
+    // Try backup fields in order of preference
+    if (geminiResults?.riasec?._preservedScores && !Object.values(geminiResults.riasec._preservedScores).every(v => v === 0)) {
+      riasecScores = geminiResults.riasec._preservedScores;
+      console.log('✅ Using _preservedScores:', riasecScores);
+    } else if (geminiResults?.riasec?._scoreBackup && !Object.values(geminiResults.riasec._scoreBackup).every(v => v === 0)) {
+      riasecScores = geminiResults.riasec._scoreBackup;
+      console.log('✅ Using _scoreBackup:', riasecScores);
+    } else if (geminiResults?.riasec?._originalScores && !Object.values(geminiResults.riasec._originalScores).every(v => v === 0)) {
+      riasecScores = geminiResults.riasec._originalScores;
+      console.log('✅ Using _originalScores:', riasecScores);
+    } else {
+      console.error('❌ All RIASEC score fields are zeros!');
+    }
   }
   
   const riasecCode = geminiResults?.riasec?.code || null;
@@ -779,6 +793,12 @@ export const completeAttempt = async (attemptId, studentId, streamId, gradeLevel
   // Aptitude - available for all grade levels (adaptive for middle/high school)
   const aptitudeScores = geminiResults?.aptitude?.scores || null;
   const aptitudeOverall = geminiResults?.aptitude?.overallScore ?? null;
+  
+  // CRITICAL DEBUG: Log aptitude extraction
+  console.log('🔍 [completeAttempt] Extracting aptitude scores from geminiResults...');
+  console.log('🔍 [completeAttempt] geminiResults.aptitude:', JSON.stringify(geminiResults?.aptitude, null, 2));
+  console.log('🔍 [completeAttempt] Extracted aptitudeScores:', JSON.stringify(aptitudeScores, null, 2));
+  console.log('🔍 [completeAttempt] Extracted aptitudeOverall:', aptitudeOverall);
 
   // 🔧 CRITICAL FIX: Extract adaptive aptitude results if present
   // This data comes from the adaptive aptitude test and should be preserved
@@ -1109,8 +1129,6 @@ export const getLatestResult = async (studentIdOrUserId) => {
   }
 
   // If not found, try looking up by user_id (in case we were passed auth.uid())
-  console.log('🔄 No direct match, trying user_id lookup...');
-
   try {
     // Get student.id from user_id
     const { data: student, error: studentError } = await supabase
@@ -1439,8 +1457,6 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
   }
 
   // If not found or abandoned, try looking up by user_id (in case we were passed auth.uid())
-  console.log('🔄 No direct match, trying user_id lookup...');
-
   try {
     // Get student.id from user_id
     const { data: student, error: studentError } = await supabase
@@ -1543,42 +1559,7 @@ export const abandonAttempt = async (attemptId) => {
   if (error) throw error;
 };
 
-/**
- * Transform database questions to match existing frontend format
- * This helps maintain backward compatibility with the existing UI
- */
-export const transformQuestionsForUI = (dbQuestions, sectionName) => {
-  return dbQuestions.map(q => {
-    const base = {
-      id: q.id,
-      text: q.question_text,
-      type: q.subtype,
-      moduleTitle: q.module_title
-    };
-
-    // Add options for MCQ questions
-    if (q.question_type === 'mcq' && q.options) {
-      base.options = q.options;
-      base.correct = q.correct_answer;
-    }
-
-    // Add SJT-specific fields
-    if (q.question_type === 'sjt') {
-      base.partType = 'sjt';
-      base.scenario = q.scenario;
-      base.options = q.options;
-      base.bestAnswer = q.best_answer;
-      base.worstAnswer = q.worst_answer;
-    }
-
-    // Add self-rating fields
-    if (q.part_type === 'selfRating') {
-      base.partType = 'selfRating';
-    }
-
-    return base;
-  });
-};
+// transformQuestionsForUI removed - was never called, referenced unused columns (subtype, module_title, part_type)
 
 /**
  * Calculate aptitude scores from answers and questions
@@ -1607,7 +1588,8 @@ export const calculateAptitudeScores = (answers, questions) => {
   questions.forEach(q => {
     questionMap.set(q.id, {
       correct_answer: q.correct_answer,
-      subtype: q.subtype || q.category || 'verbal'
+      // Note: subtype column removed from DB, using category or dimension instead
+      subtype: q.category || q.dimension || 'verbal'
     });
   });
 
@@ -2059,7 +2041,6 @@ export default {
   getLatestResult,
   getInProgressAttempt,
   abandonAttempt,
-  transformQuestionsForUI,
   canTakeAssessment,
   calculateAptitudeScores,
   calculateKnowledgeScores,

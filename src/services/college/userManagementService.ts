@@ -440,7 +440,44 @@ export const userManagementService = {
       console.log('🔍 Fetching users with filters:', filters);
       const users: User[] = [];
 
-      // Fetch lecturers from college_lecturers table
+      // Get current user's college ID
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        throw new Error('Not authenticated');
+      }
+
+      // Check college_lecturers table first
+      const { data: lecturerData } = await supabase
+        .from('college_lecturers')
+        .select('collegeId')
+        .or(`user_id.eq.${currentUser.id},email.eq.${currentUser.email}`)
+        .maybeSingle();
+
+      let collegeId = lecturerData?.collegeId;
+
+      // If not found, check organizations table
+      if (!collegeId) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', currentUser.id)
+          .eq('organization_type', 'college')
+          .maybeSingle();
+
+        collegeId = orgData?.id;
+      }
+
+      if (!collegeId) {
+        console.error('❌ No college ID found for current user');
+        return {
+          users: [],
+          total: 0,
+          page: filters.page || 1,
+          limit: filters.limit || 10,
+        };
+      }
+
+      // Fetch lecturers from college_lecturers table - FILTER BY COLLEGE
       let lecturersQuery = supabase
         .from('college_lecturers')
         .select(`
@@ -460,7 +497,8 @@ export const userManagementService = {
           first_name,
           last_name,
           email
-        `);
+        `)
+        .eq('collegeId', collegeId);
 
       if (filters.status) {
         lecturersQuery = lecturersQuery.eq('accountStatus', filters.status);

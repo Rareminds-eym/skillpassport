@@ -43,6 +43,7 @@ const Courses = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [studentGrade, setStudentGrade] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
@@ -101,6 +102,29 @@ const Courses = () => {
     }
   }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage]);
 
+  // Fetch student grade for classification filtering
+  useEffect(() => {
+    const fetchStudentGrade = async () => {
+      if (!user?.email) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('students')
+          .select('grade')
+          .eq('email', user.email)
+          .maybeSingle();
+        
+        if (!error && data) {
+          setStudentGrade(data.grade);
+        }
+      } catch (error) {
+        console.error('Error fetching student grade:', error);
+      }
+    };
+    
+    fetchStudentGrade();
+  }, [user?.email]);
+
   // Separate effect for enrollments - only when user email changes
   useEffect(() => {
     const currentEmail = user?.email;
@@ -136,6 +160,33 @@ const Courses = () => {
         .select('*', { count: 'exact' }) // Get total count for pagination
         .in('status', ['Active', 'Upcoming'])
         .is('deleted_at', null);
+
+      // Apply classification filter based on student grade
+      if (studentGrade) {
+        let classification = null;
+        
+        // Handle numeric grades (6-12)
+        if (/^(Grade\s*)?(\d+)$/i.test(studentGrade)) {
+          const gradeNum = parseInt(studentGrade.match(/\d+/)[0]);
+          
+          if (gradeNum >= 6 && gradeNum <= 8) {
+            classification = 'middle_school';
+          } else if (gradeNum >= 9 && gradeNum <= 10) {
+            classification = 'high_school';
+          } else if (gradeNum >= 11 && gradeNum <= 12) {
+            classification = 'higher_secondary';
+          }
+        }
+        // Handle college/university grades (UG, PG, Diploma)
+        else if (/^(UG|PG|Diploma)/i.test(studentGrade)) {
+          classification = 'college';
+        }
+        
+        if (classification) {
+          // Show courses that match classification OR have no classification (universal courses)
+          query = query.or(`classification.eq.${classification},classification.is.null`);
+        }
+      }
 
       // Apply search filter at database level
       if (debouncedSearch && debouncedSearch.trim()) {
@@ -794,7 +845,7 @@ const Courses = () => {
                           </Badge>
                         </motion.div>
                       )}
-                      {isNewCourse(course.created_at) && (
+                      {/* {isNewCourse(course.created_at) && (
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -803,17 +854,17 @@ const Courses = () => {
                             NEW
                           </Badge>
                         </motion.div>
-                      )}
+                      )} */}
                     </div>
                   </div>
 
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
-                      <div className="flex gap-2 flex-wrap">
+                      {/* <div className="flex gap-2 flex-wrap">
                         <Badge className={`${getStatusColor(course.status)} border`}>
                           {course.status}
                         </Badge>
-                      </div>
+                      </div> */}
                       <span className="text-xs font-medium text-gray-500">{course.code}</span>
                     </div>
                     <CardTitle className="text-lg line-clamp-2">{course.title}</CardTitle>
@@ -999,11 +1050,11 @@ const Courses = () => {
                               Enrolled
                             </Badge>
                           )}
-                          {isNewCourse(course.created_at) && (
+                          {/* {isNewCourse(course.created_at) && (
                             <Badge className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 shadow-lg font-semibold px-3 py-1">
                               NEW
                             </Badge>
-                          )}
+                          )} */}
                         </div>
                       </div>
 
@@ -1013,9 +1064,9 @@ const Courses = () => {
                           <div>
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <h3 className="text-xl font-bold text-gray-900">{course.title}</h3>
-                              <Badge className={`${getStatusColor(course.status)} border`}>
+                              {/* <Badge className={`${getStatusColor(course.status)} border`}>
                                 {course.status}
-                              </Badge>
+                              </Badge> */}
                             </div>
                             <p className="text-sm text-gray-500">Course Code: {course.code}</p>
                           </div>

@@ -466,13 +466,7 @@ const Messages = () => {
     }
     return false;
   }, [globalOnlineUsers, adminUserIds]);
-// ADD THIS DEBUG LOG HERE:
-console.log('🔍 [STUDENT] GlobalPresence Debug:', {
-  isUserOnlineGlobal: typeof isUserOnlineGlobal,
-  globalOnlineUsers: globalOnlineUsers,
-  currentUserId: studentId,
-  currentUserName: studentName
-});
+
   // Presence tracking for current conversation (for chat header)
   const { isUserOnline, getUserStatus, onlineUsers } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',

@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon,
   FolderIcon,
   BookOpenIcon,
+    LockClosedIcon,
   SparklesIcon,
   ClipboardDocumentCheckIcon
   // Icons from Heroicons
@@ -74,11 +75,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         { name: "Students", path: "/educator/students", icon: UserGroupIcon },
         // Show different navigation based on educator type
         ...(educatorType === 'college' 
-          ? [{ name: "Program Sections", path: "/educator/classes", icon: AcademicCapIcon }]
+          ? [{ name: "Program Sections", path: "#", icon: AcademicCapIcon, disabled: true }]
           : [{ name: "Classes", path: "/educator/classes", icon: AcademicCapIcon }]
         ),
-        { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon },
-        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon },
+        { name: "TimeTable", path: "#", icon: AcademicCapIcon, disabled: true },
+        { name: "Mark Attendance", path: "#", icon: ClipboardDocumentCheckIcon, disabled: true },
         { name: "Assessment Results", path: "/educator/assessment-results", icon: ClipboardDocumentListIcon },
         // { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
         { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon },
@@ -95,18 +96,20 @@ const Sidebar: React.FC<SidebarProps> = ({
         // },
         // Show different navigation based on educator type
         ...(educatorType === 'college' 
-          ? [{ name: "College Assignments", path: "/educator/college-assignments", icon: AcademicCapIcon }]
-          : [{ name: "Assignments", path: "/educator/assignments", icon: AcademicCapIcon }]
+          ? [{ name: "College Assignments", path: "#", icon: AcademicCapIcon, disabled: true }]
+          : [{ name: "Assignments", path: "#", icon: AcademicCapIcon, disabled: true }]
         ),
         {
           name: "Mentor Notes",
-          path: "/educator/mentornotes",
+          path: "#",
           icon: PencilSquareIcon,
+          disabled: true,
         },
         {
           name: "My Mentees",
-          path: "/educator/my-mentees",
+          path: "#",
           icon: UserGroupIcon,
+          disabled: true,
         },
         {
           name: "Verification",
@@ -121,13 +124,15 @@ const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           name: "Clubs & Compitetion",
-          path: "/educator/clubs",
+          path: "#",
           icon: ClipboardDocumentListIcon,
+          disabled: true,
         },
         {
           name: "badges",
-          path: "/educator/badges",
+          path: "#",
           icon: PencilSquareIcon,
+          disabled: true,
         },
       ],
     },
@@ -152,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         // School/College educators see all items
         { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
         { name: "Reports & Analytics", path: "/educator/reports", icon: DocumentChartBarIcon },
-        { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
+        { name: "Media Manager", path: "/educator/media", icon: PhotoIcon, disabled: true },
         // { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
         { 
         name: educatorType === 'college' ? "Messages" : "Communication", 
@@ -264,9 +269,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                   return (
                     <button
                       key={item.name}
-                      onClick={() => handleNavigation(item.name, item.path)}
+                      onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
+                      disabled={(item as any).disabled}
                       className={classNames(
-                        isActive
+                        (item as any).disabled
+                          ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
+                          : isActive
                           ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
                           : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
                         "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
@@ -274,13 +282,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <item.icon
                         className={classNames(
-                          isActive
+                          (item as any).disabled
+                            ? "text-gray-400"
+                            : isActive
                             ? "text-indigo-600"
                             : "text-gray-400 group-hover:text-indigo-500",
                           "h-5 w-5 flex-shrink-0"
                         )}
                       />
-                      <span>{item.name}</span>
+                      <span className="flex-1 text-left">{item.name}</span>
+                      {(item as any).disabled && (
+                        <LockClosedIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      )}
                     </button>
                   );
                 })}
@@ -296,9 +309,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.name}
-                onClick={() => handleNavigation(item.name, item.path)}
+                onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
+                disabled={(item as any).disabled}
                 className={classNames(
-                  isActive
+                  (item as any).disabled
+                    ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
+                    : isActive
                     ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
                     : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
                   "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
@@ -306,13 +322,18 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 <item.icon
                   className={classNames(
-                    isActive
+                    (item as any).disabled
+                      ? "text-gray-400"
+                      : isActive
                       ? "text-indigo-600"
                       : "text-gray-400 group-hover:text-indigo-500",
                     "h-5 w-5 flex-shrink-0"
                   )}
                 />
-                <span>{item.name}</span>
+                <span className="flex-1 text-left">{item.name}</span>
+                {(item as any).disabled && (
+                  <LockClosedIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                )}
               </button>
             );
           })}

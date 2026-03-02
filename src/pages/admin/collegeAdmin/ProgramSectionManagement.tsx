@@ -51,6 +51,7 @@ interface Faculty {
 }
 
 const ProgramSectionManagement: React.FC = () => {
+  const [collegeId, setCollegeId] = useState<string | null>(null);
   const [sections, setSections] = useState<ProgramSection[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -67,10 +68,49 @@ const ProgramSectionManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    loadData();
+    const fetchCollegeId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      try {
+        const { data: lecturerData } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (lecturerData?.collegeId) {
+          setCollegeId(lecturerData.collegeId);
+          return;
+        }
+
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('organization_type', 'college')
+          .maybeSingle();
+
+        if (orgData?.id) {
+          setCollegeId(orgData.id);
+        }
+      } catch (error) {
+        console.error('Error fetching college ID:', error);
+      }
+    };
+
+    fetchCollegeId();
   }, []);
 
+  useEffect(() => {
+    if (collegeId) {
+      loadData();
+    }
+  }, [collegeId]);
+
   const loadData = async () => {
+    if (!collegeId) return;
+    
     try {
       setLoading(true);
 
@@ -78,15 +118,22 @@ const ProgramSectionManagement: React.FC = () => {
       const { data: deptData, error: deptError } = await supabase
         .from("departments")
         .select("*")
+        .eq("college_id", collegeId)
         .eq("status", "active");
       
       if (deptError) throw deptError;
       setDepartments(deptData || []);
 
-      // Load programs
+      // Load programs (filter by departments from this college)
       const { data: progData, error: progError } = await supabase
         .from("programs")
-        .select("*")
+        .select(`
+          *,
+          departments!inner (
+            college_id
+          )
+        `)
+        .eq("departments.college_id", collegeId)
         .eq("status", "active");
       
       if (progError) throw progError;
@@ -104,6 +151,7 @@ const ProgramSectionManagement: React.FC = () => {
             email
           )
         `)
+        .eq("collegeId", collegeId)
         .eq("accountStatus", "active");
       
       if (facultyError) {
@@ -120,32 +168,40 @@ const ProgramSectionManagement: React.FC = () => {
         setFaculty(transformedFaculty);
       }
 
-      // Load sections from program_sections_view
+      // Load sections - query program_sections table directly and join with departments
       const { data: sectionsData, error: sectionsError } = await supabase
-        .from("program_sections_view")
-        .select("*")
-        .order("department_name", { ascending: true })
-        .order("program_name", { ascending: true })
+        .from("program_sections")
+        .select(`
+          *,
+          programs!inner (
+            name,
+            code,
+            departments!inner (
+              name,
+              college_id
+            )
+          )
+        `)
+        .eq("programs.departments.college_id", collegeId)
         .order("semester", { ascending: true })
         .order("section", { ascending: true });
       
       if (sectionsError) {
         console.error("Error loading sections:", sectionsError);
-        // If view doesn't exist yet, show empty state
         setSections([]);
       } else {
         const formattedSections: ProgramSection[] = (sectionsData || []).map((s: any) => ({
           id: s.id,
-          department_id: s.department_id,
-          department_name: s.department_name,
+          department_id: s.programs?.departments?.id || s.department_id,
+          department_name: s.programs?.departments?.name || 'Unknown',
           program_id: s.program_id,
-          program_name: s.program_name,
+          program_name: s.programs?.name || 'Unknown',
           semester: s.semester,
           section: s.section,
           max_students: s.max_students,
           current_students: s.current_students,
           faculty_id: s.faculty_id,
-          faculty_name: s.faculty_name,
+          faculty_name: s.faculty_name || 'Not Assigned',
           status: s.status,
           created_at: s.created_at,
         }));

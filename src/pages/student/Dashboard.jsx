@@ -17,6 +17,7 @@ import {
     ExternalLink,
     Eye,
     EyeOff,
+    Factory,
     FileText,
     Github,
     GraduationCap,
@@ -28,14 +29,17 @@ import {
     Rocket,
     Sparkles,
     Star,
+    Tag,
     Target,
     Trash2,
     TrendingUp,
-    Users2
+    Users2,
+    X
 } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from "motion/react";
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
@@ -92,6 +96,544 @@ import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
 
 // Import Tour Components - Now handled globally
 // Tours are managed by GlobalTourManager in App.tsx
+
+// Opportunities Card Content Component
+const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matchedJobs = [] }) => {
+  const [selectedOpportunity, setSelectedOpportunity] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  
+  // Check if we have AI recommendations
+  const hasAIRecommendations = matchedJobs && matchedJobs.length > 0;
+  
+  // Get AI-recommended jobs (first 3) and remaining jobs
+  const aiRecommendedJobs = hasAIRecommendations 
+    ? matchedJobs
+        .filter(match => match.company_name && match.company_name.trim() !== '') // Filter first
+        .slice(0, 3) // Then take first 3
+        .map(match => {
+          // matchedJobs already has the data directly, not nested
+          return {
+            ...match,
+            // Ensure we have the right field names
+            title: match.title || match.job_title,
+            employment_type: match.employment_type,
+            location: match.location,
+            posted_date: match.posted_date || match.created_at,
+            sector: match.sector || match.department,
+            // Use match_percentage which is already calculated
+            matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
+            isAIRecommended: true
+          };
+        })
+    : [];
+  
+  // Get other jobs (either from AI recommendations after first 3, or all regular jobs)
+  const otherJobs = hasAIRecommendations
+    ? matchedJobs
+        .filter(match => match.company_name && match.company_name.trim() !== '')
+        .slice(3) // Skip first 3, get the rest
+        .map(match => {
+          return {
+            ...match,
+            title: match.title || match.job_title,
+            employment_type: match.employment_type,
+            location: match.location,
+            posted_date: match.posted_date || match.created_at,
+            sector: match.sector || match.department,
+            matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
+            isAIRecommended: true
+          };
+        })
+    : opportunities.filter(opp => opp.employment_type !== 'factory_visit');
+  
+  // Combine for display - ensure we have up to 5 jobs total
+  const allJobsToShow = [...aiRecommendedJobs, ...otherJobs];
+  
+  // If we don't have enough AI jobs, fill with regular opportunities
+  const jobsNeeded = 5 - allJobsToShow.length;
+  if (jobsNeeded > 0 && opportunities.length > 0) {
+    const regularJobs = opportunities
+      .filter(opp => opp.employment_type !== 'factory_visit')
+      .filter(opp => !allJobsToShow.find(job => job.id === opp.id)) // Don't duplicate
+      .slice(0, jobsNeeded);
+    allJobsToShow.push(...regularJobs);
+  }
+  
+  // Separate opportunities by type
+  const factoryVisits = opportunities.filter(opp => opp.employment_type === 'factory_visit');
+  const jobsAndInternships = allJobsToShow;
+  
+  // Determine what should be shown based on student grade
+  const studentGrade = studentData?.grade;
+  let showFactoryVisits = factoryVisits.length > 0;
+  let showJobs = false;
+  
+  // Parse grade to determine what to show
+  if (studentGrade) {
+    const gradeMatch = studentGrade.match(/\d+/);
+    const gradeNumber = gradeMatch ? parseInt(gradeMatch[0]) : null;
+    
+    // Middle School (6-8): Only Industrial Visits
+    if (gradeNumber && gradeNumber >= 6 && gradeNumber <= 8) {
+      showJobs = false;
+    }
+    // High School (9-12) + Diploma: Industrial Visits + Jobs/Internships
+    else if ((gradeNumber && gradeNumber >= 9 && gradeNumber <= 12) || studentGrade.toLowerCase().includes('diploma')) {
+      showJobs = jobsAndInternships.length > 0;
+    }
+    // College (UG/PG): Industrial Visits + Jobs/Internships
+    else if (studentGrade.toLowerCase().includes('ug') || studentGrade.toLowerCase().includes('pg')) {
+      showJobs = jobsAndInternships.length > 0;
+    }
+  }
+  
+  // Handle card click
+  const handleCardClick = (opp) => {
+    setSelectedOpportunity(opp);
+    setShowModal(true);
+    document.body.style.overflow = 'hidden';
+    // Add blur to root
+    const root = document.getElementById('root');
+    if (root) {
+      root.style.filter = 'blur(4px)';
+      root.style.transition = 'filter 0.2s ease-in-out';
+    }
+  };
+  
+  // Close modal
+  const closeModal = () => {
+    setShowModal(false);
+    setSelectedOpportunity(null);
+    document.body.style.overflow = 'unset';
+    // Remove blur from root
+    const root = document.getElementById('root');
+    if (root) {
+      root.style.filter = 'none';
+    }
+  };
+  
+  // Render opportunity card
+  const renderOpportunityCard = (opp) => {
+    const isFactoryVisit = opp.employment_type === 'factory_visit';
+    const isInternship = opp.employment_type === 'internship';
+    const isAIRecommended = opp.isAIRecommended;
+    const matchScore = opp.matchScore;
+    
+    return (
+      <div
+        key={opp.id}
+        onClick={() => handleCardClick(opp)}
+        className="p-4 rounded-xl bg-white border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+      >
+        <div className="flex items-start justify-between mb-2">
+          <h4 className="text-base font-bold text-gray-900 flex-1">{opp.company_name}</h4>
+          <div className="flex items-center gap-2">
+            {isAIRecommended && matchScore && (
+              <Badge className="text-xs !bg-purple-100 !text-purple-700 font-semibold">
+                {Math.round(matchScore)}% Match
+              </Badge>
+            )}
+            <Badge className={`text-xs ${
+              isFactoryVisit 
+                ? '!bg-blue-100 !text-blue-600' 
+                : isInternship 
+                ? '!bg-green-100 !text-green-600'
+                : '!bg-purple-100 !text-purple-600'
+            }`}>
+              {isFactoryVisit ? 'Visit' : isInternship ? 'Internship' : 'Job'}
+            </Badge>
+          </div>
+        </div>
+
+        {isAIRecommended && (
+          <div className="flex items-center gap-1 mb-2">
+            <Sparkles className="w-3 h-3 text-purple-600" />
+            <span className="text-xs text-purple-600 font-medium">AI Recommended</span>
+          </div>
+        )}
+
+        <div className="space-y-2 text-sm text-gray-600 mb-3">
+          {!isFactoryVisit && opp.title && (
+            <div className="flex items-center gap-2">
+              <Briefcase className="w-4 h-4" />
+              <span className="font-medium">{opp.title}</span>
+            </div>
+          )}
+          {opp.sector && (
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4" />
+              <span>{opp.sector}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            <span>{opp.location}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-3">
+          {opp.posted_date && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Calendar className="w-4 h-4" />
+              <span>{new Date(opp.posted_date).toLocaleDateString()}</span>
+            </div>
+          )}
+          <span className="text-sm text-blue-600 font-medium">View Details</span>
+        </div>
+      </div>
+    );
+  };
+  
+  // Render modal
+  const renderModal = () => {
+    if (!showModal || !selectedOpportunity) return null;
+    
+    const isFactoryVisit = selectedOpportunity.employment_type === 'factory_visit';
+    const isInternship = selectedOpportunity.employment_type === 'internship';
+    const isAIRecommended = selectedOpportunity.isAIRecommended;
+    const matchScore = selectedOpportunity.matchScore;
+    
+    return createPortal(
+      <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-200">
+        <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+          {/* Header */}
+          <div className="bg-white border-b border-gray-200 px-6 py-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-blue-50 rounded-lg">
+                    {isFactoryVisit ? (
+                      <Factory className="w-5 h-5 text-blue-600" />
+                    ) : (
+                      <Briefcase className="w-5 h-5 text-blue-600" />
+                    )}
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {selectedOpportunity.company_name}
+                  </h2>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isAIRecommended && matchScore && (
+                    <Badge className="text-xs !bg-purple-100 !text-purple-700 font-semibold">
+                      {Math.round(matchScore)}% Match
+                    </Badge>
+                  )}
+                  <Badge className={`text-xs ${
+                    isFactoryVisit 
+                      ? '!bg-blue-100 !text-blue-600' 
+                      : isInternship 
+                      ? '!bg-green-100 !text-green-600'
+                      : '!bg-purple-100 !text-purple-600'
+                  }`}>
+                    {isFactoryVisit ? 'Industrial Visit' : isInternship ? 'Internship' : 'Full-Time Job'}
+                  </Badge>
+                </div>
+                {isAIRecommended && (
+                  <div className="flex items-center gap-1 mt-2">
+                    <Sparkles className="w-3 h-3 text-purple-600" />
+                    <span className="text-xs text-purple-600 font-medium">AI Recommended</span>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="overflow-y-auto max-h-[calc(85vh-180px)] px-6 py-5">
+            <div className="space-y-4">
+              {/* Title (for jobs/internships) */}
+              {!isFactoryVisit && selectedOpportunity.title && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-start gap-3">
+                    <Briefcase className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        Position
+                      </h3>
+                      <p className="text-base font-medium text-gray-900">
+                        {selectedOpportunity.title}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Industry/Sector */}
+              {selectedOpportunity.sector && (
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-start gap-3">
+                    <Tag className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                        {isFactoryVisit ? 'Industry Type' : 'Sector'}
+                      </h3>
+                      <p className="text-base font-medium text-gray-900">
+                        {selectedOpportunity.sector}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Location */}
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                      Location
+                    </h3>
+                    <p className="text-base font-medium text-gray-900">
+                      {selectedOpportunity.location}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              {selectedOpportunity.description && (
+                <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                  <h3 className="text-xs font-semibold text-gray-700 uppercase mb-2">
+                    About
+                  </h3>
+                  <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-sm">
+                    {selectedOpportunity.description}
+                  </p>
+                </div>
+              )}
+
+              {/* Posted Date with View Full Details button */}
+              {selectedOpportunity.posted_date && (
+                <div className="flex items-center justify-between gap-4 pt-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>
+                      Posted on {new Date(selectedOpportunity.posted_date).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      closeModal();
+                      const isFactoryVisit = selectedOpportunity.employment_type === 'factory_visit';
+                      navigate('/student/opportunities', { 
+                        state: { activeTab: isFactoryVisit ? 'industrial-visits' : 'my-jobs' } 
+                      });
+                    }}
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    View Full Details
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+  
+  // If both types should be shown and both exist, split into two sections
+  if (showFactoryVisits && showJobs) {
+    // For college students, show Jobs first, then Industrial Visits
+    const isCollege = studentGrade && (
+      studentGrade.toLowerCase().includes('ug') || 
+      studentGrade.toLowerCase().includes('pg') ||
+      studentGrade.toLowerCase().includes('year')
+    );
+    
+    if (isCollege) {
+      return (
+        <>
+          <div className="space-y-4">
+            {/* Jobs & Internships Section - First for college */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Briefcase className="w-4 h-4 text-purple-600" />
+                <h3 className="text-sm font-semibold text-gray-700">Jobs & Internships</h3>
+              </div>
+              <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 blue-scrollbar">
+                {jobsAndInternships.slice(0, 5).map(renderOpportunityCard)}
+                <div className="text-center pt-2 pb-1">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/student/opportunities', { state: { activeTab: 'my-jobs' } });
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="text-purple-600 border-purple-200 hover:bg-purple-50 text-xs"
+                  >
+                    View All Opportunities
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            {/* Industrial Visits Section - Second for college */}
+            <div className="border-t border-gray-200 pt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Factory className="w-4 h-4 text-blue-600" />
+                <h3 className="text-sm font-semibold text-gray-700">Industrial Visits</h3>
+              </div>
+              <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 blue-scrollbar">
+                {factoryVisits.slice(0, 5).map(renderOpportunityCard)}
+                {factoryVisits.length > 5 && (
+                  <div className="text-center pt-2 pb-1">
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/student/opportunities', { state: { activeTab: 'industrial-visits' } });
+                      }}
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs"
+                    >
+                      View All {factoryVisits.length} Visits
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          {renderModal()}
+        </>
+      );
+    }
+    
+    // For school students, show Industrial Visits first
+    return (
+      <>
+        <div className="space-y-4">
+          {/* Industrial Visits Section */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Factory className="w-4 h-4 text-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-700">Industrial Visits</h3>
+            </div>
+            <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 blue-scrollbar">
+              {factoryVisits.slice(0, 5).map(renderOpportunityCard)}
+              {factoryVisits.length > 5 && (
+                <div className="text-center pt-2 pb-1">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/student/opportunities', { state: { activeTab: 'industrial-visits' } });
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="text-blue-600 border-blue-200 hover:bg-blue-50 text-xs"
+                  >
+                    View All {factoryVisits.length} Visits
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Jobs & Internships Section */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Briefcase className="w-4 h-4 text-purple-600" />
+              <h3 className="text-sm font-semibold text-gray-700">Jobs & Internships</h3>
+            </div>
+            <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 blue-scrollbar">
+              {jobsAndInternships.slice(0, 5).map(renderOpportunityCard)}
+              <div className="text-center pt-2 pb-1">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate('/student/opportunities', { state: { activeTab: 'my-jobs' } });
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="text-purple-600 border-purple-200 hover:bg-purple-50 text-xs"
+                >
+                  View All Opportunities
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {renderModal()}
+      </>
+    );
+  }
+  
+  // If only factory visits should be shown
+  if (showFactoryVisits && !showJobs) {
+    return (
+      <>
+        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+          {factoryVisits.slice(0, 5).map(renderOpportunityCard)}
+          
+          {factoryVisits.length > 5 && (
+            <div className="text-center pt-2 pb-1">
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate('/student/opportunities', { state: { activeTab: 'industrial-visits' } });
+                }}
+                variant="outline"
+                size="sm"
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                View All {factoryVisits.length} Visits
+              </Button>
+            </div>
+          )}
+        </div>
+        {renderModal()}
+      </>
+    );
+  }
+  
+  // If only jobs should be shown
+  if (!showFactoryVisits && showJobs) {
+    return (
+      <>
+        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+          {jobsAndInternships.slice(0, 5).map(renderOpportunityCard)}
+          
+          <div className="text-center pt-2 pb-1">
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate('/student/opportunities', { state: { activeTab: 'my-jobs' } });
+              }}
+              variant="outline"
+              size="sm"
+              className="text-purple-600 border-purple-200 hover:bg-purple-50"
+            >
+              View All Opportunities
+            </Button>
+          </div>
+        </div>
+        {renderModal()}
+      </>
+    );
+  }
+  
+  // Fallback: show nothing if no valid opportunities
+  return (
+    <div className="text-center py-8">
+      <p className="text-slate-500 font-medium">
+        No opportunities available at the moment
+      </p>
+    </div>
+  );
+};
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -210,16 +752,7 @@ const StudentDashboard = () => {
     refresh: refreshProjects
   } = useStudentProjects(studentId, !!studentId && !isViewingOthersProfile);
 
-  // Debug: Log projects data
-  useEffect(() => {
-    console.log('🔍 Dashboard - tableProjects updated:', {
-      count: tableProjects?.length || 0,
-      projects: tableProjects,
-      loading: projectsLoading,
-      error: projectsError,
-      studentId
-    });
-  }, [tableProjects, projectsLoading, projectsError, studentId]);
+
 
   // Fetch experience from dedicated table
   const {
@@ -237,16 +770,7 @@ const StudentDashboard = () => {
     refresh: refreshEducation
   } = useStudentEducation(studentId, !!studentId && !isViewingOthersProfile);
 
-  // Debug: Log education data
-  useEffect(() => {
-    console.log('🔍 Dashboard - tableEducation updated:', {
-      count: tableEducation?.length || 0,
-      education: tableEducation,
-      loading: educationLoading,
-      error: educationError,
-      studentId
-    });
-  }, [tableEducation, educationLoading, educationError, studentId]);
+
 
   // Fetch technical skills from dedicated table
   const {
@@ -298,11 +822,7 @@ const StudentDashboard = () => {
     latestAttemptId,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
-  // Debug: Log student ID being passed to assessment hook
-  useEffect(() => {
-    console.log('📋 Dashboard: studentId for assessment hook:', studentId);
-    console.log('📋 Dashboard: enabled?', !!studentId && !isViewingOthersProfile);
-  }, [studentId, isViewingOthersProfile]);
+
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -338,20 +858,10 @@ const StudentDashboard = () => {
       : userData.projects;
     if (!Array.isArray(projectsData)) return [];
     
-    console.log('🔍 Dashboard - Raw projects data:', projectsData);
-    
     return projectsData
       .map((project) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (project.has_pending_edit && project.verified_data) {
-          console.log('🔄 Dashboard - Project with pending edit:', {
-            id: project.id,
-            currentTitle: project.title,
-            verifiedTitle: project.verified_data.title,
-            approval_status: project.approval_status,
-            has_pending_edit: project.has_pending_edit
-          });
-          
           return {
             ...project,
             // Use verified_data for display (old approved version)
@@ -401,8 +911,6 @@ const StudentDashboard = () => {
       ? tableEducation
       : userData.education;
     if (!Array.isArray(educationData)) return [];
-    
-    console.log('🔍 Dashboard - Raw education data:', educationData);
     
     return educationData
       .map((education) => {
@@ -464,24 +972,10 @@ const StudentDashboard = () => {
       ? tableTechnicalSkills
       : userData.technicalSkills;
     
-    console.log('🔍 Dashboard - Technical Skills Data:', {
-      tableTechnicalSkills,
-      userData_technicalSkills: userData.technicalSkills,
-      usingTableData: Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0
-    });
-    
     if (!Array.isArray(skillsData)) return [];
     
     const processed = skillsData
       .map((skill) => {
-        console.log('🔍 Dashboard - Processing skill:', {
-          name: skill.name,
-          approval_status: skill.approval_status,
-          has_pending_edit: skill.has_pending_edit,
-          _hasPendingEdit: skill._hasPendingEdit,
-          enabled: skill.enabled
-        });
-        
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (skill.has_pending_edit && skill.verified_data) {
           return {
@@ -504,15 +998,9 @@ const StudentDashboard = () => {
           skill.approval_status === 'verified' ||
           (skill.has_pending_edit && skill.verified_data)
         );
-        console.log('🔍 Dashboard - Should show skill?', {
-          name: skill.name,
-          approval_status: skill.approval_status,
-          shouldShow
-        });
         return shouldShow;
       });
     
-    console.log('🔍 Dashboard - Final enabled technical skills:', processed);
     return processed;
   }, [tableTechnicalSkills, userData.technicalSkills]);
 
@@ -602,13 +1090,6 @@ const StudentDashboard = () => {
           (exp.has_pending_edit && exp.verified_data)
         );
         
-        console.log('🔍 Dashboard - Should show experience?', {
-          role: exp.role,
-          approval_status: exp.approval_status,
-          has_pending_edit: exp.has_pending_edit,
-          shouldShow
-        });
-        
         return shouldShow;
       })
       .sort((a, b) => {
@@ -680,7 +1161,7 @@ const StudentDashboard = () => {
       });
   }, [tableCertificates, userData.certificates]);
 
-  // Fetch opportunities data from Supabase
+  // Fetch opportunities data from Supabase (including industrial visits)
   const {
     opportunities,
     loading: opportunitiesLoading,
@@ -688,8 +1169,9 @@ const StudentDashboard = () => {
     refreshOpportunities,
   } = useOpportunities({
     fetchOnMount: true,
-    activeOnly: false, // Changed to false to see all opportunities
+    activeOnly: true, // Only show active opportunities
     studentSkills: studentSkills,
+    includeFactoryVisits: true, // Include industrial visits
   });
 
   // AI Job Recommendations - Vector-based matching with top 3 results
@@ -1141,15 +1623,71 @@ const StudentDashboard = () => {
         city: studentData.school.city,
         state: studentData.school.state,
       };
-    } else if (studentData?.university || studentData?.college_school_name) {
-      // Fallback to individual columns if no foreign key relationships
+    } else if (studentData?.university_college_id && studentData?.universityCollege) {
+      // University college with parent university info
+      const college = studentData.universityCollege;
+      const university = college.universities; // nested university data
       return {
-        type: 'Institution',
-        name: studentData.college_school_name || studentData.university,
-        code: 'N/A',
-        city: studentData.city,
-        state: studentData.state,
+        type: 'University College',
+        name: college.name,
+        code: college.code,
+        universityName: university?.name,
+        city: university?.district,
+        state: university?.state,
       };
+    } else if (studentData?.university || studentData?.college_school_name) {
+      // Fallback to individual columns if no foreign key relationships (custom entries)
+      let type = 'Institution';
+      let name = null;
+      
+      // Check grade to determine if school or college student
+      const grade = studentData?.grade || '';
+      const isSchoolGrade = grade && (
+        grade.includes('Grade') || 
+        grade.includes('6') || grade.includes('7') || grade.includes('8') || 
+        grade.includes('9') || grade.includes('10') || grade.includes('11') || grade.includes('12')
+      );
+      const isCollegeGrade = grade && (
+        grade.includes('UG') || grade.includes('PG') || 
+        grade.includes('Diploma') || grade.includes('Year')
+      );
+      
+      // Check if it's a university path (has university or program/branch)
+      const hasUniversity = studentData?.university;
+      const hasBranch = studentData?.branch_field;
+      
+      if (hasUniversity && studentData?.college_school_name) {
+        // Has both university and college - show college
+        type = 'College';
+        name = studentData.college_school_name;
+      } else if (hasUniversity) {
+        // Has only university
+        type = 'University';
+        name = studentData.university;
+      } else if (studentData?.college_school_name) {
+        // Has only college_school_name field - determine if it's school or college based on grade
+        if (isSchoolGrade) {
+          type = 'School';
+          name = studentData.college_school_name;
+        } else if (isCollegeGrade || hasBranch) {
+          type = 'College';
+          name = studentData.college_school_name;
+        } else {
+          // Default to college if unclear
+          type = 'College';
+          name = studentData.college_school_name;
+        }
+      }
+      
+      if (name) {
+        return {
+          type: type,
+          name: name,
+          code: 'N/A',
+          city: studentData.location || studentData.city,
+          state: studentData.state,
+        };
+      }
     }
 
     // Fallback: Show error if ID exists but data is null (broken foreign key)
@@ -1455,31 +1993,7 @@ const StudentDashboard = () => {
             </CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="pt-4 p-8 space-y-4">
-          {/* Info message for school students */}
-          {/* {(studentData?.school_id || studentData?.school_class_id) && studentData?.grade && (
-            <div className="bg-blue-50 rounded-lg p-3 mb-4">
-              <p className="text-sm text-blue-700">
-                <span className="font-semibold">Grade {studentData.grade} Opportunities:</span> 
-                {parseInt(studentData.grade) >= 6 && parseInt(studentData.grade) <= 8
-                  ? " Showing internships and learning programs suitable for your grade level."
-                  : parseInt(studentData.grade) >= 9
-                  ? " Showing all opportunities including internships, jobs, and career opportunities."
-                  : " Showing opportunities suitable for your grade level."
-                }
-              </p>
-            </div>
-          )} */}
-
-          {/* Info message for college students */}
-          {/* {(studentData?.university_college_id || studentData?.universityId) && (
-            <div className="bg-green-50 rounded-lg p-3 mb-4">
-              <p className="text-sm text-green-700">
-                <span className="font-semibold">College Student Opportunities:</span> 
-                Showing all available opportunities including internships, full-time jobs, part-time work, and contract positions.
-              </p>
-            </div>
-          )} */}
+        <CardContent className="pt-4 p-6 space-y-4">
           {opportunitiesLoading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -1503,99 +2017,14 @@ const StudentDashboard = () => {
                 No opportunities available at the moment
               </p>
             </div>
-          ) : (() => {
-            // Filter opportunities based on student type and grade
-            const isSchool = isSchoolStudent(studentData);
-            const isUniversity = isCollegeStudent(studentData);
-            const studentGrade = studentData?.grade;
-
-            // Fallback: Check education level if database fields are not available
-            const hasHighSchoolOnly = userData.education.length > 0 &&
-              userData.education.every(edu =>
-                edu.level && edu.level.toLowerCase().includes('high school')
-              );
-
-            let filteredOpportunities = opportunities;
-
-            if (isSchool || hasHighSchoolOnly) {
-              // School students: Filter based on grade level
-              filteredOpportunities = opportunities.filter(opp => {
-                const isInternship = opp.employment_type && opp.employment_type.toLowerCase() === 'internship';
-
-                // For grades 6-8: Show ONLY internships
-                if (studentGrade && parseInt(studentGrade) >= 6 && parseInt(studentGrade) <= 8) {
-                  return isInternship;
-                }
-
-                // For grade 9+: Show ALL opportunities (internships + full-time + part-time, etc.)
-                if (studentGrade && parseInt(studentGrade) >= 9) {
-                  return true; // Show all opportunities
-                }
-
-                // Fallback for students without grade info: show only internships
-                return isInternship;
-              });
-            } else if (isUniversity) {
-              // University/College students: Show ALL opportunities (internships + jobs)
-              filteredOpportunities = opportunities; // Show everything
-            }
-
-            return (
-              <>
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 blue-scrollbar">
-                  {filteredOpportunities.map((opp, idx) => {
-                    // Determine mode display text
-                    const modeDisplay = opp.mode === 'Onsite' ? 'Offline' : opp.mode === 'Remote' ? 'Online' : opp.mode;
-
-                    return (
-                      <div
-                        key={opp.id || `${opp.title}-${opp.company_name}-${idx}`}
-                        className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                      >
-                        <h4 className="text-base font-bold text-gray-900 mb-2">
-                          {opp.title}
-                        </h4>
-
-                        <div className="flex items-center justify-between gap-3 mb-3">
-                          <p className="text-blue-600 text-sm leading-relaxed font-medium">
-                            {opp.company_name || opp.department || opp.sector || 'Learning Opportunity'}
-                          </p>
-                          <Badge className="!bg-gradient-to-r !from-gray-100 !to-gray-200 !text-gray-800 text-xs px-2.5 py-0.5 rounded-full font-medium">
-                            {opp.employment_type}
-                          </Badge>
-                        </div>
-
-                        {/* Mode, Location and Apply Button */}
-                        <div className="flex items-center justify-between gap-3">
-                          {(opp.mode || opp.location) && (
-                            <div className="flex items-center gap-3 text-sm text-gray-900 leading-relaxed font-medium">
-                              {opp.mode && (
-                                <div className="flex items-center gap-1.5">
-                                  <MapPin className="w-4 h-4 text-blue-600" />
-                                  <span className="font-medium">{modeDisplay}</span>
-                                </div>
-                              )}
-                              {opp.location && opp.mode !== 'Remote' && (
-                                <span>• {opp.location}</span>
-                              )}
-                            </div>
-                          )}
-
-                          <Button
-                            size="sm"
-                            onClick={() => navigate('/student/opportunities', { state: { selectedOpportunityId: opp.id } })}
-                            className="w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all"
-                          >
-                            Apply
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            );
-          })()}
+          ) : (
+            <OpportunitiesCardContent 
+              opportunities={opportunities}
+              studentData={studentData}
+              navigate={navigate}
+              matchedJobs={matchedJobs}
+            />
+          )}
         </CardContent>
       </Card>
     ),
@@ -1936,149 +2365,64 @@ const StudentDashboard = () => {
             </div>
           )}
 
-          {/* My Courses Section */}
-          {userData.training.filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved")).length > 0 && (
-            <div>
-              <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-blue-600" />
-                My Courses
+          {/* My Learning Section - Enrolled Courses */}
+          {tableTraining && tableTraining.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                My Learning
               </h3>
-              <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2 blue-scrollbar">
-                {userData.training
-                  .filter((t) => t.enabled !== false && (t.approval_status === "verified" || t.approval_status === "approved"))
-                  .sort((a, b) => {
-                    // Sort by completion date or start date in descending order (most recent first)
-                    const getDate = (training) => {
-                      if (training.completedDate) return new Date(training.completedDate);
-                      if (training.completed_date) return new Date(training.completed_date);
-                      if (training.endDate) return new Date(training.endDate);
-                      if (training.end_date) return new Date(training.end_date);
-                      if (training.startDate) return new Date(training.startDate);
-                      if (training.start_date) return new Date(training.start_date);
-                      if (training.year) return new Date(training.year, 11, 31);
-                      return new Date(0); // Default to epoch if no date found
-                    };
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 blue-scrollbar">
+                {tableTraining.map((course, idx) => (
+                  <div
+                    key={course.id || `course-${idx}`}
+                    className="p-4 rounded-xl bg-white border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => navigate('/student/my-learning')}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h4 className="text-base font-bold text-gray-900 flex-1">
+                        {course.course}
+                      </h4>
+                      {course.verified && (
+                        <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-2 py-1 text-xs font-semibold rounded-full">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mb-3">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm text-gray-600">{course.provider}</span>
+                    </div>
 
-                    const dateA = getDate(a);
-                    const dateB = getDate(b);
-                    return dateB - dateA; // Descending order (most recent first)
-                  })
-                  .map((training, idx) => {
-                    // Calculate progress
-                    const statusLower = (training.status || "").toLowerCase();
-                    let progressValue = 0;
-                    if (statusLower === "completed") {
-                      progressValue = 100;
-                    } else if (training.total_modules > 0) {
-                      const completed = Math.min(training.completed_modules, training.total_modules);
-                      progressValue = Math.round((completed / training.total_modules) * 100);
-                    }
-
-                    return (
-                      <div
-                        key={training.id || `training-${training.course}-${idx}`}
-                        className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                      >
-                        {/* Header */}
-                        <div className="flex items-center justify-between gap-3 mb-3">
-                          <h4 className="text-base font-bold text-gray-900 truncate flex-1">
-                            {training.course}
-                          </h4>
-                          <Badge
-                            className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${training.status === "completed"
-                              ? "!bg-green-100 !text-green-600"
-                              : "!bg-blue-100 !text-blue-600"
-                              }`}
-                          >
-                            {training.status === "completed" ? "Completed" : "Ongoing"}
-                          </Badge>
+                    {/* Progress Bar */}
+                    {course.progress !== undefined && (
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-600 font-medium">Progress</span>
+                          <span className="text-xs text-gray-900 font-semibold">{Math.round(course.progress)}%</span>
                         </div>
-
-                        {/* Meta info */}
-                        <div className="flex items-center gap-4 mb-3 text-sm text-gray-900 font-medium flex-wrap">
-                          {training.provider && (
-                            <div className="flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-blue-600" />
-                              <span className="font-medium">{training.provider}</span>
-                            </div>
-                          )}
-                          {(training.duration || training.start_date || training.startDate) && (
-                            <div className="flex items-center gap-2">
-                              <Calendar className="w-4 h-4 text-blue-600" />
-                              <span className="font-medium">
-                                {calculateDuration(training.start_date || training.startDate, training.end_date || training.endDate) || training.duration}
-                              </span>
-                            </div>
-                          )}
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-gradient-to-r from-blue-600 to-indigo-600 h-2 rounded-full transition-all"
+                            style={{ width: `${course.progress}%` }}
+                          />
                         </div>
-
-                        {/* Progress bar */}
-                        {(training.total_modules > 0 || training.completed_modules > 0 || training.hours_spent > 0) && (
-                          <div className="mt-3">
-                            {/* Progress Header */}
-                            <div className="flex justify-between items-center text-sm text-gray-900 font-medium mb-2">
-                              <span>Progress</span>
-                              <span className="text-blue-600 font-semibold">{progressValue}%</span>
-                            </div>
-
-                            {/* Progress Bar */}
-                            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden shadow-inner">
-                              <div
-                                className="h-2 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
-                                style={{ width: `${progressValue}%` }}
-                              />
-                            </div>
-
-                            {/* Modules & Hours Info */}
-                            <div className="text-xs text-gray-900 font-medium mt-2 space-x-3">
-                              {training.completed_modules != null && training.total_modules != null && (
-                                <span>
-                                  Modules: {training.completed_modules}/{training.total_modules}
-                                </span>
-                              )}
-                              {training.hours_spent != null && <span>Hours: {training.hours_spent}</span>}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Skills */}
-                        {Array.isArray(training.skills) && training.skills.length > 0 && (
-                          <div className="mt-4">
-                            <p className="text-sm text-gray-900 font-medium mb-2">Skills Covered:</p>
-                            <div className="flex flex-wrap gap-2">
-                              {(training.showAllSkills ? training.skills : training.skills.slice(0, 4)).map(
-                                (skill, i) => (
-                                  <span
-                                    key={`skill-${training.id}-${i}`}
-                                    className="px-3 py-1.5 text-xs rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-200 shadow-sm"
-                                  >
-                                    {skill}
-                                  </span>
-                                )
-                              )}
-                            </div>
-                            {training.skills.length > 4 && (
-                              <button
-                                onClick={() =>
-                                  setUserData((prev) => ({
-                                    ...prev,
-                                    training: prev.training.map((t) =>
-                                      t.id === training.id ? { ...t, showAllSkills: !t.showAllSkills } : t
-                                    ),
-                                  }))
-                                }
-                                className="text-xs text-blue-600 hover:text-blue-800 mt-1"
-                              >
-                                {training.showAllSkills
-                                  ? "Show Less"
-                                  : `Show All (${training.skills.length})`}
-                              </button>
-                            )}
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
+                    )}
+
+                    <div className="flex items-center justify-between gap-3 mt-3">
+                      {course.duration && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Clock className="w-4 h-4" />
+                          <span>{course.duration}</span>
+                        </div>
+                      )}
+                      <span className="text-sm text-blue-600 font-medium">Continue Learning →</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}

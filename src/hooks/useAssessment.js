@@ -380,10 +380,7 @@ export const useAssessment = () => {
     completeAssessment,
     abandonAssessment,
     getHistory,
-    getLatestResult,
-    
-    // Utilities
-    transformQuestionsForUI: assessmentService.transformQuestionsForUI
+    getLatestResult
   };
 };
 

@@ -65,9 +65,7 @@ describe('OrganizationBillingService', () => {
           final_amount: '5000',
           subscription_plans: {
             id: 'plan-001',
-            name: 'Premium Plan',
-            price_monthly: 100,
-            price_yearly: 1000
+            name: 'Premium Plan'
           }
         }
       ];
@@ -157,7 +155,7 @@ describe('OrganizationBillingService', () => {
           assigned_seats: 50,
           status: 'active',
           final_amount: '10000',
-          subscription_plans: { name: 'Plan A', price_monthly: 100, price_yearly: 1000 }
+          subscription_plans: { name: 'Plan A' }
         },
         {
           id: 'sub-002',
@@ -165,7 +163,7 @@ describe('OrganizationBillingService', () => {
           assigned_seats: 25,
           status: 'active',
           final_amount: '5000',
-          subscription_plans: { name: 'Plan B', price_monthly: 100, price_yearly: 1000 }
+          subscription_plans: { name: 'Plan B' }
         }
       ];
 
@@ -208,7 +206,7 @@ describe('OrganizationBillingService', () => {
           end_date: renewalDate.toISOString(),
           auto_renew: true,
           final_amount: '5000',
-          subscription_plans: { name: 'Premium Plan', price_monthly: 100, price_yearly: 1000 }
+          subscription_plans: { name: 'Premium Plan' }
         }
       ];
 
@@ -506,12 +504,12 @@ describe('OrganizationBillingService', () => {
         {
           id: 'sub-001',
           final_amount: '12000', // Annual subscription
-          subscription_plans: { price_monthly: 100, price_yearly: 1000 }
+          subscription_plans: { name: 'Annual Plan' }
         },
         {
           id: 'sub-002',
           final_amount: '5000', // Monthly subscription
-          subscription_plans: { price_monthly: 100, price_yearly: 1000 }
+          subscription_plans: { name: 'Monthly Plan' }
         }
       ];
 
@@ -589,7 +587,7 @@ describe('OrganizationBillingService', () => {
         price_per_seat: 100,
         start_date: startDate.toISOString(),
         end_date: endDate.toISOString(),
-        subscription_plans: { price_monthly: 100, price_yearly: 1000 }
+        subscription_plans: { name: 'Test Plan' }
       };
 
       vi.mocked(supabase.from).mockImplementation(() => ({
@@ -615,7 +613,7 @@ describe('OrganizationBillingService', () => {
         price_per_seat: 100,
         start_date: new Date().toISOString(),
         end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        subscription_plans: { price_monthly: 100, price_yearly: 1000 }
+        subscription_plans: { name: 'Test Plan' }
       };
 
       vi.mocked(supabase.from).mockImplementation(() => ({

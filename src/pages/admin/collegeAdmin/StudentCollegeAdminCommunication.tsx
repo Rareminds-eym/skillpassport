@@ -84,8 +84,8 @@ const StudentCollegeAdminCommunication = () => {
       const { data: lecturerData, error: lecturerError } = await supabase
         .from('college_lecturers')
         .select('collegeId')
-        .or(`user_id.eq.${collegeAdminId},userId.eq.${collegeAdminId}`)
-        .single();
+        .or(`user_id.eq.${collegeAdminId},email.eq.${user?.email}`)
+        .maybeSingle();
       
       if (!lecturerError && lecturerData?.collegeId) {
         // Fetch college name from organizations table

@@ -41,6 +41,22 @@ export default defineConfig({
     hmr: {
       port: 3000
     },
+    watch: {
+      // Exclude large non-source directories so Vite doesn't exhaust the
+      // OS inotify file-watcher limit (ENOSPC: too many watchers).
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/ai_department/**',   // contains a Python .venv with 100k+ files
+        '**/docs/**',
+        '**/.venv/**',
+        '**/.wrangler/**',
+        '**/cloudflare-workers/*/node_modules/**',
+        '**/scripts/**',
+        '**/tests/**',
+        '**/*.py',
+      ],
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8788',

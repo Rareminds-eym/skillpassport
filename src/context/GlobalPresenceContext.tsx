@@ -54,18 +54,7 @@ export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ 
   // Debug logging
   useEffect(() => {
     if (userId) {
-      console.log('🟢 [GLOBAL PRESENCE] Online Users Details:', {
-        totalOnline: presenceData.onlineUsers.length,
-        currentUser: { userId, userName, userType },
-        isConnected: presenceData.isConnected,
-        onlineUsers: presenceData.onlineUsers.map(user => ({
-          userId: user.userId,
-          userName: user.userName,
-          userType: user.userType,
-          status: user.status,
-          lastSeen: user.lastSeen
-        }))
-      });
+      // Presence tracking handled by channel
     }
   }, [userId, userName, userType, presenceData.onlineUsers]);
 

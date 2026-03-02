@@ -102,46 +102,23 @@ const AcademicDetailsTab = ({
           inputClassName="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
 
-        {/* Educational Level */}
-        <div className="space-y-2 md:col-span-2">
-          <label className="text-sm font-medium text-slate-700">
-            Current Academic Year/Level <span className="text-red-500">*</span>
+        {/* Grade - Read Only (controlled by School Class or Program/Semester) */}
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-gray-700">
+            Grade/Class <span className="text-red-500">*</span>
           </label>
-          <select
-            value={profileData.grade}
-            onChange={(e) =>
-              handleProfileChange("grade", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
-          >
-            <option value="">Select Your Current Academic Year</option>
-            <optgroup label="📚 Middle School (Ages 11-14)">
-              <option value="Grade 6">Grade 6</option>
-              <option value="Grade 7">Grade 7</option>
-              <option value="Grade 8">Grade 8</option>
-            </optgroup>
-            <optgroup label="📖 High School (Ages 14-16)">
-              <option value="Grade 9">Grade 9</option>
-              <option value="Grade 10">Grade 10</option>
-            </optgroup>
-            <optgroup label="📕 Higher Secondary (Ages 16-18)">
-              <option value="Grade 11">Grade 11</option>
-              <option value="Grade 12">Grade 12</option>
-            </optgroup>
-            <optgroup label="🎓 Diploma & Undergraduate (Ages 18-22)">
-              <option value="Diploma">Diploma</option>
-              <option value="UG Year 1">UG Year 1 (1st Year)</option>
-              <option value="UG Year 2">UG Year 2 (2nd Year)</option>
-              <option value="UG Year 3">UG Year 3 (3rd Year)</option>
-              <option value="UG Year 4">UG Year 4 (4th Year)</option>
-            </optgroup>
-            <optgroup label="🎯 Postgraduate (Ages 22+)">
-              <option value="PG Year 1">PG Year 1 (1st Year)</option>
-              <option value="PG Year 2">PG Year 2 (2nd Year)</option>
-            </optgroup>
-          </select>
+          <input
+            type="text"
+            value={profileData.grade || ""}
+            readOnly
+            disabled
+            className="w-full px-4 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-600 cursor-not-allowed"
+            placeholder="Auto-set based on School Class or Program/Semester"
+          />
           <p className="text-xs text-gray-500">
-            <span className="font-medium">Example:</span> If you're in 10th standard, select "Grade 10". If you're in 2nd year of B.Tech, select "UG Year 2".
+            {(profileData.schoolId || profileData.schoolClassId) && !profileData.universityId && !profileData.universityCollegeId
+              ? 'Change this by selecting School Class in Institution Details tab'
+              : 'Change this by selecting Program and Semester in Institution Details tab'}
           </p>
         </div>
 
@@ -323,7 +300,7 @@ const AcademicDetailsTab = ({
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end pt-6 border-t border-slate-200">
+      <div className="flex justify-end pt-6">
         <Button
           onClick={handleSaveProfile}
           disabled={isSaving}

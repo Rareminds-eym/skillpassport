@@ -740,6 +740,16 @@ const MarkAttendance: React.FC = () => {
       return;
     }
 
+    // Validate that all students have attendance marked
+    const totalStudents = activeSession.students.length;
+    const markedStudents = activeSession.records.size;
+    
+    if (markedStudents < totalStudents) {
+      const unmarkedCount = totalStudents - markedStudents;
+      alert(`Please mark attendance for all students. ${unmarkedCount} student${unmarkedCount > 1 ? 's' : ''} still need${unmarkedCount === 1 ? 's' : ''} attendance marked.`);
+      return;
+    }
+
     // if (!confirm(activeSession.isSubmitted ? "Update attendance? This will replace the existing records." : "Submit attendance? This will save the records.")) return;
 
     setSubmitting(true);

@@ -1174,7 +1174,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                                                             className="text-xs font-bold uppercase mb-3 tracking-wider"
                                                                             style={{ color: '#60a5fa' }}
                                                                         >
-                                                                            TOP ROLES & SALARY
+                                                                             Top Roles & Salary
                                                                         </h5>
                                                                         <div className="space-y-2">
                                                                             {track.topRoles.slice(0, 3).map((role, roleIndex) => (

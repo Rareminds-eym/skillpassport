@@ -679,7 +679,7 @@ const Settings = () => {
   
   const [activeTab, setActiveTab] = useState<
     "roles" | "subscription"
-  >("roles");
+  >("subscription");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -833,7 +833,7 @@ const Settings = () => {
   };
 
   const tabs = [
-    { id: "roles", label: "Roles & Permissions", icon: UserGroupIcon },
+    { id: "roles", label: "Roles & Permissions", icon: UserGroupIcon, disabled: true },
     { id: "subscription", label: "Subscription", icon: CreditCardIcon },
   ];
 
@@ -938,7 +938,6 @@ const Settings = () => {
             value={roles.length}
             icon={UserGroupIcon}
             color="amber"
-            onClick={() => setActiveTab("roles")}
           />
           <StatsCard
             label="System Status"
@@ -958,9 +957,12 @@ const Settings = () => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => !tab.disabled && setActiveTab(tab.id as any)}
+                    disabled={tab.disabled}
                     className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg font-medium text-xs whitespace-nowrap transition-all duration-200 min-w-[80px] flex-shrink-0 touch-manipulation ${
-                      activeTab === tab.id
+                      tab.disabled
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                        : activeTab === tab.id
                         ? "bg-indigo-600 text-white shadow-md"
                         : "text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm"
                     }`}
@@ -983,9 +985,12 @@ const Settings = () => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => !tab.disabled && setActiveTab(tab.id as any)}
+                    disabled={tab.disabled}
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-lg font-medium text-xs whitespace-nowrap transition-all duration-200 min-w-fit flex-shrink-0 ${
-                      activeTab === tab.id
+                      tab.disabled
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                        : activeTab === tab.id
                         ? "bg-indigo-600 text-white shadow-md"
                         : "text-gray-600 hover:bg-white hover:text-gray-900 hover:shadow-sm"
                     }`}
@@ -1008,9 +1013,12 @@ const Settings = () => {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => !tab.disabled && setActiveTab(tab.id as any)}
+                    disabled={tab.disabled}
                     className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm whitespace-nowrap transition-all duration-200 ${
-                      activeTab === tab.id
+                      tab.disabled
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-60"
+                        : activeTab === tab.id
                         ? "bg-indigo-600 text-white shadow-md"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 hover:shadow-sm"
                     }`}
