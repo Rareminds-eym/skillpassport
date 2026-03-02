@@ -267,6 +267,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
   // Get logged-in user's email from localStorage
   const userEmail = localStorage.getItem("userEmail");
+  
+  // Debug: Log what we're looking for
+  console.log('🔍 ProfileHeroEdit - Looking for student with email:', userEmail);
 
   // State for copy/share functionality
   const [copied, setCopied] = useState(false);
@@ -446,7 +449,18 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const institutionName = React.useMemo(() => {
     if (!realStudentData) return "Institution";
 
-    // For school students - check schools relationship first, then fallback to university field
+    // Debug logging
+    console.log('🏫 Institution Name Debug:', {
+      school_id: realStudentData.school_id,
+      university_college_id: realStudentData.university_college_id,
+      college_school_name: realStudentData.college_school_name,
+      university: realStudentData.university,
+      schools_name: realStudentData.schools?.name,
+      fetchedInstitutionName,
+      grade: realStudentData.grade
+    });
+
+    // For school students - check schools relationship first, then fallback to college/university field
     if (realStudentData.school_id) {
       if (realStudentData.schools?.name) {
         return realStudentData.schools.name;
@@ -454,6 +468,10 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       // Use fetched name if available
       if (fetchedInstitutionName) {
         return fetchedInstitutionName;
+      }
+      // Fallback to college_school_name column
+      if (realStudentData.college_school_name) {
+        return realStudentData.college_school_name;
       }
       // Fallback to university field (which might contain school name)
       if (realStudentData.university) {
@@ -476,6 +494,10 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       if (fetchedInstitutionName) {
         return fetchedInstitutionName;
       }
+      // Fallback to college_school_name column
+      if (realStudentData.college_school_name) {
+        return realStudentData.college_school_name;
+      }
       // Fallback to university field
       if (realStudentData.university) {
         return realStudentData.university;
@@ -484,6 +506,16 @@ const ProfileHeroEdit = ({ onEditClick }) => {
         return realStudentData.profile.university;
       }
       return "College";
+    }
+
+    // For B2C students without IDs - check college field (used for custom school/college names)
+    if (realStudentData.college) {
+      return realStudentData.college;
+    }
+
+    // Fallback to college_school_name column for any student type
+    if (realStudentData.college_school_name) {
+      return realStudentData.college_school_name;
     }
 
     // For students without school_id or university_college_id

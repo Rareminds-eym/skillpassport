@@ -74,24 +74,11 @@ const EnrolledStudents: React.FC = () => {
           .from('organizations')
           .select('id')
           .eq('admin_id', user.id)
-          .eq('type', 'college')
+          .eq('organization_type', 'college')
           .maybeSingle();
 
         if (orgData?.id) {
           setCollegeId(orgData.id);
-          return;
-        }
-
-        // Try organizations by email
-        const { data: orgByEmail } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('admin_email', user.email)
-          .eq('type', 'college')
-          .maybeSingle();
-
-        if (orgByEmail?.id) {
-          setCollegeId(orgByEmail.id);
         }
       } catch (error) {
         console.error('Error fetching college ID:', error);
@@ -102,8 +89,10 @@ const EnrolledStudents: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (collegeId) {
+      loadData();
+    }
+  }, [collegeId]);
 
   useEffect(() => {
     if (departmentFilter) {
@@ -116,7 +105,7 @@ const EnrolledStudents: React.FC = () => {
 
   useEffect(() => {
     loadStudents();
-  }, [departmentFilter, programFilter, semesterFilter, statusFilter, academicYearFilter, searchTerm]);
+  }, [collegeId, departmentFilter, programFilter, semesterFilter, statusFilter, academicYearFilter, searchTerm]);
 
   const loadData = async () => {
     await Promise.all([
@@ -126,10 +115,13 @@ const EnrolledStudents: React.FC = () => {
   };
 
   const loadDepartments = async () => {
+    if (!collegeId) return;
+    
     try {
       const { data, error } = await supabase
         .from("departments")
         .select("*")
+        .eq("college_id", collegeId)
         .eq("status", "active")
         .order("name");
 
@@ -157,10 +149,13 @@ const EnrolledStudents: React.FC = () => {
   };
 
   const loadStudents = async () => {
+    if (!collegeId) return;
+    
     try {
       setLoading(true);
 
       const result = await studentEnrollmentService.getEnrolledStudents({
+        college_id: collegeId,
         department_id: departmentFilter || undefined,
         program_id: programFilter || undefined,
         semester: semesterFilter ? parseInt(semesterFilter) : undefined,

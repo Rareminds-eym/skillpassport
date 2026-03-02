@@ -77,6 +77,7 @@ const CareerAssistant: React.FC = () => {
   const typingTimerRef = useRef<number | null>(null);
   const userInteractedRef = useRef(false);
   const lastScrollTopRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (currentConversation?.messages) {
@@ -170,6 +171,10 @@ const CareerAssistant: React.FC = () => {
   }, []);
 
   const stopTyping = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
@@ -217,6 +222,9 @@ const CareerAssistant: React.FC = () => {
       setLoading(false);
       setIsTyping(true);
 
+      // Create abort controller for this request
+      abortControllerRef.current = new AbortController();
+
       const result = await streamCareerChat(
         userInput,
         currentConversationId,
@@ -233,7 +241,8 @@ const CareerAssistant: React.FC = () => {
               }
             });
           }
-        }
+        },
+        abortControllerRef.current.signal
       );
       
       if (!result.success && result.error) {
@@ -275,6 +284,7 @@ const CareerAssistant: React.FC = () => {
         clearTimeout(typingTimerRef.current);
         typingTimerRef.current = null;
       }
+      abortControllerRef.current = null;
     }
   };
 
@@ -545,7 +555,7 @@ const CareerAssistant: React.FC = () => {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                 placeholder={showWelcome ? "Ask me anything about your career..." : "Type your message..."}
                 disabled={loading || isTyping}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"

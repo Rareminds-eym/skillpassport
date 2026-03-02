@@ -57,6 +57,7 @@ export interface StudentProfile {
   cgpa: string;
   yearOfPassing: string;
   grade: string;
+  gradeNumber?: number; // Numeric grade level for school students (e.g., 10 for "Grade 10")
   bio: string;
   technicalSkills: TechnicalSkill[];
   softSkills: SoftSkill[];

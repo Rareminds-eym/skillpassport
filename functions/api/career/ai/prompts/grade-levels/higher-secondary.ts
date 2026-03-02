@@ -44,89 +44,49 @@ export const higherSecondaryConfig: GradePromptConfig = {
     {
       intent: 'subjects',
       userQuery: 'Which subjects align with my career goals?',
-      idealResponse: `Since you're targeting **Computer Science in top engineering colleges**, here's your strategic subject plan: 📚
-
-**For JEE Main/Advanced:**
-1. **Mathematics** (40% weightage)
-   - Focus: Calculus, Algebra, Coordinate Geometry, Vectors
-   - Priority: HIGH - Most scoring section
-
-2. **Physics** (30% weightage)
-   - Focus: Mechanics, Electromagnetism, Modern Physics
-   - Priority: HIGH - Conceptual understanding crucial
-
-3. **Chemistry** (30% weightage)
-   - Focus: Physical Chemistry (calculations), Organic Chemistry (reactions)
-   - Priority: MEDIUM-HIGH - Easier to score
-
-**12-Month Study Timeline:**
-- Months 1-6: Build strong foundations, complete syllabus
-- Months 7-9: Practice previous year papers, identify weak areas
-- Months 10-12: Mock tests, revision, exam strategy
-
-**Beyond Entrance Exams:**
-- Learn Python/C++ for coding rounds in some colleges
-- Build 1-2 projects for portfolio (helps in interviews)
-
-Want a detailed month-by-month breakdown for any subject?`,
+      chainOfThought: `
+<thinking>
+Step 1: Student is in higher secondary → Focus on entrance exam preparation
+Step 2: Identify their target field/career from profile or query
+Step 3: Map to relevant entrance exams (JEE, NEET, CA, CLAT, etc.)
+Step 4: Provide subject priorities based on exam syllabus and weightage
+Step 5: Include strategic study timeline
+Step 6: Add supplementary skills if relevant
+Step 7: Verify → Did I tie subjects to exams? Did I provide actionable timeline?
+</thinking>`,
+      idealResponse: `Identify their target field and map to relevant entrance exams. Provide subject priorities based on exam syllabus with weightage and importance. Include a strategic study timeline and mention supplementary skills that strengthen applications.`,
       reasoning: 'Ties subjects directly to entrance exams with weightage, priority, and timeline. Provides strategic approach.'
     },
     {
       intent: 'entrance',
       userQuery: 'Which entrance exams should I prepare for?',
-      idealResponse: `Based on your interest in **Engineering**, here are the key exams: 🎯
-
-**Must Prepare:**
-1. **JEE Main** (for NITs, IIITs, state colleges)
-   - Difficulty: Moderate
-   - Attempts: 2 per year
-   - Subjects: Physics, Chemistry, Math
-
-2. **JEE Advanced** (for IITs) - Only if you clear JEE Main
-   - Difficulty: Very High
-   - Subjects: Same, but deeper concepts
-
-**Additional Options:**
-3. **BITSAT** (for BITS Pilani)
-4. **VITEEE** (for VIT)
-5. **State CETs** (for state colleges)
-
-**Preparation Strategy:**
-- Focus primarily on JEE Main syllabus (covers 80% of other exams)
-- Add BITSAT-specific topics if targeting BITS
-- State CETs usually easier, minimal extra prep needed
-
-Which colleges are you most interested in? I'll help you prioritize!`,
+      chainOfThought: `
+<thinking>
+Step 1: Identify their field/interest from profile
+Step 2: List relevant entrance exams for that field
+Step 3: Categorize by priority (must-prepare vs optional)
+Step 4: Provide difficulty levels and attempt information
+Step 5: Explain strategic overlap (one prep covers multiple exams)
+Step 6: Ask about college preferences to help prioritize
+Step 7: Verify → Did I provide exam hierarchy? Did I help with prioritization?
+</thinking>`,
+      idealResponse: `List relevant entrance exams for their field, categorized by priority. Include difficulty levels, number of attempts, and strategic overlap between exams. Help them prioritize based on their college interests.`,
       reasoning: 'Provides exam hierarchy, difficulty levels, and strategic prioritization. Helps with decision-making.'
     },
     {
       intent: 'college',
       userQuery: 'Which colleges should I target?',
-      idealResponse: `Let's build a balanced college list based on your profile: 🎓
-
-**Dream Tier** (JEE Advanced rank < 10,000):
-- IITs (top 7): IIT Bombay, Delhi, Madras, Kanpur
-- Requires: 95%+ in JEE Advanced
-
-**Target Tier** (JEE Main percentile 95-99):
-- NITs (top 10): NIT Trichy, Surathkal, Warangal
-- IIITs: IIIT Hyderabad, Bangalore
-- BITS Pilani
-
-**Safe Tier** (JEE Main percentile 85-95):
-- Good NITs and state colleges
-- VIT, Manipal, SRM (private)
-
-**Backup Tier:**
-- State government colleges
-- Decent private colleges
-
-**Action Plan:**
-1. Aim for Dream tier, prepare for Target tier
-2. Apply to 8-10 colleges across all tiers
-3. Keep backup options ready
-
-What's your current preparation level? I'll help you set realistic targets!`,
+      chainOfThought: `
+<thinking>
+Step 1: Understand their field and current preparation level
+Step 2: Create tiered college list (Dream/Target/Safe/Backup)
+Step 3: Map each tier to realistic exam score requirements
+Step 4: Include mix of government and private options
+Step 5: Provide application strategy across tiers
+Step 6: Ask about current level to set realistic targets
+Step 7: Verify → Did I provide balanced list? Did I set realistic expectations?
+</thinking>`,
+      idealResponse: `Create a tiered college list (Dream/Target/Safe/Backup) with realistic exam score requirements for each tier. Include both government and private options. Provide application strategy and help set realistic targets based on their preparation level.`,
       reasoning: 'Provides tiered approach with realistic expectations. Includes action plan and next steps.'
     }
   ],

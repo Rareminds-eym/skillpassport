@@ -34,6 +34,7 @@ interface Department {
 }
 
 const ProgramManagement: React.FC = () => {
+  const [collegeId, setCollegeId] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,10 +48,49 @@ const ProgramManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    loadData();
+    const fetchCollegeId = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      try {
+        const { data: lecturerData } = await supabase
+          .from('college_lecturers')
+          .select('collegeId')
+          .or(`user_id.eq.${user.id},email.eq.${user.email}`)
+          .maybeSingle();
+
+        if (lecturerData?.collegeId) {
+          setCollegeId(lecturerData.collegeId);
+          return;
+        }
+
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('id')
+          .eq('admin_id', user.id)
+          .eq('organization_type', 'college')
+          .maybeSingle();
+
+        if (orgData?.id) {
+          setCollegeId(orgData.id);
+        }
+      } catch (error) {
+        console.error('Error fetching college ID:', error);
+      }
+    };
+
+    fetchCollegeId();
   }, []);
 
+  useEffect(() => {
+    if (collegeId) {
+      loadData();
+    }
+  }, [collegeId]);
+
   const loadData = async () => {
+    if (!collegeId) return;
+    
     try {
       setLoading(true);
 
@@ -58,6 +98,7 @@ const ProgramManagement: React.FC = () => {
       const { data: deptData, error: deptError } = await supabase
         .from("departments")
         .select("*")
+        .eq("college_id", collegeId)
         .order("name", { ascending: true });
       
       if (deptError) throw deptError;
@@ -68,10 +109,12 @@ const ProgramManagement: React.FC = () => {
         .from("programs")
         .select(`
           *,
-          departments (
-            name
+          departments!inner (
+            name,
+            college_id
           )
         `)
+        .eq("departments.college_id", collegeId)
         .order("name", { ascending: true });
       
       if (programsError) throw programsError;

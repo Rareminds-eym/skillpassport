@@ -285,6 +285,10 @@ const MainSettings = () => {
     currentBacklogs: 0,
     backlogsHistory: "",
     workExperience: "",
+    // New JSON fields
+    interests: "",
+    languages: "",
+    hobbies: "",
   });
 
   // Password settings state
@@ -369,22 +373,54 @@ const MainSettings = () => {
         aadharNumber: studentData.aadharNumber || "",
         backlogsHistory: studentData.backlogsHistory || "",
         currentBacklogs: studentData.currentBacklogs || 0,
+        // New JSON fields
+        interests: studentData.interests || "",
+        languages: studentData.languages || "",
+        hobbies: studentData.hobbies || "",
       });
 
       // Detect custom entries (B2C students) and show custom input fields
-      if (studentData.college && !studentData.universityCollegeId) {
+      // Check if it's a school path (has schoolId or schoolClassId) vs university path
+      const isSchoolPath = studentData.schoolId || studentData.schoolClassId || (!studentData.universityId && !studentData.universityCollegeId && !studentData.programId);
+      const isUniversityPath = studentData.universityId || studentData.universityCollegeId || studentData.programId;
+      
+      // Custom school name (stored in college field when no schoolId)
+      if (studentData.college && !studentData.schoolId && !isUniversityPath) {
+        setShowCustomSchool(true);
+        setCustomSchoolName(studentData.college);
+      }
+      
+      // Custom school class - derive from grade field, NOT from section
+      // Section field should remain independent for roll numbers
+      if (studentData.grade && !studentData.schoolClassId && (studentData.schoolId || studentData.college) && !isUniversityPath) {
+        // Extract numeric grade from grade field (e.g., "Grade 10" -> "10")
+        const gradeMatch = studentData.grade.match(/Grade\s*(\d+)/i);
+        if (gradeMatch) {
+          setShowCustomSchoolClass(true);
+          setCustomSchoolClassName(gradeMatch[1]); // Just the number, e.g., "10"
+        }
+      }
+      
+      // Custom college name (only for university path)
+      if (studentData.college && !studentData.universityCollegeId && isUniversityPath) {
         setShowCustomCollege(true);
         setCustomCollegeName(studentData.college);
       }
+      
+      // Custom university name
       if (studentData.university && !studentData.universityId) {
         setShowCustomUniversity(true);
         setCustomUniversityName(studentData.university);
       }
+      
+      // Custom program name
       if (studentData.branch && !studentData.programId) {
         setShowCustomProgram(true);
         setCustomProgramName(studentData.branch);
       }
-      if (studentData.section && !studentData.programSectionId) {
+      
+      // Custom semester (only for university path)
+      if (studentData.section && !studentData.programSectionId && isUniversityPath) {
         setShowCustomSemester(true);
         setCustomSemesterName(studentData.section);
       }
@@ -462,6 +498,33 @@ const MainSettings = () => {
         description: `Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`,
       });
       return;
+    }
+    
+    // Sync School Class with grade field ONLY for school students
+    if (field === 'schoolClassId' && value) {
+      // Check if this is a school student (not university path)
+      const isUniversityPath = profileData.universityId || profileData.universityCollegeId || profileData.programId;
+      
+      if (!isUniversityPath) {
+        const selectedClass = schoolClasses.find(sc => sc.id === value);
+        if (selectedClass && selectedClass.grade) {
+          // Map school class grade to Academic Details grade format
+          const gradeMapping = {
+            '6': 'Grade 6',
+            '7': 'Grade 7',
+            '8': 'Grade 8',
+            '9': 'Grade 9',
+            '10': 'Grade 10',
+            '11': 'Grade 11',
+            '12': 'Grade 12',
+          };
+          const mappedGrade = gradeMapping[selectedClass.grade] || `Grade ${selectedClass.grade}`;
+          handleProfileChange('grade', mappedGrade);
+          
+          // Don't update section field - it should remain independent
+          // The schoolClassId foreign key is sufficient for tracking the class
+        }
+      }
     }
     
     // Handle cascading logic and field updates
@@ -940,8 +1003,9 @@ const MainSettings = () => {
     }
     
     if (showCustomSchoolClass && customSchoolClassName) {
-      dataToSave.section = customSchoolClassName;
+      // Don't store custom class in section field - section should remain independent
       dataToSave.schoolClassId = null;
+      // Only update grade based on custom class, not section
     }
 
     const result = await safeSave(
@@ -976,6 +1040,45 @@ const MainSettings = () => {
     
     try {
       const dataToSave = { ...profileData };
+      
+      // Determine which path the student is on
+      const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName || 
+                               dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
+                               dataToSave.programId || showCustomProgram || customProgramName;
+      const isSchoolPath = dataToSave.schoolId || showCustomSchool || customSchoolName ||
+                           dataToSave.schoolClassId || showCustomSchoolClass || customSchoolClassName;
+      
+      // Clear school fields if on university path
+      if (isUniversityPath) {
+        dataToSave.schoolId = null;
+        dataToSave.schoolClassId = null;
+        // Don't clear college field as it's used for university college name
+      }
+      
+      // Clear university fields if on school path
+      if (isSchoolPath && !isUniversityPath) {
+        dataToSave.universityId = null;
+        dataToSave.universityCollegeId = null;
+        dataToSave.programId = null;
+        dataToSave.programSectionId = null;
+        dataToSave.university = null;
+        dataToSave.branch = null;
+        
+        // IMPORTANT: Clear section field for school students
+        // Section should only be used for university students (semester/section)
+        // For school students, class info comes from schoolClassId or grade
+        if (!dataToSave.programSectionId && !showCustomSemester) {
+          dataToSave.section = null;
+        }
+      }
+      
+      // Clear grade if no program/class is selected
+      if (isUniversityPath && !dataToSave.programId && !showCustomProgram && !customProgramName) {
+        dataToSave.grade = null;
+      }
+      if (isSchoolPath && !dataToSave.schoolClassId && !showCustomSchoolClass && !customSchoolClassName) {
+        dataToSave.grade = null;
+      }
       
       // Convert empty string IDs to null
       if (dataToSave.programId === '') dataToSave.programId = null;
@@ -1015,16 +1118,61 @@ const MainSettings = () => {
         dataToSave.schoolId = null;
       }
       
-      // Custom semester → section field
+      // Custom semester → section field AND sync grade for university students
       if (showCustomSemester && customSemesterName) {
         dataToSave.section = customSemesterName;
         dataToSave.programSectionId = null;
+        
+        // Auto-detect year from semester and update grade for university students
+        const lowerSemester = customSemesterName.toLowerCase();
+        let yearNumber = null;
+        
+        // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
+        const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
+        if (yearMatch) {
+          yearNumber = parseInt(yearMatch[1]);
+        } else {
+          // Check for semester numbers and convert to year
+          const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
+          if (semMatch) {
+            const semNumber = parseInt(semMatch[1]);
+            yearNumber = Math.ceil(semNumber / 2);
+          }
+        }
+        
+        // Update grade based on detected year and current program type
+        if (yearNumber && dataToSave.grade) {
+          if (dataToSave.grade.includes('UG')) {
+            dataToSave.grade = `UG Year ${yearNumber}`;
+          } else if (dataToSave.grade.includes('PG')) {
+            dataToSave.grade = `PG Year ${yearNumber}`;
+          }
+        }
       }
       
-      // Custom school class → section field
+      // Custom school class → sync to grade ONLY (ONLY for school students)
+      // NOTE: We do NOT store custom class in section field - section should remain independent
       if (showCustomSchoolClass && customSchoolClassName) {
-        dataToSave.section = customSchoolClassName;
         dataToSave.schoolClassId = null;
+        
+        // Only sync grade for school students (not university path)
+        const isUniversityPath = dataToSave.universityId || dataToSave.universityCollegeId || dataToSave.programId;
+        if (!isUniversityPath) {
+          // Extract grade from custom class name (e.g., "Grade 10-A" or "10" -> "Grade 10")
+          const gradeMatch = customSchoolClassName.match(/(?:Grade\s*)?(\d+)/i);
+          if (gradeMatch) {
+            const numericGrade = gradeMatch[1];
+            dataToSave.grade = `Grade ${numericGrade}`;
+          }
+        }
+        // Store custom class name in a display field if needed, but NOT in section
+        // The section field should remain independent for roll number/section assignment
+      }
+      
+      // If schoolClassId is selected from dropdown, clear custom class
+      if (dataToSave.schoolClassId && dataToSave.schoolClassId !== null) {
+        // Don't override section if it's a valid schoolClassId
+        // The section field should only be used for custom entries
       }
       
       await updateProfile(dataToSave);
@@ -1401,9 +1549,15 @@ const MainSettings = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 py-4 sm:py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50/50 py-0 relative overflow-hidden">
       <style dangerouslySetInnerHTML={{
         __html: `
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          
+          * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          }
+          
           .scrollbar-hide {
             -ms-overflow-style: none;
             scrollbar-width: none;
@@ -1411,120 +1565,169 @@ const MainSettings = () => {
           .scrollbar-hide::-webkit-scrollbar {
             display: none;
           }
+          
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          
+          @keyframes scaleIn {
+            from {
+              opacity: 0;
+              transform: scale(0.95);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+          
+          @keyframes slideRight {
+            from {
+              transform: translateX(-4px);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          
+          .animate-fade-in-up {
+            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .animate-scale-in {
+            animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+          }
+          
+          .input-focus-ring {
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .input-focus-ring:focus {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15), 0 0 0 3px rgba(59, 130, 246, 0.1);
+          }
+          
+          .button-press {
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .button-press:active {
+            transform: scale(0.98);
+          }
+          
+          .nav-item-hover {
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          
+          .nav-item-hover:hover {
+            transform: translateX(4px);
+          }
+          
+          .subtle-glow {
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(59, 130, 246, 0.08);
+          }
+          
+          .subtle-glow-hover:hover {
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 4px 16px rgba(59, 130, 246, 0.12);
+          }
         `
       }} />
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6 lg:mb-10">
-          <div className="flex items-center gap-3 lg:gap-4 mb-3">
-            <div className="p-2.5 lg:p-3 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl lg:rounded-2xl shadow-sm shadow-blue-500/20">
-              <SettingsIcon className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
-            </div>
+      
+      {/* Subtle Background Gradient */}
+      <div className="fixed inset-0 pointer-events-none opacity-40">
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-br from-blue-100 via-transparent to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-indigo-50 via-transparent to-transparent rounded-full blur-3xl" />
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+        {/* Minimal Header */}
+        <div className="mb-8 animate-fade-in-up">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-3xl font-semibold text-slate-900 tracking-tight mb-1">
                 Settings
               </h1>
-              <p className="text-sm lg:text-base text-gray-600 mt-0.5">
-                Manage your account preferences
+              <p className="text-sm text-slate-500">
+                Manage your account and preferences
               </p>
+            </div>
+            <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-slate-200/60">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-medium text-slate-600">All changes saved</span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
-          {/* LEFT SIDEBAR - Navigation */}
-          <div className="lg:col-span-1 space-y-6 order-2 lg:order-1">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-scale-in">
+          {/* LEFT SIDEBAR - Minimal Navigation */}
+          <div className="lg:col-span-1 order-2 lg:order-1">
             <div className="sticky top-8">
-              <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
-                <CardHeader className="pb-4 border-b border-gray-100">
-                  <CardTitle className="text-sm font-semibold text-gray-800 tracking-wide flex items-center gap-2">
-                    <SettingsIcon className="w-4 h-4 text-blue-600" />
-                    Account Settings
-                  </CardTitle>
-                </CardHeader>
+              <nav className="space-y-1">
+                {tabs.map((tab, index) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
 
-                <CardContent className="pt-4 px-3">
-                  <nav className="space-y-3">
-                    {tabs.map((tab) => {
-                      const Icon = tab.icon;
-                      const isActive = activeTab === tab.id;
-
-                      return (
-                        <button
-                          key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`w-full rounded-xl transition-all duration-300 group relative
-                            ${
-                              isActive
-                                ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
-                                : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
-                            }
-                          `}
-                        >
-                          <div className="flex items-center justify-between px-3 py-3">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className={`
-                                  p-2 rounded-lg transition-all duration-300
-                                  ${
-                                    isActive
-                                      ? "bg-blue-500"
-                                      : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
-                                  }
-                                `}
-                              >
-                                <Icon
-                                  className={`
-                                    w-4 h-4 transition-colors
-                                    ${
-                                      isActive
-                                        ? "text-white"
-                                        : "text-gray-600 group-hover:text-gray-800"
-                                    }
-                                  `}
-                                />
-                              </div>
-
-                              <div className="text-left">
-                                <p
-                                  className={`
-                                    font-medium text-[0.9rem] transition-colors leading-tight
-                                    ${
-                                      isActive
-                                        ? "text-gray-900"
-                                        : "text-gray-700 group-hover:text-gray-900"
-                                    }
-                                  `}
-                                >
-                                  {tab.label}
-                                </p>
-                              </div>
-                            </div>
-
-                            <ChevronRight
-                              className={`
-                                w-4 h-4 transition-all duration-300
-                                ${
-                                  isActive
-                                    ? "text-blue-500 translate-x-1"
-                                    : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
-                                }
-                              `}
-                            />
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </nav>
-                </CardContent>
-              </Card>
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      style={{ animationDelay: `${index * 50}ms` }}
+                      className={`w-full group relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 nav-item-hover button-press
+                        ${
+                          isActive
+                            ? "bg-white text-slate-900 shadow-sm"
+                            : "text-slate-600 hover:bg-white/50 hover:text-slate-900"
+                        }
+                      `}
+                    >
+                      {isActive && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" 
+                             style={{ animation: 'slideRight 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} />
+                      )}
+                      <div className={`p-2 rounded-lg transition-all duration-200 ${
+                        isActive 
+                          ? "bg-blue-50" 
+                          : "bg-slate-100/50 group-hover:bg-slate-100"
+                      }`}>
+                        <Icon className={`w-4 h-4 transition-colors ${
+                          isActive ? "text-blue-600" : "text-slate-500 group-hover:text-slate-700"
+                        }`} />
+                      </div>
+                      <span className={`text-sm font-medium transition-colors ${
+                        isActive ? "text-slate-900" : "text-slate-600 group-hover:text-slate-900"
+                      }`}>
+                        {tab.label}
+                      </span>
+                      {isActive && (
+                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-600" />
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
           </div>
 
           {/* RIGHT CONTENT AREA */}
           <div className="lg:col-span-3 order-1 lg:order-2">
-            {/* Profile Settings */}
-            {activeTab === "profile" && (
+            <div className="glass-effect rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+              {/* Profile Settings */}
+              {activeTab === "profile" && (
               <ProfileTab
                 profileData={profileData}
                 handleProfileChange={handleProfileChange}
@@ -1625,6 +1828,7 @@ const MainSettings = () => {
             {activeTab === "subscription" && (
               <SubscriptionSettingsSection />
             )}
+            </div>
           </div>
         </div>
 

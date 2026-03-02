@@ -89,15 +89,31 @@ export async function buildStudentContext(
       return true;
     });
 
+    // Determine if this is a school student based on grade field
+    const isSchoolStudent = student?.grade && student.grade.toLowerCase().includes('grade');
+    
+    // Extract grade number for school students
+    let gradeNumber: number | null = null;
+    if (isSchoolStudent && student?.grade) {
+      const match = student.grade.match(/grade\s*(\d+)/i);
+      if (match) {
+        gradeNumber = parseInt(match[1], 10);
+      }
+    }
+    
     return {
       id: student?.id || studentId,
       name: student?.name || profile.name || 'Student',
       email: student?.email || profile.email || '',
-      department: student?.branch_field || profile.branch_field || education?.[0]?.department || 'General',
+      // For school students, use grade instead of branch_field
+      department: isSchoolStudent 
+        ? student?.grade || 'General'
+        : (student?.branch_field || profile.branch_field || education?.[0]?.department || 'General'),
       university: student?.university || profile.university || education?.[0]?.university || '',
       cgpa: student?.currentCgpa || education?.[0]?.cgpa || '',
       yearOfPassing: education?.[0]?.year_of_passing || '',
       grade: student?.grade || '',
+      gradeNumber, // Add grade number for context
       bio: student?.bio || '',
       technicalSkills,
       softSkills,

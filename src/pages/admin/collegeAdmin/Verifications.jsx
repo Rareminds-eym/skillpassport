@@ -70,22 +70,31 @@ const CollegeVerifications = () => {
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
         console.log('🔍 Looking up college_id for user:', user?.id);
-        const { data: educatorData, error: educatorError } = await supabase
+        const { data: educatorData } = await supabase
           .from('college_lecturers')
           .select('collegeId')
-          .eq('user_id', user?.id)
-          .single();
+          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
+          .maybeSingle();
           
-        if (educatorError) {
-          console.error('❌ Error fetching educator data:', educatorError);
-          throw new Error('Could not determine college admin college');
+        if (educatorData?.collegeId) {
+          collegeId = educatorData.collegeId;
+        } else {
+          // Try organizations table
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('admin_id', user?.id)
+            .eq('organization_type', 'college')
+            .maybeSingle();
+          
+          collegeId = orgData?.id;
         }
-        
-        collegeId = educatorData?.collegeId;
       }
       
       if (!collegeId) {
-        throw new Error('College ID not found for current user');
+        console.log('⚠️ No college ID found - showing empty list');
+        setPendingTrainings([]);
+        return;
       }
       
       console.log('🏫 Using college_id:', collegeId);
@@ -116,22 +125,31 @@ const CollegeVerifications = () => {
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
         console.log('🔍 Looking up college_id for user:', user?.id);
-        const { data: educatorData, error: educatorError } = await supabase
+        const { data: educatorData } = await supabase
           .from('college_lecturers')
           .select('collegeId')
-          .eq('user_id', user?.id)
-          .single();
+          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
+          .maybeSingle();
           
-        if (educatorError) {
-          console.error('❌ Error fetching educator data:', educatorError);
-          throw new Error('Could not determine college admin college');
+        if (educatorData?.collegeId) {
+          collegeId = educatorData.collegeId;
+        } else {
+          // Try organizations table
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('admin_id', user?.id)
+            .eq('organization_type', 'college')
+            .maybeSingle();
+          
+          collegeId = orgData?.id;
         }
-        
-        collegeId = educatorData?.collegeId;
       }
       
       if (!collegeId) {
-        throw new Error('College ID not found for current user');
+        console.log('⚠️ No college ID found - showing empty list');
+        setPendingExperiences([]);
+        return;
       }
       
       console.log('🏫 Using college_id:', collegeId);
@@ -162,18 +180,31 @@ const CollegeVerifications = () => {
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
         console.log('🔍 Looking up college_id for user:', user?.id);
-        const { data: educatorData, error: educatorError } = await supabase
+        const { data: educatorData } = await supabase
           .from('college_lecturers')
           .select('collegeId')
-          .eq('user_id', user?.id)
-          .single();
+          .or(`user_id.eq.${user?.id},email.eq.${user?.email}`)
+          .maybeSingle();
           
-        if (educatorError) {
-          console.error('❌ Error fetching educator data:', educatorError);
-          throw new Error('Could not determine college admin college');
+        if (educatorData?.collegeId) {
+          collegeId = educatorData.collegeId;
+        } else {
+          // Try organizations table
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('admin_id', user?.id)
+            .eq('organization_type', 'college')
+            .maybeSingle();
+          
+          collegeId = orgData?.id;
         }
-        
-        collegeId = educatorData?.collegeId;
+      }
+
+      if (!collegeId) {
+        console.log('⚠️ No college ID found - showing empty list');
+        setPendingProjects([]);
+        return;
       }
       
       if (!collegeId) {
