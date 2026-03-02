@@ -298,6 +298,7 @@ export const updateStudentSettings = async (email, updates) => {
       programSectionId: 'program_section_id',
       semester: 'semester',
       section: 'section',
+      rollNumber: 'roll_number',
       enrollmentDate: 'enrollmentDate',
       expectedGraduationDate: 'expectedGraduationDate',
       guardianName: 'guardianName',
@@ -375,6 +376,30 @@ export const updateStudentSettings = async (email, updates) => {
         // Handle nullable text fields - convert empty strings to null
         if (nullableTextFields.includes(key) && (value === '' || value === null || value === undefined)) {
           value = null;
+        }
+
+        // Handle guardianRelation - enforce 50 character limit
+        if (key === 'guardianRelation' && value && typeof value === 'string' && value.length > 50) {
+          console.warn(`⚠️ guardianRelation exceeds 50 characters (${value.length}), truncating`);
+          value = value.substring(0, 50);
+        }
+
+        // Handle category - enforce 50 character limit
+        if (key === 'category' && value && typeof value === 'string' && value.length > 50) {
+          console.warn(`⚠️ category exceeds 50 characters (${value.length}), truncating`);
+          value = value.substring(0, 50);
+        }
+
+        // Handle quota - enforce 50 character limit
+        if (key === 'quota' && value && typeof value === 'string' && value.length > 50) {
+          console.warn(`⚠️ quota exceeds 50 characters (${value.length}), truncating`);
+          value = value.substring(0, 50);
+        }
+
+        // Handle roll_number - enforce 50 character limit
+        if (key === 'rollNumber' && value && typeof value === 'string' && value.length > 50) {
+          console.warn(`⚠️ rollNumber exceeds 50 characters (${value.length}), truncating`);
+          value = value.substring(0, 50);
         }
 
         // Handle JSON fields - parse string to JSON if needed
@@ -504,6 +529,26 @@ export const updateStudentSettings = async (email, updates) => {
     // Perform the update on students table (only if there are column updates)
     if (Object.keys(columnUpdates).length > 1) { // More than just updated_at
       console.log('💾 Updating students table with:', columnUpdates);
+      
+      // Log any fields that might exceed varchar limits
+      Object.keys(columnUpdates).forEach(key => {
+        const value = columnUpdates[key];
+        if (typeof value === 'string') {
+          if (key === 'guardianRelation' && value.length > 50) {
+            console.error(`❌ guardianRelation too long: ${value.length} chars - "${value}"`);
+          }
+          if (key === 'category' && value.length > 50) {
+            console.error(`❌ category too long: ${value.length} chars - "${value}"`);
+          }
+          if (key === 'quota' && value.length > 50) {
+            console.error(`❌ quota too long: ${value.length} chars - "${value}"`);
+          }
+          if (key === 'roll_number' && value.length > 50) {
+            console.error(`❌ roll_number too long: ${value.length} chars - "${value}"`);
+          }
+        }
+      });
+      
       const { data, error } = await supabase
         .from('students')
         .update(columnUpdates)
@@ -513,6 +558,7 @@ export const updateStudentSettings = async (email, updates) => {
 
       if (error) {
         console.error('❌ Error updating student settings:', error);
+        console.error('❌ Failed update data:', columnUpdates);
         return { success: false, error: error.message };
       }
       console.log('✅ Students table updated successfully');

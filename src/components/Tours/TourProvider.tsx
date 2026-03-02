@@ -69,7 +69,6 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     }
 
     setLoading(true);
-    console.log('📚 Loading tour progress for studentId:', studentId);
 
     try {
       let progress: TourProgress = {};
@@ -83,11 +82,9 @@ export const TourProvider: React.FC<TourProviderProps> = ({
 
       if (!error && data?.tour_progress) {
         progress = data.tour_progress;
-        console.log('📚 Tour progress loaded from database:', progress);
         // Sync to localStorage
         saveTourProgressToStorage(progress);
       } else {
-        console.log('📚 No tour progress in database, using empty progress');
         progress = {};
       }
 
@@ -100,7 +97,6 @@ export const TourProvider: React.FC<TourProviderProps> = ({
     } finally {
       setLoading(false);
       setInitialized(true);
-      console.log('📚 Tour progress loading completed for studentId:', studentId);
     }
   }, [studentId]);
 
@@ -117,7 +113,7 @@ export const TourProvider: React.FC<TourProviderProps> = ({
         if (error) {
           console.error('Failed to save tour progress to database:', error);
         } else {
-          console.log('📚 Tour progress saved to database:', progress);
+          // Progress saved successfully
         }
       }
 
@@ -145,10 +141,8 @@ export const TourProvider: React.FC<TourProviderProps> = ({
   useEffect(() => {
     if (isTourRunning) {
       lockScroll();
-      console.log('🔒 Scroll locked - tour is running');
     } else {
       forceUnlockScroll();
-      console.log('🔓 Scroll unlocked - no tour running');
     }
   }, [isTourRunning]);
 
@@ -220,8 +214,6 @@ export const TourProvider: React.FC<TourProviderProps> = ({
   }, [loading, state.progress, isTourRunning, activeTourKey]);
 
   const completeTour = useCallback(async (tourKey: TourKey) => {
-    console.log(`✅ Completing tour: ${tourKey}`);
-
     const updatedProgress = markTourCompleted(tourKey, state.progress);
     await saveTourProgress(updatedProgress);
 
@@ -238,8 +230,6 @@ export const TourProvider: React.FC<TourProviderProps> = ({
   }, [state.progress, saveTourProgress]);
 
   const skipTour = useCallback(async (tourKey: TourKey) => {
-    console.log(`⏭️ Skipping tour: ${tourKey}`);
-
     // Stop tour and unlock scroll via centralized state
     setActiveTourKey(null);
     setIsTourRunning(false);

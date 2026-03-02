@@ -16,7 +16,6 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
 
   useEffect(() => {
     if (!studentIdOrUserId || !enabled) {
-      console.log('⏸️ useAssessmentRecommendations: Skipping (studentId:', studentIdOrUserId, 'enabled:', enabled, ')');
       setLoading(false);
       return;
     }
@@ -26,15 +25,10 @@ export const useAssessmentRecommendations = (studentIdOrUserId, enabled = true) 
         setLoading(true);
         setError(null);
 
-        console.log('🔍 useAssessmentRecommendations: Checking for student:', studentIdOrUserId);
-        console.log('🔍 Type of studentIdOrUserId:', typeof studentIdOrUserId);
-
         // Check for in-progress assessment first
         // getInProgressAttempt expects student.id (from students table)
         try {
-          console.log('🔍 Calling getInProgressAttempt with studentId:', studentIdOrUserId);
           const inProgress = await getInProgressAttempt(studentIdOrUserId);
-          console.log('📊 getInProgressAttempt result:', inProgress);
           
           if (inProgress) {
             console.log('✅ Found in-progress attempt:', inProgress.id);
