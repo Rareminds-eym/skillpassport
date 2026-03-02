@@ -313,29 +313,15 @@ async function sendEmailViaWorker(
 
     console.log(`[EMAIL] Request body length: ${requestBody.length} chars`);
 
-    let response: Response;
-
-    // Use Service Binding if available (more reliable for worker-to-worker)
-    if (env.EMAIL_SERVICE) {
-      console.log(`[EMAIL] Using Service Binding to email-api`);
-      response = await env.EMAIL_SERVICE.fetch('https://email-api/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: requestBody,
-      });
-    } else {
-      // Fallback to HTTP fetch
-      console.log(`[EMAIL] Using HTTP fetch to: ${EMAIL_API_URL}`);
-      response = await fetch(EMAIL_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: requestBody,
-      });
-    }
+    // Always use production email-api URL (service binding doesn't work well in dev)
+    console.log(`[EMAIL] Using HTTP fetch to: ${EMAIL_API_URL}`);
+    const response = await fetch(EMAIL_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: requestBody,
+    });
 
     console.log(`[EMAIL] Response status: ${response.status}`);
 
