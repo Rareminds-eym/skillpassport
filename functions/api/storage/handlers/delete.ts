@@ -19,12 +19,70 @@
 import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { R2Client } from '../utils/r2-client';
+import type { AuthenticatedContext } from '../[[path]]';
+import {
+  validateCertificateOwnership,
+  validatePaymentReceiptOwnership,
+  validateUploadOwnership,
+  isEducator,
+  type OwnershipValidationResult,
+} from '../utils/ownership';
+import {
+  createAuthenticationError,
+  createAuthorizationError,
+  logErrorSafely,
+} from '../utils/error-handling';
+
+/**
+ * Validate ownership of a file based on its path pattern
+ */
+async function validateOwnership(
+  fileKey: string,
+  userId: string,
+  supabaseAdmin: any
+): Promise<OwnershipValidationResult> {
+  // Check for certificate ownership
+  if (fileKey.startsWith('certificates/')) {
+    return validateCertificateOwnership(fileKey, userId);
+  }
+
+  // Check for payment receipt ownership
+  if (fileKey.startsWith('payment_pdf/')) {
+    return validatePaymentReceiptOwnership(fileKey, userId);
+  }
+
+  // Check for upload ownership
+  if (fileKey.startsWith('uploads/')) {
+    return validateUploadOwnership(fileKey, userId);
+  }
+
+  // Check for course materials (educators only)
+  if (fileKey.startsWith('courses/')) {
+    const isEducatorUser = await isEducator(userId, supabaseAdmin);
+    if (!isEducatorUser) {
+      return {
+        isOwner: false,
+        reason: 'Only educators can delete course materials',
+      };
+    }
+    return { isOwner: true };
+  }
+
+  // For other paths, allow deletion (legacy behavior)
+  // This can be tightened in the future
+  return { isOwner: true };
+}
 
 /**
  * Handle file deletion
  */
-export const handleDelete: PagesFunction = async (context) => {
-  const { request, env } = context;
+export const handleDelete: PagesFunction = async (context: AuthenticatedContext) => {
+  const { request, env, user, supabaseAdmin } = context;
+
+  // Require authentication
+  if (!user) {
+    return createAuthenticationError('/delete', 'missing_token');
+  }
 
   try {
     // Parse request body
@@ -59,7 +117,26 @@ export const handleDelete: PagesFunction = async (context) => {
       }, 400);
     }
 
-    console.log('🗑️  Deleting file:', { originalUrl: url, fileKey });
+    console.log('🗑️  Deleting file:', { originalUrl: url, fileKey, userId: user.id });
+
+    // Validate ownership
+    const ownership = await validateOwnership(fileKey, user.id, supabaseAdmin);
+    if (!ownership.isOwner) {
+      // Determine the specific reason for authorization failure
+      let reason: 'ownership_mismatch' | 'insufficient_role' | 'user_id_mismatch' = 'ownership_mismatch';
+      if (ownership.reason?.includes('educator')) {
+        reason = 'insufficient_role';
+      } else if (ownership.reason?.includes('mismatch')) {
+        reason = 'user_id_mismatch';
+      }
+      
+      return createAuthorizationError(
+        user.id,
+        fileKey,
+        reason,
+        ownership.reason || 'You do not have permission to delete this file'
+      );
+    }
 
     // Create R2 client
     const r2 = new R2Client(env);
@@ -75,7 +152,7 @@ export const handleDelete: PagesFunction = async (context) => {
       key: fileKey,
     });
   } catch (error) {
-    console.error('❌ Delete error:', error);
+    logErrorSafely('Delete', error);
     return jsonResponse({
       error: (error as Error).message || 'Delete failed',
     }, 500);

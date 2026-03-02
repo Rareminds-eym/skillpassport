@@ -169,7 +169,7 @@ const ManageProgramStudentsModal: React.FC<ManageProgramStudentsModalProps> = ({
                         programSectionId: programSection?.id,
                         timestamp: new Date().toISOString()
                       });
-                      alert('✅ Permission Test: Add student to program allowed for College Educator');
+//                      alert('✅ Permission Test: Add student to program allowed for College Educator');
                       handleAddStudent();
                     }}
                     disabled={!selectedStudentId || addingStudent}

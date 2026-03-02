@@ -140,7 +140,13 @@ class LibraryService {
     }
 
     if (filters?.status) {
-      query = query.eq('status', filters.status);
+      if (filters.status === 'available') {
+        query = query.gt('available_copies', 0);
+      } else if (filters.status === 'unavailable') {
+        query = query.eq('available_copies', 0);
+      } else {
+        query = query.eq('status', filters.status);
+      }
     }
 
     if (filters?.page && filters?.limit) {
@@ -427,9 +433,22 @@ class LibraryService {
       .from('library_stats_college')
       .select('*')
       .eq('college_id', collegeId)
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
+    
+    // Return default stats if no data exists for new colleges
+    if (!data) {
+      return {
+        total_books: 0,
+        available_books: 0,
+        issued_books: 0,
+        overdue_books: 0,
+        total_members: 0,
+        active_members: 0
+      } as LibraryStats;
+    }
+    
     return data as LibraryStats;
   }
 

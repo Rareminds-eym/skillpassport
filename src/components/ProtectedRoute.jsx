@@ -32,11 +32,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   }
 
   if (!isAuthenticated) {
-    // Redirect to student login if path includes 'student', else default to '/'
-    if (location.pathname.includes('student')) {
-      return <Navigate to="/login/student" replace />;
-    }
-    return <Navigate to="/" replace />;
+    // Redirect to login with return path
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   }
 
   // Check if user's role (or its category) is in allowed roles

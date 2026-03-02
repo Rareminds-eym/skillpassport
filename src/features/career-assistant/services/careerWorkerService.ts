@@ -23,13 +23,15 @@ export interface CareerChatResult {
  * @param conversationId - Optional existing conversation ID
  * @param selectedChips - Optional selected quick action chips
  * @param onChunk - Callback for each streamed chunk
+ * @param abortSignal - Optional AbortSignal to cancel the request
  * @returns Promise with conversation metadata
  */
 export async function streamCareerChat(
   message: string,
   conversationId: string | null,
   selectedChips: string[] = [],
-  onChunk: (chunk: string) => void
+  onChunk: (chunk: string) => void,
+  abortSignal?: AbortSignal
 ): Promise<CareerChatResult> {
   try {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -49,14 +51,15 @@ export async function streamCareerChat(
         session.access_token,
         (content) => onChunk(content),
         (data) => {
-          if (data.conversationId) result.conversationId = data.conversationId;
-          if (data.messageId) result.messageId = data.messageId;
-          if (data.intent) result.intent = data.intent;
-          if (data.intentConfidence) result.intentConfidence = data.intentConfidence;
-          if (data.phase) result.phase = data.phase;
-          if (data.error) {
+          const response = data as any;
+          if (response.conversationId) result.conversationId = response.conversationId;
+          if (response.messageId) result.messageId = response.messageId;
+          if (response.intent) result.intent = response.intent;
+          if (response.intentConfidence) result.intentConfidence = response.intentConfidence;
+          if (response.phase) result.phase = response.phase;
+          if (response.error) {
             result.success = false;
-            result.error = data.error;
+            result.error = response.error;
           }
           resolve();
         },
@@ -65,7 +68,8 @@ export async function streamCareerChat(
           result.success = false;
           result.error = error.message;
           resolve();
-        }
+        },
+        abortSignal
       );
     });
 

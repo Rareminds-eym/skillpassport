@@ -685,6 +685,24 @@ export const moveCandidateToStage = async (
 
     if (fetchError) throw fetchError;
 
+    // Check if opportunity still has openings before allowing stage progression
+    if (currentData.opportunity_id) {
+      const { data: opportunityData, error: oppError } = await supabase
+        .from('opportunities')
+        .select('openings_count, status, job_title, company_name')
+        .eq('id', currentData.opportunity_id)
+        .single();
+
+      if (!oppError && opportunityData) {
+        if (opportunityData.openings_count === 0 || opportunityData.status === 'filled') {
+          return {
+            error: `Cannot move candidate: All openings for ${opportunityData.job_title} at ${opportunityData.company_name} have been filled.`,
+            data: null
+          };
+        }
+      }
+    }
+
     const previousStage = currentData.stage;
 
     console.log('[Pipeline Service] Updating candidate stage:', {

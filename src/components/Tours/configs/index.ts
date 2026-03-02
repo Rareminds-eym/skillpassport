@@ -20,4 +20,11 @@ export {
   ASSESSMENT_RESULT_TOUR_OPTIONS,
   ASSESSMENT_RESULT_TOUR_STYLES,
   ASSESSMENT_RESULT_TOUR_LOCALE,
-} from './assessmentResultTourConfig';
+} from './after10TourConfig';
+
+export {
+  AFTER12_TOUR_STEPS,
+  AFTER12_TOUR_OPTIONS,
+  AFTER12_TOUR_STYLES,
+  AFTER12_TOUR_LOCALE,
+} from './after12TourConfig';

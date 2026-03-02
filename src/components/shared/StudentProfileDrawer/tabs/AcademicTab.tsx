@@ -1,5 +1,6 @@
 import React from 'react';
 import { Student } from '../types';
+import { isSchoolStudent } from '../../../../utils/studentType';
 
 interface AcademicTabProps {
   student: Student;
@@ -9,7 +10,7 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
   return (
     <div className="p-6 space-y-6">
 
-      {student.school_id ? (
+      {isSchoolStudent(student) ? (
         // School Student Academic Info
         <div>
           <h3 className="text-lg font-medium text-gray-900 mb-4">Academic Information</h3>
@@ -59,14 +60,13 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
               )}
             </div>
             <div className="mt-3">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-              }`}>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
                 {student.approval_status ? student.approval_status.charAt(0).toUpperCase() + student.approval_status.slice(1) : 'Pending'}
               </span>
             </div>
           </div>
-          
+
           {/* Show subjects if available */}
           {student.subjects && student.subjects.length > 0 && (
             <div className="mt-6">
@@ -138,9 +138,8 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
               )}
             </div>
             <div className="mt-3">
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-              }`}>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${student.approval_status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
                 {student.approval_status ? student.approval_status.charAt(0).toUpperCase() + student.approval_status.slice(1) : 'Pending'}
               </span>
             </div>
@@ -184,9 +183,8 @@ const AcademicTab: React.FC<AcademicTabProps> = ({ student }) => {
                       )}
                     </div>
                     <div className="mt-3">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        edu.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${edu.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
                         {edu.status ? edu.status.charAt(0).toUpperCase() + edu.status.slice(1) : 'N/A'}
                       </span>
                     </div>

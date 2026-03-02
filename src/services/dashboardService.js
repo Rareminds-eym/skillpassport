@@ -50,9 +50,10 @@ export const getDashboardKPIs = async () => {
     
     // 1. Get total student count and new profiles this week
     const [totalStudentsResult, newStudentsResult] = await Promise.all([
-      supabase.from('students').select('*', { count: 'exact', head: true }),
+      supabase.from('students').select('*', { count: 'exact', head: true }).eq('is_deleted', false),
       supabase.from('students')
         .select('*', { count: 'exact', head: true })
+        .eq('is_deleted', false)
         .gte('createdAt', oneWeekAgo.toISOString())
     ]);
     

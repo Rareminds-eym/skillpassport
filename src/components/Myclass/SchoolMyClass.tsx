@@ -18,6 +18,7 @@ import {
   Star
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { supabase } from '../../lib/supabaseClient';
 import SchoolClassHeader, { SchoolClassInfo } from './common/SchoolClassHeader';
@@ -179,27 +180,20 @@ const SchoolMyClass: React.FC = () => {
   };
 
   // Helper function to open file with error handling
-  const openFile = async (fileUrl: string, fileName: string = 'file') => {
-    try {
-      console.log(`Opening ${fileName}:`, fileUrl);
-
-      const accessibleUrl = getAccessibleFileUrl(fileUrl);
-      console.log('Generated accessible URL:', accessibleUrl);
-
-      // Test if the URL is accessible
-      const testResponse = await fetch(accessibleUrl, { method: 'HEAD' });
-      console.log('File accessibility test status:', testResponse.status);
-
-      if (testResponse.ok) {
-        window.open(accessibleUrl, '_blank');
-      } else {
-        console.warn('File not accessible via proxy, trying direct URL');
-        window.open(fileUrl, '_blank');
-      }
-    } catch (error) {
-      // Fallback to direct URL
-      window.open(fileUrl, '_blank');
-    }
+  const openFile = (fileUrl: string, fileName: string = 'file') => {
+    console.log(`Opening ${fileName}:`, fileUrl);
+    
+    const storageApiUrl = getPagesApiUrl('storage');
+    
+    // Generate proxy URL
+    const accessibleUrl = fileUrl.includes('/document-access') 
+      ? fileUrl 
+      : `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
+    
+    console.log('Opening URL:', accessibleUrl);
+    
+    // Open directly without testing
+    window.open(accessibleUrl, '_blank');
   };
 
   const getStatusBadge = (status: string) => {
@@ -222,28 +216,50 @@ const SchoolMyClass: React.FC = () => {
   // Fetch co-curriculars data
   const fetchCoCurricularsData = async () => {
     try {
-      // Fetch clubs data
-      const { data: membershipData } = await supabase
-        .from('club_memberships_with_students')
-        .select('*')
+      // Fetch clubs data with proper joins
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('club_memberships')
+        .select(`
+          membership_id,
+          club_id,
+          student_email,
+          status,
+          enrolled_at,
+          total_sessions_attended,
+          total_sessions_held,
+          attendance_percentage,
+          performance_score,
+          clubs (
+            club_id,
+            name,
+            category,
+            description,
+            meeting_day,
+            meeting_time,
+            location,
+            capacity,
+            is_active
+          )
+        `)
         .eq('student_email', userEmail)
         .eq('status', 'active');
 
+      if (membershipError) {
+        console.error('Error fetching club memberships:', membershipError);
+        return;
+      }
+
       if (membershipData && membershipData.length > 0) {
         const clubsData = membershipData.map((membership: any) => ({
-          club_id: membership.club_id,
-          name: membership.club_name,
-          category: membership.club_category,
-          description: '',
-          meeting_day: membership.meeting_day,
-          meeting_time: membership.meeting_time,
-          location: membership.location,
-          mentor_type: membership.mentor_type,
-          mentor_name: membership.mentor_name,
-          mentor_email: membership.mentor_email,
-          mentor_phone: membership.mentor_phone,
-          is_active: true,
-          capacity: 0,
+          club_id: membership.clubs?.club_id,
+          name: membership.clubs?.name,
+          category: membership.clubs?.category,
+          description: membership.clubs?.description || '',
+          meeting_day: membership.clubs?.meeting_day,
+          meeting_time: membership.clubs?.meeting_time,
+          location: membership.clubs?.location,
+          is_active: membership.clubs?.is_active,
+          capacity: membership.clubs?.capacity || 30,
           membership_id: membership.membership_id,
           enrolled_at: membership.enrolled_at,
           total_sessions_attended: membership.total_sessions_attended,
@@ -253,28 +269,20 @@ const SchoolMyClass: React.FC = () => {
           memberCount: 0,
           avgAttendance: Math.round(membership.attendance_percentage || 0),
           upcomingActivities: [],
-          meetingDay: membership.meeting_day || 'TBD',
-          meetingTime: membership.meeting_time || 'TBD',
+          meetingDay: membership.clubs?.meeting_day || 'TBD',
+          meetingTime: membership.clubs?.meeting_time || 'TBD',
         }));
 
         const clubsWithMembers = await Promise.all(
           clubsData.map(async (club: any) => {
-            const { data: clubDetails } = await supabase
-              .from('clubs')
-              .select('capacity, description')
-              .eq('club_id', club.club_id)
-              .single();
-
             const { count: memberCount } = await supabase
-              .from('club_memberships_with_students')
+              .from('club_memberships')
               .select('*', { count: 'exact', head: true })
               .eq('club_id', club.club_id)
               .eq('status', 'active');
 
             return {
               ...club,
-              capacity: clubDetails?.capacity || 30,
-              description: clubDetails?.description || '',
               memberCount: memberCount || 0,
             };
           })
@@ -669,12 +677,12 @@ const SchoolMyClass: React.FC = () => {
     }
 
     const fileKey = extractFileKey(fileUrl);
-    if (!fileKey) {
-      console.error('Could not extract file key from URL:', fileUrl);
-      return fileUrl; // Fallback to direct URL
+    if (fileKey) {
+      return `${storageApiUrl}/document-access?key=${encodeURIComponent(fileKey)}&mode=inline`;
+    } else {
+      // Fallback to URL parameter
+      return `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
     }
-
-    return `${storageApiUrl}/file/${encodeURIComponent(fileKey)}`;
   };
 
   const handlePageChange = (page: number) => {

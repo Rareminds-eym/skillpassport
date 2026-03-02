@@ -18,6 +18,7 @@ import {
     FolderIcon,
     FolderOpenIcon,
     HomeIcon,
+    LockClosedIcon,
     ShieldCheckIcon,
     SparklesIcon,
     UserGroupIcon,
@@ -530,12 +531,14 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Attendance Policies",
             path: "/college-admin/students/attendance-policies",
             icon: ClipboardDocumentListIcon,
+            disabled: true,
           },
           
           {
             name: "Performance",
             path: "/college-admin/students/performance",
             icon: ChartBarIcon,
+            disabled: true,
           },
           {
             name: "Assessment Results",
@@ -551,6 +554,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Graduation & Alumni",
             path: "/college-admin/students/graduation",
             icon: AcademicCapIcon,
+            disabled: true,
           },
           {
              name: "Verifications",
@@ -589,11 +593,11 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             path: "/college-admin/academics/browse-courses",
             icon: AcademicCapIcon,
           },
-          {
-            name: "Course Master",
-            path: "/college-admin/academics/subject-courses",
-            icon: AcademicCapIcon,
-          },
+          // {
+          //   name: "Course Master",
+          //   path: "/college-admin/academics/subject-courses",
+          //   icon: AcademicCapIcon,
+          // },
           {
             name: "Programs",
             path: "/college-admin/academics/programs",
@@ -623,11 +627,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Coverage Tracker",
             path: "/college-admin/academics/coverage-tracker",
             icon: ChartBarIcon,
+            disabled: true,
           },
           {
             name: "Academic Calendar",
             path: "/college-admin/academics/calendar",
             icon: CalendarDaysIcon,
+            disabled: true,
           },
         ],
       },
@@ -644,11 +650,13 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Grading & Assessments",
             path: "/college-admin/examinations/assessment-grading",
             icon: ChartBarIcon,
+            disabled: true,
           },
           {
             name: "Transcripts",
             path: "/college-admin/examinations/transcripts",
             icon: DocumentChartBarIcon,
+            disabled: true,
           },
         ],
       },
@@ -665,6 +673,7 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
             name: "Skill Development",
             path: "/college-admin/skill-development",
             icon: SparklesIcon,
+            disabled: true,
           },
           {
             name: "Mentors",
@@ -831,9 +840,12 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                   return (
                     <button
                       key={item.name}
-                      onClick={() => handleNavigation(item.name, item.path)}
+                      onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
+                      disabled={(item as any).disabled}
                       className={classNames(
-                        isActive
+                        (item as any).disabled
+                          ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
+                          : isActive
                           ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
                           : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
                         "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
@@ -841,13 +853,18 @@ const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }:
                     >
                       <item.icon
                         className={classNames(
-                          isActive
+                          (item as any).disabled
+                            ? "text-gray-400"
+                            : isActive
                             ? "text-indigo-600"
                             : "text-gray-400 group-hover:text-indigo-500",
                           "h-5 w-5 flex-shrink-0"
                         )}
                       />
-                      <span>{item.name}</span>
+                      <span className="flex-1 text-left">{item.name}</span>
+                      {(item as any).disabled && (
+                        <LockClosedIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                      )}
                     </button>
                   );
                 })}

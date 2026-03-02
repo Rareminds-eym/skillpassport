@@ -327,16 +327,44 @@ const ProfileItemModal = ({
     setIsSaving(true);
     const processedData = processFormData();
 
+    console.log('🔧 ProfileItemModal handleSave: item (existing):', item);
+    console.log('🔧 ProfileItemModal handleSave: processedData:', processedData);
+
     try {
       let savedItem;
       
       if (item) {
-        // Edit mode - preserve existing item data
-        savedItem = { 
-          ...item, 
+        // Edit mode - ONLY send the fields we want to update
+        // CRITICAL: Do NOT spread the old item - it may have invalid fields
+        
+        // Define valid fields based on config
+        const validFields = config.fields.map(f => f.name);
+        const metadataFields = ['id', 'student_id', 'created_at', 'approval_status', 'enabled'];
+        
+        // Build clean item with ONLY valid fields
+        savedItem = {
+          id: item.id,
+          student_id: item.student_id,
+          created_at: item.created_at,
+          enabled: item.enabled !== false,
           ...processedData,
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString()
         };
+        
+        // Remove any undefined values
+        Object.keys(savedItem).forEach(key => {
+          if (savedItem[key] === undefined) {
+            delete savedItem[key];
+          }
+        });
+        
+        console.log('🔧 ProfileItemModal handleSave: savedItem (edit mode):', savedItem);
+        console.log('🔧 ProfileItemModal handleSave: ID check:', {
+          itemId: item.id,
+          savedItemId: savedItem.id,
+          approval_status: savedItem.approval_status,
+          has_pending_edit: savedItem.has_pending_edit
+        });
       } else {
         // Add mode - create new item
         savedItem = {
@@ -347,6 +375,8 @@ const ProfileItemModal = ({
           approval_status: 'pending', // New items need approval
           created_at: new Date().toISOString(),
         };
+        
+        console.log('🔧 ProfileItemModal handleSave: savedItem (add mode):', savedItem);
       }
 
       await onSave(savedItem);
@@ -604,6 +634,13 @@ const ProfileItemModal = ({
         {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto pr-2 -mr-2">
           <div className="space-y-5 pt-2">
+            {/* Pending Approval Note */}
+            {item && item._hasPendingEdit && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <strong>Note:</strong> Your changes are saved but pending approval. The dashboard shows the verified version until approved.
+              </div>
+            )}
+            
             {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {config.fields.map(field => {

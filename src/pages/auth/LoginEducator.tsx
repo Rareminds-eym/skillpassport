@@ -64,32 +64,24 @@ export default function LoginEducator() {
         return;
       }
 
-      // Fetch educator profile from school_educators table first
-      const { data: educatorData, error: educatorError } = await supabase
-        .from("school_educators")
-        .select("*")
-        .eq("user_id", authData.user.id)
-        .maybeSingle();
-
-      // If not found in school_educators, check college_lecturers table
-      let collegeEducatorData = null;
-      if (!educatorData) {
-        const { data: collegeLecturerData, error: collegeLecturerError } = await supabase
+      // Fetch educator profile - check both tables efficiently
+      // Use Promise.allSettled to query both tables simultaneously
+      const [schoolResult, collegeResult] = await Promise.allSettled([
+        supabase
+          .from("school_educators")
+          .select("*")
+          .eq("user_id", authData.user.id)
+          .maybeSingle(),
+        supabase
           .from("college_lecturers")
           .select("*")
           .eq("user_id", authData.user.id)
-          .maybeSingle();
+          .maybeSingle()
+      ]);
 
-        if (collegeLecturerError) {
-          console.error("Error fetching college lecturer profile:", collegeLecturerError);
-        }
-
-        collegeEducatorData = collegeLecturerData;
-      }
-
-      if (educatorError && !collegeEducatorData) {
-        console.error("Error fetching educator profile:", educatorError);
-      }
+      // Extract data from results
+      const educatorData = schoolResult.status === 'fulfilled' ? schoolResult.value.data : null;
+      const collegeEducatorData = collegeResult.status === 'fulfilled' ? collegeResult.value.data : null;
 
       // Check if user is either a school educator or college lecturer
       if (!educatorData && !collegeEducatorData) {

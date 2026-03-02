@@ -254,6 +254,54 @@ export const STREAM_KNOWLEDGE_PROMPTS = {
   },
   
   // ═══════════════════════════════════════════════════════════════════════════
+  // M.SC / POSTGRADUATE SCIENCES (Masters)
+  // ═══════════════════════════════════════════════════════════════════════════
+  'msc_ds': {
+    name: 'M.Sc Data Science',
+    topics: ['Advanced Statistics', 'Machine Learning', 'Big Data Analytics', 'Deep Learning', 'Data Mining', 'Research Methodology']
+  },
+  'msc_cs': {
+    name: 'M.Sc Computer Science',
+    topics: ['Advanced Algorithms', 'Distributed Systems', 'Artificial Intelligence', 'Software Engineering', 'Database Systems', 'Research Methods']
+  },
+  'msc_physics': {
+    name: 'M.Sc Physics',
+    topics: ['Quantum Mechanics', 'Statistical Mechanics', 'Condensed Matter Physics', 'Particle Physics', 'Astrophysics', 'Research Methodology']
+  },
+  'msc_chemistry': {
+    name: 'M.Sc Chemistry',
+    topics: ['Advanced Organic Chemistry', 'Inorganic Chemistry', 'Physical Chemistry', 'Analytical Techniques', 'Spectroscopy', 'Research Methods']
+  },
+  'msc_maths': {
+    name: 'M.Sc Mathematics',
+    topics: ['Advanced Calculus', 'Topology', 'Functional Analysis', 'Number Theory', 'Differential Equations', 'Mathematical Modeling']
+  },
+  'msc_biology': {
+    name: 'M.Sc Biology',
+    topics: ['Molecular Biology', 'Cell Biology', 'Genetics', 'Biotechnology', 'Bioinformatics', 'Research Methodology']
+  },
+  'msc_biotech': {
+    name: 'M.Sc Biotechnology',
+    topics: ['Genetic Engineering', 'Molecular Biology', 'Bioinformatics', 'Immunology', 'Bioprocess Engineering', 'Research Methods']
+  },
+  'msc_it': {
+    name: 'M.Sc Information Technology',
+    topics: ['Advanced Networking', 'Cloud Computing', 'Cybersecurity', 'Software Architecture', 'Data Analytics', 'IT Management']
+  },
+  'msc_ai': {
+    name: 'M.Sc Artificial Intelligence',
+    topics: ['Machine Learning', 'Deep Learning', 'Natural Language Processing', 'Computer Vision', 'Neural Networks', 'AI Research']
+  },
+  'msc_stats': {
+    name: 'M.Sc Statistics',
+    topics: ['Advanced Statistics', 'Probability Theory', 'Statistical Modeling', 'Data Analysis', 'Econometrics', 'Research Methodology']
+  },
+  msc: {
+    name: 'M.Sc Sciences',
+    topics: ['Advanced Research Methods', 'Scientific Analysis', 'Data Interpretation', 'Laboratory Techniques', 'Critical Thinking', 'Research Methodology']
+  },
+  
+  // ═══════════════════════════════════════════════════════════════════════════
   // B.SC SPECIALIZATIONS (College/University)
   // ═══════════════════════════════════════════════════════════════════════════
   bsc: {
@@ -753,6 +801,59 @@ export function normalizeStreamId(programName) {
     'm.tech data science': 'mtech_ds',
     'mtech data science': 'mtech_ds',
     
+    // M.Sc variations -> short keys
+    'master of science in data science': 'msc_ds',
+    'master of science data science': 'msc_ds',
+    'm.sc data science': 'msc_ds',
+    'msc data science': 'msc_ds',
+    'm.sc ds': 'msc_ds',
+    'msc ds': 'msc_ds',
+    
+    'master of science in computer science': 'msc_cs',
+    'master of science computer science': 'msc_cs',
+    'm.sc computer science': 'msc_cs',
+    'msc computer science': 'msc_cs',
+    'm.sc cs': 'msc_cs',
+    'msc cs': 'msc_cs',
+    
+    'master of science in physics': 'msc_physics',
+    'm.sc physics': 'msc_physics',
+    'msc physics': 'msc_physics',
+    
+    'master of science in chemistry': 'msc_chemistry',
+    'm.sc chemistry': 'msc_chemistry',
+    'msc chemistry': 'msc_chemistry',
+    
+    'master of science in mathematics': 'msc_maths',
+    'm.sc mathematics': 'msc_maths',
+    'msc mathematics': 'msc_maths',
+    'm.sc maths': 'msc_maths',
+    'msc maths': 'msc_maths',
+    
+    'master of science in biology': 'msc_biology',
+    'm.sc biology': 'msc_biology',
+    'msc biology': 'msc_biology',
+    
+    'master of science in biotechnology': 'msc_biotech',
+    'm.sc biotechnology': 'msc_biotech',
+    'msc biotechnology': 'msc_biotech',
+    
+    'master of science in information technology': 'msc_it',
+    'm.sc information technology': 'msc_it',
+    'msc information technology': 'msc_it',
+    'm.sc it': 'msc_it',
+    'msc it': 'msc_it',
+    
+    'master of science in artificial intelligence': 'msc_ai',
+    'm.sc artificial intelligence': 'msc_ai',
+    'msc artificial intelligence': 'msc_ai',
+    'm.sc ai': 'msc_ai',
+    'msc ai': 'msc_ai',
+    
+    'master of science in statistics': 'msc_stats',
+    'm.sc statistics': 'msc_stats',
+    'msc statistics': 'msc_stats',
+    
     // B.Sc variations
     'b.sc physics': 'bsc_physics',
     'bsc physics': 'bsc_physics',
@@ -783,6 +884,9 @@ export function normalizeStreamId(programName) {
     'computer applications': 'bca',
     
     // B.Com variations
+    'b.com': 'bcom',
+    'bcom': 'bcom',
+    'bachelor of commerce': 'bcom',
     'b.com accounting': 'bcom_accounts',
     'bcom accounting': 'bcom_accounts',
     'b.com banking': 'bcom_banking',
@@ -1103,6 +1207,10 @@ export function validateQuestionBatch(questions, questionType, expectedCount) {
       }
     } else {
       console.warn(`❌ Question ${idx + 1} failed validation:`, validation.errors);
+      console.warn(`   Question text: ${q.text || q.question || 'N/A'}`);
+      console.warn(`   Category: ${q.category || q.subtype || 'N/A'}`);
+      console.warn(`   Options count: ${q.options?.length || 0}`);
+      console.warn(`   Correct answer: ${q.correct || q.correct_answer || 'N/A'}`);
       invalid.push({ question: q, errors: validation.errors });
     }
   });
@@ -1110,6 +1218,19 @@ export function validateQuestionBatch(questions, questionType, expectedCount) {
   const needsMore = valid.length < expectedCount;
   
   console.log(`📊 Validation results: ${valid.length}/${expectedCount} valid, ${invalid.length} invalid${autoFixedCount > 0 ? `, ${autoFixedCount} auto-fixed` : ''}`);
+  
+  if (invalid.length > 0) {
+    console.warn(`⚠️ ${invalid.length} questions failed validation. Common issues:`);
+    const errorCounts = {};
+    invalid.forEach(({ errors }) => {
+      errors.forEach(err => {
+        errorCounts[err] = (errorCounts[err] || 0) + 1;
+      });
+    });
+    Object.entries(errorCounts).forEach(([error, count]) => {
+      console.warn(`   - ${error}: ${count} questions`);
+    });
+  }
   
   return { valid, invalid, needsMore, autoFixedCount };
 }
@@ -1464,57 +1585,69 @@ export async function getSavedQuestionsForStudent(studentId, streamId, questionT
  * If studentId provided, saves questions for resume functionality
  */
 export async function generateStreamKnowledgeQuestions(streamId, questionCount = 20, studentId = null, attemptId = null, gradeLevel = null) {
-  // Normalize the stream ID to match our STREAM_KNOWLEDGE_PROMPTS keys
-  const normalizedStreamId = normalizeStreamId(streamId);
-  const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId];
+  // For college students AND higher secondary (11th/12th), streamId is their actual course/stream
+  // For other students, normalize the stream ID to match STREAM_KNOWLEDGE_PROMPTS keys
+  const isCollegeStudent = gradeLevel === 'college' || gradeLevel === 'higher_secondary';
   
-  if (!streamInfo) {
-    console.error('Unknown stream:', streamId, '(normalized:', normalizedStreamId, ') - using generic college stream');
-    // Use generic college stream as fallback
-    const fallbackInfo = STREAM_KNOWLEDGE_PROMPTS['college'];
-    if (!fallbackInfo) return null;
+  let effectiveStreamId, effectiveStreamName, effectiveTopics;
+  
+  if (isCollegeStudent) {
+    // For college students and 11th/12th students, use their course/stream directly without normalization
+    effectiveStreamId = streamId;
+    effectiveStreamName = streamId; // Use course/stream name as-is (e.g., "B.COM", "Science (PCM)")
+    effectiveTopics = null; // Let AI determine topics dynamically based on course/stream name
+    console.log(`🎓 ${gradeLevel === 'higher_secondary' ? 'Higher Secondary (11th/12th)' : 'College'} student - generating knowledge questions for: ${streamId}`);
+  } else {
+    // For non-college students, use the hardcoded topic mappings
+    const normalizedStreamId = normalizeStreamId(streamId);
+    const streamInfo = STREAM_KNOWLEDGE_PROMPTS[normalizedStreamId];
+    
+    if (!streamInfo) {
+      console.error('Unknown stream:', streamId, '(normalized:', normalizedStreamId, ')');
+      return null;
+    }
+    
+    effectiveStreamId = normalizedStreamId;
+    effectiveStreamName = streamInfo.name;
+    effectiveTopics = streamInfo.topics;
+    console.log('🎯 Generating knowledge questions for:', effectiveStreamName, '(stream:', effectiveStreamId, ')');
+    console.log('📚 Stream topics:', effectiveTopics);
   }
-
-  const effectiveStreamInfo = streamInfo || STREAM_KNOWLEDGE_PROMPTS['college'];
-  const effectiveStreamId = streamInfo ? normalizedStreamId : 'college';
 
   // Check for saved questions first if studentId provided
   if (studentId) {
-    // Try with normalized stream ID first
-    let saved = await getSavedQuestionsForStudent(studentId, effectiveStreamId, 'knowledge');
-    // Also try with original stream ID in case it was saved that way
-    if (!saved && streamId !== effectiveStreamId) {
-      saved = await getSavedQuestionsForStudent(studentId, streamId, 'knowledge');
-    }
+    const saved = await getSavedQuestionsForStudent(studentId, effectiveStreamId, 'knowledge');
     if (saved) {
       console.log('✅ Using saved knowledge questions for student');
       return saved;
     }
   }
 
-  console.log('🎯 Generating fresh knowledge questions for:', effectiveStreamInfo.name, '(stream:', effectiveStreamId, ')');
-  console.log('📚 Stream topics:', effectiveStreamInfo.topics);
-
   // Use unified question generation API
   const { getPagesApiUrl } = await import('../utils/pagesUrl');
   const apiUrl = getPagesApiUrl('question-generation');
   const maxRetries = 3;
   
+  // Request extra questions to account for validation failures and duplicates
+  // We'll filter down to exactly questionCount after validation
+  const requestCount = Math.ceil(questionCount * 1.4); // Request 40% more
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`📡 Calling Knowledge API (attempt ${attempt}/${maxRetries})`);
+      console.log(`📡 Calling Knowledge API (attempt ${attempt}/${maxRetries}) - requesting ${requestCount} to get ${questionCount} valid`);
       
       const response = await fetch(`${apiUrl}/career-assessment/generate-knowledge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           streamId: effectiveStreamId,
-          streamName: effectiveStreamInfo.name,
-          topics: effectiveStreamInfo.topics,
-          questionCount,
+          streamName: effectiveStreamName,
+          topics: effectiveTopics, // null for college students - AI will determine
+          questionCount: requestCount, // Request more than needed
           studentId,
           attemptId,
-          gradeLevel // Add grade level to API request
+          gradeLevel,
+          isCollegeStudent // Flag to tell backend to generate dynamically
         })
       });
 
@@ -1554,18 +1687,27 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
       const validation = validateQuestionBatch(data.questions, 'knowledge', questionCount);
       
       // Filter out invalid questions - only use valid ones
-      const validQuestions = validation.valid;
+      let validQuestions = validation.valid;
       
       if (validation.invalid.length > 0) {
         console.warn(`⚠️ Filtered out ${validation.invalid.length} invalid knowledge questions`);
       }
       
+      // Remove duplicates based on question text (same logic as aptitude questions)
+      const beforeDuplicateRemoval = validQuestions.length;
+      validQuestions = validQuestions.filter((q, index, self) =>
+        index === self.findIndex((t) => (t.text || t.question) === (q.text || q.question))
+      );
+      
+      if (beforeDuplicateRemoval > validQuestions.length) {
+        console.warn(`⚠️ Removed ${beforeDuplicateRemoval - validQuestions.length} duplicate knowledge questions`);
+      }
+      
       // STRICT: Must have EXACTLY the expected count
-      if (validQuestions.length !== questionCount) {
-        console.warn(`⚠️ Question count mismatch: ${validQuestions.length}/${questionCount} knowledge questions`);
+      if (validQuestions.length < questionCount) {
+        console.warn(`⚠️ Insufficient questions: ${validQuestions.length}/${questionCount} knowledge questions`);
         
         if (attempt < maxRetries) {
-          const needed = questionCount - validQuestions.length;
           console.log(`🔄 Retrying to get exactly ${questionCount} knowledge questions (attempt ${attempt + 1}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
           continue;
@@ -1575,7 +1717,13 @@ export async function generateStreamKnowledgeQuestions(streamId, questionCount =
         }
       }
       
-      console.log(`✅ Validation passed: Exactly ${questionCount} valid knowledge questions`);
+      // If we have more than needed, trim to exact count
+      if (validQuestions.length > questionCount) {
+        console.log(`✂️ Trimming ${validQuestions.length} questions down to exactly ${questionCount}`);
+        validQuestions = validQuestions.slice(0, questionCount);
+      }
+      
+      console.log(`✅ Validation passed: Exactly ${questionCount} valid unique knowledge questions`);
       
       // If API returned questions but didn't save them, save from frontend as fallback
       if (validQuestions.length > 0 && studentId && !data.cached) {
@@ -1614,8 +1762,15 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
   if (studentId) {
     const saved = await getSavedQuestionsForStudent(studentId, streamId, 'aptitude');
     if (saved && saved.length > 0) {
-      console.log('✅ Using saved aptitude questions for student:', saved.length);
-      return saved;
+      // Validate that saved questions have the expected count
+      if (saved.length === questionCount) {
+        console.log(`✅ Using saved aptitude questions for student: ${saved.length}/${questionCount}`);
+        return saved;
+      } else {
+        console.warn(`⚠️ Saved questions count mismatch: ${saved.length}/${questionCount} - regenerating`);
+        // Clear invalid cached questions
+        await clearSavedQuestionsForStudent(studentId, streamId, 'aptitude');
+      }
     }
   }
 
@@ -1627,9 +1782,20 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
   const maxRetries = 3;
   const questionsPerCategory = Math.ceil(questionCount / APTITUDE_CATEGORIES.length); // 10 per category for 50 total
   
+  // Accumulate valid questions across retries
+  let allValidQuestions = [];
+  
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`📡 Calling API (attempt ${attempt}/${maxRetries})`);
+      // Calculate how many questions we still need
+      const questionsNeeded = questionCount - allValidQuestions.length;
+      
+      if (questionsNeeded <= 0) {
+        console.log(`✅ Already have ${allValidQuestions.length} valid questions, no need to retry`);
+        break;
+      }
+      
+      console.log(`📡 Calling API (attempt ${attempt}/${maxRetries}) - Need ${questionsNeeded} more questions`);
       
       const response = await fetch(`${apiUrl}/career-assessment/generate-aptitude`, {
         method: 'POST',
@@ -1678,48 +1844,58 @@ export async function generateAptitudeQuestions(streamId, questionCount = 50, st
       // Validate question quality using validateQuestionBatch
       const validation = validateQuestionBatch(data.questions, 'aptitude', questionCount);
       
-      // Filter out invalid questions - only use valid ones
-      const validQuestions = validation.valid;
-      console.log(`📊 Validation: ${validQuestions.length} valid, ${validation.invalid.length} invalid`);
+      // Add valid questions to our accumulator
+      const newValidQuestions = validation.valid;
+      allValidQuestions = [...allValidQuestions, ...newValidQuestions];
       
-      // STRICT: Must have EXACTLY the expected count
-      if (validQuestions.length !== questionCount) {
-        console.warn(`⚠️ Question count mismatch: ${validQuestions.length}/${questionCount} (${questionCount - validQuestions.length} missing)`);
+      // Remove duplicates based on question text
+      allValidQuestions = allValidQuestions.filter((q, index, self) =>
+        index === self.findIndex((t) => (t.text || t.question) === (q.text || q.question))
+      );
+      
+      console.log(`📊 Validation: ${newValidQuestions.length} new valid, ${validation.invalid.length} invalid`);
+      console.log(`📊 Total accumulated: ${allValidQuestions.length}/${questionCount} questions`);
+      
+      // Check if we have enough questions now
+      if (allValidQuestions.length >= questionCount) {
+        // Take only the first questionCount questions
+        const finalQuestions = allValidQuestions.slice(0, questionCount);
+        console.log(`✅ Success! Have ${finalQuestions.length} valid questions`);
         
-        // If we have retries left, try again
-        if (attempt < maxRetries) {
-          const needed = questionCount - validQuestions.length;
-          console.log(`🔄 Retrying to get exactly ${questionCount} questions (attempt ${attempt + 1}/${maxRetries})...`);
-          await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
-          continue;
+        // Save valid questions if we have studentId
+        if (finalQuestions.length > 0 && studentId && !data.cached) {
+          console.log('💾 Saving questions to database...');
+          await saveAptitudeQuestions(studentId, streamId, attemptId, finalQuestions, gradeLevel);
         }
         
-        // Last attempt - REJECT if not exactly the expected count
-        console.error(`❌ Failed to get exactly ${questionCount} questions after ${maxRetries} attempts. Got ${validQuestions.length}.`);
-        return null; // Reject - must be exactly 50
+        return finalQuestions;
       }
       
-      // We have EXACTLY the expected count - save and return
-      console.log(`✅ Validation passed: Exactly ${questionCount} valid questions`);
-      
-      // Save valid questions if we have studentId
-      if (validQuestions.length > 0 && studentId && !data.cached) {
-        console.log('💾 Saving questions to database...');
-        await saveAptitudeQuestions(studentId, streamId, attemptId, validQuestions, gradeLevel);
+      // If we still need more questions and have retries left, continue
+      if (attempt < maxRetries) {
+        const needed = questionCount - allValidQuestions.length;
+        console.log(`🔄 Need ${needed} more questions, retrying (attempt ${attempt + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt));
+        continue;
       }
       
-      return validQuestions;
-      const finalQuestions = validQuestions.slice(0, questionCount);
-      console.log(`✅ Final question count: ${finalQuestions.length}/${questionCount}`);
-      
-      // If API returned questions but didn't save them (cached: false, generated: true),
-      // save them from frontend as a fallback
-      if (finalQuestions.length > 0 && studentId && !data.cached) {
-        console.log('💾 Saving questions from frontend as fallback...');
-        await saveAptitudeQuestions(studentId, streamId, attemptId, finalQuestions, gradeLevel);
+      // Last attempt - use what we have if it's close enough (within 10%)
+      const threshold = Math.floor(questionCount * 0.9); // 90% threshold
+      if (allValidQuestions.length >= threshold) {
+        console.warn(`⚠️ Only have ${allValidQuestions.length}/${questionCount} questions, but accepting (above 90% threshold)`);
+        
+        // Save what we have
+        if (allValidQuestions.length > 0 && studentId && !data.cached) {
+          console.log('💾 Saving questions to database...');
+          await saveAptitudeQuestions(studentId, streamId, attemptId, allValidQuestions, gradeLevel);
+        }
+        
+        return allValidQuestions;
       }
       
-      return finalQuestions;
+      // Failed to get enough questions
+      console.error(`❌ Failed to get enough questions after ${maxRetries} attempts. Got ${allValidQuestions.length}/${questionCount}.`);
+      return null;
     } catch (error) {
       // Handle network/fetch errors
       const errorInfo = handleNetworkError(error, attempt, maxRetries);
@@ -1907,7 +2083,7 @@ export async function clearSavedQuestionsForStudent(studentId, streamId) {
  * - Otherwise generates fresh AI questions and saves them
  * - Falls back to hardcoded questions if AI fails or returns too few
  */
-export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studentId = null, attemptId = null) {
+export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studentId = null, attemptId = null, studentCourse = null) {
   const questions = {
     aptitude: null,
     knowledge: null
@@ -1920,6 +2096,11 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     // Normalize stream ID for college students
     const normalizedStreamId = normalizeStreamId(streamId);
     console.log(`📋 Normalized stream ID: ${normalizedStreamId}`);
+    
+    // For college students, use their actual course for knowledge questions
+    if (gradeLevel === 'college' && studentCourse) {
+      console.log(`🎓 College student - using course "${studentCourse}" for knowledge questions instead of stream`);
+    }
     
     // Generate/load aptitude questions first (will use saved if available)
     // Pass gradeLevel so API knows to use appropriate difficulty
@@ -1934,7 +2115,9 @@ export async function loadCareerAssessmentQuestions(streamId, gradeLevel, studen
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Generate/load knowledge questions (will use saved if available)
-    const aiKnowledge = await generateStreamKnowledgeQuestions(normalizedStreamId, 20, studentId, attemptId, gradeLevel);
+    // For college students, pass their course; for others, use normalized stream
+    const knowledgeStreamId = (gradeLevel === 'college' && studentCourse) ? studentCourse : normalizedStreamId;
+    const aiKnowledge = await generateStreamKnowledgeQuestions(knowledgeStreamId, 20, studentId, attemptId, gradeLevel);
     
     if (aiKnowledge && aiKnowledge.length > 0) {
       questions.knowledge = aiKnowledge;

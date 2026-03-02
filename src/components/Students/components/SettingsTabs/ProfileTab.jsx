@@ -20,7 +20,14 @@ const ProfileTab = ({
   handleProfileChange,
   handleInstitutionChange,
   isSaving,
-  handleSaveProfile,
+  initialActiveSubTab,
+  // Tab-specific save handlers
+  handleSavePersonalInfo,
+  handleSaveAdditionalInfo,
+  handleSaveInstitutionDetails,
+  handleSaveAcademicDetails,
+  handleSaveGuardianInfo,
+  handleSaveSocialLinks,
   setShowResumeParser,
   // Institution data
   schools,
@@ -72,11 +79,21 @@ const ProfileTab = ({
   setShowProjectsModal,
   // Student data
   studentData,
+  // Toggle handlers for skills
+  onToggleTechnicalSkillEnabled,
+  onToggleSoftSkillEnabled,
 }) => {
-  const [profileActiveTab, setProfileActiveTab] = useState("personal");
+  const [profileActiveTab, setProfileActiveTab] = useState(initialActiveSubTab || "personal");
   const [showLeftIndicator, setShowLeftIndicator] = useState(false);
   const [showRightIndicator, setShowRightIndicator] = useState(true);
   const scrollContainerRef = useRef(null);
+
+  // Update active tab when initialActiveSubTab changes
+  useEffect(() => {
+    if (initialActiveSubTab) {
+      setProfileActiveTab(initialActiveSubTab);
+    }
+  }, [initialActiveSubTab]);
 
   // Check scroll position to show/hide indicators
   const checkScrollPosition = () => {
@@ -84,6 +101,35 @@ const ProfileTab = ({
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
       setShowLeftIndicator(scrollLeft > 0);
       setShowRightIndicator(scrollLeft < scrollWidth - clientWidth - 1);
+    }
+  };
+
+  // Scroll to next/previous tab when clicking indicators
+  const scrollToNextTab = () => {
+    const currentIndex = profileTabs.findIndex(tab => tab.id === profileActiveTab);
+    if (currentIndex < profileTabs.length - 1) {
+      setProfileActiveTab(profileTabs[currentIndex + 1].id);
+      // Scroll the tab into view
+      setTimeout(() => {
+        const tabButtons = scrollContainerRef.current?.querySelectorAll('button');
+        if (tabButtons && tabButtons[currentIndex + 1]) {
+          tabButtons[currentIndex + 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }, 50);
+    }
+  };
+
+  const scrollToPreviousTab = () => {
+    const currentIndex = profileTabs.findIndex(tab => tab.id === profileActiveTab);
+    if (currentIndex > 0) {
+      setProfileActiveTab(profileTabs[currentIndex - 1].id);
+      // Scroll the tab into view
+      setTimeout(() => {
+        const tabButtons = scrollContainerRef.current?.querySelectorAll('button');
+        if (tabButtons && tabButtons[currentIndex - 1]) {
+          tabButtons[currentIndex - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }, 50);
     }
   };
 
@@ -116,6 +162,8 @@ const ProfileTab = ({
           <PersonalInfoTab
             profileData={profileData}
             handleProfileChange={handleProfileChange}
+            handleSaveProfile={handleSavePersonalInfo}
+            isSaving={isSaving}
           />
         );
       case "additional":
@@ -123,6 +171,8 @@ const ProfileTab = ({
           <AdditionalInfoTab
             profileData={profileData}
             handleProfileChange={handleProfileChange}
+            handleSaveProfile={handleSaveAdditionalInfo}
+            isSaving={isSaving}
           />
         );
       case "institution":
@@ -162,6 +212,8 @@ const ProfileTab = ({
             customSemesterName={customSemesterName}
             setCustomSemesterName={setCustomSemesterName}
             studentData={studentData}
+            handleSaveProfile={handleSaveInstitutionDetails}
+            isSaving={isSaving}
           />
         );
       case "academic":
@@ -171,6 +223,8 @@ const ProfileTab = ({
             handleProfileChange={handleProfileChange}
             educationData={educationData}
             setShowEducationModal={setShowEducationModal}
+            handleSaveProfile={handleSaveAcademicDetails}
+            isSaving={isSaving}
           />
         );
       case "skills":
@@ -180,6 +234,8 @@ const ProfileTab = ({
             setShowSoftSkillsModal={setShowSoftSkillsModal}
             technicalSkillsData={technicalSkillsData}
             setShowTechnicalSkillsModal={setShowTechnicalSkillsModal}
+            onToggleTechnicalSkillEnabled={onToggleTechnicalSkillEnabled}
+            onToggleSoftSkillEnabled={onToggleSoftSkillEnabled}
           />
         );
       case "experience":
@@ -208,6 +264,8 @@ const ProfileTab = ({
           <GuardianInfoTab
             profileData={profileData}
             handleProfileChange={handleProfileChange}
+            handleSaveProfile={handleSaveGuardianInfo}
+            isSaving={isSaving}
           />
         );
       case "social":
@@ -215,6 +273,8 @@ const ProfileTab = ({
           <SocialLinksTab
             profileData={profileData}
             handleProfileChange={handleProfileChange}
+            handleSaveProfile={handleSaveSocialLinks}
+            isSaving={isSaving}
           />
         );
       default:
@@ -232,11 +292,9 @@ const ProfileTab = ({
               <div className="p-2.5 bg-blue-50 rounded-xl">
                 <User className="w-5 h-5 text-blue-600" />
               </div>
-              <span className="text-xl font-bold text-gray-900">
-                Profile Information
-              </span>
+              <span className="text-xl font-bold text-gray-900">Profile Information</span>
             </CardTitle>
-            
+
             {/* Upload Resume Button */}
             <Button
               onClick={() => setShowResumeParser(true)}
@@ -248,32 +306,38 @@ const ProfileTab = ({
             </Button>
           </div>
         </CardHeader>
-        
+
         {/* Sticky Horizontal Tabs */}
         <div className="px-6 pb-4">
           <div className="relative">
             {/* Left scroll indicator */}
             {showLeftIndicator && (
-              <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent z-10 flex items-center justify-start pointer-events-none">
-                <div className="w-6 h-6 bg-white rounded-full shadow-sm border border-gray-200 flex items-center justify-center">
+              <div 
+                onClick={scrollToPreviousTab}
+                className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white to-transparent z-10 flex items-center justify-start cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <div className="w-6 h-6 bg-white rounded-full shadow-sm border border-gray-200 flex items-center justify-center hover:border-blue-400 hover:shadow-md transition-all">
                   <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </div>
               </div>
             )}
-            
+
             {/* Right scroll indicator */}
             {showRightIndicator && (
-              <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10 flex items-center justify-end pointer-events-none">
-                <div className="w-6 h-6 bg-white rounded-full shadow-sm border border-gray-200 flex items-center justify-center">
+              <div 
+                onClick={scrollToNextTab}
+                className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10 flex items-center justify-end cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <div className="w-6 h-6 bg-white rounded-full shadow-sm border border-gray-200 flex items-center justify-center hover:border-blue-400 hover:shadow-md transition-all">
                   <svg className="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </div>
               </div>
             )}
-            
+
             <div 
               ref={scrollContainerRef}
               className="flex gap-1 overflow-x-auto border-b border-gray-200 scrollbar-hide"
@@ -294,9 +358,7 @@ const ProfileTab = ({
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className="hidden sm:inline">{tab.label}</span>
-                    <span className="sm:hidden">
-                      {tab.label.split(' ')[0]}
-                    </span>
+                    <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
                   </button>
                 );
               })}
@@ -304,32 +366,10 @@ const ProfileTab = ({
           </div>
         </div>
       </div>
-      
+
       <CardContent className="pt-6 p-6 space-y-8">
         {/* Render Active Tab Content */}
         {renderActiveTab()}
-
-        {/* Save Button */}
-        <div className="flex justify-end pt-6 border-t border-slate-100">
-          <Button
-            onClick={handleSaveProfile}
-            disabled={isSaving}
-            className={`
-              inline-flex items-center gap-2
-              bg-blue-600 hover:bg-blue-700 active:bg-blue-800
-              text-white font-medium
-              px-6 py-2.5 rounded-lg
-              shadow-[0_2px_6px_rgba(0,0,0,0.05)]
-              hover:shadow-[0_3px_8px_rgba(0,0,0,0.08)]
-              active:shadow-[inset_0_1px_3px_rgba(0,0,0,0.15)]
-              transition-all duration-200 ease-in-out
-              disabled:opacity-60 disabled:cursor-not-allowed
-            `}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {isSaving ? "Saving..." : "Save Changes"}
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );

@@ -133,6 +133,21 @@ const OpportunityCard = ({
             <span>{salary}</span>
           </div>
         )}
+
+        {/* Openings Count */}
+        {opportunity.openings_count !== null && opportunity.openings_count !== undefined && (
+          <div className="mt-2 px-3 py-1.5 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-full">
+            <span className="text-xs font-semibold text-indigo-700">
+              {opportunity.openings_count === 0 ? (
+                '🔒 No openings'
+              ) : opportunity.openings_count === 1 ? (
+                '1 opening'
+              ) : (
+                `${opportunity.openings_count} openings`
+              )}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,11 @@ import type { PagesFunction } from '../../../../src/functions-lib/types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { corsHeaders } from '../../../../src/functions-lib/cors';
 import { R2Client } from '../utils/r2-client';
+import {
+  createAuthenticationError,
+  createAuthorizationError,
+  logErrorSafely,
+} from '../utils/error-handling';
 
 interface UploadReceiptRequestBody {
   pdfBase64: string;
@@ -130,11 +135,46 @@ export const handleUploadPaymentReceipt: PagesFunction = async ({ request, env }
 };
 
 /**
+ * Extract payment ID from file key
+ * Pattern: payment_pdf/{name}_{userId}/{paymentId}_{timestamp}.pdf
+ */
+function extractPaymentIdFromKey(fileKey: string): string | null {
+  try {
+    // Extract filename from the key
+    const parts = fileKey.split('/');
+    if (parts.length < 3 || parts[0] !== 'payment_pdf') {
+      return null;
+    }
+
+    // Get the filename (last part)
+    const filename = parts[parts.length - 1];
+    
+    // Extract payment ID from filename pattern: {paymentId}_{timestamp}.pdf
+    const match = filename.match(/^(.+)_\d+\.pdf$/);
+    if (!match) {
+      return null;
+    }
+
+    return match[1]; // Return the payment ID part
+  } catch (error) {
+    console.error('[ExtractPaymentId] Error:', error);
+    return null;
+  }
+}
+
+/**
  * Get payment receipt file
  */
-export const handleGetPaymentReceipt: PagesFunction = async ({ request, env }) => {
+export const handleGetPaymentReceipt: PagesFunction = async (context) => {
+  const { request, env, user, supabaseAdmin } = context as any;
+
   if (request.method !== 'GET') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+
+  // Require authentication
+  if (!user) {
+    return createAuthenticationError('/payment-receipt', 'missing_token');
   }
 
   try {
@@ -159,6 +199,42 @@ export const handleGetPaymentReceipt: PagesFunction = async ({ request, env }) =
     if (!fileKey) {
       return jsonResponse({ error: 'File key or URL is required' }, 400);
     }
+
+    // Extract payment ID from file key
+    const paymentId = extractPaymentIdFromKey(fileKey);
+    
+    if (!paymentId) {
+      console.error('[GetPaymentReceipt] Could not extract payment ID from key:', fileKey);
+      return jsonResponse({ error: 'Invalid payment receipt file key' }, 400);
+    }
+
+    console.log('[GetPaymentReceipt] Extracted payment ID:', paymentId);
+
+    // Query database to get payment owner using the receipt field
+    const { data: payment, error: dbError } = await supabaseAdmin
+      .from('razorpay_orders')
+      .select('user_id')
+      .eq('receipt', paymentId)
+      .single();
+
+    if (dbError || !payment) {
+      console.error('[GetPaymentReceipt] Payment not found:', { paymentId, error: dbError });
+      return jsonResponse({ error: 'Payment not found' }, 404);
+    }
+
+    console.log('[GetPaymentReceipt] Payment owner:', payment.user_id);
+
+    // Validate ownership
+    if (payment.user_id !== user.id) {
+      return createAuthorizationError(
+        user.id,
+        fileKey,
+        'ownership_mismatch',
+        'You do not have permission to access this payment receipt'
+      );
+    }
+
+    console.log('[GetPaymentReceipt] Ownership validated successfully');
 
     // Initialize R2 client
     const r2Client = new R2Client(env);
@@ -195,7 +271,7 @@ export const handleGetPaymentReceipt: PagesFunction = async ({ request, env }) =
       },
     });
   } catch (error) {
-    console.error('[GetPaymentReceipt] Error:', error);
+    logErrorSafely('GetPaymentReceipt', error);
     return jsonResponse(
       {
         error: 'Failed to get payment receipt',

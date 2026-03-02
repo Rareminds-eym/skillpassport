@@ -28,7 +28,7 @@ export async function handleParseResume(request: Request, env: Record<string, st
   const { user } = auth;
   const studentId = user.id;
 
-  if (!checkRateLimit(studentId)) {
+  if (!await checkRateLimit(studentId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded' }, 429);
   }
 
@@ -98,7 +98,7 @@ ${resumeText.slice(0, 15000)}
       {
         models: [getModelForUseCase('resume_parsing')],
         maxRetries: 3,
-        maxTokens: 4096,
+        maxTokens: 2000,  // Reduced from 4096 to fit within credit limits
         temperature: 0.1
       }
     );

@@ -1,24 +1,34 @@
 import {
+    AcademicCapIcon,
     ArrowDownTrayIcon,
     ArrowPathIcon,
     BellIcon,
+    BriefcaseIcon,
+    BuildingOfficeIcon,
     CheckCircleIcon,
     ChevronRightIcon,
     ClockIcon,
     CogIcon,
     CreditCardIcon,
+    DocumentTextIcon,
     EnvelopeIcon,
     ExclamationTriangleIcon,
     EyeIcon,
     GlobeAltIcon,
     LockClosedIcon,
     PhotoIcon,
+    PlusCircleIcon,
     ShieldCheckIcon,
     UserIcon
 } from '@heroicons/react/24/outline';
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+// @ts-ignore - JSX file without declaration
+import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabaseClient';
+import { validateFile, uploadFile, getDocumentUrl } from '../../services/fileUploadService';
+import { storageService } from '../../services/storageService';
+// @ts-ignore - JSX file without declaration
 import { SubscriptionSettingsSection } from '../../components/Subscription/SubscriptionSettingsSection';
-
 interface SettingsState {
   fullName: string;
   email: string;
@@ -104,7 +114,7 @@ const AccordionSection: React.FC<{
   onSave?: () => void;
   onCancel?: () => void;
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
-}> = ({ sectionKey, title, description, icon, children, isExpanded, onToggle, showSaveButtons = false, onSave, onCancel, saveStatus = 'idle' }) => {
+}> = ({ sectionKey: _sectionKey, title, description, icon, children, isExpanded, onToggle, showSaveButtons = false, onSave, onCancel, saveStatus = 'idle' }) => {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200">
       {/* Header */}
@@ -264,8 +274,9 @@ const SettingSelect: React.FC<{
 );
 
 const Settings: React.FC = () => {
-  const { user } = useAuth();
-  const userEmail = user?.email;
+  const { user, userRole, loading: authLoading } = useAuth();
+  const userEmail = (user as any)?.email;
+  const userId = (user as any)?.user_id || (user as any)?.id;
   
   // Add loading and error states
   const [loading, setLoading] = useState(true);
@@ -313,6 +324,7 @@ const Settings: React.FC = () => {
     idProofUrl: '',
     degreeCertificateUrl: '',
     experienceLettersUrl: [],
+    resumeUrl: '',
     emailNotifications: true,
     activityNotifications: true,
     studentSubmissionNotifications: true,
@@ -327,7 +339,7 @@ const Settings: React.FC = () => {
   });
 
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'teaching' | 'privacy' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'notifications' | 'teaching' | 'privacy' | 'security' | 'subscription'>('profile');
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -354,64 +366,139 @@ const Settings: React.FC = () => {
 
   // Data fetching function
   const fetchEducatorData = async () => {
-    if (!userEmail) return;
+    if (!userId) return;
     
     try {
       setLoading(true);
       setError(null);
       
-      // Fetch educator data using your actual table structure
-      const { data, error } = await supabase
+      console.log('Fetching educator data for user_id:', userId, 'Email:', userEmail, 'Role:', userRole);
+      
+      // Try school educators first
+      const { data: schoolData, error: schoolError } = await supabase
         .from('school_educators')
         .select(`
           *,
-          schools (
+          organizations(
             name,
             address
           )
         `)
-        .eq('email', userEmail)
+        .eq('user_id', userId)
         .maybeSingle();
 
-      if (error) {
-        console.error('Error fetching educator:', error);
-        setError('Failed to load profile data');
+      if (schoolData) {
+        console.log('Found school educator data:', schoolData);
+        setEducatorData(schoolData);
+        
+        // Map school educator fields to form fields
+        setSettings(prev => ({
+          ...prev,
+          fullName: `${schoolData.first_name || ''} ${schoolData.last_name || ''}`.trim(),
+          email: schoolData.email || '',
+          department: schoolData.department || '',
+          phone: schoolData.phone_number || '',
+          bio: schoolData.metadata?.bio || '',
+          title: schoolData.designation || '',
+          officeLocation: schoolData.address || '',
+          employeeId: schoolData.employee_id || '',
+          yearsOfExperience: schoolData.experience_years?.toString() || '',
+          specialization: schoolData.specialization || '',
+          educationLevel: schoolData.qualification || '',
+          city: schoolData.city || '',
+          state: schoolData.state || '',
+          country: schoolData.country || '',
+          pincode: schoolData.pincode || '',
+          gender: schoolData.gender || '',
+          role: schoolData.role || '',
+          onboardingStatus: schoolData.onboarding_status || '',
+          dateOfBirth: schoolData.dob || '',
+          verificationStatus: schoolData.verification_status || '',
+          subjectExpertise: schoolData.subject_expertise || [],
+          idProofUrl: schoolData.id_proof_url || '',
+          degreeCertificateUrl: schoolData.degree_certificate_url || '',
+          experienceLettersUrl: schoolData.experience_letters_url || [],
+          resumeUrl: schoolData.resume_url || '',
+          // Load preferences from metadata if exists
+          ...schoolData.metadata?.preferences,
+        }));
         return;
       }
 
-      setEducatorData(data);
-      
-      // Map your actual database fields to form fields
-      setSettings(prev => ({
-        ...prev,
-        fullName: `${data.first_name || ''} ${data.last_name || ''}`.trim(),
-        email: data.email || '',
-        department: data.department || '',
-        phone: data.phone_number || '', // Note: your field is phone_number
-        bio: data.metadata?.bio || '', // Bio might be in metadata
-        title: data.designation || '', // Your field is designation
-        officeLocation: data.address || '',
-        employeeId: data.employee_id || '',
-        yearsOfExperience: data.experience_years?.toString() || '',
-        specialization: data.specialization || '',
-        educationLevel: data.qualification || '',
-        city: data.city || '',
-        state: data.state || '',
-        country: data.country || '',
-        pincode: data.pincode || '',
-        gender: data.gender || '',
-        role: data.role || '',
-        onboardingStatus: data.onboarding_status || '',
-        dateOfBirth: data.dob || '',
-        verificationStatus: data.verification_status || '',
-        subjectExpertise: data.subject_expertise || [],
-        idProofUrl: data.id_proof_url || '',
-        degreeCertificateUrl: data.degree_certificate_url || '',
-        experienceLettersUrl: data.experience_letters_url || [],
-        resumeUrl: data.resume_url || '',
-        // Load preferences from metadata if exists
-        ...data.metadata?.preferences,
-      }));
+      // If not found in school_educators, try college_lecturers
+      const { data: collegeData, error: collegeError } = await supabase
+        .from('college_lecturers')
+        .select(`
+          *,
+          organizations:collegeId (
+            name,
+            address
+          )
+        `)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (collegeData) {
+        console.log('Found college lecturer data:', collegeData);
+        setEducatorData(collegeData);
+        
+        // Parse address - it's already a JSONB object, not a string
+        let addressData = { address: '', city: '', state: '', country: '', pincode: '' };
+        if (collegeData.address) {
+          // Check if it's already an object (JSONB) or a string (legacy)
+          if (typeof collegeData.address === 'object') {
+            addressData = collegeData.address;
+          } else if (typeof collegeData.address === 'string') {
+            try {
+              // Try to parse as JSON string (backward compatibility)
+              addressData = JSON.parse(collegeData.address);
+            } catch (e) {
+              // If not JSON, treat as plain text
+              addressData.address = collegeData.address;
+            }
+          }
+        }
+        
+        // Map college lecturer fields to form fields (using snake_case field names)
+        setSettings(prev => ({
+          ...prev,
+          fullName: `${collegeData.first_name || ''} ${collegeData.last_name || ''}`.trim(),
+          email: collegeData.email || '',
+          department: collegeData.department || '',
+          phone: collegeData.phone || '',
+          bio: collegeData.metadata?.bio || '',
+          title: collegeData.designation || '',
+          employeeId: collegeData.employeeId || '',
+          yearsOfExperience: collegeData.experienceYears?.toString() || '',
+          specialization: collegeData.specialization || '',
+          educationLevel: collegeData.qualification || '',
+          dateOfBirth: collegeData.date_of_birth || '',
+          gender: collegeData.gender || '',
+          officeLocation: addressData.address || '',
+          city: addressData.city || '',
+          state: addressData.state || '',
+          country: addressData.country || '',
+          pincode: addressData.pincode || '',
+          role: userRole || '',
+          verificationStatus: collegeData.verification_status || '',
+          subjectExpertise: collegeData.subject_expertise || [],
+          idProofUrl: collegeData.id_proof_url || '',
+          degreeCertificateUrl: collegeData.degree_certificate_url || '',
+          experienceLettersUrl: Array.isArray(collegeData.experience_letters_url) 
+            ? collegeData.experience_letters_url 
+            : (typeof collegeData.experience_letters_url === 'string' 
+              ? JSON.parse(collegeData.experience_letters_url) 
+              : []),
+          resumeUrl: collegeData.resume_url || '',
+        }));
+        return;
+      }
+
+      // No data found in either table
+      console.warn('No educator data found in any table for user_id:', userId);
+      console.log('School error:', schoolError);
+      console.log('College error:', collegeError);
+      setError('No educator profile found. Please contact your administrator.');
       
     } catch (error) {
       console.error('Error in fetchEducatorData:', error);
@@ -450,15 +537,20 @@ const Settings: React.FC = () => {
         throw new Error(uploadResult.error || 'Upload failed');
       }
 
+      // Detect educator type and update appropriate table
+      const isCollegeEducator = educatorData.collegeId !== undefined;
+      const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
+      const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
+      const photoField = isCollegeEducator ? 'profile_photo_url' : 'photo_url';
+
       // Update educator record with photo URL
       const { error: updateError } = await supabase
-        .from('school_educators')
+        .from(tableName)
         .update({
-          photo_url: uploadResult.url,
-          updated_at: new Date().toISOString()
+          [photoField]: uploadResult.url,
+          [timestampField]: new Date().toISOString()
         })
-        .eq('email', userEmail);
-
+        .eq('user_id', userId);
       if (updateError) {
         throw new Error('Failed to save photo URL to database');
       }
@@ -577,14 +669,19 @@ const Settings: React.FC = () => {
         const newUrls = results.map(result => result.url).filter(Boolean) as string[];
         const updatedUrls = [...settings.experienceLettersUrl, ...newUrls];
 
+        // Detect educator type and update appropriate table
+        const isCollegeEducator = educatorData.collegeId !== undefined;
+        const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
+        const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
+
         // Update database
         const { error: updateError } = await supabase
-          .from('school_educators')
+          .from(tableName)
           .update({
             experience_letters_url: updatedUrls,
-            updated_at: new Date().toISOString()
+            [timestampField]: new Date().toISOString()
           })
-          .eq('email', userEmail);
+          .eq('user_id', userId);
 
         if (updateError) {
           throw new Error('Failed to save document URLs to database');
@@ -604,14 +701,20 @@ const Settings: React.FC = () => {
           throw new Error(result.error || 'Upload failed');
         }
 
+        // Detect educator type and update appropriate table
+        const isCollegeEducator = educatorData.collegeId !== undefined;
+        const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
+        const updateField = isCollegeEducator ? 'resume_url' : 'resume_url';
+        const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
+
         // Update database
         const { error: updateError } = await supabase
-          .from('school_educators')
+          .from(tableName)
           .update({
-            resume_url: result.url,
-            updated_at: new Date().toISOString()
+            [updateField]: result.url,
+            [timestampField]: new Date().toISOString()
           })
-          .eq('email', userEmail);
+          .eq('user_id', userId);
 
         if (updateError) {
           throw new Error('Failed to save document URL to database');
@@ -631,15 +734,20 @@ const Settings: React.FC = () => {
           throw new Error(result.error || 'Upload failed');
         }
 
-        // Update database
+        // Detect educator type and update appropriate table
+        const isCollegeEducator = educatorData.collegeId !== undefined;
+        const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
+        const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
         const updateField = documentType === 'id-proof' ? 'id_proof_url' : 'degree_certificate_url';
+
+        // Update database
         const { error: updateError } = await supabase
-          .from('school_educators')
+          .from(tableName)
           .update({
             [updateField]: result.url,
-            updated_at: new Date().toISOString()
+            [timestampField]: new Date().toISOString()
           })
-          .eq('email', userEmail);
+          .eq('user_id', userId);
 
         if (updateError) {
           throw new Error('Failed to save document URL to database');
@@ -754,20 +862,26 @@ const Settings: React.FC = () => {
 
   // Handle photo removal
   const handlePhotoRemove = async () => {
-    if (!userEmail || !educatorData?.photo_url) return;
+    if (!userId || !getPhotoUrl()) return;
 
     setPhotoRemoving(true);
     setShowRemovePhotoConfirmation(false);
 
     try {
+      // Detect educator type and update appropriate table
+      const isCollegeEducator = educatorData.collegeId !== undefined;
+      const tableName = isCollegeEducator ? 'college_lecturers' : 'school_educators';
+      const timestampField = isCollegeEducator ? 'updatedAt' : 'updated_at';
+      const photoField = isCollegeEducator ? 'profile_photo_url' : 'photo_url';
+
       // Update educator record to remove photo URL
       const { error: updateError } = await supabase
-        .from('school_educators')
+        .from(tableName)
         .update({
-          photo_url: null,
-          updated_at: new Date().toISOString()
+          [photoField]: null,
+          [timestampField]: new Date().toISOString()
         })
-        .eq('email', userEmail);
+        .eq('user_id', userId);
 
       if (updateError) {
         throw new Error('Failed to remove photo from database');
@@ -776,8 +890,7 @@ const Settings: React.FC = () => {
       // Refresh educator data to show changes
       await fetchEducatorData();
 
-      // Show success message
-      setSaveStatus('saved');
+      // Show success aved');
       setTimeout(() => setSaveStatus('idle'), 3000);
 
     } catch (error) {
@@ -790,10 +903,10 @@ const Settings: React.FC = () => {
 
   // Load data on component mount
   useEffect(() => {
-    if (userEmail) {
+    if (!authLoading && userId) {
       fetchEducatorData();
     }
-  }, [userEmail]);
+  }, [userId, authLoading]);
 
   const handleSave = async () => {
     if (!userEmail || !educatorData) {
@@ -804,44 +917,96 @@ const Settings: React.FC = () => {
     setSaveStatus('saving');
     
     try {
-      // Update educator profile using your actual field names
-      const { error } = await supabase
-        .from('school_educators')
-        .update({
-          first_name: settings.fullName.split(' ')[0] || '',
-          last_name: settings.fullName.split(' ').slice(1).join(' ') || '',
-          phone_number: settings.phone, // Your field is phone_number
-          department: settings.department,
-          designation: settings.title, // Your field is designation
-          specialization: settings.specialization,
-          qualification: settings.educationLevel,
-          experience_years: parseInt(settings.yearsOfExperience) || null,
-          address: settings.officeLocation,
-          city: settings.city,
-          state: settings.state,
-          country: settings.country,
-          pincode: settings.pincode,
-          gender: settings.gender,
-          onboarding_status: settings.onboardingStatus, // Now editable
-          dob: settings.dateOfBirth || null,
-          subject_expertise: settings.subjectExpertise,
-          // Store bio and other preferences in metadata
-          metadata: {
-            ...educatorData.metadata,
-            bio: settings.bio,
-            preferences: {
-              ...educatorData.metadata?.preferences,
-              // Store any additional settings here
-            }
-          },
-          updated_at: new Date().toISOString()
-        })
-        .eq('email', userEmail);
+      // Detect educator type based on educatorData
+      const isCollegeEducator = educatorData.collegeId !== undefined;
+      
+      // Filter and format subject expertise to ensure valid data
+      const formattedSubjectExpertise = settings.subjectExpertise
+        .filter(subject => subject.name && subject.name.trim() !== '')
+        .map(subject => ({
+          name: subject.name,
+          proficiency: subject.proficiency || '',
+          years_experience: parseInt(String(subject.years_experience)) || 0
+        }));
+      
+      if (isCollegeEducator) {
+        // For college: store all address fields as JSON in single address column
+        const addressData = {
+          address: settings.officeLocation || '',
+          city: settings.city || '',
+          state: settings.state || '',
+          country: settings.country || '',
+          pincode: settings.pincode || ''
+        };
+        
+        // Update college_lecturers table with correct field names
+        const { error } = await supabase
+          .from('college_lecturers')
+          .update({
+            first_name: settings.fullName.split(' ')[0] || '',
+            last_name: settings.fullName.split(' ').slice(1).join(' ') || '',
+            phone: settings.phone,
+            department: settings.department,
+            designation: settings.title,
+            specialization: settings.specialization,
+            qualification: settings.educationLevel,
+            experienceYears: parseInt(settings.yearsOfExperience) || null,
+            address: addressData,
+            date_of_birth: settings.dateOfBirth || null,
+            gender: settings.gender,
+            role: settings.role || null,
+            subject_expertise: formattedSubjectExpertise,
+            metadata: {
+              ...educatorData.metadata,
+              bio: settings.bio,
+            },
+            updatedAt: new Date().toISOString()
+          })
+          .eq('user_id', userId);
 
-      if (error) {
-        console.error('Error updating profile:', error);
-        setSaveStatus('error');
-        return;
+        if (error) {
+          console.error('Error updating college profile:', error);
+          setSaveStatus('error');
+          return;
+        }
+      } else {
+        // For school: use separate columns for address fields
+        const { error } = await supabase
+          .from('school_educators')
+          .update({
+            first_name: settings.fullName.split(' ')[0] || '',
+            last_name: settings.fullName.split(' ').slice(1).join(' ') || '',
+            phone_number: settings.phone,
+            department: settings.department,
+            designation: settings.title,
+            specialization: settings.specialization,
+            qualification: settings.educationLevel,
+            experience_years: parseInt(settings.yearsOfExperience) || null,
+            address: settings.officeLocation,
+            city: settings.city,
+            state: settings.state,
+            country: settings.country,
+            pincode: settings.pincode,
+            gender: settings.gender,
+            onboarding_status: settings.onboardingStatus,
+            dob: settings.dateOfBirth || null,
+            subject_expertise: formattedSubjectExpertise,
+            metadata: {
+              ...educatorData.metadata,
+              bio: settings.bio,
+              preferences: {
+                ...educatorData.metadata?.preferences,
+              }
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId);
+
+        if (error) {
+          console.error('Error updating school profile:', error);
+          setSaveStatus('error');
+          return;
+        }
       }
 
       setSaveStatus('saved');
@@ -885,6 +1050,13 @@ const Settings: React.FC = () => {
   const updateSetting = <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
     setSaveStatus('idle');
+  };
+
+  // Helper to get photo URL from educator data (handles different column names)
+  const getPhotoUrl = () => {
+    if (!educatorData) return null;
+    // College lecturers use profile_photo_url, school educators use photo_url
+    return educatorData.profile_photo_url || educatorData.photo_url || null;
   };
 
   const tabs = [
@@ -980,6 +1152,19 @@ const Settings: React.FC = () => {
       <div className="px-4 sm:px-6 lg:px-8">
         {/* Content Area - Full Width */}
         <div className="space-y-6">
+          {/* College Educator Notice */}
+          {(userRole === 'college_lecturer' || userRole === 'college_admin') && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-lg border bg-amber-50 border-amber-200">
+              <ExclamationTriangleIcon className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-900">College Educator Settings</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  You're viewing settings as a college educator. Some features may be limited or work differently than school educators.
+                </p>
+              </div>
+            </div>
+          )}
+          
           {/* Save Status Alert */}
           {saveStatus !== 'idle' && (
             <div
@@ -1013,7 +1198,7 @@ const Settings: React.FC = () => {
           {activeTab === 'profile' && (
             <div className="space-y-6">
               {/* Loading State */}
-              {loading && (
+              {(loading || authLoading) && (
                 <div className="flex items-center justify-center py-12">
                   <ArrowPathIcon className="h-8 w-8 animate-spin text-blue-600" />
                   <span className="ml-2 text-gray-600">Loading profile...</span>
@@ -1037,7 +1222,7 @@ const Settings: React.FC = () => {
               )}
 
               {/* Profile Content - Only show when not loading and no error */}
-              {!loading && !error && (
+              {!loading && !authLoading && !error && (
                 <div className="space-y-6">
                   {/* Avatar Section */}
                   <AccordionSection
@@ -1052,9 +1237,9 @@ const Settings: React.FC = () => {
                       <div className="relative">
                         {/* Profile Photo Display */}
                         <div className="w-24 h-24 rounded-xl overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-2xl border-2 border-slate-200 shadow-lg">
-                          {educatorData?.photo_url ? (
+                          {getPhotoUrl() ? (
                             <img
-                              src={getDocumentUrl(educatorData.photo_url, 'inline')}
+                              src={getDocumentUrl(getPhotoUrl()!, 'inline')}
                               alt={`${settings.fullName || 'Educator'} Profile`}
                               className="w-full h-full object-cover transition-opacity duration-200"
                               onLoad={(e) => {
@@ -1065,7 +1250,7 @@ const Settings: React.FC = () => {
                               }}
                               onError={(e) => {
                                 // Hide image and show fallback
-                                console.error('Failed to load profile image:', educatorData.photo_url);
+                                console.error('Failed to load profile image:', getPhotoUrl());
                                 e.currentTarget.style.opacity = '0';
                                 const fallback = e.currentTarget.nextElementSibling as HTMLElement;
                                 if (fallback) fallback.style.display = 'flex';
@@ -1077,9 +1262,9 @@ const Settings: React.FC = () => {
                           {/* Fallback initials - always rendered but conditionally shown */}
                           <div 
                             className={`absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-xl ${
-                              educatorData?.photo_url ? 'opacity-0' : 'opacity-100'
+                              getPhotoUrl() ? 'opacity-0' : 'opacity-100'
                             } transition-opacity duration-200`}
-                            style={{ display: educatorData?.photo_url ? 'none' : 'flex' }}
+                            style={{ display: getPhotoUrl() ? 'none' : 'flex' }}
                           >
                             {getInitials(settings.fullName || 'ED')}
                           </div>
@@ -1122,7 +1307,7 @@ const Settings: React.FC = () => {
                           </button>
                           
                           {/* Remove Photo Button - only show if photo exists */}
-                          {educatorData?.photo_url && (
+                          {getPhotoUrl() && (
                             <button 
                               onClick={() => setShowRemovePhotoConfirmation(true)}
                               disabled={photoRemoving}
@@ -1164,22 +1349,22 @@ const Settings: React.FC = () => {
                         )}
                         
                         {/* Current photo status */}
-                        {educatorData?.photo_url && (
+                        {getPhotoUrl() && (
                           <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="flex items-center gap-2">
                               <CheckCircleIcon className="w-4 h-4 text-green-600" />
                               <p className="text-sm text-green-700 font-medium">Profile photo active</p>
                             </div>
                             <p className="text-xs text-green-600 mt-1">
-                              Accessible via: {getDocumentUrl(educatorData.photo_url, 'inline').length > 50 
-                                ? `${getDocumentUrl(educatorData.photo_url, 'inline').substring(0, 50)}...` 
-                                : getDocumentUrl(educatorData.photo_url, 'inline')
+                              Accessible via: {getDocumentUrl(getPhotoUrl()!, 'inline').length > 50 
+                                ? `${getDocumentUrl(getPhotoUrl()!, 'inline').substring(0, 50)}...` 
+                                : getDocumentUrl(getPhotoUrl()!, 'inline')
                               }
                             </p>
                           </div>
                         )}
                         
-                        {!educatorData?.photo_url && !photoUploading && (
+                        {!getPhotoUrl() && !photoUploading && (
                           <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                             <div className="flex items-center gap-2">
                               <PhotoIcon className="w-4 h-4 text-blue-600" />

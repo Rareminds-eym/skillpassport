@@ -14,7 +14,7 @@ export default function SignupRecruiter() {
     ...getInitialFormData(),
     workspaceId: ''
   });
-  
+
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,13 +31,13 @@ export default function SignupRecruiter() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     let processedValue = type === 'checkbox' ? checked : value;
-    
+
     if (name === 'phone') {
       processedValue = formatPhoneNumber(value);
     } else if (name === 'otp') {
       processedValue = formatOtp(value);
     }
-    
+
     setFormData(prev => ({ ...prev, [name]: processedValue }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -99,19 +99,19 @@ export default function SignupRecruiter() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    
+
     if (!validateForm()) return;
 
     setLoading(true);
-    
+
     try {
       const firstName = capitalizeFirstLetter(formData.firstName);
       const lastName = capitalizeFirstLetter(formData.lastName);
-      
+
       // Use the Pages Function API for signup with proper rollback support
       const { getPagesApiUrl } = await import('../../../../../utils/pagesUrl');
       const USER_API_URL = getPagesApiUrl('user');
-      
+
       const response = await fetch(`${USER_API_URL}/signup/recruiter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -148,9 +148,14 @@ export default function SignupRecruiter() {
         console.log('✅ Auto-login successful, session established');
       }
 
-      alert('Account created successfully! Please check your email to verify your account.');
-      navigate('/login/recruiter');
-      
+      // Redirect to subscription plans page to choose a plan
+      navigate('/subscription/plans/recruitment-recruiter/purchase', {
+        state: {
+          message: 'Account created successfully! Please choose a plan to continue.',
+          email: formData.email
+        }
+      });
+
     } catch (err) {
       console.error('Signup error:', err);
       setError(err.message || 'Signup failed. Please try again.');
@@ -172,9 +177,8 @@ export default function SignupRecruiter() {
         value={formData.workspaceId}
         onChange={handleChange}
         placeholder="Enter workspace ID from your admin"
-        className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-          errors.workspaceId ? 'border-red-500' : 'border-gray-300'
-        }`}
+        className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 ${errors.workspaceId ? 'border-red-500' : 'border-gray-300'
+          }`}
       />
       {errors.workspaceId && (
         <p className="mt-1 text-xs text-red-600 flex items-center gap-1">
@@ -231,7 +235,7 @@ export default function SignupRecruiter() {
 
               <form onSubmit={handleSubmit}>
                 {workspaceIdField}
-                
+
                 <SignupFormFields
                   formData={formData}
                   errors={errors}

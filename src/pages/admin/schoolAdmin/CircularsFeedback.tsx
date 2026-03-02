@@ -18,6 +18,7 @@ import {
   ChatBubbleLeftRightIcon,
 } from "@heroicons/react/24/outline";
 import SearchBar from "../../../components/common/SearchBar";
+import toast from 'react-hot-toast';
 
 /* ==============================
    TYPES & INTERFACES
@@ -726,7 +727,7 @@ const GrievanceDetailsModal = ({
 
   const handleResolve = () => {
     if (!resolution.trim() && selectedAction === "resolve") {
-      alert("Please provide resolution details");
+      toast.error("Please provide resolution details");
       return;
     }
     console.log("Resolving grievance:", { grievanceId: grievance.id, resolution });
@@ -1437,8 +1438,8 @@ const CircularsFeedback: React.FC = () => {
                 <CircularCard
                   key={circular.id}
                   circular={circular}
-                  onView={() => alert(`View circular: ${circular.title}`)}
-                  onDelete={() => alert(`Delete circular: ${circular.id}`)}
+                  onView={() => toast.success(`View circular: ${circular.title}`)}
+                  onDelete={() => toast.success(`Delete circular: ${circular.id}`)}
                 />
               ))}
             </div>
@@ -1448,7 +1449,7 @@ const CircularsFeedback: React.FC = () => {
                 <FeedbackCard
                   key={fb.id}
                   feedback={fb}
-                  onRespond={() => alert(`Respond to: ${fb.id}`)}
+                  onRespond={() => toast.success(`Respond to: ${fb.id}`)}
                 />
               ))}
             </div>

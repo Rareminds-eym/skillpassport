@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { softDeleteStudent } from '../../../services/studentService';
-import { getCurrentEducatorId } from '../../../services/educatorService';
+import { getCurrentEducator } from '../../../services/educatorService';
 
 interface Student {
   id: string;
@@ -38,17 +38,20 @@ const DeleteStudentModal: React.FC<DeleteStudentModalProps> = ({
     setError(null);
 
     try {
-      // Get the current educator's ID
-      const educatorId = await getCurrentEducatorId();
+      // Get the current educator's ID and type
+      const educatorData = await getCurrentEducator();
       
-      if (!educatorId) {
+      if (!educatorData.data) {
         setError('Could not identify the educator. Please try logging in again.');
         setLoading(false);
         return;
       }
 
-      // Perform soft delete with educator ID
-      const result = await softDeleteStudent(student.id, educatorId);
+      const educatorId = educatorData.data.id;
+      const educatorType = educatorData.data.type; // 'school' or 'college'
+
+      // Perform soft delete with educator ID and type
+      const result = await softDeleteStudent(student?.id, educatorId, educatorType);
       
       if (result.success) {
         onSuccess();

@@ -13,6 +13,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
+    include: ['react', 'react-dom', 'react-router-dom', 'react/jsx-runtime'],
   },
   build: {
     // Reduce memory usage during build
@@ -21,14 +22,10 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        // Add hash to filenames for cache busting
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
         assetFileNames: 'assets/[name]-[hash].[ext]',
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
-        },
+        manualChunks: undefined,
       },
     },
   },
@@ -43,6 +40,22 @@ export default defineConfig({
     ],
     hmr: {
       port: 3000
+    },
+    watch: {
+      // Exclude large non-source directories so Vite doesn't exhaust the
+      // OS inotify file-watcher limit (ENOSPC: too many watchers).
+      ignored: [
+        '**/node_modules/**',
+        '**/.git/**',
+        '**/ai_department/**',   // contains a Python .venv with 100k+ files
+        '**/docs/**',
+        '**/.venv/**',
+        '**/.wrangler/**',
+        '**/cloudflare-workers/*/node_modules/**',
+        '**/scripts/**',
+        '**/tests/**',
+        '**/*.py',
+      ],
     },
     proxy: {
       '/api': {

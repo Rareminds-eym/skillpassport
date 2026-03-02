@@ -13,50 +13,13 @@ import { supabase } from '../../lib/supabaseClient';
 import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
 import paymentsApiService from '../../services/paymentsApiService';
 
-// Plan features mapping
-const PLAN_FEATURES = {
-  basic: [
-    'Access to basic skill assessments',
-    'Limited profile visibility',
-    'Basic analytics',
-    'Email support'
-  ],
-  pro: [
-    'All Basic features',
-    'Advanced skill assessments',
-    'Priority profile visibility',
-    'Detailed analytics',
-    'Priority support',
-    'Personalized recommendations'
-  ],
-  enterprise: [
-    'All Professional features',
-    'Custom skill assessments',
-    'Premium profile visibility',
-    'Advanced analytics',
-    '24/7 Premium support',
-    'Custom integrations',
-    'Dedicated account manager'
-  ]
-};
-
-// Plan type to ID mapping
-const PLAN_TYPE_MAP = {
-  'basic': 'basic',
-  'professional': 'pro',
-  'enterprise': 'enterprise',
-  'standard': 'basic',
-  'premium': 'pro'
-};
-
 /**
  * Format subscription data for UI
  */
 const formatSubscriptionData = (data) => {
   if (!data) return null;
 
-  const planType = data.plan_type?.toLowerCase() || 'basic';
-  const planId = PLAN_TYPE_MAP[planType] || 'basic';
+  const planId = data.subscription_plans?.plan_code || data.plan_type || data.plan_code;
 
   return {
     id: data.id,
@@ -64,7 +27,8 @@ const formatSubscriptionData = (data) => {
     status: data.status,
     startDate: data.subscription_start_date,
     endDate: data.subscription_end_date,
-    features: PLAN_FEATURES[planId] || [],
+    // Features come from the database subscription record — not hardcoded
+    features: data.features || [],
     autoRenew: data.auto_renew !== false,
     nextBillingDate: data.subscription_end_date,
     paymentStatus: data.status === 'active' ? 'success' : 'pending',

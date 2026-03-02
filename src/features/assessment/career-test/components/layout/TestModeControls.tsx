@@ -46,10 +46,11 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
 }) => {
   const [showDebugInfo, setShowDebugInfo] = useState(false);
 
-  // Check if this is higher_secondary or after12
+  // Check if this is higher_secondary, after12, or middle_school
   const isHigherSecondary = gradeLevel === 'higher_secondary';
   const isAfter12 = gradeLevel === 'after12';
-  const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college'].includes(gradeLevel || '');
+  const isMiddleSchool = gradeLevel === 'middle';
+  const usesAIQuestions = ['after10', 'higher_secondary', 'after12', 'college', 'middle'].includes(gradeLevel || '');
 
   // Get current section info
   const currentSection = sections[currentSectionIndex];
@@ -71,6 +72,11 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
             {isHigherSecondary && (
               <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-semibold">
                 Higher Secondary
+              </span>
+            )}
+            {isMiddleSchool && (
+              <span className="px-2 py-0.5 bg-pink-100 text-pink-700 rounded text-xs font-semibold">
+                Middle School
               </span>
             )}
             {usesAIQuestions && (
@@ -348,6 +354,78 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
             </div>
           )}
 
+          {/* Middle School Specific Checks */}
+          {isMiddleSchool && (
+            <div className="pt-3 border-t border-gray-300">
+              <div className="text-gray-500 mb-2 font-semibold">Middle School Checks:</div>
+              <div className="space-y-1">
+                <div className={`flex items-center gap-2 ${sections.length === 4 ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.length === 4 ? '✅' : '❌'} Has 4 sections (expected)
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'middle_interest_explorer') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'middle_interest_explorer') ? '✅' : '❌'} Has Interest Explorer section
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'middle_strengths_character') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'middle_strengths_character') ? '✅' : '❌'} Has Strengths & Character section
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'middle_learning_preferences') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'middle_learning_preferences') ? '✅' : '❌'} Has Learning Preferences section
+                </div>
+                <div className={`flex items-center gap-2 ${sections.some(s => s.id === 'adaptive_aptitude') ? 'text-green-600' : 'text-red-600'}`}>
+                  {sections.some(s => s.id === 'adaptive_aptitude') ? '✅' : '❌'} Has Adaptive Aptitude section (AI)
+                </div>
+                
+                {/* Stream Validation for Middle School */}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className={`flex items-center gap-2 ${
+                    studentStream === 'middle_school'
+                      ? 'text-green-600' 
+                      : 'text-orange-600'
+                  }`}>
+                    {studentStream === 'middle_school' ? '✅' : '⚠️'} 
+                    Stream: {studentStream || 'Not set'}
+                  </div>
+                  <div className="mt-1 p-2 bg-blue-50 rounded text-blue-700 text-xs">
+                    <strong>ℹ️ Middle School Stream:</strong> Should be "middle_school"
+                  </div>
+                </div>
+
+                {/* Adaptive Aptitude Info */}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-gray-500 mb-1">Adaptive Aptitude Test:</div>
+                  <div className="font-mono text-xs space-y-0.5">
+                    <div>• Adjusts difficulty based on performance</div>
+                    <div>• 5 minutes per question</div>
+                    <div>• Tests: Verbal, Numerical, Logical, Spatial, Data</div>
+                    <div>• Typically 15-30 questions (adaptive)</div>
+                  </div>
+                </div>
+
+                {/* Total Questions Count */}
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <div className="text-gray-500 mb-1">Expected Questions:</div>
+                  <div className="font-mono text-xs space-y-0.5">
+                    <div>Interest Explorer: ~15 questions</div>
+                    <div>Strengths & Character: ~10 questions</div>
+                    <div>Learning Preferences: ~8 questions</div>
+                    <div>Adaptive Aptitude (AI): 15-30 questions</div>
+                    <div className="font-semibold text-green-600 pt-1 border-t border-gray-300">Total: ~48-63 questions</div>
+                  </div>
+                </div>
+
+                {/* API Status */}
+                {aiQuestionsLoaded && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <div className="text-gray-500 mb-1">AI Questions Status:</div>
+                    <div className={`flex items-center gap-2 ${aiQuestionsLoaded.aptitude > 0 ? 'text-green-600' : 'text-orange-600'}`}>
+                      {aiQuestionsLoaded.aptitude > 0 ? '✅' : '⚠️'} Adaptive Aptitude: {aiQuestionsLoaded.aptitude} questions loaded
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Console Log Button */}
           <div className="pt-3 border-t border-gray-300">
             <button
@@ -366,6 +444,7 @@ export const TestModeControls: React.FC<TestModeControlsProps> = ({
                 console.log('Is Comprehensive:', isComprehensiveAssessment);
                 console.log('Is Higher Secondary:', isHigherSecondary);
                 console.log('Is After 12th:', isAfter12);
+                console.log('Is Middle School:', isMiddleSchool);
               }}
               className="w-full px-3 py-2 bg-gray-700 text-white rounded-lg text-xs font-semibold hover:bg-gray-800 transition-all"
             >

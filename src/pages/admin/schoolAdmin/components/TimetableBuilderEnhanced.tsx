@@ -1,5 +1,6 @@
 import { AlertTriangle, Edit2, Filter, Grid3X3, List, Save, Search, Send, Sparkles, Trash2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import toast from 'react-hot-toast';
 import { supabase } from "../../../../lib/supabaseClient";
 import { getAllTimetableConflicts, validateTimetableSlot, ValidationConflict } from "../../../../utils/timetableValidation";
 
@@ -386,7 +387,7 @@ const loadAllSlots = async () => {
         .map(c => c.message)
         .join('\n');
       
-      alert(`Cannot move slot:\n${errorMessages}`);
+      toast.error(`Cannot move slot:\n${errorMessages}`);
       setDraggedSlot(null);
       return;
     }
@@ -406,8 +407,9 @@ const loadAllSlots = async () => {
       
       await loadAllSlots();
       setDraggedSlot(null);
+      toast.success('Slot moved successfully');
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -417,7 +419,7 @@ const loadAllSlots = async () => {
     if (!confirm("This will generate a timetable automatically. Continue?")) return;
     
     if (classes.length === 0) {
-      alert("No classes found. Please create classes first.");
+      toast.error("No classes found. Please create classes first.");
       return;
     }
     
@@ -457,9 +459,9 @@ const loadAllSlots = async () => {
       if (error) throw error;
       
       await loadAllSlots();
-      alert("Timetable generated successfully!");
+      toast.success("Timetable generated successfully!");
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -478,9 +480,9 @@ const loadAllSlots = async () => {
       if (error) throw error;
       
       setPublishStatus("published");
-      alert("Timetable published successfully!");
+      toast.success("Timetable published successfully!");
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -504,7 +506,7 @@ const loadAllSlots = async () => {
 
   const handleTeacherClassSelection = () => {
     if (!newSlot.teacher_id || !newSlot.class_id) {
-      alert("Please select both Teacher and Class");
+      toast.error("Please select both Teacher and Class");
       return;
     }
     
@@ -526,7 +528,7 @@ const loadAllSlots = async () => {
 
   const handleAddSlot = async () => {
     if (!selectedCell || !newSlot.teacher_id || !newSlot.class_id || !newSlot.subject_name) {
-      alert("Please fill all required fields");
+      toast.error("Please fill all required fields");
       return;
     }
     
@@ -547,7 +549,7 @@ const loadAllSlots = async () => {
 
     // Check if room number is provided when class has default room
     if (classDefaultRoom && !newSlot.room_number) {
-      alert(`Please select a room number. The default room for this class is: ${classDefaultRoom}`);
+      toast.error(`Please select a room number. The default room for this class is: ${classDefaultRoom}`);
       return;
     }
 
@@ -576,7 +578,7 @@ const loadAllSlots = async () => {
         .map(c => c.message)
         .join('\n');
       
-      alert(`Cannot add slot:\n${errorMessages}`);
+      toast.error(`Cannot add slot:\n${errorMessages}`);
       return;
     }
 
@@ -612,8 +614,9 @@ const loadAllSlots = async () => {
       await loadAllSlots();
       setShowAddModal(false);
       setSelectedCell(null);
+      toast.success('Slot added successfully');
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -632,8 +635,9 @@ const loadAllSlots = async () => {
       if (error) throw error;
       
       await loadAllSlots();
+      toast.success('Slot deleted successfully');
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -656,7 +660,7 @@ const loadAllSlots = async () => {
 
   const handleUpdateSlot = async () => {
     if (!editingSlot || !editSlot.teacher_id || !editSlot.class_id || !editSlot.subject_name) {
-      alert("Please fill all required fields");
+      toast.error("Please fill all required fields");
       return;
     }
 
@@ -685,7 +689,7 @@ const loadAllSlots = async () => {
         .map(c => c.message)
         .join('\n');
       
-      alert(`Cannot update slot:\n${errorMessages}`);
+      toast.error(`Cannot update slot:\n${errorMessages}`);
       return;
     }
 
@@ -717,8 +721,9 @@ const loadAllSlots = async () => {
       await loadAllSlots();
       setShowEditModal(false);
       setEditingSlot(null);
+      toast.success('Slot updated successfully');
     } catch (error: any) {
-      alert(error.message);
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }

@@ -13,7 +13,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - JS module without types
 import {
   formatRegistrationDate,
@@ -240,7 +240,13 @@ const LANGUAGES = [
 
 const UnifiedSignup = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+
+  // Get plan context from location.state (if user selected a plan before signing up)
+  const planFromState = (location.state as any)?.plan;
+  const studentTypeFromState = (location.state as any)?.studentType;
+  const returnToFromState = (location.state as any)?.returnTo;
 
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
@@ -474,6 +480,16 @@ const UnifiedSignup = () => {
         // Clear the stored return URL
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
+      } else if (returnToFromState === '/subscription/payment' && planFromState) {
+        // User selected a plan before signing up - go directly to payment
+        console.log('💳 User had pre-selected plan, redirecting to payment page');
+        navigate('/subscription/payment', {
+          state: {
+            plan: planFromState,
+            studentType: studentTypeFromState || entityType,
+            isUpgrade: false
+          }
+        });
       } else {
         // Redirect to subscription plans page to choose a plan
         navigate(`/subscription/plans/${entityType}/purchase`, {

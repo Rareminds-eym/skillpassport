@@ -314,10 +314,11 @@ export const unassignLecturerFromProgramSection = async (
 
 /**
  * Get students from lecturer's assigned program sections with full rich data
+ * Filters students by exact match of program_id, semester, and section from assigned program sections
  */
 export const getProgramSectionStudents = async (userId: string): Promise<ServiceResponse<any[]>> => {
   try {
-    // First get the program IDs from lecturer's assigned sections
+    // First get the program sections assigned to this lecturer (program_id, semester, section)
     const { data: sections, error: sectionsError } = await supabase
       .from('program_sections')
       .select('program_id, semester, section')
@@ -333,11 +334,8 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
       return { data: [], error: null }
     }
 
-    const programIds = sections.map(s => s.program_id)
-
-    // Get students with full rich data (same as school educators)
-    // Note: schools and colleges tables don't exist - use organizations table instead
-    const { data, error } = await supabase
+    // Build OR conditions for each program section (program_id + semester + section)
+    let query = supabase
       .from('students')
       .select(`
         id,
@@ -480,9 +478,19 @@ export const getProgramSectionStudents = async (userId: string): Promise<Service
           updated_at
         )
       `)
-      .in('program_id', programIds)
       .eq('is_deleted', false)
-      .order('name', { ascending: true })
+
+    // Apply filtering for each program section combination
+    // Build a complex OR condition: (program_id=X AND semester=Y AND section=Z) OR (program_id=A AND semester=B AND section=C)
+    const orConditions = sections.map(section => 
+      `and(program_id.eq.${section.program_id},semester.eq.${section.semester},section.eq.${section.section})`
+    ).join(',')
+
+    // Use the or() method to combine all conditions
+    query = query.or(orConditions)
+    query = query.order('name', { ascending: true })
+
+    const { data, error } = await query
 
     if (error) {
       console.error('Error fetching program students:', error)

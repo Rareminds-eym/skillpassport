@@ -125,10 +125,30 @@ class ApplicationTrackingService {
       const studentIds = [...new Set(appliedJobs.map(job => job.student_id))];
       const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
 
-      // Fetch students data - applied_jobs.student_id references students.id
+      // Fetch students data with university name from organizations table
       const { data: students, error: studentsError } = await supabase
         .from('students')
-        .select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, college_id')
+        .select(`
+          id, 
+          user_id, 
+          name, 
+          email, 
+          contact_number, 
+          university, 
+          universityId,
+          branch_field, 
+          course_name, 
+          college_school_name, 
+          district_name, 
+          currentCgpa, 
+          expectedGraduationDate, 
+          approval_status, 
+          college_id,
+          organizations:universityId (
+            id,
+            name
+          )
+        `)
         .in('id', studentIds);
 
       if (studentsError) {
@@ -219,7 +239,7 @@ class ApplicationTrackingService {
             name: student.name || 'Unknown Student',
             email: student.email || 'No email',
             contact_number: student.contact_number || student.contactNumber || '',
-            university: student.university || '',
+            university: student.organizations?.name || student.university || 'N/A',
             branch_field: student.branch_field || '',
             course_name: student.course_name || '',
             college_school_name: student.college_school_name || '',
@@ -234,7 +254,7 @@ class ApplicationTrackingService {
             name: 'Unknown Student',
             email: 'No email',
             contact_number: '',
-            university: '',
+            university: 'N/A',
             branch_field: '',
             course_name: '',
             college_school_name: '',
@@ -294,6 +314,85 @@ class ApplicationTrackingService {
    */
   async getApplicationStats(filters: ApplicationFilters = {}): Promise<ApplicationStats> {
     try {
+      // If college_id filter is provided, we need to filter by students from that college
+      if (filters.college_id) {
+        // First get student IDs from the college
+        const { data: students, error: studentsError } = await supabase
+          .from('students')
+          .select('id')
+          .eq('college_id', filters.college_id);
+
+        if (studentsError) {
+          console.error('Error fetching students for stats:', studentsError);
+          throw studentsError;
+        }
+
+        const studentIds = (students || []).map(s => s.id);
+
+        if (studentIds.length === 0) {
+          return {
+            total: 0,
+            applied: 0,
+            viewed: 0,
+            under_review: 0,
+            interview_scheduled: 0,
+            interviewed: 0,
+            offer_received: 0,
+            accepted: 0,
+            rejected: 0,
+            withdrawn: 0
+          };
+        }
+
+        // Now query applied_jobs for these students
+        let query = supabase
+          .from('applied_jobs')
+          .select('application_status')
+          .in('student_id', studentIds);
+
+        // Apply other filters
+        if (filters.status) {
+          query = query.eq('application_status', filters.status);
+        }
+
+        if (filters.date_from) {
+          query = query.gte('applied_at', filters.date_from);
+        }
+
+        if (filters.date_to) {
+          query = query.lte('applied_at', filters.date_to);
+        }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('Error fetching application stats:', error);
+          throw error;
+        }
+
+        const stats: ApplicationStats = {
+          total: data?.length || 0,
+          applied: 0,
+          viewed: 0,
+          under_review: 0,
+          interview_scheduled: 0,
+          interviewed: 0,
+          offer_received: 0,
+          accepted: 0,
+          rejected: 0,
+          withdrawn: 0
+        };
+
+        data?.forEach(app => {
+          if (app.application_status && stats.hasOwnProperty(app.application_status)) {
+            stats[app.application_status as keyof ApplicationStats]++;
+          }
+        });
+
+        return stats;
+      }
+
+      // Original logic for when no college_id filter
       let query = supabase
         .from('applied_jobs')
         .select('application_status');
@@ -511,6 +610,30 @@ class ApplicationTrackingService {
     } catch (error) {
       console.error('Error in getDepartmentsWithApplications:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get pipeline data for a specific application
+   */
+  async getPipelineDataForApplication(studentId: string, opportunityId: number): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from('pipeline_candidates')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('opportunity_id', opportunityId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching pipeline data:', error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error in getPipelineDataForApplication:', error);
+      return null;
     }
   }
 

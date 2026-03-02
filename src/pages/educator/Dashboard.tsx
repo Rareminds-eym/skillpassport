@@ -46,50 +46,17 @@ const Dashboard = () => {
 
   useEffect(() => {
     let mounted = true;
-    let refreshAttempts = 0;
-    const MAX_REFRESH_ATTEMPTS = 3;
-
-    // Attempt to refresh the session when it becomes invalid
-    const attemptSessionRefresh = async () => {
-      if (refreshAttempts >= MAX_REFRESH_ATTEMPTS) {
-        return null;
-      }
-
-      refreshAttempts += 1;
-      
-      try {
-        console.log('Dashboard: Attempting session refresh...');
-        const { data, error } = await supabase.auth.refreshSession();
-        
-        if (error) {
-          console.warn('Dashboard: Session refresh failed:', error.message);
-          return null;
-        }
-        
-        if (data?.session) {
-          console.log('Dashboard: Session refreshed successfully');
-          refreshAttempts = 0; // Reset on success
-          return data.session;
-        }
-        
-        return null;
-      } catch (err) {
-        console.error('Dashboard: Session refresh error:', err);
-        return null;
-      }
-    };
 
     // Listen for auth changes first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       if (event === 'TOKEN_REFRESHED') {
-        console.log('✅ Token refreshed, reloading data...');
-        refreshAttempts = 0;
+        console.log('✅ Token auto-refreshed by Supabase');
       }
 
       if (session?.user) {
-        console.log('✅ Auth state change - user found, loading data...');
+        console.log('✅ Auth state change - user authenticated');
         setIsAuthenticated(true);
         setError(null);
         loadDashboardData();
@@ -110,20 +77,14 @@ const Dashboard = () => {
 
         if (error) {
           console.error('Session error:', error);
-          
-          // If 403 error, try to refresh the session
-          if (error.status === 403 || error.message?.includes('403')) {
-            console.log('Dashboard: Session invalid (403), attempting refresh...');
-            const refreshedSession = await attemptSessionRefresh();
-            
-            if (refreshedSession?.user && mounted) {
-              console.log('✅ Session refreshed, loading data...');
-              setIsAuthenticated(true);
-              setError(null);
-              loadDashboardData();
-              return;
-            }
+          // Don't manually refresh - Supabase handles this automatically
+          // Just check if we have a valid session
+          if (!session?.user) {
+            setIsAuthenticated(false);
+            setLoading(false);
+            setError('Session expired. Please log in again.');
           }
+          return;
         }
 
         if (session?.user) {
@@ -132,37 +93,17 @@ const Dashboard = () => {
           setError(null);
           loadDashboardData();
         } else {
-          // No session - try to refresh before giving up
-          console.log('No session found, attempting refresh...');
-          const refreshedSession = await attemptSessionRefresh();
-          
-          if (refreshedSession?.user && mounted) {
-            console.log('✅ Session refreshed, loading data...');
-            setIsAuthenticated(true);
-            setError(null);
-            loadDashboardData();
-          } else if (mounted) {
-            console.log('❌ Session check - no user');
-            setIsAuthenticated(false);
-            setLoading(false);
-            setError('Please log in to view the dashboard');
-          }
+          console.log('❌ Session check - no user');
+          setIsAuthenticated(false);
+          setLoading(false);
+          setError('Please log in to view the dashboard');
         }
       } catch (err) {
         console.error('Authentication error:', err);
         if (mounted) {
-          // Try to refresh on any auth error
-          const refreshedSession = await attemptSessionRefresh();
-          
-          if (refreshedSession?.user) {
-            setIsAuthenticated(true);
-            setError(null);
-            loadDashboardData();
-          } else {
-            setIsAuthenticated(false);
-            setLoading(false);
-            setError('Authentication error. Please refresh the page.');
-          }
+          setIsAuthenticated(false);
+          setLoading(false);
+          setError('Authentication error. Please refresh the page.');
         }
       }
     };
@@ -688,7 +629,7 @@ const Dashboard = () => {
 
           {/* Analytics Module */}
           <div
-            onClick={() => navigate('/educator/analytics')}
+            onClick={() => navigate('/educator/reports')}
             className="group bg-white rounded-lg border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-purple-200 transition-all duration-200"
           >
             <div className="flex items-center justify-between mb-4">
@@ -1016,7 +957,7 @@ const Dashboard = () => {
               </button>
 
               <button
-                onClick={() => navigate('/educator/import')}
+                onClick={() => navigate('/educator/students')}
                 className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-purple-200 hover:bg-purple-50 transition-all group"
                 data-testid="quick-action-import"
               >

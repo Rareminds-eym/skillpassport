@@ -544,14 +544,14 @@ const EducatorCopilot: React.FC = () => {
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
               placeholder={educatorChatConfig.placeholder}
-              disabled={loading || isTyping}
+              disabled={true}
               className="w-full px-5 py-4 pr-16 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
             />
             
             <div className="absolute right-2 top-1/2 -translate-y-1/2">
               <button
                 onClick={handleSend}
-                disabled={loading || isTyping || !input.trim()}
+                disabled={true}
                 className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
                 title="Send message"
               >

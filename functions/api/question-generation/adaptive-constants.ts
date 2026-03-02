@@ -1,9 +1,13 @@
 /**
  * Constants for Adaptive Aptitude API
- * Includes subtags, prompts, difficulty descriptions, and fallback questions
+ * Includes subtags, prompts, difficulty descriptions, and AI model precedence
  */
 
-import type { Subtag, GradeLevel, Question, DifficultyLevel } from './adaptive-types';
+import type { Subtag, GradeLevel, DifficultyLevel } from './adaptive-types';
+
+/* ======================================================
+   SUBTAGS
+====================================================== */
 
 export const ALL_SUBTAGS: Subtag[] = [
   'numerical_reasoning',
@@ -23,78 +27,513 @@ export const SUBTAG_DESCRIPTIONS: Record<Subtag, string> = {
   pattern_recognition: 'Questions identifying sequences, patterns, and relationships in data',
 };
 
+/* ======================================================
+   DIFFICULTY SCALE (RELATIVE TO GRADE)
+====================================================== */
+
 export const DIFFICULTY_DESCRIPTIONS: Record<DifficultyLevel, string> = {
-  1: 'Very Easy - Basic concepts, straightforward questions, minimal steps required',
-  2: 'Easy - Simple concepts with slight complexity, 1-2 steps to solve',
-  3: 'Medium - Moderate complexity, requires careful thinking, 2-3 steps',
-  4: 'Hard - Complex reasoning required, multiple steps, some tricky elements',
-  5: 'Very Hard - Advanced concepts, multi-step reasoning, requires deep analysis',
+  1: 'Very Easy - Basic concepts, straightforward questions, minimal steps required. Foundation level for the grade.',
+  2: 'Easy - Simple concepts with slight complexity, 1-2 steps to solve. Accessible to most students at this grade.',
+  3: 'Medium - Moderate complexity, requires careful thinking, 2-3 steps. Grade-appropriate challenge level.',
+  4: 'Hard - Complex reasoning required, multiple steps, some tricky elements. Above-average difficulty for the grade.',
+  5: 'Very Hard - Advanced concepts, multi-step reasoning, requires deep analysis. Top-tier difficulty for the grade.',
 };
+
+/* ======================================================
+   GRADE-SPECIFIC CONTEXTS (HIGH PRECISION)
+====================================================== */
 
 export const GRADE_LEVEL_CONTEXT: Record<GradeLevel, string> = {
   middle_school: `You are creating aptitude test questions for MIDDLE SCHOOL students (grades 6-8, ages 11-14).
 
-CRITICAL GUIDELINES FOR MIDDLE SCHOOL (Grades 6-8):
-- Use simple, everyday vocabulary that 11-14 year olds understand
+⚠️ CRITICAL: This is for younger students (ages 11-14). Keep questions simple and age-appropriate.`,
+
+  high_school: `You are creating aptitude test questions for HIGH SCHOOL students (grades 9-10, ages 14-16).
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
+- DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
+- DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
+- ALL information must be provided in TEXT FORM ONLY
+- For data interpretation: Provide ALL data as text (e.g., "A shop's sales were: Monday: ₹500, Tuesday: ₹650, Wednesday: ₹800")
+- For spatial reasoning: Describe transformations in words (e.g., "If you rotate a triangle 90 degrees clockwise, what shape does it form?")
+- For pattern recognition: Describe sequences in text (e.g., "In the sequence 2, 4, 8, 16, what is the next number?")
+- NEVER assume visual elements exist - the system does not support images
+- Focus on verbal, numerical, and logical reasoning that can be expressed purely in text
+
+🎯 COGNITIVE EXPECTATIONS FOR GRADES 9-10 (Ages 14-16):
+- Transitioning from concrete to abstract thinking
+- Can handle 2-4 step problems with some guidance
+- Developing pattern recognition and logical deduction skills
+- Building foundation for higher-order thinking
+- Vocabulary: 8,000-12,000 words (everyday + some academic terms)
+
+📚 CAREER CONTEXT - STREAM SELECTION AWARENESS:
+- Students are exploring interests before choosing Science/Commerce/Arts stream
+- Questions should help identify natural aptitudes for stream selection
+- Focus on discovering abilities: analytical thinking, creative reasoning, verbal skills, numerical ability
+- Build awareness of different career paths and skill requirements
+- Questions should reveal strengths to guide "After 10th" stream selection decisions
+
+🎓 DIFFICULTY DISCIPLINE (Relative to Grade 9-10):
+- Level 1: Basic concepts, simple calculations, obvious patterns (accessible to all)
+- Level 2: Multi-step problems, common relationships, straightforward logic
+- Level 3: Moderate problem-solving, inference, pattern analysis (grade-appropriate challenge)
+- Level 4: Complex reasoning, abstract thinking, multi-variable problems (above-average)
+- Level 5: Advanced concepts, sophisticated logic, creative problem-solving (top-tier for grade)
+
+CRITICAL GUIDELINES FOR GRADES 9-10:
+- Use vocabulary appropriate for 14-16 year olds (not too simple, not too advanced)
 - Questions should be challenging but NOT frustrating
-- Use relatable scenarios: school life, sports, games, family, friends, hobbies, animals, nature
-- AVOID: complex technical terms, abstract business concepts, advanced math beyond basic algebra
-- Mathematical concepts: basic arithmetic, fractions, percentages (up to 25%), simple ratios, basic geometry
-- Logical reasoning: simple if-then statements, basic categorization, straightforward deductions
-- Verbal reasoning: common word analogies, simple vocabulary relationships
-- Keep question text SHORT and CLEAR (max 2-3 sentences)
-- Use concrete examples, not abstract concepts
-- Numbers should be manageable: avoid decimals beyond 2 places, keep calculations mental-math friendly
+- Use relatable scenarios: school life, sports, technology, social situations, simple real-world problems
+- AVOID: highly technical terms, complex business concepts, advanced mathematics beyond basic algebra
+- Keep question text CLEAR and CONCISE (2-4 sentences max)
+- Use concrete examples with some abstract elements
+- Numbers should be manageable: basic algebra, simple equations, mental-math friendly
 
-VARIETY REQUIREMENTS FOR MIDDLE SCHOOL:
-- Use DIVERSE scenarios: mix school, home, sports, nature, shopping, games, etc.
-- Vary the subjects: use different fruits, animals, objects, people names, etc.
+📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (Grades 9-10 Level - Use Diverse Topics):
+
+**Arithmetic & Number System:**
+- Integers, fractions, decimals (all operations)
+- LCM & HCF (finding and applications)
+- Divisibility rules and remainders
+- Percentage (increase/decrease, applications)
+- Ratio and proportion (direct, inverse)
+- Profit, loss, discount (basic commercial math)
+- Simple and compound interest (basic formulas)
+
+**Basic Algebra:**
+- Linear equations (one variable)
+- Simple simultaneous equations (two variables)
+- Basic algebraic expressions and simplification
+- Simple identities: (a+b)², (a-b)², a²-b²
+- Word problems leading to equations
+
+**Time, Speed & Distance:**
+- Average speed calculations
+- Basic train problems (length, crossing)
+- Simple relative motion
+- Time-work problems (basic efficiency)
+
+**Data Interpretation (Text-Based):**
+- Mean, median, mode (ungrouped data described in text)
+- Simple data analysis from text descriptions
+- Basic probability (coins, dice, cards)
+- Percentage calculations from data
+
+**Geometry (Text-Based):**
+- Basic properties of triangles, quadrilaterals
+- Perimeter and area (simple shapes described in words)
+- Volume and surface area (basic 3D shapes in text)
+- Pythagoras theorem applications
+
+**VARIETY REQUIREMENT:** Rotate through these topics to ensure diverse question types. Don't use the same topic more than twice in a row.
+
+🧠 LOGICAL REASONING CONCEPTS (Grades 9-10 Level - Text-Based):
+
+**Basic Logic:**
+- Simple syllogisms (All A are B, Some B are C)
+- Conditional statements (If-then)
+- Basic deductive reasoning
+- Simple analogies and relationships
+
+**Pattern Recognition:**
+- Number series (arithmetic, geometric, simple patterns)
+- Letter series and basic coding
+- Analogies (A:B::C:? with clear relationships)
+- Classification (odd one out)
+
+**Critical Thinking:**
+- Drawing simple conclusions
+- Identifying assumptions
+- Cause and effect relationships
+- Basic argument evaluation
+
+**VARIETY REQUIREMENT:** Mix different types of logical reasoning. Alternate between deductive, pattern-based, and analytical reasoning.
+
+📚 VERBAL REASONING CONCEPTS (Grades 9-10 Level):
+
+**Vocabulary & Relationships:**
+- Synonyms and antonyms (grade-appropriate vocabulary)
+- Analogies (clear relationships: part-whole, cause-effect, etc.)
+- Word associations
+- Contextual vocabulary
+
+**Reading & Comprehension:**
+- Main idea identification
+- Simple inference
+- Fact vs opinion
+- Supporting details
+
+**VARIETY REQUIREMENT:** Mix vocabulary, analogies, and comprehension-based questions.
+
+🔄 SUBTAG ROTATION ENFORCEMENT:
+- NEVER use the same subtag consecutively
+- Distribute subtags evenly across the question set
+- Each subtag must appear at least once in every 6-question block
+- Rotate through: numerical_reasoning → logical_reasoning → verbal_reasoning → spatial_reasoning → data_interpretation → pattern_recognition
+
+🚫 REPETITION PREVENTION:
+- NEVER reuse similar scenarios
+- NEVER reuse similar numerical patterns
+- NEVER reuse similar logical structures
+- Change contexts completely between questions
+- Vary numerical values by at least 50%
+- Use different measurement units and subjects
+
+VARIETY REQUIREMENTS FOR GRADES 9-10:
+- Use DIVERSE scenarios: school, technology, sports, nature, social situations, simple real-world problems
+- Use DIVERSE math topics: rotate through arithmetic, algebra, geometry, data interpretation, time-speed-distance
+- Vary the subjects: different objects, people, situations, locations
 - Change numerical values significantly between questions
-- Use different measurement units: dollars, meters, hours, pieces, etc.
-- Create original contexts - avoid repeating similar situations`,
+- Use different measurement units and contexts
+- Create original contexts - avoid repeating similar situations
 
-  high_school: `You are creating aptitude test questions for HIGH SCHOOL students (grades 9-12, ages 14-18).
+📊 ANALYTICS-SAFE DIFFICULTY PATHS:
+- Questions must have clear, unambiguous correct answers
+- Difficulty progression should be measurable and consistent
+- Each question must reliably discriminate between ability levels
+- Avoid trick questions or ambiguous wording
+- Ensure distractors are plausible but clearly incorrect
 
-CRITICAL GUIDELINES FOR HIGH SCHOOL (Grades 9-12):
-- Use more sophisticated vocabulary and concepts
-- Questions can involve more complex multi-step reasoning
-- Use scenarios relevant to teenagers: academics, career planning, technology, social situations
-- Mathematical concepts: algebra, basic statistics, percentages, ratios, probability basics
-- Logical reasoning: syllogisms, conditional statements, pattern analysis
-- Verbal reasoning: advanced analogies, vocabulary in context, reading comprehension
-- Include more abstract thinking challenges
-- Can reference real-world applications and career contexts
+🎯 STREAM RECOMMENDATION READINESS:
+- Questions should reveal aptitude patterns for Science/Commerce/Arts streams
+- Numerical + Data Interpretation → Science/Commerce indicators
+- Verbal + Logical → Arts/Humanities indicators
+- Spatial + Pattern Recognition → Design/Engineering indicators
+- Results should guide stream selection after 10th grade`,
 
-VARIETY REQUIREMENTS FOR HIGH SCHOOL:
-- Use DIVERSE scenarios: academics, business, science, technology, social situations, etc.
-- Vary the contexts: different professions, situations, and real-world applications
-- Change numerical values and scales significantly between questions
-- Use different types of data: percentages, ratios, statistics, probabilities, etc.
-- Create original problems - avoid repeating similar patterns or structures`,
+  higher_secondary: `You are creating aptitude test questions for HIGHER SECONDARY students (grades 11-12, ages 16-18).
 
-  higher_secondary: `You are creating aptitude test questions for HIGHER SECONDARY / COLLEGE students (grades 11-12+, ages 16-22).
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
+- DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
+- DO NOT write "The graph shows..." or "The diagram below..." or "Look at the figure..." or "The image depicts..."
+- ALL information must be provided in TEXT FORM ONLY
+- For data interpretation: Provide ALL data as text (e.g., "A shop's monthly sales were: Jan: ₹5,000, Feb: ₹6,500, Mar: ₹8,000")
+- For spatial reasoning: Describe transformations in words (e.g., "If you rotate a triangle 90 degrees clockwise, what shape does it form?")
+- For pattern recognition: Describe sequences in text (e.g., "In the sequence 2, 4, 8, 16, what is the next number?")
+- NEVER assume visual elements exist - the system does not support images
+- Focus on verbal, numerical, and logical reasoning that can be expressed purely in text
 
-CRITICAL GUIDELINES FOR HIGHER SECONDARY / COLLEGE:
-- Use advanced vocabulary and complex sentence structures
-- Questions should be intellectually challenging and require critical thinking
-- Use scenarios relevant to young adults: college life, career planning, professional scenarios, advanced academics, research
-- Mathematical concepts: advanced algebra, statistics, data analysis, probability, logical deduction, quantitative reasoning
-- Logical reasoning: complex syllogisms, multi-step deductions, pattern recognition, analytical thinking
-- Verbal reasoning: sophisticated analogies, contextual vocabulary, inference, comprehension of complex texts
-- Include abstract reasoning and higher-order thinking skills
-- Can reference professional aptitude test formats (similar to GRE, GMAT, CAT style questions)
-- Questions should prepare students for competitive exams and professional assessments
+🎯 COGNITIVE EXPECTATIONS FOR GRADES 9-10 (Ages 14-16):
+- Transitioning from concrete to abstract thinking
+- Can handle 2-4 step problems with moderate guidance
+- Developing pattern recognition and logical deduction skills
+- Building foundation for higher-order thinking
+- Vocabulary: 8,000-12,000 words (everyday + some academic terms)
 
-VARIETY REQUIREMENTS FOR HIGHER SECONDARY / COLLEGE:
-- Use DIVERSE scenarios: business analytics, scientific research, professional situations, academic contexts, etc.
-- Vary the contexts: different industries, professional roles, academic disciplines, real-world applications
-- Change numerical values, scales, and complexity significantly between questions
-- Use different types of data: complex statistics, multi-variable problems, data interpretation, logical puzzles
-- Create original, sophisticated problems - avoid repeating patterns or structures`,
+📚 CAREER CONTEXT - STREAM SELECTION AWARENESS:
+- Students are exploring interests before choosing Science/Commerce/Arts stream after 10th
+- Questions should help identify natural aptitudes for stream selection
+- Focus on discovering abilities: analytical thinking, creative reasoning, verbal skills, numerical ability
+- Build awareness of different career paths and skill requirements
+- Questions should reveal strengths to guide "After 10th" stream selection decisions
+- NOT preparing for competitive exams yet - focus on aptitude discovery
+
+🎓 DIFFICULTY DISCIPLINE (Relative to Grades 9-10):
+- Level 1: Basic concepts, simple calculations, obvious patterns (accessible to all)
+- Level 2: Multi-step problems, common relationships, straightforward logic
+- Level 3: Moderate problem-solving, inference, pattern analysis (grade-appropriate challenge)
+- Level 4: Complex reasoning, abstract thinking, multi-variable problems (above-average)
+- Level 5: Advanced concepts, sophisticated logic, creative problem-solving (top-tier for grade)
+
+CRITICAL GUIDELINES FOR GRADES 9-10:
+- Use vocabulary appropriate for 14-16 year olds (not too simple, not too advanced)
+- Questions should be challenging but NOT frustrating
+- Use relatable scenarios: school life, sports, technology, social situations, simple real-world problems
+- AVOID: highly technical terms, complex business concepts, advanced mathematics beyond basic algebra
+- Keep question text CLEAR and CONCISE (2-4 sentences max)
+- Use concrete examples with some abstract elements
+- Numbers should be manageable: basic algebra, simple equations, mental-math friendly
+- DO NOT reference competitive exams (JEE, NEET, etc.) - students are not at that level yet
+
+📐 MATHEMATICAL CONCEPTS FOR NUMERICAL REASONING (Grades 9-10 Level - Use Diverse Topics):
+
+**Arithmetic & Number System:**
+- Integers, fractions, decimals (all operations)
+- LCM & HCF (finding and applications)
+- Divisibility rules and remainders
+- Percentage (increase/decrease, applications)
+- Ratio and proportion (direct, inverse)
+- Profit, loss, discount (basic commercial math)
+- Simple and compound interest (basic formulas)
+
+**Basic Algebra:**
+- Linear equations (one variable)
+- Simple simultaneous equations (two variables)
+- Basic algebraic expressions and simplification
+- Simple identities: (a+b)², (a-b)², a²-b²
+- Word problems leading to equations
+- Basic quadratic equations (simple factorization)
+
+**Time, Speed & Distance:**
+- Average speed calculations
+- Basic train problems (length, crossing)
+- Simple relative motion
+- Time-work problems (basic efficiency)
+
+**Data Interpretation (Text-Based):**
+- Mean, median, mode (ungrouped data described in text)
+- Simple data analysis from text descriptions
+- Basic probability (coins, dice, cards)
+- Percentage calculations from data
+
+**Geometry (Text-Based):**
+- Basic properties of triangles, quadrilaterals
+- Perimeter and area (simple shapes described in words)
+- Volume and surface area (basic 3D shapes in text)
+- Pythagoras theorem applications
+- Basic coordinate geometry (distance, midpoint)
+
+**VARIETY REQUIREMENT:** Rotate through these topics to ensure diverse question types. Don't use the same topic more than twice in a row.
+
+🧠 LOGICAL REASONING CONCEPTS (Grades 9-10 Level - Text-Based):
+
+**Basic Logic:**
+- Simple syllogisms (All A are B, Some B are C)
+- Conditional statements (If-then)
+- Basic deductive reasoning
+- Simple analogies and relationships
+
+**Pattern Recognition:**
+- Number series (arithmetic, geometric, simple patterns)
+- Letter series and basic coding
+- Analogies (A:B::C:? with clear relationships)
+- Classification (odd one out)
+
+**Critical Thinking:**
+- Drawing simple conclusions
+- Identifying assumptions
+- Cause and effect relationships
+- Basic argument evaluation
+
+**VARIETY REQUIREMENT:** Mix different types of logical reasoning. Alternate between deductive, pattern-based, and analytical reasoning.
+
+📚 VERBAL REASONING CONCEPTS (Grades 9-10 Level):
+
+**Vocabulary & Relationships:**
+- Synonyms and antonyms (grade-appropriate vocabulary)
+- Analogies (clear relationships: part-whole, cause-effect, etc.)
+- Word associations
+- Contextual vocabulary
+
+**Reading & Comprehension:**
+- Main idea identification
+- Simple inference
+- Fact vs opinion
+- Supporting details
+
+**VARIETY REQUIREMENT:** Mix vocabulary, analogies, and comprehension-based questions.
+
+🎨 SPATIAL REASONING CONCEPTS (High School Level - TEXT-ONLY):
+
+**CRITICAL: ABSOLUTELY NO VISUAL PATTERNS OR DIAGRAMS**
+- DO NOT use cube net patterns (□ □ □)
+- DO NOT use shape arrangements that need to be seen
+- DO NOT reference "the pattern shows" or "which arrangement"
+- ALL spatial questions MUST be describable and solvable using WORDS ONLY
+
+**Mental Rotation (Described in Text):**
+- 2D shape rotation described verbally (e.g., "If you rotate letter 'N' 180 degrees...")
+- 3D object rotation described in words
+- Mirror images and reflections described (e.g., "What does 'MATH' look like in a mirror?")
+- Folding and unfolding described (e.g., "If you fold a square paper in half twice and cut a corner...")
+- Perspective changes described verbally
+
+**Spatial Visualization (Text-Based):**
+- Paper folding and cutting patterns described in words (e.g., "If you fold a square paper in half twice and cut a small triangle from the corner, how many holes will there be when unfolded?")
+- Cube and dice problems described (e.g., "A cube has 1 opposite 6, 2 opposite 5, 3 opposite 4. If 1 is on top and 2 faces you, which number is on the bottom?")
+- Hidden figures described verbally (e.g., "How many triangles are in a Star of David shape?")
+- Figure completion described in text
+- Block counting described (e.g., "A pyramid has 1 block on top, 4 blocks in the second layer, and 9 blocks at the base. How many blocks total?")
+- Cross-sections described (e.g., "If you slice a cube horizontally through its middle, what shape is the cross-section?")
+
+**CRITICAL: For cube/dice problems, describe the arrangement in words, NOT with visual symbols**
+Example: "A standard die has opposite faces summing to 7. If you see 2 on top and 3 facing you, what number is on the right side?"
+NOT: "Which pattern shows the correct die arrangement: □ □ □"
+
+**Geometric Reasoning (Verbal Description):**
+- Shape properties and relationships
+- Symmetry described (e.g., "Which letter has both horizontal and vertical symmetry?")
+- Tessellations and patterns described
+- Perspective and multiple views described
+- Spatial transformations described in words
+- Congruence and similarity
+
+**Pattern Recognition (Visual Concepts in Text):**
+- Visual sequences described verbally
+- Shape series described in text
+- Relationships described (e.g., "If triangle relates to 3 sides, what relates to 8 sides?")
+- Odd one out described
+- Analogies described verbally
+- Rule-based transformations in text
+
+**Coordinate Geometry (Spatial - Text-Based):**
+- Distance and midpoint (e.g., "Point A is at (2,3) and B is at (5,7). What is the distance?")
+- Slope and parallel/perpendicular lines
+- Geometric shapes on coordinate plane described
+- Transformations described verbally
+- Symmetry on coordinate plane
+
+**VARIETY REQUIREMENT:** Mix 2D and 3D problems. Alternate between rotation, visualization, and geometric reasoning. Always describe spatially.
+
+📊 DATA INTERPRETATION CONCEPTS (High School Level - TEXT-ONLY):
+
+**Statistical Analysis (Data in Text):**
+- Mean, median, mode, range (data provided as text)
+- Percentages and proportions (complex calculations)
+- Ratios and comparisons (multiple data sets in text)
+- Percentage change and growth rates
+- Weighted averages and combined means
+- Standard deviation (basic concept)
+
+**Data Representation (Described in Text):**
+- Tables described verbally (e.g., "Sales data: Product A: Q1=₹10k, Q2=₹15k, Q3=₹12k...")
+- Bar charts described (e.g., "In a survey, 30 chose A, 45 chose B, 25 chose C...")
+- Line graphs described (e.g., "Temperature rose from 20°C at 6am to 35°C at 2pm...")
+- Pie charts described (e.g., "Budget allocation: 40% salaries, 30% operations, 20% marketing, 10% other")
+- Comparative data sets in text
+- Mixed data formats described verbally
+
+**Data Reasoning:**
+- Trend identification from text descriptions
+- Comparison and ranking (multiple criteria)
+- Maximum/minimum values and extremes
+- Data sufficiency (is given data adequate?)
+- Logical deductions from data
+- Interpolation and extrapolation
+
+**Quantitative Comparison:**
+- Comparing quantities (which is greater?)
+- Estimating values (approximation)
+- Order of magnitude
+- Relative changes (absolute vs percentage)
+- Proportional reasoning
+- Rate of change
+
+**Real-World Applications (Text-Based):**
+- Business data described (sales, revenue, profit, market share)
+- Scientific data described (experiments, observations, measurements)
+- Survey results and demographics in text
+- Economic indicators described (GDP, inflation, unemployment)
+- Performance metrics (scores, ratings, rankings)
+- Financial data described (investments, returns, interest)
+
+**VARIETY REQUIREMENT:** Use diverse data contexts. Mix business, scientific, social, and economic data. Vary the complexity of calculations. Always provide data as text.
+
+🔢 PATTERN RECOGNITION CONCEPTS (High School Level):
+
+**Number Patterns:**
+- Arithmetic sequences (linear, constant difference)
+- Geometric sequences (exponential, constant ratio)
+- Fibonacci-type sequences (sum of previous terms)
+- Square/cube sequences (perfect squares, cubes)
+- Prime number patterns
+- Mixed operation patterns (add, multiply, alternate)
+- Recursive patterns
+
+**Algebraic Patterns:**
+- Function patterns (linear, quadratic, exponential)
+- Recursive relationships (f(n) = f(n-1) + ...)
+- Polynomial patterns
+- Exponential growth and decay
+- Pattern generalization (finding nth term)
+- Formula derivation
+
+**Logical Patterns:**
+- Alternating patterns (odd/even positions)
+- Nested patterns (patterns within patterns)
+- Multi-rule patterns (different rules for different positions)
+- Position-based patterns (depends on index)
+- Conditional patterns (if-then rules)
+- Cyclic patterns (repeating cycles)
+
+**Abstract Patterns:**
+- Letter sequences (alphabetical, positional)
+- Symbol patterns described in text
+- Code patterns (substitution, transformation)
+- Relationship patterns (between elements)
+- Word patterns
+
+**Problem-Solving Patterns:**
+- Identifying underlying rules
+- Extending sequences (finding next terms)
+- Finding missing terms (in middle of sequence)
+- Pattern prediction (future values)
+- Rule formulation (expressing pattern as formula)
+- Multiple pattern recognition (overlapping patterns)
+
+**VARIETY REQUIREMENT:** Mix numerical, algebraic, and abstract patterns. Vary the complexity and number of terms given.
+
+🔄 SUBTAG ROTATION ENFORCEMENT:
+- NEVER use the same subtag consecutively
+- Distribute subtags evenly across the question set
+- Each subtag must appear at least once in every 6-question block
+- Rotate through: numerical_reasoning → logical_reasoning → verbal_reasoning → spatial_reasoning → data_interpretation → pattern_recognition
+
+🚫 REPETITION PREVENTION:
+- NEVER reuse similar scenarios
+- NEVER reuse similar numerical patterns
+- NEVER reuse similar logical structures
+- Change contexts completely between questions
+- Vary numerical values by at least 50%
+- Use different measurement units and subjects
+
+VARIETY REQUIREMENTS FOR GRADES 9-10:
+- Use DIVERSE scenarios: school, technology, sports, nature, social situations, simple real-world problems
+- Use DIVERSE math topics: rotate through arithmetic, algebra, geometry, data interpretation, time-speed-distance
+- Vary the subjects: different objects, people, situations, locations
+- Change numerical values significantly between questions
+- Use different measurement units and contexts
+- Create original contexts - avoid repeating similar situations
+
+📊 ANALYTICS-SAFE DIFFICULTY PATHS:
+- Questions must have clear, unambiguous correct answers
+- Difficulty progression should be measurable and consistent
+- Each question must reliably discriminate between ability levels
+- Avoid trick questions or ambiguous wording
+- Ensure distractors are plausible but clearly incorrect
+
+🎯 STREAM RECOMMENDATION READINESS:
+- Questions should reveal aptitude patterns for Science/Commerce/Arts streams
+- Numerical + Data Interpretation → Science/Commerce indicators
+- Verbal + Logical → Arts/Humanities indicators
+- Spatial + Pattern Recognition → Design/Engineering indicators
+- Results should guide stream selection after 10th grade`,
 };
 
-export function buildSystemPrompt(gradeLevel: GradeLevel): string {
-  return `${GRADE_LEVEL_CONTEXT[gradeLevel]}
+/* ======================================================
+   SYSTEM PROMPT (PHASE + BATCH AWARE)
+====================================================== */
+
+export function buildSystemPrompt(gradeLevel: GradeLevel, studentCourse?: string | null, phase?: string): string {
+  const courseContext = studentCourse ? `
+
+🎓 COURSE-SPECIFIC CONTEXT FOR ${studentCourse.toUpperCase()}:
+- The student is studying ${studentCourse}
+- Frame questions using scenarios, examples, and contexts relevant to this field
+- Use terminology and situations that a ${studentCourse} student would encounter
+- Questions should still test general aptitude, but contextualized to their field
+- Examples: If studying B.COM, use business/finance scenarios; if B.Tech CSE, use tech/programming contexts
+` : '';
+
+  const phaseContext = phase ? `
+
+🔄 CURRENT TEST PHASE: ${phase.toUpperCase()}
+${phase === 'diagnostic' ? `- This is the DIAGNOSTIC SCREENER phase (8 questions)
+- Questions should be at difficulty level 3 (medium) to establish baseline
+- Focus on broad aptitude assessment across all subtags
+- Questions should help classify student into Low/Medium/High tier
+- Avoid extreme difficulty - aim for discriminative power at the median` : phase === 'core' ? `- This is the ADAPTIVE CORE phase (10 questions)
+- Difficulty will adjust based on student performance
+- Questions should progressively reveal true ability level
+- Focus on precise ability estimation within the student's tier
+- Each question should provide maximum information for adaptive algorithm` : phase === 'stability' ? `- This is the STABILITY CONFIRMATION phase (4 questions)
+- Questions should confirm the provisional ability band
+- Difficulty should be consistent with estimated ability level
+- Focus on validating the adaptive core results
+- Questions should have high reliability for final scoring` : ''}` : '';
+
+  return `${GRADE_LEVEL_CONTEXT[gradeLevel]}${courseContext}${phaseContext}
 
 You are an expert educational assessment designer creating multiple-choice aptitude test questions.
 
@@ -108,23 +547,65 @@ CRITICAL REQUIREMENTS:
 7. NEVER create duplicate or similar questions - each question must be completely unique
 8. Vary the scenarios, contexts, and numbers used in questions
 9. Avoid common or overused question patterns
+10. **ALWAYS use Indian Rupees (₹) for currency, NEVER use dollars ($) or other currencies**
 
-UNIQUENESS REQUIREMENTS:
-- Use diverse scenarios and contexts for each question
-- Vary numerical values significantly between questions
-- Create original word problems, not variations of the same problem
-- For pattern recognition: use different sequences (arithmetic, geometric, Fibonacci, etc.)
-- For verbal reasoning: use different word pairs and relationships
-- For logical reasoning: use varied logical structures and premises
-- For spatial reasoning: describe different shapes, rotations, and transformations
-- For data interpretation: use different data types (percentages, counts, ratios, etc.)
+🔄 SUBTAG ROTATION ENFORCEMENT (CRITICAL):
+- You will receive a list of subtags to cover
+- NEVER use the same subtag consecutively
+- Distribute questions evenly across all provided subtags
+- Each subtag should appear exactly once in the order provided
+- This ensures comprehensive aptitude assessment and prevents cognitive fatigue
+
+🚫 UNIQUENESS & REPETITION PREVENTION (CRITICAL):
+- NEVER reuse scenarios, contexts, or problem structures from previous questions
+- NEVER reuse similar numerical patterns or sequences
+- NEVER reuse similar logical structures or argument forms
+- Each question must be completely original in:
+  * Context/scenario (e.g., don't use "shopping" twice)
+  * Numerical values (vary by 50%+ between questions)
+  * Logical structure (vary argument forms)
+  * Vocabulary (use different words and phrases)
+  * Measurement units (dollars, meters, hours, etc.)
+- If you receive excluded question texts, ensure your questions are COMPLETELY DIFFERENT in both content and structure
+
+📊 ANALYTICS-SAFE QUESTION DESIGN:
+- Questions must have clear, unambiguous correct answers for accurate scoring
+- Difficulty should be measurable and consistent with the specified level
+- Each question must reliably discriminate between ability levels
+- Avoid trick questions or ambiguous wording that could skew analytics
+- Ensure distractors are plausible but clearly incorrect for proper IRT analysis
+- Questions should support adaptive difficulty algorithms
+- Enable accurate ability estimation for career matching
+
+🎯 CAREER RECOMMENDATION READINESS:
+- Questions should reveal aptitude patterns for stream/program recommendations
+- Each subtag contributes to specific career aptitude indicators:
+  * numerical_reasoning + data_interpretation → Quantitative careers (STEM, Finance, Analytics)
+  * verbal_reasoning + logical_reasoning → Analytical careers (Law, Management, Humanities)
+  * spatial_reasoning + pattern_recognition → Creative-Technical careers (Design, Engineering, CS)
+- Balanced performance across subtags → Versatile career options
+- Questions should help guide educational and career path decisions
 
 RESPONSE FORMAT:
 Return a valid JSON array of question objects. Each object must have:
-- "text": The question text (string)
+- "text": The question text (string) - MUST be text-only, no references to visuals
 - "options": Object with keys A, B, C, D containing answer choices
-- "correctAnswer": Single letter (A, B, C, or D)
+- "correctAnswer": Single UPPERCASE letter (A, B, C, or D) - MUST be one of these exact letters
 - "explanation": Brief explanation of why the answer is correct (optional but recommended)
+
+⚠️ CRITICAL: correctAnswer MUST be exactly "A", "B", "C", or "D" (uppercase letter only)
+
+⚠️ ABSOLUTELY FORBIDDEN - DO NOT GENERATE THESE TYPES OF QUESTIONS:
+- Questions requiring visual patterns or diagrams (cube nets, shape arrangements, visual sequences)
+- Questions with options like "□ □ □" or any visual symbols
+- Questions asking "which pattern" or "which arrangement" without fully describing each option in words
+- Questions that say "the diagram shows" or "the figure depicts"
+- Any question where the answer depends on seeing a visual element
+
+✅ CORRECT SPATIAL REASONING APPROACH:
+- Describe spatial relationships entirely in words
+- Example: "A cube has red on top, blue on bottom, green facing you, yellow on the back, orange on the left, and purple on the right. If you rotate it 90° clockwise (when viewed from above), which color now faces you?"
+- Example: "If you fold a square paper in half, then in half again, and cut off one corner, how many holes will appear when you unfold it?"
 
 Example format:
 [
@@ -138,497 +619,51 @@ Example format:
     },
     "correctAnswer": "B",
     "explanation": "Solving: 3x = 14 - 5 = 9, so x = 9/3 = 3"
+  },
+  {
+    "text": "In a survey, 30 students chose Basketball, 15 chose Tennis, 25 chose Soccer, and 20 chose Swimming. How many more students chose Basketball than Tennis?",
+    "options": {
+      "A": "5",
+      "B": "10",
+      "C": "15",
+      "D": "20"
+    },
+    "correctAnswer": "C",
+    "explanation": "Basketball has 30 students and Tennis has 15 students. 30 - 15 = 15"
   }
-]`;
+]
+
+TEXT-ONLY QUESTION EXAMPLES:
+- Data interpretation: "A company's sales were ₹50,000 in January, ₹65,000 in February, and ₹80,000 in March. What was the percentage increase from January to March?"
+- Spatial reasoning: "If you rotate the letter 'N' 180 degrees, which letter does it resemble?"
+- Pattern recognition: "In the sequence 3, 6, 12, 24, what is the next number?"
+- Logical reasoning: "All roses are flowers. Some flowers are red. Which conclusion is valid?"
+
+⚠️ CRITICAL REMINDERS:
+- Follow the subtag order EXACTLY as provided in the user prompt
+- NEVER repeat scenarios, contexts, or numerical patterns
+- Ensure difficulty matches the specified level (1-5) relative to the grade level
+- Questions must be analytics-safe with clear correct answers
+- Support career recommendation algorithms with diverse aptitude assessment`;
 }
 
+/* ======================================================
+   AI MODEL SELECTION
+====================================================== */
+
+
+
 // AI Models to try in order of preference
-// Now imported from centralized config
-import { AI_MODELS } from '../shared/ai-config';
-
-// For backward compatibility, export the models used by this module
-// Using OpenRouter-compatible models only
+// These models will be tried sequentially if one fails
 export const ADAPTIVE_AI_MODELS = [
-  AI_MODELS.GEMINI_FLASH_EXP,
-  AI_MODELS.GEMINI_FLASH_1_5_8B,
-  AI_MODELS.GPT_4O_MINI,
-  AI_MODELS.XIAOMI_MIMO,
+  // Primary Models - Reliable and affordable
+  'openai/gpt-3.5-turbo',                  // Reliable and affordable
+  'openai/gpt-4o-mini',                    // Backup OpenAI model
+  // Free Models - Fallback choices
+  'google/gemini-2.0-flash-exp:free',      // FREE - Latest Gemini
+  'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama
+  'google/gemini-2.0-flash-001',           // Gemini Flash (paid)
+  // Higher quality paid models (if needed)
+  'anthropic/claude-3-haiku',              // Claude Haiku (cheap, reliable)
+  'anthropic/claude-3.5-sonnet',           // Claude Sonnet (high quality)
 ] as const;
-
-// Fallback questions for middle school
-export const MIDDLE_SCHOOL_FALLBACKS: Record<
-  Subtag,
-  { text: string; options: Question['options']; correctAnswer: Question['correctAnswer'] }[]
-> = {
-  numerical_reasoning: [
-    {
-      text: 'If you have 24 cookies and want to share them equally among 6 friends, how many cookies does each friend get?',
-      options: { A: '3', B: '4', C: '5', D: '6' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'A pizza has 8 slices. If you eat 2 slices, what fraction of the pizza is left?',
-      options: { A: '1/4', B: '1/2', C: '3/4', D: '2/3' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'If a book costs $12 and you have $50, how many books can you buy?',
-      options: { A: '3', B: '4', C: '5', D: '6' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'A movie ticket costs $8. How much do 5 tickets cost?',
-      options: { A: '$35', B: '$40', C: '$45', D: '$50' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If you save $5 each week, how much will you have after 8 weeks?',
-      options: { A: '$30', B: '$35', C: '$40', D: '$45' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'A bag has 15 marbles. If 1/3 are blue, how many blue marbles are there?',
-      options: { A: '3', B: '4', C: '5', D: '6' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'What is 25% of 80?',
-      options: { A: '15', B: '20', C: '25', D: '30' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If 4 pencils cost $2, how much do 10 pencils cost?',
-      options: { A: '$4', B: '$5', C: '$6', D: '$8' },
-      correctAnswer: 'B',
-    },
-  ],
-  logical_reasoning: [
-    {
-      text: 'All dogs are animals. Max is a dog. What can we conclude?',
-      options: { A: 'Max is a cat', B: 'Max is an animal', C: 'All animals are dogs', D: 'Max is not a pet' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If it rains, the grass gets wet. The grass is wet. What can we say?',
-      options: { A: 'It definitely rained', B: 'It might have rained', C: 'It did not rain', D: 'The sun is out' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'All birds have feathers. A robin is a bird. What can we conclude?',
-      options: {
-        A: 'A robin can fly',
-        B: 'A robin has feathers',
-        C: 'All feathered things are birds',
-        D: 'Robins are red',
-      },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If today is Monday, what day was it 3 days ago?',
-      options: { A: 'Thursday', B: 'Friday', C: 'Saturday', D: 'Sunday' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'All squares are rectangles. This shape is a square. What do we know?',
-      options: { A: 'It has 3 sides', B: 'It is a rectangle', C: 'It is a circle', D: 'It has 5 corners' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If A is taller than B, and B is taller than C, who is the shortest?',
-      options: { A: 'A', B: 'B', C: 'C', D: 'Cannot tell' },
-      correctAnswer: 'C',
-    },
-  ],
-  verbal_reasoning: [
-    {
-      text: 'HOT is to COLD as DAY is to:',
-      options: { A: 'Sun', B: 'Night', C: 'Light', D: 'Morning' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'BOOK is to READ as SONG is to:',
-      options: { A: 'Dance', B: 'Write', C: 'Listen', D: 'Play' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'Which word means the OPPOSITE of "happy"?',
-      options: { A: 'Joyful', B: 'Excited', C: 'Sad', D: 'Cheerful' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'FISH is to SWIM as BIRD is to:',
-      options: { A: 'Nest', B: 'Fly', C: 'Feather', D: 'Egg' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'Which word means the SAME as "big"?',
-      options: { A: 'Tiny', B: 'Small', C: 'Large', D: 'Short' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'TEACHER is to SCHOOL as DOCTOR is to:',
-      options: { A: 'Medicine', B: 'Hospital', C: 'Patient', D: 'Nurse' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'UP is to DOWN as LEFT is to:',
-      options: { A: 'Side', B: 'Right', C: 'Center', D: 'Forward' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'PENCIL is to WRITE as SCISSORS is to:',
-      options: { A: 'Paper', B: 'Sharp', C: 'Cut', D: 'Draw' },
-      correctAnswer: 'C',
-    },
-  ],
-  spatial_reasoning: [
-    {
-      text: 'How many sides does a triangle have?',
-      options: { A: '2', B: '3', C: '4', D: '5' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If you fold a square piece of paper in half, what shape do you get?',
-      options: { A: 'Triangle', B: 'Circle', C: 'Rectangle', D: 'Pentagon' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'How many corners does a rectangle have?',
-      options: { A: '2', B: '3', C: '4', D: '5' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'Which shape has no corners?',
-      options: { A: 'Square', B: 'Triangle', C: 'Circle', D: 'Rectangle' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'How many sides does a hexagon have?',
-      options: { A: '4', B: '5', C: '6', D: '7' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'If you cut a square diagonally, what shapes do you get?',
-      options: { A: 'Two squares', B: 'Two triangles', C: 'Two rectangles', D: 'Two circles' },
-      correctAnswer: 'B',
-    },
-  ],
-  data_interpretation: [
-    {
-      text: 'In a class of 20 students, 8 like soccer and 12 like basketball. How many more students like basketball than soccer?',
-      options: { A: '2', B: '4', C: '6', D: '8' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If a graph shows Monday: 5 books, Tuesday: 3 books, Wednesday: 7 books read, which day had the most books read?',
-      options: { A: 'Monday', B: 'Tuesday', C: 'Wednesday', D: 'All equal' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'A survey shows 10 students like apples, 15 like oranges, 5 like bananas. What is the total?',
-      options: { A: '25', B: '30', C: '35', D: '40' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If a chart shows Team A scored 20 points and Team B scored 15 points, what is the difference?',
-      options: { A: '3', B: '4', C: '5', D: '6' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'A table shows: Jan-10, Feb-15, Mar-20 sales. What is the total for all three months?',
-      options: { A: '35', B: '40', C: '45', D: '50' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'In a group of 30 students, half are girls. How many boys are there?',
-      options: { A: '10', B: '15', C: '20', D: '25' },
-      correctAnswer: 'B',
-    },
-  ],
-  pattern_recognition: [
-    {
-      text: 'What comes next: 2, 4, 6, 8, ?',
-      options: { A: '9', B: '10', C: '11', D: '12' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'What comes next: A, B, C, D, ?',
-      options: { A: 'F', B: 'E', C: 'G', D: 'A' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'What comes next: 1, 3, 5, 7, ?',
-      options: { A: '8', B: '9', C: '10', D: '11' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'What comes next: 5, 10, 15, 20, ?',
-      options: { A: '22', B: '23', C: '24', D: '25' },
-      correctAnswer: 'D',
-    },
-    {
-      text: 'What comes next: 3, 6, 9, 12, ?',
-      options: { A: '13', B: '14', C: '15', D: '16' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'What comes next: 1, 2, 4, 8, ?',
-      options: { A: '10', B: '12', C: '14', D: '16' },
-      correctAnswer: 'D',
-    },
-    {
-      text: 'What comes next: 100, 90, 80, 70, ?',
-      options: { A: '50', B: '55', C: '60', D: '65' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'What comes next: Z, Y, X, W, ?',
-      options: { A: 'U', B: 'V', C: 'T', D: 'S' },
-      correctAnswer: 'B',
-    },
-  ],
-};
-
-// Fallback questions for high school (also used for higher_secondary)
-export const HIGH_SCHOOL_FALLBACKS: Record<
-  Subtag,
-  { text: string; options: Question['options']; correctAnswer: Question['correctAnswer'] }[]
-> = {
-  numerical_reasoning: [
-    {
-      text: 'If a shirt costs $25 and is on sale for 20% off, what is the sale price?',
-      options: { A: '$20', B: '$22', C: '$18', D: '$15' },
-      correctAnswer: 'A',
-    },
-    {
-      text: 'What is 15% of 80?',
-      options: { A: '10', B: '12', C: '15', D: '8' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If 3x + 7 = 22, what is x?',
-      options: { A: '3', B: '4', C: '5', D: '6' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'A car travels 240 miles in 4 hours. What is its average speed?',
-      options: { A: '50 mph', B: '55 mph', C: '60 mph', D: '65 mph' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'If the ratio of boys to girls is 3:2 and there are 30 students, how many boys are there?',
-      options: { A: '12', B: '15', C: '18', D: '20' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'What is 2/5 expressed as a percentage?',
-      options: { A: '25%', B: '30%', C: '35%', D: '40%' },
-      correctAnswer: 'D',
-    },
-    {
-      text: 'If a product costs $80 after a 20% discount, what was the original price?',
-      options: { A: '$90', B: '$96', C: '$100', D: '$110' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'What is the value of 5² + 3²?',
-      options: { A: '30', B: '32', C: '34', D: '36' },
-      correctAnswer: 'C',
-    },
-  ],
-  logical_reasoning: [
-    {
-      text: 'All roses are flowers. Some flowers fade quickly. Which conclusion is valid?',
-      options: {
-        A: 'All roses fade quickly',
-        B: 'Some roses may fade quickly',
-        C: 'No roses fade quickly',
-        D: 'Roses never fade',
-      },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If P implies Q, and Q is false, what can we conclude about P?',
-      options: { A: 'P is true', B: 'P is false', C: 'P could be either', D: 'Cannot determine' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'All mammals are warm-blooded. Whales are mammals. Therefore:',
-      options: {
-        A: 'Whales live in water',
-        B: 'Whales are warm-blooded',
-        C: 'All warm-blooded animals are mammals',
-        D: 'Whales are fish',
-      },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If it is raining, then the ground is wet. The ground is not wet. What can we conclude?',
-      options: { A: 'It is raining', B: 'It is not raining', C: 'The ground is dry', D: 'Both B and C' },
-      correctAnswer: 'D',
-    },
-    {
-      text: 'No reptiles are mammals. All snakes are reptiles. Therefore:',
-      options: {
-        A: 'Some snakes are mammals',
-        B: 'No snakes are mammals',
-        C: 'All reptiles are snakes',
-        D: 'Some mammals are snakes',
-      },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If A > B and B > C, which statement must be true?',
-      options: { A: 'A = C', B: 'A < C', C: 'A > C', D: 'B = C' },
-      correctAnswer: 'C',
-    },
-  ],
-  verbal_reasoning: [
-    {
-      text: 'HAPPY is to SAD as LIGHT is to:',
-      options: { A: 'Lamp', B: 'Dark', C: 'Bright', D: 'Sun' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'Choose the word most similar to "ABUNDANT":',
-      options: { A: 'Scarce', B: 'Plentiful', C: 'Empty', D: 'Small' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'ARCHITECT is to BUILDING as AUTHOR is to:',
-      options: { A: 'Library', B: 'Book', C: 'Reader', D: 'Publisher' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'Choose the word most opposite to "EXPAND":',
-      options: { A: 'Grow', B: 'Contract', C: 'Extend', D: 'Increase' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'SYMPHONY is to COMPOSER as PAINTING is to:',
-      options: { A: 'Museum', B: 'Canvas', C: 'Artist', D: 'Gallery' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'Which word is most similar to "METICULOUS"?',
-      options: { A: 'Careless', B: 'Careful', C: 'Quick', D: 'Lazy' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'HYPOTHESIS is to THEORY as SKETCH is to:',
-      options: { A: 'Drawing', B: 'Painting', C: 'Pencil', D: 'Paper' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'Choose the word most opposite to "VERBOSE":',
-      options: { A: 'Wordy', B: 'Concise', C: 'Lengthy', D: 'Detailed' },
-      correctAnswer: 'B',
-    },
-  ],
-  spatial_reasoning: [
-    {
-      text: 'If you rotate a square 90 degrees clockwise, which corner moves to the top?',
-      options: { A: 'Top-left', B: 'Top-right', C: 'Bottom-left', D: 'Bottom-right' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'How many faces does a cube have?',
-      options: { A: '4', B: '6', C: '8', D: '12' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'How many edges does a cube have?',
-      options: { A: '6', B: '8', C: '10', D: '12' },
-      correctAnswer: 'D',
-    },
-    {
-      text: 'If you unfold a cube, how many squares do you see?',
-      options: { A: '4', B: '5', C: '6', D: '8' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'A mirror image of the letter "b" looks like:',
-      options: { A: 'b', B: 'd', C: 'p', D: 'q' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'How many vertices does a triangular pyramid have?',
-      options: { A: '3', B: '4', C: '5', D: '6' },
-      correctAnswer: 'B',
-    },
-  ],
-  data_interpretation: [
-    {
-      text: 'A bar chart shows sales of 100, 150, 200, 250 for Jan-Apr. What is the average monthly sales?',
-      options: { A: '150', B: '175', C: '200', D: '225' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If a pie chart shows 25% for Category A, what angle does it represent?',
-      options: { A: '45°', B: '90°', C: '180°', D: '270°' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'A line graph shows values 10, 20, 15, 25. What is the range?',
-      options: { A: '10', B: '15', C: '20', D: '25' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'If 40% of 200 students passed, how many failed?',
-      options: { A: '80', B: '100', C: '120', D: '140' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'A table shows Q1: $500, Q2: $600, Q3: $700, Q4: $800. What is the total annual revenue?',
-      options: { A: '$2,400', B: '$2,500', C: '$2,600', D: '$2,700' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'In a dataset of 5, 10, 15, 20, 25, what is the median?',
-      options: { A: '10', B: '15', C: '17.5', D: '20' },
-      correctAnswer: 'B',
-    },
-  ],
-  pattern_recognition: [
-    {
-      text: 'What comes next: 2, 4, 8, 16, ?',
-      options: { A: '24', B: '32', C: '20', D: '18' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'Complete the pattern: A, C, E, G, ?',
-      options: { A: 'H', B: 'I', C: 'J', D: 'K' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'What comes next: 1, 1, 2, 3, 5, 8, ?',
-      options: { A: '11', B: '12', C: '13', D: '14' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'What comes next: 3, 9, 27, 81, ?',
-      options: { A: '162', B: '189', C: '216', D: '243' },
-      correctAnswer: 'D',
-    },
-    {
-      text: 'Complete the pattern: 1, 4, 9, 16, ?',
-      options: { A: '20', B: '23', C: '25', D: '27' },
-      correctAnswer: 'C',
-    },
-    {
-      text: 'What comes next: 2, 6, 12, 20, ?',
-      options: { A: '28', B: '30', C: '32', D: '36' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'Complete the pattern: 64, 32, 16, 8, ?',
-      options: { A: '2', B: '4', C: '6', D: '0' },
-      correctAnswer: 'B',
-    },
-    {
-      text: 'What comes next: 1, 8, 27, 64, ?',
-      options: { A: '100', B: '125', C: '150', D: '175' },
-      correctAnswer: 'B',
-    },
-  ],
-};

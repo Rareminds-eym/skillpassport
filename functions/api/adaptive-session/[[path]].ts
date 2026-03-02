@@ -14,6 +14,7 @@
  * - GET /resume/:sessionId - Resume in-progress test
  * - GET /find-in-progress/:studentId - Find in-progress session
  * - POST /abandon/:sessionId - Abandon session
+ * - POST /link-to-attempt - Link adaptive session to assessment attempt
  */
 
 import type { PagesFunction } from '../../../src/functions-lib/types';
@@ -25,6 +26,7 @@ import { completeHandler } from './handlers/complete';
 import { getResultsHandler, getStudentResultsHandler } from './handlers/results';
 import { resumeHandler, findInProgressHandler } from './handlers/resume';
 import { abandonHandler } from './handlers/abandon';
+import { onRequestPost as linkToAttemptHandler } from './link-to-attempt';
 
 export const onRequest: PagesFunction = async (context) => {
   const { request } = context;
@@ -76,6 +78,11 @@ export const onRequest: PagesFunction = async (context) => {
     // POST /abandon/:sessionId - Abandon session
     if (method === 'POST' && path.startsWith('/abandon/')) {
       return abandonHandler(context);
+    }
+
+    // POST /link-to-attempt - Link adaptive session to assessment attempt
+    if (method === 'POST' && path === '/link-to-attempt') {
+      return linkToAttemptHandler(context);
     }
 
     // 404 for unknown routes

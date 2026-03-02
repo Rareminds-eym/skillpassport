@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
+import ProtectedRoute from "../components/ProtectedRoute";
 import ScrollToTop from "../components/ScrollToTop";
 import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
 import OrganizationGuard from "../components/organization/OrganizationGuard";
@@ -98,6 +99,14 @@ const SkillPassportPreRegistration = lazy(() =>
   import("../pages/register/SkillPassportPreRegistration")
 );
 
+// Network Error Page
+const NetworkError = lazy(() => import("../pages/NetworkError"));
+
+// Internal Testing Registration
+const InternalTestingRegistration = lazy(() =>
+  import("../pages/register/InternalTestingRegistration")
+);
+
 const Register = lazy(() => import("../pages/auth/components/SignIn/Register"));
 const UnifiedLogin = lazy(() => import("../pages/auth/UnifiedLogin"));
 const UnifiedSignup = lazy(() => import("../pages/auth/UnifiedSignup"));
@@ -152,6 +161,7 @@ const MyLearning = lazy(() => import("../pages/student/MyLearning"));
 const MyExperience = lazy(() => import("../pages/student/MyExperience"));
 const Courses = lazy(() => import("../pages/student/Courses"));
 const CoursePlayer = lazy(() => import("../pages/student/CoursePlayer"));
+const ComingSoon = lazy(() => import("../pages/student/ComingSoon"));
 const Opportunities = lazy(() => import("../pages/student/Opportunities"));
 const SavedJobs = lazy(() => import("../pages/student/SavedJobs"));
 const Applications = lazy(() => import("../pages/student/Applications"));
@@ -515,6 +525,9 @@ const AppRoutes = () => {
         {/* Skill Passport Pre-Registration - Main landing page */}
         <Route path="/register" element={<SkillPassportPreRegistration />} />
         
+        {/* Internal Testing Registration */}
+        <Route path="/internal-testing" element={<InternalTestingRegistration />} />
+        
         {/* Receipt Page - Download PDF receipt */}
         <Route path="/receipt/:orderId" element={<Receipt />} />
 
@@ -566,15 +579,16 @@ const AppRoutes = () => {
             path="/signup/university-admin"
             element={<UniversityAdmin />}
           />
-          <Route path="/subscription/plans" element={<SubscriptionPlans />} />
-          <Route path="/subscription/plans/:type" element={<SubscriptionPlans />} />
-          <Route path="/subscription/plans/:type/:mode" element={<SubscriptionPlans />} />
+          <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
+          <Route path="/subscription/plans/:type" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
+          <Route path="/subscription/plans/:type/:mode" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
 
           <Route path="/subscription/payment" element={<PaymentCompletion />} />
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
           <Route path="/debug-qr" element={<DebugQRTest />} />
+          <Route path="/network-error" element={<NetworkError />} />
           <Route
             path="/student/profile/:studentId"
             element={<StudentPublicViewer />}
@@ -879,6 +893,7 @@ const AppRoutes = () => {
           <Route path="my-experience" element={<MyExperience />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
+          <Route path="coming-soon" element={<ComingSoon />} />
           <Route path="opportunities" element={<Opportunities />} />
           <Route path="saved-jobs" element={<SavedJobs />} />
           <Route path="applications" element={<Applications />} />

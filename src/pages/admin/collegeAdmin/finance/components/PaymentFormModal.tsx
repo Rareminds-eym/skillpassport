@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import toast from 'react-hot-toast';
 import { StudentFeeSummary, FeePayment, PaymentMode, PAYMENT_MODES } from "../types";
 
 interface Props {
@@ -26,11 +27,11 @@ export const PaymentFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, stu
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLedgerId) {
-      alert("Please select a fee head to pay");
+      toast.error("Please select a fee head to pay");
       return;
     }
     if (!formData.amount || formData.amount <= 0) {
-      alert("Please enter a valid amount");
+      toast.error("Please enter a valid amount");
       return;
     }
     setSaving(true);

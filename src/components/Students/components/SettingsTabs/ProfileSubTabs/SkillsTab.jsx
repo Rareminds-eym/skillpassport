@@ -12,7 +12,10 @@ const SkillsTab = ({
   setShowSoftSkillsModal,
   // Technical Skills props
   technicalSkillsData, 
-  setShowTechnicalSkillsModal 
+  setShowTechnicalSkillsModal,
+  // Toggle handlers
+  onToggleTechnicalSkillEnabled,
+  onToggleSoftSkillEnabled,
 }) => {
   const [activeSkillsTab, setActiveSkillsTab] = useState("soft");
 
@@ -28,6 +31,7 @@ const SkillsTab = ({
           <SoftSkillsTab
             softSkillsData={softSkillsData}
             setShowSoftSkillsModal={setShowSoftSkillsModal}
+            onToggleSoftSkillEnabled={onToggleSoftSkillEnabled}
           />
         );
       case "technical":
@@ -35,6 +39,7 @@ const SkillsTab = ({
           <TechnicalSkillsTab
             technicalSkillsData={technicalSkillsData}
             setShowTechnicalSkillsModal={setShowTechnicalSkillsModal}
+            onToggleTechnicalSkillEnabled={onToggleTechnicalSkillEnabled}
           />
         );
       default:

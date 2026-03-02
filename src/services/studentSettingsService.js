@@ -46,6 +46,7 @@ export const getStudentSettingsByEmail = async (email) => {
         other_social_links,
         resumeUrl,
         profilePicture,
+        bio,
         gender,
         bloodGroup,
         guardianName,
@@ -77,6 +78,9 @@ export const getStudentSettingsByEmail = async (email) => {
         aadhar_number,
         backlogs_history,
         current_backlogs,
+        interests,
+        languages,
+        hobbies,
         school:organizations!students_school_id_fkey (
           id,
           name,
@@ -86,6 +90,14 @@ export const getStudentSettingsByEmail = async (email) => {
           organization_type
         ),
         college:organizations!students_college_id_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
+        university:organizations!students_universityid_fkey (
           id,
           name,
           code,
@@ -176,7 +188,7 @@ export const getStudentSettingsByEmail = async (email) => {
       // Profile
       resumeUrl: data.resumeUrl || '',
       profilePicture: data.profilePicture || '',
-      bio: '', // Bio field removed from profile JSONB
+      bio: data.bio || '',
 
       // New fields for gap years, work experience, and academic info
       gapInStudies: data.gap_in_studies || false,
@@ -186,6 +198,11 @@ export const getStudentSettingsByEmail = async (email) => {
       aadharNumber: data.aadhar_number || '',
       backlogsHistory: data.backlogs_history || '',
       currentBacklogs: data.current_backlogs || 0,
+
+      // New JSON fields - ensure they're returned as JSON strings for the form
+      interests: typeof data.interests === 'string' ? data.interests : JSON.stringify(data.interests || []),
+      languages: typeof data.languages === 'string' ? data.languages : JSON.stringify(data.languages || []),
+      hobbies: typeof data.hobbies === 'string' ? data.hobbies : JSON.stringify(data.hobbies || []),
 
       // Notification settings from user_settings table
       notificationSettings: userSettings?.notification_preferences || {
@@ -264,7 +281,9 @@ export const updateStudentSettings = async (email, updates) => {
       bloodGroup: 'bloodGroup',
       university: 'university',
       branch: 'branch_field',
+      program: 'branch_field', // Custom program name also maps to branch_field
       college: 'college_school_name',
+      courseName: 'course_name', // Program name field
       registrationNumber: 'registration_number',
       enrollmentNumber: 'enrollmentNumber',
       currentCgpa: 'currentCgpa',
@@ -293,6 +312,7 @@ export const updateStudentSettings = async (email, updates) => {
       portfolio: 'portfolio_link',
       resumeUrl: 'resumeUrl',
       profilePicture: 'profilePicture',
+      bio: 'bio',
       // New fields for gap years, work experience, and academic info
       gapInStudies: 'gap_in_studies',
       gapYears: 'gap_years',
@@ -301,6 +321,10 @@ export const updateStudentSettings = async (email, updates) => {
       aadharNumber: 'aadhar_number',
       backlogsHistory: 'backlogs_history',
       currentBacklogs: 'current_backlogs',
+      // New JSON fields
+      interests: 'interests',
+      languages: 'languages',
+      hobbies: 'hobbies',
     };
 
     // Define numeric fields that should be null instead of empty string
@@ -314,6 +338,9 @@ export const updateStudentSettings = async (email, updates) => {
 
     // Define date fields that should be null instead of empty string
     const dateFields = ['dateOfBirth', 'gradeStartDate', 'enrollmentDate', 'expectedGraduationDate'];
+    
+    // Define text fields that should be null instead of empty string
+    const nullableTextFields = ['courseName', 'gapReason'];
 
     // Process updates
     Object.keys(updates).forEach(key => {
@@ -340,12 +367,38 @@ export const updateStudentSettings = async (email, updates) => {
           value = null;
         }
 
+        // Handle aadharNumber - convert empty strings to null to satisfy DB constraint
+        if (key === 'aadharNumber' && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+        
+        // Handle nullable text fields - convert empty strings to null
+        if (nullableTextFields.includes(key) && (value === '' || value === null || value === undefined)) {
+          value = null;
+        }
+
+        // Handle JSON fields - parse string to JSON if needed
+        if (['interests', 'languages', 'hobbies'].includes(key)) {
+          if (typeof value === 'string') {
+            try {
+              value = JSON.parse(value);
+            } catch (e) {
+              console.warn(`Failed to parse ${key} as JSON:`, value);
+              value = [];
+            }
+          }
+          // Ensure it's an array
+          if (!Array.isArray(value)) {
+            value = [];
+          }
+        }
+
         columnUpdates[fieldMapping[key]] = value;
         
         // IMPORTANT: When branch_field is updated, also update course_name
         // This ensures consistency between settings page and assessment test page
         // Also clear program_id to prevent FK override
-        if (key === 'branch' && value) {
+        if ((key === 'branch' || key === 'program') && value) {
           columnUpdates.course_name = value;
           // If manually setting branch (not via program_id dropdown), clear program_id
           // This prevents the FK relationship from overriding the manual entry
@@ -450,6 +503,7 @@ export const updateStudentSettings = async (email, updates) => {
 
     // Perform the update on students table (only if there are column updates)
     if (Object.keys(columnUpdates).length > 1) { // More than just updated_at
+      console.log('💾 Updating students table with:', columnUpdates);
       const { data, error } = await supabase
         .from('students')
         .update(columnUpdates)
@@ -461,6 +515,9 @@ export const updateStudentSettings = async (email, updates) => {
         console.error('❌ Error updating student settings:', error);
         return { success: false, error: error.message };
       }
+      console.log('✅ Students table updated successfully');
+    } else {
+      console.log('⚠️ No column updates to save (only timestamp)');
     }
 
     // Return fresh data

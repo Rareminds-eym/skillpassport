@@ -55,12 +55,12 @@ export default function AboutRaremindsSection() {
 
       {/* Sparkles Background Effect - Positioned at Bottom */}
       <div className="absolute inset-0 top-2/3 pointer-events-none">
-        <div className="relative h-full w-full overflow-hidden [mask-image:radial-gradient(50%_50%,white,transparent)]">
-          <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_bottom_center,#8350e8,transparent_70%)] before:opacity-40" />
+        <div className="relative h-full w-full overflow-hidden [mask-image:radial-gradient(50%_50%_at_center,white,transparent)]">
+          <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_50%_100%,#8350e8,transparent_70%)] before:opacity-40" />
           <div className="absolute -left-1/2 top-1/2 aspect-[1/0.7] z-10 w-[200%] rounded-[100%] border-t border-gray-900/20 bg-white" />
           <Sparkles
             density={1200}
-            className="absolute inset-x-0 bottom-0 h-full w-full [mask-image:radial-gradient(50%_50%,white,transparent_85%)]"
+            className="absolute inset-x-0 bottom-0 h-full w-full [mask-image:radial-gradient(50%_50%_at_center,white,transparent_85%)]"
             color="#8350e8"
           />
         </div>

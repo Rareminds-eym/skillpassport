@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Upload, Download, FileText, CheckCircle, AlertCircle, X } from 'lucide-react';
 import Papa from 'papaparse';
+import toast from 'react-hot-toast';
 import { bulkImportTeachers } from '../../../../services/teacherService';
 
 interface ImportRow {
@@ -51,7 +52,7 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
     if (!selectedFile) return;
 
     if (!selectedFile.name.endsWith('.csv')) {
-      alert('Please upload a CSV file');
+      toast.error('Please upload a CSV file');
       return;
     }
 
@@ -70,7 +71,7 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
       },
       error: (error) => {
         console.error('CSV parsing error:', error);
-        alert('Failed to parse CSV file');
+        toast.error('Failed to parse CSV file');
       },
     });
   };
@@ -149,7 +150,7 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
 
   const handleImport = async () => {
     if (errors.length > 0) {
-      alert('Please fix all validation errors before importing');
+      toast.error('Please fix all validation errors before importing');
       return;
     }
 
@@ -192,7 +193,7 @@ Jane,Smith,jane.smith@school.edu,+1234567891,class_teacher,Class Teacher,Science
       }
     } catch (error: any) {
       console.error('Import failed:', error);
-      alert(`Import failed: ${error.message}`);
+      toast.error(`Import failed: ${error.message}`);
     } finally {
       setImporting(false);
     }

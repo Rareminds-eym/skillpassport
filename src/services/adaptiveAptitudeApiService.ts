@@ -27,6 +27,7 @@ import {
 export interface InitializeTestOptions {
   studentId: string;
   gradeLevel: GradeLevel;
+  studentCourse?: string | null;
 }
 
 /**
@@ -153,13 +154,14 @@ async function apiRequest<T>(
  */
 export async function initializeTest(
   studentId: string,
-  gradeLevel: GradeLevel
+  gradeLevel: GradeLevel,
+  studentCourse?: string | null
 ): Promise<InitializeTestResult> {
-  console.log('🚀 [AdaptiveAptitudeApiService] initializeTest:', { studentId, gradeLevel });
+  console.log('🚀 [AdaptiveAptitudeApiService] initializeTest:', { studentId, gradeLevel, studentCourse });
   
   const result = await apiRequest<InitializeTestResult>('/initialize', {
     method: 'POST',
-    body: JSON.stringify({ studentId, gradeLevel }),
+    body: JSON.stringify({ studentId, gradeLevel, studentCourse }),
   });
   
   console.log('✅ [AdaptiveAptitudeApiService] Test initialized:', {
@@ -364,7 +366,7 @@ export async function abandonSession(sessionId: string): Promise<void> {
  */
 export class AdaptiveAptitudeApiService {
   static async initializeTest(options: InitializeTestOptions): Promise<InitializeTestResult> {
-    return initializeTest(options.studentId, options.gradeLevel);
+    return initializeTest(options.studentId, options.gradeLevel, options.studentCourse);
   }
 
   static async getNextQuestion(sessionId: string): Promise<NextQuestionResult> {
@@ -404,3 +406,23 @@ export class AdaptiveAptitudeApiService {
 }
 
 export default AdaptiveAptitudeApiService;
+
+/**
+ * Links an adaptive aptitude session to a personal assessment attempt
+ * 
+ * @param attemptId - The personal assessment attempt ID
+ * @param sessionId - The adaptive aptitude session ID
+ */
+export async function linkSessionToAttempt(
+  attemptId: string,
+  sessionId: string
+): Promise<void> {
+  console.log('🔗 [AdaptiveAptitudeApiService] linkSessionToAttempt:', { attemptId, sessionId });
+  
+  await apiRequest(`/link-to-attempt`, {
+    method: 'POST',
+    body: JSON.stringify({ attemptId, sessionId }),
+  });
+  
+  console.log('✅ [AdaptiveAptitudeApiService] Session linked to attempt successfully');
+}

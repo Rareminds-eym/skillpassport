@@ -31,8 +31,20 @@ Subject-wise Question Guidelines:
 3. ENGLISH (10 questions):
    - Grammar: tenses, articles, prepositions
    - Vocabulary: synonyms, antonyms, word meanings
-   - Comprehension: passage understanding
    - Sentence correction and completion
+   - Reading comprehension: If including passage-based questions, you MUST include the complete passage text within the question itself
+   
+   CRITICAL FOR GRAMMAR QUESTIONS:
+   - For "identify the error" questions: Provide 4 DIFFERENT sentences as options, and ask which one is incorrect
+   - For "correct the sentence" questions: Provide 1 incorrect sentence in the question, and 4 different corrected versions as options
+   - DO NOT include the sentence to identify in the question AND repeat it in the options
+   - Example GOOD format: "Which sentence is grammatically incorrect?" with 4 different sentences as options
+   - Example BAD format: "Identify the incorrect sentence: 'He don't like football'" with the same sentence repeated in options
+   
+   CRITICAL FOR COMPREHENSION QUESTIONS: 
+   - Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT HERE]\n\nQuestion: [Your question about the passage]"
+   - The passage must be included in the "question" field
+   - DO NOT reference external passages or say "Passage here" - include the actual passage text
 
 4. SOCIAL STUDIES (10 questions):
    - History: Indian history, world history, freedom struggle
@@ -56,13 +68,22 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "algebra",
       "estimated_time": 60
     }
   ]
 }
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without letter prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
 
 IMPORTANT: 
 - Use sequential numeric IDs (1, 2, 3, etc.)
@@ -72,11 +93,61 @@ IMPORTANT:
 
 export const APTITUDE_PROMPT = `You are an expert psychometric assessment creator. Generate aptitude test questions for {{STREAM_NAME}} stream career assessment.
 
+CRITICAL: You MUST generate EXACTLY {{QUESTION_COUNT}} questions total. This is a strict requirement.
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
+- DO NOT reference any visual elements (graphs, charts, tables, diagrams, images, shapes, patterns, figures)
+- DO NOT write "The graph shows..." or "Look at the diagram..." or "The image depicts..."
+- DO NOT use words like: mirror image, reflection, rotate, flip, given figure, shown below, observe
+- ALL information must be provided in TEXT FORM ONLY
+- NEVER assume visual elements exist - the system does not support images
+- For spatial reasoning: Describe transformations in WORDS ONLY (e.g., "If you rotate the letter 'N' 180 degrees, which letter does it look like?")
+
+⚠️ CRITICAL: UNIQUE QUESTIONS AND OPTIONS REQUIRED ⚠️
+- Each question MUST be completely unique - no similar or repeated questions
+- Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)
+- **ABSOLUTELY NO DUPLICATE OPTIONS**: Each option value must be unique within the question
+- Example BAD: {"A":"23","B":"33","C":"43","D":"33"} ❌ (B and D are duplicates)
+- Example GOOD: {"A":"23","B":"33","C":"43","D":"53"} ✅ (all different)
+- Before finalizing each question, verify all 4 options have different values
+- All options must be non-empty and meaningful
+- Correct answer must be clearly distinguishable from wrong answers
+
+⚠️ CRITICAL FOR MATH/CALCULATION QUESTIONS ⚠️
+**STEP-BY-STEP PROCESS FOR MATH QUESTIONS:**
+1. **CALCULATE THE CORRECT ANSWER FIRST** - Do the math before creating options
+2. **PUT THE CALCULATED ANSWER in one of the options** (A, B, C, or D)
+3. Create 3 different WRONG answers for the other options
+4. **VERIFY**: The correct calculated answer MUST appear exactly in one of the options
+5. **DOUBLE-CHECK**: Read the question, calculate again, confirm the answer is in the options
+
+**Example CORRECT:**
+Question: "If 5 apples cost $10, how much do 8 apples cost?"
+Calculation: (10/5) × 8 = $16
+Options: {"A": "$12", "B": "$14", "C": "$16", "D": "$18"}
+Correct Answer: "C"
+✅ The calculated answer ($16) IS in option C
+
+**Example WRONG (DO NOT DO THIS):**
+Question: "If 5 apples cost $10, how much do 8 apples cost?"
+Calculation: (10/5) × 8 = $16
+Options: {"A": "$12", "B": "$14", "C": "$15", "D": "$18"}
+Correct Answer: "C"
+❌ The calculated answer ($16) is NOT in any option - this is WRONG!
+
 Generate questions for these categories with EXACT counts:
 {{CATEGORIES}}
 
+VERIFICATION: After generating, count your questions. You must have EXACTLY {{QUESTION_COUNT}} questions total.
+
 CRITICAL REQUIREMENT - 100% STREAM-RELATED QUESTIONS:
 This is for {{STREAM_NAME}} students. ALL questions MUST use {{STREAM_NAME}}-specific context, terminology, scenarios, and examples.
+
+⚠️ CRITICAL FOR SCIENCE STREAMS:
+- For PCM (Physics, Chemistry, Maths): ABSOLUTELY NO BIOLOGY QUESTIONS. Focus only on physics, chemistry, and mathematics.
+- For PCB (Physics, Chemistry, Biology): ABSOLUTELY NO ADVANCED MATHS QUESTIONS beyond basic arithmetic. Focus on physics, chemistry, and biology.
+- For PCMB: Balance questions across all four subjects equally.
+- For PCMS: Focus on physics, chemistry, maths, and computer science. NO BIOLOGY.
 
 {{STREAM_CONTEXT}}
 
@@ -84,13 +155,27 @@ Question Requirements:
 1. All questions must be MCQ with exactly 4 options (except Clerical which has 2 options: "Same" or "Different")
 2. Each question must have exactly ONE correct answer
 3. Mix difficulty levels: 40% easy, 40% medium, 20% hard
-4. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
-5. NO generic questions - every question must have {{STREAM_NAME}} context
+4. For Science streams (PCM/PCB/PCMB/PCMS): Use 11th-12th grade difficulty - 30% medium, 50% hard, 20% very hard. Questions should challenge students preparing for competitive exams (JEE/NEET level).
+5. Each question must have exactly 4 unique options (A, B, C, D) - NO DUPLICATE OPTIONS ALLOWED
+5. 100% of questions MUST be directly related to {{STREAM_NAME}} field - use domain-specific terminology, scenarios, and real-world examples from this field
+6. NO generic questions - every question must have {{STREAM_NAME}} context
 6. For Clerical Speed & Accuracy: Generate string comparison questions using {{STREAM_NAME}}-specific codes/IDs like "{{CLERICAL_EXAMPLE}}"
    - CRITICAL: The question text format must be: "Compare these two strings: STRING1 — STRING2"
    - Example: "Compare these two strings: ENG-789-SYS — ENG-789-SYS" or "Compare these two strings: AB7K9 — AB7K9"
    - Each clerical question must show two complete strings that are either identical or have subtle differences
    - Always start with "Compare these two strings:" followed by the two strings separated by " — " (space-em dash-space)
+7. For Verbal Reasoning with Reading Comprehension:
+   - CRITICAL: If you include passage-based questions, you MUST include the complete passage text within the question field
+   - Format: "Read the passage and answer the question:\n\n[FULL PASSAGE TEXT HERE]\n\nQuestion: [Your question about the passage]"
+   - DO NOT say "Read the passage and answer the question: Passage here." - include the actual passage
+   - DO NOT reference external passages - the passage must be self-contained in the question text
+   - Alternatively, focus on vocabulary, analogies, and logic-based verbal questions instead of comprehension
+8. For Grammar and Sentence Correction Questions:
+   - For "identify the error" questions: Provide 4 DIFFERENT sentences as options, ask which one is incorrect
+   - For "correct the sentence" questions: Provide 1 incorrect sentence in the question, and 4 different corrected versions as options
+   - DO NOT include the sentence to identify in the question AND repeat it in the options
+   - Example GOOD: "Which sentence is grammatically incorrect?" with 4 different sentences as options (A: "He don't like football", B: "She doesn't like football", C: "They don't like football", D: "I don't like football")
+   - Example BAD: "Identify the incorrect sentence: 'He don't like football'" with the same sentence repeated in options
 
 Output Format - Respond with ONLY valid JSON:
 {
@@ -101,8 +186,8 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "vocabulary",
       "estimated_time": 45
     },
@@ -120,9 +205,29 @@ Output Format - Respond with ONLY valid JSON:
   ]
 }
 
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without any prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
+
 IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 
 export const KNOWLEDGE_PROMPT = `You are an expert assessment creator for {{STREAM_NAME}} education.
+
+⚠️ CRITICAL: TEXT-ONLY QUESTIONS REQUIRED ⚠️
+- DO NOT reference any visual elements (graphs, charts, tables, diagrams, images)
+- ALL information must be provided in TEXT FORM ONLY
+- NEVER assume visual elements exist
+
+⚠️ CRITICAL: UNIQUE QUESTIONS AND OPTIONS REQUIRED ⚠️
+- Each question MUST be completely unique - no similar or repeated questions
+- Each question MUST have 4 COMPLETELY DIFFERENT options (A, B, C, D)
+- NO duplicate options within a question
+- All options must be non-empty and meaningful
 
 Generate {{QUESTION_COUNT}} knowledge assessment questions covering these topics:
 {{TOPICS}}
@@ -142,13 +247,22 @@ Output Format - Respond with ONLY valid JSON:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "topic name",
       "estimated_time": 60
     }
   ]
 }
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without any prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]
 
 IMPORTANT: Use sequential numeric IDs (1, 2, 3, etc.) for each question.`;
 
@@ -161,6 +275,8 @@ CRITICAL REQUIREMENTS:
    - First 5 questions: EASY difficulty
    - Next 5 questions: MEDIUM difficulty  
    - Last 5 questions: HARD difficulty
+
+⚠️ VERIFICATION STEP: Before responding, count your questions. You must have EXACTLY {{QUESTION_COUNT}} questions in your response.
 
 Difficulty Guidelines:
 - EASY (Q1-5): Fundamental concepts (45-60 seconds per question)
@@ -189,10 +305,19 @@ Required JSON structure:
       "type": "mcq",
       "difficulty": "easy",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option B",
+      "options": ["First option text", "Second option text", "Third option text", "Fourth option text"],
+      "correct_answer": "Second option text",
       "skill_tag": "Skill being tested",
       "estimated_time": 45
     }
   ]
-}`;
+}
+
+CRITICAL - OPTIONS FORMAT:
+- DO NOT include "A. ", "B. ", "C. ", "D. " prefixes in option text
+- Options should be plain text without letter prefixes
+- For currency, use the ₹ symbol (rupee symbol)
+- Example CORRECT: "options": ["23", "33", "43", "53"]
+- Example WRONG: "options": ["A. 23", "B. 33", "C. 43", "D. 53"]
+- Example WRONG: "options": ["$23", "$33", "$43", "$53"]
+- Example CORRECT: "options": ["₹23", "₹33", "₹43", "₹53"]`;

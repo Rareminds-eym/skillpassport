@@ -17,6 +17,8 @@ import AddStudentModal from '../../../components/educator/modals/Addstudentmodal
 import { AdmissionNoteModal } from '@/components/shared/StudentProfileDrawer/modals';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import AssessmentReportDrawer from '@/components/shared/AssessmentReportDrawer';
+// @ts-ignore - JS file without types
+import { getLatestResult } from '../../../services/assessmentService';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -84,11 +86,12 @@ const StatusBadgeComponent = ({ status }: { status: string }) => {
   );
 };
 
-const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
+const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath, loadingAssessmentForStudent }: {
   student: any;
   onViewProfile: (student: any) => void;
   onAddNote: (student: any) => void;
   onViewCareerPath: (student: any) => void;
+  loadingAssessmentForStudent: string | null;
 }) => {
 
 
@@ -141,11 +144,12 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath }: {
           </button>
           <button
             onClick={() => onViewCareerPath(student)}
-            className="inline-flex items-center px-2 py-1 border border-yellow-300 rounded text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100"
+            className="inline-flex items-center px-2 py-1 border border-yellow-300 rounded text-xs font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed"
             title="View Assessment Report"
+            disabled={loadingAssessmentForStudent === student.id}
           >
             <SparklesIcon className="h-3 w-3 mr-1" />
-            Career
+            {loadingAssessmentForStudent === student.id ? 'Loading...' : 'Career'}
           </button>
           <button
             onClick={() => onAddNote(student)}
@@ -169,6 +173,8 @@ const StudentDataAdmission = () => {
   const [showDrawer, setShowDrawer] = useState(false);
   const [showAssessmentReport, setShowAssessmentReport] = useState(false);
   const [studentForReport, setStudentForReport] = useState<any>(null);
+  const [assessmentResult, setAssessmentResult] = useState<any>(null);
+  const [loadingAssessmentForStudent, setLoadingAssessmentForStudent] = useState<string | null>(null);
   const [showAddStudentModal, setShowAddStudentModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [studentForNote, setStudentForNote] = useState<any>(null);
@@ -376,9 +382,42 @@ const StudentDataAdmission = () => {
   };
 
   // Opens the Assessment Report drawer to show the student's completed assessment report
-  const handleViewCareerPath = (student: any) => {
-    setStudentForReport(student);
-    setShowAssessmentReport(true);
+  const handleViewCareerPath = async (student: any) => {
+    try {
+      setLoadingAssessmentForStudent(student.id);
+      setStudentForReport(student);
+      
+      // Fetch the student's latest assessment result
+      // Try both student.id and student.user_id as getLatestResult can handle both
+      let result = null;
+      
+      if (student.user_id) {
+        result = await getLatestResult(student.user_id);
+      }
+      
+      // If no result found with user_id, try with student.id
+      if (!result && student.id) {
+        result = await getLatestResult(student.id);
+      }
+      
+      if (result) {
+        console.log('✅ Found assessment result for student:', student.name);
+        setAssessmentResult(result);
+        setShowAssessmentReport(true);
+      } else {
+        console.warn('⚠️ No assessment result found for student:', student.name);
+        // Still show the drawer but with no assessment data - it will show appropriate message
+        setAssessmentResult(null);
+        setShowAssessmentReport(true);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching assessment result:', error);
+      // Still show the drawer but with error state
+      setAssessmentResult(null);
+      setShowAssessmentReport(true);
+    } finally {
+      setLoadingAssessmentForStudent(null);
+    }
   };
 
 
@@ -620,15 +659,35 @@ const StudentDataAdmission = () => {
                     onViewProfile={handleViewProfile}
                     onAddNote={handleAddNoteClick}
                     onViewCareerPath={handleViewCareerPath}
+                    loadingAssessmentForStudent={loadingAssessmentForStudent}
                   />
                 ))}
                 {!loading && paginatedStudents.length === 0 && !error && (
-                  <div className="col-span-full text-center py-8">
-                    <p className="text-sm text-gray-500">
+                  <div className="col-span-full flex flex-col items-center justify-center py-16 px-4">
+                    <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-6">
+                      <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      {searchQuery || filters.degree.length > 0 ? 'No Students Found' : 'No Students Enrolled Yet'}
+                    </h3>
+                    <p className="text-gray-500 text-center mb-6 max-w-md">
                       {searchQuery || filters.degree.length > 0
-                        ? 'No enrollments match your current filters'
-                        : 'No enrollments found.'}
+                        ? 'No students match your current search or filters. Try adjusting your criteria.'
+                        : 'Get started by adding your first student enrollment to begin managing student data.'}
                     </p>
+                    {!searchQuery && filters.degree.length === 0 && (
+                      <button
+                        onClick={() => setShowAddStudentModal(true)}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Student
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -661,7 +720,39 @@ const StudentDataAdmission = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedStudents.map((student) => (
+                    {paginatedStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-6 py-16">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mb-6">
+                              <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                              </svg>
+                            </div>
+                            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                              {searchQuery || filters.degree.length > 0 ? 'No Students Found' : 'No Students Enrolled Yet'}
+                            </h3>
+                            <p className="text-gray-500 text-center mb-6 max-w-md">
+                              {searchQuery || filters.degree.length > 0
+                                ? 'No students match your current search or filters. Try adjusting your criteria.'
+                                : 'Get started by adding your first student enrollment to begin managing student data.'}
+                            </p>
+                            {!searchQuery && filters.degree.length === 0 && (
+                              <button
+                                onClick={() => setShowAddStudentModal(true)}
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                              >
+                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                </svg>
+                                Add Student
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                    paginatedStudents.map((student) => (
                       <tr key={student.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -764,10 +855,11 @@ const StudentDataAdmission = () => {
                           </button>
                           <button
                             onClick={() => handleViewCareerPath(student)}
-                            className="text-yellow-600 hover:text-yellow-900"
+                            className="text-yellow-600 hover:text-yellow-900 disabled:opacity-50 disabled:cursor-not-allowed"
                             title="View Assessment Report"
+                            disabled={loadingAssessmentForStudent === student.id}
                           >
-                            Career
+                            {loadingAssessmentForStudent === student.id ? 'Loading...' : 'Career'}
                           </button>
                           <button
                             onClick={() => handleAddNoteClick(student)}
@@ -777,7 +869,7 @@ const StudentDataAdmission = () => {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    )))}
                   </tbody>
                 </table>
               </div>
@@ -809,11 +901,27 @@ const StudentDataAdmission = () => {
 
       {/* Assessment Report Drawer - Shows the student's completed assessment report */}
       <AssessmentReportDrawer
-        student={studentForReport}
+        student={studentForReport ? {
+          id: studentForReport.id,
+          user_id: studentForReport.user_id || studentForReport.id,
+          name: studentForReport.name || undefined,
+          email: studentForReport.email || undefined,
+          college: studentForReport.college || undefined,
+          college_name: studentForReport.college || undefined,
+          grade: studentForReport.grade || studentForReport.student_grade || undefined,
+          school_name: studentForReport.college || undefined,
+          roll_number: studentForReport.enrollmentNumber || studentForReport.roll_number || 'N/A',
+          student_grade: studentForReport.student_grade || studentForReport.grade || undefined,
+          program_id: studentForReport.program_id || undefined,
+          program_name: studentForReport.program_name || undefined,
+          stream_name: studentForReport.stream_name || undefined
+        } : undefined}
+        assessmentResult={assessmentResult}
         isOpen={showAssessmentReport}
         onClose={() => {
           setShowAssessmentReport(false);
           setStudentForReport(null);
+          setAssessmentResult(null);
         }}
       />
 
@@ -822,14 +930,11 @@ const StudentDataAdmission = () => {
         isOpen={showAddStudentModal}
         onClose={() => {
           setShowAddStudentModal(false);
-          // Small delay to let user see the modal close, then refresh
-          setTimeout(() => {
-            window.location.reload();
-          }, 300);
         }}
         onSuccess={() => {
-          // Success is handled in the modal - just log it
-          console.log('Student created successfully');
+          setShowAddStudentModal(false);
+          // Trigger a re-fetch by reloading without full page refresh
+          window.location.href = window.location.href.split('#')[0];
         }}
       />
 

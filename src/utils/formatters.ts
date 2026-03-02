@@ -23,20 +23,37 @@ export const formatStreamId = (streamId: string | null | undefined): string => {
     'arts_economics': 'Arts (Economics)',
     'general': 'General',
     
-    // College programs - Engineering
+    // College programs - Engineering (B.Tech)
     'btech_ece': 'B.Tech ECE',
     'btech_cse': 'B.Tech CSE',
+    'btech_cs': 'B.Tech Computer Science',
+    'btech_ds': 'B.Tech Data Science',
     'btech_eee': 'B.Tech EEE',
     'btech_me': 'B.Tech Mechanical',
     'btech_ce': 'B.Tech Civil',
     'btech_it': 'B.Tech IT',
+    'btech_ai': 'B.Tech AI & ML',
+    'btech_aiml': 'B.Tech AI & ML',
     
-    // College programs - Other
-    'bca': 'BCA',
-    'bba': 'BBA',
-    'ba': 'BA',
-    'bcom': 'B.Com',
-    'bsc': 'B.Sc',
+    // College programs - Master's (M.Tech/M.Sc)
+    'mtech_cs': 'M.Tech Computer Science',
+    'mtech_ds': 'M.Tech Data Science',
+    'msc_ds': 'M.Sc Data Science',
+    'msc_cs': 'M.Sc Computer Science',
+    'msc_physics': 'M.Sc Physics',
+    'msc_chemistry': 'M.Sc Chemistry',
+    'msc_maths': 'M.Sc Mathematics',
+    
+    // College programs - Other Bachelor's
+    'bca': 'BCA (Computer Applications)',
+    'bba': 'BBA (Business Administration)',
+    'ba': 'BA (Arts)',
+    'bcom': 'B.Com (Commerce)',
+    'bsc': 'B.Sc (Science)',
+    'bsc_cs': 'B.Sc Computer Science',
+    'bsc_physics': 'B.Sc Physics',
+    'bsc_chemistry': 'B.Sc Chemistry',
+    'bsc_maths': 'B.Sc Mathematics',
     'bpharma': 'B.Pharma',
     'animation': 'Animation',
     'cs': 'Computer Science',

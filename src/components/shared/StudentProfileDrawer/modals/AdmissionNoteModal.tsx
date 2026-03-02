@@ -53,72 +53,160 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
 
   const sendNoteAsCommunication = async () => {
     try {
-      // Get current user (college admin)
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error('Not authenticated');
       }
 
-      // Get college ID for the admin
-      let collegeId: string | null = null;
-      
-      // Try college_lecturers table first
-      const { data: lecturerData } = await supabase
-        .from('college_lecturers')
-        .select('collegeId')
-        .or(`user_id.eq.${user.id},userId.eq.${user.id}`)
-        .single();
-      
-      if (lecturerData?.collegeId) {
-        collegeId = lecturerData.collegeId;
+      console.log('🔍 Starting user detection for:', user.id);
+
+      // Detect user type and get appropriate IDs
+      let userType: 'college_admin' | 'college_educator' | 'school_educator' | null = null;
+      let organizationId: string | null = null;
+      let educatorId: string | null = null;
+
+      // Check if user is a school educator
+      console.log('🏫 Checking school_educators table...');
+      const { data: schoolEducatorData, error: schoolError } = await supabase
+        .from('school_educators')
+        .select('id, school_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      console.log('🏫 School educator result:', { data: schoolEducatorData, error: schoolError });
+
+      if (schoolEducatorData) {
+        userType = 'school_educator';
+        educatorId = schoolEducatorData.id;
+        organizationId = schoolEducatorData.school_id;
+        console.log('✅ Detected as school_educator:', { educatorId, organizationId });
       } else {
-        // Fallback: check if user is college owner in organizations table
-        const { data: orgData } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('organization_type', 'college')
-          .eq('admin_id', user.id)
+        // Check if user is a college lecturer
+        console.log('🎓 Checking college_lecturers table...');
+        
+        const { data: lecturerData, error: lecturerError } = await supabase
+          .from('college_lecturers')
+          .select('id, collegeId, designation, user_id')
+          .eq('user_id', user.id)
           .maybeSingle();
         
-        if (orgData?.id) {
-          collegeId = orgData.id;
+        console.log('🎓 College lecturer result:', { data: lecturerData, error: lecturerError });
+        
+        if (lecturerData) {
+          educatorId = lecturerData.id;
+          organizationId = lecturerData.collegeId;
+          
+          console.log('📋 Lecturer data found:', { 
+            id: lecturerData.id, 
+            collegeId: lecturerData.collegeId, 
+            designation: lecturerData.designation 
+          });
+          
+          // Check if they're an admin based on designation
+          // Common admin designations: 'Principal', 'Dean', 'HOD', 'Admin', etc.
+          const adminDesignations = ['principal', 'dean', 'hod', 'admin', 'director'];
+          const isAdmin = lecturerData.designation && 
+                         adminDesignations.some(d => lecturerData.designation.toLowerCase().includes(d));
+          
+          if (isAdmin) {
+            userType = 'college_admin';
+            console.log('✅ Detected as college_admin (based on designation)');
+          } else {
+            userType = 'college_educator';
+            console.log('✅ Detected as college_educator');
+          }
+        } else {
+          // Fallback: check if user is college owner in organizations table
+          console.log('🏢 Checking organizations table...');
+          const { data: orgData, error: orgError } = await supabase
+            .from('organizations')
+            .select('id')
+            .eq('organization_type', 'college')
+            .eq('admin_id', user.id)
+            .maybeSingle();
+          
+          console.log('🏢 Organization result:', { data: orgData, error: orgError });
+          
+          if (orgData?.id) {
+            userType = 'college_admin';
+            organizationId = orgData.id;
+            console.log('✅ Detected as college owner/admin');
+          }
         }
       }
 
-      if (!collegeId) {
-        throw new Error('Could not determine college ID');
+      console.log('📊 Final detection:', { userType, organizationId, educatorId });
+
+      if (!userType || !organizationId) {
+        console.error('❌ Detection failed - missing userType or organizationId');
+        throw new Error('Could not determine user type or organization');
       }
 
-      // Create or get conversation with student
-      const conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
-        student.id,
-        collegeId,
-        'Admission Note'
-      );
+      let conversation;
 
-      // Send the note as a message directly to the database
-      // Using the same approach as useCollegeAdminMessages hook
+      // Create or get conversation based on user type
+      if (userType === 'school_educator') {
+        console.log('🏫 Creating school educator conversation...');
+        conversation = await MessageService.getOrCreateStudentEducatorConversation(
+          student.id,
+          educatorId!,
+          undefined, // classId
+          'Mentor Note'
+        );
+      } else if (userType === 'college_educator') {
+        console.log('🎓 Creating college educator conversation...');
+        conversation = await MessageService.getOrCreateStudentCollegeLecturerConversation(
+          student.id,
+          educatorId!,
+          organizationId,
+          undefined, // programSectionId
+          'Mentor Note'
+        );
+      } else {
+        // college_admin
+        console.log('🏢 Creating college admin conversation...');
+        conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
+          student.id,
+          organizationId,
+          'Admission Note'
+        );
+      }
+
+      console.log('✅ Conversation created:', conversation.id);
+
+      // Send the note as a message
+      const senderType = userType === 'school_educator' ? 'educator' : 
+                        userType === 'college_educator' ? 'college_educator' : 
+                        'college_admin';
+      
+      const notePrefix = userType === 'college_admin' ? 'Admission' : 'Mentor';
+
       const messageData = {
         conversation_id: conversation.id,
         sender_id: user.id,
-        sender_type: 'college_admin',
+        sender_type: senderType,
         receiver_id: student.id,
         receiver_type: 'student',
-        message_text: `📝 Admission Note:\n\n${note}`,
-        subject: 'Admission Note'
+        message_text: `📝 ${notePrefix} Note:\n\n${note}`,
+        subject: `${notePrefix} Note`
       };
+
+      console.log('📤 Sending message:', messageData);
 
       const { error: messageError } = await supabase
         .from('messages')
         .insert(messageData);
 
       if (messageError) {
+        console.error('❌ Message error:', messageError);
         throw messageError;
       }
 
-      toast.success('Note sent to student via communication');
+      console.log('✅ Message sent successfully');
+      toast.success(`Note sent to student via communication`);
     } catch (error) {
-      console.error('Error sending note to communication:', error);
+      console.error('❌ Error sending note to communication:', error);
       throw error;
     }
   };
@@ -132,7 +220,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
 
         <div className="inline-block align-bottom bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Add Admission Note</h3>
+            <h3 className="text-lg font-medium text-gray-900">Add Mentor Note</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -148,7 +236,7 @@ const AdmissionNoteModal: React.FC<AdmissionNoteModalProps> = ({
                 onChange={(e) => setNote(e.target.value)}
                 rows={6}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Enter admission feedback, assessment notes, or recommendations..."
+                placeholder="Enter mentor feedback, observations, or recommendations..."
               />
             </div>
 

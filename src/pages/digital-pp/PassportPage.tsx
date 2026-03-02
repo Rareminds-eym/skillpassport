@@ -3,16 +3,21 @@ import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight,
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { useAuth } from '../../context/AuthContext';
 
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
   const { student, isLoading } = usePortfolio();
+  const { role } = useAuth();
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Check if user is admin
+  const isAdminViewing = role && (role.includes('admin') || role === 'admin');
 
   // Function to get appropriate icon for hobby
   const getHobbyIcon = (hobby: string) => {
@@ -178,22 +183,28 @@ const PassportPage: React.FC = () => {
                 </div>
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">
-                    {student?.student_type === 'school-student' ? 'School' : 'University'}
+                    {student?.school_id 
+                      ? 'School' 
+                      : student?.college_id 
+                        ? 'College' 
+                        : 'University'}
                   </p>
                   <p className="font-semibold text-gray-800">
-                    {student?.student_type === 'school-student'
+                    {student?.school_id
                       ? (student?.school?.name || student?.college_school_name || 'N/A')
-                      : (student?.university || student?.universityInfo?.name || 'N/A')
+                      : student?.college_id
+                        ? (student?.college_school_name || 'N/A')
+                        : (student?.university || student?.universityInfo?.name || 'N/A')
                     }
                   </p>
                 </div>
                 <div className="border-b border-gray-300 pb-2">
                   <p className="text-xs text-gray-500 uppercase">
-                    {student?.student_type === 'school-student' ? 'Grade/Section' : 'Field of Study'}
+                    {student?.school_id ? 'Grade/Section' : 'Field of Study'}
                   </p>
                   <p className="font-semibold text-gray-800">
-                    {student?.student_type === 'school-student'
-                      ? (student?.grade && student?.section ? `Grade ${student.grade} - ${student.section}` : 'N/A')
+                    {student?.school_id
+                      ? (student?.section || student?.grade || 'N/A')
                       : (student?.branch_field || 'N/A')
                     }
                   </p>
@@ -352,17 +363,23 @@ const PassportPage: React.FC = () => {
           </div>
           
           <div className="space-y-3">
-            {student?.profile.languages?.map((language, index) => (
-              <div key={index} className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between border-l-4 border-green-500">
-                <div className="flex items-center space-x-3">
-                  <Globe className="w-5 h-5 text-green-600" />
-                  <span className="font-semibold text-gray-900">{language.name}</span>
+            {student?.profile.languages?.map((language, index) => {
+              // Handle both string format and object format
+              const languageName = typeof language === 'string' ? language : language.name;
+              const proficiency = typeof language === 'string' ? 'Proficient' : (language.proficiency || 'Proficient');
+              
+              return (
+                <div key={index} className="bg-white rounded-lg p-4 shadow-sm flex items-center justify-between border-l-4 border-green-500">
+                  <div className="flex items-center space-x-3">
+                    <Globe className="w-5 h-5 text-green-600" />
+                    <span className="font-semibold text-gray-900">{languageName}</span>
+                  </div>
+                  <span className="text-sm font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
+                    {proficiency}
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full">
-                  {language.proficiency}
-                </span>
-              </div>
-            ))}
+              );
+            })}
             
             {(!student?.profile.languages || student.profile.languages.length === 0) && (
               <div className="text-center text-gray-500 py-12">
@@ -589,6 +606,18 @@ const PassportPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
+      {/* Back Button - Only show for admins */}
+      {isAdminViewing && (
+        <div className="fixed top-4 left-4 z-50">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-all duration-200 backdrop-blur-sm bg-opacity-90"
+          >
+            <span className="text-sm font-medium">Back</span>
+          </button>
+        </div>
+      )}
+
       {/* Passport Book */}
       <div className="flex items-center justify-center min-h-screen py-8 px-4 md:px-8">
         <div 

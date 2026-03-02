@@ -1,19 +1,20 @@
 /**
- * Generate Embedding Handler - Proxy to Cloudflare embedding-api worker
+ * Generate Embedding Handler - Direct OpenRouter integration
  * 
  * Features:
- * - Routes embedding requests to dedicated embedding-api worker
- * - Worker handles OpenRouter API calls and caching
- * - Supports both direct generation and database updates
+ * - Generates embeddings using OpenRouter (openai/text-embedding-3-small)
+ * - Returns 1536-dimensional vectors
+ * - Optionally updates database
  * 
  * Configuration:
- * - Set EMBEDDING_API_URL or VITE_EMBEDDING_API_URL environment variable
- * - Example: https://embedding-api.dark-mode-d021.workers.dev
+ * - Requires OPENROUTER_API_KEY environment variable
  */
 
 import { jsonResponse } from '../../../../src/functions-lib/response';
 import { authenticateUser, isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
+import { getAPIKeys, AI_MODELS, API_CONFIG } from '../../shared/ai-config';
+import { createClient } from '@supabase/supabase-js';
 
 interface GenerateEmbeddingRequest {
   text: string;
@@ -21,9 +22,45 @@ interface GenerateEmbeddingRequest {
   id: string;
   type?: 'opportunity' | 'student';
   returnEmbedding?: boolean;
+  skipDatabaseUpdate?: boolean;
 }
 
-export async function handleGenerateEmbedding(request: Request, env: Record<string, string>): Promise<Response> {
+/**
+ * Generate embedding using OpenRouter
+ */
+async function generateEmbedding(text: string, openRouterKey: string): Promise<number[]> {
+  const response = await fetch('https://openrouter.ai/api/v1/embeddings', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${openRouterKey}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': API_CONFIG.OPENROUTER.headers['HTTP-Referer'],
+      'X-Title': API_CONFIG.OPENROUTER.headers['X-Title'],
+    },
+    body: JSON.stringify({
+      model: AI_MODELS.EMBEDDING_SMALL,
+      input: text.slice(0, 8000), // Max 8K tokens
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
+  }
+
+  const data = (await response.json()) as { data: Array<{ embedding: number[] }> };
+
+  if (!data?.data?.[0]?.embedding) {
+    throw new Error('Invalid OpenRouter response: missing embedding');
+  }
+
+  return data.data[0].embedding;
+}
+
+export async function handleGenerateEmbedding(
+  request: Request,
+  env: Record<string, string>
+): Promise<Response> {
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
@@ -36,104 +73,172 @@ export async function handleGenerateEmbedding(request: Request, env: Record<stri
   const { user } = auth;
   const studentId = user.id;
 
-  if (!checkRateLimit(studentId)) {
+  if (!await checkRateLimit(studentId, env)) {
     return jsonResponse({ error: 'Rate limit exceeded' }, 429);
   }
 
   let body: GenerateEmbeddingRequest;
   try {
-    body = await request.json() as GenerateEmbeddingRequest;
+    body = (await request.json()) as GenerateEmbeddingRequest;
   } catch {
     return jsonResponse({ success: false, error: 'Invalid JSON' }, 400);
   }
 
-  const { text, table, id, type = 'opportunity', returnEmbedding = false } = body;
+  const {
+    text,
+    table,
+    id,
+    type = 'opportunity',
+    returnEmbedding = false,
+    skipDatabaseUpdate = false,
+  } = body;
 
   if (!text || !table || !id) {
-    return jsonResponse({
-      success: false,
-      error: 'Missing required parameters: text, table, id'
-    }, 400);
+    return jsonResponse(
+      {
+        success: false,
+        error: 'Missing required parameters: text, table, id',
+      },
+      400
+    );
   }
 
   const allowedTables = ['opportunities', 'students', 'profiles', 'courses'];
   if (!allowedTables.includes(table)) {
-    return jsonResponse({
-      success: false,
-      error: `Invalid table. Allowed tables: ${allowedTables.join(', ')}`
-    }, 400);
+    return jsonResponse(
+      {
+        success: false,
+        error: `Invalid table. Allowed tables: ${allowedTables.join(', ')}`,
+      },
+      400
+    );
   }
 
   if (!isValidUUID(id)) {
-    return jsonResponse({
-      success: false,
-      error: 'Invalid id format. Must be a valid UUID.'
-    }, 400);
+    return jsonResponse(
+      {
+        success: false,
+        error: 'Invalid id format. Must be a valid UUID.',
+      },
+      400
+    );
   }
 
-  console.log(`Proxying embedding request for ${type} #${id} to embedding-api worker`);
+  console.log(`[Embedding] Generating for ${type} #${id}`);
 
   try {
-    // Get embedding API URL from environment
-    const embeddingApiUrl = env.EMBEDDING_API_URL || env.VITE_EMBEDDING_API_URL;
-
-    if (!embeddingApiUrl) {
-      return jsonResponse({
-        success: false,
-        error: 'Embedding API URL not configured. Set EMBEDDING_API_URL or VITE_EMBEDDING_API_URL environment variable.'
-      }, 500);
+    // SECURITY: Validate ownership before allowing embedding updates
+    if (!skipDatabaseUpdate) {
+      const userSupabase = auth.supabase;
+      
+      if (table === 'students') {
+        // For students table: user must own the record
+        if (id !== studentId) {
+          return jsonResponse({
+            success: false,
+            error: 'Unauthorized: Cannot update embedding for other users'
+          }, 403);
+        }
+      } else if (table === 'profiles') {
+        // For profiles table: verify user_id matches
+        const { data: profile } = await userSupabase
+          .from('profiles')
+          .select('user_id')
+          .eq('id', id)
+          .single();
+        
+        if (!profile || profile.user_id !== studentId) {
+          return jsonResponse({
+            success: false,
+            error: 'Unauthorized: Cannot update embedding for other users'
+          }, 403);
+        }
+      } else if (table === 'opportunities' || table === 'courses') {
+        // SECURITY: For opportunities and courses, verify user has admin privileges
+        const { data: adminCheck } = await userSupabase
+          .from('school_admins')
+          .select('id')
+          .eq('user_id', studentId)
+          .limit(1)
+          .maybeSingle();
+        
+        const { data: collegeAdminCheck } = await userSupabase
+          .from('college_admins')
+          .select('id')
+          .eq('user_id', studentId)
+          .limit(1)
+          .maybeSingle();
+        
+        if (!adminCheck && !collegeAdminCheck) {
+          return jsonResponse({
+            success: false,
+            error: 'Unauthorized: Admin access required for this operation'
+          }, 403);
+        }
+      }
     }
 
-    // Call the embedding-api worker
-    const workerResponse = await fetch(`${embeddingApiUrl}/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        text,
-        id,
-        table,
-      }),
-    });
-
-    if (!workerResponse.ok) {
-      const errorText = await workerResponse.text();
-      console.error(`Embedding API worker error: ${workerResponse.status} - ${errorText}`);
-      return jsonResponse({
-        success: false,
-        error: `Embedding API error: ${workerResponse.status}`
-      }, workerResponse.status);
+    // Get OpenRouter API key
+    const apiKeys = getAPIKeys(env);
+    if (!apiKeys.openRouter) {
+      return jsonResponse(
+        {
+          success: false,
+          error: 'OpenRouter API key not configured',
+        },
+        500
+      );
     }
 
-    const workerData = await workerResponse.json() as any;
+    // Generate embedding using OpenRouter
+    const embedding = await generateEmbedding(text, apiKeys.openRouter);
 
-    // If returnEmbedding is requested, we'd need to fetch it from the database
-    // since the worker doesn't return the actual embedding in the response
+    console.log(`[Embedding] Generated ${embedding.length}-dimensional vector`);
+
+    // Update database if not skipped (after ownership validation)
+    if (!skipDatabaseUpdate) {
+      const supabase = createClient(
+        env.SUPABASE_URL || env.VITE_SUPABASE_URL,
+        env.SUPABASE_SERVICE_ROLE_KEY
+      );
+
+      const { error: updateError } = await supabase
+        .from(table)
+        .update({ embedding })
+        .eq('id', id);
+
+      if (updateError) {
+        console.error('[Embedding] Database update failed:', updateError);
+        // Don't fail the request, just log the error
+      } else {
+        console.log(`[Embedding] Updated ${table} #${id} in database`);
+      }
+    }
+
+    // Return response
     if (returnEmbedding) {
-      console.log('⚠️ returnEmbedding flag requires fetching from database after worker updates it');
-      // For now, just return success with dimensions
       return jsonResponse({
         success: true,
-        message: 'Embedding generated by worker. Use database query to retrieve it.',
-        dimensions: workerData.dimensions || 1536
+        embedding,
+        dimensions: embedding.length,
+        model: AI_MODELS.EMBEDDING_SMALL,
       });
     }
-
-    console.log(`✅ Successfully generated embedding via worker for ${table} #${id}`);
 
     return jsonResponse({
       success: true,
       message: `Embedding generated for ${type} #${id}`,
-      dimensions: workerData.dimensions || 1536,
-      model: workerData.model || 'openrouter'
+      dimensions: embedding.length,
+      model: AI_MODELS.EMBEDDING_SMALL,
     });
-
   } catch (error) {
-    console.error('Error proxying to embedding-api worker:', error);
-    return jsonResponse({
-      success: false,
-      error: (error as Error).message || 'Unknown error generating embedding'
-    }, 500);
+    console.error('[Embedding] Error:', error);
+    return jsonResponse(
+      {
+        success: false,
+        error: (error as Error).message || 'Unknown error generating embedding',
+      },
+      500
+    );
   }
 }

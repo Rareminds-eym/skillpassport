@@ -230,7 +230,20 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
 
     // Process passed data instead of fetching from database
     useEffect(() => {
-        if (!isOpen) return;
+        console.log('🎨 [AssessmentReportDrawer] useEffect triggered');
+        console.log('🎨 [AssessmentReportDrawer] isOpen:', isOpen);
+        console.log('🎨 [AssessmentReportDrawer] assessmentResult?.id:', assessmentResult?.id);
+        
+        if (!isOpen) {
+            console.log('🎨 [AssessmentReportDrawer] Drawer is closed, skipping processing');
+            return;
+        }
+        
+        console.log('🎨 [AssessmentReportDrawer] Starting data processing...');
+        console.log('🎨 [AssessmentReportDrawer] Setting loading to false');
+        
+        // Clear any previous errors when drawer opens
+        setError(null);
         
         // Process assessment data when drawer opens
         
@@ -260,6 +273,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
 
         // Process assessment data from passed props
         if (assessmentResult) {
+            setError(null); // Clear any previous errors
             setAssessmentData(assessmentResult);
             devLog('[AssessmentReportDrawer] Using passed assessment result:', assessmentResult.id);
 
@@ -451,6 +465,14 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
         }
 
         setLoading(false);
+        console.log('🎨 [AssessmentReportDrawer] Data processing complete, loading set to FALSE');
+        console.log('🎨 [AssessmentReportDrawer] Final state:', {
+            loading: false,
+            error,
+            careerTracksCount: careerTracks.length,
+            hasStudentInfo: !!studentInfo,
+            hasAssessmentData: !!assessmentData
+        });
     }, [isOpen, assessmentResult?.id, student?.id, student?.user_id]); // Only depend on essential IDs
 
     // Handle opening career track modal
@@ -881,15 +903,51 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
 
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto bg-gray-50 assessment-drawer-scrollbar" style={{ minHeight: '400px', maxHeight: 'calc(100vh - 120px)' }}>
+                        {(() => {
+                            console.log('🎨 [AssessmentReportDrawer] Render check - LOADER 2 STATUS');
+                            console.log('🎨 [AssessmentReportDrawer] loading:', loading);
+                            console.log('🎨 [AssessmentReportDrawer] recommendationsLoading:', recommendationsLoading);
+                            console.log('🎨 [AssessmentReportDrawer] error:', error);
+                            console.log('🎨 [AssessmentReportDrawer] careerTracks:', careerTracks?.length || 0);
+                            return null;
+                        })()}
                         {loading || recommendationsLoading ? (
                             <div className="flex items-center justify-center py-20">
+                                {(() => {
+                                    console.log('🎨 [AssessmentReportDrawer] LOADER 2 DISPLAYED - Generating report...');
+                                    return null;
+                                })()}
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
                                 <span className="ml-4 text-gray-600 text-lg">Generating your report...</span>
                             </div>
                         ) : error ? (
-                            <div className="text-center py-20">
-                                <div className="text-red-500 mb-4 text-4xl">⚠️</div>
-                                <p className="text-gray-600 text-lg">{error}</p>
+                            <div className="flex flex-col items-center justify-center py-20 px-8">
+                                <div className="bg-orange-100 rounded-full p-6 mb-6">
+                                    <svg className="w-16 h-16 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-xl font-semibold text-gray-900 mb-3">No Assessment Data Available</h3>
+                                <p className="text-gray-600 text-center mb-6 max-w-md leading-relaxed">
+                                    This student hasn't completed their career assessment yet, or the assessment data is not available in the system.
+                                </p>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-lg">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0">
+                                            <svg className="w-5 h-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <div className="ml-3">
+                                            <h4 className="text-sm font-medium text-blue-800 mb-1">What you can do:</h4>
+                                            <ul className="text-sm text-blue-700 space-y-1">
+                                                <li>• Ask the student to complete their career assessment</li>
+                                                <li>• Check if the assessment was submitted successfully</li>
+                                                <li>• Contact support if the issue persists</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <>
@@ -1116,7 +1174,7 @@ const AssessmentReportDrawer: React.FC<AssessmentReportDrawerProps> = React.memo
                                                                             className="text-xs font-bold uppercase mb-3 tracking-wider"
                                                                             style={{ color: '#60a5fa' }}
                                                                         >
-                                                                            TOP ROLES & SALARY
+                                                                             Top Roles & Salary
                                                                         </h5>
                                                                         <div className="space-y-2">
                                                                             {track.topRoles.slice(0, 3).map((role, roleIndex) => (

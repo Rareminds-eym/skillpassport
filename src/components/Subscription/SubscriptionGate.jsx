@@ -14,8 +14,12 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { PLAN_HIERARCHY } from '../../config/subscriptionPlans';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
+
+// Plan hierarchy for access-control comparisons (lowest → highest).
+// Must match plan_code values in the Supabase subscription_plans table.
+// Pricing is never read from here — prices come exclusively from the DB via the API.
+const PLAN_HIERARCHY = ['basic', 'professional', 'enterprise', 'enterprise_ecosystem'];
 
 /**
  * Get the base path for subscription routes based on current location
@@ -54,7 +58,7 @@ const DefaultFallback = ({ requiredPlan, basePath, userType }) => (
       Premium Feature
     </h3>
     <p className="text-gray-600 mb-4">
-      {requiredPlan 
+      {requiredPlan
         ? `This feature requires a ${requiredPlan} plan or higher.`
         : 'This feature requires an active subscription.'}
     </p>
@@ -79,8 +83,8 @@ const getPlanLevel = (planId) => {
   return index >= 0 ? index : -1;
 };
 
-const SubscriptionGate = ({ 
-  children, 
+const SubscriptionGate = ({
+  children,
   fallback,
   requiredPlan = null,
   requireActive = true,
@@ -88,8 +92,8 @@ const SubscriptionGate = ({
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
   const userType = getUserTypeFromPath(location.pathname);
-  const { 
-    hasAccess, 
+  const {
+    hasAccess,
     subscription,
     isLoading,
   } = useSubscriptionContext();

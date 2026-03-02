@@ -550,8 +550,8 @@ const BrowseCourses = () => {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`px-4 py-2 min-w-[40px] ${
                         currentPage === pageNum
-                          ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                          : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                          ? '!bg-indigo-600 !text-white !hover:bg-indigo-700'
+                          : '!bg-white text-gray-700 !hover:bg-gray-50 border border-gray-300'
                       }`}
                     >
                       {pageNum}

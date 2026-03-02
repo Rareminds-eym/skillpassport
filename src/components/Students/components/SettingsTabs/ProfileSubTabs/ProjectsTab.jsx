@@ -1,5 +1,5 @@
 import React from "react";
-import { FolderGit2, Plus, Edit, Calendar, ExternalLink, Github, Globe, Code, CheckCircle } from "lucide-react";
+import { FolderGit2, Plus, Edit, Calendar, ExternalLink, Github, Globe, Code, CheckCircle, Clock } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 
@@ -89,6 +89,29 @@ const ProjectsTab = ({
       ) : (
         <div className="max-h-96 overflow-y-auto space-y-4 pr-2">
           {(projectsData || [])
+            .filter(project => project.enabled !== false) // Only show enabled projects
+            .map((project) => {
+              // VERSIONING: If project has pending edit, show verified_data
+              const displayProject = project.has_pending_edit && project.verified_data 
+                ? {
+                    ...project,
+                    title: project.verified_data.title,
+                    description: project.verified_data.description,
+                    role: project.verified_data.role,
+                    startDate: project.verified_data.startDate || project.verified_data.start_date,
+                    endDate: project.verified_data.endDate || project.verified_data.end_date,
+                    technologies: project.verified_data.technologies || project.verified_data.tech_stack,
+                    githubUrl: project.verified_data.githubUrl || project.verified_data.github_link,
+                    demoUrl: project.verified_data.demoUrl || project.verified_data.demo_link,
+                    type: project.verified_data.type,
+                    // Keep original approval_status for badge display
+                    approval_status: project.verified_data.approval_status || 'verified',
+                    _hasPendingEdit: false // Don't show pending badge for verified version
+                  }
+                : project;
+              
+              return displayProject;
+            })
             .sort((a, b) => {
               // Sort by start date, most recent first
               const dateA = new Date(a.startDate || 0);
@@ -109,6 +132,22 @@ const ProjectsTab = ({
                         <h4 className="text-base font-bold text-gray-900">
                           {project.title || project.name || project.projectName || project.project_name || "Project"}
                         </h4>
+                        
+                        {/* Badge Display Logic */}
+                        {(project.approval_status === "verified" || project.approval_status === "approved") && !project._hasPendingEdit && (
+                          <Badge className="bg-green-100 text-green-700 border-green-200 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Verified
+                          </Badge>
+                        )}
+                        
+                        {(!project.approval_status || project.approval_status === 'pending') && !project._hasPendingEdit && (
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Pending Verification
+                          </Badge>
+                        )}
+                        
                         <Button
                           variant="ghost"
                           size="sm"

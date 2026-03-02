@@ -3,16 +3,101 @@
  * 
  * This prompt is specifically for students who have completed 12th grade
  * and are choosing college programs/degrees. It requires evidence from
- * ALL 6 assessment sections for comprehensive career guidance.
+ * ALL 7 assessment sections for comprehensive career guidance.
  */
 
-import type { AssessmentData } from '../types';
+import type { AssessmentData, AdaptiveAptitudeResults } from '../types';
+
+/**
+ * Pre-process adaptive aptitude results into actionable insights
+ */
+function processAdaptiveResults(results: AdaptiveAptitudeResults): {
+  section: string;
+  isHighAptitude: boolean;
+} {
+  const level = results.aptitudeLevel;
+  const accuracy = results.overallAccuracy;
+  const isHighAptitude = level >= 4 || accuracy >= 75;
+  
+  const levelLabels: Record<number, string> = {
+    1: 'Emerging',
+    2: 'Developing', 
+    3: 'Capable',
+    4: 'Strong',
+    5: 'Exceptional'
+  };
+  
+  const subtags = results.accuracyBySubtag || {};
+  const sortedSubtags = Object.entries(subtags)
+    .map(([name, data]: [string, any]) => ({
+      name: name.replace(/_/g, ' '),
+      accuracy: typeof data === 'number' ? data : data?.accuracy || 0
+    }))
+    .sort((a, b) => b.accuracy - a.accuracy);
+  
+  const topStrengths = sortedSubtags
+    .filter(s => s.accuracy >= 70)
+    .slice(0, 3)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+  
+  const weakAreas = sortedSubtags
+    .filter(s => s.accuracy < 50)
+    .slice(0, 2)
+    .map(s => `${s.name} (${Math.round(s.accuracy)}%)`);
+
+  const section = `
+## ═══════════════════════════════════════════════════════════════════════════
+## SECTION 7: ADAPTIVE APTITUDE TEST RESULTS
+## ═══════════════════════════════════════════════════════════════════════════
+
+- **Aptitude Level**: ${level}/5 (${levelLabels[level] || 'Unknown'})
+- **Overall Accuracy**: ${Math.round(accuracy)}%
+- **Confidence**: ${results.confidenceTag}
+- **Performance Trend**: ${results.pathClassification}
+
+**COGNITIVE STRENGTHS**:
+${topStrengths.length > 0 ? topStrengths.map(s => `- ${s}`).join('\n') : '- No standout strengths identified'}
+
+**AREAS FOR GROWTH**:
+${weakAreas.length > 0 ? weakAreas.map(s => `- ${s}`).join('\n') : '- No significant weak areas'}
+
+**IMPORTANT**: Use these adaptive test results as ADDITIONAL evidence when generating career clusters. The adaptive test provides a more accurate measure of cognitive abilities than self-assessment.`;
+
+  return { section, isHighAptitude };
+}
 
 export function buildAfter12Prompt(assessmentData: AssessmentData, answersHash: number): string {
-  return `You are an expert career counselor for students who have completed 12th grade and are choosing college programs. Analyze this student's comprehensive 6-section career assessment and provide detailed guidance for their college and career decisions.
+  // Pre-process adaptive results for efficiency
+  const adaptiveData = assessmentData.adaptiveAptitudeResults 
+    ? processAdaptiveResults(assessmentData.adaptiveAptitudeResults)
+    : null;
+  
+  const adaptiveSection = adaptiveData?.section || '';
 
-## CRITICAL: This must be DETERMINISTIC - same input = same output always
-Session ID: ${answersHash}
+  return `You are an expert career counselor for students who have completed 12th grade and are choosing college programs. Analyze this student's 7-section assessment and provide evidence-based guidance.
+
+## CORE REQUIREMENTS
+**Student Stream: ${assessmentData.stream || 'Not specified'}**
+**Session ID: ${answersHash}** (for deterministic results)
+
+**🚨 CRITICAL: NO HARDCODED TEMPLATES 🚨**
+You MUST analyze the student's actual RIASEC scores and create CUSTOMIZED career clusters.
+DO NOT use generic "Technology & Innovation" or "Healthcare & Life Sciences" templates.
+Instead, look at their top 3 RIASEC types and create clusters that match THEIR specific profile.
+
+**STREAM ALIGNMENT RULE:**
+All career clusters and degree programs MUST match the student's stream:
+- Science streams → Customize based on RIASEC (e.g., IRA → Research & Data Science, ISR → Healthcare & Medicine)
+- Commerce streams → Customize based on RIASEC (e.g., ECI → Finance & Business, EAS → Marketing & Creative Business)
+- Arts streams → Customize based on RIASEC (e.g., ASE → Creative & Media, SAI → Psychology & Social Work)
+
+**LANGUAGE REQUIREMENT:**
+Respond ONLY in English. Use English names for all universities and programs.
+
+## 🚨 CRITICAL LANGUAGE REQUIREMENT 🚨
+**YOU MUST respond ONLY in ENGLISH. DO NOT use Bengali, Hindi, or any other language.**
+**ALL university names, program names, and text MUST be in ENGLISH ONLY.**
+**Example: Use "Presidency College Kolkata" NOT "প্রেসিডেন্সি বিশ্ববিদ্যালয়"**
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## SECTION 1: CAREER INTERESTS (RIASEC) - 48 Questions
@@ -45,6 +130,7 @@ You MUST use this mapping to calculate scores precisely:
 3. Calculate maxScore = 24 (8 questions × 3 points max per question)
 4. Calculate percentage for each type: (score / 24) × 100
 5. Identify top 3 types by score
+6. Form the RIASEC code as a 3-letter string (e.g., "AES", "IRA", "ECS") - MUST be exactly 3 letters
 
 ## ⚠️ CRITICAL: ARTISTIC (A) RIASEC CAREER MATCHING ⚠️
 **IF the student's RIASEC scores show 'A' (Artistic) in their top 3 types, you MUST include at least ONE career cluster from these categories:**
@@ -174,13 +260,15 @@ Total questions: ${assessmentData.totalKnowledgeQuestions}
 
 Use knowledge score to assess academic readiness and recommend preparation strategies.
 
+${adaptiveSection}
+
 ## ═══════════════════════════════════════════════════════════════════════════
 ## COMPREHENSIVE ANALYSIS REQUIREMENTS
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**YOU MUST USE ALL 6 SECTIONS TO GENERATE CAREER CLUSTERS:**
+**YOU MUST USE ALL 7 SECTIONS TO GENERATE CAREER CLUSTERS:**
 
-For each career cluster, you MUST provide evidence from ALL 6 sections:
+For each career cluster, you MUST provide evidence from ALL 7 sections:
 
 1. **Interest Evidence** (from RIASEC): Which RIASEC types support this career path?
 2. **Aptitude Evidence** (from Aptitude Test): Which cognitive strengths make them suitable?
@@ -188,6 +276,7 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
 4. **Values Evidence** (from Work Values): Which work values are satisfied?
 5. **Employability Evidence** (from Skills): Which professional skills support this path?
 6. **Knowledge Evidence** (from Domain Test): How does their domain knowledge support this?
+7. **Adaptive Aptitude Evidence** (from Adaptive Test): How do their adaptive test results validate this choice?
 
 **EXAMPLE EVIDENCE STRUCTURE:**
 \`\`\`json
@@ -197,15 +286,92 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
   "personality": "High Conscientiousness (4.2) and Openness (4.0) suggest disciplined approach to learning and curiosity for new technologies",
   "values": "Achievement (4.5) and Independence (4.2) align with project-based work and autonomous problem-solving in tech roles",
   "employability": "Strong problem-solving (85%) and digital literacy (90%) provide solid foundation for technical careers",
-  "knowledge": "Domain knowledge score of 75% demonstrates solid understanding of core concepts and readiness for advanced study"
+  "knowledge": "Domain knowledge score of 75% demonstrates solid understanding of core concepts and readiness for advanced study",
+  "adaptiveAptitude": "Adaptive test level 4/5 with 82% accuracy and strong logical reasoning (88%) confirms exceptional analytical capabilities"
 }
 \`\`\`
+
+## ═══════════════════════════════════════════════════════════════════════════
+## CRITICAL PRE-GENERATION CHECKLIST - MUST COMPLETE BEFORE GENERATING JSON
+## ═══════════════════════════════════════════════════════════════════════════
+
+**🚨 BEFORE YOU START WRITING THE JSON OUTPUT, YOU MUST:**
+
+1. **Plan 3 Career Clusters** based on student's RIASEC top 3 types + Stream
+2. **For EACH cluster, list AT LEAST:**
+   - 5-6 entry-level roles
+   - 5-6 mid-career roles
+   - 4-5 senior-level roles
+
+3. **SPECIAL ATTENTION TO CLUSTER 3 (Explore Track):**
+   - Cluster 3 MUST have minimum 3 roles at EACH level (entry, mid, senior)
+   - Total minimum for Cluster 3: 9 roles (3 entry + 3 mid + 3 senior)
+   - If you cannot find 3 roles per level, you chose the wrong career cluster - pick a different one with more role variety
+
+4. **Verify Role Counts:**
+   - Cluster 1: entry ≥ 5, mid ≥ 5, senior ≥ 4
+   - Cluster 2: entry ≥ 4, mid ≥ 4, senior ≥ 3
+   - Cluster 3: entry ≥ 3, mid ≥ 3, senior ≥ 3 (CRITICAL - NO EXCEPTIONS)
+
+**Example Planning Sheet:**
+
+Cluster 3: "Accounting & Audit" (68% match)
+- Entry roles: Junior Accountant, Audit Associate, Tax Assistant, Accounts Executive
+- Mid roles: Senior Accountant, Audit Manager, Tax Consultant, Financial Controller
+- Senior roles: Chief Accountant, Audit Partner, CFO, Director of Finance
+
+**If you cannot list at least 3 roles per level, STOP and choose a different career cluster with more role diversity.**
+
+**VALIDATION QUESTION:** "Does Cluster 3 have at least 3 entry + 3 mid + 3 senior roles listed?"
+- If YES → Proceed to generate JSON
+- If NO → Go back and add more roles OR choose a different career cluster
+
+**🛑 FINAL VALIDATION - DO NOT PROCEED WITHOUT COMPLETING THIS:**
+
+Count the roles in Cluster 3:
+- Entry roles: ___ (must be ≥ 3)
+- Mid roles: ___ (must be ≥ 3)
+- Senior roles: ___ (must be ≥ 3)
+
+If ANY level has fewer than 3 roles, you MUST:
+1. Add more roles to reach the minimum, OR
+2. Choose a completely different career cluster with more role variety
+
+**DO NOT generate the JSON until this validation passes.**
 
 ## ═══════════════════════════════════════════════════════════════════════════
 ## OUTPUT FORMAT
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**IMPORTANT**: Return ONLY a JSON object (no markdown). Use this structure:
+**🚨 BEFORE YOU START GENERATING THE JSON OUTPUT 🚨**
+
+**MANDATORY PRE-GENERATION CHECKLIST:**
+1. **Identify student's top 3 RIASEC types** (e.g., I=85%, R=75%, A=60%)
+2. **Identify student's stream** (Science/Commerce/Arts)
+3. **Create 3 SPECIFIC cluster titles** that combine RIASEC + Stream
+   - Example: Science + IRA → "Software Engineering & Development", "Data Science & Analytics", "Product Design & UX"
+   - Example: Science + ISR → "Biomedical Engineering & Medical Devices", "Healthcare & Clinical Research", "Biotechnology & Pharmaceuticals"
+4. **For EACH cluster, list roles that 100% belong to that domain**
+   - Test: Would a recruiter in [cluster title] recognize ALL these roles? If NO → Fix it
+5. **Verify NO role appears in wrong cluster**
+   - "Biomedical Engineer" belongs in "Biomedical Engineering", NOT in "Research & Development"
+   - "UX Designer" belongs in "Product Design & UX", NOT in "Creative Technology"
+6. **Create 3 degree programs that align with the 3 clusters**
+   - Program 1 → Cluster 1 (exact title match in "alignedWithCluster")
+   - Program 2 → Cluster 2 (exact title match in "alignedWithCluster")
+   - Program 3 → Cluster 3 (exact title match in "alignedWithCluster")
+
+**CRITICAL REQUIREMENTS:**
+1. Return ONLY a JSON object (no markdown)
+2. **MUST include "degreePrograms" array with EXACTLY 3 programs inside "careerFit"**
+3. Each program MUST be DERIVED from the student's 7-section profile (not selected from lists)
+4. Each program MUST include ALL required fields: programName, matchScore, fit, duration, roleDescription, topUniversities, alignedWithCluster, whyThisFitsYou, evidence
+5. **CRITICAL ALIGNMENT RULE: The "alignedWithCluster" field in each degree program MUST EXACTLY MATCH the "title" field of one of the 3 career clusters**
+   - Example: If cluster 1 has title "Technology & Innovation", then a program aligned with it must have alignedWithCluster: "Technology & Innovation"
+   - This ensures proper visual alignment in the UI between recommended programs and career tracks
+   - DO NOT use generic names - use the EXACT cluster title you created
+
+**JSON Structure:**
 
 {
   "riasec": {
@@ -213,6 +379,7 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
     "scores": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "percentages": { "R": 0, "I": 0, "A": 0, "S": 0, "E": 0, "C": 0 },
     "maxScore": 24,
+    "code": "ASE",
     "interpretation": "What their interests mean for college major and career selection"
   },
   "aptitude": {
@@ -232,6 +399,7 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
     "workStyleSummary": "Their work style and how personality shapes career fit"
   },
   "workValues": {
+    "scores": {"Security": 0, "Autonomy": 0, "Creativity": 0, "Status": 0, "Impact": 0, "Financial": 0, "Leadership": 0, "Lifestyle": 0},
     "topThree": [
       {"value": "Primary work value", "score": 4.5, "description": "Why this matters to them"},
       {"value": "Second value", "score": 4.0, "description": "How this influences career choice"},
@@ -240,6 +408,16 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
     "interpretation": "How their values should guide career decisions"
   },
   "employability": {
+    "skillScores": {
+      "Communication": 75,
+      "Teamwork": 80,
+      "ProblemSolving": 85,
+      "Adaptability": 70,
+      "DigitalFluency": 90,
+      "Leadership": 85,
+      "Professionalism": 80,
+      "CareerReadiness": 85
+    },
     "scores": {
       "communication": 75,
       "teamwork": 80,
@@ -266,8 +444,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
         "title": "Career Cluster #1 (e.g., Technology & Software Development)",
         "matchScore": 88,
         "fit": "High",
-        "description": "Comprehensive explanation of why this career path fits based on ALL 6 assessment sections",
-        "examples": ["6-8 specific career roles with brief descriptions"],
+        "description": "Comprehensive explanation of why this career path fits based on ALL 7 assessment sections",
+        "examples": ["6-8 specific career roles with brief descriptions - MUST be semantically aligned with the cluster title"],
         "educationPath": "Specific college majors, degrees, and programs (e.g., B.Tech CSE, BCA, B.Sc Computer Science)",
         "whatYoullDo": "Day-to-day work and responsibilities in this field",
         "whyItFits": "Detailed connection between their complete profile and this career area",
@@ -277,14 +455,15 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "Big Five traits that align with success (MUST INCLUDE)",
           "values": "Work values satisfied by this career (MUST INCLUDE)",
           "employability": "Professional skills that support this path (MUST INCLUDE)",
-          "knowledge": "Domain knowledge readiness for this field (MUST INCLUDE)"
+          "knowledge": "Domain knowledge readiness for this field (MUST INCLUDE)",
+          "adaptiveAptitude": "Adaptive test results that validate this choice (MUST INCLUDE)"
         },
         "roles": {
-          "entry": ["5-6 entry-level positions"],
-          "mid": ["5-6 mid-career positions"],
-          "senior": ["4-5 senior/leadership positions"]
+          "entry": ["5-6 entry-level positions - MUST be directly related to the cluster title (e.g., if cluster is 'Software Development', include Junior Developer, Frontend Developer, Backend Developer, NOT unrelated roles)"],
+          "mid": ["5-6 mid-career positions - MUST progress from entry roles in the SAME domain"],
+          "senior": ["4-5 senior/leadership positions - MUST be leadership roles in the SAME domain"]
         },
-        "domains": ["Related specializations and sub-fields"],
+        "domains": ["Related specializations and sub-fields - MUST be sub-categories of the main cluster"],
         "salaryRange": {
           "entry": {"min": 4, "max": 8, "currency": "LPA"},
           "mid": {"min": 10, "max": 25, "currency": "LPA"},
@@ -307,7 +486,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "Personality alignment (REQUIRED)",
           "values": "Values match (REQUIRED)",
           "employability": "Skills support (REQUIRED)",
-          "knowledge": "Knowledge readiness (REQUIRED)"
+          "knowledge": "Knowledge readiness (REQUIRED)",
+          "adaptiveAptitude": "Adaptive test validation (REQUIRED)"
         },
         "roles": {
           "entry": ["4-5 entry positions"],
@@ -337,12 +517,13 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "Personality considerations (REQUIRED)",
           "values": "Values alignment (REQUIRED)",
           "employability": "Skills relevance (REQUIRED)",
-          "knowledge": "Knowledge gaps/strengths (REQUIRED)"
+          "knowledge": "Knowledge gaps/strengths (REQUIRED)",
+          "adaptiveAptitude": "Adaptive test insights (REQUIRED)"
         },
         "roles": {
-          "entry": ["3-4 entry roles"],
-          "mid": ["3-4 mid roles"],
-          "senior": ["2-3 senior roles"]
+          "entry": ["Entry Role 1", "Entry Role 2", "Entry Role 3"],
+          "mid": ["Mid Role 1", "Mid Role 2", "Mid Role 3"],
+          "senior": ["Senior Role 1", "Senior Role 2", "Senior Role 3"]
         },
         "domains": ["Related areas"],
         "salaryRange": {
@@ -362,14 +543,15 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
         "roleDescription": "As a Computer Science graduate, you'll design and develop software applications, work on cutting-edge technologies like AI and cloud computing, and solve complex technical problems. You'll have opportunities in software development, data science, cybersecurity, and tech entrepreneurship.",
         "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad", "VIT Vellore", "Manipal Institute of Technology"],
         "alignedWithCluster": "Technology & Innovation",
-        "whyThisFitsYou": "Your exceptional logical reasoning (85%) and high Investigative interest (I: 88%) make you perfect for software development. Your strong problem-solving skills (90%) and curiosity for technology align perfectly with CSE's analytical and creative demands.",
+        "whyThisFitsYou": "Your exceptional logical reasoning and high Investigative interest make you perfect for software development. Your strong problem-solving skills and curiosity for technology align perfectly with CSE's analytical and creative demands.",
         "evidence": {
           "interest": "High I (Investigative 88%) and R (Realistic 75%) indicate strong fit for technical problem-solving",
           "aptitude": "Exceptional numerical (85%) and logical reasoning (88%) demonstrate strong analytical capabilities",
           "personality": "High Conscientiousness (4.3) and Openness (4.1) suggest disciplined learning and curiosity",
           "values": "Achievement (4.5) and Independence (4.2) align with project-based autonomous work",
           "employability": "Strong problem-solving (90%) and digital literacy (95%) provide solid foundation",
-          "knowledge": "Domain knowledge score of 78% demonstrates readiness for advanced CS concepts"
+          "knowledge": "Domain knowledge score of 78% demonstrates readiness for advanced CS concepts",
+          "adaptiveAptitude": "Adaptive test level 4/5 with 85% accuracy confirms strong analytical and logical reasoning abilities"
         }
       },
       {
@@ -387,7 +569,8 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "Conscientiousness (4.3) ensures disciplined coding practice and project completion",
           "values": "Independence (4.2) matches the self-directed learning in BCA programs",
           "employability": "Digital literacy (95%) and problem-solving (90%) are core BCA requirements",
-          "knowledge": "Domain knowledge (78%) provides strong foundation for application development"
+          "knowledge": "Domain knowledge (78%) provides strong foundation for application development",
+          "adaptiveAptitude": "Adaptive test results show consistent performance in logical reasoning, ideal for programming"
         }
       },
       {
@@ -405,25 +588,27 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
           "personality": "High Conscientiousness (4.3) supports the rigorous study mathematics demands",
           "values": "Achievement (4.5) drives success in challenging mathematical concepts",
           "employability": "Problem-solving (90%) and analytical skills support mathematical applications",
-          "knowledge": "Strong foundation (78%) enables transition to pure mathematics"
+          "knowledge": "Strong foundation (78%) enables transition to pure mathematics",
+          "adaptiveAptitude": "High numerical reasoning accuracy in adaptive test validates mathematical aptitude"
         }
       }
     ],
     "specificOptions": {
       "highFit": [
-        {"name": "Specific Job Title 1", "salary": {"min": 5, "max": 12}, "description": "Brief role description"},
-        {"name": "Specific Job Title 2", "salary": {"min": 5, "max": 12}, "description": "Brief role description"},
-        {"name": "Specific Job Title 3", "salary": {"min": 5, "max": 12}, "description": "Brief role description"},
-        {"name": "Specific Job Title 4", "salary": {"min": 5, "max": 12}, "description": "Brief role description"}
+        {"name": "Specific Job Title 1 (e.g., Software Engineer)", "salary": {"min": 6, "max": 15}, "description": "Brief role description"},
+        {"name": "Specific Job Title 2 (e.g., Data Analyst)", "salary": {"min": 5, "max": 12}, "description": "Brief role description"},
+        {"name": "Specific Job Title 3 (e.g., Product Manager)", "salary": {"min": 8, "max": 20}, "description": "Brief role description"},
+        {"name": "Specific Job Title 4 (e.g., UX Designer)", "salary": {"min": 5, "max": 13}, "description": "Brief role description"}
       ],
       "mediumFit": [
-        {"name": "Job Title 1", "salary": {"min": 4, "max": 10}, "description": "Role description"},
-        {"name": "Job Title 2", "salary": {"min": 4, "max": 10}, "description": "Role description"},
-        {"name": "Job Title 3", "salary": {"min": 4, "max": 10}, "description": "Role description"}
+        {"name": "Job Title 1 (e.g., Business Analyst)", "salary": {"min": 5, "max": 11}, "description": "Role description"},
+        {"name": "Job Title 2 (e.g., Marketing Manager)", "salary": {"min": 6, "max": 14}, "description": "Role description"},
+        {"name": "Job Title 3 (e.g., HR Manager)", "salary": {"min": 5, "max": 12}, "description": "Role description"}
       ],
       "exploreLater": [
-        {"name": "Job Title 1", "salary": {"min": 3, "max": 8}, "description": "Role description"},
-        {"name": "Job Title 2", "salary": {"min": 3, "max": 8}, "description": "Role description"}
+        {"name": "Job Title 1 (e.g., Content Writer)", "salary": {"min": 3, "max": 7}, "description": "Role description"},
+        {"name": "Job Title 2 (e.g., Teacher)", "salary": {"min": 3, "max": 9}, "description": "Role description"},
+        {"name": "Job Title 3 (e.g., Counselor)", "salary": {"min": 3, "max": 8}, "description": "Role description"}
       ]
     }
   },
@@ -527,320 +712,468 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
 }
 
 ## ═══════════════════════════════════════════════════════════════════════════
-## CRITICAL: CAREER CLUSTERS MUST ALIGN WITH STUDENT'S STREAM
+## CRITICAL: SEMANTIC COHERENCE IN CAREER CLUSTERS
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**IMPORTANT**: The student has already selected their stream during 12th grade. The 3 career clusters MUST align with their chosen stream:
+**🚨 MANDATORY RULE: CLUSTER TITLE MUST MATCH ALL ROLES WITHIN IT 🚨**
+
+**THE PROBLEM:**
+AI models often create clusters with mismatched titles and roles:
+- ❌ BAD: "Research & Development" containing "Biomedical Engineer, UX Designer, Game Developer"
+- ❌ BAD: "Creative Technology" containing "Product Designer, Digital Artist, Biotechnologist"
+- ❌ BAD: "Biomedical Engineering" containing "Research Scientist, Data Analyst"
+
+**THE SOLUTION:**
+Every role in a cluster MUST be a direct sub-category or specialization of the cluster title:
+- ✅ GOOD: "Software Development & Engineering" → Software Engineer, Full Stack Developer, Backend Developer, DevOps Engineer
+- ✅ GOOD: "Biomedical Engineering & Healthcare Technology" → Biomedical Engineer, Medical Device Engineer, Clinical Engineer, Healthcare IT Specialist
+- ✅ GOOD: "Research & Data Science" → Research Scientist, Data Scientist, Research Analyst, Lab Researcher
+
+**VALIDATION CHECKLIST FOR EACH CLUSTER:**
+Before finalizing a cluster, ask yourself:
+1. ✅ Can someone reading ONLY the cluster title predict 80% of the roles listed?
+2. ✅ Would a recruiter in this field recognize all these roles as belonging together?
+3. ✅ Do ALL roles share the same core domain/industry?
+4. ✅ Are the entry → mid → senior roles a logical progression in the SAME field?
+
+**STEP-BY-STEP CLUSTER CREATION PROCESS:**
+
+### STEP 1: Identify the Core Domain
+Based on student's RIASEC + Stream + Aptitude, identify 3 distinct domains:
+- Example: "Software Engineering", "Data Science", "Product Design"
+
+### STEP 2: Create Specific, Narrow Cluster Titles
+Make titles SPECIFIC enough that roles are obvious:
+- ❌ TOO BROAD: "Technology" (could mean anything)
+- ❌ TOO BROAD: "Engineering" (too many types)
+- ✅ SPECIFIC: "Software Development & Cloud Engineering"
+- ✅ SPECIFIC: "Data Science & Machine Learning"
+- ✅ SPECIFIC: "Biomedical Engineering & Medical Devices"
+
+### STEP 3: List Roles That Are 100% Aligned
+For each cluster, list ONLY roles that directly belong to that domain:
+
+**Example Cluster 1: "Software Development & Cloud Engineering"**
+- Entry: Junior Software Developer, Frontend Developer, Backend Developer, QA Engineer, DevOps Trainee
+- Mid: Senior Software Engineer, Full Stack Developer, Cloud Architect, DevOps Engineer, Technical Lead
+- Senior: Engineering Manager, Principal Engineer, VP of Engineering, CTO
+
+**Example Cluster 2: "Data Science & Analytics"**
+- Entry: Data Analyst, Junior Data Scientist, Business Intelligence Analyst, Analytics Associate
+- Mid: Data Scientist, Senior Data Analyst, ML Engineer, Analytics Manager
+- Senior: Lead Data Scientist, Head of Analytics, Chief Data Officer
+
+**Example Cluster 3: "Biomedical Engineering & Healthcare Technology"**
+- Entry: Biomedical Engineer, Medical Device Technician, Clinical Engineer, Healthcare IT Specialist
+- Mid: Senior Biomedical Engineer, Medical Device Designer, Clinical Systems Manager
+- Senior: Principal Biomedical Engineer, Director of Medical Technology, VP of Healthcare Innovation
+
+### STEP 4: Verify Semantic Coherence
+For each role, ask: "Does this role obviously belong in [Cluster Title]?"
+- If YES → Keep it
+- If NO → Move it to the correct cluster or remove it
+
+**COMMON MISTAKES TO AVOID:**
+
+❌ **Mistake 1: Mixing Unrelated Domains**
+- BAD: "Technology & Innovation" with roles: Software Engineer, Biomedical Engineer, Fashion Designer
+- WHY BAD: These are 3 completely different industries
+- FIX: Create separate clusters: "Software Engineering", "Biomedical Engineering", "Fashion & Design"
+
+❌ **Mistake 2: Generic Cluster Titles**
+- BAD: "Creative Technology" (too vague - could mean design, gaming, media, etc.)
+- FIX: Be specific: "Game Development & Interactive Media" OR "UX/UI Design & Product Design"
+
+❌ **Mistake 3: Roles Don't Match Title**
+- BAD: "Research & Development" → UX Designer, Game Developer (these aren't research roles)
+- FIX: "Research & Development" → Research Scientist, R&D Engineer, Clinical Researcher, Lab Manager
+
+❌ **Mistake 4: Cross-Domain Contamination**
+- BAD: "Biomedical Engineering" → Research Scientist, Data Analyst (too generic)
+- FIX: "Biomedical Engineering" → Biomedical Engineer, Medical Device Engineer, Clinical Engineer
+
+**CORRECT EXAMPLES BY STREAM:**
+
+### SCIENCE STREAM - RIASEC: IRA (Investigative, Realistic, Artistic)
+
+**Cluster 1: "Software Engineering & Application Development"** (88% match)
+- Entry: Junior Software Developer, Frontend Developer, Backend Developer, Mobile App Developer, QA Engineer
+- Mid: Senior Software Engineer, Full Stack Developer, Software Architect, Technical Lead, Engineering Manager
+- Senior: Principal Engineer, Director of Engineering, VP of Engineering, CTO
+- WHY COHERENT: All roles involve writing code and building software systems
+
+**Cluster 2: "Data Science & Machine Learning"** (78% match)
+- Entry: Data Analyst, Junior Data Scientist, ML Engineer Trainee, Business Intelligence Analyst
+- Mid: Data Scientist, Senior Data Analyst, Machine Learning Engineer, AI Researcher
+- Senior: Lead Data Scientist, Head of AI/ML, Chief Data Officer
+- WHY COHERENT: All roles involve data analysis, statistical modeling, and ML algorithms
+
+**Cluster 3: "Product Design & User Experience"** (68% match)
+- Entry: Junior UX Designer, UI Designer, Product Design Intern, UX Researcher
+- Mid: Senior UX Designer, Product Designer, Design Lead, UX Manager
+- Senior: Principal Designer, Head of Design, VP of Product Design
+- WHY COHERENT: All roles involve designing user interfaces and experiences
+
+### SCIENCE STREAM - RIASEC: ISR (Investigative, Social, Realistic)
+
+**Cluster 1: "Biomedical Engineering & Medical Devices"** (88% match)
+- Entry: Biomedical Engineer, Medical Device Technician, Clinical Engineer, Healthcare IT Specialist
+- Mid: Senior Biomedical Engineer, Medical Device Designer, Clinical Systems Manager, Regulatory Affairs Specialist
+- Senior: Principal Biomedical Engineer, Director of Medical Technology, VP of Healthcare Innovation
+- WHY COHERENT: All roles involve engineering solutions for healthcare and medical applications
+
+**Cluster 2: "Healthcare & Clinical Research"** (78% match)
+- Entry: Clinical Research Coordinator, Lab Technician, Research Assistant, Public Health Analyst
+- Mid: Clinical Research Manager, Medical Researcher, Epidemiologist, Clinical Trial Manager
+- Senior: Principal Investigator, Director of Clinical Research, Chief Medical Officer
+- WHY COHERENT: All roles involve medical research, clinical trials, and healthcare studies
+
+**Cluster 3: "Biotechnology & Pharmaceutical Sciences"** (68% match)
+- Entry: Biotechnologist, Lab Analyst, Quality Control Analyst, Pharmaceutical Researcher
+- Mid: Senior Biotechnologist, Bioprocess Engineer, Pharmaceutical Scientist, R&D Manager
+- Senior: Principal Scientist, Director of Biotechnology, VP of R&D
+- WHY COHERENT: All roles involve biological research and pharmaceutical development
+
+### COMMERCE STREAM - RIASEC: ECI (Enterprising, Conventional, Investigative)
+
+**Cluster 1: "Finance & Investment Banking"** (88% match)
+- Entry: Financial Analyst, Investment Banking Analyst, Junior Accountant, Financial Planner
+- Mid: Senior Financial Analyst, Investment Banker, Portfolio Manager, Finance Manager
+- Senior: VP of Finance, Managing Director, Chief Financial Officer, Investment Director
+- WHY COHERENT: All roles involve financial analysis, investment, and money management
+
+**Cluster 2: "Business Analytics & Consulting"** (78% match)
+- Entry: Business Analyst, Data Analyst, Junior Consultant, Market Research Analyst
+- Mid: Senior Business Analyst, Management Consultant, Strategy Analyst, Analytics Manager
+- Senior: Principal Consultant, Director of Strategy, Partner at Consulting Firm
+- WHY COHERENT: All roles involve analyzing business problems and providing strategic solutions
+
+**Cluster 3: "Accounting & Audit"** (68% match)
+- Entry: Junior Accountant, Audit Associate, Tax Analyst, Accounts Executive
+- Mid: Senior Accountant, Audit Manager, Tax Consultant, Financial Controller
+- Senior: Chief Accountant, Audit Partner, CFO, Director of Finance
+- WHY COHERENT: All roles involve accounting, auditing, and financial compliance
+
+### ARTS STREAM - RIASEC: ASE (Artistic, Social, Enterprising)
+
+**Cluster 1: "Digital Media & Content Creation"** (88% match)
+- Entry: Content Writer, Social Media Manager, Junior Video Editor, Graphic Designer
+- Mid: Content Strategist, Senior Video Producer, Creative Director, Media Manager
+- Senior: Head of Content, VP of Creative, Chief Content Officer
+- WHY COHERENT: All roles involve creating and managing digital content
+
+**Cluster 2: "Marketing & Brand Management"** (78% match)
+- Entry: Marketing Coordinator, Brand Assistant, Digital Marketing Executive, Market Research Analyst
+- Mid: Marketing Manager, Brand Manager, Digital Marketing Manager, Growth Manager
+- Senior: Head of Marketing, VP of Brand, Chief Marketing Officer
+- WHY COHERENT: All roles involve marketing strategy, brand building, and customer engagement
+
+**Cluster 3: "Psychology & Counseling Services"** (68% match)
+- Entry: Counseling Intern, Psychology Researcher, Mental Health Associate, HR Coordinator
+- Mid: Clinical Psychologist, Counselor, Organizational Psychologist, HR Manager
+- Senior: Senior Psychologist, Director of Counseling Services, Chief People Officer
+- WHY COHERENT: All roles involve psychology, mental health, and human behavior
+
+**FINAL VALIDATION RULE:**
+Before submitting your response, read each cluster title and its roles out loud:
+- "This student should pursue [CLUSTER TITLE], which includes roles like [ROLE 1], [ROLE 2], [ROLE 3]"
+- If this sentence sounds logical and coherent → ✅ GOOD
+- If this sentence sounds confusing or random → ❌ FIX IT
+
+**REMEMBER:**
+- Cluster title = The DOMAIN/INDUSTRY
+- Roles = SPECIFIC JOBS within that domain
+- ALL roles must be recognizable as belonging to that domain
+- Entry → Mid → Senior must show career progression in the SAME domain
+
+**IMPORTANT**: The student has already selected their stream during 12th grade. The 3 career clusters MUST:
+1. **Align with their chosen stream** (Science/Commerce/Arts)
+2. **Match their RIASEC profile** (top 3 types with highest scores)
+3. **Be CUSTOMIZED based on their actual assessment results** - NOT generic templates
 
 **Student Stream**: ${assessmentData.stream || 'Not specified'}
 
-**Stream-Based Career Cluster Mapping:**
+**CRITICAL INSTRUCTION**: The career clusters below are EXAMPLES ONLY to show the range of possibilities within each stream. You MUST customize them based on the student's actual RIASEC scores, aptitude, personality, and values.
+
+**Stream-Based Career Cluster GUIDELINES (NOT TEMPLATES):**
 
 ### SCIENCE STREAM (science, science_pcmb, science_pcms, pcmb, pcms, pcm, pcb):
-**Cluster 1 (High Fit) - Technology & Innovation:**
-- Software Engineer, Data Scientist, AI/ML Engineer, Cybersecurity Analyst
-- Product Manager, Tech Entrepreneur, Full Stack Developer
-- Salary: Entry ₹6-15L, Mid ₹15-40L, Senior ₹40-100L+
+**CUSTOMIZE based on student's RIASEC:**
+- **High I (Investigative)**: Research, Data Science, Scientific Analysis, Medical Research
+- **High R (Realistic)**: Engineering, Lab Work, Technical Roles, Hands-on Science
+- **High A (Artistic)**: Architecture, Design Engineering, Scientific Visualization, Creative Tech
+- **High S (Social)**: Healthcare, Medical Practice, Clinical Psychology, Public Health
+- **High E (Enterprising)**: Tech Entrepreneurship, Product Management, Biotech Business
+- **High C (Conventional)**: Quality Control, Lab Management, Clinical Administration
 
-**Cluster 2 (Medium Fit) - Engineering & Research:**
-- Mechanical Engineer, Civil Engineer, Aerospace Engineer, Robotics Engineer
-- Research Scientist, R&D Engineer, Systems Architect
-- Salary: Entry ₹5-12L, Mid ₹12-30L, Senior ₹30-80L
-
-**Cluster 3 (Explore) - Healthcare & Life Sciences:**
-- Doctor, Surgeon, Medical Researcher, Pharmacist
-- Biotechnologist, Geneticist, Clinical Researcher
-- Salary: Entry ₹6-15L, Mid ₹15-50L, Senior ₹50-200L
+**Example Cluster Combinations (CUSTOMIZE based on their top 3 RIASEC):**
+- **IRA**: Technology & Innovation, Research & Development, Design Engineering
+- **ISR**: Healthcare & Medicine, Biomedical Research, Clinical Sciences
+- **RIE**: Engineering & Technology, Product Development, Tech Entrepreneurship
+- **IAS**: Creative Technology, Scientific Communication, Health Psychology
+- **Salary Ranges**: Entry ₹5-15L, Mid ₹12-50L, Senior ₹30-200L (varies by field)
 
 ### COMMERCE STREAM (commerce, commerce_maths, commerce_accounts):
-**Cluster 1 (High Fit) - Finance & Accounting:**
-- Chartered Accountant, Financial Analyst, Investment Banker
-- Portfolio Manager, Risk Analyst, Tax Consultant
-- Salary: Entry ₹5-12L, Mid ₹12-35L, Senior ₹35-100L
+**CUSTOMIZE based on student's RIASEC:**
+- **High E (Enterprising)**: Business Management, Entrepreneurship, Sales Leadership
+- **High C (Conventional)**: Accounting, Finance, Banking, Auditing
+- **High I (Investigative)**: Financial Analysis, Market Research, Data Analytics
+- **High S (Social)**: HR Management, Customer Relations, Organizational Development
+- **High A (Artistic)**: Marketing, Brand Management, Creative Business
+- **High R (Realistic)**: Operations Management, Supply Chain, Logistics
 
-**Cluster 2 (Medium Fit) - Business & Management:**
-- Business Manager, Operations Manager, Strategy Consultant
-- Marketing Manager, HR Manager, Product Manager
-- Salary: Entry ₹4-10L, Mid ₹10-25L, Senior ₹25-70L
-
-**Cluster 3 (Explore) - Entrepreneurship & Digital Business:**
-- Entrepreneur, Startup Founder, Business Consultant
-- Digital Marketing Manager, E-commerce Manager, Brand Strategist
-- Salary: Entry ₹3-15L, Mid ₹15-50L, Senior ₹50-500L (variable)
+**Example Cluster Combinations (CUSTOMIZE based on their top 3 RIASEC):**
+- **ECI**: Finance & Investment Banking, Business Analytics, Strategic Consulting
+- **EAS**: Marketing & Brand Management, Creative Entrepreneurship, Media Business
+- **CIE**: Accounting & Auditing, Financial Planning, Risk Management
+- **ESA**: HR & Organizational Development, Business Development, Corporate Training
+- **Salary Ranges**: Entry ₹3-15L, Mid ₹10-50L, Senior ₹25-500L (varies by field)
 
 ### ARTS STREAM (arts, arts_psychology, arts_economics, arts_general, humanities):
-**Cluster 1 (High Fit) - Creative & Design:**
-- Graphic Designer, UI/UX Designer, Fashion Designer, Interior Designer
-- Animator, VFX Artist, Game Designer, Brand Designer
-- Salary: Entry ₹4-12L, Mid ₹12-35L, Senior ₹35-100L
+**CUSTOMIZE based on student's RIASEC:**
+- **High A (Artistic)**: Creative Arts, Design, Media Production, Content Creation
+- **High S (Social)**: Psychology, Counseling, Social Work, Teaching, NGO Work
+- **High E (Enterprising)**: Media Management, Event Management, Public Relations
+- **High I (Investigative)**: Research, Policy Analysis, Journalism, Academic Writing
+- **High C (Conventional)**: Legal Documentation, Administration, Library Science
+- **High R (Realistic)**: Photography, Film Production, Technical Theatre
 
-**Cluster 2 (Medium Fit) - Media & Communication:**
-- Journalist, Content Writer, PR Manager, Social Media Manager
-- Film Director, Video Editor, Podcast Host, YouTuber
-- Salary: Entry ₹3-10L, Mid ₹10-25L, Senior ₹25-70L
-
-**Cluster 3 (Explore) - Social Sciences & Law:**
-- Lawyer, Civil Services Officer, Policy Analyst, Diplomat
-- Psychologist, Counselor, Social Worker, NGO Manager
-- Salary: Entry ₹4-15L, Mid ₹15-50L, Senior ₹50-200L
+**Example Cluster Combinations (CUSTOMIZE based on their top 3 RIASEC):**
+- **ASE**: Creative & Design, Media Production, Brand Strategy
+- **SAI**: Psychology & Counseling, Social Research, Human Services
+- **AEI**: Media & Communication, Content Strategy, Digital Marketing
+- **IAS**: Research & Academia, Scientific Writing, Policy Analysis
+- **Salary Ranges**: Entry ₹3-15L, Mid ₹10-50L, Senior ₹25-200L (varies by field)
 
 **CRITICAL INSTRUCTIONS:**
 1. **Identify the student's stream** from the stream field above
-2. **Use ONLY the 3 career clusters** that match their stream
-3. **Customize each cluster** based on their specific RIASEC, aptitude, and personality scores
-4. **Provide evidence from ALL 6 sections** for each cluster
-5. **If stream is unclear or invalid**, default to the stream that best matches their RIASEC top 3 types:
+2. **Analyze their RIASEC top 3 types** (e.g., IRA, ASE, ECI)
+3. **Create 3 CUSTOMIZED career clusters** that match BOTH their stream AND their RIASEC profile
+4. **DO NOT use generic templates** - personalize based on their actual scores
+5. **Provide evidence from ALL 7 sections** for each cluster
+6. **If stream is unclear or invalid**, default to the stream that best matches their RIASEC top 3 types:
    - High I + R → Science
    - High E + C → Commerce
    - High A + S → Arts
 
 ## ⚠️ SPECIAL CASE: HIGH ARTISTIC (A) STUDENTS ⚠️
 **IF the student has 'A' (Artistic) in their top 3 RIASEC types:**
-- **Science stream**: Replace Cluster 3 with "Design & Architecture" (Architecture, Product Design, Industrial Design)
-- **Commerce stream**: Replace Cluster 3 with "Creative Business" (Fashion Business, Event Management, Media Production)
+- **Science stream**: Replace generic clusters with personalized ones (e.g., Architecture, Product Design, Scientific Visualization, Biomedical Design)
+- **Commerce stream**: Replace generic clusters with creative business options (e.g., Fashion Business, Event Management, Media Production)
 - **Arts stream**: Ensure Cluster 1 is creative/artistic (already covered)
 
+## ⚠️ SPECIAL CASE: SCIENCE PCB (BIOLOGY) STUDENTS ⚠️
+**IF the student's stream is science_pcb or pcb:**
+- **High I + S (Investigative + Social)**: Healthcare & Medicine, Clinical Research, Public Health
+- **High I + R (Investigative + Realistic)**: Biomedical Engineering, Biotechnology, Lab Sciences
+- **High I + A (Investigative + Artistic)**: Medical Illustration, Health Communication, Biodesign
+- **High S + E (Social + Enterprising)**: Healthcare Management, Pharmaceutical Sales, Health Tech
+- **DO NOT default to generic "Technology & Innovation"** unless their RIASEC strongly supports it (high I + R with low S)
+
 ## ═══════════════════════════════════════════════════════════════════════════
-## DEGREE PROGRAM RECOMMENDATIONS (ALIGNED WITH CAREER CLUSTERS)
+## PROGRAM DERIVATION INSTRUCTIONS (MANDATORY - DO NOT SELECT FROM LISTS)
 ## ═══════════════════════════════════════════════════════════════════════════
 
-**CRITICAL**: The 3 degree programs MUST align with the 3 career clusters for the student's stream.
+**CRITICAL: You MUST derive 3 degree programs from the student's 7-section assessment, NOT select from predefined lists.**
 
-### SCIENCE STREAM - Program Recommendations
+**DERIVATION PROCESS (Use ALL 7 Sections):**
 
-**For Cluster 1 (Technology & Innovation) - Select ONE:**
-- B.Tech Computer Science & Engineering
-- B.Tech Artificial Intelligence & Machine Learning
-- B.Tech Data Science & Analytics
-- B.Tech Cybersecurity
-- BCA (Bachelor of Computer Applications)
+### Step 1: Identify the Profile Intersection
+Analyze where these 7 dimensions intersect:
 
-**For Cluster 2 (Engineering & Research) - Select ONE:**
-- B.Tech Mechanical Engineering
-- B.Tech Civil Engineering
-- B.Tech Electronics & Communication
-- B.Sc Physics
-- B.Sc Chemistry
-- B.Sc Mathematics
+1. **RIASEC (Section 1)**: Top 3 types with percentages (e.g., I: 85%, R: 75%, A: 60%)
+2. **Aptitude (Section 5 + 6)**: Top 2 cognitive strengths (e.g., Numerical: 88%, Abstract: 82%)
+3. **Personality (Section 2)**: Top 2 Big Five traits (e.g., Openness: 4.2, Conscientiousness: 4.0)
+4. **Values (Section 3)**: Top 2 work motivators (e.g., Achievement: 4.5, Financial: 4.2)
+5. **Employability (Section 4)**: Top 2 professional skills (e.g., Problem-solving: 85%, Digital Literacy: 90%)
+6. **Knowledge (Section 7)**: Stream knowledge score (e.g., 75% in Science domain)
+7. **Stream**: Student's chosen stream (Science/Commerce/Arts)
 
-**For Cluster 3 (Healthcare & Life Sciences) - Select ONE:**
-- MBBS (Bachelor of Medicine & Surgery)
-- BDS (Bachelor of Dental Surgery)
-- B.Pharm (Bachelor of Pharmacy)
-- B.Sc Biotechnology
+### Step 2: Derive 3 Programs at the Intersection
 
-**For Cluster 3 (Design & Architecture) - If High Artistic (A) - Select ONE:**
-- B.Arch (Bachelor of Architecture)
-- BA Design (Graphic/UI/UX)
-- BA Interior Design
+**Program 1 (High Fit - 85-95% match):**
+- Sits at the CENTER of their profile intersection
+- Leverages their STRONGEST aptitude + HIGHEST RIASEC type + TOP personality trait
+- Aligns with their PRIMARY work value
+- Supported by their knowledge score
 
-### COMMERCE STREAM - Program Recommendations
+**Program 2 (Medium Fit - 75-84% match):**
+- Sits at a SECONDARY intersection point
+- Leverages their SECOND aptitude + SECOND RIASEC type
+- Still within their stream category
+- Alternative path with good prospects
 
-**For Cluster 1 (Finance & Accounting) - Select ONE:**
-- BBA Finance & Banking
-- B.Com (Bachelor of Commerce)
-- B.Com (Honors)
-- BBA Insurance & Risk Management
+**Program 3 (Explore - 65-74% match):**
+- Explores a DIFFERENT facet of their profile
+- May emphasize their THIRD RIASEC type or creative side
+- Worth exploring as backup option
+- Keeps options open
 
-**For Cluster 2 (Business & Management) - Select ONE:**
-- BBA (Bachelor of Business Administration)
-- BMS (Bachelor of Management Studies)
-- BBA International Business
-- BBA Human Resource Management
-- BBA Supply Chain & Logistics
+### Step 3: Provide Evidence from ALL 7 Sections
 
-**For Cluster 3 (Entrepreneurship & Digital Business) - Select ONE:**
-- BBA Entrepreneurship
-- BBA Digital Marketing
-- BBA Retail Management
-- BBA Aviation Management
+For each program, you MUST cite evidence from:
+- ✅ Section 1 (RIASEC): "Your Investigative (85%) and Realistic (75%) interests..."
+- ✅ Section 2 (Personality): "Your high Openness (4.2) and Conscientiousness (4.0)..."
+- ✅ Section 3 (Values): "Your Achievement (4.5) and Financial (4.2) motivators..."
+- ✅ Section 4 (Employability): "Your Problem-solving (85%) and Digital Literacy (90%)..."
+- ✅ Section 5+6 (Aptitude): "Your numerical aptitude (88%) and abstract reasoning (82%)..."
+- ✅ Section 7 (Knowledge): "Your stream knowledge score of 75% shows readiness..."
 
-**For Cluster 3 (Creative Business) - If High Artistic (A) - Select ONE:**
-- BBA Event Management
-- BA Fashion Design
-- BA Film Making & Cinematography
+---
 
-### ARTS STREAM - Program Recommendations
+## DERIVATION EXAMPLES (Using All 7 Sections):
 
-**For Cluster 1 (Creative & Design) - Select ONE:**
-- BA Design (Graphic/UI/UX)
-- BA Fashion Design
-- BA Animation & VFX
-- BFA (Bachelor of Fine Arts)
-- BA Interior Design
+### Example 1: Science Stream Student
+**Profile:**
+- RIASEC: I (85%), R (75%), A (60%)
+- Aptitude: Numerical 88%, Abstract 82%
+- Personality: Openness 4.2, Conscientiousness 4.0
+- Values: Achievement 4.5, Financial 4.2
+- Employability: Problem-solving 85%, Digital Literacy 90%
+- Knowledge: Science 75%
+- Stream: Science (PCM)
 
-**For Cluster 2 (Media & Communication) - Select ONE:**
-- BA Journalism & Mass Communication
-- BA Film Making & Cinematography
-- BA Public Relations & Advertising
-- BA English Literature
+**Derived Program 1: "B.Tech Computer Science & Artificial Intelligence"**
+- **Derivation**: "Your Investigative (85%) and Realistic (75%) interests combined with exceptional numerical aptitude (88%) and abstract reasoning (82%) point toward computational problem-solving. Your high Openness (4.2) indicates innovation potential, while Conscientiousness (4.0) ensures disciplined learning. Your Achievement (4.5) and Financial (4.2) values align with tech careers. Your Problem-solving (85%) and Digital Literacy (90%) skills provide a strong foundation. Your Science knowledge score of 75% confirms readiness for rigorous STEM coursework."
+- **Match Score**: 92
+- **Career Paths**: Software Engineer, AI/ML Engineer, Data Scientist
 
-**For Cluster 3 (Social Sciences & Law) - Select ONE:**
-- LLB (Bachelor of Laws)
-- BA Psychology
-- BA Economics
-- BA Political Science
-- BA Sociology
+**Derived Program 2: "B.Tech Electronics & Communication Engineering"**
+- **Derivation**: "Your Realistic (75%) interests in hands-on problem-solving combined with strong numerical (88%) and abstract (82%) aptitude support engineering coursework. Your Conscientiousness (4.0) ensures attention to detail needed for circuit design. This program offers a balance between theory and practical application."
+- **Match Score**: 78
+- **Career Paths**: Electronics Engineer, Embedded Systems Developer, IoT Specialist
 
-**CRITICAL INSTRUCTIONS FOR PROGRAM SELECTION:**
-1. **YOU MUST SELECT EXACTLY 3 PROGRAMS** - one for each career cluster
-2. **Programs MUST align with career clusters:**
-   - Program 1 (High fit) → From Cluster 1 program list
-   - Program 2 (Medium fit) → From Cluster 2 program list
-   - Program 3 (Explore) → From Cluster 3 program list
-3. **Each program MUST include ALL OF THESE REQUIRED FIELDS:**
-   - **programName**: Program name (exact match from list above)
-   - **matchScore**: Match score (85-95 for High fit, 75-84 for Medium fit, 65-74 for Explore)
+**Derived Program 3: "B.Sc Physics with Computer Science"**
+- **Derivation**: "Your Investigative (85%) interests and Artistic (60%) side suggest research with creative problem-solving. This interdisciplinary program combines theoretical physics with computational methods, leveraging your abstract reasoning (82%) while exploring your curiosity (Openness 4.2)."
+- **Match Score**: 68
+- **Career Paths**: Research Scientist, Computational Physicist, Data Analyst
+
+---
+
+### Example 2: Commerce Stream Student
+**Profile:**
+- RIASEC: E (82%), C (75%), I (65%)
+- Aptitude: Numerical 75%, Verbal 70%
+- Personality: Conscientiousness 4.3, Extraversion 4.1
+- Values: Financial 4.5, Status 4.2
+- Employability: Communication 80%, Teamwork 85%
+- Knowledge: Commerce 72%
+- Stream: Commerce
+
+**Derived Program 1: "BBA Finance & Investment Banking"**
+- **Derivation**: "Your Enterprising (82%) and Conventional (75%) interests combined with strong numerical aptitude (75%) align perfectly with finance careers. Your high Conscientiousness (4.3) ensures meticulous financial analysis, while Extraversion (4.1) supports client interactions. Your Financial (4.5) and Status (4.2) values match banking culture. Your Communication (80%) and Teamwork (85%) skills are essential for collaborative finance work. Your Commerce knowledge score of 72% confirms readiness."
+- **Match Score**: 88
+- **Career Paths**: Investment Banker, Financial Analyst, Portfolio Manager
+
+---
+
+### Example 3: Arts Stream Student
+**Profile:**
+- RIASEC: A (85%), S (78%), E (65%)
+- Aptitude: Verbal 85%, Abstract 72%
+- Personality: Openness 4.5, Agreeableness 4.2
+- Values: Creativity 4.6, Impact 4.3
+- Employability: Communication 88%, Adaptability 82%
+- Knowledge: Arts 70%
+- Stream: Arts
+
+**Derived Program 1: "BA Mass Communication & Digital Media"**
+- **Derivation**: "Your Artistic (85%) and Social (78%) interests combined with exceptional verbal aptitude (85%) point toward creative communication. Your high Openness (4.5) drives innovative storytelling, while Agreeableness (4.2) supports collaborative media production. Your Creativity (4.6) and Impact (4.3) values align with media careers. Your Communication (88%) and Adaptability (82%) skills are crucial for dynamic media environments. Your Arts knowledge score of 70% shows foundational readiness."
+- **Match Score**: 90
+- **Career Paths**: Journalist, Content Creator, Digital Marketing Manager
+
+---
+
+## CRITICAL RULES:
+
+1. **DO NOT use generic program names**:
+   - ❌ "Engineering" → ✅ "B.Tech Computer Science & AI"
+   - ❌ "BBA" → ✅ "BBA Finance & Investment Banking"
+   - ❌ "BA" → ✅ "BA Mass Communication & Digital Media"
+
+2. **DO cite ALL 7 sections** in derivation field
+
+3. **DO match student's stream**:
+   - Science → Engineering/Medical/Pure Sciences
+   - Commerce → Business/Finance/Management
+   - Arts → Humanities/Media/Law/Design
+
+4. **DO provide 3-5 career paths** per program
+
+5. **DO calculate match scores** based on profile alignment (not arbitrary)
+
+6. **REQUIRED FIELDS for each program:**
+   - **programName**: Specific program name (not generic)
+   - **matchScore**: 85-95 (High), 75-84 (Medium), 65-74 (Explore)
    - **fit**: "High", "Medium", or "Explore"
-   - **duration**: REQUIRED - Program duration (e.g., "4 years", "3-4 years", "5 years", "5.5 years" - typical duration for that degree in India)
-   - **roleDescription**: REQUIRED - 2-3 sentences explaining what graduates typically do in their careers, career opportunities, and work responsibilities
-   - **topUniversities**: REQUIRED - Array of 5-7 well-known Indian universities offering this program (e.g., ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy"])
-   - **alignedWithCluster**: The career cluster this program aligns with
-   - **whyThisFitsYou**: Personalized reasoning (2-3 sentences connecting their assessment results to the program)
-   - **evidence**: Object with ALL 6 sections (interest, aptitude, personality, values, employability, knowledge)
-4. **Selection criteria within each cluster:**
-   - Choose program that best matches student's RIASEC top 3 types
-   - Consider aptitude strengths (numerical, logical, verbal, spatial, creative)
-   - Consider personality traits (Big Five scores)
-   - Consider work values and employability skills
-5. **If student has high 'A' (Artistic) in RIASEC top 3:**
-   - Use the artistic variant for Cluster 3 (Design & Architecture for Science, Creative Business for Commerce)
+   - **duration**: Program duration (e.g., "4 years", "3 years", "5.5 years")
+   - **roleDescription**: 2-3 sentences about what graduates do
+   - **topUniversities**: Array of 5-7 Indian universities
+   - **alignedWithCluster**: Which career cluster it aligns with
+   - **whyThisFitsYou**: Personalized reasoning without percentages or scores (2-3 meaningful sentences explaining the connection between their profile and this program)
+   - **evidence**: Object with ALL 7 sections (interest, aptitude, personality, values, employability, knowledge, adaptiveAptitude)
 
-**EXAMPLE PROGRAM RECOMMENDATION FORMAT (Aligned with Clusters):**
+**EXAMPLE OUTPUT FORMAT (Derived Programs):**
 
-**Science Stream Example:**
 \`\`\`json
 {
   "degreePrograms": [
     {
-      "programName": "B.Tech Computer Science & Engineering",
+      "programName": "B.Tech Computer Science & Artificial Intelligence",
       "matchScore": 92,
       "fit": "High",
       "duration": "4 years",
       "roleDescription": "As a Computer Science graduate, you'll design and develop software applications, work on cutting-edge technologies like AI and cloud computing, and solve complex technical problems. You'll have opportunities in software development, data science, cybersecurity, and tech entrepreneurship.",
       "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad", "VIT Vellore", "Manipal Institute of Technology"],
       "alignedWithCluster": "Technology & Innovation",
-      "whyThisFitsYou": "Your exceptional logical reasoning (85%) and high Investigative interest (I: 88%) make you perfect for software development. Your strong problem-solving skills (90%) and curiosity for technology align perfectly with CSE's analytical and creative demands.",
+      "whyThisFitsYou": "Your Investigative and Realistic interests combined with exceptional numerical aptitude and abstract reasoning point toward computational problem-solving. Your high Openness indicates innovation potential, while Conscientiousness ensures disciplined learning.",
       "evidence": {
-        "interest": "High I (Investigative 88%) and R (Realistic 75%) indicate strong fit for technical problem-solving",
-        "aptitude": "Exceptional numerical (85%) and logical reasoning (88%) demonstrate strong analytical capabilities",
-        "personality": "High Conscientiousness (4.3) and Openness (4.1) suggest disciplined learning and curiosity",
-        "values": "Achievement (4.5) and Independence (4.2) align with project-based autonomous work",
-        "employability": "Strong problem-solving (90%) and digital literacy (95%) provide solid foundation",
-        "knowledge": "Domain knowledge score of 78% demonstrates readiness for advanced CS concepts"
+        "interest": "High I (Investigative 85%) and R (Realistic 75%) indicate strong fit for technical problem-solving",
+        "aptitude": "Exceptional numerical (88%) and abstract reasoning (82%) demonstrate strong analytical capabilities",
+        "personality": "High Openness (4.2) and Conscientiousness (4.0) suggest innovation potential and disciplined learning",
+        "values": "Achievement (4.5) and Financial (4.2) values align with tech career rewards",
+        "employability": "Problem-solving (85%) and Digital Literacy (90%) provide strong foundation",
+        "knowledge": "Science knowledge score of 75% confirms readiness for rigorous STEM coursework",
+        "adaptiveAptitude": "Adaptive test level 4/5 with 82% accuracy confirms exceptional analytical capabilities"
       }
     },
     {
-      "programName": "B.Tech Mechanical Engineering",
-      "matchScore": 85,
+      "programName": "B.Tech Electronics & Communication Engineering",
+      "matchScore": 78,
       "fit": "Medium",
       "duration": "4 years",
-      "roleDescription": "Mechanical engineers design, develop, and test mechanical systems and devices. You'll work on projects ranging from automotive design to robotics, renewable energy systems, and manufacturing processes. Career paths include product design, R&D, automotive engineering, and aerospace.",
+      "roleDescription": "Electronics engineers design, develop, and test electronic systems and devices. You'll work on projects ranging from telecommunications to embedded systems, IoT devices, and signal processing. Career paths include electronics engineering, embedded systems development, and telecommunications.",
       "topUniversities": ["IIT Madras", "IIT Kharagpur", "NIT Surathkal", "BITS Pilani", "Anna University", "PSG College of Technology", "Jadavpur University"],
       "alignedWithCluster": "Engineering & Research",
-      "whyThisFitsYou": "Your strong Realistic interest (R: 75%) and spatial reasoning (82%) make mechanical engineering a natural fit. Your hands-on approach and analytical mindset support complex engineering challenges.",
+      "whyThisFitsYou": "Your Realistic interests in hands-on problem-solving combined with strong numerical and abstract aptitude support engineering coursework. Your Conscientiousness ensures attention to detail needed for circuit design.",
       "evidence": {
-        "interest": "High R (Realistic 75%) and I (Investigative 88%) align with engineering problem-solving",
-        "aptitude": "Strong spatial reasoning (82%) and numerical skills (85%) support mechanical design",
-        "personality": "High Conscientiousness (4.3) ensures disciplined approach to engineering projects",
-        "values": "Achievement (4.5) drives success in challenging engineering work",
-        "employability": "Problem-solving (90%) and technical skills support engineering careers",
-        "knowledge": "Strong foundation (78%) enables transition to engineering studies"
+        "interest": "Realistic (75%) interests align with hands-on engineering work",
+        "aptitude": "Strong numerical (88%) and abstract (82%) aptitude support engineering coursework",
+        "personality": "Conscientiousness (4.0) ensures attention to detail for circuit design",
+        "values": "Achievement (4.5) drives success in challenging engineering projects",
+        "employability": "Problem-solving (85%) skills support technical engineering work",
+        "knowledge": "Science knowledge (75%) provides foundation for engineering studies",
+        "adaptiveAptitude": "Adaptive test results show strong analytical reasoning for engineering"
       }
     },
     {
-      "programName": "MBBS (Bachelor of Medicine & Surgery)",
-      "matchScore": 78,
+      "programName": "B.Sc Physics with Computer Science",
+      "matchScore": 68,
       "fit": "Explore",
-      "duration": "5.5 years",
-      "roleDescription": "As a medical doctor, you'll diagnose and treat patients, conduct medical research, and contribute to public health. You'll specialize in areas like surgery, pediatrics, cardiology, or pursue research in medical sciences. The career combines scientific knowledge with compassionate patient care.",
-      "topUniversities": ["AIIMS Delhi", "CMC Vellore", "JIPMER Puducherry", "KGMU Lucknow", "Maulana Azad Medical College", "Grant Medical College Mumbai", "Madras Medical College"],
-      "alignedWithCluster": "Healthcare & Life Sciences",
-      "whyThisFitsYou": "Your Investigative interest (I: 88%) and Social aptitude (S: 70%) open doors to medical careers. Your empathy and scientific curiosity support patient care and medical research.",
+      "duration": "3 years",
+      "roleDescription": "This interdisciplinary program combines theoretical physics with computational methods. You'll study quantum mechanics, thermodynamics, and computational physics. Career paths include research scientist, computational physicist, data analyst, and scientific software developer.",
+      "topUniversities": ["St. Stephen's College Delhi", "Loyola College Chennai", "Fergusson College Pune", "Presidency College Kolkata", "Hindu College Delhi", "Madras Christian College", "St. Xavier's Mumbai"],
+      "alignedWithCluster": "Research & Academia",
+      "whyThisFitsYou": "Your Investigative interests and Artistic side suggest research with creative problem-solving. This interdisciplinary program combines theoretical physics with computational methods, leveraging your abstract reasoning while exploring your curiosity and Openness.",
       "evidence": {
-        "interest": "High I (Investigative 88%) and moderate S (Social 70%) align with medical science",
-        "aptitude": "Strong logical reasoning (88%) and verbal skills (75%) support medical studies",
-        "personality": "High Conscientiousness (4.3) and Agreeableness (4.0) suit medical profession",
-        "values": "Achievement (4.5) and helping others drive medical career success",
-        "employability": "Communication (85%) and problem-solving (90%) are essential for doctors",
-        "knowledge": "Biology knowledge (78%) provides foundation for medical studies"
+        "interest": "Investigative (85%) interests and Artistic (60%) side support research with creative problem-solving",
+        "aptitude": "Abstract reasoning (82%) supports theoretical physics and computational methods",
+        "personality": "High Openness (4.2) drives curiosity for interdisciplinary exploration",
+        "values": "Achievement (4.5) motivates pursuit of challenging research",
+        "employability": "Problem-solving (85%) skills support scientific research",
+        "knowledge": "Science knowledge (75%) provides foundation for advanced physics",
+        "adaptiveAptitude": "Adaptive test shows strong analytical capabilities for theoretical work"
       }
-    }
-  ]
-}
-\`\`\`
-
-**Commerce Stream Example:**
-\`\`\`json
-{
-  "degreePrograms": [
-    {
-      "programName": "BBA Finance & Banking",
-      "matchScore": 90,
-      "fit": "High",
-      "duration": "3 years",
-      "roleDescription": "Finance graduates work in investment banking, financial analysis, portfolio management, and corporate finance. You'll analyze market trends, manage investments, assess financial risks, and advise clients on wealth management. Career paths include investment banking, equity research, and financial consulting.",
-      "topUniversities": ["Shaheed Sukhdev College of Business Studies Delhi", "Christ University Bangalore", "Symbiosis Pune", "NMIMS Mumbai", "Narsee Monjee College Mumbai", "St. Xavier's Mumbai", "Loyola College Chennai"],
-      "alignedWithCluster": "Finance & Accounting",
-      "whyThisFitsYou": "Your exceptional Conventional interest (C: 80%) and numerical reasoning (88%) make you perfect for finance careers. Your attention to detail and analytical skills align with investment banking and financial analysis."
-    },
-    {
-      "programName": "BBA (Bachelor of Business Administration)",
-      "matchScore": 84,
-      "fit": "Medium",
-      "duration": "3 years",
-      "roleDescription": "BBA graduates become business managers, marketing professionals, HR specialists, and operations managers. You'll lead teams, develop business strategies, manage projects, and drive organizational growth. Career opportunities span across consulting, marketing, operations, and general management.",
-      "topUniversities": ["Shaheed Sukhdev College Delhi", "Christ University Bangalore", "Symbiosis Pune", "NMIMS Mumbai", "Amity University", "Manipal University", "VIT Vellore"],
-      "alignedWithCluster": "Business & Management",
-      "whyThisFitsYou": "Your strong Enterprising interest (E: 85%) and leadership skills make business management a natural fit. Your communication abilities and strategic thinking support managerial roles."
-    },
-    {
-      "programName": "BBA Entrepreneurship",
-      "matchScore": 76,
-      "fit": "Explore",
-      "duration": "3 years",
-      "roleDescription": "Entrepreneurship graduates start their own ventures, work in startups, or drive innovation in established companies. You'll develop business plans, secure funding, build teams, and launch products. This path suits those who want to create their own opportunities and drive change.",
-      "topUniversities": ["Christ University Bangalore", "Symbiosis Pune", "NMIMS Mumbai", "Amity University", "Manipal University", "VIT Vellore", "Chandigarh University"],
-      "alignedWithCluster": "Entrepreneurship & Digital Business",
-      "whyThisFitsYou": "Your Enterprising interest (E: 85%) and creativity (A: 65%) open doors to entrepreneurship. Your risk-taking ability and innovative mindset support startup ventures."
-    }
-  ]
-}
-\`\`\`
-
-**Arts Stream Example:**
-\`\`\`json
-{
-  "degreePrograms": [
-    {
-      "programName": "BA Design (Graphic/UI/UX)",
-      "matchScore": 94,
-      "fit": "High",
-      "duration": "3-4 years",
-      "roleDescription": "Design graduates create visual content, user interfaces, brand identities, and digital experiences. You'll work as UI/UX designers, graphic designers, brand strategists, or creative directors. Career opportunities exist in tech companies, design agencies, advertising firms, and as freelance designers.",
-      "topUniversities": ["NID Ahmedabad", "NIFT Delhi", "Srishti Manipal", "Pearl Academy", "MIT Institute of Design", "Symbiosis Institute of Design", "DJ Academy of Design"],
-      "alignedWithCluster": "Creative & Design",
-      "whyThisFitsYou": "Your exceptional Artistic interest (A: 92%) and creativity score (88%) make you perfect for design. Your visual thinking and attention to detail align with UI/UX design's creative and analytical demands."
-    },
-    {
-      "programName": "BA Journalism & Mass Communication",
-      "matchScore": 86,
-      "fit": "Medium",
-      "duration": "3 years",
-      "roleDescription": "Journalism graduates work as reporters, content creators, news anchors, editors, and media strategists. You'll investigate stories, conduct interviews, create multimedia content, and shape public discourse. Career paths include print journalism, broadcast media, digital content, and public relations.",
-      "topUniversities": ["IIMC Delhi", "Symbiosis Pune", "Xavier's Institute Mumbai", "Christ University Bangalore", "Jamia Millia Islamia", "Lady Shri Ram College Delhi", "Asian College of Journalism Chennai"],
-      "alignedWithCluster": "Media & Communication",
-      "whyThisFitsYou": "Your high Social interest (S: 85%) and excellent verbal skills (90%) make journalism a natural fit. Your curiosity and communication strengths support investigative reporting and storytelling."
-    },
-    {
-      "programName": "LLB (Bachelor of Laws)",
-      "matchScore": 79,
-      "fit": "Explore",
-      "duration": "3 years (after graduation) or 5 years (integrated)",
-      "roleDescription": "Law graduates become lawyers, legal advisors, judges, corporate counsels, and policy makers. You'll represent clients, draft legal documents, argue cases in court, and provide legal guidance. Career opportunities span litigation, corporate law, intellectual property, human rights, and legal academia.",
-      "topUniversities": ["National Law School Bangalore", "NALSAR Hyderabad", "NLSIU Bangalore", "NUJS Kolkata", "NLU Delhi", "Symbiosis Law School Pune", "Jindal Global Law School"],
-      "alignedWithCluster": "Social Sciences & Law",
-      "whyThisFitsYou": "Your high Social interest (S: 85%) and logical reasoning (85%) make law worth exploring. Your analytical thinking and communication skills support legal advocacy and policy work."
     }
   ]
 }
@@ -903,42 +1236,68 @@ For each career cluster, you MUST provide evidence from ALL 6 sections:
 8. Provide realistic salary ranges for Indian job market (in LPA)
 9. Include both entry-level and senior career progression paths
 
+**CRITICAL REQUIREMENTS:**
+1. You MUST provide EXACTLY 3 career clusters (High, Medium, Explore)
+2. You MUST provide EXACTLY 3 degree programs DERIVED (not selected from lists)
+3. Programs are derived from profile intersection, not selected from predefined lists
+4. Match scores reflect actual profile alignment (85-95 High, 75-84 Medium, 65-74 Explore)
+5. Salary ranges provided for entry, mid, and senior levels in career clusters
+6. All JSON fields properly filled (no empty arrays or null values)
+7. Response is valid JSON (no markdown, no truncation)
+
 **⚠️ FINAL VALIDATION CHECKLIST:**
 Before returning your response, verify:
-- [ ] All 6 sections analyzed (RIASEC, Big Five, Values, Employability, Aptitude, Knowledge)
-- [ ] EXACTLY 3 career clusters provided (High, Medium, Explore)
+- [ ] All 7 sections analyzed (RIASEC, Big Five, Values, Employability, Aptitude, Knowledge, Adaptive Aptitude)
 - [ ] Career clusters MATCH student's stream (Science/Commerce/Arts)
-- [ ] EXACTLY 3 degree programs provided
-- [ ] Degree programs MATCH student's stream (Science/Commerce/Arts)
-- [ ] Degree programs ALIGN with career clusters:
-  - Program 1 (High fit) aligns with Cluster 1
-  - Program 2 (Medium fit) aligns with Cluster 2
-  - Program 3 (Explore) aligns with Cluster 3
-- [ ] Each career cluster has evidence from ALL 6 sections
+- [ ] **CRITICAL SEMANTIC COHERENCE: Read each cluster title and verify ALL roles listed belong to that exact domain**
+- [ ] **VALIDATION TEST: For each cluster, ask "Would a recruiter in [cluster title] recognize all these roles as part of their field?" - If NO, fix the cluster**
+- [ ] **NO CROSS-CONTAMINATION: Verify no role appears in wrong cluster (e.g., "Biomedical Engineer" should NOT be in "Research & Development" cluster)**
+- [ ] **MINIMUM ROLE COUNT: EVERY cluster MUST have AT LEAST 3 roles in entry, mid, AND senior levels - NO EXCEPTIONS**
+- [ ] **CLUSTER 3 VALIDATION: Track 3 MUST have minimum 3 entry + 3 mid + 3 senior roles (total 9+ roles)**
+- [ ] Programs are SPECIFIC (e.g., "B.Tech Computer Science & AI" not "Engineering")
+- [ ] Each program has evidence from ALL 7 sections in the derivation
+- [ ] Each career cluster has evidence from ALL 7 sections
 - [ ] Each degree program has "alignedWithCluster" field
-- [ ] Each degree program has personalized "Why this fits you" reasoning
-- [ ] Each degree program has evidence from ALL 6 sections
+- [ ] **CRITICAL ALIGNMENT: Each degree program's "alignedWithCluster" value EXACTLY MATCHES one of the 3 career cluster titles**
+- [ ] **VERIFY: If career clusters are titled "Software Engineering & Cloud Computing", "Data Science & Analytics", "Product Design & UX", then degree programs must use EXACTLY these same titles in "alignedWithCluster"**
+- [ ] Each degree program has personalized "whyThisFitsYou" reasoning
 - [ ] **CRITICAL: Each degree program has "duration" field (e.g., "4 years", "3 years", "5.5 years")**
 - [ ] **CRITICAL: Each degree program has "roleDescription" field (2-3 sentences about what graduates do)**
 - [ ] **CRITICAL: Each degree program has "topUniversities" array (5-7 universities)**
 - [ ] If 'A' (Artistic) is in top 3 RIASEC, at least one creative career cluster AND one creative program included
-- [ ] Specific college majors and programs listed for each cluster
-- [ ] Salary ranges provided for entry, mid, and senior levels
-- [ ] All JSON fields properly filled (no empty arrays or null values)
-- [ ] Response is valid JSON (no markdown, no truncation)
+- [ ] **FINAL COHERENCE CHECK: Read the entire response and ensure cluster titles, roles, and degree programs form a logical, coherent career guidance package**
+- [ ] **FINAL ROLE COUNT CHECK: Count roles in each cluster - entry (min 3), mid (min 3), senior (min 3) - if any cluster has less than 3 roles at any level, ADD MORE ROLES**
+
 
 **🚨 MANDATORY FIELDS FOR EACH DEGREE PROGRAM - DO NOT SKIP:**
+
+**CRITICAL: Programs must be DERIVED from the student's 7-section profile, NOT selected from predefined lists.**
+
+**CRITICAL ALIGNMENT REQUIREMENTS:**
+1. Each program MUST have a clear "alignedWithCluster" field that matches one of the 3 career clusters
+2. The "alignedWithCluster" value MUST be the EXACT title of one of the career clusters (e.g., "Technology & Innovation", "Research & Development")
+3. This ensures proper visual alignment in the UI between programs and their corresponding career tracks
+4. The program's content should directly support and align with the career cluster it references
+
 Example structure:
 {
-  "programName": "B.Tech Computer Science & Engineering",
-  "matchScore": 92,
+  "programName": "B.Tech Computer Science & Artificial Intelligence",  // ← SPECIFIC program name derived from profile
+  "matchScore": 92,  // ← Based on profile alignment (85-95 High, 75-84 Medium, 65-74 Explore)
   "fit": "High",
   "duration": "4 years",  // ← REQUIRED - MUST BE PRESENT
   "roleDescription": "As a Computer Science graduate, you'll design and develop software applications...",  // ← REQUIRED - MUST BE PRESENT
   "topUniversities": ["IIT Bombay", "IIT Delhi", "BITS Pilani", "NIT Trichy", "IIIT Hyderabad"],  // ← REQUIRED - MUST BE PRESENT
-  "alignedWithCluster": "Technology & Innovation",
-  "whyThisFitsYou": "Your exceptional logical reasoning...",
-  "evidence": { ... }
+  "alignedWithCluster": "Technology & Innovation",  // ← MUST EXACTLY MATCH one of the 3 career cluster titles
+  "whyThisFitsYou": "Your Investigative and Realistic interests combined with exceptional numerical aptitude and abstract reasoning...",  // ← PERSONALIZED without percentages
+  "evidence": {
+    "interest": "High I (Investigative 85%) and R (Realistic 75%) indicate strong fit for technical problem-solving",
+    "aptitude": "Exceptional numerical (88%) and abstract reasoning (82%) demonstrate strong analytical capabilities",
+    "personality": "High Openness (4.2) and Conscientiousness (4.0) suggest innovation potential and disciplined learning",
+    "values": "Achievement (4.5) and Financial (4.2) values align with tech career rewards",
+    "employability": "Problem-solving (85%) and Digital Literacy (90%) provide strong foundation",
+    "knowledge": "Science knowledge score of 75% confirms readiness for rigorous STEM coursework",
+    "adaptiveAptitude": "Adaptive test level 4/5 with 82% accuracy confirms exceptional analytical capabilities"
+  }
 }`;
 }
 

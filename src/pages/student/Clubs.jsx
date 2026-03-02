@@ -41,10 +41,31 @@ export default function StudentDashboard() {
                     return;
                 }
 
-                // Fetch student's clubs using the view that joins memberships with club details
+                // Fetch student's clubs using proper joins
                 const { data: membershipData, error: membershipError } = await supabase
-                    .from('club_memberships_with_students')
-                    .select('*')
+                    .from('club_memberships')
+                    .select(`
+                        membership_id,
+                        club_id,
+                        student_email,
+                        status,
+                        enrolled_at,
+                        total_sessions_attended,
+                        total_sessions_held,
+                        attendance_percentage,
+                        performance_score,
+                        clubs (
+                            club_id,
+                            name,
+                            category,
+                            description,
+                            meeting_day,
+                            meeting_time,
+                            location,
+                            capacity,
+                            is_active
+                        )
+                    `)
                     .eq('student_email', userEmail)
                     .eq('status', 'active');
 
@@ -57,20 +78,16 @@ export default function StudentDashboard() {
 
                 // Transform membership data into clubs format
                 const clubsData = (membershipData || []).map(membership => ({
-                    club_id: membership.club_id,
-                    name: membership.club_name,
-                    category: membership.club_category,
-                    description: '', // Not in view, can be added if needed
-                    meeting_day: membership.meeting_day,
-                    meeting_time: membership.meeting_time,
-                    location: membership.location,
-                    mentor_type: membership.mentor_type,
-                    mentor_name: membership.mentor_name,
-                    mentor_email: membership.mentor_email,
-                    mentor_phone: membership.mentor_phone,
-                    is_active: true,
-                    capacity: 0, // Not in view
-                    members: [], // Will be populated below
+                    club_id: membership.clubs?.club_id,
+                    name: membership.clubs?.name,
+                    category: membership.clubs?.category,
+                    description: membership.clubs?.description || '',
+                    meeting_day: membership.clubs?.meeting_day,
+                    meeting_time: membership.clubs?.meeting_time,
+                    location: membership.clubs?.location,
+                    is_active: membership.clubs?.is_active,
+                    capacity: membership.clubs?.capacity || 30,
+                    members: [],
                     // Membership specific data
                     membership_id: membership.membership_id,
                     enrolled_at: membership.enrolled_at,
@@ -83,19 +100,12 @@ export default function StudentDashboard() {
                 // Store memberships for later use
                 setMyMemberships(membershipData || []);
 
-                // Fetch full club details including capacity and member count
+                // Fetch member count for each club
                 const clubsWithMembers = await Promise.all(
                     clubsData.map(async (club) => {
-                        // Get full club details
-                        const { data: clubDetails } = await supabase
-                            .from('clubs')
-                            .select('capacity, description')
-                            .eq('club_id', club.club_id)
-                            .single();
-
-                        // Get member count from the view (RLS-friendly)
+                        // Get member count
                         const { count: memberCount } = await supabase
-                            .from('club_memberships_with_students')
+                            .from('club_memberships')
                             .select('*', { count: 'exact', head: true })
                             .eq('club_id', club.club_id)
                             .eq('status', 'active');
@@ -104,10 +114,8 @@ export default function StudentDashboard() {
 
                         return {
                             ...club,
-                            capacity: clubDetails?.capacity || 30,
-                            description: clubDetails?.description || '',
                             memberCount: memberCount || 0,
-                            members: [] // Not needed for display, just count
+                            members: []
                         };
                     })
                 );

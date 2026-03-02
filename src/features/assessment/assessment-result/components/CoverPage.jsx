@@ -280,10 +280,12 @@ const NotebookLabel = ({ studentInfo, description }) => {
             fontSize: '14px',
             color: '#1e3a5f',
             margin: '2px 0 6px 0',
-            fontWeight: '600'
+            fontWeight: '600',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word'
           }}
         >
-          Congratulations, <span style={{ color: '#000000ff' }}>{safeInfo.name}</span>! Your career journey starts here.
+          Congratulations, <span style={{ color: '#000000ff', whiteSpace: 'normal' }}>{safeInfo.name}</span>! Your career journey starts here.
         </p>
         <p
           style={{
@@ -350,7 +352,7 @@ const NotebookLabel = ({ studentInfo, description }) => {
           {/* Row 2, Col 3: Assessment Date */}
           <div>
             <span style={labelStyle}>Assessment Date</span>
-            <span style={valueStyle}>{new Date().toLocaleDateString()}</span>
+            <span style={valueStyle}>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </div>
         </div>
         

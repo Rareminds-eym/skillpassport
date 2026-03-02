@@ -234,7 +234,16 @@ const ClassDetailsDrawer = ({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Students</p>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">{classItem.current_students} / {classItem.max_students}</p>
+              <p className={`mt-2 text-2xl font-semibold ${
+                classItem.current_students > classItem.max_students ? 'text-red-600' : 'text-gray-900'
+              }`}>
+                {classItem.current_students} / {classItem.max_students}
+              </p>
+              {classItem.current_students > classItem.max_students && (
+                <p className="mt-1 text-xs text-red-600 font-medium">
+                  Over capacity by {classItem.current_students - classItem.max_students}
+                </p>
+              )}
             </div>
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Average Progress</p>
@@ -1182,18 +1191,35 @@ const ClassManagement = () => {
                     <div className="mb-4 space-y-3">
                       <div className="flex items-center justify-between text-sm text-gray-600">
                         <span>Enrolled Students</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          classItem.current_students > classItem.max_students
+                            ? 'bg-red-100 text-red-700'
+                            : classItem.current_students === classItem.max_students
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}>
                           {classItem.current_students} / {classItem.max_students}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-indigo-600 h-2 rounded-full transition-all"
+                          className={`h-2 rounded-full transition-all ${
+                            classItem.current_students > classItem.max_students
+                              ? 'bg-red-500'
+                              : classItem.current_students === classItem.max_students
+                                ? 'bg-yellow-500'
+                                : 'bg-indigo-600'
+                          }`}
                           style={{
                             width: `${Math.min(100, (classItem.current_students / classItem.max_students) * 100)}%`
                           }}
                         />
                       </div>
+                      {classItem.current_students > classItem.max_students && (
+                        <div className="text-xs text-red-600 font-medium">
+                          ⚠️ Over capacity by {classItem.current_students - classItem.max_students} student{classItem.current_students - classItem.max_students === 1 ? '' : 's'}
+                        </div>
+                      )}
                       {classItem.educator && classItem.educator !== "TBD" && (
                         <div className="text-sm text-gray-600">
                           <span className="text-gray-500">Class Teacher:</span> <span className="font-medium text-gray-900">{classItem.educator}</span>
@@ -1275,7 +1301,16 @@ const ClassManagement = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classItem.grade}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {classItem.current_students} / {classItem.max_students}
+                          <div className="flex items-center space-x-2">
+                            <span className={classItem.current_students > classItem.max_students ? 'text-red-600 font-medium' : ''}>
+                              {classItem.current_students} / {classItem.max_students}
+                            </span>
+                            {classItem.current_students > classItem.max_students && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                Over
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <StatusBadge status={classItem.account_status} />

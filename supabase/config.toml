@@ -70,10 +70,31 @@ schema_paths = []
 [db.seed]
 # If enabled, seeds the database after migrations during a db reset.
 enabled = true
-
-# Ordered list of seed files to load during db reset.
+# Specifies an ordered list of seed files to load during db reset.
+# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
 sql_paths = [
-  "./seed.sql",
+  "./auth_*.sql",
+  "./public_users.sql",
+  "./public_organizations.sql",
+  "./public_departments.sql",
+  "./public_school_classes.sql",
+  "./public_school_educators.sql",
+  "./public_college_classes.sql",
+  "./public_college_lecturers.sql",
+  "./public_programs.sql",
+  "./public_program_sections.sql",
+  "./public_university_colleges.sql",
+  "./public_students.sql",
+  "./public_*.sql",
+  "./seed_adaptive_questions_after10.sql",
+  "./seed_adaptive_questions_after12.sql",
+  "./seed_adaptive_questions_higher_secondary.sql",
+  "./seed_adaptive_questions_highschool.sql",
+  "./seed_adaptive_questions_middleschool.sql",
+  "./seed_adaptive_questions_ug.sql",
+  "./seed_adaptive_questions_pg.sql",
+  "./seed_factory_visits.sql",
+  "./seed_school_courses.sql"
 ]
 
 [db.network_restrictions]
@@ -125,37 +146,12 @@ enabled = true
 # The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-[storage.s3_protocol]
-enabled = true
-
-# [storage.image_transformation]
-# enabled = true
-
-[storage.analytics]
-# Store analytical data in S3 for running ETL jobs over Iceberg Catalog (hosted only).
-enabled = false
-
-max_namespaces = 5
-max_tables = 10
-max_catalogs = 2
-
-# [storage.analytics.buckets.my-warehouse]
-
-[storage.vector]
-# Store vector embeddings in S3 for large and durable datasets (hosted only).
-enabled = false
-
-max_buckets = 10
-max_indexes = 5
-
-# [storage.vector.buckets.documents-openai]
-
 [auth]
 enabled = true
 
-site_url = []
+site_url = "http://127.0.0.1:8788"
 
-additional_redirect_urls = []
+additional_redirect_urls = ["http://127.0.0.1:8788/**", "http://127.0.0.1:3000/**", "http://localhost:3000/**", "http://localhost:8788/**"]
 
 jwt_expiry = 3600
 
@@ -254,7 +250,6 @@ secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
 redirect_uri = ""
 url = ""
 skip_nonce_check = false
-email_optional = false
 
 [auth.web3.solana]
 enabled = false
