@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   AlertCircle,
   Bell,
@@ -47,6 +48,7 @@ import PrivacyTab from "./PrivacyTab";
 const MainSettings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   const userEmail = user?.email;
   const recentUpdatesRef = useRef(null);
 
@@ -157,6 +159,13 @@ const MainSettings = () => {
   const [activeTab, setActiveTab] = useState("profile");
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
+
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   // Education management state - now using real data from dedicated table
   const educationData = Array.isArray(tableEducation) && tableEducation.length > 0 
@@ -1657,6 +1666,7 @@ const MainSettings = () => {
                 handleProfileChange={handleProfileChange}
                 handleInstitutionChange={handleInstitutionChange}
                 isSaving={isSaving}
+                initialActiveSubTab={location.state?.activeSubTab}
                 // Tab-specific save handlers
                 handleSavePersonalInfo={handleSavePersonalInfo}
                 handleSaveAdditionalInfo={handleSaveAdditionalInfo}

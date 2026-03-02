@@ -20,6 +20,7 @@ const ProfileTab = ({
   handleProfileChange,
   handleInstitutionChange,
   isSaving,
+  initialActiveSubTab,
   // Tab-specific save handlers
   handleSavePersonalInfo,
   handleSaveAdditionalInfo,
@@ -82,10 +83,17 @@ const ProfileTab = ({
   onToggleTechnicalSkillEnabled,
   onToggleSoftSkillEnabled,
 }) => {
-  const [profileActiveTab, setProfileActiveTab] = useState("personal");
+  const [profileActiveTab, setProfileActiveTab] = useState(initialActiveSubTab || "personal");
   const [showLeftIndicator, setShowLeftIndicator] = useState(false);
   const [showRightIndicator, setShowRightIndicator] = useState(true);
   const scrollContainerRef = useRef(null);
+
+  // Update active tab when initialActiveSubTab changes
+  useEffect(() => {
+    if (initialActiveSubTab) {
+      setProfileActiveTab(initialActiveSubTab);
+    }
+  }, [initialActiveSubTab]);
 
   // Check scroll position to show/hide indicators
   const checkScrollPosition = () => {

@@ -51,6 +51,203 @@ import useMessageNotifications from '../../hooks/useMessageNotifications';
 import MessageService from '../../services/messageService';
 import StudentPipelineService from '../../services/studentPipelineService';
 
+// Helper function to check if institution details are complete
+const checkInstitutionDetailsComplete = (studentData) => {
+  if (!studentData) return false;
+  
+  console.log('🔍 Checking institution details:', {
+    universityId: studentData.universityId,
+    university: studentData.university,
+    university_college_id: studentData.university_college_id,
+    college_school_name: studentData.college_school_name,
+    program_id: studentData.program_id,
+    branch_field: studentData.branch_field,
+    program_section_id: studentData.program_section_id,
+    section: studentData.section,
+    semester: studentData.semester,
+    grade: studentData.grade
+  });
+  
+  const gradeStr = String(studentData.grade || '').toUpperCase().trim();
+  const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
+  const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
+                    gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
+                    gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
+                    gradeStr.includes('MASTER');
+  
+  if (isSchool && !isCollege) {
+    // School students need: school_id (or custom school name) + school_class_id (or custom section)
+    const isComplete = !!(studentData.school_id || studentData.college_school_name);
+    console.log('📚 School student check:', { isComplete, school_id: studentData.school_id, college_school_name: studentData.college_school_name });
+    return isComplete;
+  } else if (isCollege) {
+    // College students need: university + college + program (semester is optional)
+    const hasUniversity = !!(studentData.universityId || studentData.university);
+    const hasCollege = !!(studentData.university_college_id || studentData.college_school_name);
+    const hasProgram = !!(studentData.program_id || studentData.branch_field);
+    const hasSemester = !!(studentData.program_section_id || studentData.section || studentData.semester);
+    
+    // Consider complete if at least university, college, and program are filled
+    const isComplete = hasUniversity && hasCollege && hasProgram;
+    console.log('🎓 College student check:', { 
+      isComplete, 
+      hasUniversity, 
+      hasCollege, 
+      hasProgram, 
+      hasSemester 
+    });
+    return isComplete;
+  }
+  
+  return false;
+};
+
+// Empty state component with modal
+const EmptyOpportunitiesState = ({ studentData, navigate }) => {
+  const [showModal, setShowModal] = useState(false);
+  const isComplete = checkInstitutionDetailsComplete(studentData);
+  
+  useEffect(() => {
+    // Show modal automatically if institution details are incomplete
+    if (!isComplete) {
+      setShowModal(true);
+    }
+  }, [isComplete]);
+  
+  const handleCompleteDetails = () => {
+    navigate('/student/settings', { 
+      state: { 
+        activeTab: 'profile',
+        activeSubTab: 'institution-details'
+      } 
+    });
+  };
+  
+  if (!isComplete && showModal) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Icon */}
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="w-8 h-8 text-blue-600" />
+            </div>
+            
+            {/* Content */}
+            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Complete Your Institution Details
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              To view relevant opportunities, please complete your institution information in your profile settings.
+            </p>
+            
+            {/* Required fields info */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
+              {(() => {
+                const gradeStr = String(studentData?.grade || '').toUpperCase().trim();
+                const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
+                const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
+                                  gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
+                                  gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
+                                  gradeStr.includes('MASTER');
+                
+                if (isSchool && !isCollege) {
+                  return (
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        School Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Section (A, B, C, etc.)
+                      </li>
+                    </ul>
+                  );
+                } else if (isCollege) {
+                  return (
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        University Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        College Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Program/Course Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Current Semester & Section
+                      </li>
+                    </ul>
+                  );
+                }
+                
+                return (
+                  <p className="text-sm text-gray-700">
+                    Please complete your institution details
+                  </p>
+                );
+              })()}
+            </div>
+            
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Later
+              </button>
+              <button
+                onClick={handleCompleteDetails}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Complete Now
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        
+        {/* Background empty state */}
+        <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+          <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
+          <p className="text-gray-500 text-sm">Complete your profile to see relevant opportunities</p>
+        </div>
+      </>
+    );
+  }
+  
+  // If details are complete, show regular empty state
+  return (
+    <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+      <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+      <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
+      <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+    </div>
+  );
+};
+
 const Opportunities = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -59,6 +256,17 @@ const Opportunities = () => {
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id; // Use students.id (database ID)
+
+  // Check institution details completion
+  const [showInstitutionModal, setShowInstitutionModal] = useState(false);
+  const isInstitutionComplete = checkInstitutionDetailsComplete(studentData);
+
+  // Show modal on mount if institution details are incomplete
+  useEffect(() => {
+    if (studentData && !isInstitutionComplete) {
+      setShowInstitutionModal(true);
+    }
+  }, [studentData, isInstitutionComplete]);
 
   // Check profile completion status
   const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(studentId, !!studentId);
@@ -634,6 +842,123 @@ const Opportunities = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Institution Details Modal - Shows on top of everything */}
+      {showInstitutionModal && !isInstitutionComplete && (
+        <>
+          {/* Full white background overlay */}
+          <div className="fixed inset-0 bg-white z-40"></div>
+          
+          {/* Modal backdrop and content */}
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+          >
+            <button
+              onClick={() => {
+                setShowInstitutionModal(false);
+                navigate('/student/dashboard');
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="w-8 h-8 text-blue-600" />
+            </div>
+            
+            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Complete Your Institution Details
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              To view relevant opportunities, please complete your institution information in your profile settings.
+            </p>
+            
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
+              {(() => {
+                const gradeStr = String(studentData?.grade || '').toUpperCase().trim();
+                const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
+                const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
+                                  gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
+                                  gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
+                                  gradeStr.includes('MASTER');
+                
+                if (isSchool && !isCollege) {
+                  return (
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        School Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Section (A, B, C, etc.)
+                      </li>
+                    </ul>
+                  );
+                } else if (isCollege) {
+                  return (
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        University Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        College Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Program/Course Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Current Semester & Section
+                      </li>
+                    </ul>
+                  );
+                }
+                
+                return (
+                  <p className="text-sm text-gray-700">
+                    Please complete your institution details
+                  </p>
+                );
+              })()}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowInstitutionModal(false);
+                  navigate('/student/dashboard');
+                }}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Later
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/student/settings', { 
+                    state: { 
+                      activeTab: 'profile',
+                      activeSubTab: 'institution'
+                    } 
+                  });
+                }}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Complete Now
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        </>
+      )}
+
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
         {/* Loading State */}
         {isLoading && (
@@ -1549,11 +1874,10 @@ const MyJobsContent = ({
                   )}
                 </>
               ) : (
-                <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
-                  <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
-                  <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
-                </div>
+                <EmptyOpportunitiesState 
+                  studentData={studentData}
+                  navigate={navigate}
+                />
               )}
             </div>
 
