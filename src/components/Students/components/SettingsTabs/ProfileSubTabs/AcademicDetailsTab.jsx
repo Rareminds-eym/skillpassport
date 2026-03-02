@@ -300,7 +300,7 @@ const AcademicDetailsTab = ({
       </div>
 
       {/* Save Button */}
-      <div className="flex justify-end pt-6 border-t border-slate-200">
+      <div className="flex justify-end pt-6">
         <Button
           onClick={handleSaveProfile}
           disabled={isSaving}

@@ -81,6 +81,14 @@ export const getStudentByEmail = async (email) => {
           state,
           organization_type
         ),
+        university:organizations!students_universityid_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
         university_colleges:university_college_id (
           id,
           name,
@@ -523,6 +531,8 @@ const formattedExperience = tableExperience
       contact_number: data.contact_number || transformedProfile.contact_number,
       university: data.university || transformedProfile.university,
       branch_field: data.branch_field || transformedProfile.branch_field,
+      college_school_name: data.college_school_name || transformedProfile.college, // FIX: Add college_school_name field
+      college_id: data.college_id, // Also include college_id for reference
       // Add other important individual columns
       github_link: data.github_link || transformedProfile.github_link,
       linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,
@@ -1030,6 +1040,8 @@ export const getStudentById = async (studentId) => {
       contact_number: data.contact_number || transformedProfile.contact_number,
       university: data.university || transformedProfile.university,
       branch_field: data.branch_field || transformedProfile.branch_field,
+      college_school_name: data.college_school_name || transformedProfile.college, // FIX: Add college_school_name field
+      college_id: data.college_id, // Also include college_id for reference
       // Add other important individual columns
       github_link: data.github_link || transformedProfile.github_link,
       linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,

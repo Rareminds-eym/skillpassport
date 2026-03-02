@@ -1684,15 +1684,71 @@ const StudentDashboard = () => {
         city: studentData.school.city,
         state: studentData.school.state,
       };
-    } else if (studentData?.university || studentData?.college_school_name) {
-      // Fallback to individual columns if no foreign key relationships
+    } else if (studentData?.university_college_id && studentData?.universityCollege) {
+      // University college with parent university info
+      const college = studentData.universityCollege;
+      const university = college.universities; // nested university data
       return {
-        type: 'Institution',
-        name: studentData.college_school_name || studentData.university,
-        code: 'N/A',
-        city: studentData.city,
-        state: studentData.state,
+        type: 'University College',
+        name: college.name,
+        code: college.code,
+        universityName: university?.name,
+        city: university?.district,
+        state: university?.state,
       };
+    } else if (studentData?.university || studentData?.college_school_name) {
+      // Fallback to individual columns if no foreign key relationships (custom entries)
+      let type = 'Institution';
+      let name = null;
+      
+      // Check grade to determine if school or college student
+      const grade = studentData?.grade || '';
+      const isSchoolGrade = grade && (
+        grade.includes('Grade') || 
+        grade.includes('6') || grade.includes('7') || grade.includes('8') || 
+        grade.includes('9') || grade.includes('10') || grade.includes('11') || grade.includes('12')
+      );
+      const isCollegeGrade = grade && (
+        grade.includes('UG') || grade.includes('PG') || 
+        grade.includes('Diploma') || grade.includes('Year')
+      );
+      
+      // Check if it's a university path (has university or program/branch)
+      const hasUniversity = studentData?.university;
+      const hasBranch = studentData?.branch_field;
+      
+      if (hasUniversity && studentData?.college_school_name) {
+        // Has both university and college - show college
+        type = 'College';
+        name = studentData.college_school_name;
+      } else if (hasUniversity) {
+        // Has only university
+        type = 'University';
+        name = studentData.university;
+      } else if (studentData?.college_school_name) {
+        // Has only college_school_name field - determine if it's school or college based on grade
+        if (isSchoolGrade) {
+          type = 'School';
+          name = studentData.college_school_name;
+        } else if (isCollegeGrade || hasBranch) {
+          type = 'College';
+          name = studentData.college_school_name;
+        } else {
+          // Default to college if unclear
+          type = 'College';
+          name = studentData.college_school_name;
+        }
+      }
+      
+      if (name) {
+        return {
+          type: type,
+          name: name,
+          code: 'N/A',
+          city: studentData.location || studentData.city,
+          state: studentData.state,
+        };
+      }
     }
 
     // Fallback: Show error if ID exists but data is null (broken foreign key)

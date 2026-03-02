@@ -361,7 +361,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     name: realStudentData.name,
     email: realStudentData.email,
     department: realStudentData.branch_field,
-    university: realStudentData.university,
+    university: typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university,
     classYear: graduationYear || realStudentData.profile?.classYear || null,
     github_link: realStudentData.github_link || realStudentData.profile?.github_link,
     portfolio_link: realStudentData.portfolio_link || realStudentData.profile?.portfolio_link,
@@ -475,7 +475,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       }
       // Fallback to university field (which might contain school name)
       if (realStudentData.university) {
-        return realStudentData.university;
+        return typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
       }
       if (realStudentData.profile?.university) {
         return realStudentData.profile.university;
@@ -500,7 +500,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       }
       // Fallback to university field
       if (realStudentData.university) {
-        return realStudentData.university;
+        return typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
       }
       if (realStudentData.profile?.university) {
         return realStudentData.profile.university;
@@ -510,7 +510,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
     // For B2C students without IDs - check college field (used for custom school/college names)
     if (realStudentData.college) {
-      return realStudentData.college;
+      return typeof realStudentData.college === 'object' ? realStudentData.college?.name : realStudentData.college;
     }
 
     // Fallback to college_school_name column for any student type
@@ -519,7 +519,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     }
 
     // For students without school_id or university_college_id
-    return realStudentData.university || realStudentData.profile?.university || "Institution";
+    const universityName = typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
+    return universityName || realStudentData.profile?.university || "Institution";
   }, [realStudentData, fetchedInstitutionName]);
 
   // Determine institution location from relationships or fetched data
