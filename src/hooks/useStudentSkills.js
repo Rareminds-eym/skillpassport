@@ -8,15 +8,12 @@ export const useStudentSkills = (studentId, skillType, enabled = true) => {
 
   const fetchSkills = async () => {
     if (!studentId || !enabled) {
-      console.log(`⚠️ useStudentSkills (${skillType}): Skipping fetch`, { studentId, enabled });
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-
-      console.log(`🔄 useStudentSkills (${skillType}): Fetching skills for student:`, studentId);
 
       const { data, error: fetchError } = await supabase
         .from('skills')
@@ -30,11 +27,6 @@ export const useStudentSkills = (studentId, skillType, enabled = true) => {
       if (fetchError) {
         throw fetchError;
       }
-
-      console.log(`✅ useStudentSkills (${skillType}): Fetched skills:`, {
-        count: data?.length || 0,
-        skills: data
-      });
 
       // Transform data to match UI expectations
       // Include versioning fields for proper display logic

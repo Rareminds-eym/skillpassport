@@ -521,6 +521,12 @@ const InstitutionDetailsTab = ({
                 value={customSemesterName}
                 onChange={(e) => {
                   const semesterText = e.target.value;
+                  
+                  // Limit input to 10 characters (database constraint)
+                  if (semesterText.length > 10) {
+                    return; // Don't update if exceeds limit
+                  }
+                  
                   setCustomSemesterName(semesterText);
                   // Also update profileData.section for immediate sync
                   handleInstitutionChange('section', semesterText);
@@ -531,22 +537,41 @@ const InstitutionDetailsTab = ({
                   
                   // Extract year number from semester text (e.g., "2nd year", "semester 3", "3rd sem")
                   let yearNumber = null;
+                  let semesterNumber = null;
+                  let validationError = null;
                   
                   // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
                   const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
                   if (yearMatch) {
                     yearNumber = parseInt(yearMatch[1]);
+                    
+                    // Validate year based on program type
+                    if (currentGrade.includes('UG') && yearNumber > 5) {
+                      validationError = 'UG programs typically have max 5 years (10 semesters)';
+                    } else if (currentGrade.includes('PG') && yearNumber > 2) {
+                      validationError = 'PG programs typically have max 2 years (4 semesters)';
+                    }
                   } else {
                     // Check for semester numbers and convert to year (sem 1-2 = year 1, sem 3-4 = year 2, etc.)
                     const semMatch = lowerSemester.match(/(?:semester|sem)\s*(\d+)/);
                     if (semMatch) {
-                      const semNumber = parseInt(semMatch[1]);
-                      yearNumber = Math.ceil(semNumber / 2); // Convert semester to year
+                      semesterNumber = parseInt(semMatch[1]);
+                      
+                      // Validate semester based on program type
+                      if (currentGrade.includes('UG') && semesterNumber > 10) {
+                        validationError = 'UG programs typically have max 10 semesters';
+                      } else if (currentGrade.includes('PG') && semesterNumber > 4) {
+                        validationError = 'PG programs typically have max 4 semesters';
+                      } else if (currentGrade.includes('Diploma') && semesterNumber > 6) {
+                        validationError = 'Diploma programs typically have max 6 semesters';
+                      }
+                      
+                      yearNumber = Math.ceil(semesterNumber / 2); // Convert semester to year
                     }
                   }
                   
-                  // Update grade based on detected year and current program type
-                  if (yearNumber) {
+                  // Update grade based on detected year and current program type (only if no validation error)
+                  if (yearNumber && !validationError) {
                     if (currentGrade.includes('UG')) {
                       handleInstitutionChange('grade', `UG Year ${yearNumber}`);
                     } else if (currentGrade.includes('PG')) {
@@ -556,18 +581,38 @@ const InstitutionDetailsTab = ({
                 }}
                 placeholder="Enter semester/section (e.g., 2nd year, Semester 3)"
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                maxLength={10}
               />
               {customSemesterName && (
                 <p className="text-xs text-gray-600 flex items-center gap-1">
                   {(() => {
                     const lowerSemester = customSemesterName.toLowerCase();
+                    const currentGrade = profileData.grade || '';
                     const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
                     const semMatch = lowerSemester.match(/(?:semester|sem)\s*(\d+)/);
                     
                     if (yearMatch) {
+                      const yearNum = parseInt(yearMatch[1]);
+                      // Validate year
+                      if (currentGrade.includes('UG') && yearNum > 5) {
+                        return <><span className="text-red-600">✗</span> Invalid: UG programs typically have max 5 years (10 semesters)</>;
+                      } else if (currentGrade.includes('PG') && yearNum > 2) {
+                        return <><span className="text-red-600">✗</span> Invalid: PG programs typically have max 2 years (4 semesters)</>;
+                      }
                       return <><span className="text-green-600">✓</span> Detected Year {yearMatch[1]}</>;
                     } else if (semMatch) {
-                      const year = Math.ceil(parseInt(semMatch[1]) / 2);
+                      const semNum = parseInt(semMatch[1]);
+                      const year = Math.ceil(semNum / 2);
+                      
+                      // Validate semester
+                      if (currentGrade.includes('UG') && semNum > 10) {
+                        return <><span className="text-red-600">✗</span> Invalid: UG programs typically have max 10 semesters</>;
+                      } else if (currentGrade.includes('PG') && semNum > 4) {
+                        return <><span className="text-red-600">✗</span> Invalid: PG programs typically have max 4 semesters</>;
+                      } else if (currentGrade.includes('Diploma') && semNum > 6) {
+                        return <><span className="text-red-600">✗</span> Invalid: Diploma programs typically have max 6 semesters</>;
+                      }
+                      
                       return <><span className="text-green-600">✓</span> Semester {semMatch[1]} = Year {year}</>;
                     } else {
                       return <><span className="text-amber-600">⚠</span> Year not detected - set grade manually</>;

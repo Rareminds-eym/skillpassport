@@ -123,7 +123,6 @@ const StudentDashboardTour: React.FC = () => {
       setShouldRun(false);
       completeTour(TOUR_KEYS.DASHBOARD);
     } else if (status === STATUS.SKIPPED) {
-      console.log('⏭️ Dashboard tour: Skipped');
       setShouldRun(false);
       skipTour(TOUR_KEYS.DASHBOARD);
     }

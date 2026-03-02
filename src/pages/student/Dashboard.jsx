@@ -752,16 +752,7 @@ const StudentDashboard = () => {
     refresh: refreshProjects
   } = useStudentProjects(studentId, !!studentId && !isViewingOthersProfile);
 
-  // Debug: Log projects data
-  useEffect(() => {
-    console.log('🔍 Dashboard - tableProjects updated:', {
-      count: tableProjects?.length || 0,
-      projects: tableProjects,
-      loading: projectsLoading,
-      error: projectsError,
-      studentId
-    });
-  }, [tableProjects, projectsLoading, projectsError, studentId]);
+
 
   // Fetch experience from dedicated table
   const {
@@ -779,16 +770,7 @@ const StudentDashboard = () => {
     refresh: refreshEducation
   } = useStudentEducation(studentId, !!studentId && !isViewingOthersProfile);
 
-  // Debug: Log education data
-  useEffect(() => {
-    console.log('🔍 Dashboard - tableEducation updated:', {
-      count: tableEducation?.length || 0,
-      education: tableEducation,
-      loading: educationLoading,
-      error: educationError,
-      studentId
-    });
-  }, [tableEducation, educationLoading, educationError, studentId]);
+
 
   // Fetch technical skills from dedicated table
   const {
@@ -840,11 +822,7 @@ const StudentDashboard = () => {
     latestAttemptId,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
-  // Debug: Log student ID being passed to assessment hook
-  useEffect(() => {
-    console.log('📋 Dashboard: studentId for assessment hook:', studentId);
-    console.log('📋 Dashboard: enabled?', !!studentId && !isViewingOthersProfile);
-  }, [studentId, isViewingOthersProfile]);
+
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -880,20 +858,10 @@ const StudentDashboard = () => {
       : userData.projects;
     if (!Array.isArray(projectsData)) return [];
     
-    console.log('🔍 Dashboard - Raw projects data:', projectsData);
-    
     return projectsData
       .map((project) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (project.has_pending_edit && project.verified_data) {
-          console.log('🔄 Dashboard - Project with pending edit:', {
-            id: project.id,
-            currentTitle: project.title,
-            verifiedTitle: project.verified_data.title,
-            approval_status: project.approval_status,
-            has_pending_edit: project.has_pending_edit
-          });
-          
           return {
             ...project,
             // Use verified_data for display (old approved version)
@@ -943,8 +911,6 @@ const StudentDashboard = () => {
       ? tableEducation
       : userData.education;
     if (!Array.isArray(educationData)) return [];
-    
-    console.log('🔍 Dashboard - Raw education data:', educationData);
     
     return educationData
       .map((education) => {
@@ -1006,24 +972,10 @@ const StudentDashboard = () => {
       ? tableTechnicalSkills
       : userData.technicalSkills;
     
-    console.log('🔍 Dashboard - Technical Skills Data:', {
-      tableTechnicalSkills,
-      userData_technicalSkills: userData.technicalSkills,
-      usingTableData: Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0
-    });
-    
     if (!Array.isArray(skillsData)) return [];
     
     const processed = skillsData
       .map((skill) => {
-        console.log('🔍 Dashboard - Processing skill:', {
-          name: skill.name,
-          approval_status: skill.approval_status,
-          has_pending_edit: skill.has_pending_edit,
-          _hasPendingEdit: skill._hasPendingEdit,
-          enabled: skill.enabled
-        });
-        
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (skill.has_pending_edit && skill.verified_data) {
           return {
@@ -1046,15 +998,9 @@ const StudentDashboard = () => {
           skill.approval_status === 'verified' ||
           (skill.has_pending_edit && skill.verified_data)
         );
-        console.log('🔍 Dashboard - Should show skill?', {
-          name: skill.name,
-          approval_status: skill.approval_status,
-          shouldShow
-        });
         return shouldShow;
       });
     
-    console.log('🔍 Dashboard - Final enabled technical skills:', processed);
     return processed;
   }, [tableTechnicalSkills, userData.technicalSkills]);
 
@@ -1143,13 +1089,6 @@ const StudentDashboard = () => {
           exp.approval_status === 'verified' ||
           (exp.has_pending_edit && exp.verified_data)
         );
-        
-        console.log('🔍 Dashboard - Should show experience?', {
-          role: exp.role,
-          approval_status: exp.approval_status,
-          has_pending_edit: exp.has_pending_edit,
-          shouldShow
-        });
         
         return shouldShow;
       })
