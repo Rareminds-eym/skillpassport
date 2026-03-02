@@ -172,15 +172,6 @@ const MainSettings = () => {
     ? tableEducation 
     : studentDataWithEducation?.education || [];
   
-  // Debug: Log education data source
-  console.log('🔍 MainSettings - Education data source:', {
-    tableEducationLength: tableEducation?.length || 0,
-    tableEducation: tableEducation,
-    fallbackLength: (studentDataWithEducation?.education || []).length,
-    usingTableData: Array.isArray(tableEducation) && tableEducation.length > 0,
-    finalEducationData: educationData
-  });
-  
   const [showEducationModal, setShowEducationModal] = useState(false);
 
   // Profile sections data - now using real data from studentDataWithEducation
@@ -983,51 +974,31 @@ const MainSettings = () => {
   const handleSaveAdditionalInfo = async () => {
     setIsSaving(true);
     
-    // Merge custom institution fields into profileData before saving
-    const dataToSave = { ...profileData };
-    
-    if (showCustomProgram && customProgramName) {
-      dataToSave.branch = customProgramName;
-      dataToSave.programId = null;
-    }
-    
-    if (showCustomCollege && customCollegeName) {
-      dataToSave.college = customCollegeName;
-      dataToSave.universityCollegeId = null;
-    }
-    
-    if (showCustomUniversity && customUniversityName) {
-      dataToSave.university = customUniversityName;
-      dataToSave.universityId = null;
-    }
-    
-    if (showCustomSchool && customSchoolName) {
-      dataToSave.college = customSchoolName;
-      dataToSave.schoolId = null;
-    }
-    
-    if (showCustomSemester && customSemesterName) {
-      dataToSave.section = customSemesterName;
-      dataToSave.programSectionId = null;
-    }
-    
-    if (showCustomSchoolClass && customSchoolClassName) {
-      // Don't store custom class in section field - section should remain independent
-      dataToSave.schoolClassId = null;
-      // Only update grade based on custom class, not section
-    }
+    // Only send fields relevant to Additional Info tab
+    const additionalInfoFields = {
+      aadharNumber: profileData.aadharNumber,
+      gapInStudies: profileData.gapInStudies,
+      gapYears: profileData.gapYears,
+      gapReason: profileData.gapReason,
+      workExperience: profileData.workExperience,
+      currentBacklogs: profileData.currentBacklogs,
+      backlogsHistory: profileData.backlogsHistory,
+      interests: profileData.interests,
+      languages: profileData.languages,
+      hobbies: profileData.hobbies,
+    };
 
     const result = await safeSave(
-      () => updateProfile(dataToSave),
+      () => updateProfile(additionalInfoFields),
       {
         section: 'additional',
         action: 'update_additional_info',
         validationFields: ['aadhar'],
-        data: dataToSave,
+        data: additionalInfoFields,
         toast,
         onSuccess: () => {
           window.dispatchEvent(new CustomEvent('student_settings_updated', {
-            detail: { type: 'profile_updated', data: dataToSave }
+            detail: { type: 'profile_updated', data: additionalInfoFields }
           }));
           
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
@@ -1135,27 +1106,69 @@ const MainSettings = () => {
         // Auto-detect year from semester and update grade for university students
         const lowerSemester = customSemesterName.toLowerCase();
         let yearNumber = null;
+        let semesterNumber = null;
+        let validationError = null;
         
         // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
         const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
         if (yearMatch) {
           yearNumber = parseInt(yearMatch[1]);
+          
+          // Validate year based on program type
+          if (dataToSave.grade && dataToSave.grade.includes('UG') && yearNumber > 5) {
+            validationError = 'UG programs typically have max 5 years (10 semesters)';
+          } else if (dataToSave.grade && dataToSave.grade.includes('PG') && yearNumber > 2) {
+            validationError = 'PG programs typically have max 2 years (4 semesters)';
+          }
         } else {
           // Check for semester numbers and convert to year
           const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
           if (semMatch) {
-            const semNumber = parseInt(semMatch[1]);
-            yearNumber = Math.ceil(semNumber / 2);
+            semesterNumber = parseInt(semMatch[1]);
+            
+            // Validate semester based on program type
+            if (dataToSave.grade && dataToSave.grade.includes('UG') && semesterNumber > 10) {
+              validationError = 'UG programs typically have max 10 semesters';
+            } else if (dataToSave.grade && dataToSave.grade.includes('PG') && semesterNumber > 4) {
+              validationError = 'PG programs typically have max 4 semesters';
+            } else if (dataToSave.grade && dataToSave.grade.includes('Diploma') && semesterNumber > 6) {
+              validationError = 'Diploma programs typically have max 6 semesters';
+            }
+            
+            yearNumber = Math.ceil(semesterNumber / 2);
           }
         }
         
-        // Update grade based on detected year and current program type
+        // Show validation error if semester/year is invalid
+        if (validationError) {
+          toast({
+            title: "Invalid Semester",
+            description: validationError,
+            variant: "destructive",
+          });
+          return; // Don't save if validation fails
+        }
+        
+        // Update grade based on detected year and current program type (only if no validation error)
         if (yearNumber && dataToSave.grade) {
+          let newGrade = '';
           if (dataToSave.grade.includes('UG')) {
-            dataToSave.grade = `UG Year ${yearNumber}`;
+            newGrade = `UG Year ${yearNumber}`;
           } else if (dataToSave.grade.includes('PG')) {
-            dataToSave.grade = `PG Year ${yearNumber}`;
+            newGrade = `PG Year ${yearNumber}`;
           }
+          
+          // Validate grade length (database limit is 10 characters)
+          if (newGrade && newGrade.length > 10) {
+            toast({
+              title: "Invalid Grade",
+              description: "Grade value is too long. Please use shorter format (max 10 characters).",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          dataToSave.grade = newGrade;
         }
       }
       

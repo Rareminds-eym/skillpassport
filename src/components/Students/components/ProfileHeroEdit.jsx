@@ -268,9 +268,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // Get logged-in user's email from localStorage
   const userEmail = localStorage.getItem("userEmail");
   
-  // Debug: Log what we're looking for
-  console.log('🔍 ProfileHeroEdit - Looking for student with email:', userEmail);
-
   // State for copy/share functionality
   const [copied, setCopied] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -450,15 +447,6 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     if (!realStudentData) return "Institution";
 
     // Debug logging
-    console.log('🏫 Institution Name Debug:', {
-      school_id: realStudentData.school_id,
-      university_college_id: realStudentData.university_college_id,
-      college_school_name: realStudentData.college_school_name,
-      university: realStudentData.university,
-      schools_name: realStudentData.schools?.name,
-      fetchedInstitutionName,
-      grade: realStudentData.grade
-    });
 
     // For school students - check schools relationship first, then fallback to college/university field
     if (realStudentData.school_id) {
