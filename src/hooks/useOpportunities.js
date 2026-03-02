@@ -176,14 +176,7 @@ export const useOpportunities = (options = {}) => {
     }
   };
 
-  // Fetch opportunities on mount if enabled
-  useEffect(() => {
-    if (fetchOnMount) {
-      fetchOpportunities();
-    }
-  }, [fetchOnMount]);
-
-  // Re-fetch when dependencies change
+  // Fetch opportunities when dependencies change
   useEffect(() => {
     if (fetchOnMount) {
       fetchOpportunities();

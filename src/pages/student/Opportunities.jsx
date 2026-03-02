@@ -462,20 +462,30 @@ const Opportunities = () => {
   // Fetch industrial visits when tab is industrial-visits or on initial load for middle/high school
   useEffect(() => {
     const fetchIndustrialVisits = async () => {
-      // Fetch if on industrial-visits tab OR if middle/high school student (since it's their default view)
-      if (activeTab === 'industrial-visits' || studentType.isMiddleSchool || studentType.isHighSchool) {
+      // Only fetch if on industrial-visits tab
+      // OR if middle/high school student AND on their default view (not on my-applications)
+      const shouldFetch = activeTab === 'industrial-visits' || 
+                         ((studentType.isMiddleSchool || studentType.isHighSchool) && activeTab !== 'my-applications');
+      
+      if (shouldFetch) {
         setIndustrialVisitsLoading(true);
         try {
-          const data = await factoryVisitsService.getAllFactoryVisits();
+          // Fetch visits and registrations in parallel
+          const promises = [factoryVisitsService.getAllFactoryVisits()];
+          if (studentId) {
+            promises.push(factoryVisitsService.getStudentRegistrations(studentId));
+          }
+          
+          const [data, registrations] = await Promise.all(promises);
+          
           setIndustrialVisits(data);
           // Auto-select first visit if none selected
           if (data && data.length > 0 && !selectedIndustrialVisit) {
             setSelectedIndustrialVisit(data[0]);
           }
           
-          // Fetch registered visits
-          if (studentId) {
-            const registrations = await factoryVisitsService.getStudentRegistrations(studentId);
+          // Set registered visits
+          if (registrations) {
             const registeredIds = new Set(registrations.map(r => r.opportunity_id));
             setRegisteredVisits(registeredIds);
           }
