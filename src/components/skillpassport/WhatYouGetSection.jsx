@@ -376,7 +376,7 @@ export default function WhatYouGetSection() {
               No recurring charges. No hidden fees.
             </p>
             <p className="text-base sm:text-lg md:text-xl text-gray-600 px-2">
-              One-time payment of ₹250 for early access
+              One-time payment of ₹499 for early access
             </p>
           </div>
         </motion.div>
