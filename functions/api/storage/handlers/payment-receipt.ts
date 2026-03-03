@@ -331,11 +331,11 @@ export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) =
 
     console.log('[GetPaymentReceiptPresigned] Extracted payment ID:', paymentId);
 
-    // Query database to get payment owner using the receipt field
+    // Query database to get payment owner using the razorpay_payment_id field
     const { data: payment, error: dbError } = await supabaseAdmin
       .from('razorpay_orders')
       .select('user_id')
-      .eq('receipt', paymentId)
+      .eq('razorpay_payment_id', paymentId)
       .single();
 
     if (dbError || !payment) {
