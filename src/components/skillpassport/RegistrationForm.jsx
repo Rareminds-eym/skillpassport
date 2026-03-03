@@ -17,7 +17,7 @@ import {
   User,
   X
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
@@ -147,21 +147,26 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
 
 const TermsModal = ({ isOpen, onClose, onAccept }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const scrollRef = useCallback((node) => {
-    if (node) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = node;
-        if (scrollTop + clientHeight >= scrollHeight - 10) {
-          setHasScrolledToBottom(true);
-        }
-      };
-      node.addEventListener('scroll', handleScroll);
-      if (node.scrollHeight <= node.clientHeight) {
+  const scrollContainerRef = useRef(null);
+
+  useEffect(() => {
+    const node = scrollContainerRef.current;
+    if (!node) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = node;
+      if (scrollTop + clientHeight >= scrollHeight - 10) {
         setHasScrolledToBottom(true);
       }
-      return () => node.removeEventListener('scroll', handleScroll);
+    };
+
+    node.addEventListener('scroll', handleScroll);
+    if (node.scrollHeight <= node.clientHeight) {
+      setHasScrolledToBottom(true);
     }
-  }, []);
+
+    return () => node.removeEventListener('scroll', handleScroll);
+  }, [isOpen]);
 
   return (
     <AnimatePresence>
@@ -186,11 +191,11 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
                 <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
-            <div ref={scrollRef} className="p-4 sm:p-6 md:p-8 overflow-y-auto max-h-[55vh] sm:max-h-[60vh] prose prose-sm max-w-none">
-              <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Pre-Registration Terms</h4>
+            <div ref={scrollContainerRef} className="p-4 sm:p-6 md:p-8 overflow-y-auto max-h-[55vh] sm:max-h-[60vh] prose prose-sm max-w-none">
+              <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Registration Terms</h4>
               <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">By signing up, you agree to the following:</p>
               <ul className="text-gray-600 text-sm sm:text-base space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                <li>The pre-registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
+                <li>The registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
                 <li>Your personal details will be used only for registration and official communication.</li>
                 <li>You will receive emails about your registration status and upcoming updates/events.</li>
                 <li>Access to the platform will be provided after successful verification.</li>
@@ -338,7 +343,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Skill Passport',
-        description: 'Pre-Registration Fee',
+        description: 'Registration Fee',
         order_id: orderData.id,
         prefill: {
           name: form.name.trim(),
@@ -397,7 +402,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             orderId: orderData.id,
             status: 'failed',
             error: response.error?.description,
-            planName: `Pre-Registration - ${campaign}`
+            planName: `Registration - ${campaign}`
           });
         } catch (err) {
           console.error('Failed to update payment failure:', err);
@@ -506,7 +511,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
           </motion.div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
-            Pre-Registration
+            Registration
           </h2>
           <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
             Secure your access to Skill Passport today
@@ -741,7 +746,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   </motion.span>
                 </button>
                 <span className={`${!hasReadTerms ? 'text-gray-400' : 'text-gray-700'}`}>
-                  {' '}and consent to the payment of ₹{REGISTRATION_FEE} for pre-registration.
+                  {' '}and consent to the payment of ₹{REGISTRATION_FEE} for registration.
                 </span>
                 {!hasReadTerms && (
                   <span className="block mt-1 text-xs text-amber-600 font-medium">
@@ -796,7 +801,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               ) : (
                 <div className="flex items-center justify-center gap-2">
                   <Lock className="w-4 h-4" />
-                  <span>Pre-register Now</span>
+                  <span>Register Now</span>
                   <ChevronRight className="w-4 h-4" />
                 </div>
               )}
