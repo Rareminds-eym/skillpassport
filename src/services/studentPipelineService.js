@@ -87,25 +87,19 @@ export class StudentPipelineService {
    */
   static async getStudentPipelineActivities(studentId) {
     try {
-      // First get all pipeline_candidate records for this student
-      const { data: candidates, error: candidatesError } = await supabase
-        .from('pipeline_candidates')
-        .select('id')
-        .eq('student_id', studentId);
-
-      if (candidatesError) throw candidatesError;
-      if (!candidates || candidates.length === 0) return [];
-
-      const candidateIds = candidates.map(c => c.id);
-
-      // Fetch activities for these candidates
-      const { data: activities, error: activitiesError } = await supabase
+      // Direct query using student_id (leverages idx_pipeline_activities_student_id index)
+      const startTime = performance.now();
+      
+      const { data: activities, error } = await supabase
         .from('pipeline_activities')
         .select('*')
-        .in('pipeline_candidate_id', candidateIds)
+        .eq('student_id', studentId)
         .order('created_at', { ascending: false });
 
-      if (activitiesError) throw activitiesError;
+      const endTime = performance.now();
+      console.log(`[OPTIMIZED] getStudentPipelineActivities took ${(endTime - startTime).toFixed(2)}ms, returned ${activities?.length || 0} activities`);
+
+      if (error) throw error;
 
       return activities || [];
     } catch (error) {
@@ -146,6 +140,9 @@ export class StudentPipelineService {
    */
   static async getStudentApplicationsWithPipeline(studentId, studentEmail = null) {
     try {
+      console.log('[PIPELINE] Starting getStudentApplicationsWithPipeline for student:', studentId);
+      const startTime = performance.now();
+      
       // Single optimized query that fetches applications with opportunity details
       // Pipeline status and interviews are fetched in parallel
       const [applicationsResult, pipelineResult, interviewsResult] = await Promise.all([
@@ -222,6 +219,10 @@ export class StudentPipelineService {
           pipeline_recruiter_id: pipelineStatus?.assigned_to || pipelineStatus?.opportunities?.recruiter_id || null,
         };
       });
+
+      const endTime = performance.now();
+      console.log(`[PIPELINE] ✅ Completed in ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(`[PIPELINE] 📊 Results: ${combinedData.length} applications, ${pipelineStatuses.length} pipeline statuses, ${interviews.length} interviews`);
 
       return combinedData;
     } catch (error) {
