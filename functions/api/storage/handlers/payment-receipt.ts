@@ -281,3 +281,102 @@ export const handleGetPaymentReceipt: PagesFunction = async (context) => {
     );
   }
 };
+
+/**
+ * Get presigned URL for payment receipt download
+ * Allows temporary access without JWT authentication
+ */
+export const handleGetPaymentReceiptPresigned: PagesFunction = async (context) => {
+  const { request, env, user, supabaseAdmin } = context as any;
+
+  if (request.method !== 'GET') {
+    return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+
+  // Require authentication to generate presigned URL
+  if (!user) {
+    return createAuthenticationError('/payment-receipt/presigned', 'missing_token');
+  }
+
+  try {
+    const url = new URL(request.url);
+    let fileKey = url.searchParams.get('key');
+    const expiresIn = parseInt(url.searchParams.get('expires') || '3600', 10); // Default 1 hour
+
+    // Also support extracting key from full URL
+    const fileUrl = url.searchParams.get('url');
+    if (!fileKey && fileUrl) {
+      fileKey = R2Client.extractKeyFromUrl(fileUrl);
+
+      // If extraction failed, try payment_pdf specific pattern
+      if (!fileKey) {
+        const pathMatch = fileUrl.match(/\/payment_pdf\/(.+)$/);
+        if (pathMatch) {
+          fileKey = `payment_pdf/${pathMatch[1]}`;
+        }
+      }
+    }
+
+    if (!fileKey) {
+      return jsonResponse({ error: 'File key or URL is required' }, 400);
+    }
+
+    // Extract payment ID from file key
+    const paymentId = extractPaymentIdFromKey(fileKey);
+
+    if (!paymentId) {
+      console.error('[GetPaymentReceiptPresigned] Could not extract payment ID from key:', fileKey);
+      return jsonResponse({ error: 'Invalid payment receipt file key' }, 400);
+    }
+
+    console.log('[GetPaymentReceiptPresigned] Extracted payment ID:', paymentId);
+
+    // Query database to get payment owner using the receipt field
+    const { data: payment, error: dbError } = await supabaseAdmin
+      .from('razorpay_orders')
+      .select('user_id')
+      .eq('receipt', paymentId)
+      .single();
+
+    if (dbError || !payment) {
+      console.error('[GetPaymentReceiptPresigned] Payment not found:', { paymentId, error: dbError });
+      return jsonResponse({ error: 'Payment not found' }, 404);
+    }
+
+    // Validate ownership
+    if (payment.user_id !== user.id) {
+      return createAuthorizationError(
+        user.id,
+        fileKey,
+        'ownership_mismatch',
+        'You do not have permission to access this payment receipt'
+      );
+    }
+
+    console.log('[GetPaymentReceiptPresigned] Ownership validated, generating presigned URL');
+
+    // Initialize R2 client
+    const r2Client = new R2Client(env);
+
+    // Generate presigned URL (max 7 days)
+    const presignedUrl = await r2Client.generatePresignedGetUrl(fileKey, Math.min(expiresIn, 604800));
+
+    console.log('[GetPaymentReceiptPresigned] Generated presigned URL for:', fileKey);
+
+    return jsonResponse({
+      success: true,
+      presignedUrl,
+      fileKey,
+      expiresIn: Math.min(expiresIn, 604800),
+    });
+  } catch (error) {
+    logErrorSafely('GetPaymentReceiptPresigned', error);
+    return jsonResponse(
+      {
+        error: 'Failed to generate presigned URL',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      500
+    );
+  }
+};

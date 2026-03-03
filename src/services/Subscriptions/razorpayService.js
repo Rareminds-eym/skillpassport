@@ -14,7 +14,6 @@
  */
 
 import { supabase } from '../../lib/supabaseClient';
-import { getRazorpayKeyId, getRazorpayKeyMode } from '../../config/payment';
 import paymentsApiService from '../paymentsApiService';
 
 /**

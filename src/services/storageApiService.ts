@@ -3,7 +3,7 @@
  * Connects to Cloudflare Pages Function for file storage API calls
  */
 
-import { getPagesApiUrl, getAuthHeaders as getBaseAuthHeaders } from '../utils/pagesUrl';
+import { getPagesApiUrl } from '../utils/pagesUrl';
 import { supabase } from '../lib/supabaseClient';
 
 const API_URL = getPagesApiUrl('storage');
@@ -339,10 +339,49 @@ export async function uploadPaymentReceipt(
 }
 
 /**
- * Get payment receipt download URL
+ * Get payment receipt download URL (requires auth)
  */
 export function getPaymentReceiptUrl(fileKey: string, mode: 'download' | 'inline' = 'download'): string {
   return `${API_URL}/payment-receipt?key=${encodeURIComponent(fileKey)}&mode=${mode}`;
+}
+
+/**
+ * Get presigned URL for payment receipt download (temporary access without auth)
+ * @param fileKey - The file key or URL of the receipt
+ * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour, max: 604800 = 7 days)
+ * @returns Presigned URL for direct download
+ */
+export async function getPaymentReceiptPresignedUrl(fileKey: string, expiresIn: number = 3600): Promise<string> {
+  const authToken = await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+  
+  const response = await fetch(
+    `${API_URL}/payment-receipt/presigned?key=${encodeURIComponent(fileKey)}&expires=${expiresIn}`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(authToken),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please log in again.');
+    } else if (response.status === 403) {
+      throw new Error('You do not have permission to access this receipt.');
+    } else if (response.status === 404) {
+      throw new Error('Receipt not found.');
+    }
+    
+    throw new Error(error.error || 'Failed to generate receipt download URL');
+  }
+
+  const data = await response.json();
+  return data.presignedUrl;
 }
 
 export default {
@@ -355,4 +394,5 @@ export default {
   listFiles,
   uploadPaymentReceipt,
   getPaymentReceiptUrl,
+  getPaymentReceiptPresignedUrl,
 };
