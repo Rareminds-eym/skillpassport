@@ -97,14 +97,15 @@ export const getStudentSettingsByEmail = async (email) => {
           state,
           organization_type
         ),
-        university:organizations!students_universityid_fkey (
+        universityOrganization:organizations!students_universityid_fkey (
           id,
           name,
           code,
           city,
           state,
           organization_type
-        )
+        ),
+        users!inner(role)
       `)
       .eq('email', email)
       .maybeSingle();
@@ -117,6 +118,18 @@ export const getStudentSettingsByEmail = async (email) => {
     if (!data) {
       return { success: false, error: 'Student not found' };
     }
+
+    console.log('📊 Raw data from database:', {
+      university: data.university,
+      universityId: data.universityId,
+      college_school_name: data.college_school_name,
+      branch_field: data.branch_field
+    });
+
+    // Extract role from the joined users table
+    const userRole = Array.isArray(data.users) && data.users.length > 0
+      ? data.users[0]?.role
+      : data.users?.role;
 
     // Get settings from user_settings table
     let userSettings = null;
@@ -131,6 +144,11 @@ export const getStudentSettingsByEmail = async (email) => {
         userSettings = settingsData;
       }
     }
+
+    // Map college_school_name based on role
+    // For school students: it represents school name
+    // For college students: it represents college name
+    const collegeSchoolName = data.college_school_name || '';
 
     // Transform data for settings form
     const settingsData = {
@@ -152,7 +170,8 @@ export const getStudentSettingsByEmail = async (email) => {
       // Academic info
       university: data.university || '',
       branch: data.branch_field || '',
-      college: data.college_school_name || '',
+      college: userRole === 'college_student' ? collegeSchoolName : '',
+      schoolName: userRole === 'school_student' ? collegeSchoolName : '',
       registrationNumber: data.registration_number || '',
       enrollmentNumber: data.enrollmentNumber || '',
       currentCgpa: data.currentCgpa || '',
@@ -233,7 +252,10 @@ export const getStudentSettingsByEmail = async (email) => {
       // Organization info (from invitation acceptance)
       // These are populated when a student accepts an organization invitation
       schoolOrganization: data.school || null,
-      collegeOrganization: data.college || null,
+      collegeOrganization: data.college || data.universityOrganization || null,
+      
+      // User role from users table
+      userRole: userRole || null,
     };
 
     return { success: true, data: settingsData };

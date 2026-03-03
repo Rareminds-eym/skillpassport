@@ -340,6 +340,7 @@ const MainSettings = () => {
         university: studentData.university || "",
         branch: studentData.branch || "",
         college: studentData.college || "",
+        schoolName: studentData.schoolName || "",
         registrationNumber: studentData.registrationNumber || "",
         enrollmentNumber: studentData.enrollmentNumber || "",
         currentCgpa: studentData.currentCgpa || "",
@@ -380,19 +381,27 @@ const MainSettings = () => {
       });
 
       // Detect custom entries (B2C students) and show custom input fields
-      // Check if it's a school path (has schoolId or schoolClassId) vs university path
-      const isSchoolPath = studentData.schoolId || studentData.schoolClassId || (!studentData.universityId && !studentData.universityCollegeId && !studentData.programId);
-      const isUniversityPath = studentData.universityId || studentData.universityCollegeId || studentData.programId;
+      // Determine student type from role
+      const userRole = studentData?.userRole;
+      const isSchoolStudent = userRole === 'school_student';
+      const isCollegeStudent = userRole === 'college_student';
       
-      // Custom school name (stored in college field when no schoolId)
-      if (studentData.college && !studentData.schoolId && !isUniversityPath) {
+      // Check if it's a school path (has schoolId or schoolClassId) vs university path
+      // For role-based detection, also consider the role itself
+      const hasSchoolData = studentData.schoolId || studentData.schoolClassId || studentData.schoolName;
+      const hasUniversityData = studentData.universityId || studentData.universityCollegeId || studentData.programId || studentData.university || studentData.college;
+      const isSchoolPath = hasSchoolData || (isSchoolStudent && !hasUniversityData);
+      const isUniversityPath = hasUniversityData || (isCollegeStudent && !hasSchoolData);
+      
+      // Custom school name (for school students, stored in schoolName field)
+      if (isSchoolStudent && studentData.schoolName && (!studentData.schoolId || studentData.schoolId === '')) {
         setShowCustomSchool(true);
-        setCustomSchoolName(studentData.college);
+        setCustomSchoolName(studentData.schoolName);
       }
       
       // Custom school class - derive from grade field, NOT from section
       // Section field should remain independent for roll numbers
-      if (studentData.grade && !studentData.schoolClassId && (studentData.schoolId || studentData.college) && !isUniversityPath) {
+      if (studentData.grade && (!studentData.schoolClassId || studentData.schoolClassId === '') && (studentData.schoolId || studentData.schoolName) && !isUniversityPath) {
         // Extract numeric grade from grade field (e.g., "Grade 10" -> "10")
         const gradeMatch = studentData.grade.match(/Grade\s*(\d+)/i);
         if (gradeMatch) {
@@ -401,26 +410,47 @@ const MainSettings = () => {
         }
       }
       
-      // Custom college name (only for university path)
-      if (studentData.college && !studentData.universityCollegeId && isUniversityPath) {
-        setShowCustomCollege(true);
-        setCustomCollegeName(studentData.college);
-      }
-      
       // Custom university name
-      if (studentData.university && !studentData.universityId) {
+      console.log('🔍 Checking university:', {
+        university: studentData.university,
+        universityId: studentData.universityId,
+        shouldShow: studentData.university && (!studentData.universityId || studentData.universityId === '')
+      });
+      if (studentData.university && (!studentData.universityId || studentData.universityId === '')) {
         setShowCustomUniversity(true);
         setCustomUniversityName(studentData.university);
+        console.log('✅ Set custom university:', studentData.university);
+      }
+      
+      // Custom college name (for college students, stored in college field)
+      // Check after university to ensure university path is established
+      console.log('🔍 Checking college:', {
+        isCollegeStudent,
+        college: studentData.college,
+        universityCollegeId: studentData.universityCollegeId,
+        shouldShow: isCollegeStudent && studentData.college && (!studentData.universityCollegeId || studentData.universityCollegeId === '')
+      });
+      if (isCollegeStudent && studentData.college && (!studentData.universityCollegeId || studentData.universityCollegeId === '')) {
+        setShowCustomCollege(true);
+        setCustomCollegeName(studentData.college);
+        console.log('✅ Set custom college:', studentData.college);
+        
+        // IMPORTANT: If there's a custom college but no university, enable custom university input
+        // This allows B2C college students to enter both custom college and custom university
+        if (!studentData.university && !studentData.universityId) {
+          console.log('🔓 Enabling custom university input for custom college');
+          setShowCustomUniversity(true);
+        }
       }
       
       // Custom program name
-      if (studentData.branch && !studentData.programId) {
+      if (studentData.branch && (!studentData.programId || studentData.programId === '')) {
         setShowCustomProgram(true);
         setCustomProgramName(studentData.branch);
       }
       
       // Custom semester (only for university path)
-      if (studentData.section && !studentData.programSectionId && isUniversityPath) {
+      if (studentData.section && (!studentData.programSectionId || studentData.programSectionId === '') && isUniversityPath) {
         setShowCustomSemester(true);
         setCustomSemesterName(studentData.section);
       }
@@ -1021,6 +1051,11 @@ const MainSettings = () => {
     try {
       const dataToSave = { ...profileData };
       
+      // Determine student type from role
+      const userRole = studentData?.userRole;
+      const isSchoolStudent = userRole === 'school_student';
+      const isCollegeStudent = userRole === 'college_student';
+      
       // Determine which path the student is on
       const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName || 
                                dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
@@ -1080,7 +1115,7 @@ const MainSettings = () => {
         dataToSave.programId = null;
       }
       
-      // Custom college name → college field
+      // Custom college name → college field (for college students)
       if (showCustomCollege && customCollegeName) {
         dataToSave.college = customCollegeName;
         dataToSave.universityCollegeId = null;
@@ -1092,7 +1127,8 @@ const MainSettings = () => {
         dataToSave.universityId = null;
       }
       
-      // Custom school name → college field (school uses same field)
+      // Custom school name → college field (for school students)
+      // The college_school_name column is shared between school and college students
       if (showCustomSchool && customSchoolName) {
         dataToSave.college = customSchoolName;
         dataToSave.schoolId = null;
