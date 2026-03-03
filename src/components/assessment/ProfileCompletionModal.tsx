@@ -151,25 +151,81 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         portfolio: initialProfileData.portfolio_link || initialProfileData.portfolio || "",
       });
 
-      // Detect student type based on existing data
-      const hasSchoolId = initialProfileData.school_id || initialProfileData.schoolId;
-      const hasUniversityId = initialProfileData.university_id || initialProfileData.universityId;
+      // Detect student type based on user role from signup (priority)
+      // Role is stored in users table as 'college_student' or 'school_student'
+      // The role comes from the joined users table as an array with one object
+      const userRole = initialProfileData.role || 
+                       initialProfileData.users?.role || 
+                       (Array.isArray(initialProfileData.users) && initialProfileData.users[0]?.role);
+      
+      console.log('🔍 ProfileCompletionModal - Detecting student type:', {
+        fullProfileData: initialProfileData,
+        directRole: initialProfileData.role,
+        nestedRole: initialProfileData.users?.role,
+        arrayRole: Array.isArray(initialProfileData.users) ? initialProfileData.users[0]?.role : null,
+        finalRole: userRole,
+        hasSchoolId: initialProfileData.school_id || initialProfileData.schoolId,
+        hasUniversityId: initialProfileData.university_college_id || initialProfileData.universityId
+      });
 
-      if (hasSchoolId && !hasUniversityId) {
+      if (userRole === 'school_student') {
+        console.log('✅ Detected school_student from role');
         setStudentType('school');
-      } else if (hasUniversityId && !hasSchoolId) {
+      } else if (userRole === 'college_student') {
+        console.log('✅ Detected college_student from role');
         setStudentType('college');
+      } else {
+        // Fallback: Detect student type based on existing data
+        const hasSchoolId = initialProfileData.school_id || initialProfileData.schoolId;
+        const hasUniversityId = initialProfileData.university_college_id || initialProfileData.universityId;
+
+        console.log('⚠️ No role found, using fallback detection', { hasSchoolId, hasUniversityId });
+        if (hasSchoolId && !hasUniversityId) {
+          console.log('✅ Detected school student from school_id');
+          setStudentType('school');
+        } else if (hasUniversityId && !hasSchoolId) {
+          console.log('✅ Detected college student from university_college_id');
+          setStudentType('college');
+        } else {
+          console.log('❌ Could not determine student type');
+        }
       }
 
-      // Detect custom entries and show custom input fields
-      if (initialProfileData.college_school_name && !initialProfileData.university_college_id) {
-        setShowCustomCollege(true);
-        setCustomCollegeName(initialProfileData.college_school_name);
+      // Detect custom entries and show custom input fields based on role
+      // Use role to determine if college_school_name represents a school or college
+      // IMPORTANT: Only show custom school/college if it matches the student's role
+      if (initialProfileData.college_school_name) {
+        if (userRole === 'school_student' && !initialProfileData.school_id) {
+          // School student with custom school name (and no university data)
+          const hasUniversityData = initialProfileData.university_college_id || 
+                                   initialProfileData.universityId || 
+                                   initialProfileData.university ||
+                                   initialProfileData.program_id ||
+                                   initialProfileData.course_name;
+          
+          if (!hasUniversityData) {
+            setShowCustomSchool(true);
+            setCustomSchoolName(initialProfileData.college_school_name);
+          }
+        } else if (userRole === 'college_student' && !initialProfileData.university_college_id) {
+          // College student with custom college name (and no school data)
+          const hasSchoolData = initialProfileData.school_id || 
+                               initialProfileData.school_class_id;
+          
+          if (!hasSchoolData) {
+            setShowCustomCollege(true);
+            setCustomCollegeName(initialProfileData.college_school_name);
+          }
+        }
       }
-      if (initialProfileData.college_school_name && !initialProfileData.school_id) {
-        setShowCustomSchool(true);
-        setCustomSchoolName(initialProfileData.college_school_name);
+      
+      // Detect custom university name
+      if (initialProfileData.university && !initialProfileData.universityId) {
+        setShowCustomUniversity(true);
+        setCustomUniversityName(initialProfileData.university);
       }
+      
+      // Detect custom program name
       if (initialProfileData.course_name && !initialProfileData.program_id) {
         setShowCustomProgram(true);
         setCustomProgramName(initialProfileData.course_name);
@@ -292,13 +348,15 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       if (!profileData.grade) {
         errors.push('Grade information is required');
       }
-      if (!profileData.schoolId && !showCustomSchool && !customSchoolName) {
+      // Accept either schoolId OR custom school name
+      if (!profileData.schoolId && !customSchoolName) {
         errors.push('School selection is required');
       }
     }
 
     if (studentType === 'college' || isCollegeStudent) {
-      if (!profileData.universityId && !showCustomUniversity && !customUniversityName) {
+      // Accept either universityId OR custom university name
+      if (!profileData.universityId && !customUniversityName) {
         errors.push('University selection is required');
       }
       // College is optional - user might just want to specify university
@@ -322,8 +380,37 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
     setIsSaving(true);
     try {
+      // Prepare the profile data with custom entries
+      const dataToSave = { ...profileData };
+      
+      // Map custom entries to correct database columns
+      // Based on studentSettingsService.js field mapping:
+      
+      // Custom school name -> college_school_name (via 'college' field)
+      if (customSchoolName) {
+        dataToSave.college = customSchoolName;
+      }
+      
+      // Custom university name -> university column (via 'university' field)
+      if (customUniversityName) {
+        dataToSave.university = customUniversityName;
+      }
+      
+      // Custom college name -> college_school_name (via 'college' field)
+      if (customCollegeName) {
+        dataToSave.college = customCollegeName;
+      }
+      
+      // Custom program name -> branch_field and course_name (via 'branch' field)
+      // The service maps 'branch' to 'branch_field' and syncs to 'course_name'
+      if (customProgramName) {
+        dataToSave.branch = customProgramName;
+      }
+
+      console.log('💾 Saving profile data:', dataToSave);
+
       // Pass the complete profile data object (same as Settings page)
-      await updateProfile(profileData);
+      await updateProfile(dataToSave);
 
       toast({
         title: "Profile Updated",
@@ -333,7 +420,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
       // Dispatch event to notify other components
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
-        detail: { type: 'profile_updated', data: profileData }
+        detail: { type: 'profile_updated', data: dataToSave }
       }));
 
       onComplete();

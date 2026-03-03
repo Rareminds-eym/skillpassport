@@ -97,6 +97,7 @@ const shouldShowOption = (optionId, {
   studentGrade,
   monthsInGrade,
   isCollegeStudent,
+  profileData,
 }) => {
   // Always show all options if explicitly requested (currently disabled)
   if (shouldShowAllOptions) return true;
@@ -136,8 +137,17 @@ const shouldShowOption = (optionId, {
       return detectedGradeLevel === 'higher_secondary' && isGrade12 && (monthsInGrade === null || hasBeenInGrade6Months);
 
     case 'college':
-      // Show for college students or after12 detected
-      return isCollegeStudent || detectedGradeLevel === 'after12';
+      // Show for college students only if they have university information
+      // Either university_college_id OR custom university name must be present
+      if (!isCollegeStudent) return false;
+      
+      // Check if university information is present
+      const hasUniversityInfo = Boolean(
+        (profileData?.university_college_id) || 
+        (profileData?.university)
+      );
+      
+      return hasUniversityInfo;
 
     default:
       return false;
@@ -258,7 +268,12 @@ export const GradeSelectionScreen = ({
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Check if student has incomplete profile
-  const hasIncompleteProfile = shouldFilterByGrade && !detectedGradeLevel && !isCollegeStudent;
+  // For school students: need grade information
+  // For college students: need university information (either ID or custom name)
+  const hasIncompleteProfile = shouldFilterByGrade && (
+    (!detectedGradeLevel && !isCollegeStudent) || // Undetermined type
+    (isCollegeStudent && !profileData?.university_college_id && !profileData?.university) // College student without university
+  );
 
   // Show loading while fetching student grade
   if (loadingStudentGrade && shouldFilterByGrade) {
@@ -280,11 +295,21 @@ export const GradeSelectionScreen = ({
     studentGrade,
     monthsInGrade,
     isCollegeStudent,
+    profileData,
   };
 
-  const visibleOptions = GRADE_OPTIONS.filter(option => 
-    shouldShowOption(option.id, visibilityContext)
-  );
+  const visibleOptions = GRADE_OPTIONS.filter(option => {
+    const context = {
+      shouldShowAllOptions,
+      shouldFilterByGrade,
+      detectedGradeLevel,
+      studentGrade,
+      monthsInGrade,
+      isCollegeStudent,
+      profileData,
+    };
+    return shouldShowOption(option.id, context);
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
@@ -320,33 +345,37 @@ export const GradeSelectionScreen = ({
           )}
 
           <div className="space-y-4">
-            <Label className="text-sm font-semibold text-gray-700">Choose Your Grade Level</Label>
+            {!hasIncompleteProfile && (
+              <>
+                <Label className="text-sm font-semibold text-gray-700">Choose Your Grade Level</Label>
 
-            {visibleOptions.map(option => (
-              <GradeOptionButton
-                key={option.id}
-                option={option}
-                onClick={onGradeSelect}
-                additionalInfo={getAdditionalInfo(option.id, { studentGrade, monthsInGrade })}
-                studentProgram={studentProgram}
-              />
-            ))}
+                {visibleOptions.map(option => (
+                  <GradeOptionButton
+                    key={option.id}
+                    option={option}
+                    onClick={onGradeSelect}
+                    additionalInfo={getAdditionalInfo(option.id, { studentGrade, monthsInGrade })}
+                    studentProgram={studentProgram}
+                  />
+                ))}
 
-            {/* Show fallback when no options are visible */}
-            {visibleOptions.length === 0 && !hasIncompleteProfile && (
-              <div className="text-center py-8">
-                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-600 mb-2">No Options Available</h3>
-                <p className="text-gray-500 mb-4">
-                  We couldn't determine the appropriate assessment options for your profile.
-                </p>
-                <Button
-                  onClick={() => setShowProfileModal(true)}
-                  variant="outline"
-                >
-                  Update Profile
-                </Button>
-              </div>
+                {/* Show fallback when no options are visible */}
+                {visibleOptions.length === 0 && (
+                  <div className="text-center py-8">
+                    <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-600 mb-2">No Options Available</h3>
+                    <p className="text-gray-500 mb-4">
+                      We couldn't determine the appropriate assessment options for your profile.
+                    </p>
+                    <Button
+                      onClick={() => setShowProfileModal(true)}
+                      variant="outline"
+                    >
+                      Update Profile
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

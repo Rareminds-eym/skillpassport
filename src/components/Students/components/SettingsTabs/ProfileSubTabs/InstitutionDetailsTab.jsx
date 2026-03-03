@@ -41,6 +41,11 @@ const InstitutionDetailsTab = ({
   handleSaveProfile,
   isSaving,
 }) => {
+  // Determine student type from role
+  const userRole = studentData?.userRole;
+  const isSchoolStudent = userRole === 'school_student';
+  const isCollegeStudent = userRole === 'college_student';
+  
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -50,24 +55,39 @@ const InstitutionDetailsTab = ({
         </h3>
       </div>
       
+      {/* Info banner - show appropriate message based on role
       <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
         <p className="text-sm text-gray-700 mb-3">
           <span className="font-semibold">📍 This tab is for your institution information only:</span>
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        {isSchoolStudent && (
           <div className="bg-white/60 rounded-lg p-3">
-            <p className="font-semibold text-gray-800 mb-1">🏫 School Students (Grade 6-12)</p>
+            <p className="font-semibold text-gray-800 mb-1">� School Students (Grade 6-12)</p>
             <p className="text-gray-600 text-xs">Fill: School name + Your section (like "A", "B", "C")</p>
           </div>
+        )}
+        {isCollegeStudent && (
           <div className="bg-white/60 rounded-lg p-3">
             <p className="font-semibold text-gray-800 mb-1">🎓 College Students (Diploma/UG/PG)</p>
             <p className="text-gray-600 text-xs">Fill: University → College → Program → Semester</p>
           </div>
-        </div>
+        )}
+        {!isSchoolStudent && !isCollegeStudent && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+            <div className="bg-white/60 rounded-lg p-3">
+              <p className="font-semibold text-gray-800 mb-1">🏫 School Students (Grade 6-12)</p>
+              <p className="text-gray-600 text-xs">Fill: School name + Your section (like "A", "B", "C")</p>
+            </div>
+            <div className="bg-white/60 rounded-lg p-3">
+              <p className="font-semibold text-gray-800 mb-1">🎓 College Students (Diploma/UG/PG)</p>
+              <p className="text-gray-600 text-xs">Fill: University → College → Program → Semester</p>
+            </div>
+          </div>
+        )}
         <p className="text-xs text-amber-700 mt-3 bg-amber-50 rounded px-2 py-1">
           ⚠️ Your academic year (Grade 10, UG Year 2, etc.) goes in the <span className="font-semibold">Academic Details</span> tab, not here.
         </p>
-      </div>
+      </div> */}
 
       {/* Organization Membership Card - Shows when assigned via invitation */}
       {(studentData?.schoolOrganization || studentData?.collegeOrganization) && (
@@ -124,11 +144,14 @@ const InstitutionDetailsTab = ({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* School */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            School Name <span className="text-gray-400 text-xs font-normal">(For Grade 6-12 students)</span>
-          </label>
+        {/* School Fields - Only for school students */}
+        {(isSchoolStudent || !userRole) && (
+          <>
+            {/* School */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">
+                School Name {!isSchoolStudent && <span className="text-gray-400 text-xs font-normal">(For Grade 6-12 students)</span>}
+              </label>
           {!showCustomSchool ? (
             <>
               <select
@@ -245,13 +268,18 @@ const InstitutionDetailsTab = ({
             </>
           )}
         </div>
+          </>
+        )}
 
+        {/* College Fields - Only for college students */}
+        {(isCollegeStudent || !userRole) && (
+          <>
         {/* University */}
         <div className="space-y-2">
           <label className="text-sm font-semibold text-gray-700">
-            University Name <span className="text-gray-400 text-xs font-normal">(For Diploma/UG/PG students)</span>
+            University Name {!isCollegeStudent && <span className="text-gray-400 text-xs font-normal">(For Diploma/UG/PG students)</span>}
           </label>
-          {!showCustomUniversity ? (
+          {!showCustomUniversity && !profileData.university ? (
             <>
               <select
                 value={profileData.universityId}
@@ -283,7 +311,7 @@ const InstitutionDetailsTab = ({
             <>
               <input
                 type="text"
-                value={customUniversityName}
+                value={customUniversityName || profileData.university}
                 onChange={(e) => {
                   const universityName = e.target.value;
                   setCustomUniversityName(universityName);
@@ -634,6 +662,8 @@ const InstitutionDetailsTab = ({
             </>
           )}
         </div>
+          </>
+        )}
       </div>
 
       {/* Save Button */}
