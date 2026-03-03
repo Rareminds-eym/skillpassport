@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import {
     Target,
     Briefcase,
@@ -545,6 +546,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
  * Displays comprehensive career assessment results with modular components
  */
 const AssessmentResult = () => {
+    const [searchParams] = useSearchParams();
     const [activeSection, setActiveSection] = useState(null);
     const [isNavbarVisible, setIsNavbarVisible] = useState(true);
     const [selectedTrack, setSelectedTrack] = useState(null);
@@ -592,6 +594,9 @@ const AssessmentResult = () => {
         attemptData,
         resultData
     } = useAssessmentResults();
+
+    // Try to get attemptId from multiple sources
+    const effectiveAttemptId = attemptData?.id || resultData?.attempt_id || searchParams.get('attemptId');
 
     // Determine if we should show program recommendations
     // Only show for: After 10 with 6+ months, After 12, College
@@ -1664,6 +1669,7 @@ const AssessmentResult = () => {
                                             skillGap={skillGap}
                                             roadmap={roadmap}
                                             results={results}
+                                            attemptId={effectiveAttemptId}
                                         />
                                     )}
                                 </div>
@@ -2264,6 +2270,7 @@ const AssessmentResult = () => {
                                     skillGap={skillGap}
                                     roadmap={roadmap}
                                     results={results}
+                                    attemptId={effectiveAttemptId}
                                 />
                             )}
                         </div>
@@ -2303,6 +2310,7 @@ const AssessmentResult = () => {
                                     skillGap={skillGap}
                                     roadmap={roadmap}
                                     results={results}
+                                    attemptId={effectiveAttemptId}
                                 />
                             )}
                         </div>

@@ -4,6 +4,7 @@ import { X, BookOpen, ExternalLink, Search } from 'lucide-react';
 import AddLearningCourseModal from './AddLearningCourseModal';
 import LearningProgressBar from './LearningProgressBar';
 import SearchBar from '../../common/SearchBar';
+import DemoModal from '../../common/DemoModal';
 
 export default function SelectCourseModal({ isOpen, onClose, studentId, onSuccess }) {
   const [courses, setCourses] = useState([]);
@@ -13,6 +14,7 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showExternalForm, setShowExternalForm] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   useEffect(() => {
     if (isOpen && studentId) {
@@ -269,7 +271,8 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
             />
           </div>
           <button
-            onClick={() => setShowExternalForm(true)}
+            // onClick={() => setShowExternalForm(true)}
+            onClick={() => setShowDemoModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap"
           >
             <ExternalLink size={20} />
@@ -292,7 +295,8 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                 {searchTerm ? 'Try a different search term' : 'No courses available yet'}
               </p>
               <button
-                onClick={() => setShowExternalForm(true)}
+              // onClick={() => setShowExternalForm(true)}
+                onClick={() => setShowDemoModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
                 <ExternalLink size={20} />
@@ -432,6 +436,14 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
           )}
         </div>
       </div>
+
+      <DemoModal 
+        isOpen={showDemoModal} 
+        onClose={() => setShowDemoModal(false)}
+        title="Coming Soon"
+        subtitle="New Feature"
+        message="The Import External Certificate feature is coming soon! This feature will allow you to import and showcase certificates from platforms like Coursera, Udemy, LinkedIn Learning, edX, and more to your learning profile."
+      />
     </div>
   );
 }
