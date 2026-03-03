@@ -128,11 +128,11 @@ export function buildAssessmentXML(assessment: AssessmentResults): string {
 <aptitude_score>${assessment.aptitudeOverall}%</aptitude_score>
 <employability>${assessment.employabilityReadiness}</employability>
 
-${assessment.careerFit.length > 0 ? `<recommended_careers>
+${assessment.careerFit && assessment.careerFit.length > 0 ? `<recommended_careers>
 ${assessment.careerFit.slice(0, 5).map((c: any) => `- ${c.title || c.career || c}`).join('\n')}
 </recommended_careers>` : ''}
 
-${assessment.skillGaps.length > 0 ? `<identified_gaps>
+${assessment.skillGaps && assessment.skillGaps.length > 0 ? `<identified_gaps>
 ${assessment.skillGaps.slice(0, 5).map((g: any) => `- ${g.skill || g}`).join('\n')}
 </identified_gaps>` : ''}
 </assessment>`;
