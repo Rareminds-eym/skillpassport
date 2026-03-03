@@ -9,23 +9,24 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 # ============================================================================
 # RAZORPAY CONFIGURATION
 # ============================================================================
-# For local development, use TEST credentials
-# The worker auto-detects production vs test based on request origin:
-# - Production (skillpassport.rareminds.in) → Uses RAZORPAY_KEY_ID/SECRET
-# - Development (localhost, etc.) → Uses TEST_RAZORPAY_KEY_ID/SECRET
+# Use RAZORPAY_MODE to toggle between test and live credentials:
+#   RAZORPAY_MODE=test  → Uses RAZORPAY_KEY_ID_TEST and RAZORPAY_KEY_SECRET_TEST
+#   RAZORPAY_MODE=live  (or unset) → Uses RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET
+#
+# For local development, use test mode:
+#   RAZORPAY_MODE=test
 # ============================================================================
 
-# Primary credentials (used for production when deployed)
+# Mode toggle: 'test' or 'live'
+RAZORPAY_MODE=test
+
+# Live credentials (used when RAZORPAY_MODE=live or unset)
 RAZORPAY_KEY_ID=rzp_live_xxxxx
 RAZORPAY_KEY_SECRET=your-live-secret
 
-# Test credentials (used for development/non-production origins)
-TEST_RAZORPAY_KEY_ID=rzp_test_xxxxx
-TEST_RAZORPAY_KEY_SECRET=your-test-secret
-
-# For local development, you can set primary credentials to test values:
-# RAZORPAY_KEY_ID=rzp_test_xxxxx
-# RAZORPAY_KEY_SECRET=your-test-secret
+# Test credentials (used when RAZORPAY_MODE=test)
+RAZORPAY_KEY_ID_TEST=rzp_test_xxxxx
+RAZORPAY_KEY_SECRET_TEST=your-test-secret
 
 # Optional: Razorpay Webhook Secret
 RAZORPAY_WEBHOOK_SECRET=your-webhook-secret

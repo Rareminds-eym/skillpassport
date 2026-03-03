@@ -36,8 +36,9 @@ Set these via Cloudflare Dashboard or `wrangler secret put`:
 | Variable | Description | Default | Usage |
 |----------|-------------|---------|-------|
 | `RAZORPAY_WEBHOOK_SECRET` | Webhook signature secret | None | Verify incoming webhooks |
-| `TEST_RAZORPAY_KEY_ID` | Test mode key ID | Falls back to main key | Testing/development |
-| `TEST_RAZORPAY_KEY_SECRET` | Test mode secret | Falls back to main secret | Testing/development |
+| `RAZORPAY_MODE` | Set to 'test' for test mode, 'live' for production | 'live' | Toggle between test/live credentials |
+| `RAZORPAY_KEY_ID_TEST` | Test mode key ID | Falls back to main key | Testing/development |
+| `RAZORPAY_KEY_SECRET_TEST` | Test mode secret | Falls back to main secret | Testing/development |
 
 ## Setup Instructions
 
@@ -68,8 +69,9 @@ wrangler secret put RAZORPAY_KEY_SECRET
 
 # Optional secrets
 wrangler secret put RAZORPAY_WEBHOOK_SECRET
-wrangler secret put TEST_RAZORPAY_KEY_ID
-wrangler secret put TEST_RAZORPAY_KEY_SECRET
+wrangler secret put RAZORPAY_MODE          # Set to 'test' for test mode
+wrangler secret put RAZORPAY_KEY_ID_TEST   # Test mode key ID
+wrangler secret put RAZORPAY_KEY_SECRET_TEST  # Test mode key secret
 ```
 
 ### 4. Deploy
@@ -168,16 +170,14 @@ VITE_PAYMENTS_API_URL=https://payments-api.your-subdomain.workers.dev
 
 ## Production vs Test Mode
 
-The worker automatically detects production mode based on origin:
+The worker uses `RAZORPAY_MODE` to determine which credentials to use:
 
-### Production Mode
-- Origin contains: `skillpassport.rareminds.in`
+### Production Mode (RAZORPAY_MODE=live or unset)
 - Uses: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`
 - No amount limits
 
-### Test Mode
-- All other origins
-- Uses: `TEST_RAZORPAY_KEY_ID` / `TEST_RAZORPAY_KEY_SECRET` (falls back to production keys)
+### Test Mode (RAZORPAY_MODE=test)
+- Uses: `RAZORPAY_KEY_ID_TEST` / `RAZORPAY_KEY_SECRET_TEST` (falls back to production keys)
 - Amount capped at ₹50,000
 
 ## Valid Plan Amounts
