@@ -1,2 +1,3 @@
-ALTER TABLE college_lecturers
-ADD COLUMN profile_photo_url TEXT;
+SELECT title,thumbnail
+FROM courses
+WHERE thumbnail IS NOT  NULL;

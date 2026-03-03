@@ -1026,6 +1026,11 @@ const CollegeLecturerMessages = () => {
                           src={contact.avatar}
                           alt={contact.name}
                           className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.onerror = null;
+                            target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=3B82F6&color=fff`;
+                          }}
                         />
                         {contact.online && (
                           <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
@@ -1102,6 +1107,11 @@ const CollegeLecturerMessages = () => {
                         src={currentChat.avatar}
                         alt={currentChat.name}
                         className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-md"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.onerror = null;
+                          target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentChat.name)}&background=3B82F6&color=fff`;
+                        }}
                       />
                       {currentChat.online && (
                         <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />

@@ -102,7 +102,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     prevIdsRef.current = currentIds;
   }, [notifications]);
 
-  const handleNotificationClick = (notification: any) => {
+  const handleNotificationClick = async (notification: any) => {
     // Mark as read
     if (!notification.read) {
       markRead(notification.id);
@@ -112,7 +112,63 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     switch (notification.type) {
       case "new_message":
       case "message_reply":
+<<<<<<< Updated upstream
         navigate("/student/messages?tab=recruiters");
+=======
+        // Determine sender type to navigate to correct tab
+        try {
+          // Get the authenticated user's UUID
+          const { data: { user: authUser } } = await supabase.auth.getUser();
+          
+          if (authUser?.id) {
+            // Extract timestamp from notification to find the corresponding message
+            const notificationTime = new Date(notification.created_at);
+            const timeWindowStart = new Date(notificationTime.getTime() - 5000).toISOString();
+            const timeWindowEnd = new Date(notificationTime.getTime() + 5000).toISOString();
+
+            const { data: messageData } = await supabase
+              .from('messages')
+              .select('sender_type, conversation_id')
+              .eq('receiver_id', authUser.id)
+              .gte('created_at', timeWindowStart)
+              .lte('created_at', timeWindowEnd)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (messageData) {
+              // Map sender_type to Messages page tab
+              let tab = 'recruiters'; // default fallback
+              
+              if (messageData.sender_type === 'recruiter') {
+                tab = 'recruiters';
+              } else if (messageData.sender_type === 'school_admin') {
+                tab = 'admin';
+              } else if (messageData.sender_type === 'college_admin') {
+                tab = 'college_admin';
+              } else if (messageData.sender_type === 'educator' || messageData.sender_type === 'school_educator') {
+                tab = 'educators';
+              } else if (messageData.sender_type === 'student') {
+                tab = 'students';
+              }
+
+              // Navigate with tab and conversation parameters
+              const conversationParam = messageData.conversation_id ? `&conversation=${messageData.conversation_id}` : '';
+              navigate(`/student/messages?tab=${tab}${conversationParam}`);
+            } else {
+              // Fallback if message not found
+              navigate("/student/messages");
+            }
+          } else {
+            // Fallback if user not authenticated
+            navigate("/student/messages");
+          }
+        } catch (error) {
+          console.error('Error determining sender type:', error);
+          // Fallback on error
+          navigate("/student/messages");
+        }
+>>>>>>> Stashed changes
         break;
 
       case "course_added":

@@ -51,23 +51,15 @@ export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ 
     enabled: !!userId
   });
 
-  // Debug logging
+  // Debug logging (only on mount and when userId changes)
   useEffect(() => {
     if (userId) {
-      console.log('🟢 [GLOBAL PRESENCE] Online Users Details:', {
-        totalOnline: presenceData.onlineUsers.length,
+      console.log('🟢 [GLOBAL PRESENCE] Initialized:', {
         currentUser: { userId, userName, userType },
-        isConnected: presenceData.isConnected,
-        onlineUsers: presenceData.onlineUsers.map(user => ({
-          userId: user.userId,
-          userName: user.userName,
-          userType: user.userType,
-          status: user.status,
-          lastSeen: user.lastSeen
-        }))
+        isConnected: presenceData.isConnected
       });
     }
-  }, [userId, userName, userType, presenceData.onlineUsers]);
+  }, [userId]);
 
   return (
     <GlobalPresenceContext.Provider value={presenceData}>

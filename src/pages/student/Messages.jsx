@@ -70,6 +70,15 @@ const Messages = () => {
   const studentId = studentData?.id || user?.id;
   const studentName = studentData?.profile?.name || user?.name || 'Student';
 
+  // Safety: If student data loading completes but we still don't have studentId, log warning
+  useEffect(() => {
+    if (!loadingStudentData && !studentId && userEmail) {
+      console.warn("⚠️ Student data loaded but no studentId found for email:", userEmail);
+      console.warn("⚠️ User object:", user);
+      console.warn("⚠️ StudentData object:", studentData);
+    }
+  }, [loadingStudentData, studentId, userEmail, user, studentData]);
+
   // Determine available tabs based on student's school_id and university_college_id
   const hasSchoolId = !!studentData?.school_id;
   const hasCollegeId = !!studentData?.university_college_id;
@@ -165,6 +174,159 @@ const Messages = () => {
         activeTab === 'college_admin' ? clearCollegeAdminUnreadCount :
           () => { };
 
+<<<<<<< Updated upstream
+=======
+  // Force refetch on mount if we have a conversation ID in URL
+  // This ensures we have fresh data when navigating from Applications page
+  useEffect(() => {
+    if (conversationIdFromUrl && studentId && !loadingStudentData) {
+      console.log('🔄 URL has conversation ID, forcing fresh fetch...');
+      // Use setTimeout to avoid blocking render
+      const timeoutId = setTimeout(() => {
+        refetchConversations();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
+
+  // Track if we've already handled this conversation URL to prevent loops
+  const hasHandledConversationUrl = useRef(false);
+  const retryAttempts = useRef(0);
+  const MAX_RETRIES = 3;
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Auto-select conversation from URL parameter with improved retry logic
+  useEffect(() => {
+    // Early exit conditions
+    if (!conversationIdFromUrl || !studentId || loadingStudentData) {
+      return;
+    }
+
+    // Prevent redundant processing of the same URL after successful selection
+    if (hasHandledConversationUrl.current) {
+      return;
+    }
+
+    // Check if conversation exists in current list
+    const conversationExists = conversations.find(c => c.id === conversationIdFromUrl);
+
+    if (conversationExists) {
+      // Success! Conversation found
+      console.log('✅ Conversation found in list:', conversationIdFromUrl);
+      hasHandledConversationUrl.current = true;
+      setSelectedConversationId(conversationIdFromUrl);
+      retryAttempts.current = 0; // Reset retry counter
+
+      // Clear URL parameter after selecting
+      const timeoutId = setTimeout(() => {
+        if (isMountedRef.current) {
+          setSearchParams({});
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    } else if (!loadingConversations && retryAttempts.current < MAX_RETRIES) {
+      // Conversation not found - try refetching with faster backoff
+      // (Cache should be pre-populated from Applications page, so this is just a safety net)
+      retryAttempts.current += 1;
+      console.log(`⌛ Conversation not in list yet, retry attempt ${retryAttempts.current}/${MAX_RETRIES}...`);
+
+      const delay = retryAttempts.current * 200; // 200ms, 400ms, 600ms (faster since cache is optimistic)
+      const timeoutId = setTimeout(() => {
+        if (isMountedRef.current) {
+          refetchConversations();
+        }
+      }, delay);
+
+      return () => clearTimeout(timeoutId);
+    } else if (retryAttempts.current >= MAX_RETRIES) {
+      // Max retries reached - select anyway and let user see empty state
+      console.warn('⚠️ Max retries reached, selecting conversation anyway:', conversationIdFromUrl);
+      hasHandledConversationUrl.current = true;
+      setSelectedConversationId(conversationIdFromUrl);
+      retryAttempts.current = 0;
+
+      const timeoutId = setTimeout(() => {
+        if (isMountedRef.current) {
+          setSearchParams({});
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [conversationIdFromUrl, conversations, studentId, loadingConversations, loadingStudentData, refetchConversations, setSearchParams]);
+
+  // Reset handler when URL changes
+  useEffect(() => {
+    hasHandledConversationUrl.current = false;
+    retryAttempts.current = 0; // Also reset retry counter for new URLs
+  }, [conversationIdFromUrl]);
+
+  // Handle tab changes from URL parameter and trigger data fetch
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    const newTab = tabFromUrl === 'educators' ? 'educators' :
+      tabFromUrl === 'admin' ? 'admin' :
+        tabFromUrl === 'college_admin' ? 'college_admin' :
+          'recruiters';
+
+    if (newTab !== activeTab) {
+      console.log('🔄 Tab switching from', activeTab, 'to', newTab);
+      setIsTabSwitching(true);
+      setActiveTab(newTab);
+      setSelectedConversationId(null); // Clear selection when switching tabs
+
+      // Safety timeout to ensure isTabSwitching always resets
+      const safetyTimeout = setTimeout(() => {
+        console.log('⚠️ Safety timeout: forcing isTabSwitching to false');
+        setIsTabSwitching(false);
+      }, 5000); // 5 second maximum
+
+      // Force fetch data for the new tab if we have studentId
+      if (studentId && !loadingStudentData) {
+        console.log('🚀 Triggering fetch for new tab:', newTab);
+
+        // Trigger appropriate refetch based on new tab - with safety checks
+        let fetchPromise = Promise.resolve();
+
+        if (newTab === 'recruiters' && refetchRecruiterConversations) {
+          fetchPromise = refetchRecruiterConversations();
+        } else if (newTab === 'educators' && refetchEducatorConversations) {
+          fetchPromise = refetchEducatorConversations();
+        } else if (newTab === 'admin' && refetchAdminConversations) {
+          fetchPromise = refetchAdminConversations();
+        } else if (newTab === 'college_admin' && refetchCollegeAdminConversations) {
+          fetchPromise = refetchCollegeAdminConversations();
+        }
+
+        // Clear tab switching state after fetch completes
+        fetchPromise
+          .catch((error) => {
+            console.error('❌ Error fetching conversations for tab:', newTab, error);
+          })
+          .finally(() => {
+            clearTimeout(safetyTimeout); // Cancel safety timeout if fetch completes
+            setTimeout(() => setIsTabSwitching(false), 300); // Small delay for smooth UX
+          });
+      } else {
+        clearTimeout(safetyTimeout); // Cancel safety timeout
+        setIsTabSwitching(false);
+      }
+
+      // Cleanup safety timeout on unmount
+      return () => clearTimeout(safetyTimeout);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, activeTab, studentId, loadingStudentData]);
+
+>>>>>>> Stashed changes
   // Debug logging - only when there's an issue
   useEffect(() => {
     if (!studentId && !loadingStudentData && userEmail) {
@@ -346,7 +508,10 @@ const Messages = () => {
     }
     return false;
   }, [globalOnlineUsers, adminUserIds]);
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
   // Presence tracking for current conversation (for chat header)
   const { isUserOnline, getUserStatus, onlineUsers } = useRealtimePresence({
     channelName: selectedConversationId ? `conversation:${selectedConversationId}` : 'none',
@@ -527,15 +692,6 @@ const Messages = () => {
     // First filter out conversations marked for deletion
     const activeConversations = safeConversations.filter(conv => !conv._pendingDelete);
 
-    // Debug logging
-    const pendingCount = safeConversations.filter(c => c._pendingDelete).length;
-    console.log(`📊 Conversations: ${safeConversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`);
-
-    if (pendingCount > 0) {
-      const pendingIds = safeConversations.filter(c => c._pendingDelete).map(c => c.id);
-      console.log('❌ Pending delete IDs:', pendingIds);
-    }
-
     // Transform based on tab
     if (activeTab === 'recruiters') {
       // Recruiter conversations
@@ -594,12 +750,6 @@ const Messages = () => {
           const educatorName = educator?.first_name && educator?.last_name
             ? `${educator.first_name} ${educator.last_name}`
             : educator?.email || 'College Lecturer';
-          // ADD THIS DEBUG LOG HERE:
-console.log('🔍 Checking online for educator:', {
-  educator_id: conv.educator_id,
-  educator_user_id: conv.educator?.user_id,
-  online_users: globalOnlineUsers
-});
 
           const subject = conv.subject || 'General Discussion';
           
@@ -643,11 +793,6 @@ console.log('🔍 Checking online for educator:', {
           const educatorName = educator?.first_name && educator?.last_name
             ? `${educator.first_name} ${educator.last_name}`
             : educator?.email || 'Educator';
-console.log('🔍 Checking online for educator:', {
-  educator_id: conv.educator_id,
-  educator_user_id: conv.educator?.user_id,
-  online_users: globalOnlineUsers
-});
           // Get class and subject info
           const className = conv.school_class?.name || 'Class';
           const grade = conv.school_class?.grade || '';
@@ -764,7 +909,7 @@ console.log('🔍 Checking online for educator:', {
         };
       });
     }
-  }, [conversations, globalOnlineUsers, isUserOnlineGlobal, activeTab]);
+  }, [conversations, isUserOnlineGlobal, activeTab, getAdminOnlineStatus]);
 
   // Filter contacts based on search only (pending deletes already filtered)
   const filteredContacts = useMemo(() => {
@@ -1127,14 +1272,19 @@ console.log('🔍 Checking online for educator:', {
     setDeleteModal({ isOpen: true, conversationId, contactName });
   }, []);
 
-  // Show loading state
-  if (loadingConversations || !studentId || isTabSwitching) {
+  // Show loading state only when genuinely loading AND we have no data yet
+  // Allow rendering if we have studentId OR if student data finished loading (even if failed)
+  const shouldShowLoading = (loadingConversations && conversations.length === 0) || 
+                            (loadingStudentData && !studentId) || 
+                            isTabSwitching;
+  
+  if (shouldShowLoading) {
     return (
       <div className="flex h-[calc(100vh-180px)] bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200 items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto mb-4" />
           <p className="text-gray-500">
-            {!studentId ? 'Loading user data...' :
+            {loadingStudentData && !studentId ? 'Loading user data...' :
               isTabSwitching ? 'Switching tabs...' :
                 'Loading conversations...'}
           </p>
@@ -1145,7 +1295,8 @@ console.log('🔍 Checking online for educator:', {
 
   return (
     // Main container: Adjusted height, removed overflow-hidden for dropdowns, added relative
-    <div className="flex h-[calc(100vh-120px)] bg-white rounded-xl shadow-lg border border-gray-200 relative">
+    // IMPORTANT: Use z-index lower than header (z-40) to prevent blocking navigation
+    <div className="flex h-[calc(100vh-120px)] bg-white rounded-xl shadow-lg border border-gray-200 relative z-10">
       {/* Left Panel - Contacts List */}
       <div className="w-full md:w-96 border-r border-gray-200 flex flex-col rounded-l-xl overflow-hidden">
         {/* Header with Tabs */}
@@ -1168,7 +1319,7 @@ console.log('🔍 Checking online for educator:', {
                   </button>
                   
                   {showNewEducatorDropdown && (
-                    <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="absolute top-full right-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-[45]">
                       {hasSchoolId && (
                         <button
                           onClick={() => {
@@ -1270,7 +1421,7 @@ console.log('🔍 Checking online for educator:', {
 
                 {/* Dropdown Menu */}
                 {showTabDropdown && (
-                  <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                  <div className="absolute top-full right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-[45]">
                     <div className="py-1">
                       {/* Recruiters Tab - Always available */}
                       <button
@@ -1526,9 +1677,10 @@ console.log('🔍 Checking online for educator:', {
                 >
                   <div className="relative flex-shrink-0">
                     <img
-                      src={contact.avatar}
+                      src={contact.avatar || 'https://ui-avatars.com/api/?name=User&background=gray&color=fff'}
                       alt={contact.name}
                       className="w-12 h-12 rounded-full object-cover"
+                      onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=User&background=gray&color=fff'; }}
                     />
                     {contact.online && (
                       <span className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 border-2 border-white rounded-full"></span>
@@ -1602,9 +1754,10 @@ console.log('🔍 Checking online for educator:', {
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <img
-                    src={currentChat.avatar}
+                    src={currentChat.avatar || 'https://ui-avatars.com/api/?name=User&background=gray&color=fff'}
                     alt={currentChat.name}
                     className="w-10 h-10 rounded-full object-cover"
+                    onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=User&background=gray&color=fff'; }}
                   />
                   {currentChat.online && (
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 border-2 border-white rounded-full"></span>

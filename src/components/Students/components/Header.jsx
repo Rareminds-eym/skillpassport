@@ -93,15 +93,33 @@ const Header = ({ activeTab, setActiveTab }) => {
 
   // Handle navigation
   const handleNavigation = (item) => {
+    console.log('🔵 Navigation clicked:', item.id, '→', item.path);
     setActiveTab(item.id);
-    navigate(item.path);
+    
+    // Force navigation with fallback
+    try {
+      navigate(item.path);
+    } catch (error) {
+      console.error('❌ Navigate failed, using window.location:', error);
+      window.location.href = item.path;
+    }
+    
     setMobileMenuOpen(false);
   };
 
   const handleDashboard = () => {
+    console.log('🔵 Dashboard button clicked - navigating to /student/dashboard');
     setActiveTab("dashboard");
     localStorage.removeItem("dashboardActiveNav");
-    navigate("/student/dashboard");
+    
+    // Force navigation with fallback
+    try {
+      navigate("/student/dashboard");
+    } catch (error) {
+      console.error('❌ Navigate failed, using window.location:', error);
+      window.location.href = "/student/dashboard";
+    }
+    
     setMobileMenuOpen(false);
   };
 
