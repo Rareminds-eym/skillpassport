@@ -33,7 +33,7 @@ import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
-import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
+import { getPaymentReceiptUrl, uploadPaymentReceipt, getPaymentReceiptPresignedUrl } from '../../services/storageApiService';
 import { clearPendingUserData } from '../../utils/authCleanup';
 
 // ============================================================================
@@ -666,11 +666,13 @@ function PaymentSuccess() {
     }
   }, [verificationError, user, navigate]);
 
-  // Handle receipt download
+  // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
       if (receiptUrl) {
-        window.open(receiptUrl, '_blank');
+        // Use presigned URL for download (no auth required)
+        const presignedUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
+        window.open(presignedUrl, '_blank');
         toast.success('Receipt downloading!');
         return;
       }

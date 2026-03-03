@@ -31,7 +31,7 @@ import { handleDelete } from './handlers/delete';
 import { handlePresigned, handleConfirm, handleGetFileUrl } from './handlers/presigned';
 import { handleDocumentAccess } from './handlers/document-access';
 import { handleSignedUrl, handleSignedUrls } from './handlers/signed-url';
-import { handleUploadPaymentReceipt, handleGetPaymentReceipt } from './handlers/payment-receipt';
+import { handleUploadPaymentReceipt, handleGetPaymentReceipt, handleGetPaymentReceiptPresigned } from './handlers/payment-receipt';
 import { handleCourseCertificate } from './handlers/certificate';
 import { handleExtractContent } from './handlers/extract-content';
 import { handleListFiles } from './handlers/list-files';
@@ -164,6 +164,9 @@ export const onRequest: PagesFunction = async (context) => {
       case '/upload-payment-receipt':
         return handleUploadPaymentReceipt(authenticatedContext as any);
 
+      case '/payment-receipt/presigned':
+        return handleGetPaymentReceiptPresigned(authenticatedContext as any);
+
       case '/payment-receipt':
         return handleGetPaymentReceipt(authenticatedContext as any);
 
@@ -197,6 +200,7 @@ export const onRequest: PagesFunction = async (context) => {
               '/media-proxy (SECURE)',
               '/upload-payment-receipt',
               '/payment-receipt',
+              '/payment-receipt/presigned',
               '/course-certificate',
               '/extract-content',
               '/files/:courseId/:lessonId',

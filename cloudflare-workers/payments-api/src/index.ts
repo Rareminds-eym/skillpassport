@@ -857,6 +857,7 @@ async function handleCreateOrgOrder(request: Request, env: Env, user: any): Prom
     amount: order.amount,
     currency: order.currency,
     receipt: order.receipt,
+    key: keyId,
   });
 }
 
