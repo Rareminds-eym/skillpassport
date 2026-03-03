@@ -380,8 +380,10 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
 
     setIsSaving(true);
     try {
-      // Prepare the profile data with custom entries
-      const dataToSave = { ...profileData };
+      // IMPORTANT: Only send the fields that are being edited in this modal
+      // Don't send the entire profileData object as it may have empty strings
+      // for fields that weren't loaded (like name, phone, etc.)
+      const dataToSave = {};
       
       // Map custom entries to correct database columns
       // Based on studentSettingsService.js field mapping:
@@ -407,9 +409,19 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
         dataToSave.branch = customProgramName;
       }
 
-      console.log('💾 Saving profile data:', dataToSave);
+      // Only include institution-related fields that are actually set
+      if (profileData.schoolId) dataToSave.schoolId = profileData.schoolId;
+      if (profileData.universityId) dataToSave.universityId = profileData.universityId;
+      if (profileData.universityCollegeId) dataToSave.universityCollegeId = profileData.universityCollegeId;
+      if (profileData.programId) dataToSave.programId = profileData.programId;
+      if (profileData.grade) dataToSave.grade = profileData.grade;
+      if (profileData.gradeStartDate) dataToSave.gradeStartDate = profileData.gradeStartDate;
+      if (profileData.semester) dataToSave.semester = profileData.semester;
+      if (profileData.section) dataToSave.section = profileData.section;
 
-      // Pass the complete profile data object (same as Settings page)
+      console.log('💾 Saving profile data (institution fields only):', dataToSave);
+
+      // Pass only the fields being updated
       await updateProfile(dataToSave);
 
       toast({
