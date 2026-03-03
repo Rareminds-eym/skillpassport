@@ -347,15 +347,29 @@ export function getPaymentReceiptUrl(fileKey: string, mode: 'download' | 'inline
 
 /**
  * Get presigned URL for payment receipt download (temporary access without auth)
- * @param fileKey - The file key or URL of the receipt
+ * @param fileKeyOrUrl - The file key or full URL of the receipt
  * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour, max: 604800 = 7 days)
  * @returns Presigned URL for direct download
  */
-export async function getPaymentReceiptPresignedUrl(fileKey: string, expiresIn: number = 3600): Promise<string> {
+export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expiresIn: number = 3600): Promise<string> {
   const authToken = await getAuthToken();
   
   if (!authToken) {
     throw new Error('Authentication required. Please log in.');
+  }
+  
+  // Extract file key from full URL if needed
+  let fileKey = fileKeyOrUrl;
+  if (fileKeyOrUrl.includes('/api/storage/payment-receipt?key=')) {
+    try {
+      const url = new URL(fileKeyOrUrl);
+      const keyFromUrl = url.searchParams.get('key');
+      if (keyFromUrl) {
+        fileKey = keyFromUrl;
+      }
+    } catch {
+      // If URL parsing fails, use as-is
+    }
   }
   
   const response = await fetch(
