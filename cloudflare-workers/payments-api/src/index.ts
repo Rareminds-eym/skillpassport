@@ -44,6 +44,27 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
+// Import types
+import { Env } from './types';
+
+// Import config
+import { corsHeaders, VALID_AMOUNTS, MAX_AMOUNT, EMAIL_API_URL, STORAGE_API_URL } from './config';
+
+// Import utils
+import { jsonResponse, isValidHttpUrl } from './utils';
+
+// Import helpers (barrel export)
+import {
+  authenticateUser,
+  createSupabaseAdmin,
+  getSupabaseUrl,
+  getRazorpayKeyId,
+  getRazorpayKeySecret,
+  getRazorpayCredentialsForRequest,
+  verifySignature,
+  verifyWebhookSignature,
+} from './helpers';
+
 // Import modular handlers
 import {
   handleCancelAddon,
@@ -92,199 +113,13 @@ import {
 } from './handlers/organization';
 import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
 
-// Re-export Env type for use in other modules
-export interface Env {
-  // Supabase - support both naming conventions
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-  // Legacy VITE_ prefixed names (fallback)
-  VITE_SUPABASE_URL?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
-  // Razorpay
-  RAZORPAY_KEY_ID: string;
-  RAZORPAY_KEY_SECRET: string;
-  RAZORPAY_WEBHOOK_SECRET?: string;
-  // Test mode credentials (optional)
-  TEST_RAZORPAY_KEY_ID?: string;
-  TEST_RAZORPAY_KEY_SECRET?: string;
-  // Legacy VITE_ prefixed names (fallback)
-  VITE_RAZORPAY_KEY_ID?: string;
-  // Service binding to email-api worker
-  EMAIL_SERVICE?: Fetcher;
-  // Service binding to storage-api worker (for worker-to-worker communication)
-  STORAGE_SERVICE?: Fetcher;
-  // Storage API URL for receipt uploads (fallback for external calls)
-  STORAGE_API_URL?: string;
-  // Note: Email sending now uses Cloudflare Worker (email-api) with SMTP
-  // RESEND_API_KEY is no longer needed
-}
+// Export Env type for use in other modules
+export type { Env } from './types';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-razorpay-signature',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
-
-// Valid plan amounts in paise
-const VALID_AMOUNTS = [100, 49900, 99900, 199900];
-const MAX_AMOUNT = 1000000;
-
-// URL validation helper
-function isValidHttpUrl(str: string): boolean {
-  try {
-    const url = new URL(str);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-// Helper to get Supabase URL with fallback and validation
-function getSupabaseUrl(env: Env): string {
-  const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-  if (!url) {
-    throw new Error('SUPABASE_URL is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_URL');
-  }
-  if (!isValidHttpUrl(url)) {
-    throw new Error(`Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL. Got: "${url.substring(0, 50)}...". Ensure SUPABASE_URL is set correctly as a Cloudflare secret.`);
-  }
-  return url;
-}
-
-// Helper to get Supabase Anon Key with fallback
-function getSupabaseAnonKey(env: Env): string {
-  const key = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
-  if (!key) {
-    throw new Error('SUPABASE_ANON_KEY is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_ANON_KEY');
-  }
-  return key;
-}
-
-// Helper to get Razorpay Key ID with fallback
-function getRazorpayKeyId(env: Env): string {
-  const key = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID;
-  if (!key) {
-    throw new Error('RAZORPAY_KEY_ID is not configured. Set it as a Cloudflare secret via: wrangler secret put RAZORPAY_KEY_ID');
-  }
-  return key;
-}
-
-function jsonResponse(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-async function authenticateUser(request: Request, env: Env): Promise<{ user: any; supabase: SupabaseClient } | null> {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader) return null;
-
-  const token = authHeader.replace('Bearer ', '');
-  const supabaseUrl = getSupabaseUrl(env);
-  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !user) return null;
-
-  const supabase = createClient(supabaseUrl, getSupabaseAnonKey(env), {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  return { user, supabase };
-}
-
-// Production domain for live payments
-const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
-
-/**
- * Check if request is from production site
- */
-function isProductionRequest(request: Request): boolean {
-  const origin = request.headers.get('origin') || request.headers.get('referer') || '';
-  return origin.includes(PRODUCTION_DOMAIN) && !origin.includes('dev-');
-}
-
-/**
- * Get Razorpay credentials based on request origin
- * - Production (skillpassport.rareminds.in): Uses LIVE keys
- * - Everything else (localhost, netlify, dev): Uses TEST keys
- */
-function getRazorpayCredentialsForRequest(request: Request, env: Env): { keyId: string; keySecret: string; isProduction: boolean } {
-  const isProduction = isProductionRequest(request);
-
-  let keyId: string;
-  let keySecret: string;
-
-  if (isProduction) {
-    // Production: Use LIVE credentials
-    keyId = getRazorpayKeyId(env);
-    keySecret = env.RAZORPAY_KEY_SECRET;
-    console.log('[RAZORPAY] Using LIVE credentials for production');
-  } else {
-    // Development/Test: Use TEST credentials (with fallback to production)
-    keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
-    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-    console.log('[RAZORPAY] Using TEST credentials for development');
-  }
-
-  if (!keySecret) {
-    throw new Error('RAZORPAY_KEY_SECRET is not configured');
-  }
-
-  return { keyId, keySecret, isProduction };
-}
-
-/**
- * @deprecated Use getRazorpayCredentialsForRequest instead for proper environment detection
- */
-function getRazorpayCredentials(env: Env) {
-  // Legacy function - defaults to test credentials if available
-  const keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
-  const keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-  if (!keySecret) {
-    throw new Error('RAZORPAY_KEY_SECRET is not configured');
-  }
-  return { keyId, keySecret };
-}
-
-async function verifySignature(orderId: string, paymentId: string, signature: string, secret: string): Promise<boolean> {
-  const text = `${orderId}|${paymentId}`;
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(text));
-  const generatedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  return generatedSignature === signature;
-}
-
-async function verifyWebhookSignature(payload: string, signature: string, secret: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-  const generatedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  return generatedSignature === signature;
-}
+// TEST_MODE_MAX_AMOUNT for subscription orders (keep for backwards compatibility)
+const TEST_MODE_MAX_AMOUNT = 100000;
 
 // ==================== EMAIL FUNCTIONS ====================
-
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
 
 /**
  * Send email via Cloudflare Worker (email-api)
@@ -455,7 +290,7 @@ async function sendPaymentConfirmationEmail(
               ${receiptButtonHtml}
               <!-- CTA Button -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://skillpassport.rareminds.in/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Manage Subscription →</a>
+                <a href="/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Manage Subscription →</a>
               </div>
               
               <p style="color: #6B7280; font-size: 14px; margin-top: 24px;">If you have any questions, feel free to contact our support team.</p>
@@ -492,8 +327,6 @@ async function sendPaymentConfirmationEmail(
 }
 
 // ==================== RECEIPT PDF GENERATION & UPLOAD ====================
-
-const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
 /**
  * Generate receipt PDF content as base64 using pdf-lib
@@ -732,6 +565,19 @@ function getReceiptDownloadUrl(env: Env, fileKey: string): string {
 }
 
 
+/**
+ * @deprecated Use getRazorpayCredentialsForRequest instead for proper environment detection
+ */
+function getRazorpayCredentials(env: Env) {
+  // Legacy function - defaults to test credentials if available
+  const keyId = env.RAZORPAY_KEY_ID_TEST || getRazorpayKeyId(env);
+  const keySecret = env.RAZORPAY_KEY_SECRET_TEST || getRazorpayKeySecret(env);
+  if (!keySecret) {
+    throw new Error('RAZORPAY_KEY_SECRET is not configured');
+  }
+  return { keyId, keySecret };
+}
+
 // ==================== CREATE ORDER ====================
 
 async function handleCreateOrder(request: Request, env: Env): Promise<Response> {
@@ -888,6 +734,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     amount: order.amount,
     currency: order.currency,
     receipt: order.receipt,
+    key: keyId,
   });
 }
 
@@ -2468,7 +2315,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
 // ==================== CREATE EVENT ORDER ====================
 
 const MAX_EVENT_AMOUNT_RUPEES = 10000000; // ₹1 crore max
-const TEST_MODE_MAX_AMOUNT = 5000000; // ₹50,000 in paise for test mode
+const EVENT_TEST_MODE_MAX_AMOUNT = 5000000; // ₹50,000 in paise for test mode
 
 async function handleCreateEventOrder(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
@@ -2509,30 +2356,28 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     return jsonResponse({ error: 'Invalid email format' }, 400);
   }
 
-  // Detect if request is from production site
-  const headerOrigin = request.headers.get('origin') || request.headers.get('referer') || '';
-  const requestOrigin = bodyOrigin || headerOrigin;
-  const isProductionSite = requestOrigin.includes('skillpassport.rareminds.in') && !requestOrigin.includes('dev-');
-
-  // Determine credentials and amount based on site
+  // Use RAZORPAY_MODE to determine credentials (no origin-based detection)
+  const isTestMode = env.RAZORPAY_MODE === 'test';
   let keyId: string;
   let keySecret: string;
   let amount = originalAmount;
 
-  if (isProductionSite) {
-    keyId = getRazorpayKeyId(env);
-    keySecret = env.RAZORPAY_KEY_SECRET;
-    console.log('[CREATE-EVENT] Using PRODUCTION credentials');
-  } else {
-    keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
-    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-    console.log('[CREATE-EVENT] Using TEST credentials');
+  if (isTestMode) {
+    // Test mode: Use TEST credentials (with fallback to production)
+    keyId = env.RAZORPAY_KEY_ID_TEST || getRazorpayKeyId(env);
+    keySecret = env.RAZORPAY_KEY_SECRET_TEST || getRazorpayKeySecret(env);
+    console.log('[CREATE-EVENT] Using TEST credentials (RAZORPAY_MODE=test)');
 
-    // Cap amount at test limit for non-production sites
-    if (amount > TEST_MODE_MAX_AMOUNT) {
-      console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${TEST_MODE_MAX_AMOUNT / 100}`);
-      amount = TEST_MODE_MAX_AMOUNT;
+    // Cap amount at test limit for test mode
+    if (amount > EVENT_TEST_MODE_MAX_AMOUNT) {
+      console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${EVENT_TEST_MODE_MAX_AMOUNT / 100}`);
+      amount = EVENT_TEST_MODE_MAX_AMOUNT;
     }
+  } else {
+    // Production/Live mode: Use LIVE credentials
+    keyId = getRazorpayKeyId(env);
+    keySecret = getRazorpayKeySecret(env);
+    console.log('[CREATE-EVENT] Using LIVE credentials (RAZORPAY_MODE=live)');
   }
 
   console.log(`[CREATE-EVENT] Key ID starts with: ${keyId?.substring(0, 8)}...`);
@@ -3242,7 +3087,7 @@ export default {
               success: testResponse.ok,
               environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
               razorpay_key_prefix: keyId.substring(0, 12) + '...',
-              test_key_configured: !!env.TEST_RAZORPAY_KEY_ID,
+              test_key_configured: !!env.RAZORPAY_KEY_ID_TEST,
               api_status: testStatus,
               api_response: testBody.substring(0, 500),
             });

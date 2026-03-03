@@ -14,9 +14,11 @@ export interface Env {
   RAZORPAY_KEY_ID: string;
   RAZORPAY_KEY_SECRET: string;
   RAZORPAY_WEBHOOK_SECRET?: string;
-  // Test mode credentials (optional)
-  TEST_RAZORPAY_KEY_ID?: string;
-  TEST_RAZORPAY_KEY_SECRET?: string;
+  // Test mode toggle: 'test' or 'live'
+  RAZORPAY_MODE?: string;
+  // Test mode credentials (used when RAZORPAY_MODE=test)
+  RAZORPAY_KEY_ID_TEST?: string;
+  RAZORPAY_KEY_SECRET_TEST?: string;
   // Legacy VITE_ prefixed names (fallback)
   VITE_RAZORPAY_KEY_ID?: string;
   // Service binding to email-api worker

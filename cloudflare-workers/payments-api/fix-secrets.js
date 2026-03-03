@@ -2,10 +2,11 @@
 const { execSync } = require('child_process');
 
 const secrets = {
+  'RAZORPAY_MODE': 'test',
   'RAZORPAY_KEY_ID': 'rzp_test_RNNqYdwXmbBzxz',
   'RAZORPAY_KEY_SECRET': 'zUYP3rpWcSObKLIrVkPrm94p',
-  'TEST_RAZORPAY_KEY_ID': 'rzp_test_RNNqYdwXmbBzxz',
-  'TEST_RAZORPAY_KEY_SECRET': 'zUYP3rpWcSObKLIrVkPrm94p',
+  'RAZORPAY_KEY_ID_TEST': 'rzp_test_RNNqYdwXmbBzxz',
+  'RAZORPAY_KEY_SECRET_TEST': 'zUYP3rpWcSObKLIrVkPrm94p',
 };
 
 for (const [name, value] of Object.entries(secrets)) {

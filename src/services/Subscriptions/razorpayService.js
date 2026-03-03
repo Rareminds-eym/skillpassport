@@ -144,9 +144,9 @@ export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) 
     // Get current origin for redirect URLs
     const origin = window.location.origin;
 
-    // Get Razorpay key
-    const razorpayKeyId = getRazorpayKeyId();
-    console.log(`💳 Using ${getRazorpayKeyMode()} Razorpay key`);
+    // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
+    const razorpayKeyId = orderData.key;
+    console.log(`💳 Using ${orderData.key?.startsWith('rzp_live') ? 'LIVE' : 'TEST'} Razorpay key from API`);
 
     // Razorpay checkout options
     const options = {

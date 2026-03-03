@@ -39,12 +39,16 @@ if [ "$set_optional" = "y" ] || [ "$set_optional" = "Y" ]; then
     wrangler secret put RAZORPAY_WEBHOOK_SECRET
 
     echo ""
-    echo "7. TEST_RAZORPAY_KEY_ID (for test mode)"
-    wrangler secret put TEST_RAZORPAY_KEY_ID
+    echo "7. RAZORPAY_MODE (set to 'test' for test mode, 'live' for production)"
+    wrangler secret put RAZORPAY_MODE
 
     echo ""
-    echo "8. TEST_RAZORPAY_KEY_SECRET (for test mode)"
-    wrangler secret put TEST_RAZORPAY_KEY_SECRET
+    echo "8. RAZORPAY_KEY_ID_TEST (test mode key ID)"
+    wrangler secret put RAZORPAY_KEY_ID_TEST
+
+    echo ""
+    echo "9. RAZORPAY_KEY_SECRET_TEST (test mode key secret)"
+    wrangler secret put RAZORPAY_KEY_SECRET_TEST
 fi
 
 echo ""
