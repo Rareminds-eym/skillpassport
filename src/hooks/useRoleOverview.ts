@@ -103,11 +103,13 @@ interface UseRoleOverviewReturn {
  * 
  * @param roleName - The job role name (e.g., "Software Engineer")
  * @param clusterTitle - The career cluster title (e.g., "Technology")
+ * @param attemptId - Optional attempt ID for DB storage/retrieval
  * @returns Object containing responsibilities, demand data, career progression, learning roadmap, courses, resources, loading state, and error
  */
 export function useRoleOverview(
   roleName: string | null,
-  clusterTitle: string
+  clusterTitle: string,
+  attemptId?: string
 ): UseRoleOverviewReturn {
   const [responsibilities, setResponsibilities] = useState<string[]>([]);
   const [demandData, setDemandData] = useState<IndustryDemandData | null>(null);
@@ -122,7 +124,7 @@ export function useRoleOverview(
   
   const currentRequestRef = useRef<string | null>(null);
 
-  const fetchRoleOverview = useCallback(async (role: string, cluster: string) => {
+  const fetchRoleOverview = useCallback(async (role: string, cluster: string, attempt?: string) => {
     const requestKey = getCacheKey(role, cluster);
     currentRequestRef.current = requestKey;
 
@@ -147,7 +149,7 @@ export function useRoleOverview(
 
     try {
       console.log(`[RoleOverview Hook] Fetching overview for: ${role}`);
-      const result = await generateRoleOverview(role, cluster);
+      const result = await generateRoleOverview(role, cluster, attempt);
       
       if (currentRequestRef.current === requestKey) {
         console.log(`[RoleOverview Hook] Successfully received data for: ${role}`);
@@ -201,8 +203,8 @@ export function useRoleOverview(
       return;
     }
 
-    fetchRoleOverview(roleName, clusterTitle);
-  }, [roleName, clusterTitle, fetchRoleOverview]);
+    fetchRoleOverview(roleName, clusterTitle, attemptId);
+  }, [roleName, clusterTitle, attemptId, fetchRoleOverview]);
 
   return {
     responsibilities,
