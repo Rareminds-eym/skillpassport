@@ -34,7 +34,7 @@ export function generateUserConfirmationHtml(data) {
               <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Your payment has been received successfully. You're now registered!</p>
               
               <div style="margin-bottom:24px;padding:20px;background:#f0fdf4;border-radius:12px;border:2px solid #22c55e;">
-                <p style="margin:0 0 16px;color:#15803d;font-size:15px;font-weight:600;">🚀 Next Step: Create Your Account</p>
+                <p style="margin:0 0 16px;color:#15803d;font-size:15px;font-weight:600;">Next Step: Create Your Account</p>
                 <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">To access your Skill Passport dashboard and start your journey, please create your account using the signup page.</p>
                 <a href="https://skillpassport.rareminds.in/signup" style="display:inline-block;background:#22c55e;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">Create Account Now</a>
               </div>
@@ -105,7 +105,7 @@ export function generateAdminNotificationHtml(data) {
   return `
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>New Pre-Registration</title></head>
+<head><meta charset="utf-8"><title>New Registration</title></head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
   <table style="width:100%;border-collapse:collapse;">
     <tr>
