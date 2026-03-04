@@ -397,7 +397,9 @@ const AchievementBadge = ({ achievement, isUnlocked }) => {
           {achievement.label}
         </p>
         {isUnlocked ? (
-          <p className={`text-[10px] ${achievement.iconColor}`}>✓ Unlocked</p>
+          <p className={`text-[10px] ${achievement.iconColor}`}>
+            {achievement.id.startsWith('time') ? `${Math.floor(achievement.current / 60)}h ${achievement.current % 60}m` : '✓ Unlocked'}
+          </p>
         ) : (
           <p className="text-[10px] text-gray-400">{achievement.current}/{achievement.target}</p>
         )}
@@ -449,10 +451,22 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
           .eq('student_id', user.id)
           .not('completed_at', 'is', null);
 
-        const MAX_SECONDS_PER_LESSON = 3600;
-        const totalTimeMinutes = (progressData || []).reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, MAX_SECONDS_PER_LESSON), 0) / 60;
+        const totalTimeMinutes = Math.round((progressData || []).reduce((sum, p) => sum + (p.time_spent_seconds || 0), 0) / 60);
         const completedLessons = (progressData || []).filter(p => p.status === 'completed').length;
         const completedCourses = (enrollmentData || []).length;
+
+        console.log('🎯 Achievement Data Calculation:', {
+          progressDataCount: progressData?.length || 0,
+          totalSeconds: (progressData || []).reduce((sum, p) => sum + (p.time_spent_seconds || 0), 0),
+          totalTimeMinutes,
+          completedLessons,
+          completedCourses,
+          sampleData: progressData?.slice(0, 3).map(p => ({
+            lesson_id: p.lesson_id,
+            time_spent_seconds: p.time_spent_seconds,
+            status: p.status
+          }))
+        });
 
         setAchievementData({
           currentStreak: streakData?.current_streak || statsCurrentStreak,
@@ -475,12 +489,22 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
     fetchAchievementData();
   }, []); // Empty dependency - fetch only once on mount
 
-  const data = achievementData || {
+  // Always use achievementData if available, never fall back to weekly stats
+  const data = achievementData ? achievementData : {
     currentStreak: stats.currentStreak || 0,
     totalTimeMinutes: stats.totalMinutes || 0,
     completedLessons: stats.completedLessons || 0,
     completedCourses: courseData.filter(c => c.completionRate === 100).length
   };
+
+  console.log('🏆 Achievement Display Data:', {
+    hasAchievementData: !!achievementData,
+    achievementData,
+    statsTotalMinutes: stats.totalMinutes,
+    finalData: data,
+    loading,
+    willUseAchievementData: !!achievementData
+  });
 
   const achievements = [
     { id: 'time60', icon: Clock, label: '1 Hour', current: data.totalTimeMinutes, target: 60, bgColor: 'bg-blue-50', borderColor: 'border-blue-200', iconBg: 'bg-blue-100', iconColor: 'text-blue-500' },
@@ -492,6 +516,13 @@ const CompactAchievementsRow = ({ stats, courseData }) => {
     { id: 'lessons25', icon: BookOpen, label: '25 Lessons', current: data.completedLessons, target: 25, bgColor: 'bg-teal-50', borderColor: 'border-teal-200', iconBg: 'bg-teal-100', iconColor: 'text-teal-500' },
     { id: 'course3', icon: Trophy, label: '3 Courses', current: data.completedCourses, target: 3, bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200', iconBg: 'bg-yellow-100', iconColor: 'text-yellow-600' },
   ];
+
+  console.log('🎖️ Achievement Status:', achievements.map(a => ({
+    label: a.label,
+    current: a.current,
+    target: a.target,
+    isUnlocked: a.current >= a.target
+  })));
 
   const unlockedCount = achievements.filter(a => a.current >= a.target).length;
 
@@ -1024,8 +1055,8 @@ const WeeklyLearningTracker = () => {
           return accessDate >= dayStart && accessDate <= dayEnd;
         });
 
-        const totalSeconds = dayLessons.reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, 3600), 0);
-        const minutes = Math.min(Math.round(totalSeconds / 60), 480);
+        const totalSeconds = dayLessons.reduce((sum, p) => sum + (p.time_spent_seconds || 0), 0);
+        const minutes = Math.round(totalSeconds / 60);
 
         return { day, minutes };
       });
@@ -1089,8 +1120,8 @@ const WeeklyLearningTracker = () => {
         return accessDate >= dayStart && accessDate <= dayEnd;
       });
 
-      const totalSeconds = dayLessons.reduce((sum, p) => sum + Math.min(p.time_spent_seconds || 0, 3600), 0);
-      const minutes = Math.min(Math.round(totalSeconds / 60), 480);
+      const totalSeconds = dayLessons.reduce((sum, p) => sum + (p.time_spent_seconds || 0), 0);
+      const minutes = Math.round(totalSeconds / 60);
 
       return { day, minutes };
     });
