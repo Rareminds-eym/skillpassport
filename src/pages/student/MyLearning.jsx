@@ -159,8 +159,8 @@ const MyLearning = () => {
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { trainings = [], loading: trainingsLoading, stats = { total: 0, completed: 0, ongoing: 0 }, refetch: refetchTrainings } = useStudentTrainings(studentId, {
-    sortBy, sortDirection, status: statusFilter, approvalStatus: approvalFilter, searchTerm,
+  const { trainings = [], loading: trainingsLoading, stats = { total: 0, completed: 0, ongoing: 0 }, totalCount = 0, totalPages: hookTotalPages = 1, refetch: refetchTrainings } = useStudentTrainings(studentId, {
+    sortBy, sortDirection, status: statusFilter, approvalStatus: approvalFilter, searchTerm, page: currentPage, pageSize: itemsPerPage,
   });
 
   const loading = studentLoading || trainingsLoading;
@@ -210,11 +210,9 @@ const MyLearning = () => {
     return candidateCourses.length > 0 ? candidateCourses[0].course : null;
   }, [trainings]);
 
-  // Pagination calculations
-  const totalPages = Math.ceil(trainings.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedTrainings = trainings.slice(startIndex, endIndex);
+  // Use pagination from hook (server-side)
+  const totalPages = hookTotalPages;
+  const paginatedTrainings = trainings; // Already paginated by hook
 
   // Centralized filter handler that resets pagination
   const handleFilterChange = (filterType, value) => {
@@ -622,7 +620,7 @@ const MyLearning = () => {
                         </h2>
                         {hasActiveFilters && (
                           <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
-                            {trainings.length} results
+                            {totalCount} results
                           </span>
                         )}
                       </div>
@@ -654,7 +652,7 @@ const MyLearning = () => {
                         <Pagination
                           currentPage={currentPage}
                           totalPages={totalPages}
-                          totalItems={trainings.length}
+                          totalItems={totalCount}
                           itemsPerPage={itemsPerPage}
                           onPageChange={handlePageChange}
                         />

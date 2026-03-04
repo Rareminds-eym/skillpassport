@@ -66,6 +66,7 @@ const CoursePlayer = () => {
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
   const [positionInitialized, setPositionInitialized] = useState(false);
+  const [lessonTimeSpent, setLessonTimeSpent] = useState({}); // Store time for all lessons
   
   // Video progress tracking refs
   const videoRef = useRef(null);
@@ -396,24 +397,39 @@ const CoursePlayer = () => {
   }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex, course, saveRestorePoint]);
 
   // Save time spent on lesson (only for students)
-  const saveTimeSpent = async (additionalSeconds) => {
+  const saveTimeSpent = async (additionalSeconds, lessonId = null) => {
     if (!user?.id || !courseId || !isStudent) return;
 
-    const currentLesson = getCurrentLesson();
-    if (!currentLesson) return;
+    // Allow passing lessonId to avoid stale closure issues
+    const targetLessonId = lessonId || getCurrentLesson()?.id;
+    if (!targetLessonId) return;
 
     try {
-      // Get current accumulated time from state
-      const totalTime = accumulatedTime + additionalSeconds;
+      // Fetch current time from database to avoid race conditions
+      const { data: existing } = await supabase
+        .from('student_course_progress')
+        .select('time_spent_seconds')
+        .eq('student_id', user.id)
+        .eq('course_id', courseId)
+        .eq('lesson_id', targetLessonId)
+        .maybeSingle();
 
-      console.log('Saving time:', { additionalSeconds, accumulatedTime, totalTime });
+      const currentDbTime = existing?.time_spent_seconds || 0;
+      const totalTime = currentDbTime + additionalSeconds;
+
+      console.log('Saving time:', { 
+        lessonId: targetLessonId,
+        additionalSeconds, 
+        currentDbTime, 
+        totalTime 
+      });
 
       const { error } = await supabase
         .from('student_course_progress')
         .upsert({
           student_id: user.id,
           course_id: courseId,
-          lesson_id: currentLesson.id,
+          lesson_id: targetLessonId,
           time_spent_seconds: totalTime,
           last_accessed: new Date().toISOString()
         }, {
@@ -423,8 +439,10 @@ const CoursePlayer = () => {
       if (error) {
         console.error('Error saving time spent:', error);
       } else {
-        // Update accumulated time after successful save
-        setAccumulatedTime(totalTime);
+        // Only update state if this is the current lesson
+        if (targetLessonId === getCurrentLesson()?.id) {
+          setAccumulatedTime(totalTime);
+        }
       }
     } catch (error) {
       console.error('Error in saveTimeSpent:', error);
@@ -454,8 +472,7 @@ const CoursePlayer = () => {
         return;
       }
 
-      // Check if all lessons in the course are now completed
-      await checkAndUpdateCourseCompletion();
+      // Don't auto-complete course here - only when "Complete Course" button is clicked
 
       // Update student streak after completing lesson
       try {
@@ -634,10 +651,11 @@ const CoursePlayer = () => {
 
     // Save progress before unmounting or changing lesson
     return () => {
+      const lessonToSave = getCurrentLesson();
       const currentTime = lessonStartTime ? Math.floor((Date.now() - lessonStartTime) / 1000) : 0;
-      if (currentTime > 0) {
-        // Use the latest accumulated time by accessing it directly
-        saveTimeSpent(currentTime).catch(err => console.error('Error saving on unmount:', err));
+      if (currentTime > 0 && lessonToSave) {
+        // Pass lessonId explicitly to avoid stale closure
+        saveTimeSpent(currentTime, lessonToSave.id).catch(err => console.error('Error saving on unmount:', err));
       }
     };
   }, [currentModuleIndex, currentLessonIndex]);
@@ -861,6 +879,40 @@ const CoursePlayer = () => {
 
       setCourse(fullCourse);
 
+      // Load time spent for all lessons from database
+      if (isStudent && user?.id && transformedModules.length > 0) {
+        const { data: progressData } = await supabase
+          .from('student_course_progress')
+          .select('lesson_id, status, time_spent_seconds')
+          .eq('student_id', user.id)
+          .eq('course_id', courseId);
+
+        if (progressData && progressData.length > 0) {
+          const completedKeys = new Set();
+          const timeSpentMap = {};
+          
+          progressData.forEach(({ lesson_id, status, time_spent_seconds }) => {
+            // Store time spent for each lesson
+            timeSpentMap[lesson_id] = time_spent_seconds || 0;
+            
+            // Mark completed lessons
+            if (status === 'completed') {
+              transformedModules.forEach((module, moduleIndex) => {
+                const lessonIndex = module.lessons.findIndex(l => l.id === lesson_id);
+                if (lessonIndex !== -1) {
+                  completedKeys.add(`${moduleIndex}-${lessonIndex}`);
+                }
+              });
+            }
+          });
+          
+          setCompletedLessons(completedKeys);
+          setLessonTimeSpent(timeSpentMap);
+          console.log('📊 Loaded', completedKeys.size, 'completed lessons');
+          console.log('⏱️ Loaded time for', Object.keys(timeSpentMap).length, 'lessons');
+        }
+      }
+
       // Update total_lessons in enrollment if needed
       if (transformedModules.length > 0 && enrollment) {
         const totalLessons = transformedModules.reduce(
@@ -890,11 +942,11 @@ const CoursePlayer = () => {
     const currentModule = course.modules[currentModuleIndex];
     const currentLesson = getCurrentLesson();
 
-    // Save current time before navigating
-    if (lessonStartTime) {
+    // Save current time before navigating - pass lessonId explicitly
+    if (lessonStartTime && currentLesson) {
       const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
       if (timeSpent > 0) {
-        await saveTimeSpent(timeSpent);
+        await saveTimeSpent(timeSpent, currentLesson.id);
       }
     }
 
@@ -942,11 +994,13 @@ const CoursePlayer = () => {
   };
 
   const goToPreviousLesson = async () => {
-    // Save current time before navigating
-    if (lessonStartTime) {
+    const currentLesson = getCurrentLesson();
+    
+    // Save current time before navigating - pass lessonId explicitly
+    if (lessonStartTime && currentLesson) {
       const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
       if (timeSpent > 0) {
-        await saveTimeSpent(timeSpent);
+        await saveTimeSpent(timeSpent, currentLesson.id);
       }
     }
 
@@ -986,11 +1040,13 @@ const CoursePlayer = () => {
   };
 
   const goToLesson = async (moduleIndex, lessonIndex) => {
-    // Save current time before navigating
-    if (lessonStartTime) {
+    const currentLesson = getCurrentLesson();
+    
+    // Save current time before navigating - pass lessonId explicitly
+    if (lessonStartTime && currentLesson) {
       const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
       if (timeSpent > 0) {
-        await saveTimeSpent(timeSpent);
+        await saveTimeSpent(timeSpent, currentLesson.id);
       }
     }
 
@@ -1062,7 +1118,7 @@ const CoursePlayer = () => {
       await markLessonCompleted(currentLesson.id);
     }
 
-    // Mark current lesson as completed in local state
+    // Mark current lesson as completed in local state (for checkmark to show)
     const lessonKey = `${currentModuleIndex}-${currentLessonIndex}`;
     setCompletedLessons(prev => new Set([...prev, lessonKey]));
 
@@ -1271,10 +1327,13 @@ const CoursePlayer = () => {
                                   <p className={`text-sm ${isActive ? 'font-medium text-indigo-900' : 'text-gray-700'}`}>
                                     {lesson.title || lesson}
                                   </p>
-                                  {lesson.duration && (
+                                  {lessonTimeSpent[lesson.id] > 0 && (
                                     <div className="flex items-center gap-1 mt-1">
-                                      <Clock className="w-3 h-3 text-gray-400" />
-                                      <span className="text-xs text-gray-500">{lesson.duration}</span>
+                                      <Clock className="w-3 h-3 text-blue-500" />
+                                      <span className="text-xs text-blue-600 font-medium">
+                                        {Math.floor(lessonTimeSpent[lesson.id] / 3600) > 0 && `${Math.floor(lessonTimeSpent[lesson.id] / 3600)}h `}
+                                        {Math.floor((lessonTimeSpent[lesson.id] % 3600) / 60)}m spent
+                                      </span>
                                     </div>
                                   )}
                                 </div>

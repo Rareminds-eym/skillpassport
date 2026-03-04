@@ -15,6 +15,8 @@ import { supabase } from '../utils/api';
  * @param {string} options.status - Filter by status (all, ongoing, completed)
  * @param {string} options.approvalStatus - Filter by approval_status (all, pending, approved, rejected)
  * @param {string} options.searchTerm - Search in title and organization
+ * @param {number} options.page - Current page number (1-indexed)
+ * @param {number} options.pageSize - Number of items per page
  */
 export const useStudentTrainings = (studentId, options = {}) => {
   const {
@@ -23,12 +25,16 @@ export const useStudentTrainings = (studentId, options = {}) => {
     status = 'all',
     approvalStatus = 'all',
     searchTerm = '',
+    page = 1,
+    pageSize = 9,
   } = options;
 
   const [trainings, setTrainings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({ total: 0, completed: 0, ongoing: 0 });
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const fetchTrainings = useCallback(async () => {
     if (!studentId) {
@@ -41,6 +47,17 @@ export const useStudentTrainings = (studentId, options = {}) => {
       setLoading(true);
       setError(null);
 
+      console.log('🔍 [useStudentTrainings] Fetching with filters:', {
+        studentId,
+        searchTerm,
+        status,
+        approvalStatus,
+        sortBy,
+        sortDirection,
+        page,
+        pageSize
+      });
+
       // Fetch from trainings table
       let trainingsQuery = supabase
         .from('trainings')
@@ -49,37 +66,122 @@ export const useStudentTrainings = (studentId, options = {}) => {
 
       // Apply status filter for trainings
       if (status && status !== 'all') {
+        console.log('✅ [Trainings] Applying STATUS filter (server-side):', status);
         trainingsQuery = trainingsQuery.eq('status', status);
       }
 
       // Apply approval status filter
       if (approvalStatus && approvalStatus !== 'all') {
+        console.log('✅ [Trainings] Applying APPROVAL STATUS filter (server-side):', approvalStatus);
         trainingsQuery = trainingsQuery.eq('approval_status', approvalStatus);
       }
 
       // Apply search filter (title or organization)
       if (searchTerm && searchTerm.trim()) {
         const term = searchTerm.trim();
+        console.log('✅ [Trainings] Applying SEARCH filter (server-side):', term);
         trainingsQuery = trainingsQuery.or(`title.ilike.%${term}%,organization.ilike.%${term}%`);
       }
 
       // Apply sorting
       const validSortFields = ['title', 'organization', 'start_date', 'end_date', 'created_at', 'status'];
       const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
+      console.log('✅ [Trainings] Applying SORT (server-side):', sortField, sortDirection);
       trainingsQuery = trainingsQuery.order(sortField, { ascending: sortDirection === 'asc' });
 
-      // Execute trainings query
-      const { data: trainingsData, error: trainingsError } = await trainingsQuery;
+      // Build count query for trainings with SAME filters
+      let trainingsCountQuery = supabase
+        .from('trainings')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', studentId);
+
+      // Apply same filters to count query
+      if (status && status !== 'all') {
+        trainingsCountQuery = trainingsCountQuery.eq('status', status);
+      }
+      if (approvalStatus && approvalStatus !== 'all') {
+        trainingsCountQuery = trainingsCountQuery.eq('approval_status', approvalStatus);
+      }
+      if (searchTerm && searchTerm.trim()) {
+        const term = searchTerm.trim();
+        trainingsCountQuery = trainingsCountQuery.or(`title.ilike.%${term}%,organization.ilike.%${term}%`);
+      }
+
+      // Build enrollments query with filters
+      let enrollmentsQuery = supabase
+        .from('course_enrollments')
+        .select('*')
+        .eq('student_id', studentId);
+
+      // Apply search filter to enrollments (course_title or educator_name)
+      if (searchTerm && searchTerm.trim()) {
+        const term = searchTerm.trim();
+        console.log('✅ [Enrollments] Applying SEARCH filter (server-side):', term);
+        enrollmentsQuery = enrollmentsQuery.or(`course_title.ilike.%${term}%,educator_name.ilike.%${term}%`);
+      }
+
+      // Apply status filter to enrollments
+      if (status && status !== 'all') {
+        console.log('✅ [Enrollments] Applying STATUS filter (server-side):', status);
+        if (status === 'completed') {
+          enrollmentsQuery = enrollmentsQuery.eq('status', 'completed');
+        } else if (status === 'ongoing') {
+          enrollmentsQuery = enrollmentsQuery.neq('status', 'completed');
+        }
+      }
+
+      // Filter enrollments: show if progress > 0 OR status is completed OR recently accessed (within 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      console.log('✅ [Enrollments] Applying PROGRESS/ACCESS filter (server-side)');
+      enrollmentsQuery = enrollmentsQuery.or(
+        `progress.gt.0,status.eq.completed,last_accessed.gte.${sevenDaysAgo.toISOString()}`
+      );
+
+      // Build count query for enrollments with SAME filters
+      let enrollmentsCountQuery = supabase
+        .from('course_enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('student_id', studentId);
+
+      // Apply same filters to count query
+      if (searchTerm && searchTerm.trim()) {
+        const term = searchTerm.trim();
+        enrollmentsCountQuery = enrollmentsCountQuery.or(`course_title.ilike.%${term}%,educator_name.ilike.%${term}%`);
+      }
+      if (status && status !== 'all') {
+        if (status === 'completed') {
+          enrollmentsCountQuery = enrollmentsCountQuery.eq('status', 'completed');
+        } else if (status === 'ongoing') {
+          enrollmentsCountQuery = enrollmentsCountQuery.neq('status', 'completed');
+        }
+      }
+      enrollmentsCountQuery = enrollmentsCountQuery.or(
+        `progress.gt.0,status.eq.completed,last_accessed.gte.${sevenDaysAgo.toISOString()}`
+      );
+
+      // Execute queries in parallel (data + counts)
+      console.log('🚀 [Database] Executing parallel queries to database...');
+      const [
+        { data: trainingsData, error: trainingsError },
+        { data: enrollmentsData, error: enrollmentsError },
+        { count: trainingsCount },
+        { count: enrollmentsCount }
+      ] = await Promise.all([
+        trainingsQuery,
+        enrollmentsQuery,
+        trainingsCountQuery,
+        enrollmentsCountQuery
+      ]);
+
+      console.log('📊 [Database Results]:', {
+        trainingsCount: trainingsData?.length || 0,
+        enrollmentsCount: enrollmentsData?.length || 0
+      });
 
       if (trainingsError) {
         console.error('❌ Error fetching trainings:', trainingsError);
       }
-
-      // Fetch from course_enrollments table with optimized query
-      const { data: enrollmentsData, error: enrollmentsError } = await supabase
-        .from('course_enrollments')
-        .select('*')
-        .eq('student_id', studentId);
 
       if (enrollmentsError) {
         console.error('❌ Error fetching enrollments:', enrollmentsError);
@@ -115,89 +217,95 @@ export const useStudentTrainings = (studentId, options = {}) => {
       }
 
       // Add calculated totals to enrollments (more memory efficient)
-      const enrollmentsWithCorrectTotals = enrollmentsData?.map(enrollment => ({
+      const processedEnrollments = enrollmentsData?.map(enrollment => ({
         ...enrollment,
         calculated_total_lessons: courseLessonCounts[enrollment.course_id] || 0
       })) || [];
 
-      // Filter enrollments: show if progress > 0 OR status is completed OR recently accessed (within 7 days)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      // Transform trainings data - Optimize: Fetch all certificates and skills in parallel
+      let certificatesMap = {};
+      let skillsMap = {};
       
-      const filteredEnrollments = enrollmentsWithCorrectTotals.filter(e => 
-        e.progress > 0 || 
-        e.status === 'completed' || 
-        (e.last_accessed && new Date(e.last_accessed) > sevenDaysAgo)
-      );
+      if (trainingsData && trainingsData.length > 0) {
+        const trainingIds = trainingsData.map(t => t.id).filter(Boolean);
+        
+        if (trainingIds.length > 0) {
+          // Fetch all certificates and skills in parallel using Promise.all
+          const [
+            { data: allCertificates, error: certsError },
+            { data: allSkills, error: skillsError }
+          ] = await Promise.all([
+            supabase
+              .from('certificates')
+              .select('training_id, link')
+              .in('training_id', trainingIds)
+              .eq('enabled', true),
+            supabase
+              .from('skills')
+              .select('training_id, name')
+              .in('training_id', trainingIds)
+              .eq('type', 'technical')
+              .eq('enabled', true)
+          ]);
 
-      // Apply additional filters to enrollments
-      let processedEnrollments = filteredEnrollments;
-      
-      if (status && status !== 'all') {
-        if (status === 'completed') {
-          processedEnrollments = processedEnrollments.filter(e => e.status === 'completed');
-        } else if (status === 'ongoing') {
-          processedEnrollments = processedEnrollments.filter(e => e.status !== 'completed');
+          if (certsError) {
+            console.error('❌ Error fetching certificates:', certsError);
+          }
+          if (skillsError) {
+            console.error('❌ Error fetching skills:', skillsError);
+          }
+
+          // Build maps for quick lookup
+          if (allCertificates) {
+            certificatesMap = allCertificates.reduce((acc, cert) => {
+              if (!acc[cert.training_id]) {
+                acc[cert.training_id] = cert.link;
+              }
+              return acc;
+            }, {});
+          }
+
+          if (allSkills) {
+            skillsMap = allSkills.reduce((acc, skill) => {
+              if (!acc[skill.training_id]) {
+                acc[skill.training_id] = [];
+              }
+              acc[skill.training_id].push(skill.name);
+              return acc;
+            }, {});
+          }
         }
       }
 
-      if (searchTerm && searchTerm.trim()) {
-        const term = searchTerm.trim().toLowerCase();
-        processedEnrollments = processedEnrollments.filter(e => 
-          (e.course_title || '').toLowerCase().includes(term) ||
-          (e.educator_name || '').toLowerCase().includes(term)
-        );
-      }
-
-      // Transform trainings data
-      const formattedTrainings = [];
-      
-      for (const train of (trainingsData || [])) {
-        // Fetch certificate for this training
-        const { data: certificateRows } = await supabase
-          .from('certificates')
-          .select('link')
-          .eq('training_id', train.id)
-          .eq('enabled', true)
-          .limit(1);
-          
-        // Fetch skills for this training (only technical skills to match service behavior)
-        const { data: skillRows } = await supabase
-          .from('skills')
-          .select('name')
-          .eq('training_id', train.id)
-          .eq('type', 'technical')
-          .eq('enabled', true);
-        
-        formattedTrainings.push({
-          id: train.id,
-          title: String(train.title || ''),
-          course: String(train.title || ''),
-          organization: String(train.organization || ''),
-          provider: String(train.organization || ''),
-          start_date: train.start_date,
-          end_date: train.end_date,
-          startDate: train.start_date,
-          endDate: train.end_date,
-          duration: String(train.duration || ''),
-          description: String(train.description || ''),
-          status: String(train.status || 'ongoing'),
-          completedModules: Number(train.completed_modules) || 0,
-          totalModules: Number(train.total_modules) || 0,
-          hoursSpent: Number(train.hours_spent) || 0,
-          approval_status: String(train.approval_status || 'pending'),
-          verified: train.approval_status === 'approved' || train.approval_status === 'verified',
-          processing: train.approval_status === 'pending',
-          enabled: train.approval_status !== 'rejected',
-          source: String(train.source || 'manual'),
-          course_id: train.course_id,
-          skills: skillRows?.map(s => s.name) || [], // Fetch actual skills
-          certificateUrl: certificateRows?.[0]?.link || '', // Fetch actual certificate URL
-          createdAt: train.created_at,
-          updatedAt: train.updated_at,
-          type: 'training'
-        });
-      }
+      // Now format trainings with pre-fetched data
+      const formattedTrainings = (trainingsData || []).map(train => ({
+        id: train.id,
+        title: String(train.title || ''),
+        course: String(train.title || ''),
+        organization: String(train.organization || ''),
+        provider: String(train.organization || ''),
+        start_date: train.start_date,
+        end_date: train.end_date,
+        startDate: train.start_date,
+        endDate: train.end_date,
+        duration: String(train.duration || ''),
+        description: String(train.description || ''),
+        status: String(train.status || 'ongoing'),
+        completedModules: Number(train.completed_modules) || 0,
+        totalModules: Number(train.total_modules) || 0,
+        hoursSpent: Number(train.hours_spent) || 0,
+        approval_status: String(train.approval_status || 'pending'),
+        verified: train.approval_status === 'approved' || train.approval_status === 'verified',
+        processing: train.approval_status === 'pending',
+        enabled: train.approval_status !== 'rejected',
+        source: String(train.source || 'manual'),
+        course_id: train.course_id,
+        skills: skillsMap[train.id] || [],
+        certificateUrl: certificatesMap[train.id] || '',
+        createdAt: train.created_at,
+        updatedAt: train.updated_at,
+        type: 'training'
+      }));
 
       // Transform course enrollments to match training format
       const formattedEnrollments = processedEnrollments.map((enroll) => {
@@ -249,8 +357,26 @@ export const useStudentTrainings = (studentId, options = {}) => {
       const enrollmentCourseIds = new Set(formattedEnrollments.map(e => e.course_id).filter(Boolean));
       const filteredTrainings = formattedTrainings.filter(t => !t.course_id || !enrollmentCourseIds.has(t.course_id));
       
+      console.log('🔄 [Merge & Deduplicate]:', {
+        formattedTrainings: formattedTrainings.length,
+        formattedEnrollments: formattedEnrollments.length,
+        afterDeduplication: filteredTrainings.length,
+        duplicatesRemoved: formattedTrainings.length - filteredTrainings.length
+      });
+      
       // Combine both lists
       let allItems = [...filteredTrainings, ...formattedEnrollments];
+
+      console.log('📦 [Combined Results]:', {
+        totalItems: allItems.length,
+        trainings: filteredTrainings.length,
+        enrollments: formattedEnrollments.length
+      });
+
+      // Calculate ACTUAL total count after deduplication
+      const duplicatesCount = formattedTrainings.length - filteredTrainings.length;
+      const actualTotalCount = (trainingsCount || 0) + (enrollmentsCount || 0) - duplicatesCount;
+      const calculatedTotalPages = Math.max(1, Math.ceil(actualTotalCount / pageSize));
 
       // Sort combined list
       allItems.sort((a, b) => {
@@ -280,7 +406,28 @@ export const useStudentTrainings = (studentId, options = {}) => {
         }
       });
 
-      setTrainings(allItems);
+      // Calculate total count and pages
+      console.log('📊 [Pagination Info]:', {
+        trainingsCount: trainingsCount || 0,
+        enrollmentsCount: enrollmentsCount || 0,
+        duplicatesRemoved: duplicatesCount,
+        actualTotalCount: actualTotalCount,
+        totalPages: calculatedTotalPages,
+        currentPage: page,
+        pageSize: pageSize,
+        itemsOnThisPage: allItems.length
+      });
+
+      // Apply pagination to combined results (frontend pagination of merged data)
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      const paginatedItems = allItems.slice(startIndex, endIndex);
+
+      console.log('✅ [Final Result] Returning', paginatedItems.length, 'items to UI (page', page, 'of', calculatedTotalPages, ')');
+
+      setTrainings(paginatedItems);
+      setTotalCount(actualTotalCount);
+      setTotalPages(calculatedTotalPages);
       await fetchStats();
 
     } catch (err) {
@@ -290,7 +437,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [studentId, sortBy, sortDirection, status, approvalStatus, searchTerm]);
+  }, [studentId, sortBy, sortDirection, status, approvalStatus, searchTerm, page, pageSize]);
 
   const fetchStats = useCallback(async () => {
     if (!studentId) return;
@@ -370,6 +517,8 @@ export const useStudentTrainings = (studentId, options = {}) => {
     loading,
     error,
     stats,
+    totalCount,
+    totalPages,
     refetch,
   };
 };
