@@ -89,15 +89,12 @@ export const useStudentProjects = (studentId, enabled = true) => {
 
   const fetchProjects = async () => {
     if (!studentId || !enabled) {
-      console.log('⚠️ useStudentProjects: Skipping fetch', { studentId, enabled });
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-
-      console.log('🔄 useStudentProjects: Fetching projects for student:', studentId);
 
       const { data, error: fetchError } = await supabase
         .from('projects')
@@ -109,11 +106,6 @@ export const useStudentProjects = (studentId, enabled = true) => {
       if (fetchError) {
         throw fetchError;
       }
-
-      console.log('✅ useStudentProjects: Fetched projects:', {
-        count: data?.length || 0,
-        projects: data
-      });
 
       // Transform data to match UI expectations
       // Include versioning fields for proper display logic

@@ -1,21 +1,37 @@
 /**
- * Document Access Handler
+ * Document Access Handler (Legacy - Unauthenticated)
  * 
- * Proxies documents from R2 storage with proper headers for viewing or downloading.
- * Supports multiple URL formats and modes (inline/download).
+ * DEPRECATED: Use media-proxy for authenticated access
+ * This endpoint is kept for backward compatibility but should not be used for sensitive content.
  * 
  * GET /document-access?key={fileKey}&mode={inline|download}
  * GET /document-access?url={fileUrl}&mode={inline|download}
  */
 
 import { R2Client } from '../utils/r2-client';
+import type { AuthenticatedContext } from '../[[path]]';
+import {
+  extractUserIdFromPath,
+  validatePaymentReceiptOwnership,
+  validateUploadOwnership,
+  type OwnershipValidationResult,
+} from '../utils/ownership';
+import {
+  createAuthenticationError,
+  createAuthorizationError,
+  logErrorSafely,
+} from '../utils/error-handling';
 
 type PagesFunction = (context: { request: Request; env: any }) => Promise<Response> | Response;
 
 /**
- * Proxy document from R2 storage
+ * Proxy document from R2 storage (LEGACY - NO AUTH)
+ * WARNING: This endpoint does not validate authentication
  */
-export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
+export const handleDocumentAccess: PagesFunction = async (context) => {
+  const { request, env } = context;
+  const authenticatedContext = context as AuthenticatedContext;
+
   if (request.method !== 'GET') {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), {
       status: 405,
@@ -26,12 +42,11 @@ export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
   try {
     const url = new URL(request.url);
     let fileKey = url.searchParams.get('key');
-    const mode = url.searchParams.get('mode') || 'inline'; // 'inline' for viewing, 'download' for downloading
+    const mode = url.searchParams.get('mode') || 'inline';
 
     // Also support extracting key from full URL
     const fileUrl = url.searchParams.get('url');
     if (!fileKey && fileUrl) {
-      // Extract key from various URL formats
       fileKey = R2Client.extractKeyFromUrl(fileUrl);
     }
 
@@ -43,6 +58,27 @@ export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
           headers: { 'Content-Type': 'application/json' },
         }
       );
+    }
+
+    // Check if document is public
+    const isPublic = checkIfPublicDocument(fileKey);
+
+    if (!isPublic) {
+      // Private document - require authentication
+      if (!authenticatedContext.user) {
+        return createAuthenticationError('/document-access', 'missing_token');
+      }
+
+      // Validate ownership
+      const ownership = validateDocumentOwnership(fileKey, authenticatedContext.user.id);
+      if (!ownership.isOwner) {
+        return createAuthorizationError(
+          authenticatedContext.user.id,
+          fileKey,
+          'ownership_mismatch',
+          ownership.reason || 'You do not have permission to access this document'
+        );
+      }
     }
 
     // Initialize R2 client
@@ -82,12 +118,12 @@ export const handleDocumentAccess: PagesFunction = async ({ request, env }) => {
         'Content-Type': contentType,
         'Content-Disposition': contentDisposition,
         'Content-Length': fileContent.byteLength.toString(),
-        'Cache-Control': 'private, max-age=3600', // Cache for 1 hour
+        'Cache-Control': 'private, max-age=3600',
         'ETag': etag,
       },
     });
   } catch (error) {
-    console.error('[DocumentAccess] Error proxying document:', error);
+    logErrorSafely('DocumentAccess', error);
     return new Response(
       JSON.stringify({
         error: 'Failed to access document',

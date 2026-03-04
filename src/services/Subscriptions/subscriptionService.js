@@ -76,16 +76,16 @@ export const getActiveSubscription = async () => {
 
     if (!licenseError && licenseAssignment) {
       const orgSub = licenseAssignment.organization_subscriptions;
-      
+
       // Check if organization subscription is active and not expired
       if (orgSub && orgSub.status === 'active') {
         const orgEndDate = new Date(orgSub.end_date);
-        
+
         if (orgEndDate > new Date()) {
           // Check if license assignment has its own expiry
           const licenseExpiry = licenseAssignment.expires_at ? new Date(licenseAssignment.expires_at) : null;
           const effectiveEndDate = licenseExpiry && licenseExpiry < orgEndDate ? licenseExpiry : orgEndDate;
-          
+
           if (effectiveEndDate > new Date()) {
             // Build a subscription-like object for compatibility
             const orgSubscriptionData = {
@@ -146,7 +146,14 @@ export const getActiveSubscription = async () => {
     // For cancelled subscriptions, we still show them if end_date hasn't passed
     const { data, error } = await supabase
       .from('subscriptions')
-      .select('*')
+      .select(`
+        *,
+        subscription_plans (
+          id,
+          name,
+          plan_code
+        )
+      `)
       .eq('user_id', userId)
       .in('status', ['active', 'paused', 'cancelled'])
       .gte('subscription_end_date', now)
@@ -187,7 +194,14 @@ export const getActiveSubscription = async () => {
 
       const { data: recentSub, error: recentError } = await supabase
         .from('subscriptions')
-        .select('*')
+        .select(`
+          *,
+          subscription_plans (
+            id,
+            name,
+            plan_code
+          )
+        `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)

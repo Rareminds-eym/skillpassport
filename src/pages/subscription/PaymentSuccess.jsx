@@ -33,7 +33,7 @@ import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
-import { getPaymentReceiptUrl, uploadPaymentReceipt } from '../../services/storageApiService';
+import { getPaymentReceiptUrl, uploadPaymentReceipt, getPaymentReceiptPresignedUrl } from '../../services/storageApiService';
 import { clearPendingUserData } from '../../utils/authCleanup';
 
 // ============================================================================
@@ -389,7 +389,7 @@ const EmailStatus = ({ status }) => {
     [EMAIL_STATES.SENDING]: { icon: Loader2, color: 'text-[#2663EB]', text: 'Sending confirmation...', spin: true },
     [EMAIL_STATES.SENT]: { icon: MailCheck, color: 'text-emerald-500', text: 'Confirmation email sent' },
     [EMAIL_STATES.SKIPPED]: { icon: MailCheck, color: 'text-gray-400', text: 'Email already sent previously' },
-    [EMAIL_STATES.FAILED]: { icon: AlertCircle, color: 'text-amber-500', text: 'Could not send email' },
+    [EMAIL_STATES.FAILED]: { icon: MailCheck, color: 'text-gray-600', text: 'You will receive a receipt in your email' },
   };
 
   const { icon: Icon, color, text, spin } = config[status] || config[EMAIL_STATES.PENDING];
@@ -666,11 +666,13 @@ function PaymentSuccess() {
     }
   }, [verificationError, user, navigate]);
 
-  // Handle receipt download
+  // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
       if (receiptUrl) {
-        window.open(receiptUrl, '_blank');
+        // Use presigned URL for download (no auth required)
+        const presignedUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
+        window.open(presignedUrl, '_blank');
         toast.success('Receipt downloading!');
         return;
       }

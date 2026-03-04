@@ -21,6 +21,7 @@ const ProfileTab = ({
   handleProfileChange,
   handleInstitutionChange,
   isSaving,
+  initialActiveSubTab,
   // Tab-specific save handlers
   handleSavePersonalInfo,
   handleSaveAdditionalInfo,
@@ -83,11 +84,18 @@ const ProfileTab = ({
   onToggleTechnicalSkillEnabled,
   onToggleSoftSkillEnabled,
 }) => {
-  const [profileActiveTab, setProfileActiveTab] = useState("personal");
+  const [profileActiveTab, setProfileActiveTab] = useState(initialActiveSubTab || "personal");
   const [showLeftIndicator, setShowLeftIndicator] = useState(false);
   const [showRightIndicator, setShowRightIndicator] = useState(true);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const scrollContainerRef = useRef(null);
+
+  // Update active tab when initialActiveSubTab changes
+  useEffect(() => {
+    if (initialActiveSubTab) {
+      setProfileActiveTab(initialActiveSubTab);
+    }
+  }, [initialActiveSubTab]);
 
   // Check scroll position to show/hide indicators
   const checkScrollPosition = () => {
@@ -287,11 +295,9 @@ const ProfileTab = ({
               <div className="p-2.5 bg-blue-50 rounded-xl">
                 <User className="w-5 h-5 text-blue-600" />
               </div>
-              <span className="text-xl font-bold text-gray-900">
-                Profile Information
-              </span>
+              <span className="text-xl font-bold text-gray-900">Profile Information</span>
             </CardTitle>
-            
+
             {/* Upload Resume Button */}
             <Button
               onClick={(e) => {
@@ -308,7 +314,7 @@ const ProfileTab = ({
             </Button>
           </div>
         </CardHeader>
-        
+
         {/* Sticky Horizontal Tabs */}
         <div className="px-6 pb-4">
           <div className="relative">
@@ -325,7 +331,7 @@ const ProfileTab = ({
                 </div>
               </div>
             )}
-            
+
             {/* Right scroll indicator */}
             {showRightIndicator && (
               <div 
@@ -339,7 +345,7 @@ const ProfileTab = ({
                 </div>
               </div>
             )}
-            
+
             <div 
               ref={scrollContainerRef}
               className="flex gap-1 overflow-x-auto border-b border-gray-200 scrollbar-hide"
@@ -360,9 +366,7 @@ const ProfileTab = ({
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className="hidden sm:inline">{tab.label}</span>
-                    <span className="sm:hidden">
-                      {tab.label.split(' ')[0]}
-                    </span>
+                    <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
                   </button>
                 );
               })}
@@ -370,7 +374,7 @@ const ProfileTab = ({
           </div>
         </div>
       </div>
-      
+
       <CardContent className="pt-6 p-6 space-y-8">
         {/* Render Active Tab Content */}
         {renderActiveTab()}

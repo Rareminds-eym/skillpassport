@@ -1,78 +1,10 @@
 /**
  * Payment Configuration
- * Handles environment-based pricing and Razorpay settings
+ * Handles environment-based pricing only
  * 
- * Simple logic:
- * - Production (skillpassport.rareminds.in) → LIVE keys
- * - Everything else (dev, localhost, etc.) → TEST keys
+ * Note: Razorpay keys are now provided by the backend API based on RAZORPAY_MODE
+ * Frontend no longer needs to determine which key to use
  */
-
-// Production domain for live payments
-const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
-
-// Razorpay Keys - with fallbacks
-const RAZORPAY_LIVE_KEY = import.meta.env.VITE_RAZORPAY_LIVE_KEY_ID;
-const RAZORPAY_TEST_KEY = import.meta.env.VITE_RAZORPAY_TEST_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY_ID;
-
-// Debug: Log available keys at startup
-console.log('🔑 Razorpay Config:', {
-  hasLiveKey: !!RAZORPAY_LIVE_KEY,
-  hasTestKey: !!RAZORPAY_TEST_KEY,
-  testKeyPrefix: RAZORPAY_TEST_KEY?.substring(0, 15) + '...',
-  liveKeyPrefix: RAZORPAY_LIVE_KEY?.substring(0, 15) + '...',
-});
-
-/**
- * Check if current environment is production
- * @returns {boolean} True if production domain
- */
-export const isProductionEnvironment = () => {
-  return window.location.hostname === PRODUCTION_DOMAIN;
-};
-
-/**
- * Check if current environment should use LIVE Razorpay key
- * LIVE key is used ONLY on production domain
- * 
- * @returns {boolean} True if should use LIVE key
- */
-export const shouldUseLiveKey = () => {
-  if (isProductionEnvironment()) {
-    console.log('� Razorpay:  Using LIVE key (production domain)');
-    return true;
-  }
-  
-  console.log('🔧 Razorpay: Using TEST key (dev/staging environment)');
-  return false;
-};
-
-/**
- * Get the appropriate Razorpay Key ID based on environment and route
- * @returns {string} Razorpay Key ID
- */
-export const getRazorpayKeyId = () => {
-  const key = shouldUseLiveKey() ? RAZORPAY_LIVE_KEY : RAZORPAY_TEST_KEY;
-  
-  if (!key) {
-    console.error('❌ Razorpay Key Missing!', {
-      mode: shouldUseLiveKey() ? 'LIVE' : 'TEST',
-      VITE_RAZORPAY_LIVE_KEY_ID: !!import.meta.env.VITE_RAZORPAY_LIVE_KEY_ID,
-      VITE_RAZORPAY_TEST_KEY_ID: !!import.meta.env.VITE_RAZORPAY_TEST_KEY_ID,
-      VITE_RAZORPAY_KEY_ID: !!import.meta.env.VITE_RAZORPAY_KEY_ID,
-    });
-    throw new Error(`Razorpay ${shouldUseLiveKey() ? 'LIVE' : 'TEST'} key is not configured. Check your .env file.`);
-  }
-  
-  return key;
-};
-
-/**
- * Get Razorpay key mode for debugging
- * @returns {string} 'LIVE' or 'TEST'
- */
-export const getRazorpayKeyMode = () => {
-  return shouldUseLiveKey() ? 'LIVE' : 'TEST';
-};
 
 // Detect if we're in development/testing environment
 const isDevEnvironment = () => {
@@ -83,8 +15,7 @@ const isDevEnvironment = () => {
     'localhost',
     '127.0.0.1',
     'rareminds-skillpassport.netlify.app',
-    'dev-skillpassport.rareminds.in' // Netlify demo URL
-    // Add any other testing domains here
+    'dev-skillpassport.rareminds.in'
   ];
   
   return devHosts.some(host => hostname.includes(host));
@@ -120,10 +51,6 @@ export const PAYMENT_CONFIG = {
   
   // Current hostname
   HOSTNAME: window.location.hostname,
-  
-  // Razorpay key info
-  RAZORPAY_MODE: getRazorpayKeyMode(),
-  PRODUCTION_DOMAIN,
 };
 
 /**

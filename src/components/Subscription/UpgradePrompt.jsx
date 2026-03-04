@@ -196,23 +196,28 @@ export function UpgradePrompt({
   // Modal variant (default)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className={`bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden ${className}`}>
+      <div className={`bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border-2 border-slate-200 ${className}`}>
         {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white relative">
+        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8 text-white relative">
+          <div className="absolute inset-0 opacity-[0.03]" style={{
+            backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.5) 35px, rgba(255,255,255,.5) 36px)`
+          }}></div>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
+          
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors z-10"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-6 h-6" />
+          <div className="relative flex items-center gap-4 mb-3">
+            <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg">
+              <Sparkles className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Unlock Premium Feature</h2>
-              <p className="text-white/80 text-sm">
+              <h2 className="text-2xl font-light" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Unlock Premium Feature</h2>
+              <p className="text-white/70 text-sm font-medium">
                 {addOn?.feature_name || 'Premium Feature'}
               </p>
             </div>
@@ -220,47 +225,47 @@ export function UpgradePrompt({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-8">
           {/* Description */}
-          <p className="text-gray-600 mb-6">
+          <p className="text-slate-600 mb-6 font-light leading-relaxed">
             {addOn?.addon_description || 
               'Get access to this premium feature and enhance your experience.'}
           </p>
 
           {/* Billing Toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+          <div className="flex bg-slate-100 rounded-2xl p-1.5 mb-6 border-2 border-slate-200">
             <button
               onClick={() => setBillingPeriod('monthly')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+              className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all ${
                 billingPeriod === 'monthly'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-slate-900 shadow-lg'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Monthly
             </button>
             <button
               onClick={() => setBillingPeriod('annual')}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+              className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all ${
                 billingPeriod === 'annual'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-white text-slate-900 shadow-lg'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Annual
-              <span className="ml-1 text-xs text-green-600">Save 17%</span>
+              <span className="ml-1 text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full font-bold">Save 17%</span>
             </button>
           </div>
 
           {/* Price */}
           <div className="text-center mb-6">
             <div className="flex items-baseline justify-center gap-1">
-              <span className="text-4xl font-bold text-gray-900">
+              <span className="text-5xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
                 ₹{billingPeriod === 'monthly' 
                   ? addOn?.addon_price_monthly 
                   : addOn?.addon_price_annual}
               </span>
-              <span className="text-gray-500">
+              <span className="text-slate-500 font-medium">
                 /{billingPeriod === 'monthly' ? 'month' : 'year'}
               </span>
             </div>
@@ -268,7 +273,7 @@ export function UpgradePrompt({
 
           {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="mb-4 p-4 bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-200 rounded-2xl text-red-700 text-sm font-medium">
               {error}
             </div>
           )}
@@ -278,7 +283,7 @@ export function UpgradePrompt({
             <button
               onClick={handlePurchase}
               disabled={isPurchasing}
-              className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-4 px-4 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-semibold rounded-2xl hover:from-slate-900 hover:to-black transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-105"
             >
               {isPurchasing ? (
                 <>
@@ -295,7 +300,7 @@ export function UpgradePrompt({
 
             <button
               onClick={handleLearnMore}
-              className="w-full py-3 px-4 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-4 px-4 border-2 border-slate-200 text-slate-700 font-semibold rounded-2xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
             >
               <ExternalLink className="w-4 h-4" />
               View All Add-ons
@@ -312,17 +317,17 @@ export function UpgradePrompt({
  */
 function InlineUpgradePrompt({ addOn, onPurchase, onLearnMore, isPurchasing, className }) {
   return (
-    <div className={`bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6 ${className}`}>
+    <div className={`bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-200 rounded-3xl p-6 shadow-lg ${className}`}>
       <div className="flex items-start gap-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+        <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
           <Lock className="w-6 h-6 text-white" />
         </div>
 
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 mb-1">
+          <h3 className="font-light text-xl text-slate-900 mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
             {addOn?.feature_name || 'Premium Feature'}
           </h3>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-slate-600 mb-4 font-light leading-relaxed">
             {addOn?.addon_description || 'Unlock this feature to enhance your experience.'}
           </p>
 
@@ -330,7 +335,7 @@ function InlineUpgradePrompt({ addOn, onPurchase, onLearnMore, isPurchasing, cla
             <button
               onClick={onPurchase}
               disabled={isPurchasing}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2.5 bg-gradient-to-r from-slate-800 to-slate-900 text-white text-sm font-semibold rounded-2xl hover:from-slate-900 hover:to-black transition-all disabled:opacity-50 flex items-center gap-2 shadow-lg hover:scale-105"
             >
               {isPurchasing ? 'Processing...' : (
                 <>
@@ -342,7 +347,7 @@ function InlineUpgradePrompt({ addOn, onPurchase, onLearnMore, isPurchasing, cla
 
             <button
               onClick={onLearnMore}
-              className="text-sm text-indigo-600 hover:underline flex items-center gap-1"
+              className="text-sm text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-1 transition-colors"
             >
               Learn more
               <ArrowRight className="w-3 h-3" />
@@ -359,11 +364,11 @@ function InlineUpgradePrompt({ addOn, onPurchase, onLearnMore, isPurchasing, cla
  */
 function BannerUpgradePrompt({ addOn, onPurchase, onClose, isPurchasing, className }) {
   return (
-    <div className={`bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-4 py-3 ${className}`}>
+    <div className={`bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-4 py-3 border-b-2 border-amber-400 ${className}`}>
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Sparkles className="w-5 h-5" />
-          <span className="font-medium">
+          <Sparkles className="w-5 h-5 text-amber-400" />
+          <span className="font-semibold">
             Unlock {addOn?.feature_name || 'Premium Features'} starting at ₹{addOn?.addon_price_monthly}/mo
           </span>
         </div>
@@ -372,13 +377,13 @@ function BannerUpgradePrompt({ addOn, onPurchase, onClose, isPurchasing, classNa
           <button
             onClick={onPurchase}
             disabled={isPurchasing}
-            className="px-4 py-1.5 bg-white text-indigo-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
+            className="px-5 py-2 bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 text-sm font-bold rounded-2xl hover:from-amber-500 hover:to-amber-600 transition-all disabled:opacity-50 shadow-lg hover:scale-105"
           >
             {isPurchasing ? 'Processing...' : 'Upgrade Now'}
           </button>
 
           {onClose && (
-            <button onClick={onClose} className="text-white/80 hover:text-white">
+            <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
               <X className="w-5 h-5" />
             </button>
           )}

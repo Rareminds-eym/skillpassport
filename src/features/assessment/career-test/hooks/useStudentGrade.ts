@@ -63,15 +63,15 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
       setLoading(true);
       setError(null);
 
-
-      const startTime = performance.now();
-
       // OPTIMIZED: Single query with OR condition to check both user_id and id
       // Also fetch by email as fallback in the same query pattern
+      // Include user role from public.users table for student type detection
+      // Include custom institution names (university, college_school_name) for profile completion check
       const { data: student, error: fetchError } = await supabase
         .from('students')
         .select(`
           id, 
+          user_id,
           grade, 
           grade_start_date, 
           school_class_id, 
@@ -79,14 +79,15 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
           university_college_id, 
           program_id, 
           course_name, 
-          branch_field, 
+          branch_field,
+          university,
+          college_school_name,
           school_classes:school_class_id(grade, academic_year), 
-          program:program_id(name, code)
+          program:program_id(name, code),
+          users!inner(role)
         `)
         .or(`user_id.eq.${userId}${userEmail ? `,email.eq.${userEmail}` : ''}`)
         .maybeSingle();
-
-      const endTime = performance.now();
 
 
       if (fetchError) {
@@ -96,14 +97,38 @@ export const useStudentGrade = ({ userId, userEmail }: UseStudentGradeOptions): 
       }
 
       if (student) {
+        // Log the fetched data for debugging
+        console.log('🔍 useStudentGrade - Fetched student data:', {
+          id: student.id,
+          user_id: student.user_id,
+          school_id: student.school_id,
+          university_college_id: student.university_college_id,
+          university: student.university,
+          college_school_name: student.college_school_name,
+          users: student.users,
+          usersRole: (student.users as any)?.role
+        });
+
+        // Extract role from the joined users table
+        // The join returns an array with one object
+        const userRole = Array.isArray(student.users) && student.users.length > 0
+          ? (student.users[0] as any)?.role
+          : (student.users as any)?.role;
+
         // Store complete profile data for missing field analysis
-        setProfileData(student);
+        // Include the extracted role at the top level for easier access
+        const profileDataWithRole = {
+          ...student,
+          role: userRole
+        };
+        setProfileData(profileDataWithRole);
 
         // Save student ID
         setStudentId(student.id);
 
         // Check if student is a college student (using centralized utility)
-        const isCollege = checkIsCollegeStudent(student);
+        // Pass the role to the utility for proper detection
+        const isCollege = checkIsCollegeStudent({ ...student, role: userRole });
         setIsCollegeStudent(isCollege);
 
         // Set program name if available

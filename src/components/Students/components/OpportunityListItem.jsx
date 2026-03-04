@@ -288,6 +288,21 @@ const OpportunityListItem = ({
               {opportunity.cost_inr === 0 ? '🎉 Free' : `₹${opportunity.cost_inr.toLocaleString()}`}
             </span>
           )}
+          {opportunity.openings_count !== null && opportunity.openings_count !== undefined && (
+            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+              opportunity.openings_count === 0 
+                ? 'bg-red-100 text-red-700' 
+                : 'bg-indigo-100 text-indigo-700'
+            }`}>
+              {opportunity.openings_count === 0 ? (
+                '🔒 No openings'
+              ) : opportunity.openings_count === 1 ? (
+                '1 opening'
+              ) : (
+                `${opportunity.openings_count} openings`
+              )}
+            </span>
+          )}
         </div>
       </div>
 

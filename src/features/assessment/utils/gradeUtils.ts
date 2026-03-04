@@ -63,7 +63,7 @@ export const getGradeLevelFromNumber = (gradeNum: number): GradeLevel | null => 
 /**
  * Map UI grade level to adaptive aptitude grade level
  */
-export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_school' | 'high_school' | 'higher_secondary' => {
+export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_school' | 'high_school' | 'higher_secondary' | 'after10' | 'after12' | 'undergraduate' | 'postgraduate' => {
   switch (gradeLevel) {
     case 'middle':
       return 'middle_school';
@@ -72,10 +72,11 @@ export const getAdaptiveGradeLevel = (gradeLevel: GradeLevel | null): 'middle_sc
     case 'higher_secondary':
       return 'higher_secondary';
     case 'after10':
-      return 'high_school'; // After 10th uses high school level questions
+      return 'after10'; // After 10th
     case 'after12':
+      return 'after12'; // After 12th uses Post-12 questions
     case 'college':
-      return 'higher_secondary'; // After 12th and college use higher secondary level questions
+      return 'undergraduate'; // College defaults to undergraduate (will be determined by grade column in DB)
     default:
       return 'high_school';
   }
@@ -99,7 +100,7 @@ export const requiresCategorySelection = (gradeLevel: GradeLevel | null): boolea
  * Check if grade level has adaptive aptitude section
  */
 export const hasAdaptiveAptitude = (gradeLevel: GradeLevel | null): boolean => {
-  return gradeLevel === 'highschool' || gradeLevel === 'higher_secondary';
+  return gradeLevel === 'highschool' || gradeLevel === 'higher_secondary' || gradeLevel === 'college';
 };
 
 /**

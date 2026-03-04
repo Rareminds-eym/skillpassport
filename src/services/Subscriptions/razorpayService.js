@@ -14,7 +14,6 @@
  */
 
 import { supabase } from '../../lib/supabaseClient';
-import { getRazorpayKeyId, getRazorpayKeyMode } from '../../config/payment';
 import paymentsApiService from '../paymentsApiService';
 
 /**
@@ -62,13 +61,14 @@ export const createRazorpayOrder = async (orderData) => {
       planName: orderData.planName,
       userEmail: orderData.userEmail,
       userName: orderData.userName,
+      isUpgrade: orderData.isUpgrade,
     }, token);
 
     console.log('✅ Order created:', result.id);
     return result;
   } catch (error) {
     console.error('❌ Error creating order:', error);
-    
+
     // Check if this is a "subscription exists" error (409 Conflict)
     if (error.message?.includes('already have an active subscription')) {
       // Create a custom error with additional info
@@ -77,7 +77,7 @@ export const createRazorpayOrder = async (orderData) => {
       subscriptionExistsError.isSubscriptionExists = true;
       throw subscriptionExistsError;
     }
-    
+
     throw error;
   }
 };
@@ -115,7 +115,7 @@ export const verifyPayment = async (paymentData) => {
  * @param {Object} params.plan - Selected subscription plan
  * @param {Object} params.userDetails - User information
  */
-export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
+export const initiateRazorpayPayment = async ({ plan, userDetails, isUpgrade }) => {
   try {
     // Store plan details in localStorage for success page
     localStorage.setItem('payment_plan_details', JSON.stringify({
@@ -137,14 +137,15 @@ export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
       planName: plan.name,
       userEmail: userDetails.email,
       userName: userDetails.name,
+      isUpgrade,
     });
 
     // Get current origin for redirect URLs
     const origin = window.location.origin;
 
-    // Get Razorpay key
-    const razorpayKeyId = getRazorpayKeyId();
-    console.log(`💳 Using ${getRazorpayKeyMode()} Razorpay key`);
+    // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
+    const razorpayKeyId = orderData.key;
+    console.log(`💳 Using ${orderData.key?.startsWith('rzp_live') ? 'LIVE' : 'TEST'} Razorpay key from API`);
 
     // Razorpay checkout options
     const options = {
@@ -216,7 +217,7 @@ export const initiateRazorpayPayment = async ({ plan, userDetails }) => {
       else if (pathname.startsWith('/college-admin')) basePath = '/college-admin';
       else if (pathname.startsWith('/school-admin')) basePath = '/school-admin';
       else if (pathname.startsWith('/university-admin')) basePath = '/university-admin';
-      
+
       // Redirect to manage subscription page instead of failure page
       const manageUrl = new URL(`${basePath}/subscription/manage`, origin);
       manageUrl.searchParams.set('message', 'You already have an active subscription');

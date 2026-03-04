@@ -81,6 +81,14 @@ export const getStudentByEmail = async (email) => {
           state,
           organization_type
         ),
+        university:organizations!students_universityid_fkey (
+          id,
+          name,
+          code,
+          city,
+          state,
+          organization_type
+        ),
         university_colleges:university_college_id (
           id,
           name,
@@ -267,13 +275,6 @@ const softSkills = tableSkills
 const tableEducation = Array.isArray(data?.education) ? data.education : [];
 const formattedEducation = tableEducation.map((edu) => {
   // VERSIONING: If there's a pending edit, use verified_data for display
-  console.log('🔍 Education versioning check:', {
-    degree: edu.degree,
-    has_pending_edit: edu.has_pending_edit,
-    has_verified_data: !!edu.verified_data,
-    verified_degree: edu.verified_data?.degree,
-    current_approval: edu.approval_status
-  });
   
   const displayData = (edu.has_pending_edit && edu.verified_data) 
     ? edu.verified_data 
@@ -338,13 +339,6 @@ if (trainingIds.length > 0) {
 
 const formattedTrainings = approvedTrainings.map((train) => {
   // VERSIONING: If there's a pending edit, use verified_data for display
-  console.log('🔍 Training versioning check:', {
-    title: train.title,
-    has_pending_edit: train.has_pending_edit,
-    has_verified_data: !!train.verified_data,
-    verified_title: train.verified_data?.title,
-    current_approval: train.approval_status
-  });
   
   const displayData = (train.has_pending_edit && train.verified_data) 
     ? train.verified_data 
@@ -400,13 +394,6 @@ const formattedTrainings = approvedTrainings.map((train) => {
     const tableCertificates = Array.isArray(data?.certificates) ? data.certificates : [];
     const formattedTableCertificates = tableCertificates.map((certificate) => {
       // VERSIONING: If there's a pending edit, use verified_data for display
-      console.log('🔍 Certificate versioning check:', {
-        title: certificate.title,
-        has_pending_edit: certificate.has_pending_edit,
-        has_verified_data: !!certificate.verified_data,
-        verified_title: certificate.verified_data?.title,
-        current_approval: certificate.approval_status
-      });
       
       const displayData = (certificate.has_pending_edit && certificate.verified_data) 
         ? certificate.verified_data 
@@ -458,13 +445,6 @@ const tableExperience = Array.isArray(data?.experience) ? data.experience : [];
 const formattedExperience = tableExperience
   .map((exp) => {
     // VERSIONING: If there's a pending edit, use verified_data for display
-    console.log('🔍 Experience versioning check:', {
-      role: exp.role,
-      has_pending_edit: exp.has_pending_edit,
-      has_verified_data: !!exp.verified_data,
-      verified_role: exp.verified_data?.role,
-      current_approval: exp.approval_status
-    });
     
     const displayData = (exp.has_pending_edit && exp.verified_data) 
       ? exp.verified_data 
@@ -523,6 +503,8 @@ const formattedExperience = tableExperience
       contact_number: data.contact_number || transformedProfile.contact_number,
       university: data.university || transformedProfile.university,
       branch_field: data.branch_field || transformedProfile.branch_field,
+      college_school_name: data.college_school_name || transformedProfile.college, // FIX: Add college_school_name field
+      college_id: data.college_id, // Also include college_id for reference
       // Add other important individual columns
       github_link: data.github_link || transformedProfile.github_link,
       linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,
@@ -1030,6 +1012,8 @@ export const getStudentById = async (studentId) => {
       contact_number: data.contact_number || transformedProfile.contact_number,
       university: data.university || transformedProfile.university,
       branch_field: data.branch_field || transformedProfile.branch_field,
+      college_school_name: data.college_school_name || transformedProfile.college, // FIX: Add college_school_name field
+      college_id: data.college_id, // Also include college_id for reference
       // Add other important individual columns
       github_link: data.github_link || transformedProfile.github_link,
       linkedin_link: data.linkedin_link || transformedProfile.linkedin_link,

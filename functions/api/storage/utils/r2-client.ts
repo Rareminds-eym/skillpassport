@@ -232,13 +232,20 @@ export class R2Client {
   /**
    * Get an object from R2
    * @param key - The file key (path) in R2
+   * @param range - Optional range header for partial content (e.g., "bytes=0-1023")
    * @returns Response object containing the file content
    */
-  async getObject(key: string): Promise<Response> {
+  async getObject(key: string, range?: string): Promise<Response> {
     const downloadUrl = `${this.endpoint}/${this.bucketName}/${key}`;
+
+    const headers: Record<string, string> = {};
+    if (range) {
+      headers['Range'] = range;
+    }
 
     const downloadRequest = new Request(downloadUrl, {
       method: 'GET',
+      headers,
     });
 
     const signedRequest = await this.client.sign(downloadRequest);

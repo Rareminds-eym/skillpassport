@@ -23,6 +23,7 @@ import dotenv from 'dotenv';
 
 // Load environment variables from .env.development file ONLY
 dotenv.config({ path: '.env.development' });
+// dotenv.config({ path: '.env' });
 
 // Initialize Supabase client with DEVELOPMENT credentials only
 const supabaseUrl = process.env.VITE_SUPABASE_URL;

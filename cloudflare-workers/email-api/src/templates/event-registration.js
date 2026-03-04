@@ -13,7 +13,7 @@ export function generateUserConfirmationHtml(data) {
   return `
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>Pre-Registration Confirmed</title></head>
+<head><meta charset="utf-8"><title>Registration Confirmed</title></head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
   <table style="width:100%;border-collapse:collapse;">
     <tr>
@@ -24,14 +24,21 @@ export function generateUserConfirmationHtml(data) {
               <div style="width:80px;height:80px;background:rgba(255,255,255,0.2);border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
                 <img src="https://www.pngall.com/wp-content/uploads/13/Check-PNG-File.png" alt="Success" style="width:48px;height:48px;display:block;margin:0 auto;" />
               </div>
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Pre-Registration Confirmed</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Registration Confirmed</h1>
               <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Welcome to Skill Passport</p>
             </td>
           </tr>
           <tr>
             <td style="padding:40px;">
               <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hi ${name},</p>
-              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Your payment has been received successfully. You're now pre-registered!</p>
+              <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Your payment has been received successfully. You're now registered!</p>
+              
+              <div style="margin-bottom:24px;padding:20px;background:#f0fdf4;border-radius:12px;border:2px solid #22c55e;">
+                <p style="margin:0 0 16px;color:#15803d;font-size:15px;font-weight:600;">Next Step: Create Your Account</p>
+                <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">To access your Skill Passport dashboard and start your journey, please create your account using the signup page.</p>
+                <a href="https://skillpassport.rareminds.in/signup" style="display:inline-block;background:#22c55e;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;">Create Account Now</a>
+              </div>
+              
               <table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:12px;overflow:hidden;">
                 <tr>
                   <td style="padding:16px 20px;color:#6b7280;font-size:14px;border-bottom:1px solid #e5e7eb;">Order ID</td>
@@ -98,7 +105,7 @@ export function generateAdminNotificationHtml(data) {
   return `
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>New Pre-Registration</title></head>
+<head><meta charset="utf-8"><title>New Registration</title></head>
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f9fafb;">
   <table style="width:100%;border-collapse:collapse;">
     <tr>
@@ -106,7 +113,7 @@ export function generateAdminNotificationHtml(data) {
         <table style="width:100%;max-width:480px;background:#ffffff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
           <tr>
             <td style="padding:32px 40px;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);border-radius:12px 12px 0 0;">
-              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">New Pre-Registration</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">New Registration</h1>
               <p style="margin:4px 0 0;color:#bfdbfe;font-size:13px;">Campaign: ${campaign}</p>
             </td>
           </tr>
@@ -163,13 +170,13 @@ export function generateOTPEmailHtml(data) {
           <tr>
             <td style="padding:40px;text-align:center;background:linear-gradient(135deg,#1e40af 0%,#3b82f6 100%);">
               <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:600;">Verify Your Email</h1>
-              <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Skill Passport Pre-Registration</p>
+              <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Skill Passport Registration</p>
             </td>
           </tr>
           <tr>
             <td style="padding:40px;">
               <p style="color:#374151;font-size:15px;margin:0 0 24px;line-height:1.6;">Hi ${name || 'there'},</p>
-              <p style="color:#374151;font-size:15px;margin:0 0 32px;line-height:1.6;">Use the verification code below to complete your pre-registration:</p>
+              <p style="color:#374151;font-size:15px;margin:0 0 32px;line-height:1.6;">Use the verification code below to complete your registration:</p>
               <div style="background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);border-radius:12px;padding:24px;text-align:center;border:2px dashed #3b82f6;">
                 <p style="margin:0 0 8px;color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Verification Code</p>
                 <p style="margin:0;font-size:36px;font-weight:700;color:#1e40af;letter-spacing:8px;font-family:monospace;">${otp}</p>
@@ -191,11 +198,11 @@ export function generateOTPEmailHtml(data) {
 }
 
 export function getUserConfirmationSubject(name) {
-  return `Pre-Registration Confirmed - Skill Passport`;
+  return `Registration Confirmed - Skill Passport`;
 }
 
 export function getAdminNotificationSubject(name, amount) {
-  return `New Pre-Registration: ${name} (₹${amount.toLocaleString()})`;
+  return `New Registration: ${name} (₹${amount.toLocaleString()})`;
 }
 
 export function getOTPSubject(otp) {

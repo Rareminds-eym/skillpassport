@@ -42,7 +42,7 @@ import { ShinyButton } from '../../components/ui/shiny-button';
 import { Sparkles } from '@/components/ui/sparkles';
 
 // Fixed registration fee
-const REGISTRATION_FEE = 250;
+const REGISTRATION_FEE = 499;
 
 // Email API URL - Use the email-api worker with SMTP secrets configured
 const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
@@ -228,10 +228,10 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
               </button>
             </div>
             <div ref={scrollRef} className="p-8 overflow-y-auto max-h-[60vh] prose prose-sm max-w-none">
-              <h4 className="text-gray-900 font-bold text-lg mb-3">Pre-Registration Terms</h4>
+              <h4 className="text-gray-900 font-bold text-lg mb-3">Registration Terms</h4>
               <p className="text-gray-600 mb-4">By signing up, you agree to the following:</p>
               <ul className="text-gray-600 space-y-3 mb-6">
-                <li>The pre-registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
+                <li>The registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
                 <li>Your personal details will be used only for registration and official communication.</li>
                 <li>You will receive emails about your registration status and upcoming updates/events.</li>
                 <li>Access to the platform will be provided after successful verification.</li>
@@ -381,7 +381,7 @@ export default function SimpleEventRegistration() {
       const orderData = await paymentsApiService.createEventOrder({
         amount: REGISTRATION_FEE * 100,
         currency: 'INR',
-        planName: `Pre-Registration - ${campaign}`,
+        planName: `Registration - ${campaign}`,
         userEmail: form.email.trim(),
         userName: form.name.trim(),
         userPhone: form.phone.replace(/\D/g, ''),
@@ -397,7 +397,7 @@ export default function SimpleEventRegistration() {
         amount: orderData.amount,
         currency: orderData.currency,
         name: 'Skill Passport',
-        description: 'Pre-Registration Fee',
+        description: 'Registration Fee',
         order_id: orderData.id,
         prefill: {
           name: form.name.trim(),
@@ -413,7 +413,7 @@ export default function SimpleEventRegistration() {
               orderId: response.razorpay_order_id,
               paymentId: response.razorpay_payment_id,
               status: 'completed',
-              planName: `Pre-Registration - ${campaign}`
+              planName: `Registration - ${campaign}`
             });
 
             await sendConfirmationEmail({
@@ -458,7 +458,7 @@ export default function SimpleEventRegistration() {
             orderId: orderData.id,
             status: 'failed',
             error: response.error?.description,
-            planName: `Pre-Registration - ${campaign}`
+            planName: `Registration - ${campaign}`
           });
         } catch (err) {
           console.error('Failed to update payment failure:', err);

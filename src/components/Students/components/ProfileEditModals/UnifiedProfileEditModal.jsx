@@ -75,11 +75,6 @@ const UnifiedProfileEditModal = ({
   }, [isOpen]);
 
   useEffect(() => {
-    console.log(`🔍 UnifiedProfileEditModal [${type}] - useEffect triggered:`, {
-      modalJustOpened,
-      hasData: !!data,
-      dataLength: Array.isArray(data) ? data.length : 'not array'
-    });
     
     // Only load data when modal first opens, not when data changes while editing
     if (!modalJustOpened) return;

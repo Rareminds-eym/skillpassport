@@ -48,6 +48,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     
     // Save theme preference
     localStorage.setItem('theme', theme);
+    
+    // Cleanup: Remove dark class when component unmounts
+    return () => {
+      root.classList.remove('dark');
+    };
   }, [theme]);
 
   const toggleTheme = () => {

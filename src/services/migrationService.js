@@ -30,8 +30,8 @@ class MigrationService {
       // Get the plan by code
       const { data: plan, error: planError } = await supabase
         .from('subscription_plans')
-        .select('id, code, name')
-        .eq('code', planCode)
+        .select('id, plan_code, name')
+        .eq('plan_code', planCode)
         .single();
 
       if (planError) {
@@ -130,7 +130,7 @@ class MigrationService {
       // Get the plan details
       const { data: plan, error: planError } = await supabase
         .from('subscription_plans')
-        .select('id, code, name, price_monthly, price_annual')
+        .select('id, plan_code, name')
         .eq('id', subscription.plan_id)
         .single();
 
@@ -139,15 +139,15 @@ class MigrationService {
       }
 
       // Get migration mapping for this plan
-      const mappingResult = await this.getMigrationMapping(plan.code);
+      const mappingResult = await this.getMigrationMapping(plan.plan_code);
       if (!mappingResult.success) {
         return mappingResult;
       }
 
       const { features } = mappingResult.data;
 
-      // Calculate original and new prices
-      const originalPrice = plan.price_monthly || 0;
+      // Calculate original and new prices - use subscription's stored amount
+      const originalPrice = subscription.plan_amount || 0;
       const newPrice = features.reduce((sum, f) => sum + (f.addon_price_monthly || 0), 0);
 
       // Calculate price protection if preserving pricing
@@ -265,7 +265,7 @@ class MigrationService {
       // Get the plan details
       const { data: plan, error: planError } = await supabase
         .from('subscription_plans')
-        .select('id, code, name, price_monthly, price_annual')
+        .select('id, plan_code, name')
         .eq('id', subscription.plan_id)
         .single();
 
@@ -274,15 +274,15 @@ class MigrationService {
       }
 
       // Get migration mapping to calculate new price
-      const mappingResult = await this.getMigrationMapping(plan.code);
+      const mappingResult = await this.getMigrationMapping(plan.plan_code);
       if (!mappingResult.success) {
         return mappingResult;
       }
 
       const { features } = mappingResult.data;
 
-      // Calculate original and new prices
-      const originalPrice = plan.price_monthly || 0;
+      // Calculate original and new prices - use subscription's stored amount
+      const originalPrice = subscription.plan_amount || 0;
       const newPrice = features.reduce((sum, f) => sum + (f.addon_price_monthly || 0), 0);
 
       // User is eligible for price protection if new price is higher

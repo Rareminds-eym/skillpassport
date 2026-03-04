@@ -19,12 +19,15 @@ export function getPhaseRules(phase: ConversationPhase): string {
 - NO lengthy lists or explanations yet`,
     exploring: `
 - Moderate depth (300-500 words)
+- READ conversation history and acknowledge previous discussion if relevant
+- Start with brief reference to context: "Since we're discussing X..." or "Building on that..."
 - Introduce specific profile details
 - Provide 2-3 concrete recommendations
 - Use some structure (bullets/headers)
 - End with offer to explore deeper`,
     deep_dive: `
 - Comprehensive response (up to 800 words)
+- REFERENCE previous conversation points naturally
 - Detailed, actionable guidance
 - Use structured formatting
 - Include specific examples
@@ -40,6 +43,30 @@ export function getPhaseRules(phase: ConversationPhase): string {
 }
 
 export function buildStudentContextXML(profile: StudentProfile): string {
+  // Determine if this is a school student (Grades 1-12)
+  const isSchoolStudent = profile.grade && profile.grade.toLowerCase().includes('grade');
+  const gradeNumber = (profile as any).gradeNumber;
+  
+  // For school students in Grades 1-12, contextualize skills appropriately
+  let skillsNote = '';
+  if (isSchoolStudent && gradeNumber && gradeNumber <= 12) {
+    if (profile.technicalSkills.length > 0 || profile.softSkills.length > 0) {
+      skillsNote = `
+<skills_context>
+⚠️ IMPORTANT: This is a ${profile.grade} student (age ~${gradeNumber + 5} years).
+The skills listed below may be test/placeholder data and should NOT be emphasized in career guidance.
+For school students, focus on:
+- Academic interests and subject preferences
+- Career domain exploration (not specific technical skills)
+- Stream selection guidance (Science/Commerce/Arts)
+- Age-appropriate skill development suggestions
+
+DO NOT say things like "I see you have skills in react/Programming" to a Grade 10 student.
+Instead, ask about their favorite subjects, interests, and what they enjoy learning.
+</skills_context>`;
+    }
+  }
+  
   const techSkills = profile.technicalSkills.length > 0
     ? profile.technicalSkills.map(s => `${s.name} (L${s.level}${s.verified ? '✓' : ''})`).join(', ')
     : 'None listed';
@@ -55,11 +82,18 @@ export function buildStudentContextXML(profile: StudentProfile): string {
 <university>${profile.university || 'Not specified'}</university>
 <cgpa>${profile.cgpa || 'Not specified'}</cgpa>
 <year>${profile.yearOfPassing || 'Not specified'}</year>
+${skillsNote}
 
 <student_skills>
 <technical>${techSkills}</technical>
 <soft>${softSkills}</soft>
 </student_skills>
+
+<education>
+${profile.education.length > 0 ? profile.education.slice(0, 2).map((e: any) => 
+  `<degree level="${e.level || e.degree_level || 'Not specified'}" field="${e.department || e.field || profile.department}" university="${e.university || profile.university}" year="${e.year_of_passing || ''}" cgpa="${e.cgpa || ''}"/>`
+).join('\n') : '<degree level="Not specified"/>'}
+</education>
 
 <background>
 <education_count>${profile.education.length}</education_count>
@@ -94,11 +128,11 @@ export function buildAssessmentXML(assessment: AssessmentResults): string {
 <aptitude_score>${assessment.aptitudeOverall}%</aptitude_score>
 <employability>${assessment.employabilityReadiness}</employability>
 
-${assessment.careerFit.length > 0 ? `<recommended_careers>
+${assessment.careerFit && assessment.careerFit.length > 0 ? `<recommended_careers>
 ${assessment.careerFit.slice(0, 5).map((c: any) => `- ${c.title || c.career || c}`).join('\n')}
 </recommended_careers>` : ''}
 
-${assessment.skillGaps.length > 0 ? `<identified_gaps>
+${assessment.skillGaps && assessment.skillGaps.length > 0 ? `<identified_gaps>
 ${assessment.skillGaps.slice(0, 5).map((g: any) => `- ${g.skill || g}`).join('\n')}
 </identified_gaps>` : ''}
 </assessment>`;
@@ -148,18 +182,60 @@ ${courseContext.availableCourses.slice(0, 10).map(c =>
 
 export function buildOpportunitiesXML(intent: string, opportunities: Opportunity[]): string {
   const relevantIntents = ['find-jobs', 'skill-gap', 'career-guidance', 'application-status'];
-  if (!relevantIntents.includes(intent) || opportunities.length === 0) {
+  
+  // Always return the section for job-related intents, even if empty
+  if (!relevantIntents.includes(intent)) {
     return '';
   }
 
+  console.log(`📋 Building opportunities XML: ${opportunities.length} opportunities for intent: ${intent}`);
+
+  if (opportunities.length === 0) {
+    return `
+<opportunities count="0">
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 NO JOBS AVAILABLE - READ THIS CAREFULLY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+There are ZERO job opportunities in the database right now.
+
+YOU MUST respond with:
+"I don't see any active job opportunities in the database right now. Would you like me to help you prepare for future opportunities?"
+
+YOU MUST NOT:
+- Create fake job listings
+- Use placeholder text like "[From database]" or "(ID: X)"
+- Pretend jobs exist when they don't
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+</opportunities>`;
+  }
+
   const jobList = opportunities.slice(0, 15).map(opp => 
-    `- ID:${opp.id} | ${opp.title} | ${opp.company_name || 'Company N/A'} | ${opp.location || 'Location N/A'} | ${opp.employment_type || 'Type N/A'} | Skills: ${(opp.skills_required || []).slice(0, 5).join(', ')}`
+    `- ${opp.title} | ${opp.company_name || 'Company N/A'} | ${opp.location || 'Location N/A'} | ${opp.employment_type || 'Type N/A'} | Skills: ${(opp.skills_required || []).slice(0, 5).join(', ')}`
   ).join('\n');
 
   return `
 <opportunities count="${opportunities.length}">
-<IMPORTANT>These are the ONLY real jobs. Never mention jobs not in this list.</IMPORTANT>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 REAL JOBS BELOW - ONLY USE THESE EXACT LISTINGS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+These are the ONLY ${opportunities.length} real job opportunities available.
+NEVER create jobs not in this list.
+NEVER use placeholder text like "[From database]" or "(ID: X)".
+NEVER show internal job IDs in your responses.
+Use EXACT titles, companies, locations from below.
+
 ${jobList}
+
+EXAMPLE OF CORRECT RESPONSE:
+"Junior UX Designer: Make Apps Easier - Bangalore, India | Internship"
+
+EXAMPLE OF FORBIDDEN RESPONSE:
+"Software Developer (ID: X) - Company: [From database]"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 </opportunities>`;
 }
 

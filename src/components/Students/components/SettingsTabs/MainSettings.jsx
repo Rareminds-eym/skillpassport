@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   AlertCircle,
   Bell,
@@ -47,6 +48,7 @@ import PrivacyTab from "./PrivacyTab";
 const MainSettings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   const userEmail = user?.email;
   const recentUpdatesRef = useRef(null);
 
@@ -158,19 +160,17 @@ const MainSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
+
   // Education management state - now using real data from dedicated table
   const educationData = Array.isArray(tableEducation) && tableEducation.length > 0 
     ? tableEducation 
     : studentDataWithEducation?.education || [];
-  
-  // Debug: Log education data source
-  console.log('🔍 MainSettings - Education data source:', {
-    tableEducationLength: tableEducation?.length || 0,
-    tableEducation: tableEducation,
-    fallbackLength: (studentDataWithEducation?.education || []).length,
-    usingTableData: Array.isArray(tableEducation) && tableEducation.length > 0,
-    finalEducationData: educationData
-  });
   
   const [showEducationModal, setShowEducationModal] = useState(false);
 
@@ -285,6 +285,10 @@ const MainSettings = () => {
     currentBacklogs: 0,
     backlogsHistory: "",
     workExperience: "",
+    // New JSON fields
+    interests: "",
+    languages: "",
+    hobbies: "",
   });
 
   // Password settings state
@@ -315,9 +319,10 @@ const MainSettings = () => {
     showInTalentPool: true,
   });
 
-  // Load student data into form
+  // Load student data into form - only update when studentData actually changes with valid data
   useEffect(() => {
-    if (studentData && !savingRef.current) {
+    // Only update if we have valid student data and we're not currently saving
+    if (studentData && studentData.id && !savingRef.current && !studentLoading) {
       setProfileData({
         name: studentData.name || "",
         email: studentData.email || userEmail || "",
@@ -335,6 +340,7 @@ const MainSettings = () => {
         university: studentData.university || "",
         branch: studentData.branch || "",
         college: studentData.college || "",
+        schoolName: studentData.schoolName || "",
         registrationNumber: studentData.registrationNumber || "",
         enrollmentNumber: studentData.enrollmentNumber || "",
         currentCgpa: studentData.currentCgpa || "",
@@ -368,22 +374,83 @@ const MainSettings = () => {
         aadharNumber: studentData.aadharNumber || "",
         backlogsHistory: studentData.backlogsHistory || "",
         currentBacklogs: studentData.currentBacklogs || 0,
+        // New JSON fields
+        interests: studentData.interests || "",
+        languages: studentData.languages || "",
+        hobbies: studentData.hobbies || "",
       });
 
       // Detect custom entries (B2C students) and show custom input fields
-      if (studentData.college && !studentData.universityCollegeId) {
-        setShowCustomCollege(true);
-        setCustomCollegeName(studentData.college);
+      // Determine student type from role
+      const userRole = studentData?.userRole;
+      const isSchoolStudent = userRole === 'school_student';
+      const isCollegeStudent = userRole === 'college_student';
+      
+      // Check if it's a school path (has schoolId or schoolClassId) vs university path
+      // For role-based detection, also consider the role itself
+      const hasSchoolData = studentData.schoolId || studentData.schoolClassId || studentData.schoolName;
+      const hasUniversityData = studentData.universityId || studentData.universityCollegeId || studentData.programId || studentData.university || studentData.college;
+      const isSchoolPath = hasSchoolData || (isSchoolStudent && !hasUniversityData);
+      const isUniversityPath = hasUniversityData || (isCollegeStudent && !hasSchoolData);
+      
+      // Custom school name (for school students, stored in schoolName field)
+      if (isSchoolStudent && studentData.schoolName && (!studentData.schoolId || studentData.schoolId === '')) {
+        setShowCustomSchool(true);
+        setCustomSchoolName(studentData.schoolName);
       }
-      if (studentData.university && !studentData.universityId) {
+      
+      // Custom school class - derive from grade field, NOT from section
+      // Section field should remain independent for roll numbers
+      if (studentData.grade && (!studentData.schoolClassId || studentData.schoolClassId === '') && (studentData.schoolId || studentData.schoolName) && !isUniversityPath) {
+        // Extract numeric grade from grade field (e.g., "Grade 10" -> "10")
+        const gradeMatch = studentData.grade.match(/Grade\s*(\d+)/i);
+        if (gradeMatch) {
+          setShowCustomSchoolClass(true);
+          setCustomSchoolClassName(gradeMatch[1]); // Just the number, e.g., "10"
+        }
+      }
+      
+      // Custom university name
+      console.log('🔍 Checking university:', {
+        university: studentData.university,
+        universityId: studentData.universityId,
+        shouldShow: studentData.university && (!studentData.universityId || studentData.universityId === '')
+      });
+      if (studentData.university && (!studentData.universityId || studentData.universityId === '')) {
         setShowCustomUniversity(true);
         setCustomUniversityName(studentData.university);
+        console.log('✅ Set custom university:', studentData.university);
       }
-      if (studentData.branch && !studentData.programId) {
+      
+      // Custom college name (for college students, stored in college field)
+      // Check after university to ensure university path is established
+      console.log('🔍 Checking college:', {
+        isCollegeStudent,
+        college: studentData.college,
+        universityCollegeId: studentData.universityCollegeId,
+        shouldShow: isCollegeStudent && studentData.college && (!studentData.universityCollegeId || studentData.universityCollegeId === '')
+      });
+      if (isCollegeStudent && studentData.college && (!studentData.universityCollegeId || studentData.universityCollegeId === '')) {
+        setShowCustomCollege(true);
+        setCustomCollegeName(studentData.college);
+        console.log('✅ Set custom college:', studentData.college);
+        
+        // IMPORTANT: If there's a custom college but no university, enable custom university input
+        // This allows B2C college students to enter both custom college and custom university
+        if (!studentData.university && !studentData.universityId) {
+          console.log('🔓 Enabling custom university input for custom college');
+          setShowCustomUniversity(true);
+        }
+      }
+      
+      // Custom program name
+      if (studentData.branch && (!studentData.programId || studentData.programId === '')) {
         setShowCustomProgram(true);
         setCustomProgramName(studentData.branch);
       }
-      if (studentData.section && !studentData.programSectionId) {
+      
+      // Custom semester (only for university path)
+      if (studentData.section && (!studentData.programSectionId || studentData.programSectionId === '') && isUniversityPath) {
         setShowCustomSemester(true);
         setCustomSemesterName(studentData.section);
       }
@@ -401,7 +468,7 @@ const MainSettings = () => {
       // Education data is now handled automatically by the hook
       // No need to manually set education data
     }
-  }, [studentData, userEmail]);
+  }, [studentData, userEmail, studentLoading]);
 
   // Education data is now automatically available from studentDataWithEducation
   // No separate useEffect needed
@@ -461,6 +528,33 @@ const MainSettings = () => {
         description: `Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`,
       });
       return;
+    }
+    
+    // Sync School Class with grade field ONLY for school students
+    if (field === 'schoolClassId' && value) {
+      // Check if this is a school student (not university path)
+      const isUniversityPath = profileData.universityId || profileData.universityCollegeId || profileData.programId;
+      
+      if (!isUniversityPath) {
+        const selectedClass = schoolClasses.find(sc => sc.id === value);
+        if (selectedClass && selectedClass.grade) {
+          // Map school class grade to Academic Details grade format
+          const gradeMapping = {
+            '6': 'Grade 6',
+            '7': 'Grade 7',
+            '8': 'Grade 8',
+            '9': 'Grade 9',
+            '10': 'Grade 10',
+            '11': 'Grade 11',
+            '12': 'Grade 12',
+          };
+          const mappedGrade = gradeMapping[selectedClass.grade] || `Grade ${selectedClass.grade}`;
+          handleProfileChange('grade', mappedGrade);
+          
+          // Don't update section field - it should remain independent
+          // The schoolClassId foreign key is sufficient for tracking the class
+        }
+      }
     }
     
     // Handle cascading logic and field updates
@@ -910,50 +1004,31 @@ const MainSettings = () => {
   const handleSaveAdditionalInfo = async () => {
     setIsSaving(true);
     
-    // Merge custom institution fields into profileData before saving
-    const dataToSave = { ...profileData };
-    
-    if (showCustomProgram && customProgramName) {
-      dataToSave.branch = customProgramName;
-      dataToSave.programId = null;
-    }
-    
-    if (showCustomCollege && customCollegeName) {
-      dataToSave.college = customCollegeName;
-      dataToSave.universityCollegeId = null;
-    }
-    
-    if (showCustomUniversity && customUniversityName) {
-      dataToSave.university = customUniversityName;
-      dataToSave.universityId = null;
-    }
-    
-    if (showCustomSchool && customSchoolName) {
-      dataToSave.college = customSchoolName;
-      dataToSave.schoolId = null;
-    }
-    
-    if (showCustomSemester && customSemesterName) {
-      dataToSave.section = customSemesterName;
-      dataToSave.programSectionId = null;
-    }
-    
-    if (showCustomSchoolClass && customSchoolClassName) {
-      dataToSave.section = customSchoolClassName;
-      dataToSave.schoolClassId = null;
-    }
+    // Only send fields relevant to Additional Info tab
+    const additionalInfoFields = {
+      aadharNumber: profileData.aadharNumber,
+      gapInStudies: profileData.gapInStudies,
+      gapYears: profileData.gapYears,
+      gapReason: profileData.gapReason,
+      workExperience: profileData.workExperience,
+      currentBacklogs: profileData.currentBacklogs,
+      backlogsHistory: profileData.backlogsHistory,
+      interests: profileData.interests,
+      languages: profileData.languages,
+      hobbies: profileData.hobbies,
+    };
 
     const result = await safeSave(
-      () => updateProfile(dataToSave),
+      () => updateProfile(additionalInfoFields),
       {
         section: 'additional',
         action: 'update_additional_info',
         validationFields: ['aadhar'],
-        data: dataToSave,
+        data: additionalInfoFields,
         toast,
         onSuccess: () => {
           window.dispatchEvent(new CustomEvent('student_settings_updated', {
-            detail: { type: 'profile_updated', data: dataToSave }
+            detail: { type: 'profile_updated', data: additionalInfoFields }
           }));
           
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
@@ -976,6 +1051,50 @@ const MainSettings = () => {
     try {
       const dataToSave = { ...profileData };
       
+      // Determine student type from role
+      const userRole = studentData?.userRole;
+      const isSchoolStudent = userRole === 'school_student';
+      const isCollegeStudent = userRole === 'college_student';
+      
+      // Determine which path the student is on
+      const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName || 
+                               dataToSave.universityCollegeId || showCustomCollege || customCollegeName ||
+                               dataToSave.programId || showCustomProgram || customProgramName;
+      const isSchoolPath = dataToSave.schoolId || showCustomSchool || customSchoolName ||
+                           dataToSave.schoolClassId || showCustomSchoolClass || customSchoolClassName;
+      
+      // Clear school fields if on university path
+      if (isUniversityPath) {
+        dataToSave.schoolId = null;
+        dataToSave.schoolClassId = null;
+        // Don't clear college field as it's used for university college name
+      }
+      
+      // Clear university fields if on school path
+      if (isSchoolPath && !isUniversityPath) {
+        dataToSave.universityId = null;
+        dataToSave.universityCollegeId = null;
+        dataToSave.programId = null;
+        dataToSave.programSectionId = null;
+        dataToSave.university = null;
+        dataToSave.branch = null;
+        
+        // IMPORTANT: Clear section field for school students
+        // Section should only be used for university students (semester/section)
+        // For school students, class info comes from schoolClassId or grade
+        if (!dataToSave.programSectionId && !showCustomSemester) {
+          dataToSave.section = null;
+        }
+      }
+      
+      // Clear grade if no program/class is selected
+      if (isUniversityPath && !dataToSave.programId && !showCustomProgram && !customProgramName) {
+        dataToSave.grade = null;
+      }
+      if (isSchoolPath && !dataToSave.schoolClassId && !showCustomSchoolClass && !customSchoolClassName) {
+        dataToSave.grade = null;
+      }
+      
       // Convert empty string IDs to null
       if (dataToSave.programId === '') dataToSave.programId = null;
       if (dataToSave.universityCollegeId === '') dataToSave.universityCollegeId = null;
@@ -996,7 +1115,7 @@ const MainSettings = () => {
         dataToSave.programId = null;
       }
       
-      // Custom college name → college field
+      // Custom college name → college field (for college students)
       if (showCustomCollege && customCollegeName) {
         dataToSave.college = customCollegeName;
         dataToSave.universityCollegeId = null;
@@ -1008,22 +1127,110 @@ const MainSettings = () => {
         dataToSave.universityId = null;
       }
       
-      // Custom school name → college field (school uses same field)
+      // Custom school name → college field (for school students)
+      // The college_school_name column is shared between school and college students
       if (showCustomSchool && customSchoolName) {
         dataToSave.college = customSchoolName;
         dataToSave.schoolId = null;
       }
       
-      // Custom semester → section field
+      // Custom semester → section field AND sync grade for university students
       if (showCustomSemester && customSemesterName) {
         dataToSave.section = customSemesterName;
         dataToSave.programSectionId = null;
+        
+        // Auto-detect year from semester and update grade for university students
+        const lowerSemester = customSemesterName.toLowerCase();
+        let yearNumber = null;
+        let semesterNumber = null;
+        let validationError = null;
+        
+        // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
+        const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
+        if (yearMatch) {
+          yearNumber = parseInt(yearMatch[1]);
+          
+          // Validate year based on program type
+          if (dataToSave.grade && dataToSave.grade.includes('UG') && yearNumber > 5) {
+            validationError = 'UG programs typically have max 5 years (10 semesters)';
+          } else if (dataToSave.grade && dataToSave.grade.includes('PG') && yearNumber > 2) {
+            validationError = 'PG programs typically have max 2 years (4 semesters)';
+          }
+        } else {
+          // Check for semester numbers and convert to year
+          const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
+          if (semMatch) {
+            semesterNumber = parseInt(semMatch[1]);
+            
+            // Validate semester based on program type
+            if (dataToSave.grade && dataToSave.grade.includes('UG') && semesterNumber > 10) {
+              validationError = 'UG programs typically have max 10 semesters';
+            } else if (dataToSave.grade && dataToSave.grade.includes('PG') && semesterNumber > 4) {
+              validationError = 'PG programs typically have max 4 semesters';
+            } else if (dataToSave.grade && dataToSave.grade.includes('Diploma') && semesterNumber > 6) {
+              validationError = 'Diploma programs typically have max 6 semesters';
+            }
+            
+            yearNumber = Math.ceil(semesterNumber / 2);
+          }
+        }
+        
+        // Show validation error if semester/year is invalid
+        if (validationError) {
+          toast({
+            title: "Invalid Semester",
+            description: validationError,
+            variant: "destructive",
+          });
+          return; // Don't save if validation fails
+        }
+        
+        // Update grade based on detected year and current program type (only if no validation error)
+        if (yearNumber && dataToSave.grade) {
+          let newGrade = '';
+          if (dataToSave.grade.includes('UG')) {
+            newGrade = `UG Year ${yearNumber}`;
+          } else if (dataToSave.grade.includes('PG')) {
+            newGrade = `PG Year ${yearNumber}`;
+          }
+          
+          // Validate grade length (database limit is 10 characters)
+          if (newGrade && newGrade.length > 10) {
+            toast({
+              title: "Invalid Grade",
+              description: "Grade value is too long. Please use shorter format (max 10 characters).",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          dataToSave.grade = newGrade;
+        }
       }
       
-      // Custom school class → section field
+      // Custom school class → sync to grade ONLY (ONLY for school students)
+      // NOTE: We do NOT store custom class in section field - section should remain independent
       if (showCustomSchoolClass && customSchoolClassName) {
-        dataToSave.section = customSchoolClassName;
         dataToSave.schoolClassId = null;
+        
+        // Only sync grade for school students (not university path)
+        const isUniversityPath = dataToSave.universityId || dataToSave.universityCollegeId || dataToSave.programId;
+        if (!isUniversityPath) {
+          // Extract grade from custom class name (e.g., "Grade 10-A" or "10" -> "Grade 10")
+          const gradeMatch = customSchoolClassName.match(/(?:Grade\s*)?(\d+)/i);
+          if (gradeMatch) {
+            const numericGrade = gradeMatch[1];
+            dataToSave.grade = `Grade ${numericGrade}`;
+          }
+        }
+        // Store custom class name in a display field if needed, but NOT in section
+        // The section field should remain independent for roll number/section assignment
+      }
+      
+      // If schoolClassId is selected from dropdown, clear custom class
+      if (dataToSave.schoolClassId && dataToSave.schoolClassId !== null) {
+        // Don't override section if it's a valid schoolClassId
+        // The section field should only be used for custom entries
       }
       
       await updateProfile(dataToSave);
@@ -1412,6 +1619,7 @@ const MainSettings = () => {
           }
         `
       }} />
+      
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 lg:mb-10">
@@ -1420,19 +1628,15 @@ const MainSettings = () => {
               <SettingsIcon className="w-6 h-6 lg:w-7 lg:h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
-                Settings
-              </h1>
-              <p className="text-sm lg:text-base text-gray-600 mt-0.5">
-                Manage your account preferences
-              </p>
+              <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Settings</h1>
+              <p className="text-sm lg:text-base text-gray-600 mt-0.5">Manage your account preferences</p>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
           {/* LEFT SIDEBAR - Navigation */}
-          <div className="lg:col-span-1 space-y-6 order-2 lg:order-1">
+          <div className="lg:col-span-1 space-y-6 order-1 lg:order-1">
             <div className="sticky top-8">
               <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-sm shadow-slate-200/50">
                 <CardHeader className="pb-4 border-b border-gray-100">
@@ -1441,74 +1645,56 @@ const MainSettings = () => {
                     Account Settings
                   </CardTitle>
                 </CardHeader>
-
                 <CardContent className="pt-4 px-3">
                   <nav className="space-y-3">
                     {tabs.map((tab) => {
                       const Icon = tab.icon;
                       const isActive = activeTab === tab.id;
-
                       return (
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id)}
-                          className={`w-full rounded-xl transition-all duration-300 group relative
-                            ${
-                              isActive
-                                ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
-                                : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
-                            }
-                          `}
+                          className={`w-full rounded-xl transition-all duration-300 group relative ${
+                            isActive
+                              ? "bg-gradient-to-r from-blue-50/70 to-indigo-50/60 border-l-4 border-blue-500"
+                              : "hover:bg-gray-50/70 border-l-4 border-transparent hover:border-gray-200 hover:shadow-[0_1px_6px_rgba(0,0,0,0.03)]"
+                          }`}
                         >
                           <div className="flex items-center justify-between px-3 py-3">
                             <div className="flex items-center gap-3">
                               <div
-                                className={`
-                                  p-2 rounded-lg transition-all duration-300
-                                  ${
-                                    isActive
-                                      ? "bg-blue-500"
-                                      : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
-                                  }
-                                `}
+                                className={`p-2 rounded-lg transition-all duration-300 ${
+                                  isActive
+                                    ? "bg-blue-500"
+                                    : "bg-gray-100 group-hover:bg-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.05)]"
+                                }`}
                               >
                                 <Icon
-                                  className={`
-                                    w-4 h-4 transition-colors
-                                    ${
-                                      isActive
-                                        ? "text-white"
-                                        : "text-gray-600 group-hover:text-gray-800"
-                                    }
-                                  `}
+                                  className={`w-4 h-4 transition-colors ${
+                                    isActive
+                                      ? "text-white"
+                                      : "text-gray-600 group-hover:text-gray-800"
+                                  }`}
                                 />
                               </div>
-
                               <div className="text-left">
                                 <p
-                                  className={`
-                                    font-medium text-[0.9rem] transition-colors leading-tight
-                                    ${
-                                      isActive
-                                        ? "text-gray-900"
-                                        : "text-gray-700 group-hover:text-gray-900"
-                                    }
-                                  `}
+                                  className={`font-medium text-[0.9rem] transition-colors leading-tight ${
+                                    isActive
+                                      ? "text-gray-900"
+                                      : "text-gray-700 group-hover:text-gray-900"
+                                  }`}
                                 >
                                   {tab.label}
                                 </p>
                               </div>
                             </div>
-
                             <ChevronRight
-                              className={`
-                                w-4 h-4 transition-all duration-300
-                                ${
-                                  isActive
-                                    ? "text-blue-500 translate-x-1"
-                                    : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
-                                }
-                              `}
+                              className={`w-4 h-4 transition-all duration-300 ${
+                                isActive
+                                  ? "text-blue-500 translate-x-1"
+                                  : "text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1"
+                              }`}
                             />
                           </div>
                         </button>
@@ -1521,14 +1707,15 @@ const MainSettings = () => {
           </div>
 
           {/* RIGHT CONTENT AREA */}
-          <div className="lg:col-span-3 order-1 lg:order-2">
-            {/* Profile Settings */}
-            {activeTab === "profile" && (
+          <div className="lg:col-span-3 order-2 lg:order-2">
+              {/* Profile Settings */}
+              {activeTab === "profile" && (
               <ProfileTab
                 profileData={profileData}
                 handleProfileChange={handleProfileChange}
                 handleInstitutionChange={handleInstitutionChange}
                 isSaving={isSaving}
+                initialActiveSubTab={location.state?.activeSubTab}
                 // Tab-specific save handlers
                 handleSavePersonalInfo={handleSavePersonalInfo}
                 handleSaveAdditionalInfo={handleSaveAdditionalInfo}

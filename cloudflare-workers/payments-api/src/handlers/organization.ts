@@ -244,17 +244,22 @@ export async function handleCalculateOrgPricing(
   userId: string
 ): Promise<Response> {
   try {
-    const body = await request.json() as { planId: string; seatCount: number; billingCycle?: 'monthly' | 'annual' };
-    const { planId, seatCount, billingCycle = 'monthly' } = body;
+    const body = await request.json() as { 
+      planId: string; 
+      seatCount: number; 
+      billingCycle?: 'monthly' | 'annual';
+      organizationType?: 'school' | 'college' | 'university';
+    };
+    const { planId, seatCount, billingCycle = 'monthly', organizationType = 'school' } = body;
 
     if (!planId || !seatCount || seatCount < 1) {
       return new Response(JSON.stringify({ error: 'Invalid planId or seatCount' }), { status: 400 });
     }
 
-    // Get plan details
+    // Get plan pricing from pricing_matrix for the organization type
     const { data: plan, error: planError } = await supabase
       .from('subscription_plans')
-      .select('price_monthly, price_yearly')
+      .select('pricing_matrix')
       .eq('id', planId)
       .single();
 
@@ -262,8 +267,15 @@ export async function handleCalculateOrgPricing(
       return new Response(JSON.stringify({ error: 'Plan not found' }), { status: 404 });
     }
 
-    // Use price_monthly or price_yearly based on billing cycle
-    const basePrice = billingCycle === 'annual' ? plan.price_yearly : plan.price_monthly;
+    // Extract pricing for the specific organization type
+    const basePrice = billingCycle === 'annual' 
+      ? plan.pricing_matrix[organizationType]?.yearly 
+      : plan.pricing_matrix[organizationType]?.monthly;
+    
+    if (!basePrice) {
+      return new Response(JSON.stringify({ error: 'Pricing not available for this organization type' }), { status: 400 });
+    }
+
     const pricing = calculateBulkPricing(basePrice, seatCount);
 
     return new Response(JSON.stringify({ success: true, pricing }), { status: 200 });
@@ -325,19 +337,36 @@ export async function handlePurchaseOrgSubscription(
       return validationErrorResponse(validationErrors);
     }
 
-    // Get plan details
-    const { data: plan, error: planError } = await supabase
-      .from('subscription_plans')
-      .select('*')
-      .eq('id', planId)
-      .single();
+    // Get plan details using helper function for entity-specific pricing
+    const { data: planJson, error: planError } = await supabase
+      .rpc('get_plan_for_entity', {
+        p_plan_code: planId, // Note: This expects plan_code, but we're receiving UUID
+        p_entity_type: organizationType
+      });
 
-    if (planError || !plan) {
-      return new Response(JSON.stringify({ error: 'Plan not found' }), { status: 404 });
+    // Fallback: if planId is UUID, query directly and extract pricing from pricing_matrix
+    let basePrice;
+    if (planError || !planJson) {
+      const { data: plan, error: directError } = await supabase
+        .from('subscription_plans')
+        .select('pricing_matrix')
+        .eq('id', planId)
+        .single();
+      
+      if (directError || !plan) {
+        return new Response(JSON.stringify({ error: 'Plan not found' }), { status: 404 });
+      }
+      
+      basePrice = billingCycle === 'annual' 
+        ? plan.pricing_matrix[organizationType]?.yearly 
+        : plan.pricing_matrix[organizationType]?.monthly;
+    } else {
+      basePrice = billingCycle === 'annual' ? planJson.price_yearly : planJson.price_monthly;
     }
 
-    // Calculate pricing - use price_monthly or price_yearly based on billing cycle
-    const basePrice = billingCycle === 'annual' ? plan.price_yearly : plan.price_monthly;
+    if (!basePrice) {
+      return new Response(JSON.stringify({ error: 'Pricing not available for this organization type' }), { status: 400 });
+    }
     const pricing = calculateBulkPricing(basePrice, seatCount);
 
     // Calculate subscription dates
@@ -1142,7 +1171,7 @@ export async function handleGetCostProjection(
       .from('organization_subscriptions')
       .select(`
         *,
-        subscription_plans (price_monthly, price_yearly)
+        subscription_plans (name, plan_code)
       `)
       .eq('organization_id', organizationId)
       .eq('organization_type', organizationType)
@@ -1207,7 +1236,7 @@ export async function handleCalculateSeatAdditionCost(
       .from('organization_subscriptions')
       .select(`
         *,
-        subscription_plans (price_monthly, price_yearly)
+        subscription_plans (name, plan_code)
       `)
       .eq('id', subscriptionId)
       .single();
@@ -1217,7 +1246,7 @@ export async function handleCalculateSeatAdditionCost(
     }
 
     const newTotalSeats = subscription.total_seats + additionalSeats;
-    const pricePerSeat = subscription.subscription_plans?.price_monthly || subscription.price_per_seat;
+    const pricePerSeat = subscription.price_per_seat;
 
     // Calculate new volume discount
     const newDiscountPercentage = calculateVolumeDiscount(newTotalSeats);

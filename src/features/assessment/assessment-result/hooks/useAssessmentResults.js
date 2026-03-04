@@ -1054,6 +1054,14 @@ export const useAssessmentResults = () => {
                     // ✅ NEW: Check if data is in individual columns instead of gemini_results
                     let geminiResults = directResult.gemini_results;
 
+                    console.log('🔍 gemini_results check:', {
+                        hasGeminiResults: !!geminiResults,
+                        geminiResultsType: typeof geminiResults,
+                        geminiResultsKeys: geminiResults ? Object.keys(geminiResults) : null,
+                        hasRecommendedStream: !!geminiResults?.recommendedStream,
+                        geminiResultsLength: geminiResults ? Object.keys(geminiResults).length : 0
+                    });
+
                     // CRITICAL FIX: If gemini_results AND individual columns are ALL NULL, trigger regeneration
                     // Don't reconstruct empty objects - they pass validation but have no data
                     const hasIndividualColumns = directResult.riasec_scores || directResult.aptitude_scores || directResult.career_fit;
@@ -1108,6 +1116,8 @@ export const useAssessmentResults = () => {
                             profileSnapshot: directResult.profile_snapshot || '',
                             finalNote: directResult.final_note || '',
                             overallSummary: directResult.overall_summary || '',
+                            // Add recommended stream for after10 students
+                            recommendedStream: directResult.recommended_stream || undefined,
                             // Add adaptive aptitude results if they exist
                             adaptiveAptitudeResults: adaptiveAptitudeResults || undefined
                         };
@@ -1151,10 +1161,14 @@ export const useAssessmentResults = () => {
                             
                             const validatedResults = await applyValidation(geminiResults, {});
 
+                            // ✅ CRITICAL: Preserve gemini_results for normalizer
+                            validatedResults.gemini_results = geminiResults;
+
                             console.log('🔍 DEBUG - Before normalization (direct lookup):', {
                                 hasRiasec: !!validatedResults.riasec,
                                 riasecScores: validatedResults.riasec?.scores,
                                 hasGeminiResults: !!validatedResults.gemini_results,
+                                hasRecommendedStream: !!validatedResults.gemini_results?.recommendedStream,
                                 originalScores: validatedResults.gemini_results?.riasec?._originalScores
                             });
 
@@ -1938,15 +1952,18 @@ export const useAssessmentResults = () => {
 
             // 🔧 CRITICAL FIX: Fetch adaptive aptitude results if session ID exists
             // This ensures high school students get their adaptive test data included in AI analysis
-            if (answers.adaptive_aptitude_session_id) {
+            // Check both answers object and attempt object for session ID
+            const sessionId = answers.adaptive_aptitude_session_id || attempt.adaptive_aptitude_session_id;
+            
+            if (sessionId) {
                 console.log('🔍 Fetching adaptive aptitude results for AI analysis...');
-                console.log('   Session ID:', answers.adaptive_aptitude_session_id);
+                console.log('   Session ID:', sessionId);
 
                 try {
                     const { data: adaptiveData, error: adaptiveError } = await supabase
                         .from('adaptive_aptitude_results')
                         .select('*')
-                        .eq('session_id', answers.adaptive_aptitude_session_id)
+                        .eq('session_id', sessionId)
                         .maybeSingle();
 
                     if (adaptiveData && !adaptiveError) {
@@ -1960,11 +1977,13 @@ export const useAssessmentResults = () => {
                     } else if (adaptiveError) {
                         console.warn('⚠️ Error fetching adaptive results:', adaptiveError);
                     } else {
-                        console.warn('⚠️ No adaptive results found for session:', answers.adaptive_aptitude_session_id);
+                        console.warn('⚠️ No adaptive results found for session:', sessionId);
                     }
                 } catch (err) {
                     console.error('❌ Failed to fetch adaptive results:', err);
                 }
+            } else {
+                console.log('ℹ️ No adaptive aptitude session ID found - skipping adaptive results fetch');
             }
 
             // Force regenerate with AI - pass gradeLevel and student context
@@ -2056,6 +2075,8 @@ export const useAssessmentResults = () => {
                         if (validatedResults.aptitude) {
                             updateData.aptitude_scores = validatedResults.aptitude.scores;
                             updateData.aptitude_overall = validatedResults.aptitude.overallScore;
+                            console.log('💾 Saving aptitude_scores to database:', JSON.stringify(validatedResults.aptitude.scores, null, 2));
+                            console.log('💾 Saving aptitude_overall to database:', validatedResults.aptitude.overallScore);
                         }
                         if (validatedResults.bigFive) {
                             updateData.bigfive_scores = validatedResults.bigFive;

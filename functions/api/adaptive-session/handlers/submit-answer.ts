@@ -180,24 +180,27 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
     // Create response record with full question content
     const sequenceNumber = sessionData.questions_answered + 1;
 
+    const responseData = {
+      session_id: sessionId,
+      question_id: questionId,
+      selected_answer: selectedAnswer,
+      is_correct: isCorrect,
+      response_time_ms: responseTimeMs,
+      difficulty_at_time: currentDifficulty,
+      subtag: currentQuestion.subtag,
+      phase: currentPhase,
+      sequence_number: sequenceNumber,
+      // Store full question content for audit trail
+      question_text: currentQuestion.text,
+      question_options: currentQuestion.options,
+      correct_answer: currentQuestion.correctAnswer,
+      explanation: currentQuestion.explanation || null,
+    };
+
+    // Insert into adaptive_aptitude_responses table
     const { error: responseError } = await supabase
       .from('adaptive_aptitude_responses')
-      .insert({
-        session_id: sessionId,
-        question_id: questionId,
-        selected_answer: selectedAnswer,
-        is_correct: isCorrect,
-        response_time_ms: responseTimeMs,
-        difficulty_at_time: currentDifficulty,
-        subtag: currentQuestion.subtag,
-        phase: currentPhase,
-        sequence_number: sequenceNumber,
-        // Store full question content for audit trail
-        question_text: currentQuestion.text,
-        question_options: currentQuestion.options,
-        correct_answer: currentQuestion.correctAnswer,
-        explanation: currentQuestion.explanation || null,
-      })
+      .insert(responseData)
       .select()
       .single();
 
@@ -205,6 +208,20 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       console.error('❌ [SubmitAnswerHandler] Failed to record response:', responseError);
       throw new Error(`Failed to record response: ${responseError.message}`);
     }
+
+    // Also update all_responses JSONB column in session
+    const existingResponses = (sessionData.all_responses as any[]) || [];
+    const updatedResponses = [...existingResponses, {
+      question_id: questionId,
+      selected_answer: selectedAnswer,
+      is_correct: isCorrect,
+      response_time_ms: responseTimeMs,
+      difficulty_at_time: currentDifficulty,
+      subtag: currentQuestion.subtag,
+      phase: currentPhase,
+      sequence_number: sequenceNumber,
+      timestamp: new Date().toISOString(),
+    }];
 
     // Update session
     const newQuestionsAnswered = sessionData.questions_answered + 1;
@@ -312,6 +329,7 @@ export const submitAnswerHandler: PagesFunction = async (context) => {
       current_difficulty: newDifficulty,
       difficulty_path: newDifficultyPath,
       provisional_band: provisionalBand,
+      all_responses: updatedResponses,
       updated_at: new Date().toISOString(),
     };
 

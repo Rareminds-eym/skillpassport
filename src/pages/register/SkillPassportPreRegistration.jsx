@@ -18,7 +18,7 @@ export default function SkillPassportPreRegistration() {
       {/* <HeroSection /> */}
       <WhatIsSection />
       <WhoIsThisForSection />
-      <EarlyAccessSection />
+      {/* <EarlyAccessSection /> */}
       <TimelineSection />
       <WhatYouGetSection />
       <AboutRaremindsSection />

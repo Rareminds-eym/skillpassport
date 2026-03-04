@@ -121,19 +121,21 @@ export class OrganizationSubscriptionService {
     request: OrgSubscriptionPurchaseRequest
   ): Promise<OrganizationSubscription> {
     try {
-      // 1. Get plan details
-      const { data: plan, error: planError } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('id', request.planId)
-        .single();
+      // 1. Get plan details - need to specify entity type to get correct pricing
+      const entityType = request.organizationType; // 'school', 'college', or 'university'
+      
+      const { data: planJson, error: planError } = await supabase
+        .rpc('get_plan_for_entity', {
+          p_plan_code: request.planId,
+          p_entity_type: entityType
+        });
 
-      if (planError || !plan) {
+      if (planError || !planJson) {
         throw new Error('Subscription plan not found');
       }
 
-      // 2. Calculate pricing - use price_monthly or price_yearly based on billing cycle
-      const basePrice = request.billingCycle === 'annual' ? plan.price_yearly : plan.price_monthly;
+      // 2. Calculate pricing - use price_monthly or price_yearly from helper function
+      const basePrice = request.billingCycle === 'annual' ? planJson.price_yearly : planJson.price_monthly;
       const pricing = calculateBulkPricing(basePrice, request.seatCount);
 
       // 3. Calculate subscription dates
@@ -151,13 +153,13 @@ export class OrganizationSubscriptionService {
         throw new Error('User not authenticated');
       }
 
-      // 5. Create organization subscription record
+      // 5. Create organization subscription record - use plan ID from planJson
       const { data: subscription, error: subError } = await supabase
         .from('organization_subscriptions')
         .insert({
           organization_id: request.organizationId,
           organization_type: request.organizationType,
-          subscription_plan_id: request.planId,
+          subscription_plan_id: planJson.id, // Use the actual UUID from the plan
           purchased_by: user.id,
           total_seats: request.seatCount,
           assigned_seats: 0,
@@ -374,29 +376,30 @@ export class OrganizationSubscriptionService {
     newPlanId: string
   ): Promise<OrganizationSubscription> {
     try {
-      const { data: newPlan, error: planError } = await supabase
-        .from('subscription_plans')
-        .select('*')
-        .eq('id', newPlanId)
-        .single();
-
-      if (planError || !newPlan) {
-        throw new Error('New subscription plan not found');
-      }
-
       const current = await this.getSubscriptionById(subscriptionId);
       if (!current) {
         throw new Error('Current subscription not found');
       }
 
+      // Get new plan details for the organization type
+      const { data: newPlanJson, error: planError } = await supabase
+        .rpc('get_plan_for_entity', {
+          p_plan_code: newPlanId,
+          p_entity_type: current.organizationType
+        });
+
+      if (planError || !newPlanJson) {
+        throw new Error('New subscription plan not found');
+      }
+
       // Recalculate pricing with new plan - use price_monthly as default
-      const basePrice = newPlan.price_monthly || newPlan.price_yearly;
+      const basePrice = newPlanJson.price_monthly || newPlanJson.price_yearly;
       const pricing = calculateBulkPricing(basePrice, current.totalSeats);
 
       const { data, error } = await supabase
         .from('organization_subscriptions')
         .update({
-          subscription_plan_id: newPlanId,
+          subscription_plan_id: newPlanJson.id, // Use actual UUID
           price_per_seat: pricing.pricePerSeat,
           total_amount: pricing.subtotal,
           discount_percentage: pricing.discountPercentage,

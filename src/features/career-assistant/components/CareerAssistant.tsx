@@ -1,3 +1,13 @@
+/**
+ * Career Assistant Component
+ * 
+ * Main chat interface for Career AI assistant.
+ * Refactored with optimized React patterns for better performance.
+ * 
+ * @author Senior React Developer
+ * @pattern Component Composition & Performance Optimization
+ */
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'react-router-dom';
@@ -17,25 +27,39 @@ import { useCareerConversations, ConversationMessage } from '../hooks/useCareerC
 import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
-import { EnhancedAIResponse } from '../types/interactive';
 import CareerAIToolsGrid from '../../../components/shared/CareerAIToolsGrid';
 import DemoModal from '../../../components/common/DemoModal';
 
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-  interactive?: EnhancedAIResponse['interactive'];
-  intent?: string;
-  intentConfidence?: string;
-  phase?: string;
-}
+// Import optimized hooks
+import { useOptimizedMessages, Message } from '../hooks/useOptimizedMessages';
+import { useSmartScroll } from '../hooks/useSmartScroll';
+import { useConversationSwitcher } from '../hooks/useConversationSwitcher';
+import { VirtualMessage } from '../hooks/useVirtualMessage';
 
-const CareerAssistant: React.FC = () => {
+// Import Context Provider
+import { CareerAssistantProvider, useCareerAssistantContext } from '../context/CareerAssistantContext';
+
+// Import constants
+import {
+  INITIAL_VISIBLE_MESSAGES,
+  MESSAGE_PRELOAD_MARGIN,
+  USER_MESSAGE_HEIGHT,
+  ASSISTANT_MESSAGE_HEIGHT,
+  MIN_MESSAGE_INTERVAL_MS,
+  MAX_INPUT_LENGTH,
+} from '../constants';
+
+/**
+ * Career Assistant Container
+ * Manages all state and provides it to child components via Context
+ */
+const CareerAssistantContainer: React.FC = () => {
   const { user } = useAuth();
   const location = useLocation();
   
+  // ==================== HOOKS ====================
+  
+  // Conversation management
   const {
     conversations,
     currentConversation,
@@ -46,9 +70,11 @@ const CareerAssistant: React.FC = () => {
     deleteConversation,
     currentConversationId,
     setCurrentConversationId,
+    hasMore,
+    loadMore,
   } = useCareerConversations();
 
-  // AI Feedback hook
+  // AI Feedback
   const {
     submitFeedback,
     loadFeedback,
@@ -56,16 +82,35 @@ const CareerAssistant: React.FC = () => {
     isLoading: isFeedbackLoading
   } = useAIFeedback();
 
-  const [messages, setMessages] = useState<Message[]>([]);
+  // Optimized message management
+  const {
+    messages,
+    setMessages,
+    clearMessages,
+    replaceMessages,
+  } = useOptimizedMessages();
+
+  // Smart scroll behavior
+  const {
+    messagesEndRef,
+    messagesContainerRef,
+    userScrolledUp,
+    scrollToBottom,
+    handleScroll,
+    setUserScrolledUp,
+  } = useSmartScroll([messages]);
+
+  // ==================== STATE ====================
+  
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [autoSendQuery, setAutoSendQuery] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
-  // Start with sidebar expanded on desktop, collapsed on mobile
+  
+  // Sidebar state - collapsed on mobile by default
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth < 768;
@@ -73,13 +118,30 @@ const CareerAssistant: React.FC = () => {
     return false;
   });
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // ==================== REFS ====================
+  
   const inputRef = useRef<HTMLInputElement>(null);
   const typingTimerRef = useRef<number | null>(null);
   const userInteractedRef = useRef(false);
-  const lastScrollTopRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastSendTimeRef = useRef<number>(0); // Rate limiting
 
+  // Conversation switching with race condition prevention
+  const {
+    handleSelectConversation: selectConversation,
+    handleNewConversation: newConversation,
+  } = useConversationSwitcher({
+    loadConversation,
+    onMessagesCleared: clearMessages,
+    onWelcomeStateChange: setShowWelcome,
+  });
+
+  // ==================== EFFECTS ====================
+  
+  /**
+   * Load conversation messages when currentConversation changes
+   * Uses replaceMessages from optimized hook
+   */
   useEffect(() => {
     if (currentConversation?.messages) {
       const loadedMessages: Message[] = currentConversation.messages.map((msg: ConversationMessage) => ({
@@ -88,62 +150,24 @@ const CareerAssistant: React.FC = () => {
         content: msg.content,
         timestamp: msg.timestamp,
       }));
-      setMessages(loadedMessages);
+      replaceMessages(loadedMessages);
       setShowWelcome(false);
+    } else if (currentConversation === null && currentConversationId === null) {
+      clearMessages();
+      setShowWelcome(true);
     }
-  }, [currentConversation]);
+  }, [currentConversation, currentConversationId, replaceMessages, clearMessages]);
 
-  const scrollToBottom = useCallback((force = false) => {
-    if (force || !userScrolledUp) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [userScrolledUp]);
-
-  const isUserAtBottom = () => {
-    const container = messagesContainerRef.current;
-    if (!container) return true;
-    const threshold = 100;
-    const position = container.scrollHeight - container.scrollTop - container.clientHeight;
-    return position < threshold;
-  };
-
-  const handleScroll = () => {
-    const container = messagesContainerRef.current;
-    if (!container) return;
-    
-    const currentScrollTop = container.scrollTop;
-    const scrollingUp = currentScrollTop < lastScrollTopRef.current;
-    lastScrollTopRef.current = currentScrollTop;
-    
-    const isScrollable = container.scrollHeight > container.clientHeight;
-    
-    if (isTyping) {
-      userInteractedRef.current = true;
-    }
-    
-    if (isScrollable && isUserAtBottom()) {
-      setUserScrolledUp(false);
-    } else if (isScrollable && scrollingUp && !isUserAtBottom()) {
-      setUserScrolledUp(true);
-    }
-  };
-
-  useEffect(() => {
-    if (!userScrolledUp) {
-      scrollToBottom();
-    }
-    const timer = setTimeout(() => {
-      if (isUserAtBottom()) {
-        setUserScrolledUp(false);
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [messages, scrollToBottom, userScrolledUp]);
-
+  /**
+   * Auto-focus input on mount
+   */
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
+  /**
+   * Handle query from navigation state (e.g., from other pages)
+   */
   useEffect(() => {
     const state = location.state as { query?: string } | null;
     if (state?.query && messages.length === 0) {
@@ -153,57 +177,80 @@ const CareerAssistant: React.FC = () => {
     }
   }, [location.state, messages.length]);
 
-  useEffect(() => {
-    if (autoSendQuery && input && !loading) {
-      setAutoSendQuery(false);
-      const timer = setTimeout(() => {
-        handleSend();
-      }, 300);
-      return () => clearTimeout(timer);
+  // ==================== HANDLERS ====================
+  
+  /**
+   * Stop AI response generation
+   * Aborts the current request and cleans up state
+   * FIX: Remove empty assistant messages when stopping
+   */
+  const stopTyping = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
-  }, [autoSendQuery, input, loading]);
-
-  useEffect(() => {
-    return () => {
-      if (typingTimerRef.current) {
-        clearTimeout(typingTimerRef.current);
-      }
-    };
-  }, []);
-
-  const stopTyping = () => {
     if (typingTimerRef.current) {
       clearTimeout(typingTimerRef.current);
       typingTimerRef.current = null;
     }
+    
+    // Remove any empty assistant messages (loading indicators)
+    setMessages(prev => prev.filter(m => 
+      !(m.role === 'assistant' && m.content.trim() === '')
+    ));
+    
     setIsTyping(false);
     setLoading(false);
     userInteractedRef.current = false;
-  };
+  }, [setMessages]);
 
-
-  const handleSend = async () => {
+  /**
+   * Send user message to AI
+   * Handles streaming response and conversation management
+   * FIX: Wrapped in useCallback with proper dependencies
+   * FIX: Added rate limiting and input validation
+   */
+  const handleSend = useCallback(async () => {
     if (!input.trim() || loading) return;
 
     // Show demo modal instead of sending
     setShowDemoModal(true);
     return;
 
+    // Rate limiting check
+    const now = Date.now();
+    if (now - lastSendTimeRef.current < MIN_MESSAGE_INTERVAL_MS) {
+      console.warn('Please wait before sending another message');
+      return;
+    }
+
+    // Input validation
+    const trimmedInput = input.trim();
+    if (trimmedInput.length > MAX_INPUT_LENGTH) {
+      console.error(`Message too long. Maximum ${MAX_INPUT_LENGTH} characters.`);
+      return;
+    }
+
+    lastSendTimeRef.current = now;
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: trimmedInput,
       timestamp: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const userInput = input.trim();
+    const userInput = trimmedInput;
     setInput('');
     setLoading(true);
     setShowWelcome(false);
     setUserScrolledUp(false);
     userInteractedRef.current = false;
 
+    // Track the temporary message ID for cleanup
+    let tempMessageId: string | null = null;
+    
     try {
       const studentId = user?.id;
       if (!studentId) {
@@ -211,6 +258,7 @@ const CareerAssistant: React.FC = () => {
       }
 
       const id = (Date.now() + 1).toString();
+      tempMessageId = id; // Track for cleanup
       
       const aiMessage: Message = {
         id,
@@ -222,6 +270,9 @@ const CareerAssistant: React.FC = () => {
       setMessages(prev => [...prev, aiMessage]);
       setLoading(false);
       setIsTyping(true);
+
+      // Create abort controller for this request
+      abortControllerRef.current = new AbortController();
 
       const result = await streamCareerChat(
         userInput,
@@ -239,24 +290,30 @@ const CareerAssistant: React.FC = () => {
               }
             });
           }
-        }
+        },
+        abortControllerRef.current.signal
       );
       
       if (!result.success && result.error) {
+        // Remove the empty loading message before showing error
+        setMessages(prev => prev.filter(m => m.id !== id));
+        tempMessageId = null; // Clear since we removed it
         throw new Error(result.error);
       }
 
+      // Success - update message with backend's messageId
+      tempMessageId = null; // Clear since message is now permanent
+      
       if (result.conversationId && result.conversationId !== currentConversationId) {
         setCurrentConversationId(result.conversationId);
         fetchConversations();
       }
 
       // Update message with backend's messageId, interactive content and metadata
-      // This ensures feedback is saved with the correct ID that matches the database
       setMessages(prev => prev.map(m => 
         m.id === id ? { 
           ...m, 
-          id: result.messageId || m.id, // Use backend's messageId for feedback matching
+          id: result.messageId || m.id,
           interactive: result.interactive,
           intent: result.intent,
           intentConfidence: result.intentConfidence,
@@ -265,6 +322,20 @@ const CareerAssistant: React.FC = () => {
       ));
     } catch (error: any) {
       console.error('Career AI Error:', error);
+      
+      // Check if error is from abort (user stopped generation)
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        // Remove any temporary loading message
+        if (tempMessageId) {
+          setMessages(prev => prev.filter(m => m.id !== tempMessageId));
+        }
+        return;
+      }
+      
+      // Remove temporary loading message if it still exists
+      if (tempMessageId) {
+        setMessages(prev => prev.filter(m => m.id !== tempMessageId));
+      }
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -281,35 +352,66 @@ const CareerAssistant: React.FC = () => {
         clearTimeout(typingTimerRef.current);
         typingTimerRef.current = null;
       }
+      abortControllerRef.current = null;
     }
-  };
+  }, [input, loading, user?.id, currentConversationId, selectedChips, setMessages, setUserScrolledUp, messagesEndRef, setCurrentConversationId, fetchConversations]);
 
-  const handleQuickAction = (prompt: string, label: string) => {
+  /**
+   * Auto-send query if set from navigation
+   * FIX: Added handleSend to dependency array
+   */
+  useEffect(() => {
+    if (autoSendQuery && input && !loading) {
+      setAutoSendQuery(false);
+      const timer = setTimeout(() => {
+        handleSend();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoSendQuery, input, loading, handleSend]);
+
+  /**
+   * Handle quick action button clicks
+   */
+  const handleQuickAction = useCallback((prompt: string, label: string) => {
     setInput(prompt);
     setShowWelcome(false);
     if (!selectedChips.includes(label)) {
       setSelectedChips(prev => [...prev, label]);
     }
     inputRef.current?.focus();
-  };
+  }, [selectedChips]);
 
-  const removeChip = (label: string) => {
+  /**
+   * Remove a selected chip
+   */
+  const removeChip = useCallback((label: string) => {
     setSelectedChips(prev => prev.filter(chip => chip !== label));
-  };
+  }, []);
 
-  const handleSendQuery = (query: string) => {
+  /**
+   * Handle query from interactive elements
+   * FIX: Added handleSend to dependency array
+   */
+  const handleSendQuery = useCallback((query: string) => {
     setInput(query);
     setTimeout(() => handleSend(), 100);
-  };
+  }, [handleSend]);
 
-  const handleNewConversation = () => {
+  /**
+   * Create new conversation
+   * Uses optimized hook that prevents race conditions
+   */
+  const handleNewConversation = useCallback(() => {
     createNewConversation();
-    setMessages([]);
-    setShowWelcome(true);
+    newConversation();
     setSelectedChips([]);
-  };
+  }, [createNewConversation, newConversation]);
 
-  // Handle feedback submission
+  /**
+   * Handle feedback submission for AI responses
+   * Finds the corresponding user message for context
+   */
   const handleFeedback = useCallback(async (
     messageId: string, 
     thumbsUp: boolean,
@@ -318,7 +420,6 @@ const CareerAssistant: React.FC = () => {
   ) => {
     if (!currentConversationId) return;
 
-    // Find the message and its preceding user message
     const messageIndex = messages.findIndex(m => m.id === messageId);
     if (messageIndex === -1) return;
 
@@ -340,38 +441,136 @@ const CareerAssistant: React.FC = () => {
     await submitFeedback(feedback, thumbsUp, rating, feedbackText);
   }, [currentConversationId, messages, submitFeedback]);
 
-  // Load feedback when conversation changes
+  /**
+   * Load feedback when conversation changes
+   */
   useEffect(() => {
     if (currentConversationId) {
       loadFeedback(currentConversationId);
     }
   }, [currentConversationId, loadFeedback]);
 
-  const handleSelectConversation = async (id: string) => {
-    await loadConversation(id);
+
+  // ==================== CONTEXT VALUE ====================
+  
+  const contextValue = {
+    // Conversation state
+    conversations,
+    currentConversation,
+    currentConversationId,
+    conversationsLoading,
+    hasMore,
+    
+    // Message state
+    messages,
+    loading,
+    isTyping,
+    
+    // UI state
+    showWelcome,
+    selectedChips,
+    sidebarCollapsed,
+    
+    // Conversation handlers
+    onSelectConversation: selectConversation,
+    onNewConversation: handleNewConversation,
+    onDeleteConversation: deleteConversation,
+    onLoadMore: loadMore,
+    
+    // Message handlers
+    onSendMessage: handleSend,
+    onSendQuery: handleSendQuery,
+    onStopTyping: stopTyping,
+    
+    // UI handlers
+    onQuickAction: handleQuickAction,
+    onRemoveChip: removeChip,
+    onToggleSidebar: () => setSidebarCollapsed(!sidebarCollapsed),
+    
+    // Input state
+    input,
+    setInput,
+    
+    // Feedback handlers
+    onFeedback: handleFeedback,
+    getFeedback,
+    isFeedbackLoading,
+    
+    // Scroll state
+    userScrolledUp,
+    scrollToBottom,
+    setUserScrolledUp,
+    messagesEndRef,
+    messagesContainerRef,
+    handleScroll,
   };
 
+  // ==================== RENDER ====================
+  
+  return (
+    <CareerAssistantProvider value={contextValue}>
+      <CareerAssistantUI />
+    </CareerAssistantProvider>
+  );
+};
+
+/**
+ * Career Assistant UI Component
+ * Pure presentational component that consumes context
+ */
+const CareerAssistantUI: React.FC = () => {
+  const {
+    // UI state
+    showWelcome,
+    selectedChips,
+    sidebarCollapsed,
+    messages,
+    loading,
+    isTyping,
+    input,
+    
+    // Handlers
+    onToggleSidebar,
+    onQuickAction,
+    onRemoveChip,
+    onSendMessage,
+    setInput,
+    
+    // Scroll
+    messagesContainerRef,
+    messagesEndRef,
+    handleScroll,
+    userScrolledUp,
+    scrollToBottom,
+    onStopTyping,
+    onSendQuery,
+    onFeedback,
+    getFeedback,
+    isFeedbackLoading,
+    setUserScrolledUp,
+  } = useCareerAssistantContext();
+  
+  const inputRef = useRef<HTMLInputElement>(null);
+  const userInteractedRef = useRef(false);
+
+  /**
+   * Auto-focus input on mount
+   */
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   return (
     <div className="flex h-full min-h-0 bg-white">
       {/* Conversation History Sidebar */}
-      <ConversationSidebar
-        conversations={conversations}
-        currentConversationId={currentConversationId}
-        onSelectConversation={handleSelectConversation}
-        onNewConversation={handleNewConversation}
-        onDeleteConversation={deleteConversation}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        loading={conversationsLoading}
-      />
+      <ConversationSidebar />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-w-5xl mx-auto relative">
         {/* Mobile sidebar toggle */}
         <div className="md:hidden absolute top-4 left-4 z-10">
           <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            onClick={onToggleSidebar}
             className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50"
           >
             {sidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
@@ -396,7 +595,7 @@ const CareerAssistant: React.FC = () => {
                 </motion.p>
               </div>
 
-              <CareerAIToolsGrid onAction={handleQuickAction} variant="full" animated={true} />
+              <CareerAIToolsGrid onAction={onQuickAction} variant="full" animated={true} />
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
                 💡 Click a card above or type your question below to get started
@@ -407,39 +606,56 @@ const CareerAssistant: React.FC = () => {
               {selectedChips.length === 0 && messages.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
                   <p className="text-sm text-gray-500 mb-3 text-center">Quick Actions:</p>
-                  <CareerAIToolsGrid onAction={handleQuickAction} variant="compact" animated={true} />
+                  <CareerAIToolsGrid onAction={onQuickAction} variant="compact" animated={true} />
                 </motion.div>
               )}
 
               <AnimatePresence>
-                {messages.map((message) => (
-                  message.role === 'user' ? (
-                    <SimpleMessage key={message.id} content={message.content} timestamp={message.timestamp} isUser={true} />
-                  ) : message.interactive ? (
-                    <EnhancedMessage key={message.id} response={{ success: true, message: message.content, interactive: message.interactive }} timestamp={message.timestamp} onSendQuery={handleSendQuery} />
-                  ) : message.content === '' && isTyping ? (
-                    <motion.div key={message.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start mb-6">
-                      <div className="bg-gray-100 rounded-2xl px-6 py-4">
-                        <div className="flex gap-2">
-                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }} className="w-2 h-2 bg-gray-400 rounded-full" />
-                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} className="w-2 h-2 bg-gray-400 rounded-full" />
-                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} className="w-2 h-2 bg-gray-400 rounded-full" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <SimpleMessage 
-                      key={message.id} 
-                      content={message.content} 
-                      timestamp={message.timestamp} 
-                      isUser={false}
-                      messageId={message.id}
-                      onFeedback={handleFeedback}
-                      feedbackData={getFeedback(message.id)}
-                      feedbackLoading={isFeedbackLoading(message.id)}
-                    />
-                  )
-                ))}
+                {messages.map((message, index) => {
+                  // Create unique key by combining ID with role and index
+                  // Backend uses same turnId for user+assistant pair, so we need unique keys for React
+                  const uniqueKey = `${message.id}-${message.role}-${index}`;
+                  
+                  // Virtual scrolling: Always render first 5 and last 5 messages
+                  // Virtualize messages in the middle for performance
+                  const isInitialVisible = index < INITIAL_VISIBLE_MESSAGES || index >= messages.length - INITIAL_VISIBLE_MESSAGES;
+                  
+                  return (
+                    <VirtualMessage
+                      key={uniqueKey}
+                      initialVisible={isInitialVisible}
+                      rootMargin={MESSAGE_PRELOAD_MARGIN}
+                      defaultHeight={message.role === 'user' ? USER_MESSAGE_HEIGHT : ASSISTANT_MESSAGE_HEIGHT}
+                    >
+                      {message.role === 'user' ? (
+                        <SimpleMessage content={message.content} timestamp={message.timestamp} isUser={true} />
+                      ) : message.interactive ? (
+                        <EnhancedMessage response={{ success: true, message: message.content, interactive: message.interactive }} timestamp={message.timestamp} onSendQuery={onSendQuery} />
+                      ) : message.content === '' ? (
+                        // Show loading indicator only for empty messages (actively typing)
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start mb-6">
+                          <div className="bg-gray-100 rounded-2xl px-6 py-4">
+                            <div className="flex gap-2">
+                              <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0 }} className="w-2 h-2 bg-gray-400 rounded-full" />
+                              <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.2 }} className="w-2 h-2 bg-gray-400 rounded-full" />
+                              <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity, delay: 0.4 }} className="w-2 h-2 bg-gray-400 rounded-full" />
+                            </div>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <SimpleMessage 
+                          content={message.content} 
+                          timestamp={message.timestamp} 
+                          isUser={false}
+                          messageId={message.id}
+                          onFeedback={onFeedback}
+                          feedbackData={getFeedback(message.id)}
+                          feedbackLoading={isFeedbackLoading(message.id)}
+                        />
+                      )}
+                    </VirtualMessage>
+                  );
+                })}
               </AnimatePresence>
 
               {loading && (
@@ -491,7 +707,7 @@ const CareerAssistant: React.FC = () => {
                     exit={{ opacity: 0, y: 10 }}
                     whileHover={{ y: -1 }}
                     whileTap={{ y: 0 }}
-                    onClick={stopTyping}
+                    onClick={onStopTyping}
                     className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all flex items-center gap-2"
                     title="Stop generating"
                   >
@@ -537,7 +753,7 @@ const CareerAssistant: React.FC = () => {
                     className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium border border-gray-200"
                   >
                     <span>{chip}</span>
-                    <button onClick={() => removeChip(chip)} className="hover:bg-gray-200 rounded-full p-0.5 transition-colors" aria-label={`Remove ${chip}`}>
+                    <button onClick={() => onRemoveChip(chip)} className="hover:bg-gray-200 rounded-full p-0.5 transition-colors" aria-label={`Remove ${chip}`}>
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </motion.div>
@@ -551,7 +767,7 @@ const CareerAssistant: React.FC = () => {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && onSendMessage()}
                 placeholder={showWelcome ? "Ask me anything about your career..." : "Type your message..."}
                 disabled={loading || isTyping}
                 className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
@@ -565,7 +781,7 @@ const CareerAssistant: React.FC = () => {
                   <Mic className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={handleSend}
+                  onClick={onSendMessage}
                   disabled={loading || isTyping || !input.trim()}
                   className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
                   title="Send message"
@@ -594,4 +810,4 @@ const CareerAssistant: React.FC = () => {
   );
 };
 
-export default CareerAssistant;
+export default CareerAssistantContainer;

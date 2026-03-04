@@ -95,7 +95,7 @@ export default function Receipt() {
       doc.text('SKILL PASSPORT', 105, 20, { align: 'center' });
       
       doc.setFontSize(18);
-      doc.text('Pre-Registration Receipt', 105, 30, { align: 'center' });
+      doc.text('Registration Receipt', 105, 30, { align: 'center' });
       
       // Order details
       doc.setFontSize(12);
@@ -119,7 +119,7 @@ export default function Receipt() {
       doc.setFont('helvetica', 'bold');
       doc.text('Payment Information', 20, 118);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Amount Paid: Rs. 250`, 20, 128);
+      doc.text(`Amount Paid: Rs. 499`, 20, 128);
       doc.text(`Payment Status: ${receiptData.payment_status || 'Completed'}`, 20, 136);
       doc.text(`Payment Method: Razorpay`, 20, 144);
       
@@ -192,7 +192,7 @@ export default function Receipt() {
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-8 text-center">
               <CheckCircle2 className="w-16 h-16 text-white mx-auto mb-4" />
               <h1 className="text-3xl font-bold text-white mb-2">Payment Receipt</h1>
-              <p className="text-blue-100">Skill Passport Pre-Registration</p>
+              <p className="text-blue-100">Skill Passport Registration</p>
             </div>
 
             {/* Receipt Details */}
@@ -249,7 +249,7 @@ export default function Receipt() {
                 <div className="space-y-3">
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Amount Paid</span>
-                    <span className="text-2xl font-bold text-blue-600">₹250</span>
+                    <span className="text-2xl font-bold text-blue-600">₹499</span>
                   </div>
                   <div className="flex justify-between py-2 border-b border-gray-100">
                     <span className="text-gray-600">Payment Status</span>

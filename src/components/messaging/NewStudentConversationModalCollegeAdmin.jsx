@@ -304,7 +304,10 @@ const NewStudentConversationModalCollegeAdmin = ({ isOpen, onClose, collegeId, o
       if (formattedStudents.length === 0) {
         const collegeName = collegeInfo?.name || 'this college';
         console.warn('⚠️ No students found for:', collegeName);
-        toast.info(`No students found for ${collegeName}. Students may need to be associated with this college first.`);
+        toast({
+          title: "No students found",
+          description: `No students found for ${collegeName}. Students may need to be associated with this college first.`,
+        });
       } else {
         console.log('✅ Students loaded:', formattedStudents.map(s => s.name).join(', '));
       }

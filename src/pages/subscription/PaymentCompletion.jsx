@@ -1,16 +1,16 @@
 import {
-    AlertCircle,
-    ArrowLeft,
-    Check,
-    CheckCircle,
-    CreditCard,
-    Lock,
-    Mail,
-    Phone,
-    Shield,
-    Sparkles,
-    User,
-    Zap,
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  CheckCircle,
+  CreditCard,
+  Lock,
+  Mail,
+  Phone,
+  Shield,
+  Sparkles,
+  User,
+  Zap,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -26,7 +26,7 @@ import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpaySe
  */
 function getManagePath(userRole) {
   if (!userRole) return null; // Return null to prevent wrong redirects
-  
+
   const manageRoutes = {
     super_admin: '/admin/subscription/manage',
     rm_admin: '/admin/subscription/manage',
@@ -75,9 +75,8 @@ const FormInput = memo(
 
         <div className="relative">
           <div
-            className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${
-              error ? 'text-red-400' : isFocused ? 'text-[#2663EB]' : 'text-gray-400'
-            }`}
+            className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors ${error ? 'text-red-400' : isFocused ? 'text-[#2663EB]' : 'text-gray-400'
+              }`}
           >
             <Icon className="w-5 h-5" strokeWidth={1.5} />
           </div>
@@ -91,11 +90,10 @@ const FormInput = memo(
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder={placeholder}
-            className={`w-full h-12 pl-11 pr-11 text-sm text-gray-900 bg-white rounded-lg border transition-all outline-none ${
-              error
-                ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100'
-                : 'border-gray-200 hover:border-gray-300 focus:border-[#2663EB] focus:ring-2 focus:ring-blue-100'
-            } ${disabled ? 'bg-gray-50 cursor-not-allowed opacity-60' : ''} placeholder:text-gray-400`}
+            className={`w-full h-12 pl-11 pr-11 text-sm text-gray-900 bg-white rounded-lg border transition-all outline-none ${error
+              ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+              : 'border-gray-200 hover:border-gray-300 focus:border-[#2663EB] focus:ring-2 focus:ring-blue-100'
+              } ${disabled ? 'bg-gray-50 cursor-not-allowed opacity-60' : ''} placeholder:text-gray-400`}
             required={required}
             disabled={disabled}
             autoComplete={autoComplete}
@@ -212,7 +210,7 @@ function PaymentCompletion() {
   const { user, isAuthenticated, loading: authLoading, role } = useAuth();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
-  const { plan, studentType } = useMemo(() => location.state || {}, [location.state]);
+  const { plan, studentType, isUpgrade, isRenewal } = useMemo(() => location.state || {}, [location.state]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -247,14 +245,14 @@ function PaymentCompletion() {
       try {
         // First check if user exists in auth.users via session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
+
         if (sessionError || !session?.user) {
           console.warn('⚠️ No valid Supabase session found, clearing stale data');
           // Clear stale localStorage data
           localStorage.removeItem('user');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('pendingUser');
-          
+
           if (plan) {
             localStorage.setItem('payment_plan_details', JSON.stringify({ ...plan, studentType }));
           }
@@ -283,13 +281,13 @@ function PaymentCompletion() {
           // Try to get details from auth metadata
           const authUser = session.user;
           const metadata = authUser.user_metadata || {};
-          
+
           setUserDetails({
             name: metadata.name || metadata.full_name || '',
             email: authUser.email || '',
             phone: metadata.phone || '',
           });
-          
+
           // Set error to inform user
           setError('Your account setup is incomplete. Please complete payment to finish registration.');
           return;
@@ -320,28 +318,37 @@ function PaymentCompletion() {
   }, [authLoading, isAuthenticated, user, navigate, plan, studentType]);
 
   // Redirect if active subscription (including cancelled but not expired)
+  // CRITICAL: Skip redirect entirely when user is upgrading or renewing
   useEffect(() => {
     if (!subscriptionLoading && subscriptionData && managePath) {
+      // Never redirect when user is upgrading or renewing
+      if (isUpgrade || isRenewal) return;
+
       const status = subscriptionData.status;
       const endDate = subscriptionData.endDate ? new Date(subscriptionData.endDate) : null;
       const now = new Date();
-      
-      // Check if subscription has valid access
-      const hasValidAccess = 
-        status === 'active' || 
+
+      const hasValidAccess =
+        status === 'active' ||
         status === 'paused' ||
         (status === 'cancelled' && endDate && endDate > now);
-      
+
       if (hasValidAccess) {
         navigate(managePath, { replace: true });
       }
     }
-  }, [subscriptionData, subscriptionLoading, navigate, managePath]);
+  }, [subscriptionData, subscriptionLoading, navigate, managePath, isUpgrade, isRenewal]);
 
-  // Redirect if no plan
+  // Redirect if no plan — but ONLY after auth has settled
+  // Without this guard, the useEffect fires on the very first render frame
+  // before location.state is stable, causing an instant bounce-back.
   useEffect(() => {
-    if (!plan) navigate(plansUrl, { replace: true });
-  }, [plan, navigate, plansUrl]);
+    if (authLoading) return; // Wait for auth to settle first
+    if (!plan) {
+      console.warn('[PaymentCompletion] No plan in location.state, redirecting to plans');
+      navigate(plansUrl, { replace: true });
+    }
+  }, [plan, navigate, plansUrl, authLoading]);
 
   const validateField = useCallback((name, value) => {
     switch (name) {
@@ -396,6 +403,7 @@ function PaymentCompletion() {
         await initiateRazorpayPayment({
           plan,
           userDetails: { ...userDetails, studentType },
+          isUpgrade,
           onSuccess: (verificationResult) => {
             const routes = { school: '/signin/school', university: '/signin/university', default: '/signup' };
             navigate(routes[studentType] || routes.default, {
@@ -413,7 +421,7 @@ function PaymentCompletion() {
         setLoading(false);
       }
     },
-    [loading, userDetails, plan, studentType, navigate, validateField]
+    [loading, userDetails, plan, studentType, navigate, validateField, isUpgrade]
   );
 
   const handleBack = useCallback(() => navigate(plansUrl), [navigate, plansUrl]);

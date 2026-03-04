@@ -3,9 +3,29 @@
  * Connects to Cloudflare Pages Function for file storage API calls
  */
 
-import { getPagesApiUrl, getAuthHeaders as getBaseAuthHeaders } from '../utils/pagesUrl';
+import { getPagesApiUrl } from '../utils/pagesUrl';
+import { supabase } from '../lib/supabaseClient';
 
 const API_URL = getPagesApiUrl('storage');
+
+/**
+ * Get authentication token from current session
+ */
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('[StorageAPI] Failed to get session:', error);
+      return null;
+    }
+    
+    return session?.access_token || null;
+  } catch (error) {
+    console.error('[StorageAPI] Error retrieving auth token:', error);
+    return null;
+  }
+}
 
 const getAuthHeaders = (token?: string, isFormData = false): Record<string, string> => {
   const headers: Record<string, string> = {};
@@ -28,6 +48,13 @@ export async function uploadFile(
   options: UploadOptions,
   token?: string
 ): Promise<any> {
+  // Get token automatically if not provided
+  const authToken = token || await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
   const formData = new FormData();
   formData.append('file', file);
   if (options.folder) formData.append('folder', options.folder);
@@ -37,7 +64,7 @@ export async function uploadFile(
   try {
     const response = await fetch(`${API_URL}/upload`, {
       method: 'POST',
-      headers: getAuthHeaders(token, true),
+      headers: getAuthHeaders(authToken, true),
       body: formData,
     });
 
@@ -72,14 +99,28 @@ export async function uploadFile(
  * Delete a file from R2 storage
  */
 export async function deleteFile(fileUrl: string, token?: string): Promise<any> {
+  // Get token automatically if not provided
+  const authToken = token || await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
   const response = await fetch(`${API_URL}/delete`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(authToken),
     body: JSON.stringify({ url: fileUrl }),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please refresh the page and log in again.');
+    } else if (response.status === 403) {
+      throw new Error('Access denied. You may not have permission to delete this file.');
+    }
+    
     throw new Error(error.error || 'Failed to delete file');
   }
 
@@ -90,9 +131,12 @@ export async function deleteFile(fileUrl: string, token?: string): Promise<any> 
  * Extract content from a document (PDF, DOCX, etc.)
  */
 export async function extractContent(fileUrl: string, token?: string): Promise<any> {
+  // Get token automatically if not provided (optional for this endpoint as it's public)
+  const authToken = token || await getAuthToken();
+
   const response = await fetch(`${API_URL}/extract-content`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(authToken || undefined),
     body: JSON.stringify({ fileUrl }),
   });
 
@@ -119,14 +163,28 @@ export async function getPresignedUrl(
   params: PresignedUrlParams,
   token?: string
 ): Promise<any> {
+  // Get token automatically if not provided
+  const authToken = token || await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
   const response = await fetch(`${API_URL}/presigned`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(authToken),
     body: JSON.stringify(params),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please refresh the page and log in again.');
+    } else if (response.status === 403) {
+      throw new Error('Access denied. You may not have permission to upload files.');
+    }
+    
     throw new Error(error.error || 'Failed to get presigned URL');
   }
 
@@ -147,14 +205,28 @@ export async function confirmUpload(
   params: ConfirmUploadParams,
   token?: string
 ): Promise<any> {
+  // Get token automatically if not provided
+  const authToken = token || await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
   const response = await fetch(`${API_URL}/confirm`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(authToken),
     body: JSON.stringify(params),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please refresh the page and log in again.');
+    } else if (response.status === 403) {
+      throw new Error('Access denied. You may not have permission to confirm this upload.');
+    }
+    
     throw new Error(error.error || 'Failed to confirm upload');
   }
 
@@ -165,14 +237,28 @@ export async function confirmUpload(
  * Get file URL for a given file key
  */
 export async function getFileUrl(fileKey: string, token?: string): Promise<any> {
+  // Get token automatically if not provided
+  const authToken = token || await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
   const response = await fetch(`${API_URL}/get-url`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(authToken),
     body: JSON.stringify({ fileKey }),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please refresh the page and log in again.');
+    } else if (response.status === 403) {
+      throw new Error('Access denied. You may not have permission to access this file.');
+    }
+    
     throw new Error(error.error || 'Failed to get file URL');
   }
 
@@ -187,13 +273,27 @@ export async function listFiles(
   lessonId: string,
   token?: string
 ): Promise<any> {
+  // Get token automatically if not provided
+  const authToken = token || await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
   const response = await fetch(`${API_URL}/files/${courseId}/${lessonId}`, {
     method: 'GET',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(authToken),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please refresh the page and log in again.');
+    } else if (response.status === 403) {
+      throw new Error('Access denied. You may not have permission to list these files.');
+    }
+    
     throw new Error(error.error || 'Failed to list files');
   }
 
@@ -210,14 +310,28 @@ export async function uploadPaymentReceipt(
   filename?: string,
   token?: string
 ): Promise<any> {
+  // Get token automatically if not provided
+  const authToken = token || await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+
   const response = await fetch(`${API_URL}/upload-payment-receipt`, {
     method: 'POST',
-    headers: getAuthHeaders(token),
+    headers: getAuthHeaders(authToken),
     body: JSON.stringify({ pdfBase64, paymentId, userId, filename }),
   });
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please refresh the page and log in again.');
+    } else if (response.status === 403) {
+      throw new Error('Access denied. You may not have permission to upload payment receipts.');
+    }
+    
     throw new Error(error.error || 'Failed to upload payment receipt');
   }
 
@@ -225,10 +339,63 @@ export async function uploadPaymentReceipt(
 }
 
 /**
- * Get payment receipt download URL
+ * Get payment receipt download URL (requires auth)
  */
 export function getPaymentReceiptUrl(fileKey: string, mode: 'download' | 'inline' = 'download'): string {
   return `${API_URL}/payment-receipt?key=${encodeURIComponent(fileKey)}&mode=${mode}`;
+}
+
+/**
+ * Get presigned URL for payment receipt download (temporary access without auth)
+ * @param fileKeyOrUrl - The file key or full URL of the receipt
+ * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour, max: 604800 = 7 days)
+ * @returns Presigned URL for direct download
+ */
+export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expiresIn: number = 3600): Promise<string> {
+  const authToken = await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+  
+  // Extract file key from full URL if needed
+  let fileKey = fileKeyOrUrl;
+  if (fileKeyOrUrl.includes('/api/storage/payment-receipt?key=')) {
+    try {
+      const url = new URL(fileKeyOrUrl);
+      const keyFromUrl = url.searchParams.get('key');
+      if (keyFromUrl) {
+        fileKey = keyFromUrl;
+      }
+    } catch {
+      // If URL parsing fails, use as-is
+    }
+  }
+  
+  const response = await fetch(
+    `${API_URL}/payment-receipt/presigned?key=${encodeURIComponent(fileKey)}&expires=${expiresIn}`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(authToken),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please log in again.');
+    } else if (response.status === 403) {
+      throw new Error('You do not have permission to access this receipt.');
+    } else if (response.status === 404) {
+      throw new Error('Receipt not found.');
+    }
+    
+    throw new Error(error.error || 'Failed to generate receipt download URL');
+  }
+
+  const data = await response.json();
+  return data.presignedUrl;
 }
 
 export default {
@@ -241,4 +408,5 @@ export default {
   listFiles,
   uploadPaymentReceipt,
   getPaymentReceiptUrl,
+  getPaymentReceiptPresignedUrl,
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import {
     Target,
     Briefcase,
@@ -454,7 +455,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
                                                 className="text-xs font-bold uppercase mb-3 tracking-wider"
                                                 style={{ color: config.accentLight }}
                                             >
-                                                TOP ROLES & SALARY
+                                                Top Roles & Salary
                                             </h5>
                                             <div className="space-y-2">
                                                 {specificRoles.slice(0, 3).map((role, idx) => {
@@ -545,6 +546,7 @@ const CareerCard = ({ cluster, index, fitType, color, reverse = false, specificR
  * Displays comprehensive career assessment results with modular components
  */
 const AssessmentResult = () => {
+    const [searchParams] = useSearchParams();
     const [activeSection, setActiveSection] = useState(null);
     const [isNavbarVisible, setIsNavbarVisible] = useState(true);
     const [selectedTrack, setSelectedTrack] = useState(null);
@@ -592,6 +594,9 @@ const AssessmentResult = () => {
         attemptData,
         resultData
     } = useAssessmentResults();
+
+    // Try to get attemptId from multiple sources
+    const effectiveAttemptId = attemptData?.id || resultData?.attempt_id || searchParams.get('attemptId');
 
     // Determine if we should show program recommendations
     // Only show for: After 10 with 6+ months, After 12, College
@@ -837,36 +842,65 @@ const AssessmentResult = () => {
         );
     }, [gradeLevel, monthsInGrade, results, studentAcademicData, studentInfo?.grade, studentInfo?.stream, loading, retrying]);
 
-    // Calculate stream recommendations for after 10th students using academic data
+    // Calculate stream recommendations for after 10th students
     const enhancedStreamRecommendation = useMemo(() => {
         if (gradeLevel !== 'after10') return null;
 
-        // Use the stream matching engine with academic data (marks, projects, experiences)
-        const streamRec = calculateStreamRecommendations(results, studentAcademicData);
+        console.log('🔍 enhancedStreamRecommendation - Input data:', {
+            hasResults: !!results,
+            hasStreamRecommendation: !!results?.streamRecommendation,
+            hasRecommendedStream: !!results?.recommendedStream,
+            streamRecommendationKeys: results?.streamRecommendation ? Object.keys(results.streamRecommendation) : null,
+            recommendedStreamKeys: results?.recommendedStream ? Object.keys(results.recommendedStream) : null,
+            streamRecommendationValue: results?.streamRecommendation,
+            recommendedStreamValue: results?.recommendedStream,
+            stream: results?.streamRecommendation?.stream || results?.recommendedStream?.stream,
+            displayName: results?.streamRecommendation?.displayName || results?.recommendedStream?.displayName,
+            recommendedStream: results?.streamRecommendation?.recommendedStream
+        });
 
-        // Merge with AI recommendation if available, PREFERRING AI results over engine calculations
-        // AI has analyzed the full assessment context and provides more accurate recommendations
-        if (results?.streamRecommendation) {
-            return {
-                ...streamRec,                      // Engine results as base
-                ...results.streamRecommendation,   // AI results OVERRIDE engine (AI is more accurate)
-                // Merge reasoning - prefer AI reasoning, fallback to engine
-                reasoning: {
-                    interests: results.streamRecommendation.reasoning?.interests || streamRec.reasoning?.interests,
-                    aptitude: results.streamRecommendation.reasoning?.aptitude || streamRec.reasoning?.aptitude,
-                    personality: results.streamRecommendation.reasoning?.personality || streamRec.reasoning?.personality
-                },
-                // Keep engine's additional data that AI doesn't provide
-                subjectsToFocus: results.streamRecommendation.subjectsToFocus || streamRec.subjectsToFocus,
-                careerPathsAfter12: results.streamRecommendation.careerPathsAfter12 || streamRec.careerPathsAfter12,
-                entranceExams: results.streamRecommendation.entranceExams || streamRec.entranceExams,
-                collegeTypes: results.streamRecommendation.collegeTypes || streamRec.collegeTypes,
-                alternativeStream: results.streamRecommendation.alternativeStream || streamRec.alternativeStream,
-                alternativeReason: results.streamRecommendation.alternativeReason || streamRec.alternativeReason,
-                allStreamScores: streamRec.allStreamScores // Keep engine's detailed scores for reference
+        // If AI recommendation is available, use it directly (it now includes all necessary fields)
+        // Check both streamRecommendation and recommendedStream (normalizer might use either name)
+        const aiRecommendation = results?.streamRecommendation || results?.recommendedStream;
+        
+        if (aiRecommendation) {
+            const enhanced = {
+                isAfter10: true,
+                stream: aiRecommendation.stream,
+                recommendedStream: aiRecommendation.stream, // For backward compatibility
+                displayName: aiRecommendation.displayName,
+                category: aiRecommendation.category,
+                confidence: aiRecommendation.confidence,
+                streamFit: aiRecommendation.confidence, // Map confidence to streamFit
+                confidenceScore: aiRecommendation.matchScore,
+                matchScore: aiRecommendation.matchScore,
+                reasoning: aiRecommendation.reasoning || aiRecommendation.evidence,
+                subjects: aiRecommendation.subjects,
+                subjectsToFocus: aiRecommendation.subjects?.core || [],
+                careerPaths: aiRecommendation.careerPaths || [],
+                careerPathsAfter12: aiRecommendation.careerPaths || [],
+                entranceExams: aiRecommendation.entranceExams || [],
+                bestFor: aiRecommendation.bestFor,
+                alternativeStream: aiRecommendation.alternativeStream?.stream,
+                alternativeStreamData: aiRecommendation.alternativeStream,
+                alternativeReason: aiRecommendation.alternativeStream?.reason,
+                scoringBreakdown: aiRecommendation.scoringBreakdown,
+                evidence: aiRecommendation.evidence,
+                preparationAdvice: aiRecommendation.preparationAdvice
             };
+            
+            console.log('✅ enhancedStreamRecommendation - Output:', {
+                stream: enhanced.stream,
+                recommendedStream: enhanced.recommendedStream,
+                displayName: enhanced.displayName
+            });
+            
+            return enhanced;
         }
 
+        console.log('⚠️ No AI streamRecommendation found, using fallback engine');
+        // Fallback: Use the stream matching engine if AI recommendation is not available
+        const streamRec = calculateStreamRecommendations(results, studentAcademicData);
         return streamRec;
     }, [gradeLevel, results, studentAcademicData]);
 
@@ -1590,7 +1624,7 @@ const AssessmentResult = () => {
                                         transition={{ duration: 0.5 }}
                                         className="text-center mb-8"
                                     >
-                                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                                        <h2 className="text-2xl md:text-3xl font-bold mb-2">
                                             Career Paths for {(enhancedStreamRecommendation || streamRecommendation)?.recommendedStream || 'Your Stream'}
                                         </h2>
                                         <p className="text-gray-400">
@@ -1635,6 +1669,7 @@ const AssessmentResult = () => {
                                             skillGap={skillGap}
                                             roadmap={roadmap}
                                             results={results}
+                                            attemptId={effectiveAttemptId}
                                         />
                                     )}
                                 </div>
@@ -2235,6 +2270,7 @@ const AssessmentResult = () => {
                                     skillGap={skillGap}
                                     roadmap={roadmap}
                                     results={results}
+                                    attemptId={effectiveAttemptId}
                                 />
                             )}
                         </div>
@@ -2274,6 +2310,7 @@ const AssessmentResult = () => {
                                     skillGap={skillGap}
                                     roadmap={roadmap}
                                     results={results}
+                                    attemptId={effectiveAttemptId}
                                 />
                             )}
                         </div>

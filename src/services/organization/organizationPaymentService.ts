@@ -6,7 +6,6 @@
  */
 
 import { supabase } from '@/lib/supabaseClient';
-import { getRazorpayKeyId, getRazorpayKeyMode } from '@/config/payment';
 
 const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL;
 
@@ -45,6 +44,7 @@ export interface OrganizationOrderResult {
   amount: number;
   currency: string;
   receipt: string;
+  key: string;
   status: string;
 }
 
@@ -229,18 +229,9 @@ export async function initiateOrganizationPayment(params: {
     // Create order via Worker
     const orderData = await createOrganizationOrder(purchaseData);
 
-    // Get current origin for redirect URLs
-    const origin = window.location.origin;
-    
-    // Get base path from current location
-    const pathname = window.location.pathname;
-    let basePath = '/school-admin';
-    if (pathname.includes('/college-admin')) basePath = '/college-admin';
-    else if (pathname.includes('/university-admin')) basePath = '/university-admin';
-
-    // Get Razorpay key
-    const razorpayKeyId = getRazorpayKeyId();
-    console.log(`[OrgPayment] Using ${getRazorpayKeyMode()} Razorpay key`);
+    // Use Razorpay key from backend API response (matches RAZORPAY_MODE on server)
+    const razorpayKeyId = orderData.key;
+    console.log(`[OrgPayment] Using ${orderData.key?.startsWith('rzp_live') ? 'LIVE' : 'TEST'} Razorpay key from API`);
 
     // Razorpay checkout options
     const options = {

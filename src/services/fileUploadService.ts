@@ -3,7 +3,28 @@
  * Handles document uploads for faculty onboarding
  */
 
+import { supabase } from '../lib/supabaseClient';
+
 const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
+
+/**
+ * Get authentication token from current session
+ */
+async function getAuthToken(): Promise<string | null> {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('[FileUploadService] Failed to get session:', error);
+      return null;
+    }
+    
+    return session?.access_token || null;
+  } catch (error) {
+    console.error('[FileUploadService] Error retrieving auth token:', error);
+    return null;
+  }
+}
 
 export interface UploadResult {
   success: boolean;
@@ -27,6 +48,16 @@ export const uploadFile = async (
   onProgress?: (progress: UploadProgress) => void
 ): Promise<UploadResult> => {
   try {
+    // Get authentication token
+    const token = await getAuthToken();
+    
+    if (!token) {
+      return {
+        success: false,
+        error: 'Authentication required. Please log in.',
+      };
+    }
+
     // Generate unique filename
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
@@ -41,11 +72,20 @@ export const uploadFile = async (
     // Upload to Cloudflare Worker
     const response = await fetch(`${STORAGE_API_URL}/upload`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
       body: formData,
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      
+      // Handle authentication errors
+      if (response.status === 401) {
+        throw new Error('Authentication failed. Please refresh the page and log in again.');
+      }
+      
       throw new Error(errorData.error || `Upload failed: ${response.status}`);
     }
 
@@ -105,15 +145,30 @@ export const getDocumentUrl = (fileUrl: string, mode: 'inline' | 'download' = 'i
  */
 export const deleteFile = async (fileUrl: string): Promise<boolean> => {
   try {
+    // Get authentication token
+    const token = await getAuthToken();
+    
+    if (!token) {
+      console.error('Authentication required to delete file');
+      return false;
+    }
+
     const response = await fetch(`${STORAGE_API_URL}/delete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({ url: fileUrl }),
     });
 
     if (!response.ok) {
+      // Handle authentication errors
+      if (response.status === 401) {
+        console.error('Authentication failed. Please refresh the page and log in again.');
+        return false;
+      }
+      
       throw new Error(`Delete failed: ${response.status}`);
     }
 

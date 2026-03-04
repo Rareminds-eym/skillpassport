@@ -1,7 +1,7 @@
 name = "payments-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
-account_id = "8c79b0992cfe6e720d17d0a2394ef0fd"
+account_id = "ad91abcd16cd9e9c569d83d9ef46e398"
 
 [dev]
 port = 9003
@@ -41,8 +41,9 @@ service = "email-api"
 #
 # Optional secrets:
 #   wrangler secret put RAZORPAY_WEBHOOK_SECRET
-#   wrangler secret put TEST_RAZORPAY_KEY_ID
-#   wrangler secret put TEST_RAZORPAY_KEY_SECRET
+#   wrangler secret put RAZORPAY_MODE          # Set to 'test' for test mode
+#   wrangler secret put RAZORPAY_KEY_ID_TEST   # Test mode key ID
+#   wrangler secret put RAZORPAY_KEY_SECRET_TEST  # Test mode key secret
 #
 # For local development, copy .dev.vars.example to .dev.vars
 # =============================================================================

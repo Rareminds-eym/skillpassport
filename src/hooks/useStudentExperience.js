@@ -8,15 +8,12 @@ export const useStudentExperience = (studentId, enabled = true) => {
 
   const fetchExperience = async () => {
     if (!studentId || !enabled) {
-      console.log('⚠️ useStudentExperience: Skipping fetch', { studentId, enabled });
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-
-      console.log('🔄 useStudentExperience: Fetching experience for student:', studentId);
 
       const { data, error: fetchError } = await supabase
         .from('experience')
@@ -28,11 +25,6 @@ export const useStudentExperience = (studentId, enabled = true) => {
       if (fetchError) {
         throw fetchError;
       }
-
-      console.log('✅ useStudentExperience: Fetched experience:', {
-        count: data?.length || 0,
-        experience: data
-      });
 
       // Transform data to match UI expectations
       // Include versioning fields for proper display logic

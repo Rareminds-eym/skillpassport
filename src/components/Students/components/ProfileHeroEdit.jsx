@@ -267,7 +267,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
 
   // Get logged-in user's email from localStorage
   const userEmail = localStorage.getItem("userEmail");
-
+  
   // State for copy/share functionality
   const [copied, setCopied] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -358,7 +358,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
     name: realStudentData.name,
     email: realStudentData.email,
     department: realStudentData.branch_field,
-    university: realStudentData.university,
+    university: typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university,
     classYear: graduationYear || realStudentData.profile?.classYear || null,
     github_link: realStudentData.github_link || realStudentData.profile?.github_link,
     portfolio_link: realStudentData.portfolio_link || realStudentData.profile?.portfolio_link,
@@ -446,7 +446,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const institutionName = React.useMemo(() => {
     if (!realStudentData) return "Institution";
 
-    // For school students - check schools relationship first, then fallback to university field
+    // Debug logging
+
+    // For school students - check schools relationship first, then fallback to college/university field
     if (realStudentData.school_id) {
       if (realStudentData.schools?.name) {
         return realStudentData.schools.name;
@@ -455,9 +457,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       if (fetchedInstitutionName) {
         return fetchedInstitutionName;
       }
+      // Fallback to college_school_name column
+      if (realStudentData.college_school_name) {
+        return realStudentData.college_school_name;
+      }
       // Fallback to university field (which might contain school name)
       if (realStudentData.university) {
-        return realStudentData.university;
+        return typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
       }
       if (realStudentData.profile?.university) {
         return realStudentData.profile.university;
@@ -476,9 +482,13 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       if (fetchedInstitutionName) {
         return fetchedInstitutionName;
       }
+      // Fallback to college_school_name column
+      if (realStudentData.college_school_name) {
+        return realStudentData.college_school_name;
+      }
       // Fallback to university field
       if (realStudentData.university) {
-        return realStudentData.university;
+        return typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
       }
       if (realStudentData.profile?.university) {
         return realStudentData.profile.university;
@@ -486,8 +496,19 @@ const ProfileHeroEdit = ({ onEditClick }) => {
       return "College";
     }
 
+    // For B2C students without IDs - check college field (used for custom school/college names)
+    if (realStudentData.college) {
+      return typeof realStudentData.college === 'object' ? realStudentData.college?.name : realStudentData.college;
+    }
+
+    // Fallback to college_school_name column for any student type
+    if (realStudentData.college_school_name) {
+      return realStudentData.college_school_name;
+    }
+
     // For students without school_id or university_college_id
-    return realStudentData.university || realStudentData.profile?.university || "Institution";
+    const universityName = typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
+    return universityName || realStudentData.profile?.university || "Institution";
   }, [realStudentData, fetchedInstitutionName]);
 
   // Determine institution location from relationships or fetched data

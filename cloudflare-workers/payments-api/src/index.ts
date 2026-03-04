@@ -44,6 +44,27 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
+// Import types
+import { Env } from './types';
+
+// Import config
+import { corsHeaders, VALID_AMOUNTS, MAX_AMOUNT, EMAIL_API_URL, STORAGE_API_URL } from './config';
+
+// Import utils
+import { jsonResponse, isValidHttpUrl } from './utils';
+
+// Import helpers (barrel export)
+import {
+  authenticateUser,
+  createSupabaseAdmin,
+  getSupabaseUrl,
+  getRazorpayKeyId,
+  getRazorpayKeySecret,
+  getRazorpayCredentialsForRequest,
+  verifySignature,
+  verifyWebhookSignature,
+} from './helpers';
+
 // Import modular handlers
 import {
   handleCancelAddon,
@@ -92,199 +113,13 @@ import {
 } from './handlers/organization';
 import { handleGetSubscriptionFeatures, handleGetSubscriptionPlan, handleGetSubscriptionPlans } from './handlers/plans';
 
-// Re-export Env type for use in other modules
-export interface Env {
-  // Supabase - support both naming conventions
-  SUPABASE_URL: string;
-  SUPABASE_ANON_KEY: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-  // Legacy VITE_ prefixed names (fallback)
-  VITE_SUPABASE_URL?: string;
-  VITE_SUPABASE_ANON_KEY?: string;
-  // Razorpay
-  RAZORPAY_KEY_ID: string;
-  RAZORPAY_KEY_SECRET: string;
-  RAZORPAY_WEBHOOK_SECRET?: string;
-  // Test mode credentials (optional)
-  TEST_RAZORPAY_KEY_ID?: string;
-  TEST_RAZORPAY_KEY_SECRET?: string;
-  // Legacy VITE_ prefixed names (fallback)
-  VITE_RAZORPAY_KEY_ID?: string;
-  // Service binding to email-api worker
-  EMAIL_SERVICE?: Fetcher;
-  // Service binding to storage-api worker (for worker-to-worker communication)
-  STORAGE_SERVICE?: Fetcher;
-  // Storage API URL for receipt uploads (fallback for external calls)
-  STORAGE_API_URL?: string;
-  // Note: Email sending now uses Cloudflare Worker (email-api) with SMTP
-  // RESEND_API_KEY is no longer needed
-}
+// Export Env type for use in other modules
+export type { Env } from './types';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-razorpay-signature',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
-
-// Valid plan amounts in paise
-const VALID_AMOUNTS = [100, 49900, 99900, 199900];
-const MAX_AMOUNT = 1000000;
-
-// URL validation helper
-function isValidHttpUrl(str: string): boolean {
-  try {
-    const url = new URL(str);
-    return url.protocol === 'http:' || url.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-// Helper to get Supabase URL with fallback and validation
-function getSupabaseUrl(env: Env): string {
-  const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-  if (!url) {
-    throw new Error('SUPABASE_URL is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_URL');
-  }
-  if (!isValidHttpUrl(url)) {
-    throw new Error(`Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL. Got: "${url.substring(0, 50)}...". Ensure SUPABASE_URL is set correctly as a Cloudflare secret.`);
-  }
-  return url;
-}
-
-// Helper to get Supabase Anon Key with fallback
-function getSupabaseAnonKey(env: Env): string {
-  const key = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
-  if (!key) {
-    throw new Error('SUPABASE_ANON_KEY is not configured. Set it as a Cloudflare secret via: wrangler secret put SUPABASE_ANON_KEY');
-  }
-  return key;
-}
-
-// Helper to get Razorpay Key ID with fallback
-function getRazorpayKeyId(env: Env): string {
-  const key = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID;
-  if (!key) {
-    throw new Error('RAZORPAY_KEY_ID is not configured. Set it as a Cloudflare secret via: wrangler secret put RAZORPAY_KEY_ID');
-  }
-  return key;
-}
-
-function jsonResponse(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-async function authenticateUser(request: Request, env: Env): Promise<{ user: any; supabase: SupabaseClient } | null> {
-  const authHeader = request.headers.get('Authorization');
-  if (!authHeader) return null;
-
-  const token = authHeader.replace('Bearer ', '');
-  const supabaseUrl = getSupabaseUrl(env);
-  const supabaseAdmin = createClient(supabaseUrl, env.SUPABASE_SERVICE_ROLE_KEY);
-
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-  if (error || !user) return null;
-
-  const supabase = createClient(supabaseUrl, getSupabaseAnonKey(env), {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  return { user, supabase };
-}
-
-// Production domain for live payments
-const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
-
-/**
- * Check if request is from production site
- */
-function isProductionRequest(request: Request): boolean {
-  const origin = request.headers.get('origin') || request.headers.get('referer') || '';
-  return origin.includes(PRODUCTION_DOMAIN) && !origin.includes('dev-');
-}
-
-/**
- * Get Razorpay credentials based on request origin
- * - Production (skillpassport.rareminds.in): Uses LIVE keys
- * - Everything else (localhost, netlify, dev): Uses TEST keys
- */
-function getRazorpayCredentialsForRequest(request: Request, env: Env): { keyId: string; keySecret: string; isProduction: boolean } {
-  const isProduction = isProductionRequest(request);
-
-  let keyId: string;
-  let keySecret: string;
-
-  if (isProduction) {
-    // Production: Use LIVE credentials
-    keyId = getRazorpayKeyId(env);
-    keySecret = env.RAZORPAY_KEY_SECRET;
-    console.log('[RAZORPAY] Using LIVE credentials for production');
-  } else {
-    // Development/Test: Use TEST credentials (with fallback to production)
-    keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
-    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-    console.log('[RAZORPAY] Using TEST credentials for development');
-  }
-
-  if (!keySecret) {
-    throw new Error('RAZORPAY_KEY_SECRET is not configured');
-  }
-
-  return { keyId, keySecret, isProduction };
-}
-
-/**
- * @deprecated Use getRazorpayCredentialsForRequest instead for proper environment detection
- */
-function getRazorpayCredentials(env: Env) {
-  // Legacy function - defaults to test credentials if available
-  const keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
-  const keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-  if (!keySecret) {
-    throw new Error('RAZORPAY_KEY_SECRET is not configured');
-  }
-  return { keyId, keySecret };
-}
-
-async function verifySignature(orderId: string, paymentId: string, signature: string, secret: string): Promise<boolean> {
-  const text = `${orderId}|${paymentId}`;
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(text));
-  const generatedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  return generatedSignature === signature;
-}
-
-async function verifyWebhookSignature(payload: string, signature: string, secret: string): Promise<boolean> {
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-  const generatedSignature = Array.from(new Uint8Array(signatureBuffer))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-  return generatedSignature === signature;
-}
+// TEST_MODE_MAX_AMOUNT for subscription orders (keep for backwards compatibility)
+const TEST_MODE_MAX_AMOUNT = 100000;
 
 // ==================== EMAIL FUNCTIONS ====================
-
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
 
 /**
  * Send email via Cloudflare Worker (email-api)
@@ -313,29 +148,15 @@ async function sendEmailViaWorker(
 
     console.log(`[EMAIL] Request body length: ${requestBody.length} chars`);
 
-    let response: Response;
-
-    // Use Service Binding if available (more reliable for worker-to-worker)
-    if (env.EMAIL_SERVICE) {
-      console.log(`[EMAIL] Using Service Binding to email-api`);
-      response = await env.EMAIL_SERVICE.fetch('https://email-api/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: requestBody,
-      });
-    } else {
-      // Fallback to HTTP fetch
-      console.log(`[EMAIL] Using HTTP fetch to: ${EMAIL_API_URL}`);
-      response = await fetch(EMAIL_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: requestBody,
-      });
-    }
+    // Always use production email-api URL (service binding doesn't work well in dev)
+    console.log(`[EMAIL] Using HTTP fetch to: ${EMAIL_API_URL}`);
+    const response = await fetch(EMAIL_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: requestBody,
+    });
 
     console.log(`[EMAIL] Response status: ${response.status}`);
 
@@ -469,7 +290,7 @@ async function sendPaymentConfirmationEmail(
               ${receiptButtonHtml}
               <!-- CTA Button -->
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://skillpassport.rareminds.in/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Manage Subscription →</a>
+                <a href="/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Manage Subscription →</a>
               </div>
               
               <p style="color: #6B7280; font-size: 14px; margin-top: 24px;">If you have any questions, feel free to contact our support team.</p>
@@ -506,8 +327,6 @@ async function sendPaymentConfirmationEmail(
 }
 
 // ==================== RECEIPT PDF GENERATION & UPLOAD ====================
-
-const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
 /**
  * Generate receipt PDF content as base64 using pdf-lib
@@ -746,6 +565,19 @@ function getReceiptDownloadUrl(env: Env, fileKey: string): string {
 }
 
 
+/**
+ * @deprecated Use getRazorpayCredentialsForRequest instead for proper environment detection
+ */
+function getRazorpayCredentials(env: Env) {
+  // Legacy function - defaults to test credentials if available
+  const keyId = env.RAZORPAY_KEY_ID_TEST || getRazorpayKeyId(env);
+  const keySecret = env.RAZORPAY_KEY_SECRET_TEST || getRazorpayKeySecret(env);
+  if (!keySecret) {
+    throw new Error('RAZORPAY_KEY_SECRET is not configured');
+  }
+  return { keyId, keySecret };
+}
+
 // ==================== CREATE ORDER ====================
 
 async function handleCreateOrder(request: Request, env: Env): Promise<Response> {
@@ -765,9 +597,10 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     planName?: string;
     userEmail?: string;
     userName?: string;
+    isUpgrade?: boolean;
   };
 
-  const { amount, currency, planId, planName, userEmail, userName } = body;
+  const { amount, currency, planId, planName, userEmail, userName, isUpgrade } = body;
 
   // Validate required fields
   if (!amount || !currency || !userEmail || !planId || !planName) {
@@ -804,7 +637,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     .gte('subscription_end_date', new Date().toISOString())
     .maybeSingle();
 
-  if (existingSubscription) {
+  if (existingSubscription && !isUpgrade) {
     // User already has a valid subscription (active or cancelled but not expired)
     const message = existingSubscription.status === 'cancelled'
       ? `You have a cancelled subscription that is still active until ${new Date(existingSubscription.subscription_end_date).toLocaleDateString()}`
@@ -901,6 +734,7 @@ async function handleCreateOrder(request: Request, env: Env): Promise<Response> 
     amount: order.amount,
     currency: order.currency,
     receipt: order.receipt,
+    key: keyId,
   });
 }
 
@@ -1023,6 +857,7 @@ async function handleCreateOrgOrder(request: Request, env: Env, user: any): Prom
     amount: order.amount,
     currency: order.currency,
     receipt: order.receipt,
+    key: keyId,
   });
 }
 
@@ -1234,16 +1069,25 @@ async function handleVerifyOrgPayment(request: Request, env: Env, supabase: Supa
 
 // ==================== VERIFY PAYMENT ====================
 
-// Helper to calculate subscription end date
-function calculateSubscriptionEndDate(billingCycle: string): string {
-  const now = new Date();
-  if (billingCycle.toLowerCase().includes('year')) {
-    now.setFullYear(now.getFullYear() + 1);
+// Helper to calculate subscription end date - ALWAYS 1 month or 1 year from NOW
+function calculateSubscriptionEndDate(billingCycle: string, fromDate?: Date): string {
+  const baseDate = fromDate ? new Date(fromDate) : new Date();
+  const startYear = baseDate.getFullYear();
+  
+  console.log(`[CALC-END-DATE] Input: billingCycle=${billingCycle}, fromDate=${fromDate?.toISOString()}, startYear=${startYear}`);
+  
+  // Only accept yearly/annual - everything else is monthly (1 month)
+  if (billingCycle === 'yearly' || billingCycle === 'annual') {
+    baseDate.setFullYear(baseDate.getFullYear() + 1);
   } else {
-    // Default to 1 month
-    now.setMonth(now.getMonth() + 1);
+    // Always 1 month for monthly billing
+    baseDate.setMonth(baseDate.getMonth() + 1);
   }
-  return now.toISOString();
+  
+  const endYear = baseDate.getFullYear();
+  console.log(`[CALC-END-DATE] Output: ${baseDate.toISOString()}, endYear=${endYear}, diff=${endYear - startYear} years`);
+  
+  return baseDate.toISOString();
 }
 
 async function handleVerifyPayment(request: Request, env: Env): Promise<Response> {
@@ -1367,14 +1211,8 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   const userEmail = userData?.email || order.user_email || '';
   const userPhone = userData?.phone || null;
 
-  // Determine billing cycle from plan or order notes
-  // Fix: Use proper parentheses to avoid operator precedence issues
-  let billingCycle = 'month'; // Default to month
-  if (plan?.duration) {
-    billingCycle = plan.duration;
-  } else if (order.plan_name?.toLowerCase().includes('year')) {
-    billingCycle = 'year';
-  }
+  // FORCE YEARLY BILLING ONLY - ignore frontend input
+  const billingCycle = 'yearly';
   const planAmount = (plan?.price || paymentAmount / 100); // Convert paise to rupees if needed
   const planType = plan?.name || order.plan_name || 'Standard Plan';
 
@@ -1396,14 +1234,15 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     if (isSamePlan) {
       // Same plan - extend the subscription end date and update payment info
       const currentEndDate = new Date(existingActiveSubscription.subscription_end_date);
-      const extensionDate = new Date(Math.max(currentEndDate.getTime(), Date.now()));
+      const now = Date.now();
 
-      // Add billing cycle duration to the later of current end date or now
-      if (billingCycle.toLowerCase().includes('year')) {
-        extensionDate.setFullYear(extensionDate.getFullYear() + 1);
-      } else {
-        extensionDate.setMonth(extensionDate.getMonth() + 1);
-      }
+      // If current end date is in the past, start from now; otherwise extend from end date
+      const extensionBaseDate = currentEndDate.getTime() > now ? currentEndDate : new Date();
+
+      // Calculate new end date by adding 1 year/month to the base date
+      const extensionDate = new Date(calculateSubscriptionEndDate(billingCycle, extensionBaseDate));
+
+      console.log(`[VERIFY-PAYMENT] Renewing subscription: currentEnd=${currentEndDate.toISOString()}, baseDate=${extensionBaseDate.toISOString()}, newEnd=${extensionDate.toISOString()}`);
 
       const { data: updatedSubscription, error: updateError } = await supabaseAdmin
         .from('subscriptions')
@@ -1465,26 +1304,22 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
         new_end_date: extensionDate.toISOString(),
       });
     } else {
-      // Different plan type - user is trying to subscribe to a different plan
-      // Return existing subscription info without creating duplicate
-      console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, tried to get ${planType}`);
+      // DIFFERENT PLAN TYPE - THIS IS AN UPGRADE/DOWNGRADE
+      console.log(`[VERIFY-PAYMENT] User ${order.user_id} has active ${existingActiveSubscription.plan_type}, upgrading to ${planType}`);
 
-      return jsonResponse({
-        success: true,
-        verified: true,
-        message: `You already have an active ${existingActiveSubscription.plan_type} subscription. Payment was processed but no new subscription created.`,
-        payment_id: razorpay_payment_id,
-        order_id: razorpay_order_id,
-        user_id: existingActiveSubscription.user_id,
-        user_name: existingActiveSubscription.full_name,
-        user_email: existingActiveSubscription.email,
-        payment_method: paymentMethod,
-        amount: paymentAmount,
-        subscription: existingActiveSubscription,
-        already_processed: true,
-        is_existing_subscription: true,
-        note: 'Contact support if you need to change your plan.',
-      });
+      const upgradeTimestamp = new Date().toISOString();
+
+      // 1. Deactivate the old subscription
+      await supabaseAdmin
+        .from('subscriptions')
+        .update({
+          status: 'cancelled',
+          updated_at: upgradeTimestamp,
+        })
+        .eq('id', existingActiveSubscription.id);
+
+      // (We don't return here. We let the execution fall through to create the NEW subscription record below!)
+      // To ensure the new record gets created, we break out of this if-block by doing nothing more.
     }
   }
 
@@ -1494,24 +1329,19 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   const planCode = plan?.id; // Frontend sends plan_code as 'id' (e.g., 'basic', 'professional')
 
   if (planCode) {
-    // Map frontend plan codes to database plan_codes
-    // Frontend uses 'professional', database uses 'pro'
-    const dbPlanCode = planCode === 'professional' ? 'pro' : planCode;
-
     // Lookup plan_id from subscription_plans by plan_code
+    // The frontend may pass mapped or legacy names, but usually 'basic', 'professional', 'enterprise', 'ecosystem'
     const { data: planRecord } = await supabaseAdmin
       .from('subscription_plans')
       .select('id')
-      .eq('plan_code', dbPlanCode)
-      .eq('role_type', 'student')
-      .eq('business_type', 'b2c')
+      .eq('plan_code', planCode)
       .maybeSingle();
 
     if (planRecord) {
       planId = planRecord.id;
-      console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_code "${dbPlanCode}"`);
+      console.log(`[VERIFY-PAYMENT] Resolved plan_id ${planId} from plan_code "${planCode}"`);
     } else {
-      console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_code "${dbPlanCode}"`);
+      console.warn(`[VERIFY-PAYMENT] Could not resolve plan_id for plan_code "${planCode}"`);
     }
   }
 
@@ -1521,8 +1351,6 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       .from('subscription_plans')
       .select('id')
       .ilike('name', planType)
-      .eq('role_type', 'student')
-      .eq('business_type', 'b2c')
       .maybeSingle();
 
     if (planRecord) {
@@ -1534,7 +1362,11 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
   }
 
   // CREATE SUBSCRIPTION RECORD
-  const now = new Date().toISOString();
+  const now = new Date();
+  const subscriptionEndDate = calculateSubscriptionEndDate(billingCycle, now);
+
+  console.log(`[VERIFY-PAYMENT] Creating new subscription: billingCycle=${billingCycle}, start=${now.toISOString()}, end=${subscriptionEndDate}`);
+
   const subscriptionData = {
     user_id: order.user_id,
     full_name: fullName,
@@ -1547,11 +1379,11 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     razorpay_payment_id: razorpay_payment_id,
     razorpay_order_id: razorpay_order_id,
     status: 'active' as const,
-    subscription_start_date: now,
-    subscription_end_date: calculateSubscriptionEndDate(billingCycle),
+    subscription_start_date: now.toISOString(),
+    subscription_end_date: subscriptionEndDate,
     auto_renew: false,
-    created_at: now,
-    updated_at: now,
+    created_at: now.toISOString(),
+    updated_at: now.toISOString(),
   };
 
   const { data: subscription, error: subError } = await supabaseAdmin
@@ -1588,7 +1420,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
     currency: 'INR',
     status: 'success',
     payment_method: paymentMethod,
-    created_at: now,
+    created_at: now.toISOString(),
   };
 
   const { error: txnError } = await supabaseAdmin
@@ -1602,7 +1434,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       razorpay_payment_id: razorpay_payment_id,
       payment_method: paymentMethod,
       subscription_id: subscription.id,
-      updated_at: now,
+      updated_at: now.toISOString(),
     })
     .eq('order_id', razorpay_order_id);
 
@@ -1637,7 +1469,7 @@ async function handleVerifyPayment(request: Request, env: Env): Promise<Response
       userName: fullName,
       userEmail: userEmail,
       paymentMethod: paymentMethod,
-      paymentDate: formatDate(now),
+      paymentDate: formatDate(now.toISOString()),
     });
     console.log(`[VERIFY-PAYMENT] Receipt PDF base64 generated, length: ${receiptPdfBase64.length}`);
 
@@ -2333,6 +2165,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
     .eq('user_id', user.id)
     .in('status', ['active', 'paused', 'cancelled'])
     .gte('subscription_end_date', gracePeriodDate.toISOString())
+    .order('status', { ascending: true }) // 'active' comes before 'cancelled'
     .order('subscription_end_date', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -2429,7 +2262,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
   }
 
   // Case 3: Active and not expired
-  if (endDate > now) {
+  if (subscription.status === 'active' && endDate > now) {
     const showExpiringWarning = daysUntilExpiry <= 7;
 
     const response: SubscriptionAccessResponse = {
@@ -2483,7 +2316,7 @@ async function handleCheckSubscriptionAccess(request: Request, env: Env): Promis
 // ==================== CREATE EVENT ORDER ====================
 
 const MAX_EVENT_AMOUNT_RUPEES = 10000000; // ₹1 crore max
-const TEST_MODE_MAX_AMOUNT = 5000000; // ₹50,000 in paise for test mode
+const EVENT_TEST_MODE_MAX_AMOUNT = 5000000; // ₹50,000 in paise for test mode
 
 async function handleCreateEventOrder(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
@@ -2524,30 +2357,28 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
     return jsonResponse({ error: 'Invalid email format' }, 400);
   }
 
-  // Detect if request is from production site
-  const headerOrigin = request.headers.get('origin') || request.headers.get('referer') || '';
-  const requestOrigin = bodyOrigin || headerOrigin;
-  const isProductionSite = requestOrigin.includes('skillpassport.rareminds.in') && !requestOrigin.includes('dev-');
-
-  // Determine credentials and amount based on site
+  // Use RAZORPAY_MODE to determine credentials (no origin-based detection)
+  const isTestMode = env.RAZORPAY_MODE === 'test';
   let keyId: string;
   let keySecret: string;
   let amount = originalAmount;
 
-  if (isProductionSite) {
-    keyId = getRazorpayKeyId(env);
-    keySecret = env.RAZORPAY_KEY_SECRET;
-    console.log('[CREATE-EVENT] Using PRODUCTION credentials');
-  } else {
-    keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
-    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-    console.log('[CREATE-EVENT] Using TEST credentials');
+  if (isTestMode) {
+    // Test mode: Use TEST credentials (with fallback to production)
+    keyId = env.RAZORPAY_KEY_ID_TEST || getRazorpayKeyId(env);
+    keySecret = env.RAZORPAY_KEY_SECRET_TEST || getRazorpayKeySecret(env);
+    console.log('[CREATE-EVENT] Using TEST credentials (RAZORPAY_MODE=test)');
 
-    // Cap amount at test limit for non-production sites
-    if (amount > TEST_MODE_MAX_AMOUNT) {
-      console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${TEST_MODE_MAX_AMOUNT / 100}`);
-      amount = TEST_MODE_MAX_AMOUNT;
+    // Cap amount at test limit for test mode
+    if (amount > EVENT_TEST_MODE_MAX_AMOUNT) {
+      console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${EVENT_TEST_MODE_MAX_AMOUNT / 100}`);
+      amount = EVENT_TEST_MODE_MAX_AMOUNT;
     }
+  } else {
+    // Production/Live mode: Use LIVE credentials
+    keyId = getRazorpayKeyId(env);
+    keySecret = getRazorpayKeySecret(env);
+    console.log('[CREATE-EVENT] Using LIVE credentials (RAZORPAY_MODE=live)');
   }
 
   console.log(`[CREATE-EVENT] Key ID starts with: ${keyId?.substring(0, 8)}...`);
@@ -2691,7 +2522,7 @@ async function handleCreateEventOrder(request: Request, env: Env): Promise<Respo
   // Update registration with order ID and payment history
   await supabaseAdmin
     .from(tableName)
-    .update({ 
+    .update({
       razorpay_order_id: order.id,
       payment_history: paymentHistory
     })
@@ -3257,7 +3088,7 @@ export default {
               success: testResponse.ok,
               environment: isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
               razorpay_key_prefix: keyId.substring(0, 12) + '...',
-              test_key_configured: !!env.TEST_RAZORPAY_KEY_ID,
+              test_key_configured: !!env.RAZORPAY_KEY_ID_TEST,
               api_status: testStatus,
               api_response: testBody.substring(0, 500),
             });

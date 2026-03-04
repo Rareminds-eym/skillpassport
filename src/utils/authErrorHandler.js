@@ -118,28 +118,30 @@ export const isJwtExpiryError = (error) => {
 };
 
 /**
- * Handles authentication errors by clearing session and redirecting
+ * Handles authentication errors by checking session validity
+ * Returns true if session is valid, false if user needs to re-authenticate
  */
 export const handleAuthError = async (error, context = {}) => {
-  // If it's a JWT expiry, force logout and redirect
+  // Check if it's a JWT expiry error
   if (isJwtExpiryError(error)) {
-    console.warn('JWT expired, clearing session and redirecting...');
+    console.warn('JWT expired detected, checking session validity...');
     
+    // Check if session is still valid (Supabase may have auto-refreshed)
     try {
-      await supabase.auth.signOut();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        console.log('✅ Session is valid after JWT expiry check');
+        return { success: true, session };
+      }
+      
+      // Session is truly invalid - user needs to re-authenticate
+      console.warn('❌ Session invalid, user needs to re-authenticate');
+      return { success: false, error: 'Session expired. Please log in again.' };
     } catch (e) {
-      console.error('Error signing out:', e);
+      console.error('Error checking session:', e);
+      return { success: false, error: 'Authentication error. Please log in again.' };
     }
-    
-    localStorage.removeItem('sb-auth');
-    localStorage.removeItem('sb-storage-key');
-    const projectRef = import.meta.env.VITE_SUPABASE_URL?.split('.')[0]?.split('//')[1];
-    if (projectRef) {
-      localStorage.removeItem(`sb-${projectRef}-auth-token`);
-    }
-    
-    window.location.href = '/login?error=session_expired';
-    return { success: false, error: 'Session expired. Please log in again.' };
   }
 
   // Generic error return for non-fatal errors
