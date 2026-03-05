@@ -161,12 +161,11 @@ export const useStudentTrainings = (studentId, options = {}) => {
           .eq('enabled', true)
           .limit(1);
           
-        // Fetch skills for this training (only technical skills to match service behavior)
+        // Fetch skills for this training (fetch ALL skills with full data)
         const { data: skillRows } = await supabase
           .from('skills')
-          .select('name')
+          .select('name, type, level, description')
           .eq('training_id', train.id)
-          .eq('type', 'technical')
           .eq('enabled', true);
         
         formattedTrainings.push({
@@ -191,7 +190,7 @@ export const useStudentTrainings = (studentId, options = {}) => {
           enabled: train.approval_status !== 'rejected',
           source: String(train.source || 'manual'),
           course_id: train.course_id,
-          skills: skillRows?.map(s => s.name) || [], // Fetch actual skills
+          skills: skillRows || [], // Return full skill objects with type, level, description
           certificateUrl: certificateRows?.[0]?.link || '', // Fetch actual certificate URL
           createdAt: train.created_at,
           updatedAt: train.updated_at,
