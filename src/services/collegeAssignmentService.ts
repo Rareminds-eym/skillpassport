@@ -730,6 +730,56 @@ export const fetchEducatorAssignments = async (educatorUserId: string): Promise<
 };
 
 /**
+ * Ensure user accounts exist for students
+ */
+const ensureUserAccountsExist = async (students: CollegeStudent[]): Promise<string[]> => {
+  const userIds: string[] = [];
+  
+  for (const student of students) {
+    try {
+      // Check if user already exists by email
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', student.email)
+        .single();
+      
+      if (existingUser) {
+        // User exists, update student.user_id if needed
+        if (!student.user_id) {
+          await supabase
+            .from('students')
+            .update({ user_id: existingUser.id })
+            .eq('id', student.id);
+        }
+        userIds.push(existingUser.id);
+      } else {
+        console.warn(`No user account found for ${student.email}`);
+      }
+    } catch (error) {
+      console.error(`Error processing student ${student.email}:`, error);
+    }
+  }
+  
+  return userIds;
+};
+
+export const ensureStudentUserAccounts = async (students: CollegeStudent[]): Promise<ServiceResponse<string[]>> => {
+  try {
+    const userIds = await ensureUserAccountsExist(students);
+    
+    if (userIds.length === 0) {
+      return { data: null, error: 'No valid user accounts found for selected students. Students must have registered accounts.' };
+    }
+    
+    return { data: userIds, error: null };
+  } catch (err: any) {
+    console.error('Error ensuring student user accounts:', err);
+    return { data: null, error: err.message || 'Failed to find user accounts' };
+  }
+};
+
+/**
  * Assign task to students
  */
 export const assignTaskToStudents = async (
