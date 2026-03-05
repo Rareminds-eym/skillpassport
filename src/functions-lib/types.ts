@@ -17,7 +17,6 @@ export interface PagesEnv {
   CLAUDE_API_KEY?: string;
   VITE_CLAUDE_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
-  OPENROUTER_API_KEY?: string;
 
   // Other service keys
   RAZORPAY_KEY_ID?: string;
@@ -40,6 +39,13 @@ export interface PagesEnv {
   CLOUDFLARE_R2_SECRET_ACCESS_KEY?: string;
   CLOUDFLARE_R2_BUCKET_NAME?: string;
   CLOUDFLARE_R2_PUBLIC_URL?: string;
+
+  // API URLs
+  EMAIL_API_URL?: string;
+  STORAGE_API_URL?: string;
+  
+  // Environment
+  ENVIRONMENT?: string;
 }
 
 /**

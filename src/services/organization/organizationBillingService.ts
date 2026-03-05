@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '@/lib/supabaseClient';
+import { API_ENDPOINTS } from '@/config/api';
 
 // ============================================================================
 // Types & Interfaces
@@ -501,7 +502,7 @@ export class OrganizationBillingService {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev'}/org-billing/invoice/${invoiceId}/download`,
+        `${API_ENDPOINTS.payments.base}/org-billing/invoice/${invoiceId}/download`,
         {
           method: 'GET',
           headers: {

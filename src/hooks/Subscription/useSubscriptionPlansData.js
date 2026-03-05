@@ -1,7 +1,7 @@
 /**
  * useSubscriptionPlansData
  * 
- * Fetches subscription plans EXCLUSIVELY from the Cloudflare Worker backend.
+ * Fetches subscription plans from Cloudflare Pages Functions.
  * NO hardcoded pricing fallbacks. If the API fails, we show an error — not stale data.
  * 
  * State machine:
@@ -12,9 +12,10 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const PAYMENTS_API_URL =
-  import.meta.env.VITE_PAYMENTS_API_URL ||
-  'https://payments-api.dark-mode-d021.workers.dev';
+import { API_ENDPOINTS } from '../config/api';
+
+// Use centralized API configuration
+const PAYMENTS_API_URL = API_ENDPOINTS.payments.base;
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1500;

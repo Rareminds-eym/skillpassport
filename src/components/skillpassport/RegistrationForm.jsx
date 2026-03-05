@@ -23,10 +23,9 @@ import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
 
+import { API_ENDPOINTS } from '@/config/api';
+
 const REGISTRATION_FEE = 499;
-const EMAIL_API_URL = import.meta.env.DEV 
-  ? 'http://localhost:8788/api/email'
-  : 'https://skillpassport.rareminds.in/api/email';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -65,7 +64,7 @@ const validateForm = (form, emailVerified, consentGiven) => {
 };
 
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+  const response = await fetch(API_ENDPOINTS.email.eventOtp, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, otp, name }),
@@ -79,7 +78,7 @@ const sendConfirmationEmail = async (details) => {
   const { name, email, phone, amount, orderId, campaign } = details;
 
   try {
-    const response = await fetch(`${EMAIL_API_URL}/event-confirmation`, {
+    const response = await fetch(API_ENDPOINTS.email.eventConfirmation, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone, amount, orderId, campaign }),

@@ -5,9 +5,23 @@
 
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 
-const EMAIL_API_URL = 'https://skillpassport.rareminds.in/api/email';
 const FROM_EMAIL = 'noreply@rareminds.in';
 const FROM_NAME = 'SkillPassport';
+
+/**
+ * Get email API URL based on environment
+ */
+function getEmailApiUrl(env: PagesEnv): string {
+  // Check for environment variable first
+  if (env.EMAIL_API_URL) {
+    return env.EMAIL_API_URL;
+  }
+  
+  // Default to localhost in development, production URL otherwise
+  return env.ENVIRONMENT === 'production' 
+    ? 'https://skillpassport.rareminds.in/api/email/send'
+    : 'http://localhost:8788/api/email/send';
+}
 
 /**
  * Send email via email-api Cloudflare Worker
@@ -20,7 +34,10 @@ async function sendEmailViaWorker(
   text?: string
 ): Promise<boolean> {
   try {
-    const response = await fetch(EMAIL_API_URL, {
+    const emailApiUrl = getEmailApiUrl(env);
+    console.log(`[USER-EMAIL] Sending to: ${to} via ${emailApiUrl}`);
+    
+    const response = await fetch(emailApiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,17 +52,19 @@ async function sendEmailViaWorker(
       }),
     });
 
+    console.log(`[USER-EMAIL] Response status: ${response.status}`);
+
     if (!response.ok) {
       const error = await response.text();
-      console.error('Email API error:', error);
+      console.error('[USER-EMAIL] Email API error:', error);
       return false;
     }
 
     const result = await response.json();
-    console.log('Email sent successfully:', result);
+    console.log('[USER-EMAIL] Email sent successfully:', result);
     return true;
   } catch (error) {
-    console.error('Failed to send email:', error);
+    console.error('[USER-EMAIL] Failed to send email:', error);
     return false;
   }
 }
