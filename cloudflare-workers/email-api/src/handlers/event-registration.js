@@ -36,6 +36,9 @@ export async function handleEventConfirmation(body, env) {
   }
 
   try {
+    // Get API URL from env (for demo deployments) or use default
+    const apiUrl = env.API_URL || 'https://email-api.dark-mode-d021.workers.dev';
+
     // Generate email templates
     const userHtml = generateUserConfirmationHtml({
       name,
@@ -44,7 +47,7 @@ export async function handleEventConfirmation(body, env) {
       amount,
       orderId,
       campaign: campaign || 'direct'
-    });
+    }, apiUrl);
 
     const adminHtml = generateAdminNotificationHtml({
       name,

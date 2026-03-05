@@ -1,0 +1,33 @@
+# Demo Embedding API Worker Configuration
+name = "demo-embedding-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+account_id = "ad91abcd16cd9e9c569d83d9ef46e398"
+
+[dev]
+port = 9002
+inspector_port = 9232
+
+# Environment variables (set via wrangler secret put)
+# OPENROUTER_API_KEY - OpenRouter API key (routes to OpenAI text-embedding-3-small)
+# VITE_SUPABASE_URL - Supabase project URL
+# SUPABASE_SERVICE_ROLE_KEY - Supabase service role key
+
+[vars]
+# Supabase Configuration
+VITE_SUPABASE_URL = "https://eaxbpcehssbzvmfpaaya.supabase.co"
+
+# Supabase Service Role Key
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVheGJwY2Voc3NienZtZnBhYXlhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTg0NzA5OSwiZXhwIjoyMDg1NDIzMDk5fQ.T_81GTNvce9086t-DJrcwA6EaFhSqb7aQWeIwYhk_k0"
+
+# OPENROUTER_API_KEY should be set via: wrangler secret put OPENROUTER_API_KEY
+
+# KV namespace for caching embeddings (optional - uncomment and set ID after creating)
+# To create: wrangler kv namespace create EMBEDDING_CACHE
+# [[kv_namespaces]]
+# binding = "EMBEDDING_CACHE"
+# id = "your-kv-namespace-id"
+
+# Cron triggers for queue processing - disabled for demo to avoid 5 cron limit
+# [triggers]
+# crons = ["*/5 * * * *"]  # Run every 5 minutes

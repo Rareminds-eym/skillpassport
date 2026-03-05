@@ -12,9 +12,9 @@ export const corsHeaders = {
 export const VALID_AMOUNTS = [100, 49900, 99900, 199900];
 export const MAX_AMOUNT = 1000000;
 
-// External service URLs
-export const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
-export const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
+// External service URLs - use env vars when available (for demo deployments), fallback to prod URLs
+export const EMAIL_API_URL = (globalThis as any).EMAIL_API_URL || 'https://email-api.dark-mode-d021.workers.dev';
+export const STORAGE_API_URL = (globalThis as any).STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
 
 // Plan configuration
 export const PLAN_DURATIONS: Record<string, number> = {

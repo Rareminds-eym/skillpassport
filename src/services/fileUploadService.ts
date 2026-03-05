@@ -5,7 +5,7 @@
 
 import { supabase } from '../lib/supabaseClient';
 
-const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
+const STORAGE_API_URL = import.meta.env.VITE_STORAGE_API_URL || 'https://storage-api.dark-mode-d021.workers.dev';
 
 /**
  * Get authentication token from current session

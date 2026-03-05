@@ -23,7 +23,7 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { signupStudent } from '../../services/studentAuthService';
 import { supabase } from '../../lib/supabaseClient';
 
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 'https://email-api.dark-mode-d021.workers.dev';
 
 const validateForm = (form) => {
   const errors = {};

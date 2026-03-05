@@ -553,7 +553,7 @@ export class MemberInvitationService {
     invitation: any,
     customMessage?: string
   ): Promise<boolean> {
-    const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+    const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 'https://email-api.dark-mode-d021.workers.dev';
     // Use current origin in development, production URL otherwise
     const APP_URL = import.meta.env.DEV 
       ? window.location.origin 

@@ -24,7 +24,7 @@ import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
 
 const REGISTRATION_FEE = 499;
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+const EMAIL_API_URL = import.meta.env.VITE_EMAIL_API_URL || 'https://email-api.dark-mode-d021.workers.dev';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
