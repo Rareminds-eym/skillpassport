@@ -14,6 +14,7 @@ import {
   Star
 } from 'lucide-react';
 import { getPagesApiUrl } from '../../../utils/pagesUrl';
+import { API_ENDPOINTS } from '@/config/api';
 
 export interface Assignment {
   assignment_id: string;
@@ -185,9 +186,9 @@ const AssignmentCard: React.FC<AssignmentCardProps> = ({
 
   // Helper function to generate accessible file URL
   const getAccessibleFileUrl = (fileUrl: string) => {
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
+    const storageApiUrl = API_ENDPOINTS.storage.base;
     if (!storageApiUrl) {
-      console.error('VITE_STORAGE_API_URL not configured');
+      console.error('Storage API URL not configured');
       return fileUrl; // Fallback to direct URL
     }
     

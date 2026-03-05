@@ -1076,10 +1076,10 @@ function parseRoleOverviewResponse(content: string, roleName: string): RoleOverv
   return getFallbackRoleOverview(roleName);
 }
 
+import { API_ENDPOINTS } from '@/config/api';
+
 // Worker API URL for role overview
-// Use local API endpoint instead of external Cloudflare Worker
-const ROLE_OVERVIEW_API_URL = import.meta.env.VITE_ROLE_OVERVIEW_API_URL || 
-  (typeof window !== 'undefined' ? `${window.location.origin}/api/role-overview` : '/api/role-overview');
+const ROLE_OVERVIEW_API_URL = API_ENDPOINTS.career.base.replace('/career', '/role-overview');
 
 /**
  * Generate combined role overview data via Cloudflare Worker

@@ -7,7 +7,10 @@
 
 import { supabase } from '@/lib/supabaseClient';
 
-const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL;
+import { API_ENDPOINTS } from '../api';
+
+// Use centralized API configuration
+const WORKER_URL = API_ENDPOINTS.payments.base;
 
 // ============================================================================
 // Types

@@ -22,6 +22,7 @@ import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { supabase } from '../../lib/supabaseClient';
 import SchoolClassHeader, { SchoolClassInfo } from './common/SchoolClassHeader';
+import { API_ENDPOINTS } from '@/config/api';
 // Import shared components
 import OverviewTab, { AssignmentStats } from './Tabs/OverviewTab';
 import ClassmatesTab from './Tabs/ClassmatesTab';
@@ -561,7 +562,7 @@ const SchoolMyClass: React.FC = () => {
       const userToken = session.access_token;
 
       // Check storage API configuration
-      const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
+      const storageApiUrl = API_ENDPOINTS.storage.base;
       if (!storageApiUrl) {
         console.error('Storage API URL not configured');
         showNotificationModal('error', 'Configuration Error', 'Storage service not configured. Please contact support.');
@@ -670,9 +671,9 @@ const SchoolMyClass: React.FC = () => {
 
   // Helper function to generate accessible file URL
   const getAccessibleFileUrl = (fileUrl: string) => {
-    const storageApiUrl = import.meta.env.VITE_STORAGE_API_URL;
+    const storageApiUrl = API_ENDPOINTS.storage.base;
     if (!storageApiUrl) {
-      console.error('VITE_STORAGE_API_URL not configured');
+      console.error('Storage API URL not configured');
       return fileUrl; // Fallback to direct URL
     }
 
