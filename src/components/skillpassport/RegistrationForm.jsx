@@ -26,6 +26,8 @@ import { ShinyButton } from '../ui/shiny-button';
 
 import { API_ENDPOINTS } from '@/config/api';
 
+import { API_ENDPOINTS } from '@/config/api';
+
 const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
 const EMAIL_API_URL = import.meta.env.DEV 
