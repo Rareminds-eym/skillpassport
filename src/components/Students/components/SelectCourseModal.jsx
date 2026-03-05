@@ -271,8 +271,8 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
             />
           </div>
           <button
-            onClick={() => setShowExternalForm(true)}
-            // onClick={() => setShowDemoModal(true)}
+            // onClick={() => setShowExternalForm(true)}
+            onClick={() => setShowDemoModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap"
           >
             <ExternalLink size={20} />
@@ -295,8 +295,8 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                 {searchTerm ? 'Try a different search term' : 'No courses available yet'}
               </p>
               <button
-              onClick={() => setShowExternalForm(true)}
-                // onClick={() => setShowDemoModal(true)}
+              // onClick={() => setShowExternalForm(true)}
+                onClick={() => setShowDemoModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
                 <ExternalLink size={20} />
