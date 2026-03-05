@@ -1,8 +1,8 @@
 /**
  * Payments API Service
- * Frontend API client for Cloudflare Worker (payments-api)
+ * Frontend API client for Cloudflare Pages Functions (payments-api)
  * 
- * ALL subscription write operations go through this service → Worker → Supabase
+ * ALL subscription write operations go through this service → Functions → Supabase
  * This ensures security, consistency, and proper audit trails.
  * 
  * AVAILABLE METHODS:
@@ -17,17 +17,11 @@
  * - resumeSubscription()       - Resume paused subscription
  */
 
-const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
+import { API_ENDPOINTS } from '../config/api';
 
-if (!import.meta.env.VITE_PAYMENTS_API_URL) {
-  console.warn('⚠️ VITE_PAYMENTS_API_URL not configured. Using default production URL.');
-}
-
+// Use centralized API configuration
 const getBaseUrl = () => {
-  if (!WORKER_URL) {
-    throw new Error('VITE_PAYMENTS_API_URL environment variable is required');
-  }
-  return WORKER_URL;
+  return API_ENDPOINTS.payments.base;
 };
 
 const getAuthHeaders = (token) => {

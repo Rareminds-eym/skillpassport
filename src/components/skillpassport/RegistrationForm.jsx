@@ -24,6 +24,8 @@ import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
 
+import { API_ENDPOINTS } from '@/config/api';
+
 const REGISTRATION_FEE_STUDENT = 499;
 const REGISTRATION_FEE_CORPORATE = 7500;
 const EMAIL_API_URL = import.meta.env.DEV 
@@ -67,7 +69,7 @@ const validateForm = (form, emailVerified, consentGiven) => {
 };
 
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+  const response = await fetch(API_ENDPOINTS.email.eventOtp, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, otp, name }),
@@ -81,7 +83,7 @@ const sendConfirmationEmail = async (details) => {
   const { name, email, phone, amount, orderId, campaign } = details;
 
   try {
-    const response = await fetch(`${EMAIL_API_URL}/event-confirmation`, {
+    const response = await fetch(API_ENDPOINTS.email.eventConfirmation, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, phone, amount, orderId, campaign }),

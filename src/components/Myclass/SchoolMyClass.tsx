@@ -3,6 +3,7 @@ import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import SchoolClassHeader from './common/SchoolClassHeader';
+import { API_ENDPOINTS } from '@/config/api';
 import OverviewTab from './Tabs/OverviewTab';
 import ClassmatesTab from './Tabs/ClassmatesTab';
 import AssignmentsTab from './Tabs/AssignmentsTab';
@@ -55,7 +56,7 @@ type TimetableViewType = 'week' | 'day';
  * - Network request reduction: From 12+N to 6 requests on initial load
  */
 const SchoolMyClass: React.FC = () => {
-  const user = useUser();
+  const { user } = useAuth();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail) as { studentData: any; loading: boolean };
   const studentId = studentData?.id;
@@ -208,6 +209,38 @@ const SchoolMyClass: React.FC = () => {
       setShowUploadModal(false);
       setSelectedAssignment(null);
     }
+  };
+
+  // Helper function to extract file key from R2 URL
+  const extractFileKey = (fileUrl: string): string | null => {
+    if (fileUrl.includes('.r2.dev/')) {
+      const urlParts = fileUrl.split('.r2.dev/');
+      if (urlParts.length > 1) {
+        return urlParts[1];
+      }
+    }
+    return null;
+  };
+
+  // Helper function to generate accessible file URL
+  const getAccessibleFileUrl = (fileUrl: string) => {
+    const storageApiUrl = API_ENDPOINTS.storage.base;
+    if (!storageApiUrl) {
+      console.error('Storage API URL not configured');
+      return fileUrl; // Fallback to direct URL
+    }
+
+    const fileKey = extractFileKey(fileUrl);
+    if (fileKey) {
+      return `${storageApiUrl}/document-access?key=${encodeURIComponent(fileKey)}&mode=inline`;
+    } else {
+      // Fallback to URL parameter
+      return `${storageApiUrl}/document-access?url=${encodeURIComponent(fileUrl)}&mode=inline`;
+    }
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   // Loading State

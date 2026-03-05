@@ -1,6 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
 
-const PAYMENTS_API_URL = import.meta.env.VITE_PAYMENTS_API_URL || 'https://payments-api.dark-mode-d021.workers.dev';
+import { API_ENDPOINTS } from '../config/api';
+
+// Use centralized API configuration
+const PAYMENTS_API_URL = API_ENDPOINTS.payments.base;
 
 /**
  * Helper function to make fetch requests with retry logic

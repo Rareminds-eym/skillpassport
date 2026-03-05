@@ -45,9 +45,9 @@ import { Sparkles } from '@/components/ui/sparkles';
 const REGISTRATION_FEE = 499;
 
 // Email API URL - Use the email-api worker with SMTP secrets configured
-const EMAIL_API_URL = import.meta.env.DEV 
-  ? 'http://localhost:8788/api/email'
-  : 'https://skillpassport.rareminds.in/api/email';
+import { API_ENDPOINTS } from '@/config/api';
+
+const EMAIL_API_URL = API_ENDPOINTS.email.base;
 
 // Generate 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();

@@ -23,9 +23,9 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { signupStudent } from '../../services/studentAuthService';
 import { supabase } from '../../lib/supabaseClient';
 
-const EMAIL_API_URL = import.meta.env.DEV 
-  ? 'http://localhost:8788/api/email'
-  : 'https://skillpassport.rareminds.in/api/email';
+import { API_ENDPOINTS } from '@/config/api';
+
+const EMAIL_API_URL = API_ENDPOINTS.email.base;
 
 const validateForm = (form) => {
   const errors = {};
