@@ -15,6 +15,7 @@ import {
     X
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AITutorPanel, VideoLearningPanel } from '../../components/ai-tutor';
 import RestoreProgressModal from '../../components/student/courses/RestoreProgressModal';
@@ -66,6 +67,11 @@ const CoursePlayer = () => {
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
   const [positionInitialized, setPositionInitialized] = useState(false);
+  
+  // Content engagement tracking
+  const [contentEngaged, setContentEngaged] = useState(false);
+  const [resourcesOpened, setResourcesOpened] = useState(new Set());
+  const [videoWatched, setVideoWatched] = useState(false);
   
   // Video progress tracking refs
   const videoRef = useRef(null);
@@ -269,6 +275,15 @@ const CoursePlayer = () => {
     const position = video.currentTime;
     const duration = video.duration;
 
+    // Mark video as watched if user has watched at least 30% or 30 seconds
+    if (duration > 0 && (position / duration >= 0.3 || position >= 30)) {
+      if (!videoWatched) {
+        setVideoWatched(true);
+        setContentEngaged(true);
+        console.log('✅ Video engagement detected');
+      }
+    }
+
     // Debounced save during playback (every 5 seconds of progress)
     if (videoSaveTimeoutRef.current) {
       clearTimeout(videoSaveTimeoutRef.current);
@@ -287,7 +302,7 @@ const CoursePlayer = () => {
         courseProgressService.markVideoCompleted(user.id, courseId, currentLesson.id);
       }
     }
-  }, [isStudent, user?.id, courseId, saveVideoPosition]);
+  }, [isStudent, user?.id, courseId, saveVideoPosition, videoWatched]);
 
   const handleVideoPause = useCallback(() => {
     if (!videoRef.current || !isStudent) return;
@@ -619,6 +634,11 @@ const CoursePlayer = () => {
       console.log('🎬 Target lesson:', lesson?.title, 'ID:', lesson?.id);
       
       if (lesson) {
+        // Reset engagement tracking for new lesson
+        setContentEngaged(false);
+        setResourcesOpened(new Set());
+        setVideoWatched(false);
+        
         fetchLessonMedia(lesson);
         initializeLessonProgress(lesson);
       }
@@ -890,6 +910,15 @@ const CoursePlayer = () => {
     const currentModule = course.modules[currentModuleIndex];
     const currentLesson = getCurrentLesson();
 
+    // Check if user has engaged with content (only for students)
+    if (isStudent && !contentEngaged) {
+      toast.error('Please view the lesson content (video or resources) before proceeding to the next lesson.', {
+        duration: 4000,
+        position: 'top-center',
+      });
+      return;
+    }
+
     // Save current time before navigating
     if (lessonStartTime) {
       const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
@@ -1048,6 +1077,15 @@ const CoursePlayer = () => {
   // Complete the course (called when clicking Complete on last lesson)
   const completeCourse = async () => {
     const currentLesson = getCurrentLesson();
+
+    // Check if user has engaged with content (only for students)
+    if (isStudent && !contentEngaged) {
+      toast.error('Please view the lesson content (video or resources) before completing the course.', {
+        duration: 4000,
+        position: 'top-center',
+      });
+      return;
+    }
 
     // Save current time before completing
     if (lessonStartTime) {
@@ -1406,12 +1444,18 @@ const CoursePlayer = () => {
                         <div className="space-y-2">
                           {lessonResources.map((resource, index) => {
                             const ResourceIcon = getResourceIcon(resource.type);
+                            const isOpened = resourcesOpened.has(index);
                             return (
                               <a
                                 key={`resource-${index}`}
                                 href={resource.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                onClick={() => {
+                                  setResourcesOpened(prev => new Set([...prev, index]));
+                                  setContentEngaged(true);
+                                  console.log('✅ Resource opened, content engaged');
+                                }}
                                 className="flex items-center justify-between p-3 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-300 rounded-lg transition-all group"
                               >
                                 <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -1421,6 +1465,7 @@ const CoursePlayer = () => {
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-900 truncate">
                                       {resource.title}
+                                      {isOpened && <span className="ml-2 text-emerald-600">✓</span>}
                                     </p>
                                     <p className="text-xs text-gray-500 capitalize">
                                       {resource.type}
