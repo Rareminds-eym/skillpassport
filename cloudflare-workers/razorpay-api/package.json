@@ -1,0 +1,16 @@
+{
+  "name": "razorpay-api",
+  "version": "1.0.0",
+  "description": "Shared Razorpay payment processing worker",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": ["cloudflare", "worker", "razorpay", "payments"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
