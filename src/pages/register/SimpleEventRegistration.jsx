@@ -47,8 +47,6 @@ const REGISTRATION_FEE = 499;
 // Email API URL - Use the email-api worker with SMTP secrets configured
 import { API_ENDPOINTS } from '@/config/api';
 
-const EMAIL_API_URL = API_ENDPOINTS.email.base;
-
 // Generate 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
