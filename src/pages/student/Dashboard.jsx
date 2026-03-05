@@ -3,38 +3,38 @@ import {
   RectangleStackIcon,
 } from "@heroicons/react/24/outline";
 import {
-    Award,
-    BookOpen,
-    Briefcase,
-    Building2,
-    Calendar,
-    CheckCircle,
-    ChevronRight,
-    ClipboardList,
-    Clock,
-    Cpu,
-    Edit,
-    ExternalLink,
-    Eye,
-    EyeOff,
-    Factory,
-    FileText,
-    Github,
-    GraduationCap,
-    Lightbulb,
-    MapPin,
-    Medal,
-    MoreVertical,
-    PresentationIcon,
-    Rocket,
-    Sparkles,
-    Star,
-    Tag,
-    Target,
-    Trash2,
-    TrendingUp,
-    Users2,
-    X
+  Award,
+  BookOpen,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  ClipboardList,
+  Clock,
+  Cpu,
+  Edit,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Factory,
+  FileText,
+  Github,
+  GraduationCap,
+  Lightbulb,
+  MapPin,
+  Medal,
+  MoreVertical,
+  PresentationIcon,
+  Rocket,
+  Sparkles,
+  Star,
+  Tag,
+  Target,
+  Trash2,
+  TrendingUp,
+  Users2,
+  X
 } from "lucide-react";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { motion } from "motion/react";
@@ -101,54 +101,54 @@ import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
 const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matchedJobs = [] }) => {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  
+
   // Check if we have AI recommendations
   const hasAIRecommendations = matchedJobs && matchedJobs.length > 0;
-  
+
   // Get AI-recommended jobs (first 3) and remaining jobs
-  const aiRecommendedJobs = hasAIRecommendations 
+  const aiRecommendedJobs = hasAIRecommendations
     ? matchedJobs
-        .filter(match => match.company_name && match.company_name.trim() !== '') // Filter first
-        .slice(0, 3) // Then take first 3
-        .map(match => {
-          // matchedJobs already has the data directly, not nested
-          return {
-            ...match,
-            // Ensure we have the right field names
-            title: match.title || match.job_title,
-            employment_type: match.employment_type,
-            location: match.location,
-            posted_date: match.posted_date || match.created_at,
-            sector: match.sector || match.department,
-            // Use match_percentage which is already calculated
-            matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
-            isAIRecommended: true
-          };
-        })
+      .filter(match => match.company_name && match.company_name.trim() !== '') // Filter first
+      .slice(0, 3) // Then take first 3
+      .map(match => {
+        // matchedJobs already has the data directly, not nested
+        return {
+          ...match,
+          // Ensure we have the right field names
+          title: match.title || match.job_title,
+          employment_type: match.employment_type,
+          location: match.location,
+          posted_date: match.posted_date || match.created_at,
+          sector: match.sector || match.department,
+          // Use match_percentage which is already calculated
+          matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
+          isAIRecommended: true
+        };
+      })
     : [];
-  
+
   // Get other jobs (either from AI recommendations after first 3, or all regular jobs)
   const otherJobs = hasAIRecommendations
     ? matchedJobs
-        .filter(match => match.company_name && match.company_name.trim() !== '')
-        .slice(3) // Skip first 3, get the rest
-        .map(match => {
-          return {
-            ...match,
-            title: match.title || match.job_title,
-            employment_type: match.employment_type,
-            location: match.location,
-            posted_date: match.posted_date || match.created_at,
-            sector: match.sector || match.department,
-            matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
-            isAIRecommended: true
-          };
-        })
+      .filter(match => match.company_name && match.company_name.trim() !== '')
+      .slice(3) // Skip first 3, get the rest
+      .map(match => {
+        return {
+          ...match,
+          title: match.title || match.job_title,
+          employment_type: match.employment_type,
+          location: match.location,
+          posted_date: match.posted_date || match.created_at,
+          sector: match.sector || match.department,
+          matchScore: match.match_percentage || (match.final_score ? Math.round(match.final_score * 100) : null),
+          isAIRecommended: true
+        };
+      })
     : opportunities.filter(opp => opp.employment_type !== 'factory_visit');
-  
+
   // Combine for display - ensure we have up to 5 jobs total
   const allJobsToShow = [...aiRecommendedJobs, ...otherJobs];
-  
+
   // If we don't have enough AI jobs, fill with regular opportunities
   const jobsNeeded = 5 - allJobsToShow.length;
   if (jobsNeeded > 0 && opportunities.length > 0) {
@@ -158,21 +158,21 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       .slice(0, jobsNeeded);
     allJobsToShow.push(...regularJobs);
   }
-  
+
   // Separate opportunities by type
   const factoryVisits = opportunities.filter(opp => opp.employment_type === 'factory_visit');
   const jobsAndInternships = allJobsToShow;
-  
+
   // Determine what should be shown based on student grade
   const studentGrade = studentData?.grade;
   let showFactoryVisits = factoryVisits.length > 0;
   let showJobs = false;
-  
+
   // Parse grade to determine what to show
   if (studentGrade) {
     const gradeMatch = studentGrade.match(/\d+/);
     const gradeNumber = gradeMatch ? parseInt(gradeMatch[0]) : null;
-    
+
     // Middle School (6-8): Only Industrial Visits
     if (gradeNumber && gradeNumber >= 6 && gradeNumber <= 8) {
       showJobs = false;
@@ -186,7 +186,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       showJobs = jobsAndInternships.length > 0;
     }
   }
-  
+
   // Handle card click
   const handleCardClick = (opp) => {
     setSelectedOpportunity(opp);
@@ -199,7 +199,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       root.style.transition = 'filter 0.2s ease-in-out';
     }
   };
-  
+
   // Close modal
   const closeModal = () => {
     setShowModal(false);
@@ -211,14 +211,14 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       root.style.filter = 'none';
     }
   };
-  
+
   // Render opportunity card
   const renderOpportunityCard = (opp) => {
     const isFactoryVisit = opp.employment_type === 'factory_visit';
     const isInternship = opp.employment_type === 'internship';
     const isAIRecommended = opp.isAIRecommended;
     const matchScore = opp.matchScore;
-    
+
     return (
       <div
         key={opp.id}
@@ -233,13 +233,12 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
                 {Math.round(matchScore)}% Match
               </Badge>
             )}
-            <Badge className={`text-xs ${
-              isFactoryVisit 
-                ? '!bg-blue-100 !text-blue-600' 
-                : isInternship 
-                ? '!bg-green-100 !text-green-600'
-                : '!bg-purple-100 !text-purple-600'
-            }`}>
+            <Badge className={`text-xs ${isFactoryVisit
+                ? '!bg-blue-100 !text-blue-600'
+                : isInternship
+                  ? '!bg-green-100 !text-green-600'
+                  : '!bg-purple-100 !text-purple-600'
+              }`}>
               {isFactoryVisit ? 'Visit' : isInternship ? 'Internship' : 'Job'}
             </Badge>
           </div>
@@ -283,16 +282,16 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       </div>
     );
   };
-  
+
   // Render modal
   const renderModal = () => {
     if (!showModal || !selectedOpportunity) return null;
-    
+
     const isFactoryVisit = selectedOpportunity.employment_type === 'factory_visit';
     const isInternship = selectedOpportunity.employment_type === 'internship';
     const isAIRecommended = selectedOpportunity.isAIRecommended;
     const matchScore = selectedOpportunity.matchScore;
-    
+
     return createPortal(
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999] p-4 animate-in fade-in duration-200">
         <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -318,13 +317,12 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
                       {Math.round(matchScore)}% Match
                     </Badge>
                   )}
-                  <Badge className={`text-xs ${
-                    isFactoryVisit 
-                      ? '!bg-blue-100 !text-blue-600' 
-                      : isInternship 
-                      ? '!bg-green-100 !text-green-600'
-                      : '!bg-purple-100 !text-purple-600'
-                  }`}>
+                  <Badge className={`text-xs ${isFactoryVisit
+                      ? '!bg-blue-100 !text-blue-600'
+                      : isInternship
+                        ? '!bg-green-100 !text-green-600'
+                        : '!bg-purple-100 !text-purple-600'
+                    }`}>
                     {isFactoryVisit ? 'Industrial Visit' : isInternship ? 'Internship' : 'Full-Time Job'}
                   </Badge>
                 </div>
@@ -414,10 +412,10 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Calendar className="w-4 h-4" />
                     <span>
-                      Posted on {new Date(selectedOpportunity.posted_date).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
+                      Posted on {new Date(selectedOpportunity.posted_date).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
                       })}
                     </span>
                   </div>
@@ -425,8 +423,8 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
                     onClick={() => {
                       closeModal();
                       const isFactoryVisit = selectedOpportunity.employment_type === 'factory_visit';
-                      navigate('/student/opportunities', { 
-                        state: { activeTab: isFactoryVisit ? 'industrial-visits' : 'my-jobs' } 
+                      navigate('/student/opportunities', {
+                        state: { activeTab: isFactoryVisit ? 'industrial-visits' : 'my-jobs' }
                       });
                     }}
                     size="sm"
@@ -443,16 +441,16 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       document.body
     );
   };
-  
+
   // If both types should be shown and both exist, split into two sections
   if (showFactoryVisits && showJobs) {
     // For college students, show Jobs first, then Industrial Visits
     const isCollege = studentGrade && (
-      studentGrade.toLowerCase().includes('ug') || 
+      studentGrade.toLowerCase().includes('ug') ||
       studentGrade.toLowerCase().includes('pg') ||
       studentGrade.toLowerCase().includes('year')
     );
-    
+
     if (isCollege) {
       return (
         <>
@@ -480,7 +478,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
                 </div>
               </div>
             </div>
-            
+
             {/* Industrial Visits Section - Second for college */}
             <div className="border-t border-gray-200 pt-4">
               <div className="flex items-center gap-2 mb-3">
@@ -511,7 +509,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
         </>
       );
     }
-    
+
     // For school students, show Industrial Visits first
     return (
       <>
@@ -541,7 +539,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
               )}
             </div>
           </div>
-          
+
           {/* Jobs & Internships Section */}
           <div className="border-t border-gray-200 pt-4">
             <div className="flex items-center gap-2 mb-3">
@@ -570,14 +568,14 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       </>
     );
   }
-  
+
   // If only factory visits should be shown
   if (showFactoryVisits && !showJobs) {
     return (
       <>
         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
           {factoryVisits.slice(0, 5).map(renderOpportunityCard)}
-          
+
           {factoryVisits.length > 5 && (
             <div className="text-center pt-2 pb-1">
               <Button
@@ -598,14 +596,14 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       </>
     );
   }
-  
+
   // If only jobs should be shown
   if (!showFactoryVisits && showJobs) {
     return (
       <>
         <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
           {jobsAndInternships.slice(0, 5).map(renderOpportunityCard)}
-          
+
           <div className="text-center pt-2 pb-1">
             <Button
               onClick={(e) => {
@@ -624,7 +622,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
       </>
     );
   }
-  
+
   // Fallback: show nothing if no valid opportunities
   return (
     <div className="text-center py-8">
@@ -857,7 +855,7 @@ const StudentDashboard = () => {
       ? tableProjects
       : userData.projects;
     if (!Array.isArray(projectsData)) return [];
-    
+
     return projectsData
       .map((project) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
@@ -896,7 +894,7 @@ const StudentDashboard = () => {
         // 1. It's approved or verified, OR
         // 2. It has pending edits (has_pending_edit=true) with verified_data (was previously verified)
         const shouldShow = (
-          project.approval_status === 'approved' || 
+          project.approval_status === 'approved' ||
           project.approval_status === 'verified' ||
           (project.has_pending_edit && project.verified_data)
         );
@@ -911,18 +909,11 @@ const StudentDashboard = () => {
       ? tableEducation
       : userData.education;
     if (!Array.isArray(educationData)) return [];
-    
+
     return educationData
       .map((education) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (education.has_pending_edit && education.verified_data) {
-          console.log('🔄 Dashboard - Education with pending edit:', {
-            id: education.id,
-            currentDegree: education.degree,
-            verifiedDegree: education.verified_data.degree,
-            approval_status: education.approval_status,
-            has_pending_edit: education.has_pending_edit
-          });
           
           return {
             ...education,
@@ -953,7 +944,7 @@ const StudentDashboard = () => {
         // 1. It's approved or verified, OR
         // 2. It has pending edits (has_pending_edit=true) with verified_data (was previously verified)
         const shouldShow = (
-          education.approval_status === 'approved' || 
+          education.approval_status === 'approved' ||
           education.approval_status === 'verified' ||
           (education.has_pending_edit && education.verified_data)
         );
@@ -971,9 +962,9 @@ const StudentDashboard = () => {
     const skillsData = Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0
       ? tableTechnicalSkills
       : userData.technicalSkills;
-    
+
     if (!Array.isArray(skillsData)) return [];
-    
+
     const processed = skillsData
       .map((skill) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
@@ -994,14 +985,25 @@ const StudentDashboard = () => {
       .filter((skill) => skill && skill.enabled !== false)
       .filter((skill) => {
         const shouldShow = (
-          skill.approval_status === 'approved' || 
+          skill.approval_status === 'approved' ||
           skill.approval_status === 'verified' ||
           (skill.has_pending_edit && skill.verified_data)
         );
         return shouldShow;
       });
-    
-    return processed;
+
+    // Deduplicate by skill name (case-insensitive)
+    const seen = new Map();
+    const deduplicated = [];
+    for (const skill of processed) {
+      const skillNameLower = skill.name?.toLowerCase();
+      if (skillNameLower && !seen.has(skillNameLower)) {
+        seen.set(skillNameLower, true);
+        deduplicated.push(skill);
+      }
+    }
+
+    return deduplicated;
   }, [tableTechnicalSkills, userData.technicalSkills]);
 
   // Memoize soft skills with versioning logic
@@ -1010,8 +1012,8 @@ const StudentDashboard = () => {
       ? tableSoftSkills
       : userData.softSkills;
     if (!Array.isArray(skillsData)) return [];
-    
-    return skillsData
+
+    const processed = skillsData
       .map((skill) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (skill.has_pending_edit && skill.verified_data) {
@@ -1031,12 +1033,25 @@ const StudentDashboard = () => {
       .filter((skill) => skill && skill.enabled !== false)
       .filter((skill) => {
         const shouldShow = (
-          skill.approval_status === 'approved' || 
+          skill.approval_status === 'approved' ||
           skill.approval_status === 'verified' ||
           (skill.has_pending_edit && skill.verified_data)
         );
         return shouldShow;
       });
+
+    // Deduplicate by skill name (case-insensitive)
+    const seen = new Map();
+    const deduplicated = [];
+    for (const skill of processed) {
+      const skillNameLower = skill.name?.toLowerCase();
+      if (skillNameLower && !seen.has(skillNameLower)) {
+        seen.set(skillNameLower, true);
+        deduplicated.push(skill);
+      }
+    }
+
+    return deduplicated;
   }, [tableSoftSkills, userData.softSkills]);
 
   const enabledExperience = useMemo(() => {
@@ -1045,20 +1060,14 @@ const StudentDashboard = () => {
       ? tableExperience
       : userData.experience;
     if (!Array.isArray(experienceData)) return [];
-    
+
     // Apply versioning logic: show verified data on dashboard when there's a pending edit
     return experienceData
       .map((exp) => {
         // VERSIONING: If there's a pending edit, use verified_data for dashboard display
         if (exp.has_pending_edit && exp.verified_data) {
-          console.log('🔄 Dashboard - Experience with pending edit:', {
-            id: exp.id,
-            currentRole: exp.role,
-            verifiedRole: exp.verified_data.role,
-            approval_status: exp.approval_status,
-            has_pending_edit: exp.has_pending_edit
-          });
-          
+         
+
           return {
             ...exp,
             // Override with verified data for display
@@ -1085,11 +1094,11 @@ const StudentDashboard = () => {
         // 1. It's approved or verified, OR
         // 2. It has pending edits (to show the verified data with pending badge)
         const shouldShow = (
-          exp.approval_status === 'approved' || 
+          exp.approval_status === 'approved' ||
           exp.approval_status === 'verified' ||
           (exp.has_pending_edit && exp.verified_data)
         );
-        
+
         return shouldShow;
       })
       .sort((a, b) => {
@@ -1263,7 +1272,6 @@ const StudentDashboard = () => {
   useEffect(() => {
     const handleSettingsUpdate = (event) => {
       if (event.detail?.type === 'profile_updated') {
-        console.log('🔄 Settings updated, refreshing dashboard data...');
         refresh();
       }
     };
@@ -1358,13 +1366,8 @@ const StudentDashboard = () => {
             result = await updateExperience(data);
             break;
           case "skills":
-            // Ensure all skills have type: "technical" when coming from Technical Skills card
-            const skillsWithType = data.map(skill => ({
-              ...skill,
-              type: "technical" // Force technical type for skills from Technical Skills card
-            }));
-            console.log('🔧 Dashboard: Skills data being saved:', skillsWithType);
-            result = await updateSkills(skillsWithType);
+            // Save skills with their selected type (technical 
+            result = await updateSkills(data);
             break;
           case "technicalSkills":
             result = await updateTechnicalSkills(data);
@@ -1426,71 +1429,61 @@ const StudentDashboard = () => {
 
   // Technical Skills toggle enabled handler
   const handleToggleTechnicalSkillEnabled = async (skillId) => {
-    console.log('🔧 Dashboard - Toggle technical skill called:', skillId);
-    console.log('🔧 Dashboard - All technical skills:', tableTechnicalSkills);
-    
+ 
     const skill = tableTechnicalSkills.find(s => s.id === skillId);
-    console.log('🔧 Dashboard - Found skill:', skill);
-    
+
     if (!skill) {
-      console.error('🔧 Dashboard - Skill not found!');
       return;
     }
-    
+
     const newState = !skill.enabled;
-    console.log('🔧 Dashboard - Toggling from', skill.enabled, 'to', newState);
-    
+
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
-      console.log('🔧 Dashboard - Skill is pending, cannot toggle');
-      toast({ 
-        title: "Cannot Hide/Show", 
+      toast({
+        title: "Cannot Hide/Show",
         description: "You cannot hide or show skills that are pending verification or approval.",
         variant: "destructive",
         duration: 4000,
       });
       return;
     }
-    
+
     try {
-      console.log('🔧 Dashboard - Updating database...');
       // Import supabase client
       const { createClient } = await import('@supabase/supabase-js');
       const supabase = createClient(
         import.meta.env.VITE_SUPABASE_URL,
         import.meta.env.VITE_SUPABASE_ANON_KEY
       );
-      
+
       // Update only the enabled field directly in database
       const { error } = await supabase
         .from('skills')
         .update({ enabled: newState })
         .eq('id', skillId);
-      
+
       if (error) {
         console.error('🔧 Dashboard - Database error:', error);
         throw error;
       }
-      
-      console.log('🔧 Dashboard - Database updated successfully');
-      
+
       // Refresh technical skills to get updated data
       if (refreshTechnicalSkills) {
-        console.log('🔧 Dashboard - Refreshing skills...');
         await refreshTechnicalSkills();
       }
-      
-      toast({ 
-        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+
+      toast({
+        title: newState ? "Visibility Enabled" : "Visibility Disabled",
         description: `Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
         duration: 3000,
       });
     } catch (error) {
       console.error('🔧 Dashboard - Error toggling technical skill visibility:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to update visibility. Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Failed to update visibility. Please try again.",
+        variant: "destructive"
       });
     }
   };
@@ -1499,20 +1492,20 @@ const StudentDashboard = () => {
   const handleToggleSoftSkillEnabled = async (skillId) => {
     const skill = tableSoftSkills.find(s => s.id === skillId);
     if (!skill) return;
-    
+
     const newState = !skill.enabled;
-    
+
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
-      toast({ 
-        title: "Cannot Hide/Show", 
+      toast({
+        title: "Cannot Hide/Show",
         description: "You cannot hide or show skills that are pending verification or approval.",
         variant: "destructive",
         duration: 4000,
       });
       return;
     }
-    
+
     try {
       // Import supabase client
       const { createClient } = await import('@supabase/supabase-js');
@@ -1520,31 +1513,31 @@ const StudentDashboard = () => {
         import.meta.env.VITE_SUPABASE_URL,
         import.meta.env.VITE_SUPABASE_ANON_KEY
       );
-      
+
       // Update only the enabled field directly in database
       const { error } = await supabase
         .from('skills')
         .update({ enabled: newState })
         .eq('id', skillId);
-      
+
       if (error) throw error;
-      
+
       // Refresh soft skills to get updated data
       if (refreshSoftSkills) {
         await refreshSoftSkills();
       }
-      
-      toast({ 
-        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
+
+      toast({
+        title: newState ? "Visibility Enabled" : "Visibility Disabled",
         description: `Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
         duration: 3000,
       });
     } catch (error) {
       console.error('Error toggling soft skill visibility:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to update visibility. Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Failed to update visibility. Please try again.",
+        variant: "destructive"
       });
     }
   };
@@ -1639,23 +1632,23 @@ const StudentDashboard = () => {
       // Fallback to individual columns if no foreign key relationships (custom entries)
       let type = 'Institution';
       let name = null;
-      
+
       // Check grade to determine if school or college student
       const grade = studentData?.grade || '';
       const isSchoolGrade = grade && (
-        grade.includes('Grade') || 
-        grade.includes('6') || grade.includes('7') || grade.includes('8') || 
+        grade.includes('Grade') ||
+        grade.includes('6') || grade.includes('7') || grade.includes('8') ||
         grade.includes('9') || grade.includes('10') || grade.includes('11') || grade.includes('12')
       );
       const isCollegeGrade = grade && (
-        grade.includes('UG') || grade.includes('PG') || 
+        grade.includes('UG') || grade.includes('PG') ||
         grade.includes('Diploma') || grade.includes('Year')
       );
-      
+
       // Check if it's a university path (has university or program/branch)
       const hasUniversity = studentData?.university;
       const hasBranch = studentData?.branch_field;
-      
+
       if (hasUniversity && studentData?.college_school_name) {
         // Has both university and college - show college
         type = 'College';
@@ -1678,7 +1671,7 @@ const StudentDashboard = () => {
           name = studentData.college_school_name;
         }
       }
-      
+
       if (name) {
         return {
           type: type,
@@ -2018,7 +2011,7 @@ const StudentDashboard = () => {
               </p>
             </div>
           ) : (
-            <OpportunitiesCardContent 
+            <OpportunitiesCardContent
               opportunities={opportunities}
               studentData={studentData}
               navigate={navigate}
@@ -2065,39 +2058,39 @@ const StudentDashboard = () => {
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
               {enabledTechnicalSkills.map((skill, idx) => (
-                  <div
-                    key={skill.id || `tech-skill-${idx}`}
-                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                  >
-                    {/* Skill Name + Level Badge */}
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <h4 className="text-base font-bold text-gray-900">
-                        {skill.name}
-                      </h4>
-                      <Badge
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
-                          skill.level
-                        )}`}
-                      >
-                        {getSkillLevelText(skill.level)}
-                      </Badge>
-                    </div>
-
-                    {/* Category */}
-                    {skill.category && (
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-sm text-blue-600 font-medium">
-                          {skill.category}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Star Rating */}
-                    <div className="flex gap-0.5 mb-3">
-                      {renderStars(skill.level)}
-                    </div>
+                <div
+                  key={skill.id || `tech-skill-${idx}`}
+                  className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                >
+                  {/* Skill Name + Level Badge */}
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h4 className="text-base font-bold text-gray-900">
+                      {skill.name}
+                    </h4>
+                    <Badge
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
+                        skill.level
+                      )}`}
+                    >
+                      {getSkillLevelText(skill.level)}
+                    </Badge>
                   </div>
-                ))}
+
+                  {/* Category */}
+                  {skill.category && (
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-sm text-blue-600 font-medium">
+                        {skill.category}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Star Rating */}
+                  <div className="flex gap-0.5 mb-3">
+                    {renderStars(skill.level)}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -2166,8 +2159,8 @@ const StudentDashboard = () => {
                       </p>
                       {project.status && (
                         <Badge className={`px-1 py-1 text-xs font-semibold rounded-full shadow-sm whitespace-nowrap ${project.status.toLowerCase() === "completed"
-                            ? "!bg-green-100 !text-green-600"
-                            : "!bg-blue-100 !text-blue-600"
+                          ? "!bg-green-100 !text-green-600"
+                          : "!bg-blue-100 !text-blue-600"
                           }`}>
                           {project.status}
                         </Badge>
@@ -2241,57 +2234,57 @@ const StudentDashboard = () => {
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
               {enabledEducation.map((education, idx) => (
-                  <div
-                    key={education.id || `edu-${idx}`}
-                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                  >
-                    {/* Degree + Status Badge */}
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <h4 className="text-base font-bold text-gray-900">
-                        {education.degree || "N/A"}
-                      </h4>
-                      {education.status && (
-                        <Badge
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${education.status === "ongoing"
-                              ? "!bg-gradient-to-r !from-blue-100 !to-indigo-100 !text-blue-700"
-                              : "!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700"
-                            }`}
-                        >
-                          {education.status}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* University/Institution */}
-                    <div className="flex items-center gap-2 mb-3">
-                      <Building2 className="w-4 h-4 text-blue-600" />
-                      <p className="text-sm text-blue-600 font-medium">
-                        {education.university || education.institution || "N/A"}
-                      </p>
-                    </div>
-
-                    {/* Level, Year, Grade */}
-                    <div className="flex items-center gap-6 text-sm text-gray-600">
-                      {education.level && (
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium">{education.level}</span>
-                        </div>
-                      )}
-                      {education.yearOfPassing && (
-                        <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4 text-gray-600" />
-                          <span className="font-medium">{education.yearOfPassing}</span>
-                        </div>
-                      )}
-                      {education.cgpa && (
-                        <div className="flex items-center gap-1.5">
-                          <Award className="w-4 h-4 text-gray-600" />
-                          <span className="font-medium">{education.cgpa}</span>
-                        </div>
-                      )}
-                    </div>
+                <div
+                  key={education.id || `edu-${idx}`}
+                  className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                >
+                  {/* Degree + Status Badge */}
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h4 className="text-base font-bold text-gray-900">
+                      {education.degree || "N/A"}
+                    </h4>
+                    {education.status && (
+                      <Badge
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm ${education.status === "ongoing"
+                          ? "!bg-gradient-to-r !from-blue-100 !to-indigo-100 !text-blue-700"
+                          : "!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700"
+                          }`}
+                      >
+                        {education.status}
+                      </Badge>
+                    )}
                   </div>
-                ))}
+
+                  {/* University/Institution */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Building2 className="w-4 h-4 text-blue-600" />
+                    <p className="text-sm text-blue-600 font-medium">
+                      {education.university || education.institution || "N/A"}
+                    </p>
+                  </div>
+
+                  {/* Level, Year, Grade */}
+                  <div className="flex items-center gap-6 text-sm text-gray-600">
+                    {education.level && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">{education.level}</span>
+                      </div>
+                    )}
+                    {education.yearOfPassing && (
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-gray-600" />
+                        <span className="font-medium">{education.yearOfPassing}</span>
+                      </div>
+                    )}
+                    {education.cgpa && (
+                      <div className="flex items-center gap-1.5">
+                        <Award className="w-4 h-4 text-gray-600" />
+                        <span className="font-medium">{education.cgpa}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -2390,7 +2383,7 @@ const StudentDashboard = () => {
                         </Badge>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center gap-2 mb-3">
                       <Building2 className="w-4 h-4 text-blue-600" />
                       <span className="text-sm text-gray-600">{course.provider}</span>
@@ -2544,129 +2537,129 @@ const StudentDashboard = () => {
         </CardContent>
       </Card>
     ),
-       experience: (
-  <Card
-    key="experience"
-    data-tour="experience-card"
-    className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
-  >
-    <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
-      <div className="flex items-center w-full justify-between">
-        <CardTitle className="flex items-center gap-3 m-0 p-0">
-          <div className="p-2 rounded-lg bg-blue-600">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-lg font-bold text-gray-800">
-            My Experience
-          </span>
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <button
-            className="p-2 rounded-md hover:bg-blue-100 transition-colors"
-            title="View All Experience"
-            onClick={() => setActiveModal("experience")}
-          >
-            <Eye className="w-5 h-5 text-blue-600" />
-          </button>
-        </div>
-      </div>
-    </CardHeader>
-        <CardContent className="p-8">
-  {enabledExperience.length === 0 ? (
-    <div className="text-center py-8">
-      <p className="text-gray-900 text-base leading-normal font-medium">
-        No experience added yet
-      </p>
-    </div>
-  ) : (
-    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
-      {enabledExperience.map((exp, idx) => {
-        // VERSIONING FIX: Show verified_data if there's a pending edit, otherwise show current data
-        // Dashboard should always show the VERIFIED version, not the pending changes
-        const displayData = exp.has_pending_edit && exp.verified_data 
-          ? { ...exp, ...exp.verified_data }
-          : exp;
-        
-        return (
-          <div
-          key={exp.id || `exp-${idx}`}
-          className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-        >
-          {/* Title + Status Badge */}
-          <div className="flex items-center justify-between gap-3 mb-3">
+    experience: (
+      <Card
+        key="experience"
+        data-tour="experience-card"
+        className="h-full bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-lg transition-all duration-200 shadow-sm"
+      >
+        <CardHeader className="px-6 py-5 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 rounded-t-xl">
+          <div className="flex items-center w-full justify-between">
+            <CardTitle className="flex items-center gap-3 m-0 p-0">
+              <div className="p-2 rounded-lg bg-blue-600">
+                <Building2 className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-lg font-bold text-gray-800">
+                My Experience
+              </span>
+            </CardTitle>
             <div className="flex items-center gap-2">
-              <h4 className="text-base font-bold text-gray-900">
-                {displayData.role || "Experience Role"}
-              </h4>
-              {/* Verified Badge - show if:
-                  1. Status is approved/verified, OR
-                  2. Has pending edit with verified_data (showing old verified data) */}
-              {((exp.approval_status === "verified" || exp.approval_status === "approved") || 
-                (exp.has_pending_edit && exp.verified_data)) && (
-                <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
-                  Verified
-                </Badge>
-              )}
-              {/* Pending Approval Badge - only for brand new submissions (no verified_data) */}
-              {exp.approval_status === 'pending' && !exp.verified_data && (
-                <Badge className="!bg-gradient-to-r !from-yellow-100 !to-amber-100 !text-yellow-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Pending Approval
-                </Badge>
-              )}
-              {/* Present Badge for ongoing experiences */}
-              {(!displayData.end_date && !displayData.endDate) && (
-                <Badge className="!bg-gradient-to-r !from-blue-100 !to-blue-200 !text-blue-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm">
-                  Present
-                </Badge>
-              )}
+              <button
+                className="p-2 rounded-md hover:bg-blue-100 transition-colors"
+                title="View All Experience"
+                onClick={() => setActiveModal("experience")}
+              >
+                <Eye className="w-5 h-5 text-blue-600" />
+              </button>
             </div>
           </div>
-
-          {/* Type */}
-          {displayData.type && (
-            <div className="flex items-center gap-2 mb-3">
-              <Briefcase className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-gray-700 font-medium">{displayData.type}</span>
-            </div>
-          )}
-
-          {/* Icon + Location */}
-          {(displayData.organization || displayData.company || displayData.location) && (
-            <div className="flex items-center gap-2 mb-3">
-              <Building2 className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-blue-600 font-medium">
-                {displayData.organization || displayData.company || "Organization"}
-                {displayData.location && `, ${displayData.location}`}
-              </span>
-            </div>
-          )}
-
-          {/* Date */}
-          {(displayData.duration || displayData.period || displayData.start_date || displayData.startDate) && (
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-4 h-4 text-gray-600" />
-              <span className="text-sm text-gray-600 font-medium">
-                {calculateDuration(displayData.start_date || displayData.startDate, displayData.end_date || displayData.endDate) || displayData.duration || displayData.period}
-              </span>
-            </div>
-          )}
-
-          {/* Description */}
-          {displayData.description && (
-            <div className="mt-3">
-              <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
-                {displayData.description}
+        </CardHeader>
+        <CardContent className="p-8">
+          {enabledExperience.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-900 text-base leading-normal font-medium">
+                No experience added yet
               </p>
             </div>
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
+              {enabledExperience.map((exp, idx) => {
+                // VERSIONING FIX: Show verified_data if there's a pending edit, otherwise show current data
+                // Dashboard should always show the VERIFIED version, not the pending changes
+                const displayData = exp.has_pending_edit && exp.verified_data
+                  ? { ...exp, ...exp.verified_data }
+                  : exp;
+
+                return (
+                  <div
+                    key={exp.id || `exp-${idx}`}
+                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                  >
+                    {/* Title + Status Badge */}
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-bold text-gray-900">
+                          {displayData.role || "Experience Role"}
+                        </h4>
+                        {/* Verified Badge - show if:
+                  1. Status is approved/verified, OR
+                  2. Has pending edit with verified_data (showing old verified data) */}
+                        {((exp.approval_status === "verified" || exp.approval_status === "approved") ||
+                          (exp.has_pending_edit && exp.verified_data)) && (
+                            <Badge className="!bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Verified
+                            </Badge>
+                          )}
+                        {/* Pending Approval Badge - only for brand new submissions (no verified_data) */}
+                        {exp.approval_status === 'pending' && !exp.verified_data && (
+                          <Badge className="!bg-gradient-to-r !from-yellow-100 !to-amber-100 !text-yellow-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Pending Approval
+                          </Badge>
+                        )}
+                        {/* Present Badge for ongoing experiences */}
+                        {(!displayData.end_date && !displayData.endDate) && (
+                          <Badge className="!bg-gradient-to-r !from-blue-100 !to-blue-200 !text-blue-700 px-2 py-1 text-xs font-semibold rounded-full shadow-sm">
+                            Present
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Type */}
+                    {displayData.type && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Briefcase className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm text-gray-700 font-medium">{displayData.type}</span>
+                      </div>
+                    )}
+
+                    {/* Icon + Location */}
+                    {(displayData.organization || displayData.company || displayData.location) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Building2 className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm text-blue-600 font-medium">
+                          {displayData.organization || displayData.company || "Organization"}
+                          {displayData.location && `, ${displayData.location}`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Date */}
+                    {(displayData.duration || displayData.period || displayData.start_date || displayData.startDate) && (
+                      <div className="flex items-center gap-2 mb-3">
+                        <Calendar className="w-4 h-4 text-gray-600" />
+                        <span className="text-sm text-gray-600 font-medium">
+                          {calculateDuration(displayData.start_date || displayData.startDate, displayData.end_date || displayData.endDate) || displayData.duration || displayData.period}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    {displayData.description && (
+                      <div className="mt-3">
+                        <p className="text-sm text-gray-600 leading-relaxed line-clamp-2">
+                          {displayData.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
-        </div>
-        );
-      })}
-    </div>
-  )}
-</CardContent>
+        </CardContent>
       </Card>
     ),
     softSkills: (
@@ -2706,39 +2699,39 @@ const StudentDashboard = () => {
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 blue-scrollbar">
               {enabledSoftSkills.map((skill, idx) => (
-                  <div
-                    key={skill.id || `soft-skill-${idx}`}
-                    className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
-                  >
-                    {/* Skill Name + Level Badge */}
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <h4 className="text-base font-bold text-gray-900">
-                        {skill.name}
-                      </h4>
-                      <Badge
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
-                          skill.level
-                        )}`}
-                      >
-                        {getSkillLevelText(skill.level)}
-                      </Badge>
-                    </div>
-
-                    {/* Description */}
-                    {skill.description && (
-                      <div className="mb-3">
-                        <p className="text-sm text-gray-600 font-medium">
-                          {skill.description}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Star Rating */}
-                    <div className="flex gap-0.5 mb-3">
-                      {renderStars(skill.level)}
-                    </div>
+                <div
+                  key={skill.id || `soft-skill-${idx}`}
+                  className="p-5 rounded-xl bg-white border-l-4 border-l-blue-500 border border-gray-200 hover:shadow-md transition-all duration-200"
+                >
+                  {/* Skill Name + Level Badge */}
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <h4 className="text-base font-bold text-gray-900">
+                      {skill.name}
+                    </h4>
+                    <Badge
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-full shadow-sm border ${getSkillLevelColor(
+                        skill.level
+                      )}`}
+                    >
+                      {getSkillLevelText(skill.level)}
+                    </Badge>
                   </div>
-                ))}
+
+                  {/* Description */}
+                  {skill.description && (
+                    <div className="mb-3">
+                      <p className="text-sm text-gray-600 font-medium">
+                        {skill.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Star Rating */}
+                  <div className="flex gap-0.5 mb-3">
+                    {renderStars(skill.level)}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -2824,8 +2817,8 @@ const StudentDashboard = () => {
                   data-tour="dashboard-tab"
                   onClick={() => setActiveView('dashboard')}
                   className={`relative text-left p-3 sm:p-4 rounded-lg transition-all ${activeView === 'dashboard'
-                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
-                      : 'bg-white hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
+                    : 'bg-white hover:bg-gray-50'
                     }`}
                 >
                   <div className="flex items-start gap-2 sm:gap-3">
@@ -2851,8 +2844,8 @@ const StudentDashboard = () => {
                   data-tour="analytics-tab"
                   onClick={() => setActiveView('analytics')}
                   className={`relative text-left p-3 sm:p-4 rounded-lg transition-all ${activeView === 'analytics'
-                      ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
-                      : 'bg-white hover:bg-gray-50'
+                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md'
+                    : 'bg-white hover:bg-gray-50'
                     }`}
                 >
                   <div className="flex items-start gap-2 sm:gap-3">
@@ -2894,12 +2887,12 @@ const StudentDashboard = () => {
                 className="bg-gradient-to-br from-slate-900 to-slate-900  bg-clip-text text-center text-xl font-bold tracking-tight text-transparent md:text-xl"
               >
                 Welcome to your profile dashboard, {(() => {
-                  const firstName = studentData?.profile?.firstName || 
-                                   studentData?.profile?.first_name || 
-                                   studentData?.rawData?.firstName || 
-                                   studentData?.name?.split(' ')[0] ||
-                                   studentData?.email?.split('@')[0] || 
-                                   "Student";
+                  const firstName = studentData?.profile?.firstName ||
+                    studentData?.profile?.first_name ||
+                    studentData?.rawData?.firstName ||
+                    studentData?.name?.split(' ')[0] ||
+                    studentData?.email?.split('@')[0] ||
+                    "Student";
                   return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
                 })()}!
               </motion.h1>
@@ -3196,7 +3189,7 @@ const StudentDashboard = () => {
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={Array.isArray(tableSoftSkills) && tableSoftSkills.length > 0 ? tableSoftSkills : userData.softSkills}
+          data={tableSoftSkills || []}
           onSave={createSaveHandler("softSkills", refreshSoftSkills)}
           title="Soft Skills"
         />
@@ -3206,17 +3199,7 @@ const StudentDashboard = () => {
         <SkillsEditModal
           isOpen
           onClose={() => setActiveModal(null)}
-          data={Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0 ? tableTechnicalSkills : userData.technicalSkills || []}
-          onSave={createSaveHandler("skills", refreshTechnicalSkills)}
-          title="Skills"
-        />
-      )}
-
-      {activeModal === "technicalSkills" && (
-        <SkillsEditModal
-          isOpen
-          onClose={() => setActiveModal(null)}
-          data={Array.isArray(tableTechnicalSkills) && tableTechnicalSkills.length > 0 ? tableTechnicalSkills : userData.technicalSkills}
+          data={tableTechnicalSkills || []}
           onSave={createSaveHandler("technicalSkills", refreshTechnicalSkills)}
           title="Technical Skills"
         />

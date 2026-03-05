@@ -176,7 +176,7 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
       if (training) {
         const { data: courseSkills, error: skillsError } = await supabase
           .from('course_skills')
-          .select('skill_name, proficiency_level')
+          .select('skill_name, proficiency_level, type')
           .eq('course_id', course.course_id);
 
         if (courseSkills && courseSkills.length > 0) {
@@ -184,7 +184,7 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
             student_id: studentId,
             training_id: training.id,
             name: skill.skill_name,
-            type: 'technical',
+            type: skill.type || 'technical', // Use type from course_skills, default to technical
             level: 3, // Default intermediate level
             approval_status: 'approved',
             enabled: true,
@@ -271,8 +271,8 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
             />
           </div>
           <button
-            // onClick={() => setShowExternalForm(true)}
-            onClick={() => setShowDemoModal(true)}
+            onClick={() => setShowExternalForm(true)}
+            // onClick={() => setShowDemoModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap"
           >
             <ExternalLink size={20} />
@@ -295,8 +295,8 @@ export default function SelectCourseModal({ isOpen, onClose, studentId, onSucces
                 {searchTerm ? 'Try a different search term' : 'No courses available yet'}
               </p>
               <button
-              // onClick={() => setShowExternalForm(true)}
-                onClick={() => setShowDemoModal(true)}
+              onClick={() => setShowExternalForm(true)}
+                // onClick={() => setShowDemoModal(true)}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
               >
                 <ExternalLink size={20} />
