@@ -6,7 +6,6 @@ import type { Env, SubscriptionAccessResponse } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { authenticateUser } from '../utils/auth';
 import { createSupabaseAdmin } from '../utils/supabase';
-import { getRazorpayCredentials } from '../utils/razorpay';
 import { GRACE_PERIOD_DAYS } from '../config';
 
 /**
@@ -228,7 +227,6 @@ export async function handleCancelSubscription(request: Request, env: Env): Prom
   if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
   const { user, supabase } = auth;
-  const { keyId, keySecret } = getRazorpayCredentials(env);
 
   const body = await request.json() as { subscription_id?: string; cancel_at_cycle_end?: boolean };
   const { subscription_id, cancel_at_cycle_end = false } = body;
@@ -237,20 +235,24 @@ export async function handleCancelSubscription(request: Request, env: Env): Prom
     return jsonResponse({ error: 'Missing subscription_id' }, 400);
   }
 
-  const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-  const razorpayResponse = await fetch(
-    `https://api.razorpay.com/v1/subscriptions/${subscription_id}/cancel`,
-    {
+  // Cancel via Razorpay worker
+  try {
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const razorpayResponse = await fetch(`${razorpayWorkerUrl}/subscription/${subscription_id}/cancel`, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${razorpayAuth}`,
+        'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ cancel_at_cycle_end }),
-    }
-  );
+    });
 
-  if (!razorpayResponse.ok && razorpayResponse.status !== 404) {
+    if (!razorpayResponse.ok && razorpayResponse.status !== 404) {
+      console.error('Failed to cancel subscription via worker');
+      return jsonResponse({ error: 'Failed to cancel subscription' }, 500);
+    }
+  } catch (error) {
+    console.error('Error calling Razorpay worker:', error);
     return jsonResponse({ error: 'Failed to cancel subscription' }, 500);
   }
 

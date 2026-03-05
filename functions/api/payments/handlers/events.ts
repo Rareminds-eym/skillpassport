@@ -24,17 +24,17 @@ export async function handleCreateEventOrder(request: Request, env: Env): Promis
     campaign?: string;
   };
 
-  const { amount: originalAmount, currency, registrationId, planName, userEmail, userName, userPhone, campaign } = body;
+  const { amount, currency, registrationId, planName, userEmail, userName, userPhone, campaign } = body;
 
-  if (!originalAmount || !currency || !userEmail) {
+  if (!amount || !currency || !userEmail) {
     return jsonResponse({ error: 'Missing required fields: amount, currency, userEmail' }, 400);
   }
 
-  if (originalAmount <= 0) {
+  if (amount <= 0) {
     return jsonResponse({ error: 'Amount must be positive' }, 400);
   }
 
-  const amountInRupees = originalAmount / 100;
+  const amountInRupees = amount / 100;
   if (amountInRupees > MAX_EVENT_AMOUNT_RUPEES) {
     return jsonResponse({ error: `Amount exceeds maximum limit of ₹${MAX_EVENT_AMOUNT_RUPEES.toLocaleString()}` }, 400);
   }
@@ -46,30 +46,6 @@ export async function handleCreateEventOrder(request: Request, env: Env): Promis
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(userEmail)) {
     return jsonResponse({ error: 'Invalid email format' }, 400);
-  }
-
-  const isTest = isTestMode(env);
-  let keyId: string;
-  let keySecret: string;
-  let amount = originalAmount;
-
-  if (isTest) {
-    keyId = env.RAZORPAY_KEY_ID_TEST || getRazorpayKeyId(env);
-    keySecret = env.RAZORPAY_KEY_SECRET_TEST || getRazorpayKeySecret(env);
-    console.log('[CREATE-EVENT] Using TEST credentials');
-
-    if (amount > EVENT_TEST_MODE_MAX_AMOUNT) {
-      console.log(`TEST MODE: Capping amount from ₹${amount / 100} to ₹${EVENT_TEST_MODE_MAX_AMOUNT / 100}`);
-      amount = EVENT_TEST_MODE_MAX_AMOUNT;
-    }
-  } else {
-    keyId = getRazorpayKeyId(env);
-    keySecret = getRazorpayKeySecret(env);
-    console.log('[CREATE-EVENT] Using LIVE credentials');
-  }
-
-  if (!keyId || !keySecret) {
-    return jsonResponse({ error: 'Payment service not configured' }, 500);
   }
 
   const supabaseAdmin = createSupabaseAdmin(env);
@@ -121,12 +97,13 @@ export async function handleCreateEventOrder(request: Request, env: Env): Promis
   }
 
   const receipt = `event_${Date.now()}_${finalRegistrationId.substring(0, 8)}`;
-  const razorpayAuth = btoa(`${keyId}:${keySecret}`);
 
-  const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
+  // Create Razorpay order via shared worker
+  const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+  const razorpayResponse = await fetch(`${razorpayWorkerUrl}/create-order`, {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${razorpayAuth}`,
+      'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -143,12 +120,14 @@ export async function handleCreateEventOrder(request: Request, env: Env): Promis
   });
 
   if (!razorpayResponse.ok) {
-    const errorData = await razorpayResponse.text();
-    console.error('Razorpay API Error:', razorpayResponse.status, errorData);
+    const errorData = await razorpayResponse.json();
+    console.error('Razorpay Worker Error:', errorData);
     return jsonResponse({ error: 'Unable to create payment order' }, 500);
   }
 
-  const order = await razorpayResponse.json() as any;
+  const result = await razorpayResponse.json();
+  const order = result.order;
+  const keyId = result.key_id;
 
   await supabaseAdmin
     .from(tableName)

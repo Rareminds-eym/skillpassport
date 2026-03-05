@@ -6,16 +6,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Env } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { createSupabaseAdmin } from '../utils/supabase';
-import { getRazorpayCredentialsForRequest, verifySignature } from '../utils/razorpay';
 
 /**
  * POST /create-org-order - Create Razorpay order for organization subscription
  */
 export async function handleCreateOrgOrder(request: Request, env: Env, user: any): Promise<Response> {
   const supabaseAdmin = createSupabaseAdmin(env);
-  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
-  
-  console.log(`[CREATE-ORG-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
   const body = await request.json() as {
     amount?: number;
@@ -54,12 +50,13 @@ export async function handleCreateOrgOrder(request: Request, env: Env, user: any
   }
 
   const receipt = `org_${Date.now()}_${organizationId.substring(0, 8)}`;
-  const razorpayAuth = btoa(`${keyId}:${keySecret}`);
 
-  const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
+  // Create Razorpay order via shared worker
+  const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+  const razorpayResponse = await fetch(`${razorpayWorkerUrl}/create-order`, {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${razorpayAuth}`,
+      'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -83,12 +80,14 @@ export async function handleCreateOrgOrder(request: Request, env: Env, user: any
   });
 
   if (!razorpayResponse.ok) {
-    const errorText = await razorpayResponse.text();
-    console.error('[CREATE-ORG-ORDER] Razorpay API Error:', razorpayResponse.status, errorText);
+    const errorData = await razorpayResponse.json();
+    console.error('[CREATE-ORG-ORDER] Razorpay Worker Error:', errorData);
     return jsonResponse({ error: 'Unable to create payment order' }, 500);
   }
 
-  const order = await razorpayResponse.json() as any;
+  const result = await razorpayResponse.json();
+  const order = result.order;
+  const orgKeyId = result.key_id;
 
   await supabaseAdmin.from('razorpay_orders').insert({
     user_id: user.id,
@@ -110,7 +109,7 @@ export async function handleCreateOrgOrder(request: Request, env: Env, user: any
     amount: order.amount,
     currency: order.currency,
     receipt: order.receipt,
-    key: keyId,
+    key: orgKeyId,
   });
 }
 
@@ -119,9 +118,6 @@ export async function handleCreateOrgOrder(request: Request, env: Env, user: any
  */
 export async function handleVerifyOrgPayment(request: Request, env: Env, _supabase: SupabaseClient, user: any): Promise<Response> {
   const supabaseAdmin = createSupabaseAdmin(env);
-  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
-  
-  console.log(`[VERIFY-ORG-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
   const body = await request.json() as {
     razorpay_order_id?: string;
@@ -136,9 +132,28 @@ export async function handleVerifyOrgPayment(request: Request, env: Env, _supaba
     return jsonResponse({ error: 'Missing required fields' }, 400);
   }
 
-  // Verify signature
-  const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
-  if (!isValid) {
+  // Verify signature via shared Razorpay worker
+  const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+  const verifyResponse = await fetch(`${razorpayWorkerUrl}/verify-payment`, {
+    method: 'POST',
+    headers: {
+      'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+    }),
+  });
+
+  if (!verifyResponse.ok) {
+    return jsonResponse({ error: 'Failed to verify payment' }, 500);
+  }
+
+  const verifyResult = await verifyResponse.json();
+  
+  if (!verifyResult.verified) {
     console.error('[VERIFY-ORG-PAYMENT] Invalid signature');
     return jsonResponse({ error: 'Invalid payment signature' }, 400);
   }
@@ -154,125 +169,131 @@ export async function handleVerifyOrgPayment(request: Request, env: Env, _supaba
     return jsonResponse({ error: 'Order not found' }, 404);
   }
 
-  // Verify payment with Razorpay
-  const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-  const paymentResponse = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
-    headers: { 'Authorization': `Basic ${razorpayAuth}` },
-  });
+  // Verify payment with Razorpay worker
+  try {
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const paymentResponse = await fetch(`${razorpayWorkerUrl}/payment/${razorpay_payment_id}`, {
+      headers: { 'X-API-Key': env.RAZORPAY_WORKER_API_KEY },
+    });
 
-  if (!paymentResponse.ok) {
-    return jsonResponse({ error: 'Failed to verify payment' }, 500);
-  }
-
-  const paymentDetails = await paymentResponse.json() as any;
-
-  if (paymentDetails.status !== 'captured' && paymentDetails.status !== 'authorized') {
-    return jsonResponse({ error: 'Payment not completed' }, 400);
-  }
-
-  // Update order status
-  await supabaseAdmin
-    .from('razorpay_orders')
-    .update({ status: 'paid', updated_at: new Date().toISOString() })
-    .eq('order_id', razorpay_order_id);
-
-  // Lookup plan UUID
-  let subscriptionPlanId = purchaseData.planId;
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  
-  if (!uuidRegex.test(purchaseData.planId)) {
-    const { data: planData } = await supabaseAdmin
-      .from('subscription_plans')
-      .select('id')
-      .eq('plan_code', purchaseData.planId)
-      .eq('is_active', true)
-      .single();
-
-    if (planData) {
-      subscriptionPlanId = planData.id;
+    if (!paymentResponse.ok) {
+      return jsonResponse({ error: 'Failed to verify payment' }, 500);
     }
-  }
 
-  // Calculate dates
-  const startDate = new Date();
-  const endDate = new Date(startDate);
-  if (purchaseData.billingCycle === 'annual') {
-    endDate.setFullYear(endDate.getFullYear() + 1);
-  } else {
-    endDate.setMonth(endDate.getMonth() + 1);
-  }
+    const result = await paymentResponse.json();
+    const paymentDetails = result.payment;
 
-  // Create organization subscription
-  const { data: subscription, error: subError } = await supabaseAdmin
-    .from('organization_subscriptions')
-    .insert({
-      organization_id: purchaseData.organizationId,
-      organization_type: purchaseData.organizationType,
-      subscription_plan_id: subscriptionPlanId,
-      purchased_by: user.id,
-      total_seats: purchaseData.seatCount,
-      assigned_seats: 0,
-      target_member_type: purchaseData.targetMemberType,
-      status: 'active',
-      start_date: startDate.toISOString(),
-      end_date: endDate.toISOString(),
-      auto_renew: purchaseData.autoRenew,
-      price_per_seat: purchaseData.pricing.basePrice,
-      total_amount: purchaseData.pricing.subtotal,
-      discount_percentage: purchaseData.pricing.discountPercentage,
-      final_amount: purchaseData.pricing.finalAmount,
-      razorpay_order_id: razorpay_order_id,
-      razorpay_payment_id: razorpay_payment_id,
-    })
-    .select()
-    .single();
+    if (paymentDetails.status !== 'captured' && paymentDetails.status !== 'authorized') {
+      return jsonResponse({ error: 'Payment not completed' }, 400);
+    }
 
-  if (subError) {
-    console.error('[VERIFY-ORG-PAYMENT] Error creating subscription:', subError);
-    return jsonResponse({ error: 'Failed to create subscription' }, 500);
-  }
-
-  // Create license pool if needed
-  if (purchaseData.assignmentMode === 'create-pool' && purchaseData.poolName) {
+    // Update order status
     await supabaseAdmin
-      .from('license_pools')
+      .from('razorpay_orders')
+      .update({ status: 'paid', updated_at: new Date().toISOString() })
+      .eq('order_id', razorpay_order_id);
+
+    // Lookup plan UUID
+    let subscriptionPlanId = purchaseData.planId;
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    if (!uuidRegex.test(purchaseData.planId)) {
+      const { data: planData } = await supabaseAdmin
+        .from('subscription_plans')
+        .select('id')
+        .eq('plan_code', purchaseData.planId)
+        .eq('is_active', true)
+        .single();
+
+      if (planData) {
+        subscriptionPlanId = planData.id;
+      }
+    }
+
+    // Calculate dates
+    const startDate = new Date();
+    const endDate = new Date(startDate);
+    if (purchaseData.billingCycle === 'annual') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+
+    // Create organization subscription
+    const { data: subscription, error: subError } = await supabaseAdmin
+      .from('organization_subscriptions')
       .insert({
         organization_id: purchaseData.organizationId,
         organization_type: purchaseData.organizationType,
-        organization_subscription_id: subscription.id,
-        pool_name: purchaseData.poolName,
-        member_type: purchaseData.targetMemberType === 'both' ? 'student' : purchaseData.targetMemberType,
-        allocated_seats: purchaseData.seatCount,
+        subscription_plan_id: subscriptionPlanId,
+        purchased_by: user.id,
+        total_seats: purchaseData.seatCount,
         assigned_seats: 0,
-        auto_assign_new_members: purchaseData.autoAssignNewMembers,
-        is_active: true,
-        created_by: user.id,
+        target_member_type: purchaseData.targetMemberType,
+        status: 'active',
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+        auto_renew: purchaseData.autoRenew,
+        price_per_seat: purchaseData.pricing.basePrice,
+        total_amount: purchaseData.pricing.subtotal,
+        discount_percentage: purchaseData.pricing.discountPercentage,
+        final_amount: purchaseData.pricing.finalAmount,
+        razorpay_order_id: razorpay_order_id,
+        razorpay_payment_id: razorpay_payment_id,
+      })
+      .select()
+      .single();
+
+    if (subError) {
+      console.error('[VERIFY-ORG-PAYMENT] Error creating subscription:', subError);
+      return jsonResponse({ error: 'Failed to create subscription' }, 500);
+    }
+
+    // Create license pool if needed
+    if (purchaseData.assignmentMode === 'create-pool' && purchaseData.poolName) {
+      await supabaseAdmin
+        .from('license_pools')
+        .insert({
+          organization_id: purchaseData.organizationId,
+          organization_type: purchaseData.organizationType,
+          organization_subscription_id: subscription.id,
+          pool_name: purchaseData.poolName,
+          member_type: purchaseData.targetMemberType === 'both' ? 'student' : purchaseData.targetMemberType,
+          allocated_seats: purchaseData.seatCount,
+          assigned_seats: 0,
+          auto_assign_new_members: purchaseData.autoAssignNewMembers,
+          is_active: true,
+          created_by: user.id,
+        });
+    }
+
+    // Log transaction
+    await supabaseAdmin
+      .from('payment_transactions')
+      .insert({
+        user_id: user.id,
+        razorpay_order_id: razorpay_order_id,
+        razorpay_payment_id: razorpay_payment_id,
+        amount: order.amount,
+        currency: order.currency,
+        status: 'success',
+        payment_method: paymentDetails.method || 'unknown',
+        transaction_type: 'organization_subscription',
+        metadata: {
+          organization_id: purchaseData.organizationId,
+          organization_type: purchaseData.organizationType,
+          seat_count: purchaseData.seatCount,
+          subscription_id: subscription.id,
+        },
       });
-  }
 
-  // Log transaction
-  await supabaseAdmin
-    .from('payment_transactions')
-    .insert({
-      user_id: user.id,
-      razorpay_order_id: razorpay_order_id,
-      razorpay_payment_id: razorpay_payment_id,
-      amount: order.amount,
-      currency: order.currency,
-      status: 'success',
-      payment_method: paymentDetails.method || 'unknown',
-      transaction_type: 'organization_subscription',
-      metadata: {
-        organization_id: purchaseData.organizationId,
-        organization_type: purchaseData.organizationType,
-        seat_count: purchaseData.seatCount,
-        subscription_id: subscription.id,
-      },
+    return jsonResponse({
+      success: true,
+      subscription,
+      message: 'Organization subscription created successfully',
     });
-
-  return jsonResponse({
-    success: true,
-    subscription,
-    message: 'Organization subscription created successfully',
-  });
+  } catch (error) {
+    console.error('[VERIFY-ORG-PAYMENT] Error:', error);
+    return jsonResponse({ error: 'Failed to verify payment' }, 500);
+  }
 }

@@ -181,7 +181,9 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleCreateOrder(request, env);
     }
     if (path === '/verify-payment' && request.method === 'POST') {
-      return await handleVerifyPayment(request, env);
+      const auth = await authenticateUser(request, env);
+      if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
+      return await handleVerifyPayment(request, env, auth.user);
     }
     if (path === '/webhook' && request.method === 'POST') {
       return await handleWebhook(request, env);
@@ -255,18 +257,28 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleGetUserEntitlements(request, env);
     }
     if (path === '/create-addon-order' && request.method === 'POST') {
+      const auth = await authenticateUser(request, env);
+      if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
       return await handleCreateAddonOrder(request, env);
     }
     if (path === '/verify-addon-payment' && request.method === 'POST') {
+      const auth = await authenticateUser(request, env);
+      if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
       return await handleVerifyAddonPayment(request, env);
     }
     if (path === '/create-bundle-order' && request.method === 'POST') {
+      const auth = await authenticateUser(request, env);
+      if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
       return await handleCreateBundleOrder(request, env);
     }
     if (path === '/verify-bundle-payment' && request.method === 'POST') {
+      const auth = await authenticateUser(request, env);
+      if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
       return await handleVerifyBundlePayment(request, env);
     }
     if (path === '/cancel-addon' && request.method === 'POST') {
+      const auth = await authenticateUser(request, env);
+      if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
       return await handleCancelAddon(request, env);
     }
     if (path === '/check-addon-access' && request.method === 'GET') {

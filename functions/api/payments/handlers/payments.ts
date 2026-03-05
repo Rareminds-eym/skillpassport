@@ -8,23 +8,20 @@ import type { Env, CreateOrderBody, VerifyPaymentBody } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
 import { authenticateUser } from '../utils/auth';
 import { createSupabaseAdmin, getSupabaseUrl } from '../utils/supabase';
-import { getRazorpayCredentialsForRequest, getRazorpayCredentials, verifySignature, verifyWebhookSignature } from '../utils/razorpay';
+import { verifyWebhookSignature } from '../utils/razorpay';
 import { MAX_AMOUNT, PLAN_DURATIONS } from '../config';
 import { sendPaymentConfirmationEmail } from '../services/email';
 import { generateReceiptPdfBase64 } from '../services/receipt';
 import { uploadReceiptToR2, getReceiptDownloadUrl } from '../services/storage';
 
 /**
- * POST /create-order - Create Razorpay order for subscription
+ * POST /create-order - Create Razorpay order via shared worker
  */
 export async function handleCreateOrder(request: Request, env: Env): Promise<Response> {
   const auth = await authenticateUser(request, env);
   if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
 
   const { user, supabase } = auth;
-  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
-  
-  console.log(`[CREATE-ORDER] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
   const body = await request.json() as CreateOrderBody;
   const { amount, currency, planId, planName, userEmail, userName, isUpgrade } = body;
@@ -76,61 +73,68 @@ export async function handleCreateOrder(request: Request, env: Env): Promise<Res
     return jsonResponse({ error: 'Too many order attempts. Please wait a minute.' }, 429);
   }
 
-  // Create Razorpay order
+  // Call shared Razorpay worker
   const receipt = `rcpt_${Date.now()}_${user.id.substring(0, 8)}`;
-  const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-
-  const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${razorpayAuth}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      amount,
-      currency,
-      receipt,
-      notes: {
-        user_id: user.id,
-        plan_id: planId,
-        plan_name: planName,
-        user_email: userEmail,
-        user_name: userName,
+  
+  try {
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const response = await fetch(`${razorpayWorkerUrl}/create-order`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
+        'Content-Type': 'application/json',
       },
-    }),
-  });
+      body: JSON.stringify({
+        amount,
+        currency,
+        receipt,
+        notes: {
+          user_id: user.id,
+          plan_id: planId,
+          plan_name: planName,
+          user_email: userEmail,
+          user_name: userName,
+        },
+      }),
+    });
 
-  if (!razorpayResponse.ok) {
-    const errorText = await razorpayResponse.text();
-    console.error('Razorpay API Error:', razorpayResponse.status, errorText);
-    return jsonResponse({ error: 'Unable to create payment order' }, 500);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Razorpay Worker Error:', errorData);
+      return jsonResponse({ error: 'Unable to create payment order' }, 500);
+    }
+
+    const result = await response.json();
+    const order = result.order;
+    const keyId = result.key_id;
+
+    // Save order to database
+    await supabase.from('razorpay_orders').insert({
+      user_id: user.id,
+      order_id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      receipt: order.receipt,
+      status: 'created',
+      plan_id: planId,
+      plan_name: planName,
+      user_email: userEmail,
+      user_name: userName,
+      created_at: new Date().toISOString(),
+    });
+
+    return jsonResponse({
+      success: true,
+      id: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      receipt: order.receipt,
+      key: keyId,
+    });
+  } catch (error) {
+    console.error('Create order error:', error);
+    return jsonResponse({ error: 'Failed to create order' }, 500);
   }
-
-  const order = await razorpayResponse.json() as any;
-
-  // Save order to database
-  await supabase.from('razorpay_orders').insert({
-    user_id: user.id,
-    order_id: order.id,
-    amount: order.amount,
-    currency: order.currency,
-    receipt: order.receipt,
-    status: 'created',
-    plan_id: planId,
-    plan_name: planName,
-    user_email: userEmail,
-    user_name: userName,
-    created_at: new Date().toISOString(),
-  });
-
-  return jsonResponse({
-    success: true,
-    id: order.id,
-    amount: order.amount,
-    currency: order.currency,
-    receipt: order.receipt,
-    key: keyId,
-  });
 }
 
 /**
@@ -201,24 +205,49 @@ export async function handleVerifyPayment(request: Request, env: Env): Promise<R
     return jsonResponse({ error: 'Order not found' }, 404);
   }
 
-  // Verify signature
-  const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
-  if (!isValid) {
-    return jsonResponse({ error: 'Invalid payment signature' }, 400);
+  // Verify signature via shared Razorpay worker
+  try {
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const verifyResponse = await fetch(`${razorpayWorkerUrl}/verify-payment`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+      }),
+    });
+
+    if (!verifyResponse.ok) {
+      return jsonResponse({ error: 'Failed to verify payment' }, 500);
+    }
+
+    const verifyResult = await verifyResponse.json();
+    
+    if (!verifyResult.verified) {
+      return jsonResponse({ error: 'Invalid payment signature' }, 400);
+    }
+  } catch (error) {
+    console.error('Verify payment error:', error);
+    return jsonResponse({ error: 'Failed to verify payment' }, 500);
   }
 
-  // Fetch payment details from Razorpay
+  // Fetch payment details from Razorpay worker
   let paymentMethod = 'unknown';
   let paymentAmount = order.amount;
 
   try {
-    const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-    const paymentResponse = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}`, {
-      headers: { 'Authorization': `Basic ${razorpayAuth}` },
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const paymentResponse = await fetch(`${razorpayWorkerUrl}/payment/${razorpay_payment_id}`, {
+      headers: { 'X-API-Key': env.RAZORPAY_WORKER_API_KEY },
     });
 
     if (paymentResponse.ok) {
-      const paymentDetails = await paymentResponse.json() as any;
+      const result = await paymentResponse.json();
+      const paymentDetails = result.payment;
       paymentMethod = paymentDetails.method || 'unknown';
       paymentAmount = paymentDetails.amount || order.amount;
 
@@ -311,6 +340,33 @@ export async function handleVerifyPayment(request: Request, env: Env): Promise<R
     
     // Check if it's a duplicate key error (user already has this plan type)
     if (subError.code === '23505') {
+      // Race condition - another request just created the subscription
+      // Check if subscription exists for this payment_id
+      const { data: justCreatedSub } = await supabaseAdmin
+        .from('subscriptions')
+        .select('*')
+        .eq('razorpay_payment_id', razorpay_payment_id)
+        .maybeSingle();
+      
+      if (justCreatedSub) {
+        console.log(`[VERIFY-PAYMENT] Subscription already created by parallel request: ${razorpay_payment_id}`);
+        
+        // Get receipt URL if available
+        const receiptUrl = justCreatedSub.receipt_url;
+        
+        return jsonResponse({
+          success: true,
+          verified: true,
+          message: 'Payment verified and subscription activated',
+          payment_id: razorpay_payment_id,
+          order_id: razorpay_order_id,
+          subscription: justCreatedSub,
+          receipt_url: receiptUrl,
+          email_sent: false, // Email was sent in the original request
+          already_processed: true,
+        });
+      }
+      
       return jsonResponse({ 
         error: 'User already has an active subscription of this type',
         code: 'DUPLICATE_SUBSCRIPTION',
@@ -415,10 +471,28 @@ export async function handleWebhook(request: Request, env: Env): Promise<Respons
 
   const rawBody = await request.text();
 
-  if (env.RAZORPAY_WEBHOOK_SECRET) {
-    const isValid = await verifyWebhookSignature(rawBody, signature, env.RAZORPAY_WEBHOOK_SECRET);
-    if (!isValid) {
-      return jsonResponse({ error: 'Invalid signature' }, 400);
+  // Verify webhook signature via Razorpay worker
+  if (env.RAZORPAY_WEBHOOK_SECRET || env.RAZORPAY_WORKER_URL) {
+    try {
+      const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+      const verifyResponse = await fetch(`${razorpayWorkerUrl}/verify-webhook`, {
+        method: 'POST',
+        headers: {
+          'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
+          'x-razorpay-signature': signature,
+        },
+        body: rawBody,
+      });
+
+      if (verifyResponse.ok) {
+        const result = await verifyResponse.json();
+        if (!result.verified) {
+          return jsonResponse({ error: 'Invalid signature' }, 400);
+        }
+      }
+    } catch (error) {
+      console.error('Webhook verification error:', error);
+      return jsonResponse({ error: 'Failed to verify webhook' }, 500);
     }
   }
 

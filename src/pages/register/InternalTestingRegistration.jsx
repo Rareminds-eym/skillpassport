@@ -25,8 +25,6 @@ import { supabase } from '../../lib/supabaseClient';
 
 import { API_ENDPOINTS } from '@/config/api';
 
-const EMAIL_API_URL = API_ENDPOINTS.email.base;
-
 const validateForm = (form) => {
   const errors = {};
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -49,7 +47,7 @@ const validateForm = (form) => {
 };
 
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+  const response = await fetch(API_ENDPOINTS.email.eventOtp, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, otp, name }),

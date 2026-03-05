@@ -52,7 +52,7 @@ export const API_ENDPOINTS = {
   // Email Service
   email: {
     base: getApiUrl('/api/email', 'VITE_EMAIL_API_URL'),
-    send: getApiUrl('/api/email/send', 'VITE_EMAIL_API_URL') + (getApiUrl('/api/email', 'VITE_EMAIL_API_URL').includes('/send') ? '' : '/send'),
+    send: getApiUrl('/api/email/send'),
     invitation: getApiUrl('/api/email/invitation'),
     countdown: getApiUrl('/api/email/countdown'),
     bulkCountdown: getApiUrl('/api/email/send-bulk-countdown'),
@@ -64,29 +64,78 @@ export const API_ENDPOINTS = {
   // Payments Service
   payments: {
     base: getApiUrl('/api/payments', 'VITE_PAYMENTS_API_URL'),
+    // Payment operations
     createOrder: getApiUrl('/api/payments/create-order'),
     verifyPayment: getApiUrl('/api/payments/verify-payment'),
     webhook: getApiUrl('/api/payments/webhook'),
-    subscriptionPlans: getApiUrl('/api/payments/subscription-plans'),
+    // Subscription management
+    getSubscription: getApiUrl('/api/payments/get-subscription'),
     checkAccess: getApiUrl('/api/payments/check-subscription-access'),
-    mySubscriptions: getApiUrl('/api/payments/my-subscriptions'),
     cancelSubscription: getApiUrl('/api/payments/cancel-subscription'),
+    deactivateSubscription: getApiUrl('/api/payments/deactivate-subscription'),
+    pauseSubscription: getApiUrl('/api/payments/pause-subscription'),
+    resumeSubscription: getApiUrl('/api/payments/resume-subscription'),
+    // Plans
+    subscriptionPlans: getApiUrl('/api/payments/subscription-plans'),
+    subscriptionPlan: getApiUrl('/api/payments/subscription-plan'),
+    subscriptionFeatures: getApiUrl('/api/payments/subscription-features'),
     // Add-ons
     addons: {
-      createOrder: getApiUrl('/api/payments/addons/create-order'),
-      verifyPayment: getApiUrl('/api/payments/addons/verify-payment'),
-      myAddons: getApiUrl('/api/payments/addons/my-addons'),
+      catalog: getApiUrl('/api/payments/addon-catalog'),
+      userEntitlements: getApiUrl('/api/payments/user-entitlements'),
+      createOrder: getApiUrl('/api/payments/create-addon-order'),
+      verifyPayment: getApiUrl('/api/payments/verify-addon-payment'),
+      createBundleOrder: getApiUrl('/api/payments/create-bundle-order'),
+      verifyBundlePayment: getApiUrl('/api/payments/verify-bundle-payment'),
+      cancel: getApiUrl('/api/payments/cancel-addon'),
+      checkAccess: getApiUrl('/api/payments/check-addon-access'),
     },
-    // Organization orders
+    // Organization
     org: {
-      createOrder: getApiUrl('/api/payments/org/create-order'),
-      verifyPayment: getApiUrl('/api/payments/org/verify-payment'),
-      myOrders: getApiUrl('/api/payments/org/my-orders'),
+      createOrder: getApiUrl('/api/payments/create-org-order'),
+      verifyPayment: getApiUrl('/api/payments/verify-org-payment'),
+      calculatePricing: getApiUrl('/api/payments/org-subscriptions/calculate-pricing'),
+      purchase: getApiUrl('/api/payments/org-subscriptions/purchase'),
+      subscriptions: getApiUrl('/api/payments/org-subscriptions'),
+      updateSeatCount: (subscriptionId: string) => getApiUrl(`/api/payments/org-subscriptions/${subscriptionId}/seats`),
+      licensePools: getApiUrl('/api/payments/license-pools'),
+      createLicensePool: getApiUrl('/api/payments/license-pools'),
+      updatePoolAllocation: (poolId: string) => getApiUrl(`/api/payments/license-pools/${poolId}/allocation`),
+      configureAutoAssignment: (poolId: string) => getApiUrl(`/api/payments/license-pools/${poolId}/auto-assignment`),
+      assignLicense: getApiUrl('/api/payments/license-assignments'),
+      bulkAssignLicenses: getApiUrl('/api/payments/license-assignments/bulk'),
+      transferLicense: getApiUrl('/api/payments/license-assignments/transfer'),
+      unassignLicense: (assignmentId: string) => getApiUrl(`/api/payments/license-assignments/${assignmentId}`),
+      userAssignments: (userId: string) => getApiUrl(`/api/payments/license-assignments/user/${userId}`),
+      billing: {
+        dashboard: getApiUrl('/api/payments/org-billing/dashboard'),
+        invoices: getApiUrl('/api/payments/org-billing/invoices'),
+        costProjection: getApiUrl('/api/payments/org-billing/cost-projection'),
+        calculateSeatAddition: getApiUrl('/api/payments/org-billing/calculate-seat-addition'),
+        downloadInvoice: (invoiceId: string) => getApiUrl(`/api/payments/org-billing/invoice/${invoiceId}/download`),
+      },
+      invitations: {
+        invite: getApiUrl('/api/payments/org-invitations'),
+        bulkInvite: getApiUrl('/api/payments/org-invitations/bulk'),
+        list: getApiUrl('/api/payments/org-invitations'),
+        resend: (invitationId: string) => getApiUrl(`/api/payments/org-invitations/${invitationId}/resend`),
+        cancel: (invitationId: string) => getApiUrl(`/api/payments/org-invitations/${invitationId}`),
+        accept: getApiUrl('/api/payments/org-invitations/accept'),
+        stats: getApiUrl('/api/payments/org-invitations/stats'),
+      },
     },
     // Events
     events: {
-      createOrder: getApiUrl('/api/payments/events/create-order'),
-      verifyPayment: getApiUrl('/api/payments/events/verify-payment'),
+      createOrder: getApiUrl('/api/payments/create-event-order'),
+      updateStatus: getApiUrl('/api/payments/update-event-payment-status'),
+      expireSubscriptions: getApiUrl('/api/payments/expire-subscriptions'),
+    },
+    // Entitlement lifecycle (CRON)
+    lifecycle: {
+      process: getApiUrl('/api/payments/process-entitlement-lifecycle'),
+      expire: getApiUrl('/api/payments/expire-entitlements'),
+      reminders: getApiUrl('/api/payments/send-renewal-reminders'),
+      autoRenew: getApiUrl('/api/payments/process-auto-renewals'),
     },
   },
 
@@ -114,24 +163,51 @@ export const API_ENDPOINTS = {
     schools: getApiUrl('/api/user/schools'),
     colleges: getApiUrl('/api/user/colleges'),
     universities: getApiUrl('/api/user/universities'),
-    // Add more user endpoints as needed
   },
 
-  // Other Services (add as needed)
+  // Career Service
   career: {
     base: getApiUrl('/api/career'),
     recommend: getApiUrl('/api/career/recommend'),
     chat: getApiUrl('/api/career/chat'),
   },
 
+  // Course Service
   course: {
     base: getApiUrl('/api/course'),
     aiTutor: getApiUrl('/api/course/ai-tutor-chat'),
   },
 
+  // Assessment Service
   assessment: {
     base: getApiUrl('/api/assessment'),
     generate: getApiUrl('/api/assessment/generate'),
+  },
+
+  // OTP Service
+  otp: {
+    base: getApiUrl('/api/otp'),
+    send: getApiUrl('/api/otp/send'),
+    verify: getApiUrl('/api/otp/verify'),
+  },
+
+  // Streak Service
+  streak: {
+    base: getApiUrl('/api/streak'),
+    user: (userId: string) => getApiUrl(`/api/streak/user/${userId}`),
+    update: getApiUrl('/api/streak/update'),
+  },
+
+  // Role Overview Service
+  roleOverview: {
+    base: getApiUrl('/api/role-overview'),
+    matchCourses: getApiUrl('/api/role-overview/match-courses'),
+  },
+
+  // Adaptive Session Service
+  adaptiveSession: {
+    base: getApiUrl('/api/adaptive-session'),
+    initialize: getApiUrl('/api/adaptive-session/initialize'),
   },
 } as const;
 

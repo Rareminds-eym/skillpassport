@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS } from '@/config/api';
 
 // Use centralized API configuration
 const PAYMENTS_API_URL = API_ENDPOINTS.payments.base;

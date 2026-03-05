@@ -213,15 +213,12 @@ export async function handleCreateAddonOrder(request: Request, env: Env): Promis
     
     const amountInPaise = Math.round(price * 100);
 
-    // Get Razorpay credentials
-    const { keyId, keySecret } = getRazorpayCredentialsForRequest(request, env);
-    const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-
-    // Create Razorpay order
-    const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
+    // Create Razorpay order via shared worker
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const razorpayResponse = await fetch(`${razorpayWorkerUrl}/create-order`, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${razorpayAuth}`,
+        'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -238,12 +235,14 @@ export async function handleCreateAddonOrder(request: Request, env: Env): Promis
     });
 
     if (!razorpayResponse.ok) {
-      const errorData = await razorpayResponse.text();
-      console.error('[CREATE-ADDON-ORDER] Razorpay error:', errorData);
+      const errorData = await razorpayResponse.json();
+      console.error('[CREATE-ADDON-ORDER] Razorpay Worker error:', errorData);
       return jsonResponse({ error: 'Failed to create payment order' }, 500);
     }
 
-    const razorpayOrder = await razorpayResponse.json() as any;
+    const result = await razorpayResponse.json();
+    const razorpayOrder = result.order;
+    const razorpayKeyId = result.key_id;
 
     // Store pending order
     const { data: pendingOrder, error: orderError } = await supabaseAdmin
@@ -272,7 +271,7 @@ export async function handleCreateAddonOrder(request: Request, env: Env): Promis
       amount: amountInPaise,
       currency: 'INR',
       addon_name: addon.feature_name,
-      key: keyId,
+      key: razorpayKeyId,
     });
   } catch (error) {
     console.error('[CREATE-ADDON-ORDER] Error:', error);
@@ -302,11 +301,28 @@ export async function handleVerifyAddonPayment(request: Request, env: Env): Prom
       return jsonResponse({ error: 'Missing required fields' }, 400);
     }
 
-    // Verify signature
-    const { keySecret } = getRazorpayCredentialsForRequest(request, env);
-    const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
+    // Verify signature via shared Razorpay worker
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const verifyResponse = await fetch(`${razorpayWorkerUrl}/verify-payment`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+      }),
+    });
+
+    if (!verifyResponse.ok) {
+      return jsonResponse({ error: 'Failed to verify payment' }, 500);
+    }
+
+    const verifyResult = await verifyResponse.json();
     
-    if (!isValid) {
+    if (!verifyResult.verified) {
       return jsonResponse({ error: 'Invalid payment signature' }, 400);
     }
 
@@ -597,15 +613,12 @@ export async function handleCreateBundleOrder(request: Request, env: Env): Promi
     
     const amountInPaise = Math.round(price * 100);
 
-    // Get Razorpay credentials
-    const { keyId, keySecret } = getRazorpayCredentialsForRequest(request, env);
-    const razorpayAuth = btoa(`${keyId}:${keySecret}`);
-
-    // Create Razorpay order
-    const razorpayResponse = await fetch('https://api.razorpay.com/v1/orders', {
+    // Create Razorpay order via shared worker
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const razorpayResponse = await fetch(`${razorpayWorkerUrl}/create-order`, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${razorpayAuth}`,
+        'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -622,12 +635,14 @@ export async function handleCreateBundleOrder(request: Request, env: Env): Promi
     });
 
     if (!razorpayResponse.ok) {
-      const errorData = await razorpayResponse.text();
-      console.error('[CREATE-BUNDLE-ORDER] Razorpay error:', errorData);
+      const errorData = await razorpayResponse.json();
+      console.error('[CREATE-BUNDLE-ORDER] Razorpay Worker error:', errorData);
       return jsonResponse({ error: 'Failed to create payment order' }, 500);
     }
 
-    const razorpayOrder = await razorpayResponse.json() as any;
+    const result = await razorpayResponse.json();
+    const razorpayOrder = result.order;
+    const bundleKeyId = result.key_id;
 
     return jsonResponse({
       success: true,
@@ -636,7 +651,7 @@ export async function handleCreateBundleOrder(request: Request, env: Env): Promi
       currency: 'INR',
       bundle_name: bundle.name,
       feature_keys: bundle.bundle_features?.map((bf: any) => bf.feature_key) || [],
-      key: keyId,
+      key: bundleKeyId,
     });
   } catch (error) {
     console.error('[CREATE-BUNDLE-ORDER] Error:', error);
@@ -669,11 +684,28 @@ export async function handleVerifyBundlePayment(request: Request, env: Env): Pro
       return jsonResponse({ error: 'Missing required fields' }, 400);
     }
 
-    // Verify signature
-    const { keySecret } = getRazorpayCredentialsForRequest(request, env);
-    const isValid = await verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature, keySecret);
+    // Verify signature via shared Razorpay worker
+    const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
+    const verifyResponse = await fetch(`${razorpayWorkerUrl}/verify-payment`, {
+      method: 'POST',
+      headers: {
+        'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+      }),
+    });
+
+    if (!verifyResponse.ok) {
+      return jsonResponse({ error: 'Failed to verify payment' }, 500);
+    }
+
+    const verifyResult = await verifyResponse.json();
     
-    if (!isValid) {
+    if (!verifyResult.verified) {
       return jsonResponse({ error: 'Invalid payment signature' }, 400);
     }
 
