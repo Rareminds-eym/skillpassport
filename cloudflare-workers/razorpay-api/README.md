@@ -1,169 +1,41 @@
-# Razorpay API Worker
+# Razorpay API Worker v2.0
 
-Centralized Cloudflare Worker for Razorpay payment processing. This worker is designed to be shared across multiple websites using the same Razorpay account.
+Enterprise-grade Cloudflare Worker for Razorpay payment processing. Built with TypeScript, featuring rate limiting, structured logging, and per-website API keys.
 
-## 🎯 Purpose
+## 🚀 Features
 
-This worker acts as a **single source of truth** for all Razorpay API operations. Instead of each website managing Razorpay credentials separately, they all call this shared worker.
-
-**Benefits:**
-- ✅ Centralized credential management
-- ✅ Reusable across multiple websites (A, B, C)
-- ✅ Single deployment for all Razorpay operations
-- ✅ Easier to update and maintain
-- ✅ Better security (credentials in one place)
-
-## 🏗️ Architecture
-
-```
-Website A (Pages Functions) ──┐
-Website B (Pages Functions) ──┼──> Razorpay Worker ──> Razorpay API
-Website C (Pages Functions) ──┘
-```
-
-**What the worker does:**
-- Creates Razorpay orders
-- Verifies payment signatures
-- Fetches payment details
-- Cancels subscriptions
-- Verifies webhook signatures
-
-**What the worker does NOT do:**
-- Database operations (handled by Pages Functions)
-- User authentication (handled by Pages Functions)
-- Email sending (handled by Pages Functions)
-- Business logic (handled by Pages Functions)
+- ✅ **TypeScript** - Full type safety and modern tooling
+- ✅ **Rate Limiting** - 20 requests/min per endpoint per API key
+- ✅ **Structured Logging** - JSON logs with request IDs and metadata
+- ✅ **Retry Logic** - Automatic retry with exponential backoff
+- ✅ **Request Timeouts** - 10s timeout on all Razorpay API calls
+- ✅ **CORS** - Origin validation with whitelist
+- ✅ **Health Checks** - Deep health check with Razorpay connectivity test
+- ✅ **Per-Website Auth** - Separate API keys per website (backward compatible)
+- ✅ **Error Handling** - Comprehensive error codes and messages
+- ✅ **Modular Architecture** - Clean separation (routes, middleware, utils)
 
 ## 📡 API Endpoints
 
-### `POST /create-order`
-Creates a new Razorpay order.
-
-**Request:**
-```json
-{
-  "amount": 50000,
-  "currency": "INR",
-  "receipt": "rcpt_123",
-  "notes": {
-    "user_id": "abc123",
-    "plan_name": "Premium"
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "order": {
-    "id": "order_xyz",
-    "amount": 50000,
-    "currency": "INR",
-    "status": "created"
-  },
-  "key_id": "rzp_live_xxx"
-}
-```
-
-### `POST /verify-payment`
-Verifies Razorpay payment signature.
-
-**Request:**
-```json
-{
-  "razorpay_order_id": "order_xyz",
-  "razorpay_payment_id": "pay_abc",
-  "razorpay_signature": "signature_hash"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "verified": true,
-  "message": "Payment signature verified"
-}
-```
-
-### `GET /payment/:id`
-Fetches payment details from Razorpay.
-
-**Example:** `GET /payment/pay_abc123`
-
-**Response:**
-```json
-{
-  "success": true,
-  "payment": {
-    "id": "pay_abc123",
-    "status": "captured",
-    "method": "card",
-    "amount": 50000
-  }
-}
-```
-
-### `POST /subscription/:id/cancel`
-Cancels a Razorpay subscription.
-
-**Example:** `POST /subscription/sub_xyz123/cancel`
-
-**Response:**
-```json
-{
-  "success": true,
-  "subscription": {
-    "id": "sub_xyz123",
-    "status": "cancelled"
-  }
-}
-```
-
-### `POST /verify-webhook`
-Verifies Razorpay webhook signature.
-
-**Headers:**
-- `x-razorpay-signature`: Webhook signature from Razorpay
-
-**Body:** Raw webhook payload
-
-**Response:**
-```json
-{
-  "success": true,
-  "verified": true,
-  "payload": {
-    "event": "payment.captured",
-    ...
-  }
-}
-```
-
-### `GET /health`
-Health check endpoint.
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "service": "razorpay-api",
-  "version": "1.0.0",
-  "endpoints": [...]
-}
-```
+| Endpoint | Method | Description | Rate Limit |
+|----------|--------|-------------|------------|
+| `/create-order` | POST | Create Razorpay order | 20/min |
+| `/verify-payment` | POST | Verify payment signature | 30/min |
+| `/payment/:id` | GET | Get payment details | 50/min |
+| `/subscription/:id/cancel` | POST | Cancel subscription | 10/min |
+| `/verify-webhook` | POST | Verify webhook signature | 100/min |
+| `/health` | GET | Health check | No limit |
 
 ## 🔐 Authentication
 
-All requests require an API key in the header:
+All requests (except `/health`) require `X-API-Key` header:
 
 ```bash
 curl -H "X-API-Key: your-secret-api-key-12345" \
   https://razorpay-api.dark-mode-d021.workers.dev/create-order
 ```
 
-## 🚀 Deployment
+## 🚀 Quick Start
 
 ### Local Development
 
@@ -173,79 +45,113 @@ npm install
 npm run dev  # Runs on http://localhost:8787
 ```
 
-### Production Deployment
+### Test Request
 
-1. **Set production secret:**
 ```bash
+curl -X POST http://localhost:8787/create-order \
+  -H "X-API-Key: your-secret-api-key-12345" \
+  -H "Content-Type: application/json" \
+  -d '{"amount":50000,"currency":"INR"}'
+```
+
+### Deploy to Production
+
+```bash
+# Set secrets (one-time)
+wrangler secret put RAZORPAY_KEY_ID
 wrangler secret put RAZORPAY_KEY_SECRET
-# Enter: your_production_secret
-```
+wrangler secret put SHARED_API_KEY
 
-2. **Deploy:**
-```bash
-wrangler deploy
-```
-
-3. **Deployed URL:**
-```
-https://razorpay-api.dark-mode-d021.workers.dev
+# Deploy
+npm run deploy
 ```
 
 ## ⚙️ Configuration
 
-### `wrangler.toml`
+### Environment Variables
 
-```toml
-name = "razorpay-api"
-main = "src/index.js"
-compatibility_date = "2024-01-01"
+**`.dev.vars` (local development):**
+```bash
+RAZORPAY_KEY_ID=rzp_test_xxx
+RAZORPAY_KEY_SECRET=test_secret
+SHARED_API_KEY=your-secret-api-key-12345
+```
 
-# Production (default)
-[vars]
-RAZORPAY_KEY_ID = "rzp_live_xxx"
-SHARED_API_KEY = "your-secret-api-key-12345"
-ENVIRONMENT = "production"
+**Production (via `wrangler secret put`):**
+- `RAZORPAY_KEY_ID` - Live Razorpay key
+- `RAZORPAY_KEY_SECRET` - Live Razorpay secret
+- `SHARED_API_KEY` - API key for authentication
 
-# Test environment
-[env.test]
-vars = { 
-  RAZORPAY_KEY_ID = "rzp_test_xxx",
-  ENVIRONMENT = "development"
+### Rate Limits
+
+Edit `src/constants.ts`:
+```typescript
+export const RATE_LIMIT_MAX_REQUESTS = {
+  'create-order': 20,
+  'verify-payment': 30,
+  'get-payment': 50,
+  'cancel-subscription': 10,
+  'verify-webhook': 100,
+};
+```
+
+### CORS Origins
+
+Edit `src/constants.ts`:
+```typescript
+export const ALLOWED_ORIGINS = [
+  'https://skillpassport.com',
+  'https://website-b.com',
+  'http://localhost:8788',
+];
+```
+
+## 📊 Structured Logging
+
+All requests generate structured JSON logs:
+
+```json
+{
+  "level": "info",
+  "message": "Request completed",
+  "timestamp": "2026-03-05T11:29:44.990Z",
+  "requestId": "b27cbd21-93c0-49f9-86da-12053d133054",
+  "website": "legacy",
+  "meta": {
+    "duration": 327,
+    "status": 200
+  }
 }
 ```
 
-### `.dev.vars` (Local only)
+## 🏥 Health Check
 
 ```bash
-RAZORPAY_KEY_SECRET=your_test_secret
+# Basic health check
+curl http://localhost:8787/health
+
+# Deep health check (tests Razorpay connectivity)
+curl "http://localhost:8787/health?deep=true"
 ```
 
-**Important:** `.dev.vars` is only for local development. Production secrets are set via `wrangler secret put`.
+Response:
+```json
+{
+  "status": "ok",
+  "service": "razorpay-api",
+  "version": "2.0.0",
+  "environment": "production",
+  "uptime": 94128,
+  "checks": {
+    "razorpay": "ok"
+  }
+}
+```
 
 ## 🔌 Usage from Pages Functions
 
-### Environment Variables
-
-**Local development (`.dev.vars`):**
-```bash
-RAZORPAY_WORKER_URL=http://localhost:8787
-RAZORPAY_WORKER_API_KEY=your-secret-api-key-12345
-```
-
-**Production (Cloudflare Pages dashboard):**
-```bash
-RAZORPAY_WORKER_URL=https://razorpay-api.dark-mode-d021.workers.dev
-RAZORPAY_WORKER_API_KEY=your-secret-api-key-12345
-```
-
-### Code Example
-
-```javascript
-// In functions/api/payments/handlers/payments.ts
-
-const razorpayWorkerUrl = env.RAZORPAY_WORKER_URL || 'http://localhost:8787';
-
-const response = await fetch(`${razorpayWorkerUrl}/create-order`, {
+```typescript
+const response = await fetch(`${env.RAZORPAY_WORKER_URL}/create-order`, {
   method: 'POST',
   headers: {
     'X-API-Key': env.RAZORPAY_WORKER_API_KEY,
@@ -260,93 +166,75 @@ const response = await fetch(`${razorpayWorkerUrl}/create-order`, {
 });
 
 const result = await response.json();
-// result.order.id, result.key_id
 ```
 
-## 🌍 Multi-Website Usage
+## 🏗️ Project Structure
 
-This worker can be shared across multiple websites:
-
-**Website A:**
-```bash
-RAZORPAY_WORKER_URL=https://razorpay-api.dark-mode-d021.workers.dev
-RAZORPAY_WORKER_API_KEY=your-secret-api-key-12345
 ```
-
-**Website B:**
-```bash
-RAZORPAY_WORKER_URL=https://razorpay-api.dark-mode-d021.workers.dev
-RAZORPAY_WORKER_API_KEY=your-secret-api-key-12345
+src/
+├── index.ts              # Main entry point
+├── types.ts              # TypeScript types
+├── constants.ts          # Configuration constants
+├── middleware/
+│   ├── auth.ts          # API key authentication
+│   ├── rateLimit.ts     # Rate limiting
+│   └── logger.ts        # Structured logging
+├── routes/
+│   ├── health.ts        # Health check
+│   ├── orders.ts        # Order creation
+│   └── payments.ts      # Payment operations
+└── utils/
+    ├── response.ts      # Response helpers
+    └── fetch.ts         # Fetch with timeout/retry
 ```
-
-All websites call the same worker with the same API key. The worker handles all Razorpay operations, while each website handles its own business logic (database, emails, etc.).
-
-## 🔄 Development vs Production
-
-### Local Development
-- Worker runs on `http://localhost:8787`
-- Uses test Razorpay keys (`rzp_test_...`)
-- Secret from `.dev.vars`
-
-### Production
-- Worker deployed to Cloudflare
-- Uses live Razorpay keys (`rzp_live_...`)
-- Secret from `wrangler secret put`
-
-**How Pages Functions know which to use:**
-- Local: `.dev.vars` has `RAZORPAY_WORKER_URL=http://localhost:8787`
-- Production: Cloudflare Pages env vars have `RAZORPAY_WORKER_URL=https://razorpay-api...`
-
-## 📝 Key Concepts for Junior Developers
-
-### Why a separate worker?
-
-Instead of putting Razorpay code in each website:
-```
-❌ Website A → Razorpay API (credentials in A)
-❌ Website B → Razorpay API (credentials in B)
-❌ Website C → Razorpay API (credentials in C)
-```
-
-We use a shared worker:
-```
-✅ Website A ──┐
-✅ Website B ──┼──> Razorpay Worker → Razorpay API
-✅ Website C ──┘
-```
-
-### What are secrets?
-
-Secrets are sensitive values (like API keys) that should never be in code:
-- ❌ Don't put in `wrangler.toml` (committed to git)
-- ✅ Use `wrangler secret put` (encrypted in Cloudflare)
-- ✅ Use `.dev.vars` for local (not committed to git)
-
-### Environment detection
-
-The worker doesn't detect environment automatically. It uses whatever keys are configured:
-- Local: Test keys from `wrangler.toml` default + `.dev.vars`
-- Production: Live keys from `wrangler.toml` default + `wrangler secret`
 
 ## 🧪 Testing
 
 ```bash
-# Health check
-curl https://razorpay-api.dark-mode-d021.workers.dev/health
+# Type check
+npm run type-check
 
-# Create order (requires API key)
-curl -X POST https://razorpay-api.dark-mode-d021.workers.dev/create-order \
-  -H "X-API-Key: your-secret-api-key-12345" \
-  -H "Content-Type: application/json" \
-  -d '{"amount":50000,"currency":"INR"}'
+# Test health
+curl http://localhost:8787/health
+
+# Test rate limiting (should fail after 20 requests)
+for i in {1..25}; do 
+  curl -X POST http://localhost:8787/create-order \
+    -H "X-API-Key: your-secret-api-key-12345" \
+    -H "Content-Type: application/json" \
+    -d '{"amount":1000}'
+done
 ```
 
-## 📚 Related Documentation
+## 📝 Error Codes
 
-- **Razorpay Docs:** https://razorpay.com/docs/
+| Code | Description |
+|------|-------------|
+| `UNAUTHORIZED` | Missing or invalid API key |
+| `INVALID_INPUT` | Invalid request parameters |
+| `RATE_LIMIT_EXCEEDED` | Too many requests |
+| `RAZORPAY_API_ERROR` | Razorpay API error |
+| `INTERNAL_ERROR` | Internal server error |
+| `NOT_FOUND` | Endpoint not found |
+| `TIMEOUT` | Request timeout |
+
+## 🔄 Changelog
+
+### v2.0.0 (March 5, 2026)
+- ✅ Migrated to TypeScript
+- ✅ Added rate limiting
+- ✅ Added structured logging
+- ✅ Added per-website API keys
+- ✅ Added retry logic with exponential backoff
+- ✅ Added request timeouts
+- ✅ Added CORS origin validation
+- ✅ Modular architecture refactor
+
+### v1.0.0
+- Initial JavaScript implementation
 
 ---
 
 **Deployed URL:** https://razorpay-api.dark-mode-d021.workers.dev  
-**Status:** ✅ Active (Production)  
-**Last Updated:** March 5, 2026
+**Status:** ✅ Active  
+**Version:** 2.0.0
