@@ -75,11 +75,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         { name: "Students", path: "/educator/students", icon: UserGroupIcon },
         // Show different navigation based on educator type
         ...(educatorType === 'college' 
-          ? [{ name: "Program Sections", path: "/educator/program-sections", icon: AcademicCapIcon }]
+          ? [{ name: "Program Sections", path: "/educator/programs", icon: AcademicCapIcon, disabled: true }]
           : [{ name: "Classes", path: "/educator/classes", icon: AcademicCapIcon }]
         ),
-        { name: "TimeTable", path: "/educator/timetable", icon: AcademicCapIcon },
-        { name: "Mark Attendance", path: "/educator/attendance", icon: ClipboardDocumentCheckIcon },
+        { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon, disabled: true },
+        { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon, disabled: true },
         { name: "Assessment Results", path: "/educator/assessment-results", icon: ClipboardDocumentListIcon },
         // { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
         { name: "Courses", path: "/educator/browse-courses", icon: BookOpenIcon },
@@ -101,13 +101,15 @@ const Sidebar: React.FC<SidebarProps> = ({
         ),
         {
           name: "Mentor Notes",
-          path: "/educator/mentor-notes",
+          path: "/educator/mentornotes",
           icon: PencilSquareIcon,
+          disabled: true,
         },
         {
           name: "My Mentees",
-          path: "/educator/mentees",
+          path: "/educator/my-mentees",
           icon: UserGroupIcon,
+          disabled: true,
         },
         {
           name: "Verification",
@@ -122,13 +124,15 @@ const Sidebar: React.FC<SidebarProps> = ({
       items: [
         {
           name: "Clubs & Compitetion",
-          path: "/educator/clubs-competition",
+          path: "/educator/clubs",
           icon: ClipboardDocumentListIcon,
+          disabled: true,
         },
         {
           name: "badges",
           path: "/educator/badges",
           icon: PencilSquareIcon,
+          disabled: true,
         },
       ],
     },
@@ -153,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         // School/College educators see all items
         { name: "Digital Portfolio", path: "/educator/digital-portfolio", icon: FolderIcon },
         { name: "Reports & Analytics", path: "/educator/reports", icon: DocumentChartBarIcon },
-        { name: "Media Manager", path: "/educator/media-manager", icon: PhotoIcon },
+        { name: "Media Manager", path: "/educator/media", icon: PhotoIcon },
         // { name: "Communication", path: "/educator/communication", icon: ChatBubbleLeftRightIcon },
         { 
         name: educatorType === 'college' ? "Messages" : "Communication", 
