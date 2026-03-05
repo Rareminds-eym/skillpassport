@@ -47,8 +47,6 @@ const REGISTRATION_FEE = 499;
 // Email API URL - Use the email-api worker with SMTP secrets configured
 import { API_ENDPOINTS } from '@/config/api';
 
-const EMAIL_API_URL = API_ENDPOINTS.email.base;
-
 // Generate 6-digit OTP
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -90,7 +88,7 @@ const validateForm = (form, emailVerified, consentGiven) => {
 
 // Send OTP email via worker
 const sendOTPEmail = async (email, otp, name) => {
-  const response = await fetch(`${EMAIL_API_URL}/event-otp`, {
+  const response = await fetch(API_ENDPOINTS.email.eventOtp, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -109,7 +107,7 @@ const sendConfirmationEmail = async (details) => {
   const { name, email, phone, amount, orderId, campaign } = details;
 
   try {
-    const response = await fetch(`${EMAIL_API_URL}/event-confirmation`, {
+    const response = await fetch(API_ENDPOINTS.email.eventConfirmation, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -7,7 +7,7 @@
 
 import { supabase } from '@/lib/supabaseClient';
 
-import { API_ENDPOINTS } from '../api';
+import { API_ENDPOINTS } from '@/config/api';
 
 // Use centralized API configuration
 const WORKER_URL = API_ENDPOINTS.payments.base;
