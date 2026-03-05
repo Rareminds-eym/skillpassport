@@ -3,6 +3,7 @@ import { XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { updateStudent } from '../../../services/studentService';
 import { Country, State, City } from 'country-state-city';
 import pincodes from 'indian-pincodes';
+import { supabase } from '../../../lib/supabaseClient';
 
 interface UpdateStudentData {
   name?: string;
@@ -65,6 +66,11 @@ interface Student {
   state?: string;
   country?: string;
   pincode?: string;
+  universityId?: string;
+  college_id?: string;
+  school_id?: string;
+  program_id?: string;
+  program_section_id?: string;
 }
 
 interface EditStudentModalProps {
@@ -362,41 +368,130 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
 
   useEffect(() => {
     if (isOpen && student) {
-      // Get date of birth from student data
-      const dob = student.date_of_birth || '';
-      
-      // Calculate age from date of birth if available
-      const calculatedAge = dob ? calculateAge(dob) : (student.age || undefined);
-      
-      // Initialize form with student data
-      setFormData({
-        name: student.name || '',
-        email: student.email || '',
-        contact_number: student.contact_number || student.phone || '',
-        alternate_number: student.alternate_number || '',
-        date_of_birth: dob,
-        age: calculatedAge,
-        gender: student.gender || '',
-        district_name: student.district_name || student.location || '',
-        university: student.university || '',
-        university_main: student.university_main || '',
-        branch_field: student.branch_field || student.dept || '',
-        college_school_name: student.college_school_name || student.college || '',
-        course_name: student.course_name || '',
-        registration_number: student.registration_number || '',
-        github_link: student.github_link || '',
-        linkedin_link: student.linkedin_link || '',
-        twitter_link: student.twitter_link || '',
-        facebook_link: student.facebook_link || '',
-        instagram_link: student.instagram_link || '',
-        portfolio_link: student.portfolio_link || '',
-        bio: student.bio || '',
-        address: student.address || '',
-        city: student.city || '',
-        state: student.state || '',
-        country: student.country || '',
-        pincode: student.pincode || ''
-      });
+      const fetchAcademicInfo = async () => {
+        let universityName = student.university || '';
+        let collegeName = student.college_school_name || student.college || '';
+        let branchName = student.branch_field || student.dept || '';
+        let courseName = student.course_name || '';
+
+        try {
+          // Fetch university from universityId
+          if (student.universityId) {
+            const { data: univData, error: univError } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', student.universityId)
+              .single();
+
+            if (!univError && univData) {
+              universityName = univData.name;
+            }
+          }
+
+          // Fetch college from college_id
+          if (student.college_id) {
+            const { data: collegeData, error: collegeError } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', student.college_id)
+              .single();
+
+            if (!collegeError && collegeData) {
+              collegeName = collegeData.name;
+            }
+          }
+
+          // Fetch school from school_id
+          if (student.school_id) {
+            const { data: schoolData, error: schoolError } = await supabase
+              .from('organizations')
+              .select('name')
+              .eq('id', student.school_id)
+              .single();
+
+            if (!schoolError && schoolData) {
+              collegeName = schoolData.name;
+            }
+          }
+
+          // Fetch program details if program_id exists
+          if (student.program_id) {
+            const { data: programData, error: programError } = await supabase
+              .from('programs')
+              .select('name, department')
+              .eq('id', student.program_id)
+              .single();
+
+            if (!programError && programData) {
+              courseName = programData.name;
+              if (programData.department) {
+                branchName = programData.department;
+              }
+            }
+          }
+
+          // Fetch program section details if program_section_id exists
+          if (student.program_section_id) {
+            const { data: sectionData, error: sectionError } = await supabase
+              .from('program_sections')
+              .select(`
+                section_name,
+                programs!inner(name, department)
+              `)
+              .eq('id', student.program_section_id)
+              .single();
+
+            if (!sectionError && sectionData) {
+              if (sectionData.programs) {
+                courseName = sectionData.programs.name;
+                if (sectionData.programs.department) {
+                  branchName = sectionData.programs.department;
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching academic info:', err);
+        }
+
+        // Get date of birth from student data
+        const dob = student.date_of_birth || '';
+        
+        // Calculate age from date of birth if available
+        const calculatedAge = dob ? calculateAge(dob) : (student.age || undefined);
+        
+        // Initialize form with student data
+        setFormData({
+          name: student.name || '',
+          email: student.email || '',
+          contact_number: student.contact_number || student.phone || '',
+          alternate_number: student.alternate_number || '',
+          date_of_birth: dob,
+          age: calculatedAge,
+          gender: student.gender || '',
+          district_name: student.district_name || student.location || '',
+          university: universityName,
+          university_main: student.university_main || '',
+          branch_field: branchName,
+          college_school_name: collegeName,
+          course_name: courseName,
+          registration_number: student.registration_number || '',
+          github_link: student.github_link || '',
+          linkedin_link: student.linkedin_link || '',
+          twitter_link: student.twitter_link || '',
+          facebook_link: student.facebook_link || '',
+          instagram_link: student.instagram_link || '',
+          portfolio_link: student.portfolio_link || '',
+          bio: student.bio || '',
+          address: student.address || '',
+          city: student.city || '',
+          state: student.state || '',
+          country: student.country || '',
+          pincode: student.pincode || ''
+        });
+      };
+
+      fetchAcademicInfo();
       
       // Initialize location dropdowns based on existing data
       if (student.country) {
