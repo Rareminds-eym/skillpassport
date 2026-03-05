@@ -13,7 +13,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - JS module without types
 import {
   formatRegistrationDate,
@@ -25,8 +25,6 @@ import {
 import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 // @ts-ignore - JS module without types
 import DatePicker from '../../components/Subscription/shared/DatePicker';
-// @ts-ignore - JS module without types
-import DemoModal from '../../components/common/DemoModal';
 import { supabase } from '../../lib/supabaseClient';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
@@ -56,7 +54,6 @@ interface SignupState {
   sendingOtp: boolean;
   verifyingOtp: boolean;
   error: string;
-  roleDropdownOpen: boolean;
 }
 
 const ALL_COUNTRIES = Country.getAllCountries();
@@ -243,13 +240,7 @@ const LANGUAGES = [
 
 const UnifiedSignup = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
-
-  // Get plan context from location.state (if user selected a plan before signing up)
-  const planFromState = (location.state as any)?.plan;
-  const studentTypeFromState = (location.state as any)?.studentType;
-  const returnToFromState = (location.state as any)?.returnTo;
 
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
@@ -260,14 +251,13 @@ const UnifiedSignup = () => {
     country: 'IN', state: '', city: '', preferredLanguage: 'en', referralCode: '',
     agreeToTerms: false, otp: '', otpSent: false, otpVerified: false,
     showPassword: false, showConfirmPassword: false,
-    loading: false, sendingOtp: false, verifyingOtp: false, error: '', roleDropdownOpen: false
+    loading: false, sendingOtp: false, verifyingOtp: false, error: ''
   });
 
   const [currentStep, setCurrentStep] = useState(1);
   const [states, setStates] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [countryCodeDropdownOpen, setCountryCodeDropdownOpen] = useState(false);
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const countryCodeRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -413,11 +403,6 @@ const UnifiedSignup = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!validateForm()) return;
-    
-    // Show demo modal instead of submitting
-    setShowDemoModal(true);
-    return;
-    
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
@@ -489,16 +474,6 @@ const UnifiedSignup = () => {
         // Clear the stored return URL
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
-      } else if (returnToFromState === '/subscription/payment' && planFromState) {
-        // User selected a plan before signing up - go directly to payment
-        console.log('💳 User had pre-selected plan, redirecting to payment page');
-        navigate('/subscription/payment', {
-          state: {
-            plan: planFromState,
-            studentType: studentTypeFromState || entityType,
-            isUpgrade: false
-          }
-        });
       } else {
         // Redirect to subscription plans page to choose a plan
         navigate(`/subscription/plans/${entityType}/purchase`, {
@@ -890,50 +865,10 @@ const UnifiedSignup = () => {
               <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">I am a... <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setState(prev => ({ ...prev, roleDropdownOpen: !prev.roleDropdownOpen }))}
-                      className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 hover:bg-white transition-all outline-none text-left flex items-center justify-between"
-                    >
-                      <span className={state.selectedRole ? 'text-gray-900' : 'text-gray-400'}>
-                        {state.selectedRole ? getRoleDisplayName(state.selectedRole) : 'Select your role'}
-                      </span>
-                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${state.roleDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-                    
-                    {state.roleDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
-                        {allRoles.map(role => {
-                          const isAvailable = role === 'school_student' || role === 'college_student';
-                          return (
-                            <button
-                              key={role}
-                              type="button"
-                              onClick={() => {
-                                if (isAvailable) {
-                                  setState(prev => ({ ...prev, selectedRole: role, roleDropdownOpen: false, error: '' }));
-                                }
-                              }}
-                              disabled={!isAvailable}
-                              className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
-                                isAvailable 
-                                  ? 'hover:bg-blue-50 cursor-pointer text-gray-900' 
-                                  : 'cursor-not-allowed text-gray-400 bg-gray-50'
-                              } ${state.selectedRole === role ? 'bg-blue-50 text-blue-700' : ''}`}
-                            >
-                              <span className="font-medium">{getRoleDisplayName(role)}</span>
-                              {!isAvailable && (
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-gray-200 text-gray-600">
-                                  Coming Soon
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                  <select name="selectedRole" value={state.selectedRole || ''} onChange={handleInputChange} className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-gray-50 focus:bg-white transition-all outline-none">
+                    <option value="">Select your role</option>
+                    {allRoles.map(role => <option key={role} value={role}>{getRoleDisplayName(role)}</option>)}
+                  </select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1000,13 +935,6 @@ const UnifiedSignup = () => {
           </p>
         </div>
       </div>
-
-      {/* Demo Modal */}
-      <DemoModal
-        isOpen={showDemoModal}
-        onClose={() => setShowDemoModal(false)}
-        message="This feature is available in the full version. You are currently viewing the demo. Please contact us to get complete access."
-      />
     </div>
   );
 };
