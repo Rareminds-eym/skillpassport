@@ -86,6 +86,8 @@ export const useSubscriptionQuery = () => {
     gcTime: CACHE_TIME, // Changed from cacheTime (deprecated in v5)
     refetchOnWindowFocus: false,
     refetchOnMount: false, // Changed from 'always' - only fetch if stale
+    refetchOnReconnect: false, // Prevent refetch on network reconnect
+    refetchInterval: false, // Disable automatic background refetching
     retry: 1,
   });
 
@@ -152,11 +154,11 @@ export const useSubscriptionQuery = () => {
 
   return {
     subscriptionData: query.data,
-    // loading is true if:
-    // 1. The query is loading (initial fetch)
+    // loading is true ONLY if:
+    // 1. The query is loading (initial fetch) AND no cached data exists
     // 2. The query is pending (not yet enabled - waiting for user)
-    // This prevents premature redirects when user is not yet available
-    loading: query.isLoading || query.isPending || !isQueryEnabled,
+    // This prevents redirects during background refetches when we already have data
+    loading: (query.isLoading && !query.data) || query.isPending || !isQueryEnabled,
     error: query.error,
     isRefetching: query.isRefetching,
     hasActiveSubscription,

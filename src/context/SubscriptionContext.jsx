@@ -94,6 +94,17 @@ export const SubscriptionProvider = ({ children }) => {
         };
       }
       
+      // Learners get automatic access with subscription
+      if (user?.user_metadata?.role === 'learner') {
+        console.log('[SubscriptionContext] Learner detected, granting access without subscription');
+        return {
+          hasAccess: true,
+          accessReason: ACCESS_REASONS.ACTIVE,
+          subscription: null,
+          showWarning: false,
+        };
+      }
+      
       const result = await checkSubscriptionAccess(session.access_token);
       console.log('[SubscriptionContext] Subscription access check result:', {
         hasAccess: result.hasAccess,
