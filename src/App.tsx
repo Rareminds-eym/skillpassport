@@ -31,51 +31,39 @@ function App() {
       <BrowserRouter>
         <SupabaseAuthProvider>
           <AuthProvider>
-<<<<<<< PromotionalEventContext
             <SubscriptionProvider>
               <SearchProvider>
-                <ToastProvider>
-=======
-            <SupabaseAuthBridgeProvider>
-              <SubscriptionProvider>
-                <SearchProvider>
->>>>>>> dev
-                  <TourWrapper>
-                    <SubscriptionPrefetch />
-                    <TokenRefreshErrorNotification />
-                    <AppRoutes />
-<<<<<<< PromotionalEventContext
-                    <Toaster />
+                <TourWrapper>
+                  <SubscriptionPrefetch />
+                  <TokenRefreshErrorNotification />
+                  <AppRoutes />
                   <HotToaster 
-=======
-                    <HotToaster 
->>>>>>> dev
-                      position="top-right"
-                      toastOptions={{
-                        duration: 5000,
-                        style: {
-                          background: '#fff',
-                          color: '#363636',
+                    position="top-right"
+                    toastOptions={{
+                      duration: 5000,
+                      style: {
+                        background: '#fff',
+                        color: '#363636',
+                      },
+                      success: {
+                        duration: 3000,
+                        iconTheme: {
+                          primary: '#10b981',
+                          secondary: '#fff',
                         },
-                        success: {
-                          duration: 3000,
-                          iconTheme: {
-                            primary: '#10b981',
-                            secondary: '#fff',
-                          },
+                      },
+                      error: {
+                        duration: 4000,
+                        iconTheme: {
+                          primary: '#ef4444',
+                          secondary: '#fff',
                         },
-                        error: {
-                          duration: 4000,
-                          iconTheme: {
-                            primary: '#ef4444',
-                            secondary: '#fff',
-                          },
-                        },
-                      }}
-                    />
-                  </TourWrapper>
-                </SearchProvider>
-              </SubscriptionProvider>
+                      },
+                    }}
+                  />
+                </TourWrapper>
+              </SearchProvider>
+            </SubscriptionProvider>
           </AuthProvider>
         </SupabaseAuthProvider>
       </BrowserRouter>
