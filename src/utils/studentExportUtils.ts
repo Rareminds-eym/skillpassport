@@ -3,6 +3,9 @@ import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
 import { saveAs } from 'file-saver';
 import type { UICandidate } from '../hooks/useStudents';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('student-export');
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -98,7 +101,7 @@ export function exportStudentsAsCSV(students: UICandidate[], filename: string = 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
   } catch (error) {
-    console.error('Error exporting CSV:', error);
+    logger.error('Error exporting CSV', error as Error);
     alert('Failed to export CSV. Please check the console for details.');
   }
 }
@@ -123,7 +126,7 @@ export function exportStudentsAsJSON(students: UICandidate[], filename: string =
     const blob = new Blob([jsonString], { type: 'application/json' });
     saveAs(blob, `${filename}_${new Date().toISOString().split('T')[0]}.json`);
   } catch (error) {
-    console.error('Error exporting JSON:', error);
+    logger.error('Error exporting JSON', error as Error);
     alert('Failed to export JSON. Please check the console for details.');
   }
 }
@@ -390,7 +393,7 @@ export function exportStudentsAsPDF(students: UICandidate[], filename: string = 
     // Save the PDF
     doc.save(`${filename}_${new Date().toISOString().split('T')[0]}.pdf`);
   } catch (error) {
-    console.error('Error exporting PDF:', error);
+    logger.error('Error exporting PDF', error as Error);
     alert('Failed to export PDF. Please check the console for details.');
   }
 }
@@ -538,7 +541,7 @@ export function exportStudentsAsDetailedCSV(students: UICandidate[], filename: s
       trainings.length > 0 ? 'trainings' : null,
     ].filter(Boolean).join(', ')} files downloaded.`);
   } catch (error) {
-    console.error('Error exporting detailed CSV:', error);
+    logger.error('Error exporting detailed CSV', error as Error);
     alert('Failed to export detailed CSV. Please check the console for details.');
   }
 }

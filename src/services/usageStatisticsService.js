@@ -6,6 +6,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('usage-statistics');
 
 /**
  * Get usage statistics for the current user
@@ -47,7 +50,7 @@ export const getUserUsageStatistics = async () => {
       error: null
     };
   } catch (error) {
-    console.error('Error fetching usage statistics:', error);
+    logger.error('Error fetching usage statistics', error);
     return {
       success: false,
       data: null,
@@ -79,7 +82,7 @@ const getAssessmentsUsage = async (userId) => {
       }
     };
   } catch (error) {
-    console.error('Error fetching assessments usage:', error);
+    logger.error('Error fetching assessments usage', error);
     return {
       success: false,
       data: {
@@ -125,7 +128,7 @@ const getProfileViewsUsage = async (userId) => {
       }
     };
   } catch (error) {
-    console.error('Error fetching profile views:', error);
+    logger.error('Error fetching profile views', error);
     return {
       success: false,
       data: {
@@ -171,7 +174,7 @@ const getReportsUsage = async (userId) => {
       }
     };
   } catch (error) {
-    console.error('Error fetching reports usage:', error);
+    logger.error('Error fetching reports usage', error);
     return {
       success: false,
       data: {

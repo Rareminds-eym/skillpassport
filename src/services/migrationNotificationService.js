@@ -8,6 +8,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('migration-notification');
 
 /**
  * Email templates for migration notifications
@@ -56,7 +59,7 @@ export async function scheduleMigrationNotification(userId, scheduledDate, notif
     .single();
 
   if (error) {
-    console.error('Error scheduling notification:', error);
+    logger.error('Error scheduling notification', error, { userId, notificationType });
     throw error;
   }
 
@@ -79,7 +82,7 @@ export async function getPendingNotifications() {
     .limit(100);
 
   if (error) {
-    console.error('Error fetching pending notifications:', error);
+    logger.error('Error fetching pending notifications', error);
     throw error;
   }
 
@@ -101,7 +104,7 @@ export async function markNotificationSent(notificationId, success = true, error
     .eq('id', notificationId);
 
   if (error) {
-    console.error('Error updating notification status:', error);
+    logger.error('Error updating notification status', error, { notificationId });
     throw error;
   }
 }
@@ -145,7 +148,7 @@ export async function sendMigrationEmail(notification) {
   // Example with a generic email service:
   // await emailService.send(emailData);
   
-  console.log('Would send email:', emailData);
+  logger.info('Would send email', { to: emailData.to, subject: emailData.subject });
   
   return { success: true, emailData };
 }
@@ -156,7 +159,7 @@ export async function sendMigrationEmail(notification) {
 export async function processNotifications() {
   const notifications = await getPendingNotifications();
   
-  console.log(`Processing ${notifications.length} pending notifications`);
+  logger.info('Processing pending notifications', { count: notifications.length });
   
   const results = {
     sent: 0,
@@ -170,7 +173,7 @@ export async function processNotifications() {
       await markNotificationSent(notification.id, true);
       results.sent++;
     } catch (error) {
-      console.error(`Failed to send notification ${notification.id}:`, error);
+      logger.error('Failed to send notification', error, { notificationId: notification.id });
       await markNotificationSent(notification.id, false, error.message);
       results.failed++;
       results.errors.push({ id: notification.id, error: error.message });
@@ -223,7 +226,7 @@ export async function getUserNotificationHistory(userId) {
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching notification history:', error);
+    logger.error('Error fetching notification history', error, { userId });
     throw error;
   }
 
@@ -242,7 +245,7 @@ export async function cancelPendingNotifications(userId) {
     .select();
 
   if (error) {
-    console.error('Error cancelling notifications:', error);
+    logger.error('Error cancelling notifications', error, { userId });
     throw error;
   }
 

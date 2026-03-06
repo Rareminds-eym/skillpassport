@@ -6,6 +6,9 @@
  */
 
 import type { RefreshError } from './refreshCoordinator';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('token-refresh-error');
 
 export interface ErrorNotification {
   title: string;
@@ -57,10 +60,10 @@ export class TokenRefreshErrorHandler {
       this.failureLogs = this.failureLogs.slice(-this.maxLogEntries);
     }
 
-    // Log to console for debugging
+    // Log for debugging
     const timestamp = new Date(log.timestamp).toISOString();
-    console.error(
-      `[TokenRefreshError] ${timestamp} - Attempt ${attempt}: ${error}${
+    logger.error(
+      `Token refresh failed - Attempt ${attempt}: ${error}${
         details ? ` - ${details}` : ''
       } (retryable: ${retryable})`
     );
@@ -180,7 +183,7 @@ export class TokenRefreshErrorHandler {
       try {
         callback(notification);
       } catch (error) {
-        console.error('[TokenRefreshErrorHandler] Error in notification callback:', error);
+        logger.error('Error in notification callback', error as Error);
       }
     });
   }

@@ -1,4 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('saved-searches');
 
 export interface SavedSearch {
   id: string;
@@ -38,7 +41,7 @@ export const getSavedSearches = async (recruiterId?: string) => {
 
     return { data: data || [], error: null };
   } catch (error) {
-    console.error('Error fetching saved searches:', error);
+    logger.error('Error fetching saved searches', error as Error);
     // Return default searches if table doesn't exist
     const defaultSearches = [
       {
@@ -107,7 +110,7 @@ export const createSavedSearch = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error creating saved search:', error);
+    logger.error('Error creating saved search', error as Error);
     return { data: null, error };
   }
 };
@@ -130,7 +133,7 @@ export const updateSavedSearch = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating saved search:', error);
+    logger.error('Error updating saved search', error as Error);
     return { data: null, error };
   }
 };
@@ -148,7 +151,7 @@ export const deleteSavedSearch = async (searchId: string) => {
     if (error) throw error;
     return { error: null };
   } catch (error) {
-    console.error('Error deleting saved search:', error);
+    logger.error('Error deleting saved search', error as Error);
     return { error };
   }
 };
@@ -178,7 +181,7 @@ export const trackSearchUsage = async (searchId: string) => {
 
     return { error: null };
   } catch (error) {
-    console.error('Error tracking search usage:', error);
+    logger.error('Error tracking search usage', error as Error);
     return { error };
   }
 };
@@ -197,7 +200,7 @@ export const getSavedSearchById = async (searchId: string) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching saved search:', error);
+    logger.error('Error fetching saved search', error as Error);
     return { data: null, error };
   }
 };
