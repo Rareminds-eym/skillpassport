@@ -4,15 +4,16 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { InvitationEmailRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { sendEmail } from '../services/mailer';
-import { generateInvitationEmailHtml, getInvitationSubject } from '../services/templates';
+import { EmailWorkerClient } from '../services/worker-client';
+import { getEmailWorkerConfig, APP_URL } from '../config';
+import { invitationTemplate } from '../templates';
 
 export async function handleInvitationEmail(
   body: InvitationEmailRequest,
-  env: Env,
+  env: PagesEnv,
   supabase: SupabaseClient
 ): Promise<Response> {
   const { to, organizationName, memberType, invitationToken, expiresAt, customMessage } = body;
@@ -25,22 +26,21 @@ export async function handleInvitationEmail(
   }
 
   try {
-    const html = generateInvitationEmailHtml({
+    const workerConfig = getEmailWorkerConfig(env);
+    const client = new EmailWorkerClient(workerConfig);
+    
+    const html = invitationTemplate({
       organizationName,
       memberType,
-      invitationToken,
+      invitationLink: `${APP_URL}/accept-invitation?token=${invitationToken}`,
       expiresAt,
-      customMessage
+      customMessage,
     });
-
-    const subject = getInvitationSubject(organizationName);
-
-    const result = await sendEmail(env, {
+    
+    const result = await client.sendEmail({
       to,
-      subject,
+      subject: `You're invited to join ${organizationName}`,
       html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
     });
 
     return jsonResponse({

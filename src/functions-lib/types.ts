@@ -43,6 +43,8 @@ export interface PagesEnv {
   // API URLs
   EMAIL_API_URL?: string;
   STORAGE_API_URL?: string;
+  EMAIL_WORKER_URL?: string;
+  EMAIL_WORKER_API_KEY?: string;
   
   // Environment
   ENVIRONMENT?: string;
