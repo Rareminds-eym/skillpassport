@@ -2,6 +2,7 @@ import { Briefcase, GraduationCap, Plus, Edit, Eye, EyeOff, Trash2, CheckCircle,
 import { Button } from "../../ui/button";
 import { Badge } from "../../ui/badge";
 import { useFormValidation } from "../../../../../hooks/useFormValidation";
+import { isLearner } from "../../../../../utils/studentType";
 import FormField from "../FormField";
 
 const AcademicDetailsTab = ({ 
@@ -12,9 +13,11 @@ const AcademicDetailsTab = ({
   onToggleEducationEnabled,
   onDeleteEducation,
   handleSaveProfile,
-  isSaving, 
+  isSaving,
+  studentData,
 }) => {
   const { validateSingleField, touchField, getFieldError } = useFormValidation();
+  const isLearnerUser = isLearner(studentData);
 
   const handleFieldChange = (field, value) => {
     handleProfileChange(field, value);
@@ -34,119 +37,132 @@ const AcademicDetailsTab = ({
     <div className="space-y-8">
       <div>
         <h3 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
-          <Briefcase className="w-5 h-5 text-blue-600" />
-          Academic Details
+          {isLearnerUser ? <GraduationCap className="w-5 h-5 text-blue-600" /> : <Briefcase className="w-5 h-5 text-blue-600" />}
+          {isLearnerUser ? "Education History" : "Academic Details"}
         </h3>
-        <p className="text-sm text-slate-500">Your educational qualifications and academic information</p>
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <p className="text-sm text-slate-700 mb-2 font-medium">
-          What to fill here:
-        </p>
-        <ul className="text-sm text-slate-600 space-y-1.5 ml-4 list-disc">
-          <li><span className="font-medium">Educational Level:</span> Your current academic year (e.g., Grade 10, UG Year 2)</li>
-          <li><span className="font-medium">Registration/Enrollment Numbers:</span> Your official student ID numbers</li>
-          <li><span className="font-medium">Current CGPA:</span> Your current grade point average</li>
-        </ul>
-        <p className="text-xs text-slate-500 mt-3">
-          Note: Your institution name and class section (like "10-A") are set in the Institution Details tab.
+        <p className="text-sm text-slate-500">
+          {isLearnerUser 
+            ? "Your educational qualifications and degrees" 
+            : "Your educational qualifications and academic information"}
         </p>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Registration Number */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">
-            Registration Number
-          </label>
-          <input
-            type="text"
-            value={profileData.registrationNumber}
-            onChange={(e) =>
-              handleProfileChange("registrationNumber", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
-            placeholder="Enter registration number"
-          />
-        </div>
 
-        {/* Enrollment Number */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">
-            Enrollment Number
-          </label>
-          <input
-            type="text"
-            value={profileData.enrollmentNumber}
-            onChange={(e) =>
-              handleProfileChange("enrollmentNumber", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
-            placeholder="Enter enrollment number"
-          />
-        </div>
+      {/* Only show academic fields for school/college students, not learners */}
+      {!isLearnerUser && (
+        <>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-slate-700 mb-2 font-medium">
+              What to fill here:
+            </p>
+            <ul className="text-sm text-slate-600 space-y-1.5 ml-4 list-disc">
+              <li><span className="font-medium">Educational Level:</span> Your current academic year (e.g., Grade 10, UG Year 2)</li>
+              <li><span className="font-medium">Registration/Enrollment Numbers:</span> Your official student ID numbers</li>
+              <li><span className="font-medium">Current CGPA:</span> Your current grade point average</li>
+            </ul>
+            <p className="text-xs text-slate-500 mt-3">
+              Note: Your institution name and class section (like "10-A") are set in the Institution Details tab.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Registration Number */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Registration Number
+              </label>
+              <input
+                type="text"
+                value={profileData.registrationNumber}
+                onChange={(e) =>
+                  handleProfileChange("registrationNumber", e.target.value)
+                }
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
+                placeholder="Enter registration number"
+              />
+            </div>
 
-        {/* Current CGPA */}
-        <FormField
-          label="Current CGPA"
-          name="currentCgpa"
-          type="number"
-          value={profileData.currentCgpa}
-          onChange={handleFieldChange}
-          onBlur={handleFieldBlur}
-          error={getFieldError('cgpa')}
-          placeholder="Enter current CGPA (0-10)"
-          required
-          helpText="CGPA must be between 0 and 10"
-          inputClassName="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-        />
+            {/* Enrollment Number */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Enrollment Number
+              </label>
+              <input
+                type="text"
+                value={profileData.enrollmentNumber}
+                onChange={(e) =>
+                  handleProfileChange("enrollmentNumber", e.target.value)
+                }
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
+                placeholder="Enter enrollment number"
+              />
+            </div>
 
-        {/* Grade - Read Only (controlled by School Class or Program/Semester) */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Grade/Class <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={profileData.grade || ""}
-            readOnly
-            disabled
-            className="w-full px-4 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-600 cursor-not-allowed"
-            placeholder="Auto-set based on School Class or Program/Semester"
-          />
-          <p className="text-xs text-gray-500">
-            {(profileData.schoolId || profileData.schoolClassId) && !profileData.universityId && !profileData.universityCollegeId
-              ? 'Change this by selecting School Class in Institution Details tab'
-              : 'Change this by selecting Program and Semester in Institution Details tab'}
-          </p>
-        </div>
+            {/* Current CGPA */}
+            <FormField
+              label="Current CGPA"
+              name="currentCgpa"
+              type="number"
+              value={profileData.currentCgpa}
+              onChange={handleFieldChange}
+              onBlur={handleFieldBlur}
+              error={getFieldError('cgpa')}
+              placeholder="Enter current CGPA (0-10)"
+              required
+              helpText="CGPA must be between 0 and 10"
+              inputClassName="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
 
-        {/* Grade Start Date */}
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700">
-            Grade Start Date
-          </label>
-          <input
-            type="date"
-            value={profileData.gradeStartDate}
-            onChange={(e) =>
-              handleProfileChange("gradeStartDate", e.target.value)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
-          />
-        </div>
-      </div>
+            {/* Grade - Read Only (controlled by School Class or Program/Semester) */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">
+                Grade/Class <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={profileData.grade || ""}
+                readOnly
+                disabled
+                className="w-full px-4 py-2.5 bg-gray-50 border border-slate-200 rounded-xl text-sm text-gray-600 cursor-not-allowed"
+                placeholder="Auto-set based on School Class or Program/Semester"
+              />
+              <p className="text-xs text-gray-500">
+                {(profileData.schoolId || profileData.schoolClassId) && !profileData.universityId && !profileData.universityCollegeId
+                  ? 'Change this by selecting School Class in Institution Details tab'
+                  : 'Change this by selecting Program and Semester in Institution Details tab'}
+              </p>
+            </div>
+
+            {/* Grade Start Date */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Grade Start Date
+              </label>
+              <input
+                type="date"
+                value={profileData.gradeStartDate}
+                onChange={(e) =>
+                  handleProfileChange("gradeStartDate", e.target.value)
+                }
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all input-focus-ring text-sm"
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Education Section */}
-      <div className="pt-6 border-t border-slate-200">
+      <div className={!isLearnerUser ? "pt-6 border-t border-slate-200" : ""}>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h4 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-1">
-              <GraduationCap className="w-5 h-5 text-blue-600" />
-              Education History
-            </h4>
-            <p className="text-sm text-slate-500">Your educational qualifications and degrees</p>
+            {!isLearnerUser && (
+              <>
+                <h4 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-1">
+                  <GraduationCap className="w-5 h-5 text-blue-600" />
+                  Education History
+                </h4>
+                <p className="text-sm text-slate-500">Your educational qualifications and degrees</p>
+              </>
+            )}
           </div>
           <Button
             onClick={() => setShowEducationModal(true)}
