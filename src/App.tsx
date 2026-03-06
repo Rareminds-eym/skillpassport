@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React, { useEffect } from 'react';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import { ToastProvider } from './components/Recruiter/components/Toast';
@@ -10,7 +9,6 @@ import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotific
 import { AuthProvider } from './context/AuthContext';
 import { SearchProvider } from './context/SearchContext';
 import { SubscriptionProvider } from './context/SubscriptionContext';
-import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
 import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
 import AppRoutes from './routes/AppRoutes';
 import './utils/suppressRechartsWarnings'; // Suppress Recharts warnings globally
@@ -35,16 +33,15 @@ function App() {
       <BrowserRouter>
         <SupabaseAuthProvider>
           <AuthProvider>
-            <SupabaseAuthBridgeProvider>
-              <SubscriptionProvider>
-                <SearchProvider>
-                  <ToastProvider>
-                    <TourWrapper>
-                      <SubscriptionPrefetch />
-                      <TokenRefreshErrorNotification />
-                      <AppRoutes />
-                      <Toaster />
-                    <HotToaster 
+            <SubscriptionProvider>
+              <SearchProvider>
+                <ToastProvider>
+                  <TourWrapper>
+                    <SubscriptionPrefetch />
+                    <TokenRefreshErrorNotification />
+                    <AppRoutes />
+                    <Toaster />
+                  <HotToaster 
                       position="top-right"
                       toastOptions={{
                         duration: 5000,
@@ -72,7 +69,6 @@ function App() {
                   </ToastProvider>
                 </SearchProvider>
               </SubscriptionProvider>
-            </SupabaseAuthBridgeProvider>
           </AuthProvider>
         </SupabaseAuthProvider>
       </BrowserRouter>
