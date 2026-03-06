@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { loginAdmin } from '../../services/adminAuthService';
-import { useToast } from '@/hooks/use-toast';
+import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
 import { Input } from '../../components/Students/components/ui/input';
@@ -16,7 +16,6 @@ const LoginAdmin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -65,10 +64,7 @@ const LoginAdmin = () => {
         
         login(demoUser);
 
-        toast({
-          title: 'Login Successful',
-          description: `Welcome back, ${demoUser.name}!`,
-        });
+        toast.success(`Welcome back, ${demoUser.name}!`);
 
         // Route based on role
         const dashboardRoutes = {
@@ -91,10 +87,7 @@ const LoginAdmin = () => {
       // Store admin data in context
       login(result.admin);
 
-      toast({
-        title: 'Login Successful',
-        description: `Welcome back, ${result.admin.name}!`,
-      });
+      toast.success(`Welcome back, ${result.admin.name}!`);
 
       // Redirect based on admin role
       if (result.admin.role === 'college_admin') {
@@ -105,11 +98,7 @@ const LoginAdmin = () => {
         navigate('/school-admin/dashboard');
       }
     } catch (error) {
-      toast({
-        title: 'Login Failed',
-        description: error.message || 'Invalid credentials',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Invalid credentials');
     } finally {
       setIsLoading(false);
     }

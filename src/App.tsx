@@ -2,8 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React, { useEffect } from 'react';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
-import { ToastProvider } from './components/Recruiter/components/Toast';
-import { Toaster } from './components/Students/components/ui/toaster';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
 import TourWrapper from './components/Tours/TourWrapper';
 import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotification';
@@ -38,12 +36,10 @@ function App() {
             <SupabaseAuthBridgeProvider>
               <SubscriptionProvider>
                 <SearchProvider>
-                  <ToastProvider>
-                    <TourWrapper>
-                      <SubscriptionPrefetch />
-                      <TokenRefreshErrorNotification />
-                      <AppRoutes />
-                      <Toaster />
+                  <TourWrapper>
+                    <SubscriptionPrefetch />
+                    <TokenRefreshErrorNotification />
+                    <AppRoutes />
                     <HotToaster 
                       position="top-right"
                       toastOptions={{
@@ -68,8 +64,7 @@ function App() {
                         },
                       }}
                     />
-                    </TourWrapper>
-                  </ToastProvider>
+                  </TourWrapper>
                 </SearchProvider>
               </SubscriptionProvider>
             </SupabaseAuthBridgeProvider>

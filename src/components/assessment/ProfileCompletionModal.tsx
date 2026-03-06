@@ -11,7 +11,7 @@ import { AlertCircle, Save, X, Loader2 } from 'lucide-react';
 import { Button } from '../Students/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../Students/components/ui/card';
 // @ts-ignore - JS hook without types
-import { useToast } from '../../hooks/use-toast';
+import toast from 'react-hot-toast';
 // @ts-ignore - JS hook without types
 import { useStudentSettings } from '../../hooks/useStudentSettings';
 // @ts-ignore - JS hook without types
@@ -33,7 +33,6 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   userEmail,
   profileData: initialProfileData
 }) => {
-  const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
   // Use the same complete profile data structure as Settings page
@@ -370,11 +369,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
   const handleSubmit = async () => {
     const errors = validateForm();
     if (errors.length > 0) {
-      toast({
-        title: "Validation Error",
-        description: errors.join(', '),
-        variant: "destructive"
-      });
+      toast.error(errors.join(', '));
       return;
     }
 
@@ -424,11 +419,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       // Pass only the fields being updated
       await updateProfile(dataToSave);
 
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully!",
-        variant: "default"
-      });
+      toast.success("Your profile has been updated successfully!");
 
       // Dispatch event to notify other components
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
@@ -438,11 +429,7 @@ export const ProfileCompletionModal: React.FC<ProfileCompletionModalProps> = ({
       onComplete();
     } catch (error) {
       console.error('Error updating profile:', error);
-      toast({
-        title: "Update Failed",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to update profile. Please try again.");
     } finally {
       setIsSaving(false);
     }
