@@ -40,6 +40,7 @@ export interface StudentData {
 export interface StudentTypeInfo {
     isCollegeStudent: boolean;
     isSchoolStudent: boolean;
+    isLearner: boolean;
     educationLevel: EducationLevel | null;
     institutionId: string | null;
 }
@@ -75,6 +76,7 @@ export function determineStudentType(student: StudentData | null | undefined): S
         return {
             isCollegeStudent: false,
             isSchoolStudent: false,
+            isLearner: false,
             educationLevel: null,
             institutionId: null
         };
@@ -86,10 +88,21 @@ export function determineStudentType(student: StudentData | null | undefined): S
     const hasSchoolId = Boolean(student.school_id);
 
     // Priority 1: Explicit role from users table
+    if (student.role === 'learner') {
+        return {
+            isCollegeStudent: false,
+            isSchoolStudent: false,
+            isLearner: true,
+            educationLevel: null,
+            institutionId: null
+        };
+    }
+
     if (student.role === 'college_student') {
         return {
             isCollegeStudent: true,
             isSchoolStudent: false,
+            isLearner: false,
             educationLevel: EducationLevel.COLLEGE,
             institutionId: collegeId || null
         };
@@ -100,6 +113,7 @@ export function determineStudentType(student: StudentData | null | undefined): S
         return {
             isCollegeStudent: false,
             isSchoolStudent: true,
+            isLearner: false,
             educationLevel: level,
             institutionId: student.school_id || null
         };
@@ -110,6 +124,7 @@ export function determineStudentType(student: StudentData | null | undefined): S
         return {
             isCollegeStudent: true,
             isSchoolStudent: false,
+            isLearner: false,
             educationLevel: EducationLevel.COLLEGE,
             institutionId: collegeId || null
         };
@@ -120,6 +135,7 @@ export function determineStudentType(student: StudentData | null | undefined): S
         return {
             isCollegeStudent: false,
             isSchoolStudent: true,
+            isLearner: false,
             educationLevel: level,
             institutionId: student.school_id || null
         };
@@ -131,18 +147,31 @@ export function determineStudentType(student: StudentData | null | undefined): S
         return {
             isCollegeStudent: true,
             isSchoolStudent: false,
+            isLearner: false,
             educationLevel: EducationLevel.COLLEGE,
             institutionId: collegeId || null
         };
     }
 
-    // Priority 3: Grade-based fallback (no institution IDs or role)
+    // Priority 3: No institution IDs - treat as learner
+    if (!hasCollegeId && !hasSchoolId) {
+        return {
+            isCollegeStudent: false,
+            isSchoolStudent: false,
+            isLearner: true,
+            educationLevel: null,
+            institutionId: null
+        };
+    }
+
+    // Priority 4: Grade-based fallback
     const level = getGradeLevelFromGrade(student.grade) as EducationLevel | null;
     const isCollegeLevel = level === EducationLevel.COLLEGE || level === EducationLevel.AFTER_12;
 
     return {
         isCollegeStudent: isCollegeLevel,
         isSchoolStudent: !isCollegeLevel && level !== null,
+        isLearner: false,
         educationLevel: level,
         institutionId: null
     };
@@ -177,3 +206,13 @@ export const isSchoolStudent = (student: StudentData | null | undefined): boolea
  */
 export const getStudentEducationLevel = (student: StudentData | null | undefined): EducationLevel | null =>
     determineStudentType(student).educationLevel;
+
+/**
+ * Check if student is a learner (independent, no institution)
+ * Convenience wrapper around determineStudentType
+ * 
+ * @param student - Student data object
+ * @returns true if student is identified as learner
+ */
+export const isLearner = (student: StudentData | null | undefined): boolean =>
+    determineStudentType(student).isLearner;

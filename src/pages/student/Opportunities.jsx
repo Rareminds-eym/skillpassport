@@ -44,7 +44,7 @@ import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
 import factoryVisitsService from '../../services/factoryVisitsService';
-import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
+import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
 
 // Import Applications component content
 import useMessageNotifications from '../../hooks/useMessageNotifications';
@@ -54,6 +54,9 @@ import StudentPipelineService from '../../services/studentPipelineService';
 // Helper function to check if institution details are complete
 const checkInstitutionDetailsComplete = (studentData) => {
   if (!studentData) return false;
+  
+  // Learners don't need institution details
+  if (isLearner(studentData)) return true;
   
   console.log('🔍 Checking institution details:', {
     universityId: studentData.universityId,
@@ -379,10 +382,11 @@ const Opportunities = () => {
 
   // Memoize student type to prevent unnecessary recalculations
   const studentType = React.useMemo(() => {
-    if (!studentData) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false };
+    if (!studentData) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false, isLearner: false };
     
     const isSchool = isSchoolStudent(studentData);
     const isUniversity = isCollegeStudent(studentData);
+    const isLearnerType = isLearner(studentData);
     
     // Determine specific school level
     let isMiddleSchool = false;
@@ -419,7 +423,8 @@ const Opportunities = () => {
       isSchoolStudent: isSchool, 
       isUniversityStudent: isUniversity,
       isMiddleSchool,
-      isHighSchool
+      isHighSchool,
+      isLearner: isLearnerType
     };
   }, [studentData]);
 
@@ -435,6 +440,13 @@ const Opportunities = () => {
     } else if (studentType.isHighSchool) {
       // High school (9-12): Only internships
       filters.employmentType = ['Internship'];
+    } else if (studentType.isLearner) {
+      // Learners: Only full-time jobs and internships (no industrial visits)
+      if (advancedFilters.employmentType.length > 0) {
+        filters.employmentType = advancedFilters.employmentType;
+      } else {
+        filters.employmentType = ['Internship', 'Full-time'];
+      }
     } else if (studentType.isUniversityStudent) {
       // College: Both internships and full-time jobs
       if (advancedFilters.employmentType.length > 0) {
@@ -465,7 +477,7 @@ const Opportunities = () => {
     }
 
     return filters;
-  }, [advancedFilters, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent]);
+  }, [advancedFilters, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isLearner]);
 
   // Fetch opportunities with server-side pagination
   // IMPORTANT: Only fetch after studentData is loaded to ensure correct filters
@@ -474,9 +486,9 @@ const Opportunities = () => {
   // Determine if we should fetch opportunities based on student type and active tab
   const shouldFetchOpportunities = React.useMemo(() => {
     if (!studentData) return false;
-    // Fetch opportunities for high school and college students when on my-jobs tab
-    return (studentType.isHighSchool || studentType.isUniversityStudent) && activeTab === 'my-jobs';
-  }, [studentData, studentType.isHighSchool, studentType.isUniversityStudent, activeTab]);
+    // Fetch opportunities for high school, college students, and learners when on my-jobs tab
+    return (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && activeTab === 'my-jobs';
+  }, [studentData, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isLearner, activeTab]);
   
   const {
     opportunities,
@@ -1010,8 +1022,10 @@ const Opportunities = () => {
                 studentType.isMiddleSchool 
                   ? 'grid-cols-2' 
                   : studentType.isHighSchool 
-                    ? 'grid-cols-3' 
-                    : 'grid-cols-3'
+                    ? 'grid-cols-3'
+                    : studentType.isLearner
+                      ? 'grid-cols-3'
+                      : 'grid-cols-3'
               } gap-2`}>
                 {/* Industrial Visits Tab - Show for all students */}
                 <button
@@ -1063,8 +1077,8 @@ const Opportunities = () => {
                   </button>
                 )}
 
-                {/* My Jobs Tab - Show for high school and college */}
-                {(studentType.isHighSchool || studentType.isUniversityStudent) && (
+                {/* My Jobs Tab - Show for high school, college, and learners */}
+                {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-jobs')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
@@ -1083,16 +1097,18 @@ const Opportunities = () => {
                         </h1>
                         <p className="text-sm text-gray-600 mt-1">
                           {studentType.isUniversityStudent 
-                            ? 'Browse internships and full-time opportunities' 
-                            : 'Explore internship opportunities'}
+                            ? 'Browse internships and full-time opportunities'
+                            : studentType.isLearner
+                              ? 'Explore job opportunities'
+                              : 'Explore internship opportunities'}
                         </p>
                       </div>
                     </div>
                   </button>
                 )}
 
-                {/* My Applications Tab - Show for high school and college */}
-                {(studentType.isHighSchool || studentType.isUniversityStudent) && (
+                {/* My Applications Tab - Show for high school, college, and learners */}
+                {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-applications')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
@@ -1124,8 +1140,8 @@ const Opportunities = () => {
         {/* Main Content Area */}
         {!isLoading && (
           <div>
-            {/* AI Recommended Jobs - Show for high school and college students only */}
-            {(studentType.isHighSchool || studentType.isUniversityStudent) && activeTab === 'my-jobs' && (
+            {/* AI Recommended Jobs - Show for high school, college, and learners only */}
+            {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && activeTab === 'my-jobs' && (
               <RecommendedJobs
                 studentProfile={{ ...studentData, id: studentId, profile: studentData }}
                 onSelectJob={setSelectedOpportunity}
@@ -1136,8 +1152,8 @@ const Opportunities = () => {
               />
             )}
 
-            {/* My Jobs Tab - Show for high school and college */}
-            {activeTab === 'my-jobs' && (studentType.isHighSchool || studentType.isUniversityStudent) && (
+            {/* My Jobs Tab - Show for high school, college, and learners */}
+            {activeTab === 'my-jobs' && (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && (
               <MyJobsContent
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
@@ -1171,8 +1187,8 @@ const Opportunities = () => {
               />
             )}
 
-            {/* My Applications Tab - Show for high school and college */}
-            {activeTab === 'my-applications' && (studentType.isHighSchool || studentType.isUniversityStudent) && (
+            {/* My Applications Tab - Show for high school, college, and learners */}
+            {activeTab === 'my-applications' && (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && (
               <MyApplicationsContent
                 applications={filteredApplications}
                 searchQuery={searchQuery}

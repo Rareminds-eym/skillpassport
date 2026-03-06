@@ -91,7 +91,7 @@ import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { supabase } from "../../lib/supabaseClient";
-import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
+import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -2742,18 +2742,27 @@ const StudentDashboard = () => {
     ),
   };
 
-  // Define 3x3 grid layout
-  const threeByThreeCards = [
-    "assessment",
-    "trainings",
-    "opportunities",
-    "Projects",
-    "Certificates",
-    "My experience",
-    "Education",
-    "technicalSkills",
-    "softSkills"
-  ];
+  // Define 3x3 grid layout - conditionally exclude assessment for learners
+  const threeByThreeCards = useMemo(() => {
+    const cards = [
+      "assessment",
+      "trainings",
+      "opportunities",
+      "Projects",
+      "Certificates",
+      "My experience",
+      "Education",
+      "technicalSkills",
+      "softSkills"
+    ];
+    
+    // Remove assessment for learners
+    if (isLearner(studentData)) {
+      return cards.filter(card => card !== "assessment");
+    }
+    
+    return cards;
+  }, [studentData]);
 
   // Map the display names to actual card keys
   const cardNameMapping = {
