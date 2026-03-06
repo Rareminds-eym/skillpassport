@@ -26,7 +26,7 @@ import {
   Mail,
   Award
 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { CollegeAdminNotificationService } from '@/services/collegeAdminNotificationService';
@@ -57,7 +57,6 @@ const CollegeVerifications = () => {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   
   const { user } = useAuth();
-  const { toast } = useToast();
 
   // Fetch pending trainings for college admin (Using database approval_authority)
   const fetchPendingTrainings = async () => {
@@ -106,11 +105,7 @@ const CollegeVerifications = () => {
       setPendingTrainings(trainings);
     } catch (error) {
       console.error('❌ Error in fetchPendingTrainings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch pending trainings",
-        variant: "destructive",
-      });
+      toast.error("Failed to fetch pending trainings");
     }
   };
 
@@ -161,11 +156,7 @@ const CollegeVerifications = () => {
       setPendingExperiences(experiences);
     } catch (error) {
       console.error('❌ Error in fetchPendingExperiences:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch pending experiences",
-        variant: "destructive",
-      });
+      toast.error("Failed to fetch pending experiences");
     }
   };
 
@@ -220,11 +211,7 @@ const CollegeVerifications = () => {
       setPendingProjects(projects);
     } catch (error) {
       console.error('❌ Error in fetchPendingProjects:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to load pending projects",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to load pending projects");
     }
   };
 
@@ -253,10 +240,7 @@ const CollegeVerifications = () => {
     } else if (action === 'approved' || action === 'rejected') {
       // Refresh data after approval/rejection
       await fetchPendingTrainings();
-      toast({
-        title: "Success",
-        description: `Training ${action} successfully!`,
-      });
+      toast.success(`Training ${action} successfully!`);
     }
   };
 
@@ -268,10 +252,7 @@ const CollegeVerifications = () => {
     } else if (action === 'approved' || action === 'rejected') {
       // Refresh data after approval/rejection
       await fetchPendingExperiences();
-      toast({
-        title: "Success",
-        description: `Experience ${action} successfully!`,
-      });
+      toast.success(`Experience ${action} successfully!`);
     }
   };
 
@@ -283,10 +264,7 @@ const CollegeVerifications = () => {
     } else if (action === 'approved' || action === 'rejected') {
       // Refresh data after approval/rejection
       await fetchPendingProjects();
-      toast({
-        title: "Success",
-        description: `Project ${action} successfully!`,
-      });
+      toast.success(`Project ${action} successfully!`);
     }
   };
 
@@ -299,10 +277,7 @@ const CollegeVerifications = () => {
       fetchPendingProjects()
     ]);
     setLoading(false);
-    toast({
-      title: "Refreshed",
-      description: "Data has been refreshed successfully",
-    });
+    toast.success("Data has been refreshed successfully");
   };
 
   // Pagination helper functions
