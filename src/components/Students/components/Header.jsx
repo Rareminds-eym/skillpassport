@@ -42,8 +42,12 @@ const Header = ({ activeTab, setActiveTab }) => {
   const { unreadCount } = useNotifications(userEmail);
 
   // Fetch student data to check school/college association
-  const { studentData } = useStudentDataByEmail(userEmail);
-  const isPartOfSchoolOrCollege = (studentData?.school_id || studentData?.university_college_id) && !isLearner(studentData);
+  const { studentData, loading: studentDataLoading } = useStudentDataByEmail(userEmail);
+  const isPartOfSchoolOrCollege = !studentDataLoading && !isLearner(studentData);
+  
+  
+  
+
 
   // Close modals when clicking outside
   useEffect(() => {
