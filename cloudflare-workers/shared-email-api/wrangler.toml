@@ -1,0 +1,33 @@
+name = "shared-email-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV Namespaces for rate limiting
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "c45ac18997334201a93ff4b7605bd877"
+preview_id = "afb5bd3fed6244a29f63a9a63a1370d1"
+
+# Development environment
+[env.development]
+name = "shared-email-api-dev"
+vars = { ENVIRONMENT = "development" }
+
+# Staging environment
+[env.staging]
+name = "shared-email-api-staging"
+vars = { ENVIRONMENT = "staging" }
+
+# Production environment
+[env.production]
+name = "shared-email-api-production"
+vars = { ENVIRONMENT = "production" }
+
+[[env.production.kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "c45ac18997334201a93ff4b7605bd877"
+
+# Observability
+[observability]
+enabled = true
