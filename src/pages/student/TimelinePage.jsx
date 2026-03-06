@@ -56,6 +56,16 @@ const TimelinePage = () => {
     ...timelineData, // Timeline arrays from database
   };
   
+  // Get role label based on user role
+  const getRoleLabel = (role) => {
+    if (role === 'school_student' || role === 'college_student') {
+      return 'Student';
+    } else if (role === 'learner') {
+      return 'Learner';
+    }
+    return 'Learner';
+  };
+  
   // Loading state - wait for both auth and timeline data
   const loading = authLoading || timelineLoading;
 
@@ -311,7 +321,7 @@ const TimelinePage = () => {
                 transition={{ delay: 0.3 }}
                 className="text-xl text-indigo-600 font-medium mb-4"
               >
-                {studentData?.college_school_name || 'Student'}
+                {studentData?.college_school_name || getRoleLabel(user?.role)}
               </motion.p>
 
               <motion.p

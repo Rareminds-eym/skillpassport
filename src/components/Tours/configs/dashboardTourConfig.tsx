@@ -275,7 +275,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
         </p>
       </div>
     ),
-    placement: 'left',
+    placement: 'right',
     spotlightClicks: true,
     disableBeacon: true,
     styles: {
