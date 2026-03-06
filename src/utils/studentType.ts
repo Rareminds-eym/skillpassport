@@ -32,6 +32,8 @@ export interface StudentData {
     grade?: string | null;
     role?: string | null;
     program_id?: string | null;
+    users?: { role?: string } | Array<{ role?: string }> | null; // Role from joined users table
+    userRole?: string | null; // Direct userRole property from studentSettingsService
 }
 
 /**
@@ -87,8 +89,29 @@ export function determineStudentType(student: StudentData | null | undefined): S
     const hasCollegeId = Boolean(collegeId);
     const hasSchoolId = Boolean(student.school_id);
 
+    // Extract role from multiple possible sources (priority order):
+    // 1. userRole (direct property from studentSettingsService)
+    // 2. users.role (from joined users table)
+    // 3. role (fallback direct property)
+    let userRole: string | null = null;
+    
+    if (student.userRole) {
+        userRole = student.userRole;
+    } else if (student.users) {
+        if (Array.isArray(student.users) && student.users.length > 0) {
+            userRole = student.users[0]?.role || null;
+        } else if (typeof student.users === 'object') {
+            userRole = (student.users as { role?: string }).role || null;
+        }
+    } else if (student.role) {
+        userRole = student.role;
+    }
+
     // Priority 1: Explicit role from users table
-    if (student.role === 'learner') {
+    // Normalize role to handle both 'learner' and potential variations
+    const normalizedRole = userRole?.toLowerCase().replace(/[_\s-]/g, '');
+    
+    if (normalizedRole === 'learner') {
         return {
             isCollegeStudent: false,
             isSchoolStudent: false,
@@ -98,7 +121,7 @@ export function determineStudentType(student: StudentData | null | undefined): S
         };
     }
 
-    if (student.role === 'college_student') {
+    if (normalizedRole === 'collegestudent') {
         return {
             isCollegeStudent: true,
             isSchoolStudent: false,
@@ -108,7 +131,7 @@ export function determineStudentType(student: StudentData | null | undefined): S
         };
     }
 
-    if (student.role === 'school_student') {
+    if (normalizedRole === 'schoolstudent') {
         const level = getGradeLevelFromGrade(student.grade) as EducationLevel | null;
         return {
             isCollegeStudent: false,

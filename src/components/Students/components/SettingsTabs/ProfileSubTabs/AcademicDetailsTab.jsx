@@ -38,6 +38,16 @@ const AcademicDetailsTab = ({
       {/* Only show academic fields for school/college students, not learners */}
       {!isLearnerUser && (
         <>
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-blue-600" />
+              Academic Details
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Your educational qualifications and academic information
+            </p>
+          </div>
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-slate-700 mb-2 font-medium">
               What to fill here:
