@@ -4,12 +4,12 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { BulkCountdownEmailRequest, BulkEmailResult, PreRegistration } from '../types';
 import { EMAIL_STATUS } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { sendEmail } from '../services/mailer';
-import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
+import { EmailWorkerClient } from '../services/worker-client';
+import { getEmailWorkerConfig, APP_URL } from '../config';
 import { 
   getAllPreRegistrations,
   checkEmailAlreadySent,
@@ -25,7 +25,7 @@ function getTodayStartOfDay(): Date {
 
 export async function handleBulkCountdownEmail(
   body: BulkCountdownEmailRequest,
-  env: Env,
+  env: PagesEnv,
   supabase: SupabaseClient
 ): Promise<Response> {
   const { countdownDay, launchDate } = body;
@@ -103,7 +103,7 @@ export async function handleBulkCountdownEmail(
 
 async function processBulkEmails(
   supabase: SupabaseClient,
-  env: Env,
+  env: PagesEnv,
   preRegistrations: PreRegistration[],
   countdownDay: number,
   launchDate: string
@@ -168,21 +168,22 @@ async function processBulkEmails(
         email_status: EMAIL_STATUS.SENDING
       });
 
-      // Generate and send email
-      const html = generateCountdownEmailHtml({
+      // Send via worker
+      const workerConfig = getEmailWorkerConfig(env);
+      const client = new EmailWorkerClient(workerConfig);
+      
+      const { countdownTemplate } = await import('../templates');
+      const html = countdownTemplate({
         fullName: preReg.full_name,
-        countdownDay: countdownDay,
-        launchDate: launchDate
+        countdownDay,
+        launchDate,
+        registrationLink: `${APP_URL}/pre-registration`,
       });
-
-      const subject = getCountdownSubject(countdownDay);
-
-      await sendEmail(env, {
+      
+      await client.sendEmail({
         to: preReg.email,
-        subject,
+        subject: `${countdownDay} Days Until Skill Passport Launch! 🚀`,
         html,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
       });
 
       // Update status to sent

@@ -42,7 +42,7 @@ export const onRequest: PagesFunction = async (context) => {
           status: 'ok',
           service: 'email-api',
           endpoints: [
-            '/send',
+            '/welcome',
             '/invitation',
             '/countdown',
             '/send-bulk-countdown',
@@ -96,7 +96,7 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleEventOTP(body, env, supabase);
     }
     
-    if (path === '/' || path === '/send') {
+    if (path === '/' || path === '/send' || path === '/welcome') {
       return await handleGenericEmail(body, env, supabase);
     }
 

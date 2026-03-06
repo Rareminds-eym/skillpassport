@@ -4,12 +4,13 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { CountdownEmailRequest } from '../types';
 import { EMAIL_STATUS } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { sendEmail } from '../services/mailer';
-import { generateCountdownEmailHtml, getCountdownSubject } from '../services/templates';
+import { EmailWorkerClient } from '../services/worker-client';
+import { getEmailWorkerConfig, APP_URL } from '../config';
+import { countdownTemplate } from '../templates';
 import { 
   findPreRegistrationByEmail, 
   createEmailTracking, 
@@ -18,7 +19,7 @@ import {
 
 export async function handleCountdownEmail(
   body: CountdownEmailRequest,
-  env: Env,
+  env: PagesEnv,
   supabase: SupabaseClient
 ): Promise<Response> {
   const { to, fullName, countdownDay, launchDate } = body;
@@ -51,23 +52,30 @@ export async function handleCountdownEmail(
 
         if (tracking) {
           trackingId = tracking.id;
-          await updateEmailTracking(supabase, trackingId, {
-            email_status: EMAIL_STATUS.SENDING
-          });
+          if (trackingId) {
+            await updateEmailTracking(supabase, trackingId, {
+              email_status: EMAIL_STATUS.SENDING
+            });
+          }
         }
       }
     }
 
-    // Generate and send email
-    const html = generateCountdownEmailHtml({ fullName, countdownDay, launchDate });
-    const subject = getCountdownSubject(countdownDay);
-
-    const result = await sendEmail(env, {
+    // Send via worker
+    const workerConfig = getEmailWorkerConfig(env);
+    const client = new EmailWorkerClient(workerConfig);
+    
+    const html = countdownTemplate({
+      fullName,
+      countdownDay,
+      launchDate,
+      registrationLink: `${APP_URL}/pre-registration`,
+    });
+    
+    const result = await client.sendEmail({
       to,
-      subject,
+      subject: `${countdownDay} Days Until Skill Passport Launch! 🚀`,
       html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
     });
 
     // Update tracking status to sent

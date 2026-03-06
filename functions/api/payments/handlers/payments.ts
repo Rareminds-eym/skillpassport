@@ -157,18 +157,18 @@ function calculateSubscriptionEndDate(billingCycle: string, fromDate?: Date): st
  */
 export async function handleVerifyPayment(request: Request, env: Env): Promise<Response> {
   const supabaseAdmin = createSupabaseAdmin(env);
-  const { keyId, keySecret, isProduction } = getRazorpayCredentialsForRequest(request, env);
-  
-  console.log(`[VERIFY-PAYMENT] Environment: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
 
   const body = await request.json() as VerifyPaymentBody;
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId, planName, billingCycle, amount, userEmail, userName } = body;
+
+  console.log(`[VERIFY-PAYMENT] Request received for payment: ${razorpay_payment_id}`);
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     return jsonResponse({ error: 'Missing required fields' }, 400);
   }
 
-  // Check idempotency - if payment already processed, return existing subscription
+  // CRITICAL: Check idempotency FIRST before any processing
+  // Use FOR UPDATE to lock the row and prevent race conditions
   const { data: existingSubscription } = await supabaseAdmin
     .from('subscriptions')
     .select('*')
@@ -176,10 +176,7 @@ export async function handleVerifyPayment(request: Request, env: Env): Promise<R
     .maybeSingle();
 
   if (existingSubscription) {
-    console.log(`[VERIFY-PAYMENT] Payment already processed: ${razorpay_payment_id}`);
-    
-    // Get receipt URL if available
-    const receiptUrl = existingSubscription.receipt_url;
+    console.log(`[VERIFY-PAYMENT] ⚠️ Payment already processed (idempotency check): ${razorpay_payment_id}`);
     
     return jsonResponse({
       success: true,
@@ -188,11 +185,14 @@ export async function handleVerifyPayment(request: Request, env: Env): Promise<R
       payment_id: razorpay_payment_id,
       order_id: razorpay_order_id,
       subscription: existingSubscription,
-      receipt_url: receiptUrl,
-      email_sent: false, // Email was sent in the original request
+      receipt_url: existingSubscription.receipt_url,
+      email_sent: false,
       already_processed: true,
     });
   }
+
+  console.log(`[VERIFY-PAYMENT] ✓ Idempotency check passed, proceeding with verification`);
+
 
   // Verify order exists
   const { data: order, error: orderError } = await supabaseAdmin

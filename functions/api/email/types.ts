@@ -51,56 +51,6 @@ export interface EventOTPRequest {
   name?: string;
 }
 
-// ==================== EMAIL DATA TYPES ====================
-
-export interface EmailData {
-  to: string | string[];
-  subject: string;
-  html: string;
-  text?: string;
-  from?: string;
-  fromName?: string;
-}
-
-export interface EmailResult {
-  success: boolean;
-  recipients?: string[];
-  error?: string;
-  errorType?: 'permanent' | 'temporary' | 'unknown';
-  shouldRetry?: boolean;
-}
-
-// ==================== TEMPLATE DATA TYPES ====================
-
-export interface InvitationTemplateData {
-  organizationName: string;
-  memberType: string;
-  invitationToken: string;
-  expiresAt: string;
-  customMessage?: string;
-}
-
-export interface CountdownTemplateData {
-  fullName: string;
-  countdownDay: number;
-  launchDate: string;
-}
-
-export interface EventConfirmationTemplateData {
-  name: string;
-  email: string;
-  phone: string;
-  amount: number;
-  orderId?: string;
-  campaign?: string;
-  baseUrl?: string;
-}
-
-export interface OTPTemplateData {
-  otp: string;
-  name?: string;
-}
-
 // ==================== DATABASE TYPES ====================
 
 export interface PreRegistration {
@@ -146,25 +96,6 @@ export interface BulkEmailDetail {
   tracking_id?: string;
 }
 
-// ==================== SMTP CONFIG ====================
-
-export interface SmtpConfig {
-  host: string;
-  port: number;
-  secure: boolean;
-  startTls: boolean;
-  authType: string;
-  credentials: {
-    username: string;
-    password: string;
-  };
-}
-
-export interface FromAddress {
-  email: string;
-  name: string;
-}
-
 // ==================== CONSTANTS ====================
 
 export const EMAIL_STATUS = {
@@ -175,14 +106,6 @@ export const EMAIL_STATUS = {
   REJECTED: 'rejected' as const,
 };
 
-export const ERROR_TYPES = {
-  PERMANENT: 'permanent' as const,
-  TEMPORARY: 'temporary' as const,
-  UNKNOWN: 'unknown' as const,
-};
-
 export const COUNTDOWN_DAYS = [8, 7, 6, 5, 4, 3, 2, 1];
 export const MAX_RETRY_ATTEMPTS = 3;
 export const RETRY_BATCH_SIZE = 10;
-
-export const APP_URL = 'https://skillpassport.rareminds.in';

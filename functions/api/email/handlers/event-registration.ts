@@ -5,18 +5,12 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../src/functions-lib/types';
 import type { EventConfirmationRequest, EventOTPRequest } from '../types';
 import { jsonResponse } from '../../../../src/functions-lib';
-import { sendEmail } from '../services/mailer';
-import {
-  generateUserConfirmationHtml,
-  generateAdminNotificationHtml,
-  generateOTPEmailHtml,
-  getUserConfirmationSubject,
-  getAdminNotificationSubject,
-  getOTPSubject
-} from '../services/templates';
+import { EmailWorkerClient } from '../services/worker-client';
+import { getEmailWorkerConfig, APP_URL } from '../config';
+import { eventConfirmationTemplate, otpTemplate } from '../templates';
 
 /**
  * Handle event registration confirmation emails
@@ -25,7 +19,7 @@ import {
  */
 export async function handleEventConfirmation(
   body: EventConfirmationRequest,
-  env: Env,
+  env: PagesEnv,
   supabase: SupabaseClient
 ): Promise<Response> {
   const { name, email, phone, amount, orderId, campaign } = body;
@@ -38,50 +32,39 @@ export async function handleEventConfirmation(
   }
 
   try {
-    // Determine base URL for PDF download link
-    const baseUrl = env.APP_URL || 'https://skillpassport.rareminds.in';
+    const workerConfig = getEmailWorkerConfig(env);
+    const client = new EmailWorkerClient(workerConfig);
     
-    // Generate email templates
-    const userHtml = generateUserConfirmationHtml({
+    const userHtml = eventConfirmationTemplate({
       name,
       email,
       phone,
       amount,
-      orderId,
-      campaign: campaign || 'direct',
-      baseUrl
+      orderId: orderId || 'N/A',
+      receiptLink: `${APP_URL}/api/email/download-receipt/${orderId}`,
     });
-
-    const adminHtml = generateAdminNotificationHtml({
-      name,
-      email,
-      phone,
-      amount,
-      orderId,
-      campaign: campaign || 'direct'
-    });
-
-    const userSubject = getUserConfirmationSubject(name);
-    const adminSubject = getAdminNotificationSubject(name, amount);
-
+    
     // Send both emails in parallel
     await Promise.all([
       // User confirmation email
-      sendEmail(env, {
+      client.sendEmail({
         to: email,
-        subject: userSubject,
+        subject: 'Registration Confirmed - Skill Passport Event',
         html: userHtml,
-        text: `Thank you for registering! Your order ID is ${orderId}. Amount paid: ₹${amount}`,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
       }),
       // Admin notification email
-      sendEmail(env, {
+      client.sendEmail({
         to: 'naveen@rareminds.in',
-        subject: adminSubject,
-        html: adminHtml,
-        from: env.FROM_EMAIL || 'noreply@rareminds.in',
-        fromName: env.FROM_NAME || 'Skill Passport',
+        subject: `New Registration: ${name} (₹${amount.toLocaleString()})`,
+        html: `
+          <h2>New Registration</h2>
+          <p><strong>Name:</strong> ${name}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Phone:</strong> ${phone}</p>
+          <p><strong>Amount:</strong> ₹${amount.toLocaleString()}</p>
+          <p><strong>Order ID:</strong> ${orderId || 'N/A'}</p>
+          <p><strong>Campaign:</strong> ${campaign || 'direct'}</p>
+        `,
       })
     ]);
 
@@ -90,7 +73,7 @@ export async function handleEventConfirmation(
       message: 'Confirmation emails sent successfully',
       data: {
         userEmail: email,
-        adminEmail: 'naveen@rareminds.in'
+        adminEmail: 'dev@rareminds.in'
       }
     });
 
@@ -109,7 +92,7 @@ export async function handleEventConfirmation(
  */
 export async function handleEventOTP(
   body: EventOTPRequest,
-  env: Env,
+  env: PagesEnv,
   supabase: SupabaseClient
 ): Promise<Response> {
   const { email, otp, name } = body;
@@ -122,15 +105,15 @@ export async function handleEventOTP(
   }
 
   try {
-    const html = generateOTPEmailHtml({ otp, name });
-    const subject = getOTPSubject(otp);
-
-    await sendEmail(env, {
+    const workerConfig = getEmailWorkerConfig(env);
+    const client = new EmailWorkerClient(workerConfig);
+    
+    const html = otpTemplate({ otp, name });
+    
+    await client.sendEmail({
       to: email,
-      subject,
+      subject: 'Your Verification Code - Skill Passport',
       html,
-      from: env.FROM_EMAIL || 'noreply@rareminds.in',
-      fromName: env.FROM_NAME || 'Skill Passport',
     });
 
     return jsonResponse({

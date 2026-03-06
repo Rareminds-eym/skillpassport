@@ -7,12 +7,25 @@
  * This file is kept minimal - only for legacy compatibility if needed.
  */
 
-import type { Env } from '../types';
-
-// This file is intentionally minimal.
-// All Razorpay operations should go through the Razorpay worker:
-// - POST /create-order
-// - POST /verify-payment
-// - GET /payment/:id
-// - POST /subscription/:id/cancel
-// - POST /verify-webhook
+/**
+ * Verify Razorpay webhook signature
+ */
+export async function verifyWebhookSignature(
+  payload: string, 
+  signature: string, 
+  secret: string
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signatureBuffer = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+  const generatedSignature = Array.from(new Uint8Array(signatureBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  return generatedSignature === signature;
+}
