@@ -2791,6 +2791,12 @@ const StudentDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
         {threeByThreeCards.map((cardName, index) => {
           const cardKey = cardNameMapping[cardName];
+          
+          // Skip assessment card for learners
+          if (cardKey === 'assessment' && isLearner(studentData)) {
+            return null;
+          }
+          
           const card = allCards[cardKey];
           if (!card) return null;
 

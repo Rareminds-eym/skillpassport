@@ -35,18 +35,6 @@ const AcademicDetailsTab = ({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1 flex items-center gap-2">
-          {isLearnerUser ? <GraduationCap className="w-5 h-5 text-blue-600" /> : <Briefcase className="w-5 h-5 text-blue-600" />}
-          {isLearnerUser ? "Education History" : "Academic Details"}
-        </h3>
-        <p className="text-sm text-slate-500">
-          {isLearnerUser 
-            ? "Your educational qualifications and degrees" 
-            : "Your educational qualifications and academic information"}
-        </p>
-      </div>
-
       {/* Only show academic fields for school/college students, not learners */}
       {!isLearnerUser && (
         <>
@@ -152,25 +140,21 @@ const AcademicDetailsTab = ({
 
       {/* Education Section */}
       <div className={!isLearnerUser ? "pt-6 border-t border-slate-200" : ""}>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            {!isLearnerUser && (
-              <>
-                <h4 className="text-base font-semibold text-slate-900 flex items-center gap-2 mb-1">
-                  <GraduationCap className="w-5 h-5 text-blue-600" />
-                  Education History
-                </h4>
-                <p className="text-sm text-slate-500">Your educational qualifications and degrees</p>
-              </>
-            )}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-blue-600" />
+              <h4 className="text-base font-semibold text-slate-900">Education History</h4>
+            </div>
+            <Button
+              onClick={() => setShowEducationModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all button-press"
+            >
+              <Plus className="w-4 h-4" />
+              Add Education
+            </Button>
           </div>
-          <Button
-            onClick={() => setShowEducationModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-all button-press"
-          >
-            <Plus className="w-4 h-4" />
-            Add Education
-          </Button>
+          <p className="text-sm text-slate-500 mt-1">Your educational qualifications and degrees</p>
         </div>
 
         {educationData.length === 0 ? (
