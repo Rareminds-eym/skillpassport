@@ -14,6 +14,9 @@ import {
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import { isLearner } from '../../../utils/studentType';
 
 // Menu item interface
 interface SideDrawerMenuItem {
@@ -51,6 +54,21 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  
+  // Get student data to check if learner
+  const userEmail = localStorage.getItem('userEmail') || user?.email;
+  const { studentData } = useStudentDataByEmail(userEmail);
+  const isLearnerUser = isLearner(studentData);
+  
+  // Filter menu items based on user type
+  const filteredMainMenuItems = mainMenuItems.filter(item => {
+    // Hide Passport Mode for learners
+    if (isLearnerUser && item.id === 'passport') {
+      return false;
+    }
+    return true;
+  });
   
   // Local dark mode state (synced with document class)
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -173,7 +191,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
             <div className="flex-1 overflow-y-auto px-3 py-4">
               {/* Main Menu Items */}
               <div className="space-y-1">
-                {mainMenuItems.map((item) => renderMenuItem(item))}
+                {filteredMainMenuItems.map((item) => renderMenuItem(item))}
               </div>
 
               {/* Settings Section */}

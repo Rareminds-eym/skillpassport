@@ -102,6 +102,9 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
+  // Check if user is a learner
+  const isLearnerUser = isLearner(studentData);
+
   // Check if we have AI recommendations
   const hasAIRecommendations = matchedJobs && matchedJobs.length > 0;
 
@@ -165,7 +168,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
 
   // Determine what should be shown based on student grade
   const studentGrade = studentData?.grade;
-  let showFactoryVisits = factoryVisits.length > 0;
+  let showFactoryVisits = factoryVisits.length > 0 && !isLearnerUser; // Hide factory visits for learners
   let showJobs = false;
 
   // Parse grade to determine what to show
@@ -173,7 +176,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
     const gradeMatch = studentGrade.match(/\d+/);
     const gradeNumber = gradeMatch ? parseInt(gradeMatch[0]) : null;
 
-    // Middle School (6-8): Only Industrial Visits
+    // Middle School (6-8): Only Industrial Visits (but not for learners)
     if (gradeNumber && gradeNumber >= 6 && gradeNumber <= 8) {
       showJobs = false;
     }
@@ -185,6 +188,12 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
     else if (studentGrade.toLowerCase().includes('ug') || studentGrade.toLowerCase().includes('pg')) {
       showJobs = jobsAndInternships.length > 0;
     }
+  }
+
+  // For learners, always show jobs and never show factory visits
+  if (isLearnerUser) {
+    showFactoryVisits = false;
+    showJobs = jobsAndInternships.length > 0;
   }
 
   // Handle card click

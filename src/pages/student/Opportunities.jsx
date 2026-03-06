@@ -1027,29 +1027,31 @@ const Opportunities = () => {
                       ? 'grid-cols-3'
                       : 'grid-cols-3'
               } gap-2`}>
-                {/* Industrial Visits Tab - Show for all students */}
-                <button
-                  onClick={() => setActiveTab('industrial-visits')}
-                  className={`relative text-left p-4 rounded-lg transition-all ${
-                    activeTab === 'industrial-visits'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                      <Factory className={`w-6 h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
+                {/* Industrial Visits Tab - Hide for learners */}
+                {!studentType.isLearner && (
+                  <button
+                    onClick={() => setActiveTab('industrial-visits')}
+                    className={`relative text-left p-4 rounded-lg transition-all ${
+                      activeTab === 'industrial-visits'
+                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Factory className={`w-6 h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <h1 className={`font-bold text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          Industrial Visits
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Explore factory visits and learning opportunities
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h1 className={`font-bold text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                        Industrial Visits
-                      </h1>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Explore factory visits and learning opportunities
-                      </p>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                )}
 
                 {/* History Tab - Show for middle school only */}
                 {studentType.isMiddleSchool && (
