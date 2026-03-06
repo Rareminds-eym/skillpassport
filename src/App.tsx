@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React, { useEffect } from 'react';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
@@ -8,7 +7,6 @@ import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotific
 import { AuthProvider } from './context/AuthContext';
 import { SearchProvider } from './context/SearchContext';
 import { SubscriptionProvider } from './context/SubscriptionContext';
-import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
 import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
 import AppRoutes from './routes/AppRoutes';
 import './utils/suppressRechartsWarnings'; // Suppress Recharts warnings globally
@@ -33,41 +31,39 @@ function App() {
       <BrowserRouter>
         <SupabaseAuthProvider>
           <AuthProvider>
-            <SupabaseAuthBridgeProvider>
-              <SubscriptionProvider>
-                <SearchProvider>
-                  <TourWrapper>
-                    <SubscriptionPrefetch />
-                    <TokenRefreshErrorNotification />
-                    <AppRoutes />
-                    <HotToaster 
-                      position="top-right"
-                      toastOptions={{
-                        duration: 5000,
-                        style: {
-                          background: '#fff',
-                          color: '#363636',
+            <SubscriptionProvider>
+              <SearchProvider>
+                <TourWrapper>
+                  <SubscriptionPrefetch />
+                  <TokenRefreshErrorNotification />
+                  <AppRoutes />
+                  <HotToaster 
+                    position="top-right"
+                    toastOptions={{
+                      duration: 5000,
+                      style: {
+                        background: '#fff',
+                        color: '#363636',
+                      },
+                      success: {
+                        duration: 3000,
+                        iconTheme: {
+                          primary: '#10b981',
+                          secondary: '#fff',
                         },
-                        success: {
-                          duration: 3000,
-                          iconTheme: {
-                            primary: '#10b981',
-                            secondary: '#fff',
-                          },
+                      },
+                      error: {
+                        duration: 4000,
+                        iconTheme: {
+                          primary: '#ef4444',
+                          secondary: '#fff',
                         },
-                        error: {
-                          duration: 4000,
-                          iconTheme: {
-                            primary: '#ef4444',
-                            secondary: '#fff',
-                          },
-                        },
-                      }}
-                    />
-                  </TourWrapper>
-                </SearchProvider>
-              </SubscriptionProvider>
-            </SupabaseAuthBridgeProvider>
+                      },
+                    }}
+                  />
+                </TourWrapper>
+              </SearchProvider>
+            </SubscriptionProvider>
           </AuthProvider>
         </SupabaseAuthProvider>
       </BrowserRouter>
