@@ -91,7 +91,7 @@ import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { supabase } from "../../lib/supabaseClient";
-import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
+import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
 // Debug utilities removed for production cleanliness
 
 // Import Tour Components - Now handled globally
@@ -101,6 +101,9 @@ import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
 const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matchedJobs = [] }) => {
   const [selectedOpportunity, setSelectedOpportunity] = useState(null);
   const [showModal, setShowModal] = useState(false);
+
+  // Check if user is a learner
+  const isLearnerUser = isLearner(studentData);
 
   // Check if we have AI recommendations
   const hasAIRecommendations = matchedJobs && matchedJobs.length > 0;
@@ -165,7 +168,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
 
   // Determine what should be shown based on student grade
   const studentGrade = studentData?.grade;
-  let showFactoryVisits = factoryVisits.length > 0;
+  let showFactoryVisits = factoryVisits.length > 0 && !isLearnerUser; // Hide factory visits for learners
   let showJobs = false;
 
   // Parse grade to determine what to show
@@ -173,7 +176,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
     const gradeMatch = studentGrade.match(/\d+/);
     const gradeNumber = gradeMatch ? parseInt(gradeMatch[0]) : null;
 
-    // Middle School (6-8): Only Industrial Visits
+    // Middle School (6-8): Only Industrial Visits (but not for learners)
     if (gradeNumber && gradeNumber >= 6 && gradeNumber <= 8) {
       showJobs = false;
     }
@@ -185,6 +188,12 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
     else if (studentGrade.toLowerCase().includes('ug') || studentGrade.toLowerCase().includes('pg')) {
       showJobs = jobsAndInternships.length > 0;
     }
+  }
+
+  // For learners, always show jobs and never show factory visits
+  if (isLearnerUser) {
+    showFactoryVisits = false;
+    showJobs = jobsAndInternships.length > 0;
   }
 
   // Handle card click
@@ -820,7 +829,8 @@ const StudentDashboard = () => {
     latestAttemptId,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
-
+  // Check if user is a learner
+  const isLearnerUser = isLearner(studentData);
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -2314,8 +2324,8 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
-          {/* No Assessment CTA - TOP (only show when not expanded) */}
-          {!hasAssessment && !recommendationsLoading && !showAllTraining && (
+          {/* No Assessment CTA - TOP (only show when not expanded and not a learner) */}
+          {!hasAssessment && !recommendationsLoading && !showAllTraining && !isLearnerUser && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div
@@ -2742,18 +2752,27 @@ const StudentDashboard = () => {
     ),
   };
 
-  // Define 3x3 grid layout
-  const threeByThreeCards = [
-    "assessment",
-    "trainings",
-    "opportunities",
-    "Projects",
-    "Certificates",
-    "My experience",
-    "Education",
-    "technicalSkills",
-    "softSkills"
-  ];
+  // Define 3x3 grid layout - conditionally exclude assessment for learners
+  const threeByThreeCards = useMemo(() => {
+    const cards = [
+      "assessment",
+      "trainings",
+      "opportunities",
+      "Projects",
+      "Certificates",
+      "My experience",
+      "Education",
+      "technicalSkills",
+      "softSkills"
+    ];
+    
+    // Remove assessment for learners
+    if (isLearner(studentData)) {
+      return cards.filter(card => card !== "assessment");
+    }
+    
+    return cards;
+  }, [studentData]);
 
   // Map the display names to actual card keys
   const cardNameMapping = {
@@ -2773,6 +2792,12 @@ const StudentDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-12">
         {threeByThreeCards.map((cardName, index) => {
           const cardKey = cardNameMapping[cardName];
+          
+          // Skip assessment card for learners
+          if (cardKey === 'assessment' && isLearner(studentData)) {
+            return null;
+          }
+          
           const card = allCards[cardKey];
           if (!card) return null;
 

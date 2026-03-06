@@ -13,7 +13,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
     content: (
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Welcome to Your Student Dashboard! 🎉
+          Welcome to Your Dashboard! 🎉
         </h3>
         <p className="text-gray-600 text-md mb-3">
           Let's take a quick tour to help you get the most out of your dashboard.
@@ -275,7 +275,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
         </p>
       </div>
     ),
-    placement: 'left',
+    placement: 'right',
     spotlightClicks: true,
     disableBeacon: true,
     styles: {

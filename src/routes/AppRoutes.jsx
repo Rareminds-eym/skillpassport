@@ -28,7 +28,7 @@ import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
 // Duplicate imports removed - using the Digital* prefixed imports above
 
 // Role constants to prevent re-renders
-const STUDENT_ROLES = ["student", "school_student", "college_student"];
+const STUDENT_ROLES = ["student", "school_student", "college_student", "learner"];
 const RECRUITER_ROLES = ["recruiter"];
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
 const COLLEGE_ADMIN_ROLES = ["college_admin"];

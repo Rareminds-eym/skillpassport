@@ -27,7 +27,7 @@ import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
 import DatePicker from '../../components/Subscription/shared/DatePicker';
 import { supabase } from '../../lib/supabaseClient';
 
-type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
+type UserRole = 'school_student' | 'college_student' | 'learner' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';
 
 interface SignupState {
   firstName: string;
@@ -280,11 +280,11 @@ const UnifiedSignup = () => {
 
   const selectedCountry = COUNTRY_CODES.find(cc => cc.dialCode === state.countryCode) || COUNTRY_CODES[0];
 
-  const allRoles: UserRole[] = ['school_student', 'college_student', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
+  const allRoles: UserRole[] = ['school_student', 'college_student', 'learner', 'school_educator', 'college_educator', 'recruiter', 'school_admin', 'college_admin', 'university_admin'];
 
   const getRoleDisplayName = (role: UserRole): string => {
     const names: Record<UserRole, string> = {
-      school_student: 'School Student', college_student: 'College Student',
+      school_student: 'School Student', college_student: 'College Student', learner: 'Learner',
       school_educator: 'School Educator', college_educator: 'College Educator',
       recruiter: 'Recruiter',
       school_admin: 'School Administrator', college_admin: 'College Administrator', university_admin: 'University Administrator'
@@ -897,7 +897,7 @@ const UnifiedSignup = () => {
                     {state.roleDropdownOpen && (
                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-80 overflow-y-auto">
                         {allRoles.map(role => {
-                          const isAvailable = role === 'school_student' || role === 'college_student';
+                          const isAvailable = role === 'school_student' || role === 'college_student' || role === 'learner';
                           return (
                             <button
                               key={role}
