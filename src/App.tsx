@@ -1,8 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
-import { ToastProvider } from './components/Recruiter/components/Toast';
-import { Toaster } from './components/Students/components/ui/toaster';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
 import TourWrapper from './components/Tours/TourWrapper';
 import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotification';
@@ -33,15 +31,25 @@ function App() {
       <BrowserRouter>
         <SupabaseAuthProvider>
           <AuthProvider>
+<<<<<<< PromotionalEventContext
             <SubscriptionProvider>
               <SearchProvider>
                 <ToastProvider>
+=======
+            <SupabaseAuthBridgeProvider>
+              <SubscriptionProvider>
+                <SearchProvider>
+>>>>>>> dev
                   <TourWrapper>
                     <SubscriptionPrefetch />
                     <TokenRefreshErrorNotification />
                     <AppRoutes />
+<<<<<<< PromotionalEventContext
                     <Toaster />
                   <HotToaster 
+=======
+                    <HotToaster 
+>>>>>>> dev
                       position="top-right"
                       toastOptions={{
                         duration: 5000,
@@ -65,8 +73,7 @@ function App() {
                         },
                       }}
                     />
-                    </TourWrapper>
-                  </ToastProvider>
+                  </TourWrapper>
                 </SearchProvider>
               </SubscriptionProvider>
           </AuthProvider>

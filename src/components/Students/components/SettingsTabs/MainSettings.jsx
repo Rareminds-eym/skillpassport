@@ -31,7 +31,7 @@ import {
   CertificatesEditModal, 
   ProjectsEditModal 
 } from "../ProfileEditModals";
-import { useToast } from "../../../../hooks/use-toast";
+import toast from 'react-hot-toast';
 import useStudentMessageNotifications from "../../../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../../../hooks/useStudentMessages";
 import { useStudentRealtimeActivities } from "../../../../hooks/useStudentRealtimeActivities";
@@ -47,7 +47,6 @@ import PrivacyTab from "./PrivacyTab";
 
 const MainSettings = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const location = useLocation();
   const userEmail = user?.email;
   const recentUpdatesRef = useRef(null);
@@ -523,10 +522,7 @@ const MainSettings = () => {
         return;
       }
       
-      toast({
-        title: `Add New ${typeMap[field]}`,
-        description: `Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`,
-      });
+      toast.success(`Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`);
       return;
     }
     
@@ -582,10 +578,7 @@ const MainSettings = () => {
         
         setShowEducationModal(false);
         
-        toast({
-          title: "Success",
-          description: "Education updated successfully",
-        });
+        toast.success("Education updated successfully");
         
         try {
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
@@ -601,11 +594,7 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error saving education:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save education",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save education");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -627,20 +616,13 @@ const MainSettings = () => {
           await refreshSoftSkills();
         }
         
-        toast({
-          title: "Success",
-          description: "Soft skills updated successfully",
-        });
+        toast.success("Soft skills updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update soft skills');
       }
     } catch (error) {
       console.error('❌ Error saving soft skills:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save soft skills",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save soft skills");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -671,20 +653,13 @@ const MainSettings = () => {
           await refreshTechnicalSkills();
         }
         
-        toast({
-          title: "Success",
-          description: "Technical skills updated successfully",
-        });
+        toast.success("Technical skills updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update technical skills');
       }
     } catch (error) {
       console.error('❌ Error saving technical skills:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save technical skills",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save technical skills");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -712,20 +687,13 @@ const MainSettings = () => {
         
         setShowExperienceModal(false);
         
-        toast({
-          title: "Success",
-          description: "Experience updated successfully",
-        });
+        toast.success("Experience updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update experience');
       }
     } catch (error) {
       console.error('❌ Error saving experience:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save experience",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save experience");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -771,20 +739,13 @@ const MainSettings = () => {
           refreshProjects();
         }
         
-        toast({
-          title: "Success",
-          description: "Projects updated successfully",
-        });
+        toast.success("Projects updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update projects');
       }
     } catch (error) {
       console.error('❌ Error saving projects:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save projects",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save projects");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -800,12 +761,7 @@ const MainSettings = () => {
     
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
-      toast({ 
-        title: "Cannot Hide/Show", 
-        description: "You cannot hide or show skills that are pending verification or approval.",
-        variant: "destructive",
-        duration: 4000,
-      });
+      toast.error("You cannot hide or show skills that are pending verification or approval.", { duration: 4000 });
       return;
     }
     
@@ -830,18 +786,10 @@ const MainSettings = () => {
         await refreshTechnicalSkills();
       }
       
-      toast({ 
-        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
-        description: `Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
-        duration: 3000,
-      });
+      toast.success(`Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
     } catch (error) {
       console.error('Error toggling technical skill visibility:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to update visibility. Please try again.", 
-        variant: "destructive" 
-      });
+      toast.error("Failed to update visibility. Please try again.");
     }
   };
 
@@ -854,12 +802,7 @@ const MainSettings = () => {
     
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
-      toast({ 
-        title: "Cannot Hide/Show", 
-        description: "You cannot hide or show skills that are pending verification or approval.",
-        variant: "destructive",
-        duration: 4000,
-      });
+      toast.error("You cannot hide or show skills that are pending verification or approval.", { duration: 4000 });
       return;
     }
     
@@ -884,18 +827,10 @@ const MainSettings = () => {
         await refreshSoftSkills();
       }
       
-      toast({ 
-        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
-        description: `Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
-        duration: 3000,
-      });
+      toast.success(`Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
     } catch (error) {
       console.error('Error toggling soft skill visibility:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to update visibility. Please try again.", 
-        variant: "destructive" 
-      });
+      toast.error("Failed to update visibility. Please try again.");
     }
   };
 
@@ -904,20 +839,12 @@ const MainSettings = () => {
     // Validate Aadhar number before saving (only if it has a value and is not empty)
     if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
       if (profileData.aadharNumber.length !== 12) {
-        toast({
-          title: "Validation Error",
-          description: "Aadhar number must be exactly 12 digits",
-          variant: "destructive",
-        });
+        toast.error("Aadhar number must be exactly 12 digits");
         return;
       }
       
       if (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) {
-        toast({
-          title: "Validation Error",
-          description: "Aadhar number cannot start with 0 or 1",
-          variant: "destructive",
-        });
+        toast.error("Aadhar number cannot start with 0 or 1");
         return;
       }
     }
@@ -925,10 +852,7 @@ const MainSettings = () => {
     setIsSaving(true);
     try {
       await updateProfile(profileData);
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
+      toast.success("Profile updated successfully");
       
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
         detail: { type: 'profile_updated', data: profileData }
@@ -943,11 +867,7 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error updating profile:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update profile",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
@@ -1177,11 +1097,7 @@ const MainSettings = () => {
         
         // Show validation error if semester/year is invalid
         if (validationError) {
-          toast({
-            title: "Invalid Semester",
-            description: validationError,
-            variant: "destructive",
-          });
+          toast.error(validationError);
           return; // Don't save if validation fails
         }
         
@@ -1196,11 +1112,7 @@ const MainSettings = () => {
           
           // Validate grade length (database limit is 10 characters)
           if (newGrade && newGrade.length > 10) {
-            toast({
-              title: "Invalid Grade",
-              description: "Grade value is too long. Please use shorter format (max 10 characters).",
-              variant: "destructive",
-            });
+            toast.error("Grade value is too long. Please use shorter format (max 10 characters).");
             return;
           }
           
@@ -1234,10 +1146,7 @@ const MainSettings = () => {
       }
       
       await updateProfile(dataToSave);
-      toast({
-        title: "Success",
-        description: "Institution details updated successfully",
-      });
+      toast.success("Institution details updated successfully");
       
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
         detail: { type: 'profile_updated', data: dataToSave }
@@ -1252,11 +1161,7 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error updating institution details:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update institution details",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to update institution details");
     } finally {
       setIsSaving(false);
     }
@@ -1275,10 +1180,7 @@ const MainSettings = () => {
       };
       
       await updateProfile(academicFields);
-      toast({
-        title: "Success",
-        description: "Academic details updated successfully",
-      });
+      toast.success("Academic details updated successfully");
       
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
         detail: { type: 'profile_updated', data: academicFields }
@@ -1293,11 +1195,7 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error updating academic details:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update academic details",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to update academic details");
     } finally {
       setIsSaving(false);
     }
@@ -1383,47 +1281,27 @@ const MainSettings = () => {
   const handleSavePassword = async () => {
     // Validation
     if (!passwordData.currentPassword) {
-      toast({
-        title: "Error",
-        description: "Please enter your current password",
-        variant: "destructive",
-      });
+      toast.error("Please enter your current password");
       return;
     }
 
     if (!passwordData.newPassword) {
-      toast({
-        title: "Error",
-        description: "Please enter a new password",
-        variant: "destructive",
-      });
+      toast.error("Please enter a new password");
       return;
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords do not match",
-        variant: "destructive",
-      });
+      toast.error("New passwords do not match");
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 8 characters long",
-        variant: "destructive",
-      });
+      toast.error("Password must be at least 8 characters long");
       return;
     }
 
     if (passwordData.newPassword === passwordData.currentPassword) {
-      toast({
-        title: "Error",
-        description: "New password must be different from current password",
-        variant: "destructive",
-      });
+      toast.error("New password must be different from current password");
       return;
     }
 
@@ -1539,10 +1417,7 @@ const MainSettings = () => {
         }
       }
       
-      toast({
-        title: "Success",
-        description: "Profile auto-filled from resume successfully!",
-      });
+      toast.success("Profile auto-filled from resume successfully!");
       
       setShowResumeParser(false);
       
@@ -1554,11 +1429,7 @@ const MainSettings = () => {
         console.warn('Could not refresh recent updates:', refreshError);
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to auto-fill profile from resume. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to auto-fill profile from resume. Please try again.");
     }
   };
 

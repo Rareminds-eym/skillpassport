@@ -1,4 +1,4 @@
-import { useToast } from "@/hooks/use-toast";
+import toast from 'react-hot-toast';
 import {
   Award, Calendar,
   CheckCircle,
@@ -43,7 +43,6 @@ const UnifiedProfileEditModal = ({
   singleEditMode = false
 }) => {
   const config = FIELD_CONFIGS[type];
-  const { toast } = useToast();
 
   const [items, setItems] = useState([]);
   const [formData, setFormData] = useState(config?.getDefaultValues?.() || {});
@@ -205,11 +204,7 @@ const UnifiedProfileEditModal = ({
 
       // Validate start dates and issue dates cannot be in future
       if ((field === 'startDate' || field === 'start_date' || field === 'issuedOn') && value > today) {
-        toast({
-          title: "Invalid Date",
-          description: "Date cannot be in the future.",
-          variant: "destructive",
-        });
+        toast.error("Date cannot be in the future.");
         return; // Don't update the state
       }
 
@@ -217,19 +212,11 @@ const UnifiedProfileEditModal = ({
       if (field === 'endDate' || field === 'end_date') {
         const startDateValue = formData.startDate || formData.start_date;
         if (startDateValue && value < startDateValue) {
-          toast({
-            title: "Invalid Date",
-            description: "End date cannot be before start date.",
-            variant: "destructive",
-          });
+          toast.error("End date cannot be before start date.");
           return; // Don't update the state
         }
         if (value > today) {
-          toast({
-            title: "Invalid Date",
-            description: "End date cannot be in the future.",
-            variant: "destructive",
-          });
+          toast.error("End date cannot be in the future.");
           return; // Don't update the state
         }
       }
@@ -238,11 +225,7 @@ const UnifiedProfileEditModal = ({
       if (field === 'expiryDate') {
         const issuedOnValue = formData.issuedOn;
         if (issuedOnValue && value < issuedOnValue) {
-          toast({
-            title: "Invalid Date",
-            description: "Expiry date cannot be before issue date.",
-            variant: "destructive",
-          });
+          toast.error("Expiry date cannot be before issue date.");
           return; // Don't update the state
         }
       }
@@ -264,22 +247,14 @@ const UnifiedProfileEditModal = ({
   const addSkill = () => {
     const skillName = formData.newSkillName?.trim();
     if (!skillName) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a skill name.",
-        variant: "destructive",
-      });
+      toast.error("Please enter a skill name.");
       return;
     }
 
     // Check for duplicate skills
     const existingSkills = formData.skillsList || [];
     if (existingSkills.some(skill => skill.name.toLowerCase() === skillName.toLowerCase())) {
-      toast({
-        title: "Duplicate Skill",
-        description: "This skill has already been added.",
-        variant: "destructive",
-      });
+      toast.error("This skill has already been added.");
       return;
     }
 
@@ -306,10 +281,7 @@ const UnifiedProfileEditModal = ({
       };
     });
 
-    toast({
-      title: "Skill Added",
-      description: `${skillName} has been added to your skills.`,
-    });
+    toast.success(`${skillName} has been added to your skills.`);
   };
 
   const removeSkill = (index) => {
@@ -325,10 +297,7 @@ const UnifiedProfileEditModal = ({
 
     // Show toast notification
     if (skillToRemove) {
-      toast({
-        title: "Skill Removed",
-        description: `${skillToRemove.name} has been removed from your skills.`,
-      });
+      toast.success(`${skillToRemove.name} has been removed from your skills.`);
     }
   };
 
@@ -368,11 +337,7 @@ const UnifiedProfileEditModal = ({
     const requiredFields = config.fields.filter(f => f.required);
     for (const field of requiredFields) {
       if (!formData[field.name]?.toString().trim()) {
-        toast({
-          title: "Validation Error",
-          description: `${field.label.replace(" *", "")} is required.`,
-          variant: "destructive",
-        });
+        toast.error(`${field.label.replace(" *", "")} is required.`);
         return false;
       }
     }
@@ -382,11 +347,7 @@ const UnifiedProfileEditModal = ({
     for (const field of urlFields) {
       const value = formData[field.name];
       if (value && !isValidUrl(value)) {
-        toast({
-          title: "Validation Error",
-          description: `${field.label} must be a valid URL (e.g., https://example.com)`,
-          variant: "destructive",
-        });
+        toast.error(`${field.label} must be a valid URL (e.g., https://example.com)`);
         return false;
       }
     }
@@ -496,19 +457,10 @@ const UnifiedProfileEditModal = ({
         if (typeof onSave === 'function' && onSave.refresh) {
           await onSave.refresh();
         }
-        toast({
-          title: "Saved!",
-          description: `${config.title} updated successfully.`,
-          duration: 3000
-        });
+        toast.success(`${config.title} updated successfully.`);
       } catch (error) {
         console.error('Error auto-saving:', error);
-        toast({
-          title: "Updated Locally",
-          description: `${config.title} updated. Click 'Save All Changes' to save to database.`,
-          duration: 4000,
-          variant: "destructive"
-        });
+        toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
       }
     } else {
       // Add new item
@@ -531,19 +483,10 @@ const UnifiedProfileEditModal = ({
         if (typeof onSave === 'function' && onSave.refresh) {
           await onSave.refresh();
         }
-        toast({
-          title: "Saved!",
-          description: `${config.title} added successfully.`,
-          duration: 3000
-        });
+        toast.success(`${config.title} added successfully.`);
       } catch (error) {
         console.error('Error auto-saving:', error);
-        toast({
-          title: "Added Locally",
-          description: `${config.title} added. Click 'Save All Changes' to save to database.`,
-          duration: 4000,
-          variant: "destructive"
-        });
+        toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
       }
     }
 
@@ -576,18 +519,14 @@ const UnifiedProfileEditModal = ({
         console.error('❌ existingItem:', existingItem);
         console.error('❌ formData:', formData);
         console.error('❌ processedData:', processedData);
-        toast({
-          title: "Error",
-          description: "Cannot save: Missing item ID. Please try again.",
-          variant: "destructive"
-        });
+        toast.error("Cannot save: Missing item ID. Please try again.");
         return;
       }
 
       // Save directly to database
       await onSave([updatedItem]);
 
-      toast({ title: "Saved!", description: `${config.title} saved successfully.` });
+      toast.success(`${config.title} saved successfully.`);
 
       // Close modal after a brief delay to allow refresh to complete
       setTimeout(() => {
@@ -595,7 +534,7 @@ const UnifiedProfileEditModal = ({
       }, 300);
     } catch (error) {
       console.error("Error saving:", error);
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
+      toast.error("Failed to save. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -633,18 +572,10 @@ const UnifiedProfileEditModal = ({
       if (typeof onSave === 'function' && onSave.refresh) {
         await onSave.refresh();
       }
-      toast({
-        title: "Deleted!",
-        description: `${config.title} has been deleted successfully.`,
-        duration: 3000
-      });
+      toast.success(`${config.title} has been deleted successfully.`);
     } catch (error) {
       console.error('Error deleting:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to delete. Please try again.");
     }
   };
 
@@ -655,12 +586,7 @@ const UnifiedProfileEditModal = ({
 
     // Don't allow hiding/showing items that are pending verification or approval
     if (item.approval_status === 'pending' || item._hasPendingEdit) {
-      toast({
-        title: "Cannot Hide/Show",
-        description: `You cannot hide or show ${config.title.toLowerCase()} that are pending verification or approval.`,
-        variant: "destructive",
-        duration: 4000,
-      });
+      toast.error(`You cannot hide or show ${config.title.toLowerCase()} that are pending verification or approval.`);
       return;
     }
 
@@ -707,18 +633,10 @@ const UnifiedProfileEditModal = ({
         await onSave.refresh();
       }
 
-      toast({
-        title: newState ? "Visibility Enabled" : "Visibility Disabled",
-        description: `${config.title} ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
-        duration: 3000,
-      });
+      toast.success(`${config.title} ${newState ? 'is now visible' : 'is now hidden'} on your profile.`);
     } catch (error) {
       console.error('Error toggling visibility:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update visibility. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to update visibility. Please try again.");
       // Restore original state on error
       setItems(items);
     }
@@ -750,18 +668,10 @@ const UnifiedProfileEditModal = ({
       // This ensures changes persist even if user clicks Cancel
       try {
         await onSave(updatedItems);
-        toast({
-          title: "Saved!",
-          description: `${config.title} updated successfully.`,
-          duration: 3000
-        });
+        toast.success(`${config.title} updated successfully.`);
       } catch (error) {
         console.error('Error auto-saving:', error);
-        toast({
-          title: "Updated Locally",
-          description: `${config.title} updated. Click 'Save All Changes' to save to database.`,
-          duration: 4000
-        });
+        toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
       }
     } else {
       // Add new item
@@ -774,18 +684,10 @@ const UnifiedProfileEditModal = ({
       // Auto-save new items too
       try {
         await onSave(updatedItems);
-        toast({
-          title: "Saved!",
-          description: `${config.title} added successfully.`,
-          duration: 3000
-        });
+        toast.success(`${config.title} added successfully.`);
       } catch (error) {
         console.error('Error auto-saving:', error);
-        toast({
-          title: "Added Locally",
-          description: `${config.title} added. Click 'Save All Changes' to save to database.`,
-          duration: 4000
-        });
+        toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
       }
     }
     setIsItemModalOpen(false);
@@ -833,7 +735,7 @@ const UnifiedProfileEditModal = ({
 
       await onSave(processedItems);
 
-      toast({ title: "Saved!", description: `${config.title} saved successfully.` });
+      toast.success(`${config.title} saved successfully.`);
 
       // Close modal after a brief delay to allow refresh to complete
       setTimeout(() => {
@@ -841,7 +743,7 @@ const UnifiedProfileEditModal = ({
       }, 300);
     } catch (error) {
       console.error("Error saving:", error);
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
+      toast.error("Failed to save. Please try again.");
     } finally {
       setIsSaving(false);
     }

@@ -33,12 +33,11 @@ import { SchoolAdminNotificationService } from '../../../services/schoolAdminNot
 import TrainingDetailsModal from '../../../components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '../../../components/admin/schoolAdmin/ExperienceDetailsModal';
 import ProjectDetailsModal from '../../../components/admin/schoolAdmin/ProjectDetailsModal';
-import { useToast } from '@/hooks/use-toast';
+import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabaseClient';
 
 const Verifications: React.FC = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"trainings" | "experiences" | "certificates" | "projects">("trainings");
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [pendingTrainings, setPendingTrainings] = useState<any[]>([]);
@@ -129,11 +128,7 @@ const Verifications: React.FC = () => {
       setPendingTrainings(pendingData || []);
     } catch (error) {
       console.error('Error fetching training data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load training data",
-        variant: "destructive",
-      });
+      toast.error("Failed to load training data");
     } finally {
       setLoading(false);
     }
@@ -150,11 +145,7 @@ const Verifications: React.FC = () => {
       setPendingExperiences(pendingData || []);
     } catch (error) {
       console.error('Error fetching experience data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load experience data",
-        variant: "destructive",
-      });
+      toast.error("Failed to load experience data");
     } finally {
       setLoading(false);
     }
@@ -178,11 +169,7 @@ const Verifications: React.FC = () => {
       setPendingProjects(pendingData || []);
     } catch (error) {
       console.error('❌ Error fetching project data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load project data",
-        variant: "destructive",
-      });
+      toast.error("Failed to load project data");
     } finally {
       setLoading(false);
     }
@@ -194,10 +181,7 @@ const Verifications: React.FC = () => {
       setShowTrainingModal(true);
     } else if (action === 'approved' || action === 'rejected') {
       fetchTrainingData(); // Refresh data
-      toast({
-        title: "Success",
-        description: `Training ${action} successfully!`,
-      });
+      toast.success(`Training ${action} successfully!`);
     }
   };
 
@@ -207,10 +191,7 @@ const Verifications: React.FC = () => {
       setShowExperienceModal(true);
     } else if (action === 'approved' || action === 'rejected') {
       fetchExperienceData(); // Refresh data
-      toast({
-        title: "Success",
-        description: `Experience ${action} successfully!`,
-      });
+      toast.success(`Experience ${action} successfully!`);
     }
   };
 
@@ -220,10 +201,7 @@ const Verifications: React.FC = () => {
       setShowProjectModal(true);
     } else if (action === 'approved' || action === 'rejected') {
       fetchProjectData(); // Refresh data
-      toast({
-        title: "Success",
-        description: `Project ${action} successfully!`,
-      });
+      toast.success(`Project ${action} successfully!`);
     }
   };
 
@@ -254,10 +232,7 @@ const Verifications: React.FC = () => {
       fetchProjectData()
     ]);
     setLoading(false);
-    toast({
-      title: "Refreshed",
-      description: "Data has been refreshed successfully",
-    });
+    toast.success("Data has been refreshed successfully");
   };
 
   // Pagination helper functions
