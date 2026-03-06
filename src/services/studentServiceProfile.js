@@ -1932,76 +1932,15 @@ export async function updateTrainingByEmail(email, trainingData = []) {
           record.approval_status = 'pending'; // New trainings start as pending
         }
 
-        // VERSIONING LOGIC: Check if this is an edit of verified data
+        // Set approval status based on existing record
         const existingRecord = (existingTrainings || []).find(e => e.id === record.id);
         
-        // Case 1: Training already has pending edits - preserve original verified_data
-        if (existingRecord && existingRecord.has_pending_edit === true) {
-          // Keep the original verified_data, update only pending_edit_data
-          record.verified_data = existingRecord.verified_data;
-          record.pending_edit_data = { ...record };
-          record.has_pending_edit = true;
+        if (existingRecord) {
+          // Keep existing approval status for updates
+          record.approval_status = existingRecord.approval_status || 'pending';
+        } else {
+          // New trainings start as pending
           record.approval_status = 'pending';
-        }
-        // Case 2: First edit of verified/approved training - create versioning
-        else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
-          // Check if data actually changed (normalize null/undefined/empty for comparison)
-          const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
-          
-          const hasChanges = 
-            normalize(record.title) !== normalize(existingRecord.title) ||
-            normalize(record.organization) !== normalize(existingRecord.organization) ||
-            normalize(record.start_date) !== normalize(existingRecord.start_date) ||
-            normalize(record.end_date) !== normalize(existingRecord.end_date) ||
-            normalize(record.duration) !== normalize(existingRecord.duration) ||
-            normalize(record.description) !== normalize(existingRecord.description) ||
-            normalize(record.status) !== normalize(existingRecord.status) ||
-            record.completed_modules !== existingRecord.completed_modules ||
-            record.total_modules !== existingRecord.total_modules ||
-            record.hours_spent !== existingRecord.hours_spent;
-          
-         
-          
-          if (hasChanges) {
-            // Data changed - create versioning
-            const verifiedData = {
-              title: existingRecord.title,
-              organization: existingRecord.organization,
-              start_date: existingRecord.start_date,
-              end_date: existingRecord.end_date,
-              duration: existingRecord.duration,
-              description: existingRecord.description,
-              status: existingRecord.status,
-              completed_modules: existingRecord.completed_modules,
-              total_modules: existingRecord.total_modules,
-              hours_spent: existingRecord.hours_spent,
-              approval_status: existingRecord.approval_status
-            };
-            
-            // Store verified data and mark as having pending edit
-            record.verified_data = verifiedData;
-            record.pending_edit_data = { ...record };
-            record.has_pending_edit = true;
-            record.approval_status = 'pending';
-          } else {
-            // No changes - keep as verified
-            record.verified_data = null;
-            record.pending_edit_data = null;
-            record.has_pending_edit = false;
-            record.approval_status = existingRecord.approval_status; // Keep existing status
-          }
-        }
-        // Case 3: New training or unverified training - no versioning needed
-        else {
-          record.verified_data = null;
-          record.pending_edit_data = null;
-          record.has_pending_edit = false;
-          // Set approval_status for existing records that aren't verified/approved
-          if (existingRecord) {
-            record.approval_status = existingRecord.approval_status;
-          } else {
-            record.approval_status = 'pending';
-          }
         }
 
         // Store certificateUrl and skills for later use
@@ -2497,8 +2436,8 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use id as student_id (as per foreign key constraint: experience.student_id -> students.id)
+    const studentId = studentRecord.id;
 
     // Determine approval authority based on student type
     let approvalAuthority = 'rareminds_admin'; // default
@@ -2861,8 +2800,8 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use id as student_id (as per foreign key constraint: skills.student_id -> students.id)
+    const studentId = studentRecord.id;
 
     // Get existing technical skills (fetch full records for versioning)
     const { data: existingSkills, error: existingError } = await supabase
@@ -3057,8 +2996,8 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use id as student_id (as per foreign key constraint: skills.student_id -> students.id)
+    const studentId = studentRecord.id;
 
     // Get existing soft skills (fetch full records for versioning)
     const { data: existingSkills, error: existingError } = await supabase
@@ -3251,8 +3190,8 @@ export async function updateSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use id as student_id (as per foreign key constraint: skills.student_id -> students.id)
+    const studentId = studentRecord.id;
 
     // Get existing skills (both technical and soft) - fetch full records for versioning check
     const { data: existingSkills, error: existingError } = await supabase
