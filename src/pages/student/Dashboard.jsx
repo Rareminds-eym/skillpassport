@@ -829,7 +829,8 @@ const StudentDashboard = () => {
     latestAttemptId,
   } = useAssessmentRecommendations(studentId, !!studentId && !isViewingOthersProfile);
 
-
+  // Check if user is a learner
+  const isLearnerUser = isLearner(studentData);
 
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
@@ -2323,8 +2324,8 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
-          {/* No Assessment CTA - TOP (only show when not expanded) */}
-          {!hasAssessment && !recommendationsLoading && !showAllTraining && (
+          {/* No Assessment CTA - TOP (only show when not expanded and not a learner) */}
+          {!hasAssessment && !recommendationsLoading && !showAllTraining && !isLearnerUser && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div
