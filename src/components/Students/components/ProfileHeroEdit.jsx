@@ -959,9 +959,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div> */}
                 </div>
 
-                {/* School-specific fields - Display when school_id is not null AND has actual data - COMPACT HORIZONTAL */}
-                {realStudentData?.school_id && (realStudentData?.grade || realStudentData?.section || realStudentData?.roll_number || realStudentData?.admission_number) && (
-                  <div className="bg-blue-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-blue-200/60 shadow-md">
+                {/* School-specific fields - Display for school_student role */}
+                {userRole === 'school_student' && (realStudentData?.grade || realStudentData?.section || realStudentData?.roll_number || realStudentData?.admission_number) && (
+                  <div className="bg-blue-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-indigo-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <AcademicCapIcon className="w-3 sm:w-4 h-3 sm:h-4 text-blue-700" />
                       <h3 className="text-gray-900 font-semibold text-xs sm:text-sm">School Info</h3>
@@ -991,8 +991,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div>
                 )}
 
-                {/* College-specific fields - Display when university_college_id is not null AND has actual data - COMPACT HORIZONTAL */}
-                {realStudentData?.university_college_id && (realStudentData?.registration_number || realStudentData?.admission_number || realStudentData?.student_id) && (
+                {/* College-specific fields - Display for college_student role */}
+                {userRole === 'college_student' && (realStudentData?.registration_number || realStudentData?.admission_number || realStudentData?.branch_field) && (
                   <div className="bg-indigo-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-indigo-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <TrophyIcon className="w-3 sm:w-4 h-3 sm:h-4 text-indigo-700" />

@@ -90,6 +90,7 @@ import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNot
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabaseClient";
 import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
 // Debug utilities removed for production cleanliness
@@ -645,6 +646,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { role: userRole } = useAuth();
 
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
@@ -2324,8 +2326,8 @@ const StudentDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="pt-4 p-8 space-y-4">
-          {/* No Assessment CTA - TOP (only show when not expanded and not a learner) */}
-          {!hasAssessment && !recommendationsLoading && !showAllTraining && !isLearnerUser && (
+          {/* No Assessment CTA - TOP (only show when not expanded and user role is not learner) */}
+          {!hasAssessment && !recommendationsLoading && !showAllTraining && userRole !== 'learner' && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-5 border-2 border-dashed border-blue-300 mb-4 shadow-sm">
               <div className="flex items-start gap-3">
                 <div
@@ -2766,13 +2768,13 @@ const StudentDashboard = () => {
       "softSkills"
     ];
     
-    // Remove assessment for learners
-    if (isLearner(studentData)) {
+    // Remove assessment only for actual learner role
+    if (userRole === 'learner') {
       return cards.filter(card => card !== "assessment");
     }
     
     return cards;
-  }, [studentData]);
+  }, [studentData, userRole]);
 
   // Map the display names to actual card keys
   const cardNameMapping = {
@@ -2793,8 +2795,8 @@ const StudentDashboard = () => {
         {threeByThreeCards.map((cardName, index) => {
           const cardKey = cardNameMapping[cardName];
           
-          // Skip assessment card for learners
-          if (cardKey === 'assessment' && isLearner(studentData)) {
+          // Skip assessment card only for actual learner role
+          if (cardKey === 'assessment' && userRole === 'learner') {
             return null;
           }
           
