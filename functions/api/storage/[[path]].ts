@@ -38,8 +38,9 @@ import { handleListFiles } from './handlers/list-files';
 import { handleGetAuthenticatedUrl } from './handlers/get-authenticated-url';
 import { handleMediaProxy } from './handlers/media-proxy';
 
-// Define public endpoints that don't require authentication
-const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content'];
+// Define public endpoints that don't require JWT authentication
+// Note: /media-proxy uses token-based auth in URL params, not JWT
+const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/media-proxy'];
 
 /**
  * Check if the given path is a public endpoint
