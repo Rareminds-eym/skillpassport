@@ -63,12 +63,15 @@ const checkInstitutionDetailsComplete = (studentData) => {
     university: studentData.university,
     university_college_id: studentData.university_college_id,
     college_school_name: studentData.college_school_name,
+    college: studentData.college,
     program_id: studentData.program_id,
     branch_field: studentData.branch_field,
+    branch: studentData.branch,
     program_section_id: studentData.program_section_id,
     section: studentData.section,
     semester: studentData.semester,
-    grade: studentData.grade
+    grade: studentData.grade,
+    school_id: studentData.school_id
   });
   
   const gradeStr = String(studentData.grade || '').toUpperCase().trim();
@@ -79,25 +82,29 @@ const checkInstitutionDetailsComplete = (studentData) => {
                     gradeStr.includes('MASTER');
   
   if (isSchool && !isCollege) {
-    // School students need: school_id (or custom school name) + school_class_id (or custom section)
-    const isComplete = !!(studentData.school_id || studentData.college_school_name);
-    console.log('📚 School student check:', { isComplete, school_id: studentData.school_id, college_school_name: studentData.college_school_name });
+    // School students need: school_id OR college/college_school_name (custom school)
+    const isComplete = !!(studentData.school_id || studentData.college || studentData.college_school_name);
+   
     return isComplete;
   } else if (isCollege) {
-    // College students need: university + college + program (semester is optional)
-    const hasUniversity = !!(studentData.universityId || studentData.university);
-    const hasCollege = !!(studentData.university_college_id || studentData.college_school_name);
-    const hasProgram = !!(studentData.program_id || studentData.branch_field);
-    const hasSemester = !!(studentData.program_section_id || studentData.section || studentData.semester);
+    // College students need: college + program (university is optional for custom entries)
+    const hasCollege = !!(studentData.university_college_id || studentData.college || studentData.college_school_name);
+    const hasProgram = !!(studentData.program_id || studentData.branch_field || studentData.branch);
     
-    // Consider complete if at least university, college, and program are filled
-    const isComplete = hasUniversity && hasCollege && hasProgram;
+    // Consider complete if at least college and program are filled
+    const isComplete = hasCollege && hasProgram;
     console.log('🎓 College student check:', { 
       isComplete, 
-      hasUniversity, 
       hasCollege, 
-      hasProgram, 
-      hasSemester 
+      hasProgram,
+      universityId: studentData.universityId,
+      university: studentData.university,
+      university_college_id: studentData.university_college_id,
+      college: studentData.college,
+      college_school_name: studentData.college_school_name,
+      program_id: studentData.program_id,
+      branch_field: studentData.branch_field,
+      branch: studentData.branch
     });
     return isComplete;
   }
@@ -121,7 +128,7 @@ const EmptyOpportunitiesState = ({ studentData, navigate }) => {
     navigate('/student/settings', { 
       state: { 
         activeTab: 'profile',
-        activeSubTab: 'institution-details'
+        activeSubTab: 'institution'
       } 
     });
   };

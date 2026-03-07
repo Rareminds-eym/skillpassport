@@ -43,7 +43,7 @@ const Header = ({ activeTab, setActiveTab }) => {
 
   // Fetch student data to check school/college association
   const { studentData, loading: studentDataLoading } = useStudentDataByEmail(userEmail);
-  const isPartOfSchoolOrCollege = !studentDataLoading && !isLearner(studentData);
+  const isPartOfSchoolOrCollege = !studentDataLoading && (studentData?.school_id || studentData?.university_college_id) && !isLearner(studentData);
   
   
   
