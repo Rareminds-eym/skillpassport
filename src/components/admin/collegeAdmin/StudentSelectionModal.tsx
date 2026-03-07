@@ -20,6 +20,8 @@ interface Student {
   riskFactors?: string[];
   lastInteraction?: string;
   interventionCount?: number;
+  assignedMentorName?: string; // Added to show which mentor the student is assigned to
+  isAssigned?: boolean; // Added to indicate if student is already assigned
 }
 
 interface StudentSelectionModalProps {
@@ -30,6 +32,7 @@ interface StudentSelectionModalProps {
   description?: string;
   buttonText?: string;
   initialSelectedStudents?: number[];
+  assignedStudents?: Array<{ studentId: number; mentorName: string }>; // Added to pass assigned student info
 }
 
 const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
@@ -40,6 +43,7 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
   description,
   buttonText,
   initialSelectedStudents = [],
+  assignedStudents = [], // Added default empty array
 }) => {
   const modalTitle = title || "Select Students for Mentor Allocation";
   const modalDescription = description || "Choose students who need mentor assignment";
@@ -54,9 +58,27 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // Show 10 students per page
 
+  // Create a map of assigned students for quick lookup
+  const assignedStudentsMap = useMemo(() => {
+    const map = new Map<number, string>();
+    assignedStudents.forEach(({ studentId, mentorName }) => {
+      map.set(studentId, mentorName);
+    });
+    return map;
+  }, [assignedStudents]);
+
+  // Enhance students with assignment info
+  const enhancedStudents = useMemo(() => {
+    return availableStudents.map(student => ({
+      ...student,
+      isAssigned: assignedStudentsMap.has(student.id),
+      assignedMentorName: assignedStudentsMap.get(student.id),
+    }));
+  }, [availableStudents, assignedStudentsMap]);
+
   // Get unique departments for filtering - handle different field names
   const departments = Array.from(new Set(
-    availableStudents.map(s => {
+    enhancedStudents.map(s => {
       // Try different field names that might contain department info
       const dept = s.department || s.branch_field || s.course_name || s.program_name || s.department_name || '';
       return dept.trim();
@@ -64,13 +86,13 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
   )).sort();
   
   // Get unique years from batch (extract starting year from batch like "2021-2025")
-  const years = Array.from(new Set(availableStudents.map(s => {
+  const years = Array.from(new Set(enhancedStudents.map(s => {
     const batchYear = s.batch.split('-')[0];
     return batchYear;
   }))).sort();
 
   const filteredStudents = useMemo(() => {
-    return availableStudents.filter(
+    return enhancedStudents.filter(
       (s: Student) => {
         const studentDept = (s.department || s.branch_field || s.course_name || s.program_name || s.department_name || '').trim();
         return (
@@ -84,7 +106,7 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
         );
       }
     );
-  }, [availableStudents, searchTerm, filterAtRisk, filterDepartment, filterYear]);
+  }, [enhancedStudents, searchTerm, filterAtRisk, filterDepartment, filterYear]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
@@ -97,17 +119,23 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
     setCurrentPage(1);
   }, [searchTerm, filterAtRisk, filterDepartment, filterYear]);
 
-  const handleToggle = (id: number) => {
+  const handleToggle = (id: number, isAssigned: boolean) => {
+    // Prevent selecting already assigned students
+    if (isAssigned) {
+      return;
+    }
     setSelectedStudents((prev) =>
       prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
     );
   };
 
   const handleSelectAll = () => {
-    if (selectedStudents.length === filteredStudents.length) {
+    // Only select unassigned students
+    const unassignedStudents = filteredStudents.filter(s => !s.isAssigned);
+    if (selectedStudents.length === unassignedStudents.length) {
       setSelectedStudents([]);
     } else {
-      setSelectedStudents(filteredStudents.map((s: Student) => s.id));
+      setSelectedStudents(unassignedStudents.map((s: Student) => s.id));
     }
   };
 
@@ -217,26 +245,40 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                 <p className="text-sm mt-1">Try adjusting your search or filters</p>
               </div>
             ) : (
-              paginatedStudents.map((student: Student) => (
+              paginatedStudents.map((student: Student) => {
+                const isAssigned = student.isAssigned || false;
+                const isDisabled = isAssigned;
+                
+                return (
                 <label
                   key={student.id}
-                  className={`flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-                    selectedStudents.includes(student.id) ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200'
+                  className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${
+                    isDisabled 
+                      ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed' 
+                      : selectedStudents.includes(student.id) 
+                        ? 'border-indigo-300 bg-indigo-50 cursor-pointer hover:bg-indigo-100' 
+                        : 'border-gray-200 cursor-pointer hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-1">
                     <input
                       type="checkbox"
                       checked={selectedStudents.includes(student.id)}
-                      onChange={() => handleToggle(student.id)}
-                      className="h-4 w-4 text-indigo-600 rounded focus:ring-indigo-500"
+                      onChange={() => handleToggle(student.id, isAssigned)}
+                      disabled={isDisabled}
+                      className="h-4 w-4 text-indigo-600 rounded focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <p className="font-medium text-gray-900">{student.name}</p>
                         {student.atRisk && (
                           <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs rounded-full font-medium">
                             At Risk
+                          </span>
+                        )}
+                        {isAssigned && (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
+                            Assigned
                           </span>
                         )}
                       </div>
@@ -246,6 +288,11 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                       <p className="text-xs text-gray-500 mt-1">
                         {student.batch} • {student.email}
                       </p>
+                      {isAssigned && student.assignedMentorName && (
+                        <p className="text-xs text-blue-600 mt-1 font-medium">
+                          Already assigned to: {student.assignedMentorName}
+                        </p>
+                      )}
                       {student.riskFactors && student.riskFactors.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
                           {student.riskFactors.map((factor, index) => (
@@ -266,7 +313,7 @@ const StudentSelectionModal: React.FC<StudentSelectionModalProps> = ({
                     )}
                   </div>
                 </label>
-              ))
+              )})
             )}
           </div>
 

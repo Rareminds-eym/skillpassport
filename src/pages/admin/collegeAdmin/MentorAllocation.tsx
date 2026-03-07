@@ -18,7 +18,7 @@ import { supabase } from "../../../lib/supabaseClient";
 // @ts-ignore - AuthContext is a .jsx file
 import { useAuth } from "../../../context/AuthContext";
 import { useMentorAllocation } from "../../../hooks/useMentorAllocation";
-import { findAllocationId } from "../../../services/mentorAllocationService";
+import { findAllocationId, updateMentorAllocation } from "../../../services/mentorAllocationService";
 import SearchBar from "../../../components/common/SearchBar";
 import KPICard from "../../../components/admin/KPICard";
 import Pagination from "../../../components/admin/Pagination";
@@ -144,6 +144,7 @@ const MentorAllocation: React.FC = () => {
     notes: dynamicNotes, // Get notes from the hook
     updateNoteFeedback,
     markNoteResolved,
+    refetch,
   } = useMentorAllocation(collegeId);
 
   // Transform dynamic data to legacy format for compatibility
@@ -178,23 +179,32 @@ const MentorAllocation: React.FC = () => {
     gender: mentor.gender,
     address: mentor.address,
     employeeId: mentor.employee_id,
-    allocations: mentor.allocations?.map((allocation: any) => ({
-      id: parseInt(allocation.id.replace(/-/g, '').substring(0, 8), 16),
-      mentorId: parseInt(mentor.id.replace(/-/g, '').substring(0, 8), 16),
-      students: allocation.students?.map(transformStudentToLegacy) || [],
-      allocationPeriod: {
-        startDate: allocation.period?.start_date || '',
-        endDate: allocation.period?.end_date || '',
-      },
-      capacity: allocation.period?.default_mentor_capacity || 15,
-      officeLocation: allocation.period?.default_office_location || '',
-      availableHours: allocation.period?.default_available_hours || '',
-      status: 'active' as const,
-      createdAt: allocation.created_at || '',
-      createdBy: allocation.assigned_by || '',
-      academicYear: allocation.period?.academic_year || '',
-      semester: 'All', // Added for compatibility with modal components
-    })) || [],
+    allocations: mentor.allocations?.map((allocation: any) => {
+      // Ensure period exists - if not, try to find it from periods array
+      let period = allocation.period;
+      if (!period && allocation.period_id) {
+        period = periods.find(p => p.id === allocation.period_id);
+      }
+      
+      return {
+        id: parseInt(allocation.id.replace(/-/g, '').substring(0, 8), 16),
+        mentorId: parseInt(mentor.id.replace(/-/g, '').substring(0, 8), 16),
+        students: allocation.students?.map(transformStudentToLegacy) || [],
+        period: period, // Keep the original period object
+        allocationPeriod: {
+          startDate: period?.start_date || '',
+          endDate: period?.end_date || '',
+        },
+        capacity: period?.default_mentor_capacity || 15,
+        officeLocation: period?.default_office_location || '',
+        availableHours: period?.default_available_hours || '',
+        status: 'active' as const,
+        createdAt: allocation.created_at || '',
+        createdBy: allocation.assigned_by || '',
+        academicYear: period?.academic_year || '',
+        semester: 'All', // Added for compatibility with modal components
+      };
+    }) || [],
   });
 
   // Convert dynamic data to legacy format
@@ -211,6 +221,7 @@ const MentorAllocation: React.FC = () => {
   const [selectedBatch, setSelectedBatch] = useState<string>("all");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mentorDetailsRefreshKey, setMentorDetailsRefreshKey] = useState(0);
+  const [isRemovingStudent, setIsRemovingStudent] = useState(false);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -237,6 +248,8 @@ const MentorAllocation: React.FC = () => {
   const [allocationForConfig, setAllocationForConfig] = useState<LegacyMentorAllocation | null>(null);
   const [mentorForAddingStudents, setMentorForAddingStudents] = useState<LegacyMentor | null>(null);
   const [selectedNoteForFeedback, setSelectedNoteForFeedback] = useState<any>(null);
+  const [assignedStudentsInfo, setAssignedStudentsInfo] = useState<Array<{ studentId: number; mentorName: string }>>([]);
+  const [allocationForAddingStudents, setAllocationForAddingStudents] = useState<LegacyMentorAllocation | null>(null);
 
   // Intervention Form States
   const [noteText, setNoteText] = useState("");
@@ -343,8 +356,75 @@ const MentorAllocation: React.FC = () => {
   };
 
   // Event Handlers
-  const handleStartAllocation = () => {
+  const handleStartAllocation = async () => {
     setSelectedStudentsForAllocation([]);
+    
+    // Fetch assigned students info
+    try {
+      console.log('🔍 Fetching assigned students info...');
+      
+      const { data: allocations, error } = await supabase
+        .from('college_mentor_student_allocations')
+        .select(`
+          student_id,
+          mentor_id
+        `)
+        .in('status', ['active', 'pending']);
+      
+      // Fetch mentor names separately
+      let allocationsWithMentors = allocations;
+      if (allocations && allocations.length > 0) {
+        const mentorIds = [...new Set(allocations.map(a => a.mentor_id))];
+        const { data: mentorsData } = await supabase
+          .from('college_lecturers')
+          .select('id, first_name, last_name')
+          .in('id', mentorIds);
+        
+        const mentorMap = new Map(mentorsData?.map(m => [m.id, m]) || []);
+        allocationsWithMentors = allocations.map(allocation => ({
+          ...allocation,
+          college_lecturers: mentorMap.get(allocation.mentor_id)
+        }));
+      }
+
+      console.log('📊 Allocations query result:', { allocations: allocationsWithMentors, error });
+
+      if (!error && allocationsWithMentors) {
+        const assignedInfo = allocationsWithMentors.map(allocation => {
+          // Find the student in dynamicStudents to get the legacy ID
+          const student = dynamicStudents.find(s => s.id === allocation.student_id);
+          if (!student) {
+            console.warn('⚠️ Student not found for allocation:', allocation.student_id);
+            return null;
+          }
+          
+          const studentLegacyId = parseInt(student.id.replace(/-/g, '').substring(0, 8), 16);
+          const mentorName = allocation.college_lecturers 
+            ? `${allocation.college_lecturers.first_name} ${allocation.college_lecturers.last_name}`.trim()
+            : 'Unknown Mentor';
+          
+          console.log('✅ Mapped student:', {
+            uuid: student.id,
+            legacyId: studentLegacyId,
+            name: student.name,
+            mentorName
+          });
+          
+          return {
+            studentId: studentLegacyId,
+            mentorName
+          };
+        }).filter(Boolean) as Array<{ studentId: number; mentorName: string }>;
+        
+        console.log('✅ Final assigned students info:', assignedInfo);
+        setAssignedStudentsInfo(assignedInfo);
+      } else if (error) {
+        console.error('❌ Error fetching allocations:', error);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching assigned students:', error);
+    }
+    
     setShowStudentSelectionModal(true);
   };
 
@@ -398,6 +478,53 @@ const MentorAllocation: React.FC = () => {
         return;
       }
 
+      // ✅ VALIDATION: Check if any students are already assigned to a mentor
+      const { data: existingAllocations, error: checkError } = await supabase
+        .from('college_mentor_student_allocations')
+        .select(`
+          student_id,
+          mentor_id
+        `)
+        .in('student_id', studentUuids)
+        .eq('status', 'active');
+
+      if (checkError) {
+        console.error('Error checking existing allocations:', checkError);
+        toast.error('Failed to validate student assignments');
+        return;
+      }
+
+      if (existingAllocations && existingAllocations.length > 0) {
+        // Fetch mentor names separately
+        const mentorIds = [...new Set(existingAllocations.map(a => a.mentor_id))];
+        const { data: mentorsData } = await supabase
+          .from('college_lecturers')
+          .select('id, first_name, last_name')
+          .in('id', mentorIds);
+        
+        const mentorMap = new Map(mentorsData?.map(m => [m.id, m]) || []);
+        
+        // Build error message with mentor names
+        const alreadyAssignedStudents = existingAllocations.map(allocation => {
+          const student = dynamicUnallocatedStudents.find(s => s.id === allocation.student_id);
+          const mentor = mentorMap.get(allocation.mentor_id);
+          const mentorName = mentor 
+            ? `${mentor.first_name} ${mentor.last_name}`.trim()
+            : 'Unknown Mentor';
+          return {
+            studentName: student?.name || 'Unknown Student',
+            mentorName
+          };
+        });
+
+        const errorMessage = alreadyAssignedStudents.length === 1
+          ? `${alreadyAssignedStudents[0].studentName} is already assigned to ${alreadyAssignedStudents[0].mentorName}`
+          : `${alreadyAssignedStudents.length} students are already assigned to mentors:\n${alreadyAssignedStudents.map(s => `• ${s.studentName} → ${s.mentorName}`).join('\n')}`;
+
+        toast.error(errorMessage, { duration: 5000 });
+        return;
+      }
+
       // Get the first available lecturer for foreign key constraints
       const firstLecturer = dynamicMentors.length > 0 ? dynamicMentors[0].id : null;
       
@@ -406,17 +533,32 @@ const MentorAllocation: React.FC = () => {
         return;
       }
 
-      // Check if there's an active period for this college that matches the allocation dates
-      let activePeriod = periods.find(p => 
-        p.is_active && 
-        p.college_id === collegeId &&
-        p.start_date === allocationPeriod.startDate &&
-        p.end_date === allocationPeriod.endDate
-      );
+      // Check if there's an active period for this college that contains the allocation dates
+      // The allocation dates should fall within the period's date range
+      let activePeriod = periods.find(p => {
+        if (!p.is_active || p.college_id !== collegeId) {
+          return false;
+        }
+        
+        // Check if allocation dates fall within period's date range
+        const allocationStart = new Date(allocationPeriod.startDate);
+        const allocationEnd = new Date(allocationPeriod.endDate);
+        const periodStart = new Date(p.start_date);
+        const periodEnd = new Date(p.end_date);
+        
+        // Allocation must be completely within the period
+        return allocationStart >= periodStart && allocationEnd <= periodEnd;
+      });
       
       if (!activePeriod) {
-        // Create a new period for this specific date range
-        console.log('🔄 [handleAllocateStudents] No matching period found, creating new period for dates:', allocationPeriod);
+        // No existing period contains the allocation date range, create a new period
+        console.log('🔄 [handleAllocateStudents] No period found containing dates:', allocationPeriod);
+        console.log('📋 [handleAllocateStudents] Available periods:', periods.map(p => ({
+          name: p.name,
+          start: p.start_date,
+          end: p.end_date,
+          active: p.is_active
+        })));
         
         const currentYear = new Date().getFullYear();
         const academicYear = `${currentYear}-${currentYear + 1}`;
@@ -442,14 +584,38 @@ const MentorAllocation: React.FC = () => {
         try {
           activePeriod = await createPeriod(defaultPeriodData);
           console.log('✅ [handleAllocateStudents] New period created successfully:', activePeriod);
+          
+          // Wait a moment for the period to be available in the database
+          await new Promise(resolve => setTimeout(resolve, 100));
         } catch (periodError) {
           console.error('❌ [handleAllocateStudents] Error creating new period:', periodError);
           toast.error('Failed to create mentor period. Please try again.');
           return;
         }
       } else {
-        console.log('✅ [handleAllocateStudents] Using existing period:', activePeriod);
+        console.log('✅ [handleAllocateStudents] Using existing period:', {
+          id: activePeriod.id,
+          name: activePeriod.name,
+          start: activePeriod.start_date,
+          end: activePeriod.end_date,
+          allocationStart: allocationPeriod.startDate,
+          allocationEnd: allocationPeriod.endDate
+        });
       }
+
+      // Verify the period exists and is valid
+      if (!activePeriod || !activePeriod.id) {
+        console.error('❌ [handleAllocateStudents] No valid period available');
+        toast.error('Failed to find or create a valid mentor period. Please try again.');
+        return;
+      }
+
+      console.log('🔄 [handleAllocateStudents] Proceeding with allocation using period:', {
+        periodId: activePeriod.id,
+        periodName: activePeriod.name,
+        mentorUuid,
+        studentCount: studentUuids.length
+      });
 
       // Now allocate students using the active period
       await allocateStudents(mentorUuid, studentUuids, activePeriod.id, firstLecturer);
@@ -460,6 +626,7 @@ const MentorAllocation: React.FC = () => {
       setShowAllocationConfigModal(false);
       setSelectedStudentsForAllocation([]);
       setSelectedMentorForAllocation(null);
+      setAssignedStudentsInfo([]); // Clear assigned students cache to force refresh on next allocation
     } catch (error) {
       console.error('Error allocating students:', error);
       toast.error('Failed to allocate students. Please try again.');
@@ -772,8 +939,135 @@ const MentorAllocation: React.FC = () => {
     setShowAddStudentsModal(true);
   };
 
+  const handleAddStudentsToAllocation = (mentor: LegacyMentor, allocation: any) => {
+    console.log('🔍 handleAddStudentsToAllocation - using allocation ID:', allocation.id);
+    
+    // Simple approach: Just pass the allocation as-is
+    // The modal will handle finding the period when needed
+    setMentorForAddingStudents(mentor);
+    setAllocationForAddingStudents(allocation);
+    setShowAddStudentsModal(true);
+  };
+
+  const handleRemoveStudentFromAllocation = async (student: LegacyStudent, allocation: LegacyMentorAllocation) => {
+    if (isRemovingStudent) return; // Prevent double-clicks
+    
+    try {
+      setIsRemovingStudent(true);
+      
+      // Convert legacy IDs to UUIDs
+      const mentorUuid = dynamicMentors.find(m => 
+        parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === allocation.mentorId
+      )?.id;
+      
+      const studentUuid = dynamicStudents.find(s => 
+        parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === student.id
+      )?.id;
+
+      if (!mentorUuid || !studentUuid) {
+        toast.error('Invalid mentor or student selection');
+        return;
+      }
+
+      // Find the allocation ID - check for active or pending status
+      let allocationId = await findAllocationId(mentorUuid, studentUuid, 'active');
+      if (!allocationId) {
+        allocationId = await findAllocationId(mentorUuid, studentUuid, 'pending');
+      }
+      
+      if (!allocationId) {
+        // Student already removed - just refresh UI
+        toast.info('This student is not currently allocated to this mentor');
+        setShowMentorDetailsModal(false);
+        setSelectedMentor(null);
+        await refetch();
+        return;
+      }
+
+      // Update database
+      await updateMentorAllocation(allocationId, {
+        status: 'cancelled',
+        completion_date: new Date().toISOString().split('T')[0],
+      });
+
+      // Show success message
+      toast.success(`${student.name} removed from allocation`);
+      
+      // Close modal and clear selection
+      setShowMentorDetailsModal(false);
+      setSelectedMentor(null);
+      
+      // Refresh data from database - this will trigger a re-render with updated data
+      await refetch();
+      
+    } catch (error) {
+      console.error('Error removing student:', error);
+      toast.error('Failed to remove student. Please try again.');
+    } finally {
+      setIsRemovingStudent(false);
+    }
+  };
+
+  // Set the delete handler on window when modal opens
+  React.useEffect(() => {
+    if (showMentorDetailsModal) {
+      (window as any).__deletePeriodHandler = handleDeletePeriod;
+    }
+    return () => {
+      (window as any).__deletePeriodHandler = undefined;
+    };
+  }, [showMentorDetailsModal]);
+
+  const handleDeletePeriod = async (allocation: LegacyMentorAllocation) => {
+    try {
+      // Get the period ID from the allocation
+      const periodId = allocation.period?.id;
+      
+      if (!periodId) {
+        toast.error('Could not find period information');
+        return;
+      }
+
+      // First, delete all student allocations for this period
+      const { error: allocError } = await supabase
+        .from('college_mentor_student_allocations')
+        .delete()
+        .eq('period_id', periodId);
+
+      if (allocError) {
+        console.error('Error deleting allocations:', allocError);
+        toast.error('Failed to delete period allocations. Please try again.');
+        return;
+      }
+
+      // Then delete the period itself
+      const { error: periodError } = await supabase
+        .from('college_mentor_periods')
+        .delete()
+        .eq('id', periodId);
+
+      if (periodError) {
+        console.error('Error deleting period:', periodError);
+        toast.error('Failed to delete period. Please try again.');
+        return;
+      }
+
+      toast.success('Mentoring period deleted successfully');
+      
+      // Close the details modal
+      setShowMentorDetailsModal(false);
+      setSelectedMentor(null);
+      
+      // Refresh data
+      await refetch();
+    } catch (error) {
+      console.error('Error deleting period:', error);
+      toast.error('Failed to delete period. Please try again.');
+    }
+  };
+
   const handleAddStudentsComplete = async (studentIds: number[]) => {
-    if (!mentorForAddingStudents) return;
+    if (!mentorForAddingStudents || studentIds.length === 0) return;
 
     try {
       // Convert legacy IDs to UUIDs
@@ -781,8 +1075,10 @@ const MentorAllocation: React.FC = () => {
         parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === mentorForAddingStudents.id
       )?.id;
       
+      // Find students from dynamicStudents (not dynamicUnallocatedStudents)
+      // because the modal might include students that are already allocated
       const studentUuids = studentIds.map(id => 
-        dynamicUnallocatedStudents.find(s => 
+        dynamicStudents.find(s => 
           parseInt(s.id.replace(/-/g, '').substring(0, 8), 16) === id
         )?.id
       ).filter(Boolean) as string[];
@@ -792,69 +1088,73 @@ const MentorAllocation: React.FC = () => {
         return;
       }
 
-      // Get the first available lecturer for foreign key constraints
       const firstLecturer = dynamicMentors.length > 0 ? dynamicMentors[0].id : null;
-      
       if (!firstLecturer) {
-        toast.error('No lecturers found. Please add lecturers before creating mentor periods.');
+        toast.error('No lecturers found');
         return;
       }
 
-      // Check if there's an active period for this college that covers the current date
-      const currentDate = new Date().toISOString().split('T')[0];
-      const endDate = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      // Get the period ID from the allocation
+      let periodId: string | undefined;
       
-      let activePeriod = periods.find(p => 
-        p.is_active && 
-        p.college_id === collegeId &&
-        p.start_date <= currentDate &&
-        p.end_date >= currentDate
-      );
-      
-      if (!activePeriod) {
-        // Create a new period for the current timeframe
-        console.log('🔄 [handleAddStudentsComplete] No current period found, creating new period...');
+      if (allocationForAddingStudents) {
+        console.log('🔍 Allocation object:', allocationForAddingStudents);
         
-        const currentYear = new Date().getFullYear();
-        const academicYear = `${currentYear}-${currentYear + 1}`;
-        
-        // Create a unique name based on the current date
-        const periodName = `Mentoring Period ${academicYear} (${new Date().toLocaleDateString()} onwards)`;
-        
-        const defaultPeriodData = {
-          college_id: collegeId,
-          name: periodName,
-          academic_year: academicYear,
-          start_date: currentDate,
-          end_date: endDate,
-          default_mentor_capacity: 15,
-          default_office_location: 'TBD',
-          default_available_hours: 'Mon-Fri 10:00 AM - 4:00 PM',
-          is_active: true,
-          created_by: firstLecturer,
-        };
-
-        try {
-          activePeriod = await createPeriod(defaultPeriodData);
-          console.log('✅ [handleAddStudentsComplete] New period created successfully:', activePeriod);
-        } catch (periodError) {
-          console.error('❌ [handleAddStudentsComplete] Error creating new period:', periodError);
-          toast.error('Failed to create mentor period. Please try again.');
-          return;
+        // Check if allocation has a period property with an id
+        if (allocationForAddingStudents.period?.id) {
+          periodId = allocationForAddingStudents.period.id;
+          console.log('✅ Found period ID from allocation.period:', periodId);
+        } else {
+          // Fallback: The allocation ID in processed data IS the period ID
+          const allocationLegacyId = allocationForAddingStudents.id;
+          console.log('🔍 Trying to find period using allocation legacy ID:', allocationLegacyId);
+          
+          const matchingPeriod = periods.find(p => {
+            const periodLegacyId = parseInt(p.id.replace(/-/g, '').substring(0, 8), 16);
+            return periodLegacyId === allocationLegacyId;
+          });
+          
+          if (matchingPeriod) {
+            periodId = matchingPeriod.id;
+            console.log('✅ Found period by legacy ID match:', matchingPeriod.name, periodId);
+          }
         }
-      } else {
-        console.log('✅ [handleAddStudentsComplete] Using existing period:', activePeriod);
+      }
+      
+      if (!periodId) {
+        console.error('❌ Could not determine period ID. Allocation:', allocationForAddingStudents);
+        console.error('❌ Available periods:', periods.map(p => ({ id: p.id, name: p.name })));
+        toast.error('Could not find period for this allocation. Please try again.');
+        return;
       }
 
-      await allocateStudents(mentorUuid, studentUuids, activePeriod.id, firstLecturer);
+      console.log('🔄 Allocating students to period:', periodId);
+      
+      // Perform the allocation - this will throw an error if students already have allocations
+      await allocateStudents(mentorUuid, studentUuids, periodId, firstLecturer);
 
+      // Close the add students modal
       setShowAddStudentsModal(false);
       setMentorForAddingStudents(null);
+      setAllocationForAddingStudents(null);
       
       toast.success(`Successfully added ${studentUuids.length} students to mentor`);
-    } catch (error) {
+      
+      // Close the details modal
+      setShowMentorDetailsModal(false);
+      setSelectedMentor(null);
+      
+      // Refresh data from database - this will trigger a re-render with updated data
+      await refetch();
+      
+    } catch (error: any) {
       console.error('Error adding students:', error);
-      toast.error('Failed to add students. Please try again.');
+      // Show more specific error message
+      if (error.message && error.message.includes('already have active allocations')) {
+        toast.error(error.message);
+      } else {
+        toast.error('Failed to add students. Please try again.');
+      }
     }
   };
 
@@ -1430,13 +1730,11 @@ const MentorAllocation: React.FC = () => {
         {showStudentSelectionModal && (
           <StudentSelectionModal
             key="allocate-students"
-            availableStudents={unallocatedStudents.filter(student => 
-              (selectedBatch === "all" || student.batch === selectedBatch) &&
-              (selectedDepartment === "all" || student.department === selectedDepartment)
-            ) as any}
+            availableStudents={dynamicStudents.map(transformStudentToLegacy) as any}
             onClose={() => setShowStudentSelectionModal(false)}
             onNext={handleStudentSelectionComplete}
             initialSelectedStudents={selectedStudentsForAllocation}
+            assignedStudents={assignedStudentsInfo}
           />
         )}
 
@@ -1580,6 +1878,8 @@ const MentorAllocation: React.FC = () => {
             onClose={() => {
               setShowMentorDetailsModal(false);
               setSelectedMentor(null);
+              // Clear the delete handler when modal closes
+              (window as any).__deletePeriodHandler = undefined;
             }}
             onLogIntervention={(student) => {
               setSelectedStudent(student as any);
@@ -1590,6 +1890,10 @@ const MentorAllocation: React.FC = () => {
               setShowReassignModal(true);
             }}
             onConfigureAllocation={handleConfigureAllocation}
+            onAddStudentsToAllocation={(mentor, allocation) => {
+              handleAddStudentsToAllocation(mentor, allocation);
+            }}
+            onRemoveStudent={handleRemoveStudentFromAllocation}
             onViewConversation={(note: any) => {
               // Use the full note data if available, otherwise use the transformed note
               const fullNote = note._fullNote || dynamicNotes.find(n => 
@@ -1632,12 +1936,17 @@ const MentorAllocation: React.FC = () => {
         {showAddStudentsModal && mentorForAddingStudents && (
           <StudentSelectionModal
             key={`add-students-${mentorForAddingStudents.id}`}
-            availableStudents={unallocatedStudents.filter(student => 
+            availableStudents={(unallocatedStudents || []).filter(student => 
               (selectedBatch === "all" || student.batch === selectedBatch) &&
               (selectedDepartment === "all" || student.department === selectedDepartment)
             ) as any}
-            title={`Add Students to ${mentorForAddingStudents.name}`}
-            description={`Select students to assign to ${mentorForAddingStudents.name} (${mentorForAddingStudents.designation}). Available capacity: ${(() => {
+            title={`Add Students to ${mentorForAddingStudents.name}${allocationForAddingStudents ? ` - ${allocationForAddingStudents.academicYear}` : ''}`}
+            description={`Select students to assign to ${mentorForAddingStudents.name} (${mentorForAddingStudents.designation})${allocationForAddingStudents ? ` for the ${allocationForAddingStudents.academicYear} period` : ''}. Available capacity: ${(() => {
+              if (allocationForAddingStudents) {
+                const currentLoad = allocationForAddingStudents.students?.length || 0;
+                const maxCapacity = allocationForAddingStudents.capacity;
+                return maxCapacity - currentLoad;
+              }
               const currentLoad = getMentorCurrentLoadLegacy(mentorForAddingStudents.id);
               const activeAllocations = getMentorActiveAllocationsLegacy(mentorForAddingStudents.id);
               const maxCapacity = activeAllocations.length > 0 

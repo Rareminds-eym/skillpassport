@@ -20,8 +20,7 @@ export const useStudentSkills = (studentId, skillType, enabled = true) => {
         .select('*')
         .eq('student_id', studentId)
         .eq('type', skillType)
-        .is('training_id', null)
-        // Fetch ALL skills (including hidden and pending) - filtering happens in display components
+        // Fetch ALL skills including those from trainings
         .order('created_at', { ascending: false });
 
       if (fetchError) {

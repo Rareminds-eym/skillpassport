@@ -77,7 +77,7 @@ export const TourProvider: React.FC<TourProviderProps> = ({
       const { data, error } = await supabase
         .from('students')
         .select('tour_progress')
-        .eq('id', studentId)
+        .eq('user_id', studentId)
         .maybeSingle();
 
       if (!error && data?.tour_progress) {
@@ -108,12 +108,10 @@ export const TourProvider: React.FC<TourProviderProps> = ({
         const { error } = await supabase
           .from('students')
           .update({ tour_progress: progress })
-          .eq('id', studentId);
+          .eq('user_id', studentId);
 
         if (error) {
           console.error('Failed to save tour progress to database:', error);
-        } else {
-          // Progress saved successfully
         }
       }
 

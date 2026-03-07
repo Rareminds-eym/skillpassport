@@ -37,6 +37,7 @@ import { useStudentConversations, useStudentMessages } from '../../hooks/useStud
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { supabase } from '../../lib/supabaseClient';
 import MessageService from '../../services/messageService';
+import { isLearner as checkIsLearner } from '../../utils/studentType';
 
 const Messages = () => {
   const queryClient = useQueryClient();
@@ -80,28 +81,36 @@ const Messages = () => {
   const studentId = studentData?.id || user?.id;
   const studentName = studentData?.profile?.name || user?.name || 'Student';
 
+  // Check if user is a learner using the utility function
+  const isLearnerUser = checkIsLearner(studentData);
+
   // Determine available tabs based on student's school_id and university_college_id
   const hasSchoolId = !!studentData?.school_id;
   const hasCollegeId = !!studentData?.university_college_id;
 
   // Available tabs logic:
   // - Recruiters: Always available
-  // - Educators: Always available  
+  // - Educators: Available for school/college students only (not for learners)
   // - School Admin: Only if student has school_id
   // - College Admin: Only if student has university_college_id
   const availableTabs = useMemo(() => {
-    const tabs = ['recruiters', 'educators'];
+    const tabs = ['recruiters'];
+    
+    // Educators tab only for non-learners
+    if (!isLearnerUser) {
+      tabs.push('educators');
+    }
 
-    if (hasSchoolId) {
+    if (hasSchoolId && !isLearnerUser) {
       tabs.push('admin'); // school admin
     }
 
-    if (hasCollegeId) {
+    if (hasCollegeId && !isLearnerUser) {
       tabs.push('college_admin');
     }
 
     return tabs;
-  }, [hasSchoolId, hasCollegeId]);
+  }, [hasSchoolId, hasCollegeId, isLearnerUser]);
 
   // Ensure activeTab is valid for current student
   useEffect(() => {
@@ -1437,35 +1446,36 @@ console.log('🔍 Checking online for educator:', {
                         )}
                       </button>
 
-                      {/* Educators Tab - Always available */}
-                      <button
-                        onClick={async () => {
-                          console.log('🔄 Switching to educators tab');
-                          setIsTabSwitching(true);
-                          setActiveTab('educators');
-                          setSelectedConversationId(null);
-                          setSearchParams({ tab: 'educators' }, { replace: true });
-                          setShowTabDropdown(false);
+                      {/* Educators Tab - Only for non-learners */}
+                      {!isLearnerUser && (
+                        <button
+                          onClick={async () => {
+                            console.log('🔄 Switching to educators tab');
+                            setIsTabSwitching(true);
+                            setActiveTab('educators');
+                            setSelectedConversationId(null);
+                            setSearchParams({ tab: 'educators' }, { replace: true });
+                            setShowTabDropdown(false);
 
-                          // Force refetch for educators tab
-                          if (studentId && !loadingStudentData && refetchEducatorConversations) {
-                            console.log('🚀 Refetching educator conversations');
-                            try {
-                              await refetchEducatorConversations();
-                            } finally {
-                              setTimeout(() => setIsTabSwitching(false), 300);
+                            // Force refetch for educators tab
+                            if (studentId && !loadingStudentData && refetchEducatorConversations) {
+                              console.log('🚀 Refetching educator conversations');
+                              try {
+                                await refetchEducatorConversations();
+                              } finally {
+                                setTimeout(() => setIsTabSwitching(false), 300);
+                              }
+                            } else {
+                              setIsTabSwitching(false);
                             }
-                          } else {
-                            setIsTabSwitching(false);
-                          }
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                          }`}
-                      >
-                        <GraduationCap className={`w-4 h-4 ${activeTab === 'educators' ? 'text-blue-600' : 'text-gray-500'}`} />
-                        <div className="flex-1">
-                          <div className="font-medium">Educators</div>
-                          <div className="text-xs text-gray-500">Teacher and class messages</div>
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors ${activeTab === 'educators' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                            }`}
+                        >
+                          <GraduationCap className={`w-4 h-4 ${activeTab === 'educators' ? 'text-blue-600' : 'text-gray-500'}`} />
+                          <div className="flex-1">
+                            <div className="font-medium">Educators</div>
+                            <div className="text-xs text-gray-500">Teacher and class messages</div>
                         </div>
                         {educatorConversations.length > 0 && (
                           <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
@@ -1473,6 +1483,7 @@ console.log('🔍 Checking online for educator:', {
                           </span>
                         )}
                       </button>
+                      )}
 
                       {/* School Admin Tab - Only if student has school_id */}
                       {hasSchoolId && (

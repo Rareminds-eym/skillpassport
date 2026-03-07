@@ -1,4 +1,4 @@
-import { useToast } from "@/hooks/use-toast";
+import toast from 'react-hot-toast';
 import {
     Briefcase,
     Loader2,
@@ -25,7 +25,6 @@ const ProfileItemModal = ({
   onSave
 }) => {
   const config = FIELD_CONFIGS[type];
-  const { toast } = useToast();
   
   const [formData, setFormData] = useState(config?.getDefaultValues?.() || {});
   const [isSaving, setIsSaving] = useState(false);
@@ -105,11 +104,7 @@ const ProfileItemModal = ({
       
       // Validate start dates and issue dates cannot be in future
       if ((field === 'startDate' || field === 'start_date' || field === 'issuedOn') && value > today) {
-        toast({
-          title: "Invalid Date",
-          description: "Date cannot be in the future.",
-          variant: "destructive",
-        });
+        toast.error("Date cannot be in the future.");
         return; // Don't update the state
       }
       
@@ -117,19 +112,11 @@ const ProfileItemModal = ({
       if (field === 'endDate' || field === 'end_date') {
         const startDateValue = formData.startDate || formData.start_date;
         if (startDateValue && value < startDateValue) {
-          toast({
-            title: "Invalid Date",
-            description: "End date cannot be before start date.",
-            variant: "destructive",
-          });
+          toast.error("End date cannot be before start date.");
           return; // Don't update the state
         }
         if (value > today) {
-          toast({
-            title: "Invalid Date",
-            description: "End date cannot be in the future.",
-            variant: "destructive",
-          });
+          toast.error("End date cannot be in the future.");
           return; // Don't update the state
         }
       }
@@ -138,11 +125,7 @@ const ProfileItemModal = ({
       if (field === 'expiryDate') {
         const issuedOnValue = formData.issuedOn;
         if (issuedOnValue && value < issuedOnValue) {
-          toast({
-            title: "Invalid Date",
-            description: "Expiry date cannot be before issue date.",
-            variant: "destructive",
-          });
+          toast.error("Expiry date cannot be before issue date.");
           return; // Don't update the state
         }
       }
@@ -156,11 +139,7 @@ const ProfileItemModal = ({
     const requiredFields = config.fields.filter(f => f.required);
     for (const field of requiredFields) {
       if (!formData[field.name]?.toString().trim()) {
-        toast({
-          title: "Validation Error",
-          description: `${field.label.replace(" *", "")} is required.`,
-          variant: "destructive",
-        });
+        toast.error(`${field.label.replace(" *", "")} is required.`);
         return false;
       }
     }
@@ -170,11 +149,7 @@ const ProfileItemModal = ({
     for (const field of urlFields) {
       const value = formData[field.name];
       if (value && !isValidUrl(value)) {
-        toast({
-          title: "Validation Error",
-          description: `${field.label} must be a valid URL (e.g., https://example.com)`,
-          variant: "destructive",
-        });
+        toast.error(`${field.label} must be a valid URL (e.g., https://example.com)`);
         return false;
       }
     }
@@ -185,10 +160,60 @@ const ProfileItemModal = ({
   // Skills management functions
   const addSkill = () => {
     setShowDemoModal(true);
+    const skillName = formData.newSkillName?.trim();
+    if (!skillName) {
+      toast.error("Please enter a skill name.");
+      return;
+    }
+
+    // Check for duplicate skills
+    const existingSkills = formData.skillsList || [];
+    if (existingSkills.some(skill => skill.name.toLowerCase() === skillName.toLowerCase())) {
+      toast.error("This skill has already been added.");
+      return;
+    }
+
+    const newSkill = {
+      name: skillName,
+      type: formData.newSkillType || config.getDefaultValues().type || 'technical',
+      level: parseInt(formData.newSkillLevel || '3'),
+      description: formData.newSkillDescription?.trim() || '',
+      verified: true,
+      enabled: true,
+      approval_status: 'approved'
+    };
+
+    setFormData(prev => {
+      const newSkillsList = [...(prev.skillsList || []), newSkill];
+      
+      return {
+        ...prev,
+        skillsList: newSkillsList,
+        newSkillName: '',
+        newSkillType: config.getDefaultValues().type || 'technical',
+        newSkillLevel: '3',
+        newSkillDescription: ''
+      };
+    });
+
+    toast.success(`${skillName} has been added to your skills.`);
   };
 
   const removeSkill = (index) => {
-    setShowDemoModal(true);
+    const skillToRemove = formData.skillsList?.[index];
+    
+    setFormData(prev => {
+      const newSkillsList = prev.skillsList?.filter((_, i) => i !== index) || [];
+      return {
+        ...prev,
+        skillsList: newSkillsList
+      };
+    });
+
+    // Show toast notification
+    if (skillToRemove) {
+      toast.success(`${skillToRemove.name} has been removed from your skills.`);
+    }
   };
 
   // Process form data and return the processed item
@@ -262,6 +287,72 @@ const ProfileItemModal = ({
 
   const handleSave = async () => {
     setShowDemoModal(true);
+    if (!validateForm()) return;
+
+    setIsSaving(true);
+    const processedData = processFormData();
+
+    console.log('🔧 ProfileItemModal handleSave: item (existing):', item);
+    console.log('🔧 ProfileItemModal handleSave: processedData:', processedData);
+
+    try {
+      let savedItem;
+      
+      if (item) {
+        // Edit mode - ONLY send the fields we want to update
+        // CRITICAL: Do NOT spread the old item - it may have invalid fields
+        
+        // Define valid fields based on config
+        const validFields = config.fields.map(f => f.name);
+        const metadataFields = ['id', 'student_id', 'created_at', 'approval_status', 'enabled'];
+        
+        // Build clean item with ONLY valid fields
+        savedItem = {
+          id: item.id,
+          student_id: item.student_id,
+          created_at: item.created_at,
+          enabled: item.enabled !== false,
+          ...processedData,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Remove any undefined values
+        Object.keys(savedItem).forEach(key => {
+          if (savedItem[key] === undefined) {
+            delete savedItem[key];
+          }
+        });
+        
+        console.log('🔧 ProfileItemModal handleSave: savedItem (edit mode):', savedItem);
+        console.log('🔧 ProfileItemModal handleSave: ID check:', {
+          itemId: item.id,
+          savedItemId: savedItem.id,
+          approval_status: savedItem.approval_status,
+          has_pending_edit: savedItem.has_pending_edit
+        });
+      } else {
+        // Add mode - create new item
+        savedItem = {
+          ...processedData,
+          id: generateUuid(),
+          enabled: true,
+          verified: false,
+          approval_status: 'pending', // New items need approval
+          created_at: new Date().toISOString(),
+        };
+        
+        console.log('🔧 ProfileItemModal handleSave: savedItem (add mode):', savedItem);
+      }
+
+      await onSave(savedItem);
+      toast.success(`${config.title} ${item ? 'updated' : 'added'} successfully.`);
+      onClose();
+    } catch (error) {
+      console.error("Error saving:", error);
+      toast.error("Failed to save. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const renderField = (field) => {

@@ -701,6 +701,7 @@ const OpportunityPreview = ({
   const [showAllSkills, setShowAllSkills] = React.useState(false);
   const [showDetailsModal, setShowDetailsModal] = React.useState(false);
   const [showApplicationModal, setShowApplicationModal] = React.useState(false);
+  const [showProfileCompletionModal, setShowProfileCompletionModal] = React.useState(false);
 
   // Check if student has current backlogs
   const currentBacklogsValue = studentData?.currentBacklogs || 0;
@@ -1399,21 +1400,11 @@ const OpportunityPreview = ({
                       // Don't allow application if student has current backlogs
                       return;
                     } else if (needsProfileCompletion && !isApplied) {
-                      // Show alert with missing fields before navigating
-                      const missingFieldsList = missingFields && missingFields.length > 0 
-                        ? missingFields.join(', ') 
-                        : 'some required fields';
-                      
-                      const shouldNavigate = window.confirm(
-                        `Your profile is ${completionPercentage || 0}% complete.\n\n` +
-                        `Missing fields: ${missingFieldsList}\n\n` +
-                        `Please complete your profile to apply for jobs.\n\n` +
-                        `Click OK to go to Settings page.`
-                      );
-                      
-                      if (shouldNavigate && navigate) {
-                        navigate('/student/settings');
-                      }
+                      // Close details modal first, then show profile completion modal
+                      setShowDetailsModal(false);
+                      setTimeout(() => {
+                        setShowProfileCompletionModal(true);
+                      }, 100);
                     } else if (!isApplied && !isApplying) {
                       setShowApplicationModal(true);
                     }
@@ -1522,6 +1513,74 @@ const OpportunityPreview = ({
         }}
         isApplying={isApplying}
       />
+
+      {/* Profile Completion Modal */}
+      {showProfileCompletionModal && (
+        <div className="fixed inset-0 bg-black/50 z-[100001] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => setShowProfileCompletionModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-amber-600" />
+            </div>
+            
+            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Complete Your Profile
+            </h3>
+            <p className="text-gray-600 text-center mb-4">
+              Your profile is {completionPercentage || 0}% complete
+            </p>
+            
+            <div className="bg-amber-50 rounded-lg p-4 mb-6">
+              <p className="text-sm font-semibold text-gray-800 mb-2">Missing Fields:</p>
+              <ul className="text-sm text-gray-700 space-y-1">
+                {missingFields && missingFields.length > 0 ? (
+                  missingFields.map((field, index) => (
+                    <li key={index} className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-amber-600 rounded-full"></div>
+                      {field}
+                    </li>
+                  ))
+                ) : (
+                  <li className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-amber-600 rounded-full"></div>
+                    Some required fields
+                  </li>
+                )}
+              </ul>
+            </div>
+            
+            <p className="text-sm text-gray-600 text-center mb-6">
+              Please complete your profile to apply for jobs
+            </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowProfileCompletionModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Later
+              </button>
+              <button
+                onClick={() => {
+                  setShowProfileCompletionModal(false);
+                  if (navigate) {
+                    navigate('/student/settings');
+                  }
+                }}
+                className="flex-1 px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-medium"
+              >
+                Go to Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

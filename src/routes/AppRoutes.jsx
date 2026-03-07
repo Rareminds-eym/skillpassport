@@ -28,7 +28,7 @@ import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
 // Duplicate imports removed - using the Digital* prefixed imports above
 
 // Role constants to prevent re-renders
-const STUDENT_ROLES = ["student", "school_student", "college_student"];
+const STUDENT_ROLES = ["student", "school_student", "college_student", "learner"];
 const RECRUITER_ROLES = ["recruiter"];
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
 const COLLEGE_ADMIN_ROLES = ["college_admin"];
@@ -221,6 +221,7 @@ const EducatorDigitalPortfolio = lazy(() =>
 const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 const CourseAnalytics = lazy(() => import("../pages/educator/CourseAnalytics"));
 const MarkAttendance = lazy(() => import("../pages/educator/MarkAttendance"));
+
 
 // Teacher pages (for teachers using the system)
 const LessonPlanCreate = lazy(() => import("../pages/teacher/LessonPlanCreate"));
@@ -1058,8 +1059,8 @@ const AppRoutes = () => {
           <Route path="assessment-results" element={<EducatorAssessmentResults />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="college-assignments" element={<CollegeAssignments />} />
-          <Route path="mentornotes" element={<EducatorMentorNotes />} />
-          <Route path="my-mentees" element={<EducatorMyMentees />} />
+          <Route path="mentor-notes" element={<EducatorMentorNotes />} />
+          <Route path="mentees" element={<EducatorMyMentees />} />
           <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
           <Route path="settings" element={<EducatorSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
@@ -1073,7 +1074,7 @@ const AppRoutes = () => {
           <Route path="analytics" element={<EducatorAnalytics />} />
           <Route path="activities" element={<EducatorActivities />} />
           <Route path="reports" element={<EducatorReports />} />
-          <Route path="media" element={<EducatorMediaManager />} />
+          <Route path="media-manager" element={<EducatorMediaManager />} />
           <Route path="lesson-plans" element={<LessonPlansList />} />
           <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
           <Route path="my-timetable" element={<MyTimetable />} />

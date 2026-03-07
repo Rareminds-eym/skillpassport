@@ -21,8 +21,8 @@ import {
 } from "lucide-react";
 import { useStudentDataById } from "../../../hooks/useStudentDataById";
 import { useNavigate, useParams } from "react-router-dom";
-import { useToast } from "../../../hooks/use-toast";
 import { useAuth } from "../../../context/AuthContext";
+import toast from 'react-hot-toast';
 import {
   generateResumePDF,
   prepareStudentDataForResume,
@@ -167,7 +167,6 @@ function Donut({ value }) {
 export default function StudentPublicViewer() {
   const { user, loading: authLoading } = useAuth();
   // const navigate = useNavigate();
-  const { toast } = useToast();
   const { studentId } = useParams();
   const { studentData, loading, error } = useStudentDataById(studentId);
   const qrCodeValue = window.location.href;
@@ -312,10 +311,7 @@ export default function StudentPublicViewer() {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(qrCodeValue);
     setCopied(true);
-    toast({
-      title: "Link copied",
-      description: "Profile link copied to clipboard.",
-    });
+    toast.success("Profile link copied to clipboard.");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -759,19 +755,10 @@ export default function StudentPublicViewer() {
         setDownloading(false);
       }
 
-      toast({
-        title: "Resume downloaded",
-        description: `${
-          profile.name || "Student"
-        }'s resume generated successfully.`,
-      });
+      toast.success(`${profile.name || "Student"}'s resume generated successfully.`);
     } catch (error) {
       console.error("Error generating resume:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate resume. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to generate resume. Please try again.");
     }
   };
 
@@ -1160,10 +1147,7 @@ export default function StudentPublicViewer() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(emailAddr);
-                              toast({
-                                title: "Email copied",
-                                description: `${emailAddr} has been copied to clipboard.`,
-                              });
+                              toast.success(`${emailAddr} has been copied to clipboard.`);
                             }}
                             id="copy-email"
                             title="Copy email"
@@ -1193,10 +1177,7 @@ export default function StudentPublicViewer() {
                           <button
                             onClick={() => {
                               navigator.clipboard.writeText(phone);
-                              toast({
-                                title: "Phone number copied",
-                                description: `${phone} has been copied to clipboard.`,
-                              });
+                              toast.success(`${phone} has been copied to clipboard.`);
                             }}
                             id="copy-phone"
                             title="Copy phone number"

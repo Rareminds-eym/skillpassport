@@ -20,6 +20,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { useNotifications } from "../../../hooks/useNotifications";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { isLearner } from "../../../utils/studentType";
 import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
 import NotificationPanel from "./NotificationPanel";
 
@@ -41,8 +42,12 @@ const Header = ({ activeTab, setActiveTab }) => {
   const { unreadCount } = useNotifications(userEmail);
 
   // Fetch student data to check school/college association
-  const { studentData } = useStudentDataByEmail(userEmail);
-  const isPartOfSchoolOrCollege = studentData?.school_id || studentData?.university_college_id;
+  const { studentData, loading: studentDataLoading } = useStudentDataByEmail(userEmail);
+  const isPartOfSchoolOrCollege = !studentDataLoading && !isLearner(studentData);
+  
+  
+  
+
 
   // Close modals when clicking outside
   useEffect(() => {

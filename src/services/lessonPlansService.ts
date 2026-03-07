@@ -1,4 +1,7 @@
 import { supabase } from "../lib/supabaseClient";
+import { getLogger } from "../config/logging";
+
+const logger = getLogger('lesson-plans');
 
 export interface LessonPlanFormData {
   title: string;
@@ -103,7 +106,7 @@ export async function getCurrentEducatorId(): Promise<string | null> {
         if (userData.role === 'school_admin' && userData.schoolId) {
           // School admin - return null for educator ID but don't throw error
           // They can view lesson plans but may not create them as an educator
-          console.log('[LessonPlansService] User is school admin, not an educator');
+          logger.info('User is school admin, not an educator');
           return null;
         }
       } catch (e) {
@@ -121,13 +124,13 @@ export async function getCurrentEducatorId(): Promise<string | null> {
 
     if (org?.id) {
       // User is a school admin
-      console.log('[LessonPlansService] User is school admin (from organizations), not an educator');
+      logger.info('User is school admin (from organizations), not an educator');
       return null;
     }
 
     return null;
   } catch (error) {
-    console.error("Error getting educator ID:", error);
+    logger.error("Error getting educator ID", error as Error);
     return null;
   }
 }
@@ -207,7 +210,7 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
     const { data, error } = await query;
 
     if (error) {
-      console.error("Error fetching lesson plans:", error);
+      logger.error("Error fetching lesson plans", error as Error);
       return { data: null, error };
     }
 
@@ -220,7 +223,7 @@ export async function getLessonPlans(): Promise<{ data: LessonPlan[] | null; err
 
     return { data: flattenedData as LessonPlan[], error: null };
   } catch (error) {
-    console.error("Error fetching lesson plans:", error);
+    logger.error("Error fetching lesson plans", error as Error);
     return { data: null, error };
   }
 }
@@ -238,7 +241,7 @@ export async function getLessonPlan(id: string): Promise<{ data: LessonPlan | nu
 
     return { data, error };
   } catch (error) {
-    console.error("Error fetching lesson plan:", error);
+    logger.error("Error fetching lesson plan", error as Error);
     return { data: null, error };
   }
 }
@@ -296,7 +299,7 @@ export async function createLessonPlan(
 
     return { data, error };
   } catch (error) {
-    console.error("Error creating lesson plan:", error);
+    logger.error("Error creating lesson plan", error as Error);
     return { data: null, error };
   }
 }
@@ -347,7 +350,7 @@ export async function updateLessonPlan(
 
     return { data, error };
   } catch (error) {
-    console.error("Error updating lesson plan:", error);
+    logger.error("Error updating lesson plan", error as Error);
     return { data: null, error };
   }
 }
@@ -364,7 +367,7 @@ export async function deleteLessonPlan(id: string): Promise<{ error: any }> {
 
     return { error };
   } catch (error) {
-    console.error("Error deleting lesson plan:", error);
+    logger.error("Error deleting lesson plan", error as Error);
     return { error };
   }
 }
@@ -386,7 +389,7 @@ export async function submitLessonPlan(id: string): Promise<{ data: LessonPlan |
 
     return { data, error };
   } catch (error) {
-    console.error("Error submitting lesson plan:", error);
+    logger.error("Error submitting lesson plan", error as Error);
     return { data: null, error };
   }
 }
@@ -412,7 +415,7 @@ export async function getCurriculums(subject: string, className: string) {
 
     return { data, error };
   } catch (error) {
-    console.error("Error fetching curriculums:", error);
+    logger.error("Error fetching curriculums", error as Error);
     return { data: null, error };
   }
 }
@@ -444,7 +447,7 @@ export async function getChapters(curriculumId: string) {
 
     return { data: transformedData, error };
   } catch (error) {
-    console.error("Error fetching chapters:", error);
+    logger.error("Error fetching chapters", error as Error);
     return { data: null, error };
   }
 }
@@ -469,7 +472,7 @@ export async function getLearningOutcomes(chapterId: string) {
 
     return { data: transformedData, error };
   } catch (error) {
-    console.error("Error fetching learning outcomes:", error);
+    logger.error("Error fetching learning outcomes", error as Error);
     return { data: null, error };
   }
 }
@@ -498,7 +501,7 @@ export async function getSubjects(schoolId?: string) {
 
     return { data, error };
   } catch (error) {
-    console.error("Error fetching subjects:", error);
+    logger.error("Error fetching subjects", error as Error);
     return { data: null, error };
   }
 }
@@ -517,7 +520,7 @@ export async function getClasses(schoolId: string) {
 
     return { data, error };
   } catch (error) {
-    console.error("Error fetching classes:", error);
+    logger.error("Error fetching classes", error as Error);
     return { data: null, error };
   }
 }

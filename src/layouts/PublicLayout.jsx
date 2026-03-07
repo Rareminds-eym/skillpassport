@@ -33,8 +33,12 @@ const PublicLayoutContent = () => {
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotionalContext();
 
+  // Don't show assessment banner for learners
+  const isLearner = userRole === 'learner';
+  const shouldShowAssessmentBanner = showAssessmentBanner && !isLearner;
+
   // Show assessment banner if assessment modal was dismissed, otherwise show promo banner
-  const hasAnyBanner = showAssessmentBanner || showBanner;
+  const hasAnyBanner = shouldShowAssessmentBanner || showBanner;
 
   // Check if we're on a subscription page
   const isSubscriptionPage = location.pathname.startsWith('/subscription/');
@@ -104,13 +108,13 @@ const PublicLayoutContent = () => {
     <div className="min-h-screen flex flex-col">
       {/* Assessment Promotional Banner - Shows after modal is dismissed */}
       <AssessmentPromotionalBanner
-        isOpen={showAssessmentBanner}
+        isOpen={shouldShowAssessmentBanner}
         onClose={dismissAssessmentBanner}
         getTimeRemaining={getAssessmentTimeRemaining}
       />
 
       {/* Promotional Banner - Shows after promo modal is dismissed (only if assessment banner not showing) */}
-      {!showAssessmentBanner && (
+      {!shouldShowAssessmentBanner && (
         <PromotionalBanner
           event={event}
           isOpen={showBanner}

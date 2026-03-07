@@ -63,14 +63,21 @@ const CoursePlayer = () => {
   const [lessonVideoUrl, setLessonVideoUrl] = useState(null);
   const [videoLoading, setVideoLoading] = useState(false);
   const [lessonResources, setLessonResources] = useState([]);
+  const [currentLessonId, setCurrentLessonId] = useState(null); // Store current lesson ID
   const [lessonStartTime, setLessonStartTime] = useState(null);
   const [accumulatedTime, setAccumulatedTime] = useState(0);
   const [positionInitialized, setPositionInitialized] = useState(false);
+  const [lessonTimeSpent, setLessonTimeSpent] = useState({}); // Store time for all lessons
   
   // Video progress tracking refs
   const videoRef = useRef(null);
   const videoSaveTimeoutRef = useRef(null);
   const lastSavedVideoPositionRef = useRef(0);
+  
+  // Video play/pause time tracking (for normal videos only)
+  const videoPlayStartTimeRef = useRef(null);
+  const videoAutoSaveIntervalRef = useRef(null); // For 30-second auto-save
+  const [isYouTubeVideo, setIsYouTubeVideo] = useState(false); // Use state instead of ref
 
   // Check if user is a student (for progress tracking)
   // Students can have roles: 'student', 'school_student', 'college_student'
@@ -207,28 +214,23 @@ const CoursePlayer = () => {
 
   // Save video position to database
   const saveVideoPosition = useCallback(async (position, duration) => {
-    console.log('📹 saveVideoPosition called:', { position, duration, isStudent, userId: user?.id, courseId });
-    if (!isStudent || !user?.id || !courseId) {
+    console.log('📹 saveVideoPosition called:', { position, duration, isStudent, userId: user?.id, courseId, currentLessonId });
+    if (!isStudent || !user?.id || !courseId || !currentLessonId) {
       console.log('📹 saveVideoPosition skipped - missing params');
       return;
     }
-    const currentLesson = getCurrentLesson();
-    if (!currentLesson) {
-      console.log('📹 saveVideoPosition skipped - no current lesson');
-      return;
-    }
 
-    console.log('📹 Saving video position for lesson:', currentLesson.id, 'position:', position, 'duration:', duration);
+    console.log('📹 Saving video position for lesson:', currentLessonId, 'position:', position, 'duration:', duration);
     const result = await courseProgressService.saveVideoPosition(
       user.id,
       courseId,
-      currentLesson.id,
+      currentLessonId,
       Math.floor(position),
       Math.floor(duration)
     );
     console.log('📹 Save video position result:', result);
     lastSavedVideoPositionRef.current = position;
-  }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex]);
+  }, [isStudent, user?.id, courseId, currentLessonId]);
 
   // Load saved video position when lesson changes
   useEffect(() => {
@@ -291,8 +293,83 @@ const CoursePlayer = () => {
 
   const handleVideoPause = useCallback(() => {
     if (!videoRef.current || !isStudent) return;
+    
+    // Save video position for resume feature
     saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
-  }, [isStudent, saveVideoPosition]);
+    
+    // For normal videos (not YouTube), save play time
+    if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
+      const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+      if (playedSeconds > 0) {
+        console.log('⏸️ Video paused - played for', playedSeconds, 'seconds');
+        
+        // Use stored lesson ID instead of getCurrentLesson()
+        if (currentLessonId) {
+          console.log('💾 Saving time for lesson:', currentLessonId);
+          saveTimeSpent(playedSeconds, currentLessonId);
+        } else {
+          console.error('❌ Cannot save time - no lesson ID stored!');
+        }
+      }
+      videoPlayStartTimeRef.current = null;
+      
+      // Clear 30-second auto-save interval
+      if (videoAutoSaveIntervalRef.current) {
+        clearInterval(videoAutoSaveIntervalRef.current);
+        videoAutoSaveIntervalRef.current = null;
+        console.log('⏸️ Cleared 30-second auto-save interval');
+      }
+    }
+  }, [isStudent, saveVideoPosition, isYouTubeVideo, currentLessonId]);
+  
+  const handleVideoPlay = useCallback(() => {
+    if (!videoRef.current || !isStudent) return;
+    console.log('▶️ Play button pressed');
+  }, [isStudent]);
+
+  const handleVideoPlaying = useCallback(() => {
+    if (!videoRef.current || !isStudent) return;
+    
+    // For normal videos (not YouTube), start tracking play time
+    // This fires when video actually starts playing (after buffering)
+    if (!isYouTubeVideo) {
+      videoPlayStartTimeRef.current = Date.now();
+      console.log('▶️ Video actually playing - timer started');
+      
+      // Start 30-second auto-save interval
+      if (videoAutoSaveIntervalRef.current) {
+        clearInterval(videoAutoSaveIntervalRef.current);
+      }
+      
+      videoAutoSaveIntervalRef.current = setInterval(() => {
+        if (videoPlayStartTimeRef.current && currentLessonId) {
+          const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+          if (playedSeconds > 0) {
+            console.log('⏰ 30-second auto-save - played for', playedSeconds, 'seconds');
+            saveTimeSpent(playedSeconds, currentLessonId);
+            // Reset timer after save
+            videoPlayStartTimeRef.current = Date.now();
+          }
+        }
+      }, 30000); // 30 seconds
+      
+      console.log('⏰ Started 30-second auto-save interval');
+    }
+  }, [isStudent, isYouTubeVideo, currentLessonId]);
+
+  const handleVideoWaiting = useCallback(() => {
+    if (!videoRef.current || !isStudent || !isYouTubeVideo) return;
+    
+    // Video is buffering/stuck - pause the timer
+    if (videoPlayStartTimeRef.current) {
+      const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+      if (playedSeconds > 0) {
+        console.log('⏳ Video buffering - saving', playedSeconds, 'seconds before pause');
+        saveTimeSpent(playedSeconds, currentLessonId);
+      }
+      videoPlayStartTimeRef.current = null; // Stop timer during buffering
+    }
+  }, [isStudent, isYouTubeVideo, currentLessonId]);
 
   const handleVideoSeeked = useCallback(() => {
     if (!videoRef.current || !isStudent) return;
@@ -301,11 +378,36 @@ const CoursePlayer = () => {
 
   const handleVideoEnded = useCallback(() => {
     if (!isStudent || !user?.id || !courseId) return;
-    const currentLesson = getCurrentLesson();
-    if (currentLesson) {
-      courseProgressService.markVideoCompleted(user.id, courseId, currentLesson.id);
+    
+    // For normal videos, save final play time
+    if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
+      const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+      if (playedSeconds > 0) {
+        console.log('⏹️ Video ended - played for', playedSeconds, 'seconds');
+        
+        // Use stored lesson ID instead of getCurrentLesson()
+        if (currentLessonId) {
+          console.log('💾 Saving time for lesson:', currentLessonId);
+          saveTimeSpent(playedSeconds, currentLessonId);
+        } else {
+          console.error('❌ Cannot save time - no lesson ID stored!');
+        }
+      }
+      videoPlayStartTimeRef.current = null;
+      
+      // Clear 30-second auto-save interval
+      if (videoAutoSaveIntervalRef.current) {
+        clearInterval(videoAutoSaveIntervalRef.current);
+        videoAutoSaveIntervalRef.current = null;
+        console.log('⏹️ Cleared 30-second auto-save interval');
+      }
     }
-  }, [isStudent, user?.id, courseId]);
+    
+    // Mark video as completed
+    if (currentLessonId) {
+      courseProgressService.markVideoCompleted(user.id, courseId, currentLessonId);
+    }
+  }, [isStudent, user?.id, courseId, isYouTubeVideo, currentLessonId]);
 
   // Save video position on page unload
   useEffect(() => {
@@ -314,12 +416,29 @@ const CoursePlayer = () => {
     const handleBeforeUnload = () => {
       if (videoRef.current && videoRef.current.currentTime > 0) {
         saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+        
+        // For normal videos, save play time if video was playing
+        if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
+          const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+          if (playedSeconds > 0) {
+            saveTimeSpent(playedSeconds);
+          }
+        }
       }
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && videoRef.current) {
         saveVideoPosition(videoRef.current.currentTime, videoRef.current.duration);
+        
+        // For normal videos, save play time if video was playing
+        if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
+          const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+          if (playedSeconds > 0) {
+            saveTimeSpent(playedSeconds);
+          }
+          videoPlayStartTimeRef.current = null;
+        }
       }
     };
 
@@ -332,8 +451,13 @@ const CoursePlayer = () => {
       if (videoSaveTimeoutRef.current) {
         clearTimeout(videoSaveTimeoutRef.current);
       }
+      // Clear 30-second auto-save interval on unmount
+      if (videoAutoSaveIntervalRef.current) {
+        clearInterval(videoAutoSaveIntervalRef.current);
+        videoAutoSaveIntervalRef.current = null;
+      }
     };
-  }, [isStudent, saveVideoPosition]);
+  }, [isStudent, saveVideoPosition, isYouTubeVideo]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // SESSION RESTORE HANDLING
@@ -396,24 +520,43 @@ const CoursePlayer = () => {
   }, [isStudent, user?.id, courseId, currentModuleIndex, currentLessonIndex, course, saveRestorePoint]);
 
   // Save time spent on lesson (only for students)
-  const saveTimeSpent = async (additionalSeconds) => {
+  const saveTimeSpent = async (additionalSeconds, lessonId = null) => {
     if (!user?.id || !courseId || !isStudent) return;
 
-    const currentLesson = getCurrentLesson();
-    if (!currentLesson) return;
+    // Use provided lessonId or fall back to currentLessonId
+    const targetLessonId = lessonId || currentLessonId;
+    if (!targetLessonId) {
+      console.error('❌ saveTimeSpent: No lesson ID available');
+      return;
+    }
 
     try {
-      // Get current accumulated time from state
-      const totalTime = accumulatedTime + additionalSeconds;
+      // Fetch current time from database first
+      const { data: existing, error: fetchError } = await supabase
+        .from('student_course_progress')
+        .select('time_spent_seconds')
+        .eq('student_id', user.id)
+        .eq('course_id', courseId)
+        .eq('lesson_id', targetLessonId)
+        .maybeSingle();
 
-      console.log('Saving time:', { additionalSeconds, accumulatedTime, totalTime });
+      if (fetchError) {
+        console.error('Error fetching current time:', fetchError);
+        return;
+      }
+
+      // Calculate total time by adding to database value
+      const currentTimeInDb = existing?.time_spent_seconds || 0;
+      const totalTime = currentTimeInDb + additionalSeconds;
+
+      console.log('Saving time:', { additionalSeconds, currentTimeInDb, totalTime, lessonId: targetLessonId });
 
       const { error } = await supabase
         .from('student_course_progress')
         .upsert({
           student_id: user.id,
           course_id: courseId,
-          lesson_id: currentLesson.id,
+          lesson_id: targetLessonId,
           time_spent_seconds: totalTime,
           last_accessed: new Date().toISOString()
         }, {
@@ -423,8 +566,15 @@ const CoursePlayer = () => {
       if (error) {
         console.error('Error saving time spent:', error);
       } else {
-        // Update accumulated time after successful save
-        setAccumulatedTime(totalTime);
+        // Update accumulated time state only if this is the current lesson
+        if (targetLessonId === currentLessonId) {
+          setAccumulatedTime(totalTime);
+        }
+        // Also update the lessonTimeSpent map for sidebar display
+        setLessonTimeSpent(prev => ({
+          ...prev,
+          [targetLessonId]: totalTime
+        }));
       }
     } catch (error) {
       console.error('Error in saveTimeSpent:', error);
@@ -619,14 +769,23 @@ const CoursePlayer = () => {
       console.log('🎬 Target lesson:', lesson?.title, 'ID:', lesson?.id);
       
       if (lesson) {
+        setCurrentLessonId(lesson.id); // Store lesson ID for video tracking
         fetchLessonMedia(lesson);
         initializeLessonProgress(lesson);
       }
     }
   }, [course, currentModuleIndex, currentLessonIndex, positionInitialized]);
 
-  // Track time spent on current lesson
+  // Track time spent on current lesson (for YouTube videos only - page-based)
+  // Normal videos use play/pause tracking instead
   useEffect(() => {
+    // Only use page-based tracking for YouTube videos
+    if (!isYouTubeVideo) {
+      console.log('📊 Normal video detected - using play/pause tracking');
+      return;
+    }
+    
+    console.log('📊 YouTube video detected - using page-based tracking');
     // Start timer when lesson loads
     setLessonStartTime(Date.now());
 
@@ -640,10 +799,15 @@ const CoursePlayer = () => {
         saveTimeSpent(currentTime).catch(err => console.error('Error saving on unmount:', err));
       }
     };
-  }, [currentModuleIndex, currentLessonIndex]);
+  }, [currentModuleIndex, currentLessonIndex, isYouTubeVideo]);
 
-  // Auto-save progress every 30 seconds
+  // Auto-save progress every 30 seconds (for YouTube videos only)
   useEffect(() => {
+    // Only auto-save for YouTube videos
+    if (!isYouTubeVideo) {
+      return;
+    }
+    
     const interval = setInterval(() => {
       if (lessonStartTime) {
         const currentTime = Math.floor((Date.now() - lessonStartTime) / 1000);
@@ -655,7 +819,7 @@ const CoursePlayer = () => {
     }, 30000); // Save every 30 seconds
 
     return () => clearInterval(interval);
-  }, [lessonStartTime, accumulatedTime, currentModuleIndex, currentLessonIndex]);
+  }, [lessonStartTime, accumulatedTime, currentModuleIndex, currentLessonIndex, isYouTubeVideo]);
 
   const fetchLessonMedia = async (targetLesson) => {
     // Use passed lesson or fall back to getCurrentLesson()
@@ -688,9 +852,11 @@ const CoursePlayer = () => {
           // For YouTube videos, use embed URL directly
           if (videoResource.type === 'youtube' && videoResource.embedUrl) {
             console.log('🎬 Setting YouTube embed URL for lesson:', currentLesson.title);
+            setIsYouTubeVideo(true); // Mark as YouTube video
             setLessonVideoUrl(videoResource.embedUrl);
           } else if (videoResource.url) {
             console.log('🎬 Video resource URL for lesson:', currentLesson.title, ':', videoResource.url);
+            setIsYouTubeVideo(false); // Mark as normal video
             
             // Check if URL needs authentication
             if (needsAuthentication(videoResource.url)) {
@@ -861,6 +1027,24 @@ const CoursePlayer = () => {
 
       setCourse(fullCourse);
 
+      // Load time spent for all lessons from database (for students only)
+      if (isStudent && user?.id && transformedModules.length > 0) {
+        const { data: progressData } = await supabase
+          .from('student_course_progress')
+          .select('lesson_id, time_spent_seconds')
+          .eq('student_id', user.id)
+          .eq('course_id', courseId);
+
+        if (progressData && progressData.length > 0) {
+          const timeSpentMap = {};
+          progressData.forEach(({ lesson_id, time_spent_seconds }) => {
+            timeSpentMap[lesson_id] = time_spent_seconds || 0;
+          });
+          setLessonTimeSpent(timeSpentMap);
+          console.log('⏱️ Loaded time for', Object.keys(timeSpentMap).length, 'lessons');
+        }
+      }
+
       // Update total_lessons in enrollment if needed
       if (transformedModules.length > 0 && enrollment) {
         const totalLessons = transformedModules.reduce(
@@ -890,11 +1074,31 @@ const CoursePlayer = () => {
     const currentModule = course.modules[currentModuleIndex];
     const currentLesson = getCurrentLesson();
 
-    // Save current time before navigating
-    if (lessonStartTime) {
-      const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
-      if (timeSpent > 0) {
-        await saveTimeSpent(timeSpent);
+
+    // Save current time before navigating - pass lessonId explicitly
+    if (currentLesson) {
+      // Save YouTube video time (page-based tracking)
+      if (lessonStartTime) {
+        const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
+        if (timeSpent > 0) {
+          await saveTimeSpent(timeSpent, currentLesson.id);
+        }
+      }
+      
+      // Save normal video time (play/pause tracking)
+      if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
+        const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+        if (playedSeconds > 0) {
+          console.log('💾 Saving normal video time before next lesson:', playedSeconds, 'seconds');
+          await saveTimeSpent(playedSeconds, currentLesson.id);
+        }
+        videoPlayStartTimeRef.current = null;
+        
+        // Clear auto-save interval
+        if (videoAutoSaveIntervalRef.current) {
+          clearInterval(videoAutoSaveIntervalRef.current);
+          videoAutoSaveIntervalRef.current = null;
+        }
       }
     }
 
@@ -942,11 +1146,27 @@ const CoursePlayer = () => {
   };
 
   const goToPreviousLesson = async () => {
-    // Save current time before navigating
+    // Save YouTube video time (page-based tracking)
     if (lessonStartTime) {
       const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
       if (timeSpent > 0) {
         await saveTimeSpent(timeSpent);
+      }
+    }
+
+    // Save normal video time (play/pause tracking)
+    if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
+      const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+      if (playedSeconds > 0) {
+        console.log('💾 Saving normal video time before previous lesson:', playedSeconds, 'seconds');
+        await saveTimeSpent(playedSeconds, currentLessonId);
+      }
+      videoPlayStartTimeRef.current = null;
+      
+      // Clear auto-save interval
+      if (videoAutoSaveIntervalRef.current) {
+        clearInterval(videoAutoSaveIntervalRef.current);
+        videoAutoSaveIntervalRef.current = null;
       }
     }
 
@@ -986,11 +1206,27 @@ const CoursePlayer = () => {
   };
 
   const goToLesson = async (moduleIndex, lessonIndex) => {
-    // Save current time before navigating
+    // Save YouTube video time (page-based tracking)
     if (lessonStartTime) {
       const timeSpent = Math.floor((Date.now() - lessonStartTime) / 1000);
       if (timeSpent > 0) {
         await saveTimeSpent(timeSpent);
+      }
+    }
+
+    // Save normal video time (play/pause tracking)
+    if (!isYouTubeVideo && videoPlayStartTimeRef.current) {
+      const playedSeconds = Math.floor((Date.now() - videoPlayStartTimeRef.current) / 1000);
+      if (playedSeconds > 0) {
+        console.log('💾 Saving normal video time before switching lesson:', playedSeconds, 'seconds');
+        await saveTimeSpent(playedSeconds, currentLessonId);
+      }
+      videoPlayStartTimeRef.current = null;
+      
+      // Clear auto-save interval
+      if (videoAutoSaveIntervalRef.current) {
+        clearInterval(videoAutoSaveIntervalRef.current);
+        videoAutoSaveIntervalRef.current = null;
       }
     }
 
@@ -1271,10 +1507,13 @@ const CoursePlayer = () => {
                                   <p className={`text-sm ${isActive ? 'font-medium text-indigo-900' : 'text-gray-700'}`}>
                                     {lesson.title || lesson}
                                   </p>
-                                  {lesson.duration && (
+                                  {lessonTimeSpent[lesson.id] > 0 && (
                                     <div className="flex items-center gap-1 mt-1">
-                                      <Clock className="w-3 h-3 text-gray-400" />
-                                      <span className="text-xs text-gray-500">{lesson.duration}</span>
+                                      <Clock className="w-3 h-3 text-blue-500" />
+                                      <span className="text-xs text-blue-600 font-medium">
+                                        {Math.floor(lessonTimeSpent[lesson.id] / 3600) > 0 && `${Math.floor(lessonTimeSpent[lesson.id] / 3600)}h `}
+                                        {Math.floor((lessonTimeSpent[lesson.id] % 3600) / 60)}m {lessonTimeSpent[lesson.id] % 60}s spent
+                                      </span>
                                     </div>
                                   )}
                                 </div>
@@ -1364,6 +1603,9 @@ const CoursePlayer = () => {
                               controlsList="nodownload"
                               title={currentLesson.title}
                               onLoadedMetadata={handleVideoLoadedMetadata}
+                              onPlay={handleVideoPlay}
+                              onPlaying={handleVideoPlaying}
+                              onWaiting={handleVideoWaiting}
                               onTimeUpdate={handleVideoTimeUpdate}
                               onPause={handleVideoPause}
                               onSeeked={handleVideoSeeked}

@@ -65,6 +65,9 @@ export const getStudentByEmail = async (email) => {
       .from('students')
       .select(`
         *,
+        users!fk_students_user (
+          role
+        ),
         school:organizations!students_school_id_fkey (
           id,
           name,
@@ -477,6 +480,10 @@ const formattedExperience = tableExperience
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
 
+      // User role from users table
+      users: data.users || null,
+      userRole: data.users?.role || null,
+
       // School/University College linkage
       school_id: data.school_id,
       university_college_id: data.university_college_id,
@@ -587,12 +594,13 @@ const formattedExperience = tableExperience
  */
 export const getStudentById = async (studentId) => {
   try {
-    // console.log('🔍 Fetching student data for ID:', studentId);
-
     let { data, error } = await supabase
       .from('students')
       .select(`
         *,
+        users!fk_students_user (
+          role
+        ),
         school:organizations!students_school_id_fkey (
           id,
           name,
@@ -985,6 +993,10 @@ export const getStudentById = async (studentId) => {
       email: data.email || transformedProfile.email,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
+
+      // User role from users table
+      users: data.users || null,
+      userRole: data.users?.role || null,
 
       // School/University College linkage
       school_id: data.school_id,
@@ -1729,12 +1741,6 @@ export async function updateEducationByEmail(email, educationData = []) {
             normalize(record.status) !== normalize(existingRecord.status) ||
             record.enabled !== existingRecord.enabled;
           
-          console.log(`🔍 Versioning check for education "${record.degree}":`, {
-            hasChanges,
-            existingApprovalStatus: existingRecord.approval_status,
-            recordDegree: normalize(record.degree),
-            existingDegree: normalize(existingRecord.degree)
-          });
           
           if (hasChanges) {
             // Data changed - create versioning
@@ -1756,14 +1762,12 @@ export async function updateEducationByEmail(email, educationData = []) {
             record.pending_edit_data = { ...record };
             record.has_pending_edit = true;
             record.approval_status = 'pending';
-            console.log(`✅ Created versioning for education "${record.degree}" - changes detected`);
           } else {
             // No changes - keep as verified
             record.verified_data = null;
             record.pending_edit_data = null;
             record.has_pending_edit = false;
             record.approval_status = existingRecord.approval_status; // Keep existing status
-            console.log(`✅ No changes for education "${record.degree}" - keeping approval_status: ${existingRecord.approval_status}`);
           }
         }
         // Case 3: New education or unverified education - no versioning needed
@@ -1890,7 +1894,6 @@ export async function updateTrainingByEmail(email, trainingData = []) {
       approvalAuthority = 'school_admin';
     }
 
-    console.log('🔧 Training - Student type:', studentRecord.student_type, '→ Approval authority:', approvalAuthority);
 
     // Get existing training records - fetch full records for versioning check
     const { data: existingTrainings, error: existingError } = await supabase
@@ -1971,13 +1974,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
             record.total_modules !== existingRecord.total_modules ||
             record.hours_spent !== existingRecord.hours_spent;
           
-          console.log(`🔍 Versioning check for training "${record.title}":`, {
-            hasChanges,
-            existingApprovalStatus: existingRecord.approval_status,
-            recordTitle: normalize(record.title),
-            existingTitle: normalize(existingRecord.title),
-            titlesMatch: normalize(record.title) === normalize(existingRecord.title)
-          });
+         
           
           if (hasChanges) {
             // Data changed - create versioning
@@ -2000,14 +1997,12 @@ export async function updateTrainingByEmail(email, trainingData = []) {
             record.pending_edit_data = { ...record };
             record.has_pending_edit = true;
             record.approval_status = 'pending';
-            console.log(`✅ Created versioning for training "${record.title}" - changes detected`);
           } else {
             // No changes - keep as verified
             record.verified_data = null;
             record.pending_edit_data = null;
             record.has_pending_edit = false;
             record.approval_status = existingRecord.approval_status; // Keep existing status
-            console.log(`✅ No changes for training "${record.title}" - keeping approval_status: ${existingRecord.approval_status}`);
           }
         }
         // Case 3: New training or unverified training - no versioning needed
@@ -2108,12 +2103,8 @@ export async function updateTrainingByEmail(email, trainingData = []) {
 
               if (certUpdateError) {
                 console.error('  ❌ Error updating certificate URL:', certUpdateError);
-              } else {
-                console.log('  ✅ Certificate URL updated');
-              }
-            } else {
-              console.log('  ℹ️ Certificate URL unchanged');
-            }
+              } 
+            } 
           } else {
             // ✅ Create new certificate with ONLY required fields
             const certRecord = {
@@ -2135,9 +2126,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
 
             if (certInsertError) {
               console.error('  ❌ Error inserting certificate:', certInsertError);
-            } else {
-              console.log('  ✅ Certificate created with URL (pending approval)');
-            }
+            } 
           }
         } else {
           // No certificate URL, delete any existing certificate for this training
@@ -2211,9 +2200,7 @@ export async function updateTrainingByEmail(email, trainingData = []) {
             }
           }
 
-          // if (skillsToAdd.length === 0 && skillIdsToDelete.length === 0) {
-          //   console.log('  ℹ️ Skills unchanged');
-          // }
+        
         } else {
           // No skills, delete any existing skills for this training
           const { error: deleteError } = await supabase
@@ -2305,30 +2292,86 @@ export async function updateSingleTrainingById(trainingId, updateData, email) {
     if (Array.isArray(skills)) {
       const studentId = updatedTraining.student_id;
       
-      // Get existing skills for this training
+      // Get ALL existing skills for this training (both technical and soft)
       const { data: existingSkills } = await supabase
         .from('skills')
-        .select('id, name')
-        .eq('training_id', trainingId)
-        .eq('type', 'technical');
+        .select('id, name, type, level, description')
+        .eq('training_id', trainingId);
 
-      const existingSkillNames = new Set(
-        (existingSkills || []).map(s => s.name.toLowerCase().trim())
+
+      // Normalize skills to objects with full data
+      const normalizedSkills = skills.map(skill => {
+        if (typeof skill === 'object' && skill.name) {
+          // Already an object with full data
+          return {
+            name: skill.name.trim(),
+            type: skill.type || 'technical', // Use provided type or default to technical
+            level: skill.level || 3,
+            description: skill.description || ''
+          };
+        } else if (typeof skill === 'string') {
+          // Legacy string format - default to technical
+          return {
+            name: skill.trim(),
+            type: 'technical',
+            level: 3,
+            description: ''
+          };
+        }
+        return null;
+      }).filter(Boolean);
+
+
+      // Create a map of existing skills by name+type for comparison
+      const existingSkillsMap = new Map(
+        (existingSkills || []).map(s => [
+          `${s.name.toLowerCase().trim()}_${s.type}`,
+          s
+        ])
       );
 
-      const newSkillNames = skills
-        .filter(skill => typeof skill === 'string' && skill.trim().length > 0)
-        .map(skill => skill.trim());
+      // Find skills to add or update
+      const skillsToUpsert = [];
+      const processedKeys = new Set();
 
-      // Find skills to add
-      const skillsToAdd = newSkillNames.filter(
-        skillName => !existingSkillNames.has(skillName.toLowerCase())
-      );
+      for (const skill of normalizedSkills) {
+        const key = `${skill.name.toLowerCase()}_${skill.type}`;
+        processedKeys.add(key);
+        
+        const existing = existingSkillsMap.get(key);
+        
+        if (existing) {
+          // Check if we need to update (level or description changed)
+          if (existing.level !== skill.level || existing.description !== skill.description) {
+            // Update existing skill
+            await supabase
+              .from('skills')
+              .update({
+                level: skill.level,
+                description: skill.description,
+                updated_at: nowIso
+              })
+              .eq('id', existing.id);
+          }
+        } else {
+          // New skill to add
+          skillsToUpsert.push({
+            id: generateUuid(),
+            student_id: studentId,
+            training_id: trainingId,
+            name: skill.name,
+            type: skill.type, // Use the actual type from the skill object
+            level: skill.level,
+            description: skill.description,
+            created_at: nowIso,
+            updated_at: nowIso,
+          });
+        }
+      }
 
-      // Find skills to remove
-      const newSkillNamesSet = new Set(newSkillNames.map(s => s.toLowerCase()));
+      // Find skills to remove (exist in DB but not in new list)
       const skillIdsToDelete = (existingSkills || [])
-        .filter(s => !newSkillNamesSet.has(s.name.toLowerCase().trim()))
+        .filter(s => !processedKeys.has(`${s.name.toLowerCase().trim()}_${s.type}`))
         .map(s => s.id);
 
       // Delete removed skills
@@ -2339,26 +2382,14 @@ export async function updateSingleTrainingById(trainingId, updateData, email) {
           .in('id', skillIdsToDelete);
       }
 
-      // Add new skills
-      if (skillsToAdd.length > 0) {
-        const skillRecords = skillsToAdd.map(skillName => ({
-          id: generateUuid(),
-          student_id: studentId,
-          training_id: trainingId,
-          name: skillName,
-          type: 'technical',
-          created_at: nowIso,
-          updated_at: nowIso,
-        }));
-
+      // Insert new skills
+      if (skillsToUpsert.length > 0) {
         const { error: skillsInsertError } = await supabase
           .from('skills')
-          .insert(skillRecords);
+          .insert(skillsToUpsert);
 
         if (skillsInsertError) {
           console.error('❌ Error inserting skills:', skillsInsertError);
-        } else {
-          console.log(`✅ Added ${skillsToAdd.length} new skills`);
         }
       }
     }
@@ -2480,8 +2511,8 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.id;
 
     // Determine approval authority based on student type
     let approvalAuthority = 'rareminds_admin'; // default
@@ -2491,7 +2522,6 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
       approvalAuthority = 'school_admin';
     }
 
-    console.log('🔧 Experience - Student type:', studentRecord.student_type, '→ Approval authority:', approvalAuthority);
 
     // Get existing experience records
     const { data: existingExperience, error: existingError } = await supabase
@@ -2506,7 +2536,6 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
     const nowIso = new Date().toISOString();
 
     // CRITICAL: Clean incoming data to remove old/invalid field names
-    console.log('🔍 RAW incoming experienceData:', JSON.stringify(experienceData, null, 2));
     
     // Check for org_name in incoming data
     const hasOrgName = (experienceData || []).some(exp => 
@@ -2555,12 +2584,10 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
         }
       });
       
-      console.log('🧹 Cleaned single experience:', JSON.stringify(validFields, null, 2));
       
       return validFields;
     });
 
-    console.log('🧹 All cleaned experience data:', JSON.stringify(cleanedExperienceData, null, 2));
 
     // Format experience data for database
     const formatted = cleanedExperienceData
@@ -2626,13 +2653,7 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
             normalize(record.description) !== normalize(existingRecord.description) ||
             record.enabled !== existingRecord.enabled;
           
-          console.log(`🔍 Versioning check for experience "${record.role}":`, {
-            hasChanges,
-            existingApprovalStatus: existingRecord.approval_status,
-            recordRole: normalize(record.role),
-            existingRole: normalize(existingRecord.role),
-            rolesMatch: normalize(record.role) === normalize(existingRecord.role)
-          });
+        
           
           if (hasChanges) {
             // Data changed - create versioning
@@ -2644,14 +2665,12 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
             record.pending_edit_data = createCleanData(record);
             record.has_pending_edit = true;
             record.approval_status = 'pending';
-            console.log(`✅ Created versioning for experience "${record.role}" - changes detected`);
           } else {
             // No changes - keep as verified
             record.verified_data = null;
             record.pending_edit_data = null;
             record.has_pending_edit = false;
             record.approval_status = existingRecord.approval_status; // Keep existing status
-            console.log(`✅ No changes for experience "${record.role}" - keeping approval_status: ${existingRecord.approval_status}`);
           }
         }
         // Case 3: New experience or unverified experience - no versioning needed
@@ -2661,19 +2680,16 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
 
     // Determine which records to delete
     const incomingIds = new Set(formatted.filter((record) => record.id).map((record) => record.id));
-    console.log('🔍 Incoming IDs for experience:', Array.from(incomingIds));
-    console.log('🔍 Existing experience IDs:', (existingExperience || []).map(e => e.id));
+    
     
     const toDelete = (existingExperience || [])
       .filter((existing) => !incomingIds.has(existing.id))
       .map((existing) => existing.id);
     
-    console.log('🗑️ Experience IDs to delete:', toDelete);
 
     // Delete removed records
     if (toDelete.length > 0) {
-      console.log(`🗑️ Deleting ${toDelete.length} experience record(s) from database...`);
-      console.log('🗑️ IDs to delete:', toDelete);
+     
       
       const { error: deleteError, data: deleteData } = await supabase
         .from('experience')
@@ -2686,10 +2702,7 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
         return { success: false, error: deleteError.message };
       }
       
-      console.log(`✅ Successfully deleted ${toDelete.length} experience record(s)`, deleteData);
-    } else {
-      console.log('ℹ️ No experience records to delete');
-    }
+    } 
 
     // Upsert experience records
     if (formatted.length > 0) {
@@ -2734,7 +2747,6 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
         return cleaned;
       });
       
-      console.log('🧹 Cleaned experience data before upsert:', JSON.stringify(cleanedFormatted, null, 2));
       
       // WORKAROUND: Explicitly specify only valid columns for upsert
       // This prevents Supabase from trying to infer columns from data
@@ -2755,37 +2767,8 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
         return cleaned;
       });
       
-      console.log('🔒 Strictly cleaned data (only valid columns):', JSON.stringify(strictlyCleanedData, null, 2));
-      
-      // CRITICAL DEBUG: Check each record for any org_name references
-      strictlyCleanedData.forEach((record, index) => {
-        console.log(`\n🔍 Record ${index} (${record.role}):`);
-        console.log(`  - Has verified_data:`, !!record.verified_data);
-        console.log(`  - Has pending_edit_data:`, !!record.pending_edit_data);
-        
-        if (record.verified_data) {
-          console.log(`  - verified_data keys:`, Object.keys(record.verified_data));
-          if (record.verified_data.org_name) {
-            console.error(`  ❌ FOUND org_name in verified_data!`);
-          }
-        }
-        
-        if (record.pending_edit_data) {
-          console.log(`  - pending_edit_data keys:`, Object.keys(record.pending_edit_data));
-          if (record.pending_edit_data.org_name) {
-            console.error(`  ❌ FOUND org_name in pending_edit_data!`);
-          }
-        }
-        
-        // Check if any top-level key is org_name
-        if (record.org_name) {
-          console.error(`  ❌ FOUND org_name at top level!`);
-        }
-      });
-      
       // NUCLEAR OPTION: Update records one by one instead of bulk upsert
       // This avoids whatever Supabase PostgREST bug is causing the org_name error
-      console.log('\n🔄 Updating records individually to avoid bulk upsert bug...');
       
       const updatePromises = strictlyCleanedData.map(async (record) => {
         const { data, error} = await supabase
@@ -2803,7 +2786,6 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
           throw error;
         }
         
-        console.log(`✅ Updated record ${record.id} (${record.role})`);
         return data;
       });
       
@@ -2816,7 +2798,6 @@ export const updateExperienceByEmail = async (email, experienceData = []) => {
         return { success: false, error: upsertError.message };
       }
       
-      console.log('✅ Upsert successful:', upsertData);
     } else if ((existingExperience || []).length > 0) {
       // Delete all if no experience data provided
       const { error: deleteAllError } = await supabase
@@ -2894,8 +2875,8 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.id;
 
     // Get existing technical skills (fetch full records for versioning)
     const { data: existingSkills, error: existingError } = await supabase
@@ -2938,28 +2919,9 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
         // VERSIONING LOGIC: Check if this is an edit of verified data
         const existingRecord = (existingSkills || []).find(s => s.id === record.id);
         
-        console.log('🔍 Technical Skill Versioning Check:', {
-          skillName: record.name,
-          hasExistingRecord: !!existingRecord,
-          existingApprovalStatus: existingRecord?.approval_status,
-          existingHasPendingEdit: existingRecord?.has_pending_edit,
-          newData: {
-            name: record.name,
-            level: record.level,
-            description: record.description,
-            enabled: record.enabled
-          },
-          existingData: existingRecord ? {
-            name: existingRecord.name,
-            level: existingRecord.level,
-            description: existingRecord.description,
-            enabled: existingRecord.enabled
-          } : null
-        });
-        
+
         // Case 1: Skill already has pending edits - preserve original verified_data
         if (existingRecord && existingRecord.has_pending_edit === true) {
-          console.log('📝 Case 1: Skill already has pending edits');
           record.verified_data = existingRecord.verified_data;
           record.pending_edit_data = { ...record };
           record.has_pending_edit = true;
@@ -2967,7 +2929,6 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
         }
         // Case 2: First edit of verified/approved skill - create versioning
         else if (existingRecord && (existingRecord.approval_status === 'verified' || existingRecord.approval_status === 'approved')) {
-          console.log('📝 Case 2: First edit of verified/approved skill');
           const normalize = (val) => (val === null || val === undefined || val === '') ? null : val;
           
           const hasChanges = 
@@ -2976,13 +2937,7 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
             normalize(record.description) !== normalize(existingRecord.description) ||
             record.enabled !== existingRecord.enabled;
           
-          console.log('🔍 Change detection:', {
-            nameChanged: normalize(record.name) !== normalize(existingRecord.name),
-            levelChanged: normalize(record.level) !== normalize(existingRecord.level),
-            descriptionChanged: normalize(record.description) !== normalize(existingRecord.description),
-            enabledChanged: record.enabled !== existingRecord.enabled,
-            hasChanges
-          });
+          
           
           if (hasChanges) {
             const verifiedData = {
@@ -2997,17 +2952,13 @@ export async function updateTechnicalSkillsByEmail(email, skillsData = []) {
             record.pending_edit_data = { ...record };
             record.has_pending_edit = true;
             record.approval_status = 'pending';
-            console.log(`✅ Created versioning for technical skill "${record.name}" - changes detected`);
           } else {
-            console.log(`ℹ️ No changes detected for technical skill "${record.name}" - keeping approval_status`);
             record.verified_data = null;
             record.pending_edit_data = null;
             record.has_pending_edit = false;
             record.approval_status = existingRecord.approval_status;
           }
-        } else {
-          console.log('📝 Case 3: New skill or not verified yet');
-        }
+        } 
 
         return record;
       });
@@ -3120,8 +3071,8 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.id;
 
     // Get existing soft skills (fetch full records for versioning)
     const { data: existingSkills, error: existingError } = await supabase
@@ -3194,7 +3145,6 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
             record.pending_edit_data = { ...record };
             record.has_pending_edit = true;
             record.approval_status = 'pending';
-            console.log(`✅ Created versioning for soft skill "${record.name}" - changes detected`);
           } else {
             record.verified_data = null;
             record.pending_edit_data = null;
@@ -3258,8 +3208,7 @@ export async function updateSoftSkillsByEmail(email, skillsData = []) {
  * Update skills in skills table (general function for mixed skill types)
  */
 export async function updateSkillsByEmail(email, skillsData = []) {
-  console.log('🔧 updateSkillsByEmail: Received skills data:', skillsData);
-  
+
   try {
     // Find student record
     let studentRecord = null;
@@ -3316,8 +3265,8 @@ export async function updateSkillsByEmail(email, skillsData = []) {
       return { success: false, error: 'Student not found' };
     }
 
-    // Use user_id as student_id (as per foreign key constraint)
-    const studentId = studentRecord.user_id;
+    // Use id as student_id (as per foreign key constraint)
+    const studentId = studentRecord.id;
 
     // Get existing skills (both technical and soft) - fetch full records for versioning check
     const { data: existingSkills, error: existingError } = await supabase
@@ -3349,8 +3298,7 @@ export async function updateSkillsByEmail(email, skillsData = []) {
           updated_at: nowIso,
         };
 
-        console.log('🔧 Service: Processing skill:', skill);
-        console.log('🔧 Service: Created record:', record);
+
 
         // Preserve existing ID if valid UUID
         const rawId = typeof skill.id === 'string' ? skill.id.trim() : null;
@@ -3384,14 +3332,7 @@ export async function updateSkillsByEmail(email, skillsData = []) {
             normalize(record.description) !== normalize(existingRecord.description) ||
             record.enabled !== existingRecord.enabled;
           
-          console.log(`🔍 Versioning check for skill "${record.name}":`, {
-            hasChanges,
-            existingApprovalStatus: existingRecord.approval_status,
-            recordName: normalize(record.name),
-            existingName: normalize(existingRecord.name),
-            namesMatch: normalize(record.name) === normalize(existingRecord.name)
-          });
-          
+        
           if (hasChanges) {
             // Data changed - create versioning
             const verifiedData = {
@@ -3410,14 +3351,12 @@ export async function updateSkillsByEmail(email, skillsData = []) {
             record.pending_edit_data = { ...record };
             record.has_pending_edit = true;
             record.approval_status = 'pending';
-            console.log(`✅ Created versioning for skill "${record.name}" - changes detected`);
           } else {
             // No changes - keep as verified
             record.verified_data = null;
             record.pending_edit_data = null;
             record.has_pending_edit = false;
             record.approval_status = existingRecord.approval_status; // Keep existing status
-            console.log(`✅ No changes for skill "${record.name}" - keeping approval_status: ${existingRecord.approval_status}`);
           }
         }
         // Case 3: New skill or unverified skill - no versioning needed
@@ -3548,7 +3487,6 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
       approvalAuthority = 'school_admin';
     }
 
-    console.log('🔧 Student type:', studentRecord.student_type, '→ Approval authority:', approvalAuthority);
 
     // Get existing projects
     const { data: existingProjects, error: existingError } = await supabase
@@ -3600,8 +3538,7 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
           updated_at: nowIso,
         };
         
-        console.log('✅ Formatted record:', record);
-        console.log('✅ Record role value:', record.role);
+       
 
         // Preserve existing ID if valid UUID
         const rawId = typeof project.id === 'string' ? project.id.trim() : null;
@@ -3647,13 +3584,7 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
             normalize(record.ppt_url) !== normalize(existingRecord.ppt_url) ||
             record.enabled !== existingRecord.enabled;
           
-          console.log(`🔍 Versioning check for project "${record.title}":`, {
-            hasChanges,
-            existingApprovalStatus: existingRecord.approval_status,
-            recordTitle: normalize(record.title),
-            existingTitle: normalize(existingRecord.title),
-            titlesMatch: normalize(record.title) === normalize(existingRecord.title)
-          });
+          
           
           if (hasChanges) {
             // Data changed - create versioning
@@ -3690,14 +3621,12 @@ export const updateProjectsByEmail = async (email, projectsData = []) => {
             record.pending_edit_data = { ...record };
             record.has_pending_edit = true;
             record.approval_status = 'pending';
-            console.log(`✅ Created versioning for project "${record.title}" - changes detected`);
           } else {
             // No changes - keep as verified
             record.verified_data = null;
             record.pending_edit_data = null;
             record.has_pending_edit = false;
             record.approval_status = existingRecord.approval_status; // Keep existing status
-            console.log(`✅ No changes for project "${record.title}" - keeping approval_status: ${existingRecord.approval_status}`);
           }
         }
         // Case 3: New project or unverified project - no versioning needed
@@ -3923,13 +3852,7 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
             normalize(record.category) !== normalize(existingRecord.category) ||
             record.enabled !== existingRecord.enabled;
           
-          console.log(`🔍 Versioning check for "${record.title}":`, {
-            hasChanges,
-            existingApprovalStatus: existingRecord.approval_status,
-            recordTitle: normalize(record.title),
-            existingTitle: normalize(existingRecord.title),
-            titlesMatch: normalize(record.title) === normalize(existingRecord.title)
-          });
+          
           
           if (hasChanges) {
             // Data changed - create versioning
@@ -3956,14 +3879,12 @@ export const updateCertificatesByEmail = async (email, certificatesData = []) =>
             record.pending_edit_data = { ...record };
             record.has_pending_edit = true;
             record.approval_status = 'pending';
-            console.log(`✅ Created versioning for "${record.title}" - changes detected`);
           } else {
             // No changes - keep as verified
             record.verified_data = null;
             record.pending_edit_data = null;
             record.has_pending_edit = false;
             record.approval_status = existingRecord.approval_status; // Keep existing status
-            console.log(`✅ No changes for "${record.title}" - keeping approval_status: ${existingRecord.approval_status}`);
           }
         }
         // Case 3: New certificate or unverified certificate - no versioning needed

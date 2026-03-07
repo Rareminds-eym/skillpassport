@@ -29,6 +29,7 @@ import { FileText, Rocket, Sprout, Star, Wrench } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../hooks/useAuth";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { supabase } from "../../../lib/supabaseClient";
 import { generateBadges } from "../../../services/badgeService";
@@ -265,6 +266,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   // Navigation hook
   const navigate = useNavigate();
 
+  // Get auth state
+  const { role: userRole } = useAuth();
+
   // Get logged-in user's email from localStorage
   const userEmail = localStorage.getItem("userEmail");
   
@@ -446,70 +450,88 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const institutionName = React.useMemo(() => {
     if (!realStudentData) return "Institution";
 
-    // Debug logging
-
-    // For school students - check schools relationship first, then fallback to college/university field
-    if (realStudentData.school_id) {
-      if (realStudentData.schools?.name) {
-        return realStudentData.schools.name;
-      }
-      // Use fetched name if available
-      if (fetchedInstitutionName) {
-        return fetchedInstitutionName;
-      }
-      // Fallback to college_school_name column
-      if (realStudentData.college_school_name) {
-        return realStudentData.college_school_name;
-      }
-      // Fallback to university field (which might contain school name)
-      if (realStudentData.university) {
-        return typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
-      }
-      if (realStudentData.profile?.university) {
-        return realStudentData.profile.university;
-      }
-      return "School";
+    // Priority 1: School relationship (school_id)
+    if (realStudentData.school_id && (realStudentData.schools?.name || fetchedInstitutionName)) {
+      return realStudentData.schools?.name || fetchedInstitutionName;
     }
 
-    // For college students - check university_colleges relationship
+    // Priority 2: University college relationship (university_college_id)
     if (realStudentData.university_college_id) {
       if (realStudentData.university_colleges) {
         const college = realStudentData.university_colleges;
         const university = college.universities;
         return university?.name ? `${college.name} - ${university.name}` : college.name;
       }
-      // Use fetched name if available
       if (fetchedInstitutionName) {
         return fetchedInstitutionName;
       }
-      // Fallback to college_school_name column
-      if (realStudentData.college_school_name) {
-        return realStudentData.college_school_name;
-      }
-      // Fallback to university field
-      if (realStudentData.university) {
-        return typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
-      }
-      if (realStudentData.profile?.university) {
-        return realStudentData.profile.university;
-      }
-      return "College";
     }
 
-    // For B2C students without IDs - check college field (used for custom school/college names)
-    if (realStudentData.college) {
-      return typeof realStudentData.college === 'object' ? realStudentData.college?.name : realStudentData.college;
+    // Priority 3: College relationship (college_id)
+    if (realStudentData.college_id && realStudentData.college?.name) {
+      return realStudentData.college.name;
     }
 
-    // Fallback to college_school_name column for any student type
+    // Priority 4: Custom entries - college_school_name column
     if (realStudentData.college_school_name) {
       return realStudentData.college_school_name;
     }
 
-    // For students without school_id or university_college_id
-    const universityName = typeof realStudentData.university === 'object' ? realStudentData.university?.name : realStudentData.university;
-    return universityName || realStudentData.profile?.university || "Institution";
-  }, [realStudentData, fetchedInstitutionName]);
+    // Priority 5: Custom entries - university column
+    if (realStudentData.university) {
+      const universityName = typeof realStudentData.university === 'object' 
+        ? realStudentData.university?.name 
+        : realStudentData.university;
+      if (universityName) return universityName;
+    }
+
+    // Priority 6: Profile university
+    if (realStudentData.profile?.university) {
+      return realStudentData.profile.university;
+    }
+
+    // Priority 7: For learners - show most recent experience company or education institution
+    if (userRole === 'learner') {
+      // Check for most recent experience (current job or latest)
+      if (realStudentData.experience && realStudentData.experience.length > 0) {
+        const currentJob = realStudentData.experience.find(exp => exp.end_date === null || exp.end_date === undefined);
+        if (currentJob?.organization && currentJob?.role) {
+          return `${currentJob.role} at ${currentJob.organization}`;
+        }
+        if (currentJob?.organization) {
+          return currentJob.organization;
+        }
+        // If no current job, get most recent by end_date
+        const sortedExperience = [...realStudentData.experience].sort((a, b) => {
+          const dateA = a.end_date ? new Date(a.end_date) : new Date();
+          const dateB = b.end_date ? new Date(b.end_date) : new Date();
+          return dateB - dateA;
+        });
+        if (sortedExperience[0]?.organization && sortedExperience[0]?.role) {
+          return `${sortedExperience[0].role} at ${sortedExperience[0].organization}`;
+        }
+        if (sortedExperience[0]?.organization) {
+          return sortedExperience[0].organization;
+        }
+      }
+
+      // Check for most recent education
+      if (realStudentData.education && realStudentData.education.length > 0) {
+        const sortedEducation = [...realStudentData.education].sort((a, b) => {
+          const yearA = a.year_of_passing ? parseInt(a.year_of_passing) : 0;
+          const yearB = b.year_of_passing ? parseInt(b.year_of_passing) : 0;
+          return yearB - yearA;
+        });
+        if (sortedEducation[0]?.university) {
+          return sortedEducation[0].university;
+        }
+      }
+
+      return 'Learner';
+    }
+
+    return "Institution";
+  }, [realStudentData, fetchedInstitutionName, userRole]);
 
   // Determine institution location from relationships or fetched data
   const institutionLocation = React.useMemo(() => {
@@ -937,9 +959,9 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div> */}
                 </div>
 
-                {/* School-specific fields - Display when school_id is not null AND has actual data - COMPACT HORIZONTAL */}
-                {realStudentData?.school_id && (realStudentData?.grade || realStudentData?.section || realStudentData?.roll_number || realStudentData?.admission_number) && (
-                  <div className="bg-blue-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-blue-200/60 shadow-md">
+                {/* School-specific fields - Display for school_student role */}
+                {userRole === 'school_student' && (realStudentData?.grade || realStudentData?.section || realStudentData?.roll_number || realStudentData?.admission_number) && (
+                  <div className="bg-blue-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-indigo-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <AcademicCapIcon className="w-3 sm:w-4 h-3 sm:h-4 text-blue-700" />
                       <h3 className="text-gray-900 font-semibold text-xs sm:text-sm">School Info</h3>
@@ -969,8 +991,8 @@ const ProfileHeroEdit = ({ onEditClick }) => {
                   </div>
                 )}
 
-                {/* College-specific fields - Display when university_college_id is not null AND has actual data - COMPACT HORIZONTAL */}
-                {realStudentData?.university_college_id && (realStudentData?.registration_number || realStudentData?.admission_number || realStudentData?.student_id) && (
+                {/* College-specific fields - Display for college_student role */}
+                {userRole === 'college_student' && (realStudentData?.registration_number || realStudentData?.admission_number || realStudentData?.branch_field) && (
                   <div className="bg-indigo-50/60 backdrop-blur-md rounded-lg sm:rounded-xl p-2 sm:p-3 border border-indigo-200/60 shadow-md">
                     <div className="flex items-center gap-2 mb-2">
                       <TrophyIcon className="w-3 sm:w-4 h-3 sm:h-4 text-indigo-700" />

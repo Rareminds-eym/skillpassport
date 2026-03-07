@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { isJwtExpiryError } from '../utils/authErrorHandler';
+import { usePromotionalEvent } from '../hooks/usePromotionalEvent';
 
 const PromotionalEventContext = createContext(null);
 
@@ -10,9 +9,8 @@ const PromotionalEventContext = createContext(null);
  * Banner persists until user closes it (stored in sessionStorage)
  */
 export const PromotionalEventProvider = ({ children }) => {
-  const [event, setEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Fetch event data using React Query
+  const { data: event, isLoading: loading, error: queryError } = usePromotionalEvent();
   
   // Modal dismissed state - persisted in sessionStorage
   const [isModalDismissed, setIsModalDismissed] = useState(false);
@@ -20,48 +18,15 @@ export const PromotionalEventProvider = ({ children }) => {
   // Banner dismissed state - persisted in sessionStorage
   const [isBannerDismissed, setIsBannerDismissed] = useState(false);
 
-  // Fetch active promotional event
+  // Check sessionStorage for dismissal states when event loads
   useEffect(() => {
-    const fetchEvent = async () => {
-      try {
-        const now = new Date().toISOString();
-        
-        const { data, error: fetchError } = await supabase
-          .from('promotional_events')
-          .select('*')
-          .eq('is_active', true)
-          .lte('start_date', now)
-          .gte('end_date', now)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (fetchError) {
-          // JWT errors are handled by AuthContext
-          if (isJwtExpiryError(fetchError)) {
-            return;
-          }
-          throw fetchError;
-        }
-
-        if (data) {
-          setEvent(data);
-          // Check sessionStorage for dismissal states
-          const modalKey = `promo_modal_dismissed_${data.event_code}`;
-          const bannerKey = `promo_banner_dismissed_${data.event_code}`;
-          setIsModalDismissed(sessionStorage.getItem(modalKey) === 'true');
-          setIsBannerDismissed(sessionStorage.getItem(bannerKey) === 'true');
-        }
-      } catch (err) {
-        console.error('Error fetching promotional event:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEvent();
-  }, []);
+    if (event) {
+      const modalKey = `promo_modal_dismissed_${event.event_code}`;
+      const bannerKey = `promo_banner_dismissed_${event.event_code}`;
+      setIsModalDismissed(sessionStorage.getItem(modalKey) === 'true');
+      setIsBannerDismissed(sessionStorage.getItem(bannerKey) === 'true');
+    }
+  }, [event]);
 
 
   // Dismiss modal handler - banner will show after this
@@ -107,7 +72,7 @@ export const PromotionalEventProvider = ({ children }) => {
   const value = {
     event,
     loading,
-    error,
+    error: queryError?.message || null,
     showModal,
     showBanner,
     dismissModal,

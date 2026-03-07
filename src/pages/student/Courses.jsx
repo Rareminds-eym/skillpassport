@@ -44,6 +44,8 @@ const Courses = () => {
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [studentGrade, setStudentGrade] = useState(null);
+  const [studentBranch, setStudentBranch] = useState(null);
+  const [filterByBranch, setFilterByBranch] = useState(true); // Toggle for branch filtering
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
@@ -87,12 +89,12 @@ const Courses = () => {
   // Fetch courses and enrollments from Supabase
   // Use user?.email as dependency instead of user object to prevent re-fetches on object reference changes
   useEffect(() => {
-    // Only fetch courses once on mount
-    if (!hasFetchedCoursesRef.current) {
+    // Only fetch courses once on mount, but wait for student info to be loaded
+    if (!hasFetchedCoursesRef.current && (studentBranch !== null || studentGrade !== null)) {
       hasFetchedCoursesRef.current = true;
       fetchCourses();
     }
-  }, []);
+  }, [studentBranch, studentGrade]);
 
   // Fetch courses when search, filter, sort, or page changes
   useEffect(() => {
@@ -100,29 +102,30 @@ const Courses = () => {
     if (hasFetchedCoursesRef.current) {
       fetchCourses();
     }
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage]);
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, currentPage, filterByBranch]);
 
-  // Fetch student grade for classification filtering
+  // Fetch student grade and branch for filtering
   useEffect(() => {
-    const fetchStudentGrade = async () => {
+    const fetchStudentInfo = async () => {
       if (!user?.email) return;
       
       try {
         const { data, error } = await supabase
           .from('students')
-          .select('grade')
+          .select('grade, branch_field')
           .eq('email', user.email)
           .maybeSingle();
         
         if (!error && data) {
           setStudentGrade(data.grade);
+          setStudentBranch(data.branch_field);
         }
       } catch (error) {
-        console.error('Error fetching student grade:', error);
+        console.error('Error fetching student info:', error);
       }
     };
     
-    fetchStudentGrade();
+    fetchStudentInfo();
   }, [user?.email]);
 
   // Separate effect for enrollments - only when user email changes
@@ -161,7 +164,7 @@ const Courses = () => {
         .in('status', ['Active', 'Upcoming'])
         .is('deleted_at', null);
 
-      // Apply classification filter based on student grade
+      // Apply classification filter based on student grade (ALWAYS applied)
       if (studentGrade) {
         let classification = null;
         
@@ -186,6 +189,14 @@ const Courses = () => {
           // Show courses that match classification OR have no classification (universal courses)
           query = query.or(`classification.eq.${classification},classification.is.null`);
         }
+      }
+
+      // Apply branch/category filter based on student's branch_field
+      // Only filter if student has a branch AND toggle is enabled AND no category filter is already applied
+      if (filterByBranch && studentBranch && studentBranch.trim() && advancedFilters.category.length === 0) {
+        // Show courses where category matches student's branch OR category is null
+        // Use a more precise match to avoid showing unrelated courses
+        query = query.or(`category.eq.${studentBranch},category.is.null`);
       }
 
       // Apply search filter at database level
@@ -269,7 +280,7 @@ const Courses = () => {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage]);
+  }, [debouncedSearch, filterStatus, sortBy, initialLoad, advancedFilters, currentPage, studentGrade, studentBranch, filterByBranch]);
 
   const fetchEnrollments = useCallback(async () => {
     const email = userEmailRef.current;
@@ -366,7 +377,12 @@ const Courses = () => {
   // Reset to page 1 when search or filter changes (but not when page changes)
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filterStatus, sortBy, advancedFilters]);
+  }, [debouncedSearch, filterStatus, sortBy, advancedFilters, filterByBranch]);
+
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   // Handle advanced filters
   const handleAdvancedFilters = (newFilters) => {
@@ -618,6 +634,25 @@ const Courses = () => {
 
               {/* Filters */}
               <div className="flex gap-2 items-center w-full lg:w-auto flex-wrap">
+                {/* Branch Filter Toggle - Only show if student has a branch */}
+                {studentBranch && (
+                  <button
+                    onClick={() => {
+                      isFetchingRef.current = false; // Reset fetch lock
+                      setFilterByBranch(!filterByBranch);
+                    }}
+                    className={`h-12 px-4 rounded-lg transition-all shadow-sm flex items-center gap-2 whitespace-nowrap ${
+                      filterByBranch 
+                        ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-sm font-medium">
+                      {filterByBranch ? `My Branch (${studentBranch})` : 'All Branches'}
+                    </span>
+                  </button>
+                )}
+
                 {/* Status Filter */}
                 <select
                   value={filterStatus}
@@ -666,13 +701,14 @@ const Courses = () => {
                 </div>
 
                 {/* Clear Filters Button */}
-                {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at' || hasActiveAdvancedFilters()) && (
+                {(filterStatus !== 'all' || searchTerm !== '' || sortBy !== 'created_at' || hasActiveAdvancedFilters() || (studentBranch && !filterByBranch)) && (
                   <button
                     onClick={() => {
                       setFilterStatus('all');
                       setSearchTerm('');
                       setDebouncedSearch('');
                       setSortBy('created_at');
+                      setFilterByBranch(true);
                       setAdvancedFilters({
                         category: [],
                         skillType: [],
@@ -697,6 +733,11 @@ const Courses = () => {
                   <span className="font-medium">{totalCount}</span> course{totalCount !== 1 ? 's' : ''} found
                   {(searchTerm || filterStatus !== 'all' || hasActiveAdvancedFilters()) && (
                     <span className="ml-1">matching your criteria</span>
+                  )}
+                  {studentBranch && filterByBranch && (
+                    <span className="ml-2 text-indigo-600 font-medium">
+                      {/* • Filtered for {studentBranch} */}
+                    </span>
                   )}
                 </div>
               )}
