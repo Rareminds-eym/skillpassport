@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '../../../stores';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -40,7 +41,6 @@ import {
   SkillsEditModal
 } from './ProfileEditModals';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
-import { useAuth } from '../../../context/AuthContext';
 import { useStudentRealtimeActivities } from '../../../hooks/useStudentRealtimeActivities';
 
 const Dashboard = () => {
@@ -49,8 +49,8 @@ const Dashboard = () => {
   const [activeNavItem, setActiveNavItem] = useState('skills'); // Default to skills
   const [showAllUpdates, setShowAllUpdates] = useState(false);
 
-  // Get student ID and email from your custom auth
-  const { user } = useAuth();
+  // Get student ID and email from auth store
+  const user = useUser();
   const userEmail = user?.email;
 
   // Fetch student data by EMAIL (from real Supabase table)

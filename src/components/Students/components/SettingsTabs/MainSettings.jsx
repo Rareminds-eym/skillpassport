@@ -13,7 +13,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { useAuth } from "../../../../context/AuthContext";
+import { useUser } from "../../../../stores";
 import { useStudentSettings } from "../../../../hooks/useStudentSettings";
 import { useStudentDataByEmail } from "../../../../hooks/useStudentDataByEmail";
 import { useStudentCertificates } from "../../../../hooks/useStudentCertificates";
@@ -46,7 +46,7 @@ import NotificationsTab from "./NotificationsTab";
 import PrivacyTab from "./PrivacyTab";
 
 const MainSettings = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const location = useLocation();
   const userEmail = user?.email;
   const recentUpdatesRef = useRef(null);

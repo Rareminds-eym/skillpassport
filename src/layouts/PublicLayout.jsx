@@ -2,12 +2,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from '../components/Footer';
 import { PromotionalBanner, AssessmentPromotionalBanner } from '../components/Homepage';
-import {
-  PromotionalEventProvider,
-  usePromotionalEventContext,
-} from '../contexts/PromotionalEventContext';
-import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
-import useAuth from '../hooks/useAuth';
+import { useAssessmentPromotional, useCurrentPromotional } from '../stores';
+import { useIsAuthenticated, useUserRole, useUser } from '../stores';
 import { useSubscriptionQuery } from '../hooks/Subscription/useSubscriptionQuery';
 import { isActiveOrPaused } from '../utils/subscriptionHelpers';
 
@@ -21,17 +17,19 @@ import { useState } from 'react';
 
 const PublicLayoutContent = () => {
   const location = useLocation();
-  const { isAuthenticated, role: userRole, user } = useAuth();
+  const isAuthenticated = useIsAuthenticated();
+  const { role: userRole } = useUserRole();
+  const user = useUser();
   const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('subscription');
   
-  const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();
+  const { event, showBanner, dismissBanner, getTimeRemaining } = useCurrentPromotional();
   const { 
     showBanner: showAssessmentBanner, 
     dismissBanner: dismissAssessmentBanner,
     getTimeRemaining: getAssessmentTimeRemaining
-  } = useAssessmentPromotionalContext();
+  } = useAssessmentPromotional();
 
   // Don't show assessment banner for learners
   const isLearner = userRole === 'learner';
@@ -136,13 +134,7 @@ const PublicLayoutContent = () => {
 };
 
 const PublicLayout = () => {
-  return (
-    <PromotionalEventProvider>
-      <AssessmentPromotionalProvider>
-        <PublicLayoutContent />
-      </AssessmentPromotionalProvider>
-    </PromotionalEventProvider>
-  );
+  return <PublicLayoutContent />;
 };
 
 export default PublicLayout;

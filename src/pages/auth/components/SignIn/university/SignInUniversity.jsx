@@ -1,7 +1,7 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../../context/AuthContext';
+import { useAuthActions } from "../../../stores";
 import { loginStudent } from '../../../../../services/studentAuthService';
 
 const SignInUniversity = () => {
@@ -14,7 +14,7 @@ const SignInUniversity = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [generalError, setGeneralError] = useState('');
 
-  const { login } = useAuth();
+  const { login } = useAuthActions();
   const navigate = useNavigate();
 
   const validateField = (name, value) => {

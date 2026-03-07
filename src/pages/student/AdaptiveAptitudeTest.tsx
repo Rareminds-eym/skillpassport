@@ -35,7 +35,7 @@ import {
   AlertDialogTitle,
 } from '../../components/Students/components/ui/alert-dialog';
 import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAntiCheating } from '../../hooks/useAntiCheating';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '../../types/adaptiveAptitude';
@@ -95,7 +95,7 @@ const CONFIDENCE_COLORS: Record<ConfidenceTag, { bg: string; text: string; borde
 const AdaptiveAptitudeTest = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const user = useUser();
   
   // Get grade level from navigation state or default to high_school
   const gradeLevel: GradeLevel = location.state?.gradeLevel || 'high_school';

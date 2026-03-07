@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square } from 'lucide-react';
 import { recruiterIntelligenceEngine } from '../services/recruiterIntelligenceEngine';
 import { recruiterWelcomeConfig, recruiterChatConfig } from '../config/recruiterConfig';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { CandidateInsightCard } from './RecruiterCards';
 
 interface Message {
@@ -15,7 +15,7 @@ interface Message {
 }
 
 const RecruiterCopilot: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 
 // Type assertion for AuthContext
 interface AuthUser {
@@ -62,7 +61,7 @@ export interface ProcessedStudent extends Student {
 }
 
 export const useMentorAllocation = (collegeId: string) => {
-  const { user } = useAuth() as { user: AuthUser | null };
+  const user = useUser() as AuthUser | null;
   
   // Debug logging for college ID
   console.log('🔍 [useMentorAllocation] College ID received:', collegeId);

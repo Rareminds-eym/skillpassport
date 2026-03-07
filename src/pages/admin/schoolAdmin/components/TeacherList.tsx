@@ -2,7 +2,7 @@ import { CheckCircle, Clock, Eye, Filter, Grid3X3, List, Mail, Phone, Search, Us
 import React, { useEffect, useState } from "react";
 import KPICard from "../../../../components/admin/KPICard";
 import DocumentViewerModal from "../../../../components/admin/modals/DocumentViewerModal";
-import { useAuth } from "../../../../context/AuthContext";
+import { useUser } from "../../../../stores";
 import { supabase } from "../../../../lib/supabaseClient";
 
 interface Teacher {
@@ -45,7 +45,7 @@ interface Teacher {
 }
 
 const TeacherListPage: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

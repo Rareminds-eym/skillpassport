@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../context/AuthContext';
+import { useUser, useUserRole as useUserRoleFromStore } from '../stores';
 
 export type UserRole = 'school_admin' | 'principal' | 'it_admin' | 'class_teacher' | 'subject_teacher';
 
@@ -42,7 +41,8 @@ const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
 };
 
 export const useUserRole = () => {
-  const { user: authUser, role: authRole } = useAuth();
+  const authUser = useUser();
+  const { role: authRole } = useUserRoleFromStore();
   const [role, setRole] = useState<UserRole>('subject_teacher');
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<RolePermissions>(

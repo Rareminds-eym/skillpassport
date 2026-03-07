@@ -11,7 +11,7 @@ import {
   PersonalInfoEditModal
 } from './ProfileEditModals';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import DatabaseSaveVerification from './DatabaseSaveVerification';
 import StudentFindingDebug from './StudentFindingDebug';
 import QuickFix from './QuickFix';
@@ -31,8 +31,8 @@ const ProfileEditSection = ({ profileEmail }) => {
   const [refreshCounter, setRefreshCounter] = useState(0);
   const [showResumeParser, setShowResumeParser] = useState(false);
   
-  // Get user email from auth context
-  const { user } = useAuth();
+  // Get user email from Zustand store
+  const user = useUser();
   const userEmail = user?.email;
   
   // Determine which email to fetch data for

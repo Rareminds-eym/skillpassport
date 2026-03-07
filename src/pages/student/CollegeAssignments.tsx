@@ -18,7 +18,7 @@ import {
   Filter,
   Search
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 
 // Mock data for UI preview
 const MOCK_ASSIGNMENTS = [
@@ -83,7 +83,7 @@ const MOCK_STATS = {
 type StatusType = 'all' | 'todo' | 'in-progress' | 'submitted' | 'graded';
 
 const CollegeAssignments: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [loading, setLoading] = useState(true);
   const [assignments, setAssignments] = useState(MOCK_ASSIGNMENTS);
   const [stats, setStats] = useState(MOCK_STATS);

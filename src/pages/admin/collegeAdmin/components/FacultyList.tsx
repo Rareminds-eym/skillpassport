@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Search, Eye, CheckCircle, Clock, XCircle, FileText } from "lucide-react";
 import { supabase } from "../../../../lib/supabaseClient";
-import { useAuth } from "../../../../context/AuthContext";
+import { useUser } from "../../../../stores";
 import FacultyDocumentViewerModal from "../../../../components/admin/modals/FacultyDocumentViewerModal";
 
 interface Faculty {
@@ -47,7 +47,7 @@ interface FacultyListProps {
 }
 
 const FacultyList: React.FC<FacultyListProps> = ({ collegeId }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [faculty, setFaculty] = useState<Faculty[]>([]);
   const [filteredFaculty, setFilteredFaculty] = useState<Faculty[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

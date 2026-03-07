@@ -23,15 +23,15 @@ import {
   createCourse,
   updateCourse
 } from '../../../services/educator/coursesService';
-import toast from 'react-hot-toast';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../../../context/AuthContext';
+import toast from 'react-hot-toast'
+import { useUser, useIsAuthenticated } from '../../../stores'
 import { supabase } from '../../../lib/supabaseClient';
 
 const Courses: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
 
   /** ─────────────────────────────────────────────
    *  STATE

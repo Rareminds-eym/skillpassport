@@ -23,7 +23,7 @@ import { BriefcaseIcon as BriefcaseSolidIcon } from '@heroicons/react/24/solid';
 import React, { useEffect, useState } from 'react';
 import AdvancedRequisitionFilters from '../../components/Recruiter/components/AdvancedRequisitionFilters';
 import RequisitionImport from '../../components/Recruiter/RequisitionImport';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { RequisitionFilters } from '../../types/recruiter';
 
@@ -60,7 +60,7 @@ interface Opportunity {
 }
 
 const Requisitions = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [requisitions, setRequisitions] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

@@ -7,10 +7,10 @@
 
 import React, { useState } from 'react';
 import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 
 const AddDataTest = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = user?.email;
   
   const {

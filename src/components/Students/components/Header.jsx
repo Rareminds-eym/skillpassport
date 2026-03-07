@@ -17,7 +17,7 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser, useAuthActions } from "../../../stores";
 import { useNotifications } from "../../../hooks/useNotifications";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { isLearner } from "../../../utils/studentType";
@@ -30,7 +30,8 @@ const Header = ({ activeTab, setActiveTab }) => {
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useAuth();
+  const user = useUser();
+  const { logout } = useAuthActions();
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
 

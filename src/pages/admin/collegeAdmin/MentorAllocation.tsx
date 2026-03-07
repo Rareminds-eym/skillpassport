@@ -15,8 +15,7 @@ import {
 } from "@heroicons/react/24/outline";
 import toast from 'react-hot-toast';
 import { supabase } from "../../../lib/supabaseClient";
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from "../../../stores";
 import { useMentorAllocation } from "../../../hooks/useMentorAllocation";
 import { findAllocationId, updateMentorAllocation } from "../../../services/mentorAllocationService";
 import SearchBar from "../../../components/common/SearchBar";
@@ -86,7 +85,7 @@ interface LegacyMentor {
 
 const MentorAllocation: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth() as { user: any | null };
+  const user = useUser();
   const [collegeId, setCollegeId] = useState<string>('');
   
   // Fetch college ID

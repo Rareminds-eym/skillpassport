@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import SwapRequestModal from "../../components/teacher/SwapRequestModal";
 import { supabase } from "../../lib/supabaseClient";
-import { useAuth } from "../../context/AuthContext";
+import { useUser, useIsAuthenticated } from "../../stores";
 import { usePermission } from "../../hooks/usePermissions";
 import {
     createSwapRequest,
@@ -167,7 +167,8 @@ const getSlotColor = (subjectName: string) => {
 
 const MyTimetable: React.FC = () => {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
   
   // Permission controls for Classroom Management module - same as Program Sections
   const canView = usePermission("Classroom Management", "view")

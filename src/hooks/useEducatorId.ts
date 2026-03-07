@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 
 interface EducatorIdData {
   educatorId: string | null;
@@ -14,7 +13,7 @@ interface EducatorIdData {
  * This ensures we get the correct educator ID for RLS and filtering
  */
 export function useEducatorId(): EducatorIdData {
-  const { user } = useAuth();
+  const user = useUser();
   const [educatorId, setEducatorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

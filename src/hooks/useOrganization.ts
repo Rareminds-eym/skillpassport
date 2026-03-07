@@ -6,8 +6,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-// @ts-ignore - AuthContext is a JS file
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 import {
     getOrganizationByAdminId,
     getOrganizationById,
@@ -37,7 +36,7 @@ interface UseOrganizationsResult {
 export function useCurrentOrganization(
   organizationType?: OrganizationType
 ): UseOrganizationResult {
-  const { user } = useAuth();
+  const user = useUser();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

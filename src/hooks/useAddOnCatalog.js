@@ -17,7 +17,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
 import { useSubscriptionContextSafe } from '../context/SubscriptionContext';
-import { useSupabaseAuth } from '../context/SupabaseAuthContext';
+import { useUser } from '../stores';
 import addOnCatalogService from '../services/addOnCatalogService';
 
 // Query keys
@@ -38,7 +38,7 @@ const CACHE_TIME = 10 * 60 * 1000; // 10 minutes
  * @returns {Object} Add-on catalog data and helpers
  */
 export function useAddOnCatalog(options = {}) {
-  const { user } = useSupabaseAuth();
+  const user = useUser();
   const subscriptionContext = useSubscriptionContextSafe();
   const activeEntitlements = subscriptionContext?.activeEntitlements || [];
   const queryClient = useQueryClient();

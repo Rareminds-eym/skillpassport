@@ -28,7 +28,7 @@ import {
   CheckCircle,
   FileText
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../stores';
 import { SchoolAdminNotificationService } from '../../../services/schoolAdminNotificationService';
 import TrainingDetailsModal from '../../../components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '../../../components/admin/schoolAdmin/ExperienceDetailsModal';
@@ -37,7 +37,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabaseClient';
 
 const Verifications: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [activeTab, setActiveTab] = useState<"trainings" | "experiences" | "certificates" | "projects">("trainings");
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [pendingTrainings, setPendingTrainings] = useState<any[]>([]);

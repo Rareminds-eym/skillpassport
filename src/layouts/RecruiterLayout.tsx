@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { useUser } from "../stores";
+import { supabase } from "../lib/supabaseClient";
 import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Recruiter/components/Header';
 import Sidebar from '../components/Recruiter/components/Sidebar';
@@ -11,15 +12,16 @@ import { useResponsive } from '../hooks/useresponsive';
 import { Candidate } from '../types/recruiter';
 import { useUnreadMessagesCount } from '../hooks/useUnreadMessagesCount';
 
-const RecruiterLayout = () => {
+const RecruiterLayout: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const user = useUser();
   const { isMobile } = useResponsive();
-  const { user } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showCandidateDrawer, setShowCandidateDrawer] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const navigate = useNavigate();
   
   // Get unread messages count for sidebar badge
   const { unreadCount } = useUnreadMessagesCount(user?.id);

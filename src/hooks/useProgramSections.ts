@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useUser } from '../stores'
 import { 
   getCollegeLecturerProgramSections, 
   getCollegeDepartments,
@@ -9,7 +9,7 @@ import {
 } from '../services/programService'
 
 export const useProgramSections = () => {
-  const { user } = useAuth()
+  const user = useUser()
   const [programSections, setProgramSections] = useState<ProgramSection[]>([])
   const [departments, setDepartments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)

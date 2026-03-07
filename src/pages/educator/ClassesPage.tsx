@@ -24,7 +24,7 @@ import { useEducatorSchool } from "../../hooks/useEducatorSchool"
 import toast from "react-hot-toast"
 import ManageStudentsModal from "../../components/educator/ManageStudentsModal"
 import Pagination from "../../components/educator/Pagination"
-import { useAuth } from "../../context/AuthContext"
+import { useUser, useIsAuthenticated } from "../../stores"
 import { supabase } from "../../lib/supabaseClient"
 import { createClass, EducatorClass, updateClass } from "../../services/classService"
 import ProgramSectionsPage from "./ProgramSectionsPage"
@@ -797,7 +797,8 @@ const ClassesPage = () => {
   const navigate = useNavigate()
   
   // Get auth context
-  const { user, isAuthenticated } = useAuth()
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
   
   // Get educator's school/college information
   const { school: educatorSchool, college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool()

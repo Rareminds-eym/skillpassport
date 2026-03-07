@@ -28,7 +28,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useUser, useUserRole } from '../../stores';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
@@ -440,7 +440,8 @@ const ErrorScreen = ({ message, onRetry }) => (
 function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, role } = useAuth();
+  const user = useUser();
+  const { role } = useUserRole();
   const { refreshAccess } = useSubscriptionContext();
   const { refreshSubscription } = useSubscriptionQuery();
 

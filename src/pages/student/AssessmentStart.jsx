@@ -1,7 +1,7 @@
 import { ArrowLeft, CheckCircle, Clock, FileText, Target, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { checkAssessmentStatus } from '../../services/externalAssessmentService';
 
@@ -12,7 +12,7 @@ import { checkAssessmentStatus } from '../../services/externalAssessmentService'
 const AssessmentStart = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const user = useUser();
   const [isStarting, setIsStarting] = React.useState(false);
   const [checkingStatus, setCheckingStatus] = React.useState(true);
   const [inProgressAttempt, setInProgressAttempt] = React.useState(null);

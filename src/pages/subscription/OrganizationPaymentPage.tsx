@@ -22,7 +22,7 @@ import {
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
+import { useUser, useIsAuthenticated } from '../../stores';
 import { initiateOrganizationPayment, OrganizationPurchaseData } from '../../services/organization/organizationPaymentService';
 
 interface OrganizationConfig {
@@ -67,7 +67,8 @@ interface LocationState {
 function OrganizationPaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
   
   const state = location.state as LocationState | null;
   const { plan, organizationConfig, organizationId: stateOrgId } = state || {};

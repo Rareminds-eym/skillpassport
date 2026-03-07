@@ -11,7 +11,7 @@ import { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AddOnCheckout } from '../../components/Subscription/AddOnCheckout';
 import { AddOnMarketplace } from '../../components/Subscription/AddOnMarketplace';
-import useAuth from '../../hooks/useAuth';
+import { useUser, useUserRole, useAuthLoading } from '../../stores';
 
 /**
  * Get the base path for subscription routes based on current location
@@ -59,7 +59,9 @@ function AddOns() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, role, loading: authLoading } = useAuth();
+  const user = useUser();
+  const { role } = useUserRole();
+  const authLoading = useAuthLoading();
   
   // Get base path for subscription routes from URL (more reliable)
   const basePath = useMemo(() => getSubscriptionBasePath(location.pathname), [location.pathname]);

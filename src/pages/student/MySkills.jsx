@@ -14,7 +14,7 @@ import {
   MessageCircle as MessageCircleIcon
 } from 'lucide-react';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { SkillsEditModal } from '../../components/Students/components/ProfileEditModals';
 import { useStudentRealtimeActivities } from '../../hooks/useStudentRealtimeActivities';
 import { useStudentMessageNotifications } from '../../hooks/useStudentMessageNotifications';
@@ -27,7 +27,7 @@ import {
 } from '../../components/Students/data/mockData';
 
 const MySkills = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = user?.email;
   const { studentData, updateTechnicalSkills, updateSoftSkills } = useStudentDataByEmail(userEmail, false);
 

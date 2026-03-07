@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import BulkPurchaseWizard, { PurchaseData } from '../../components/Subscription/Organization/BulkPurchaseWizard';
-import useAuth from '../../hooks/useAuth';
+import { useUser, useIsAuthenticated } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { organizationMemberService } from '../../services/organization/organizationMemberService';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
@@ -17,7 +17,8 @@ import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscripti
 function BulkPurchasePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
 
   // Get mode from search params (e.g., ?mode=add-seats&subscriptionId=xxx)
   const mode = searchParams.get('mode');

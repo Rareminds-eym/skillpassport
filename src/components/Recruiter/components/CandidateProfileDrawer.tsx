@@ -24,7 +24,6 @@ import ScheduleInterviewModal from '../modals/ScheduleInterviewModal';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '../../../lib/supabaseClient';
 import { File } from 'lucide-react';
-// import { useAuth } from '../../../context/AuthContext';
 
 const Badge = ({ type }) => {
   const badgeConfig = {

@@ -14,7 +14,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { isLearner } from '../../../utils/studentType';
 
@@ -54,7 +54,7 @@ const DigitalPortfolioSideDrawer: React.FC<DigitalPortfolioSideDrawerProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const user = useUser();
   
   // Get student data to check if learner
   const userEmail = localStorage.getItem('userEmail') || user?.email;

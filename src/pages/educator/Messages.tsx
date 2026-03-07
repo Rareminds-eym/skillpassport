@@ -28,7 +28,7 @@ import { useCollegeLecturerMessages } from '../../hooks/useCollegeLecturerMessag
 import { useCollegeEducatorAdminConversationsForEducator } from '../../hooks/useCollegeEducatorAdminConversations.js';
 import { useCollegeEducatorAdminMessagesForEducator } from '../../hooks/useCollegeEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../context/AuthContext.jsx';
+import { useUser } from '../../stores';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
@@ -61,7 +61,7 @@ const CollegeLecturerMessages = () => {
   const [activeTab, setActiveTab] = useState<'college_students' | 'college_admin'>('college_students');
   
   // Get college lecturer ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   console.log('🔍 Raw user object from auth:', user);
   // Use the real user ID from auth
   const userId = user?.id;

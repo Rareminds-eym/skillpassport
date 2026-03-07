@@ -30,7 +30,7 @@ import {
   type ModuleAccess,
   type ScopeRule
 } from "../../../services/settingsService";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser, useIsAuthenticated, useUserRole } from "../../../stores";
 import toast from 'react-hot-toast';
 
 /* ==============================
@@ -173,7 +173,9 @@ const RolePermissionModal = ({
   programs: { id: string; name: string; code: string }[];
 }) => {
   // Authentication check
-  const { user, isAuthenticated, role: userRole } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
+  const userRole = useUserRole();
   
   const [activeRoleTab, setActiveRoleTab] = useState("basic");
   const [formData, setFormData] = useState({
@@ -675,7 +677,10 @@ const RolePermissionModal = ({
    ============================== */
 const Settings = () => {
   // Authentication
-  const { user, isAuthenticated, loading: authLoading, role } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
+  const authLoading = false; // Zustand doesn't have loading state
+  const { role } = useUserRole();
   
   const [activeTab, setActiveTab] = useState<
     "roles" | "subscription"

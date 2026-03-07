@@ -8,7 +8,7 @@ import { TrainingEditModal } from "../../components/Students/components/ProfileE
 import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
 import { Button } from "../../components/Students/components/ui/button";
 import { Card, CardContent } from "../../components/Students/components/ui/card";
-import { useAuth } from "../../context/AuthContext";
+import { useUser } from "../../stores";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
@@ -134,7 +134,7 @@ const ContinueLearningSection = ({ course, onContinue }) => {
 
 const MyLearning = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = user?.email;
   const { studentData, updateTraining, updateSingleTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
   const studentId = studentData?.id;

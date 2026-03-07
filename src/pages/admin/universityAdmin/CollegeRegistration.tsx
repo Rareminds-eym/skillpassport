@@ -14,8 +14,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import Pagination from '../../../components/admin/Pagination';
 import SearchBar from '../../../components/common/SearchBar';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
 import {
     getCollegesByUniversity,
@@ -773,7 +772,7 @@ const CollegeCard = ({ college, onViewProfile, onAddNote }) => {
 };
 
 const CollegeRegistration = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);

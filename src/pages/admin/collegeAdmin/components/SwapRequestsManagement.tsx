@@ -13,14 +13,15 @@ import type {
   SwapStatistics,
   SwapRequestStatus 
 } from '../../../../types/classSwap';
-import { useAuth } from '../../../../context/AuthContext';
+import { useUser } from "../../../../stores";
+import { supabase } from "../../../../lib/supabaseClient";
 
 interface SwapRequestsManagementProps {
   collegeId: string | null;
 }
 
 const SwapRequestsManagement: React.FC<SwapRequestsManagementProps> = ({ collegeId }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [requests, setRequests] = useState<ClassSwapRequestWithDetails[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ClassSwapRequestWithDetails[]>([]);
   const [stats, setStats] = useState<SwapStatistics | null>(null);

@@ -4,22 +4,17 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useSupabaseAuth } from '../context/SupabaseAuthContext';
+import { useUser } from '../stores';
 import { supabase } from '../lib/supabaseClient';
 
 export const useAuthenticatedStudent = () => {
-  const { user, userProfile, loading: authLoading } = useSupabaseAuth();
+  const user = useUser();
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchStudentData = async () => {
-      // Wait for auth to finish loading
-      if (authLoading) {
-        return;
-      }
-
       // If no user is authenticated, clear data
       if (!user) {
         setStudentData(null);
@@ -31,15 +26,7 @@ export const useAuthenticatedStudent = () => {
         setLoading(true);
         setError(null);
 
-
-        // Use userProfile from auth context if available
-        if (userProfile) {
-          setStudentData(userProfile);
-          setLoading(false);
-          return;
-        }
-
-        // Otherwise fetch directly from database
+        // Fetch directly from database
         const { data, error: dbError } = await supabase
           .from('students')
           .select('*')
@@ -68,7 +55,7 @@ export const useAuthenticatedStudent = () => {
     };
 
     fetchStudentData();
-  }, [user, userProfile, authLoading]);
+  }, [user]);
 
   // Function to update student data
   const updateStudentData = async (updates) => {

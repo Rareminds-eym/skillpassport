@@ -5,7 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { supabase } from '../../../lib/supabaseClient';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 
 export interface AIFeedback {
   conversationId: string;
@@ -28,7 +28,7 @@ export interface FeedbackState {
 }
 
 export function useAIFeedback() {
-  const { user } = useAuth();
+  const user = useUser();
   const [feedbackState, setFeedbackState] = useState<FeedbackState>({});
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);

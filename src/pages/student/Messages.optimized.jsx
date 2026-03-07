@@ -14,7 +14,7 @@ import {
 import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
 import MessageService from '../../services/messageService';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
@@ -46,7 +46,7 @@ const Messages = () => {
   const markedAsReadRef = useRef(new Set());
   
   // Auth & User Data
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = useMemo(() => 
     localStorage.getItem('userEmail') || user?.email, 
     [user?.email]
@@ -221,6 +221,7 @@ const Messages = () => {
           : trimmedInput,
         type: 'message',
         link: `/recruiter/messages?conversation=${selectedConversationId}`
+      });
       
       setMessageInput('');
       setTyping(false);

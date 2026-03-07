@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import loginIllustration from "../../assets/images/auth/Recruiter-illustration.png";
-import { useAuth } from "../../context/AuthContext";
+import { useAuthActions } from "../../stores";
 
 import {
     AlertCircle,
@@ -24,7 +24,7 @@ export default function LoginRecruiter() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { login } = useAuth();
+  const { login } = useAuthActions();
   const navigate = useNavigate();
 
   const primary = "#0a6aba";

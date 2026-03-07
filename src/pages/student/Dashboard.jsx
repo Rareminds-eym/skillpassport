@@ -78,6 +78,7 @@ import {
 } from "../../components/Students/data/mockData";
 import { useAIRecommendations } from "../../hooks/useAIRecommendations";
 import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
+import { useUserRole } from "../../stores";
 import { useOpportunities } from "../../hooks/useOpportunities";
 import { useStudentAchievements } from "../../hooks/useStudentAchievements";
 import { useStudentCertificates } from "../../hooks/useStudentCertificates";
@@ -90,7 +91,6 @@ import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNot
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
-import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabaseClient";
 import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
 // Debug utilities removed for production cleanliness
@@ -646,7 +646,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { role: userRole } = useAuth();
+  const { role: userRole } = useUserRole();
 
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {

@@ -11,7 +11,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Pagination from '../../../components/admin/Pagination';
 import SearchBar from '../../../components/common/SearchBar';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
@@ -180,7 +180,7 @@ const PortfolioCard = ({ student, onViewPortfolio }: any) => {
 
 const CollegeAdminDigitalPortfolio = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [currentPage, setCurrentPage] = useState(1);

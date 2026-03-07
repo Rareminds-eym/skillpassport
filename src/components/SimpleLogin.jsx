@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { useSupabaseAuth } from '../context/SupabaseAuthContext';
+import { useAuthActions } from '../stores';
+import { supabase } from '../lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/Students/components/ui/card';
 import { Button } from '../components/Students/components/ui/button';
 import { Input } from '../components/Students/components/ui/input';
 import { Alert, AlertDescription } from '../components/Students/components/ui/alert';
 
 const SimpleLogin = () => {
-  const { signIn, signUp, loading } = useSupabaseAuth();
+  const { login } = useAuthActions();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,29 +26,51 @@ const SimpleLogin = () => {
     }
 
     try {
-      let result;
+      setLoading(true);
       
       if (isSignUp) {
-        // Sign up new user
-        result = await signUp(email, password);
-        if (result.error) {
-          setError(result.error.message);
+        // Sign up new user using Supabase
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        
+        if (signUpError) {
+          setError(signUpError.message);
         } else {
           setMessage('Check your email for verification link!');
         }
       } else {
-        // Sign in existing user
-        result = await signIn(email, password);
-        if (result.error) {
-          setError(result.error.message);
-        } else {
+        // Sign in existing user using Supabase
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (signInError) {
+          setError(signInError.message);
+        } else if (data.user && data.session) {
+          // Use Zustand login to set user state
+          login({
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata?.name || data.user.email,
+            role: data.user.user_metadata?.role,
+            user_metadata: data.user.user_metadata,
+          }, {
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+            user: data.user,
+            expires_at: data.session.expires_at,
+          });
           setMessage('Login successful! Redirecting...');
-          // Redirect will happen automatically via auth context
         }
       }
     } catch (err) {
       setError('An unexpected error occurred');
       console.error('Auth error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 

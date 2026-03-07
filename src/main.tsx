@@ -5,7 +5,13 @@ import App from './App.tsx';
 import './index.css';
 import { QueryProvider } from './providers/QueryProvider';
 
-// No scroll lock management needed
+// Initialize Zustand stores
+import { initializeStores } from './stores';
+
+// Initialize stores before rendering
+initializeStores().then(() => {
+  console.log('[Zustand] Stores initialized');
+});
 
 // Unregister any existing service workers to prevent Workbox warnings
 if ('serviceWorker' in navigator) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
 import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Students/components/Header';
@@ -44,7 +44,7 @@ const StudentLayout = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => getActiveTabFromPath(location.pathname));
   const [activeModal, setActiveModal] = useState(null);
-  const { user } = useAuth();
+  const user = useUser();
 
   // Sync activeTab with current route
   useEffect(() => {

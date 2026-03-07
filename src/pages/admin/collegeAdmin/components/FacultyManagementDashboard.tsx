@@ -8,8 +8,8 @@ import {
     Users
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
-import { supabase } from '../../../../lib/supabaseClient';
+import { useUser } from "../../../../stores";
+import { supabase } from "../../../../lib/supabaseClient";
 import { getFacultyStatistics } from '../../../../services/facultyService';
 import FacultyLeaveManagement from '../FacultyLeaveManagement';
 import CalendarTimetable from './CalendarTimetable';
@@ -20,7 +20,7 @@ import FacultyPerformanceAnalytics from './FacultyPerformanceAnalytics';
 import SwapRequestsManagement from './SwapRequestsManagement';
 
 const FacultyManagementDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'leave' | 'import' | 'swaps'>('list');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);

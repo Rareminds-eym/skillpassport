@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useStudentDataById } from "../../../hooks/useStudentDataById";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from "../../../stores";
 import toast from 'react-hot-toast';
 import {
   generateResumePDF,
@@ -165,7 +165,7 @@ function Donut({ value }) {
 }
 
 export default function StudentPublicViewer() {
-  const { user, loading: authLoading } = useAuth();
+  const user = useUser();
   // const navigate = useNavigate();
   const { studentId } = useParams();
   const { studentData, loading, error } = useStudentDataById(studentId);

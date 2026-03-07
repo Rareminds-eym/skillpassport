@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Message, Conversation } from '../services/messageService';
 
-interface MessageState {
+export interface MessageState {
   // Messages state
   messages: Message[];
   conversations: Conversation[];
@@ -162,10 +162,11 @@ export const useMessages = () => useMessageStore((state) => state.messages);
 export const useConversations = () => useMessageStore((state) => state.conversations);
 export const useCurrentConversationId = () => useMessageStore((state) => state.currentConversationId);
 export const useUnreadCount = () => useMessageStore((state) => state.unreadCount);
-export const useMessageLoadingStates = () => useMessageStore((state) => ({
-  isLoadingMessages: state.isLoadingMessages,
-  isLoadingConversations: state.isLoadingConversations
-}));
+export const useMessageLoadingStates = () => {
+  const isLoadingMessages = useMessageStore((state) => state.isLoadingMessages);
+  const isLoadingConversations = useMessageStore((state) => state.isLoadingConversations);
+  return { isLoadingMessages, isLoadingConversations };
+};
 
 // Computed selectors
 export const useCurrentConversation = () => 

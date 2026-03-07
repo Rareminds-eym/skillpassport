@@ -22,7 +22,6 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
-import useAuth from '../../hooks/useAuth';
 
 /**
  * Get the base path for subscription routes based on current location
@@ -45,7 +44,6 @@ export function SubscriptionSettingsSection({ className = '' }) {
   const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
   const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscriptionContext() || {};
-  useAuth(); // Hook called for potential future use
 
   // Get the base path for subscription routes
   const basePath = getSubscriptionBasePath(location.pathname);

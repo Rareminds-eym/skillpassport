@@ -55,9 +55,9 @@ import { analyzeAssessmentWithGemini } from '../../services/geminiAssessmentServ
 import { loadCareerAssessmentQuestions, STREAM_KNOWLEDGE_PROMPTS, normalizeStreamId } from '../../services/careerAssessmentAIService';
 
 // Import database services
-import { useAuth } from '../../context/AuthContext';
 import { useAssessment } from '../../hooks/useAssessment';
 import * as assessmentService from '../../services/assessmentService';
+import { useUser } from '../../stores';
 
 // Import adaptive aptitude hook for integrated adaptive testing
 import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
@@ -87,7 +87,7 @@ import {
 
 const AssessmentTest = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const user = useUser();
 
     // Database integration hook
     const {
@@ -283,6 +283,7 @@ const AssessmentTest = () => {
     // Debug: Track when adaptive question changes
     useEffect(() => {
         if (adaptiveAptitude.currentQuestion) {
+            console.log({
                 questionId: adaptiveAptitude.currentQuestion.id,
                 questionText: adaptiveAptitude.currentQuestion.text?.substring(0, 50),
                 questionsAnswered: adaptiveAptitude.progress?.questionsAnswered,
@@ -655,6 +656,7 @@ const AssessmentTest = () => {
             // Only require gradeLevel and studentStream - studentId is optional for saving
             // Support 'after10', 'higher_secondary', 'after12' and 'college' grade levels
             if ((gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12' || gradeLevel === 'college') && studentStream) {
+                console.log({
                     gradeLevel,
                     studentStream,
                     studentId: studentId || 'NOT SET',
@@ -695,6 +697,7 @@ const AssessmentTest = () => {
                         setAiQuestions(questions);
                     }
 
+                    console.log({
                         aptitude: questions?.aptitude?.length || 0,
                         knowledge: questions?.knowledge?.length || 0
                     });

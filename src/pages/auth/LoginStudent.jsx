@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import studentIllustration from "../../assets/images/auth/Student-illustration.jpg";
-import { useAuth } from "../../context/AuthContext";
+import { useAuthActions } from "../../stores";
 
 // Lucide icons
 import {
@@ -26,7 +26,7 @@ export default function LoginStudent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const { login } = useAuth();
+  const { login } = useAuthActions();
   const navigate = useNavigate();
 
   const primary = "#3261A5";

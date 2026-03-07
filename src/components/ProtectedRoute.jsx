@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useIsAuthenticated, useUserRole, useAuthLoading } from '../stores';
 import Loader from './Loader';
 
 // Map specific roles to their general category for route protection
@@ -19,7 +19,9 @@ const getRoleCategory = (role) => {
 };
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { isAuthenticated, role, loading } = useAuth();
+  const isAuthenticated = useIsAuthenticated();
+  const { role } = useUserRole();
+  const loading = useAuthLoading();
   const location = useLocation();
 
   // Check if faculty onboarding is in progress - if so, prevent redirects

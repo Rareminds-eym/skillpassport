@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useLocation } from 'react-router-dom';
 import After10AssessmentResultTour from './components/After10AssessmentResultTour';
 import After12AssessmentResultTour from './components/After12AssessmentResultTour';
@@ -15,7 +15,7 @@ import { TourProvider } from './TourProvider';
  * Prevents multiple tours from competing and reduces unnecessary renders.
  */
 const TourWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const location = useLocation();
   
   // Determine which tour to render based on current route

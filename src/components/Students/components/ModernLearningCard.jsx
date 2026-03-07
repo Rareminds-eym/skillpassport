@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from "../../../stores";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { supabase } from "../../../lib/supabaseClient";
 import { downloadCertificate, getCertificateProxyUrl } from "../../../services/certificateService";
@@ -37,7 +37,7 @@ const ModernLearningCard = ({
   viewMode = 'grid'
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   const [isHovered, setIsHovered] = useState(false);
   const [assessmentCompleted, setAssessmentCompleted] = useState(false);
   const [assessmentScore, setAssessmentScore] = useState(null);

@@ -37,7 +37,7 @@ import OpportunityPreview from '../../components/Students/components/Opportunity
 import RecommendedJobs from '../../components/Students/components/RecommendedJobs';
 import IndustrialVisitPreview from '../../components/Students/components/IndustrialVisitPreview';
 import Pagination from '../../components/educator/Pagination';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
@@ -255,7 +255,7 @@ const Opportunities = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id; // Use students.id (database ID)

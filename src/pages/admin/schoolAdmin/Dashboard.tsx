@@ -9,7 +9,7 @@ import React, { useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { useNavigate } from "react-router-dom";
 import KPIDashboard from "../../../components/admin/KPIDashboard";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from "../../../stores";
 import { supabase } from "../../../lib/supabaseClient";
 
 interface CourseStats {
@@ -35,7 +35,7 @@ interface ProgramOverviewItem {
 }
 
 const SchoolDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const navigate = useNavigate();
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [courseStats, setCourseStats] = useState<CourseStats[]>([]);

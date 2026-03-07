@@ -28,8 +28,6 @@ import {
     type PricingBreakdown,
 } from '@/services/organization/organizationSubscriptionService';
 import { useCallback, useEffect, useState } from 'react';
-// @ts-ignore - useAuth is a JS file
-import useAuth from '@/hooks/useAuth';
 
 interface UseOrganizationSubscriptionOptions {
   organizationId: string;
@@ -59,8 +57,6 @@ export function useOrganizationSubscription(
   options: UseOrganizationSubscriptionOptions
 ): UseOrganizationSubscriptionReturn {
   const { organizationId, organizationType, autoFetch = true } = options;
-  // Note: useAuth available for future use when implementing purchase/assign actions
-  useAuth();
   
   const [subscriptions, setSubscriptions] = useState<OrganizationSubscription[]>([]);
   const [licensePools, setLicensePools] = useState<LicensePool[]>([]);

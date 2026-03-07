@@ -11,8 +11,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import { studentEnrollmentService, type EnrolledStudentView } from "../../../services/studentEnrollmentService";
-// @ts-ignore - AuthContext is a JS file
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from "../../../stores";
 import toast from "react-hot-toast";
 import Pagination from "../../../components/admin/Pagination";
 import SearchBar from "../../../components/common/SearchBar";
@@ -20,7 +19,7 @@ import SearchBar from "../../../components/common/SearchBar";
 const ITEMS_PER_PAGE = 10;
 
 const EnrolledStudents: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [collegeId, setCollegeId] = useState<string | null>(null);
   
   const [students, setStudents] = useState<EnrolledStudentView[]>([]);

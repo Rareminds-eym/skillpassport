@@ -33,7 +33,7 @@ import {
   checkAssessmentStatus
 } from '../../services/externalAssessmentService';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 
 /**
  * Dynamic Assessment Component
@@ -42,7 +42,7 @@ import { useAuth } from '../../context/AuthContext';
 const DynamicAssessment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const user = useUser();
   
   // Get course info from navigation state
   const courseName = location.state?.courseName || 'General Skills';

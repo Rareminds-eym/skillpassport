@@ -23,7 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useIsAuthenticated, useUserRole, useAuthLoading } from '../../stores';
 import { ACCESS_REASONS, useSubscriptionContext } from '../../context/SubscriptionContext';
 import Loader from '../Loader';
 import SubscriptionBanner from './SubscriptionBanner';
@@ -345,7 +345,9 @@ const SubscriptionProtectedRoute = ({
   subscriptionFallbackPath = '/subscription/plans',
   loginFallbackPath = '/login',
 }) => {
-  const { isAuthenticated, role, loading: authLoading, user } = useAuth();
+  const isAuthenticated = useIsAuthenticated();
+  const { role } = useUserRole();
+  const loading = useAuthLoading();
   const location = useLocation();
   
   // Debug logging for redirect loop investigation

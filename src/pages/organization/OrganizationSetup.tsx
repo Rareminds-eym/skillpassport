@@ -12,8 +12,7 @@ import {
     School
 } from 'lucide-react';
 import React, { useState } from 'react';
-// @ts-ignore - AuthContext is a JS file
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 
 interface OrganizationFormData {
@@ -35,7 +34,7 @@ interface OrganizationSetupProps {
 }
 
 const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType, onComplete }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [step, setStep] = useState<'form' | 'creating' | 'success' | 'error'>('form');
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<OrganizationFormData>({

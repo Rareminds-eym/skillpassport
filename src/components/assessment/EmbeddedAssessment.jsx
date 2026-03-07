@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { X, Loader2 } from 'lucide-react';
 
 /**
@@ -10,7 +10,7 @@ import { X, Loader2 } from 'lucide-react';
  */
 const EmbeddedAssessment = ({ onClose }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   const [loading, setLoading] = useState(true);
   const [assessmentUrl, setAssessmentUrl] = useState('');
 

@@ -19,7 +19,7 @@ import { useLocation } from 'react-router-dom';
 import addOnPaymentService from '../services/addOnPaymentService';
 import entitlementService from '../services/entitlementService';
 import { checkSubscriptionAccess } from '../services/paymentsApiService';
-import { useSupabaseAuth } from './SupabaseAuthContext';
+import { useUser, useSession } from '../stores';
 
 // Access reasons for UI handling
 export const ACCESS_REASONS = {
@@ -63,7 +63,8 @@ const STALE_TIME = 0; // Always refetch - critical for detecting revoked license
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 
 export const SubscriptionProvider = ({ children }) => {
-  const { user, session } = useSupabaseAuth();
+  const user = useUser();
+  const session = useSession();
   const queryClient = useQueryClient();
   const [purchaseError, setPurchaseError] = useState(null);
   const location = useLocation();
