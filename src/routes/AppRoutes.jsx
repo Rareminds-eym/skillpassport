@@ -174,7 +174,6 @@ const Clubs = lazy(() => import("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../pages/student/CareerAI"));
-const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
 );
@@ -588,7 +587,6 @@ const AppRoutes = () => {
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
-          <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route path="/network-error" element={<NetworkError />} />
           <Route
             path="/student/profile/:studentId"

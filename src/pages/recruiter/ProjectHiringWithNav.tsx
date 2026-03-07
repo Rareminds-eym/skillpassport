@@ -22,10 +22,7 @@ import Breadcrumb from '../../components/Recruiter/Projects/navigation/Breadcrum
 import QuickActionsMenu from '../../components/Recruiter/Projects/navigation/QuickActionsMenu';
 import TabNavigation, { MobileTabNavigation, ProjectTab } from '../../components/Recruiter/Projects/navigation/TabNavigation';
 
-// Import mock data
-import { getActiveContracts } from '../../data/mock/mockContracts';
-import { getProjectStats, mockProjects } from '../../data/mock/mockProjects';
-import { mockProposals } from '../../data/mock/mockProposals';
+// Mock data removed - files don't exist
 
 interface StatsCardProps {
   title: string;
@@ -77,9 +74,9 @@ const ProjectHiringWithNavContent = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Get stats
-  const projectStats = getProjectStats();
-  const activeContracts = getActiveContracts();
-  const totalProposals = mockProposals.length;
+  const projectStats = { total: 0, open: 0, in_progress: 0, completed: 0 };
+  const activeContracts: any[] = [];
+  const totalProposals = 0;
 
   // Define tabs with counts
   const tabs = [
@@ -148,12 +145,7 @@ const ProjectHiringWithNavContent = () => {
   };
 
   // Filter projects based on search and status
-  const filteredProjects = mockProjects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredProjects: any[] = [];
 
   const handleViewProject = (id: string) => {
     console.log('View project:', id);

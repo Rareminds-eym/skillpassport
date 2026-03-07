@@ -1,6 +1,5 @@
 import { AlertCircle, CheckCircle, FileText, Shield, Upload, X } from "lucide-react";
 import React, { useState } from "react";
-import RoleDebugger from "../../../../components/debug/RoleDebugger";
 import { useUserRole } from "../../../../hooks/useUserRole";
 import { supabase } from "../../../../lib/supabaseClient";
 import storageService from "../../../../services/storageService";
@@ -617,7 +616,6 @@ const TeacherOnboardingPage: React.FC = () => {
             </p>
           </div>
         </div>
-        <RoleDebugger />
       </>
     );
   }

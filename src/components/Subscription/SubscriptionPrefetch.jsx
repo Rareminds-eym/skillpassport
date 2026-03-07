@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
 import { prefetchSubscriptionData } from '../../hooks/Subscription/useSubscriptionQuery';
-import { queryLogger } from '../../utils/queryLogger';
 
 /**
  * Subscription Prefetch Component
@@ -22,14 +21,18 @@ const SubscriptionPrefetch = () => {
       if (!cachedData) {
         // Only prefetch if not already cached
         const timer = setTimeout(() => {
-          queryLogger.log('🚀 [Prefetch] Prefetching subscription data for user:', user.id);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🚀 [Prefetch] Prefetching subscription data for user:', user.id);
+          }
           prefetchSubscriptionData(queryClient, user.id);
           hasPrefetchedRef.current = true;
         }, 1000); // Increased delay to 1 second
 
         return () => clearTimeout(timer);
       } else {
-        queryLogger.log('📦 [Prefetch] Using cached subscription data');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📦 [Prefetch] Using cached subscription data');
+        }
         hasPrefetchedRef.current = true;
       }
     }

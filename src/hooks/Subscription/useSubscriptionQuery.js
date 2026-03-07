@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
 import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
-import { queryLogger } from '../../utils/queryLogger';
 import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 
 /**
@@ -93,15 +92,15 @@ export const useSubscriptionQuery = () => {
 
   // Log when data changes (replaces onSuccess) - dev only
   useEffect(() => {
-    if (query.data) {
-      queryLogger.log('📦 [React Query] Subscription cached:', query.data?.status);
+    if (query.data && process.env.NODE_ENV === 'development') {
+      console.log('📦 [React Query] Subscription cached:', query.data?.status);
     }
   }, [query.data]);
 
   // Log errors (replaces onError)
   useEffect(() => {
     if (query.error) {
-      queryLogger.error('❌ [React Query] Subscription fetch error:', query.error);
+      console.error('❌ [React Query] Subscription fetch error:', query.error);
     }
   }, [query.error]);
 

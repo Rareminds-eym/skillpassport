@@ -13,7 +13,6 @@ import {
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../../context/AuthContext';
 import DatabaseSaveVerification from './DatabaseSaveVerification';
-import StudentFindingDebug from './StudentFindingDebug';
 import QuickFix from './QuickFix';
 import PersonalInfoSummary from './PersonalInfoSummary';
 import ResumeParser from './ResumeParser';
@@ -356,13 +355,6 @@ const ProfileEditSection = ({ profileEmail }) => {
         {isOwnProfile && (
           <div className="mb-8">
             <DatabaseSaveVerification />
-          </div>
-        )}
-
-        {/* Debug Component for Testing Student Finding - Only for own profile */}
-        {isOwnProfile && (
-          <div className="mb-8">
-            <StudentFindingDebug />
           </div>
         )}
 
