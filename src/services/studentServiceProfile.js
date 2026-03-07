@@ -65,6 +65,9 @@ export const getStudentByEmail = async (email) => {
       .from('students')
       .select(`
         *,
+        users!fk_students_user (
+          role
+        ),
         school:organizations!students_school_id_fkey (
           id,
           name,
@@ -477,6 +480,10 @@ const formattedExperience = tableExperience
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
 
+      // User role from users table
+      users: data.users || null,
+      userRole: data.users?.role || null,
+
       // School/University College linkage
       school_id: data.school_id,
       university_college_id: data.university_college_id,
@@ -591,6 +598,9 @@ export const getStudentById = async (studentId) => {
       .from('students')
       .select(`
         *,
+        users!fk_students_user (
+          role
+        ),
         school:organizations!students_school_id_fkey (
           id,
           name,
@@ -983,6 +993,10 @@ export const getStudentById = async (studentId) => {
       email: data.email || transformedProfile.email,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
+
+      // User role from users table
+      users: data.users || null,
+      userRole: data.users?.role || null,
 
       // School/University College linkage
       school_id: data.school_id,

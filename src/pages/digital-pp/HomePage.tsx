@@ -5,19 +5,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BackgroundRippleEffect } from '../../components/digital-pp/ui/background-ripple-effect';
 import { usePortfolio } from '../../context/PortfolioContext';
 import { useAuth } from '../../context/AuthContext';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { isLearner } from '../../utils/studentType';
 
 const HomePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { setStudent } = usePortfolio();
-  const { role, user } = useAuth();
-  
-  // Get student data to check if learner
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData } = useStudentDataByEmail(userEmail);
-  const isLearnerUser = isLearner(studentData);
+  const { role } = useAuth();
 
   useEffect(() => {
     // Set the candidate data from navigation state into PortfolioContext
@@ -298,16 +291,15 @@ const HomePage: React.FC = () => {
               </div>
             </motion.div>
 
-            {/* Passport Mode Card - Hide for learners */}
-            {!isLearnerUser && (
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                whileHover={{ scale: 1.02, y: -5 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="group relative"
-              >
+            {/* Passport Mode Card */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              whileHover={{ scale: 1.02, y: -5 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="group relative"
+            >
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-3xl p-8 h-full border-2 border-indigo-200 dark:border-indigo-800 hover:border-indigo-400 dark:hover:border-indigo-600 transition-all hover:shadow-2xl animate-border-glow dark:animate-none">
                 {/* Badge */}
                 <motion.div 
@@ -417,7 +409,6 @@ const HomePage: React.FC = () => {
                 />
               </div>
             </motion.div>
-            )}
           </div>
         </div>
       </section>
