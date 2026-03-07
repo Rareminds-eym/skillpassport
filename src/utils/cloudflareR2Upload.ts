@@ -5,6 +5,8 @@
 
 import { getPagesApiUrl } from './pagesUrl';
 import { supabase } from '../lib/supabaseClient';
+import { validateFileSize } from './fileValidation';
+import { getFileSizeLimit } from '../config/fileSizeLimits';
 
 // Storage API worker URL
 const STORAGE_API_URL = getPagesApiUrl('storage');
@@ -44,12 +46,16 @@ export async function uploadToCloudflareR2(
       };
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
+    // Validate file size using centralized validation
+    // Determine context based on folder
+    const context = folder === 'courses' ? 'course_resource' : 'profile_photo';
+    const sizeValidation = validateFileSize(file, { context });
+    
+    if (!sizeValidation.valid) {
+      const config = getFileSizeLimit(context);
       return {
         success: false,
-        error: 'Image size must be less than 5MB'
+        error: `Image size must be less than ${config.displaySize}`
       };
     }
 

@@ -5,6 +5,8 @@ import { parseResumeWithAI } from '../../../services/resumeParserService';
 import { supabase } from '../../../utils/api';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import { validateFileSize, getValidationErrorMessage } from '../../../utils/fileValidation';
+import { getFileSizeLimit } from '../../../config/fileSizeLimits';
 
 // Configure PDF.js worker - using local worker file from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -37,8 +39,10 @@ const ResumeParserTester = ({ userId, onClose }) => {
         return;
       }
 
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError('File size must be less than 5MB');
+      // Validate file size using centralized validation
+      const sizeValidation = validateFileSize(selectedFile, { context: 'resume' });
+      if (!sizeValidation.valid) {
+        setError(getValidationErrorMessage(sizeValidation));
         return;
       }
 
@@ -357,7 +361,7 @@ const ResumeParserTester = ({ userId, onClose }) => {
                 <span className="text-lg font-medium text-gray-700 mb-1">
                   {file ? file.name : 'Click to upload resume'}
                 </span>
-                <span className="text-sm text-gray-500">PDF or TXT (Max 5MB)</span>
+                <span className="text-sm text-gray-500">PDF or TXT (Max {getFileSizeLimit('resume').displaySize})</span>
               </label>
             </div>
             {file && (

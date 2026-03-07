@@ -4,6 +4,16 @@ import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import './index.css';
 import { QueryProvider } from './providers/QueryProvider';
+import { validateFileSizeConfig } from './config/fileSizeLimits';
+
+// Validate file size configuration at startup
+try {
+  validateFileSizeConfig();
+  console.log('✅ File size configuration validated successfully');
+} catch (error) {
+  console.error('❌ File size configuration validation failed:', error);
+  throw error; // Prevent application startup
+}
 
 // No scroll lock management needed
 

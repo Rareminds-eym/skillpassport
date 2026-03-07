@@ -6,6 +6,8 @@ import type {
   StudentReport,
   ValidationError
 } from '@/types/StudentManagement';
+import { validateFileSize } from '@/utils/fileValidation';
+import { getFileSizeLimit } from '@/config/fileSizeLimits';
 
 // ============= ADMISSION WORKFLOW =============
 
@@ -1100,14 +1102,16 @@ export const validationUtils = {
   // 6.1.1 Document Upload Validation
   validateDocument(file: File, documentType: string): ValidationError | null {
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg'];
-    const maxSize = 10 * 1024 * 1024; // 10MB
 
     if (!allowedTypes.includes(file.type)) {
       return { field: documentType, message: 'Unsupported file type or file too large.' };
     }
 
-    if (file.size > maxSize) {
-      return { field: documentType, message: 'Unsupported file type or file too large.' };
+    // Use centralized file size validation
+    const sizeValidation = validateFileSize(file, { context: 'document' });
+    if (!sizeValidation.valid) {
+      const config = getFileSizeLimit('document');
+      return { field: documentType, message: `File size exceeds maximum allowed size of ${config.displaySize}.` };
     }
 
     return null;
