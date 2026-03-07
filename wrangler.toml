@@ -7,5 +7,3 @@ compatibility_flags = ["nodejs_compat"]
 
 # Environment variables for local development
 # These will be loaded from .dev.vars file
-
-pages_build_output_dir = "./dist"
