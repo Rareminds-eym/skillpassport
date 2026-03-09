@@ -13,7 +13,6 @@ import PublicLayout from "../layouts/PublicLayout";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 import StudentLayout from "../layouts/StudentLayout";
 //digital passport - StudentDigitalPortfolioNav removed (merged into Header dropdown)
-import { TestProvider } from '../context/assessment/TestContext';
 import HomePage from '../pages/digital-pp/HomePage';
 import DigitalPassportPage from '../pages/digital-pp/PassportPage';
 import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
@@ -904,8 +903,8 @@ const AppRoutes = () => {
           <Route path="assessment/platform" element={<AssessmentStart />} />
           <Route path="assessment/dynamic" element={<DynamicAssessment />} />
           <Route path="adaptive-aptitude-test" element={<AdaptiveAptitudeTest />} />
-          <Route path="assessment/start" element={<TestProvider><AssessmentTestPage /></TestProvider>} />
-          <Route path="assessment/results" element={<TestProvider><AssessmentResults /></TestProvider>} />
+          <Route path="assessment/start" element={<AssessmentTestPage />} />
+          <Route path="assessment/results" element={<AssessmentResults />} />
 
           {/* Digital Portfolio routes with required providers */}
           <Route

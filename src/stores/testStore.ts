@@ -181,3 +181,20 @@ export const useTestActions = () =>
     reset: state.reset,
     submitTest: state.submitTest,
   }));
+
+// Combined hook that mimics the old Context API
+export const useTest = () => {
+  const questions = useTestQuestions();
+  const selectedAnswers = useTestAnswers();
+  const isLoading = useTestLoading();
+  const progress = useTestProgress();
+  const actions = useTestActions();
+
+  return {
+    questions,
+    selectedAnswers,
+    isLoading,
+    ...progress,
+    ...actions,
+  };
+};
