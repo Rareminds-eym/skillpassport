@@ -16,6 +16,9 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('MarkAttendance');
 
 // ==================== TYPES ====================
 interface TimetableSlot {
@@ -108,11 +111,11 @@ const MarkAttendance: React.FC = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log('🔍 [MarkAttendance] No user found');
+          logger.info('No user found');
           return;
         }
 
-        console.log('🔍 [MarkAttendance] Fetching educator info for user:', user.id);
+        logger.info('Fetching educator info', { userId: user.id });
 
         // First check if they are a school educator
         const { data: schoolEducator } = await supabase
@@ -122,7 +125,7 @@ const MarkAttendance: React.FC = () => {
           .maybeSingle();
 
         if (schoolEducator) {
-          console.log('🏫 [MarkAttendance] Found school educator:', schoolEducator);
+          logger.info('Found school educator', { schoolEducator });
           setEducatorId(schoolEducator.id);
           setEducatorUserId(schoolEducator.user_id);
           setSchoolId(schoolEducator.school_id);
@@ -137,11 +140,11 @@ const MarkAttendance: React.FC = () => {
           .eq("user_id", user.id)
           .maybeSingle();
 
-        console.log('🎓 [MarkAttendance] College lecturer query result:', { data: collegeLecturer });
+        logger.info('College lecturer query result', { collegeLecturer });
 
         if (collegeLecturer) {
-          console.log('🎓 [MarkAttendance] Found college lecturer:', collegeLecturer);
-          console.log('🎓 [MarkAttendance] Setting state:', {
+          logger.info('Found college lecturer', { collegeLecturer });
+          logger.info('Setting state', {
             educatorId: collegeLecturer.id,
             educatorUserId: collegeLecturer.user_id,
             collegeId: collegeLecturer.collegeId,
@@ -154,9 +157,9 @@ const MarkAttendance: React.FC = () => {
           return;
         }
 
-        console.log('❌ [MarkAttendance] No educator record found for user:', user.id);
+        logger.info('No educator record found', { userId: user.id });
       } catch (error) {
-        console.error('❌ [MarkAttendance] Error fetching educator info:', error);
+        logger.error('Error fetching educator info', error);
       }
     };
 
@@ -165,7 +168,7 @@ const MarkAttendance: React.FC = () => {
 
   // Load today's schedule
   useEffect(() => {
-    console.log('🔍 [MarkAttendance] Schedule loading effect triggered:', {
+    logger.info('Schedule loading effect triggered', {
       educatorId,
       schoolId,
       collegeId,
@@ -174,10 +177,10 @@ const MarkAttendance: React.FC = () => {
     });
     
     if (educatorId && (schoolId || collegeId) && educatorType) {
-      console.log('✅ [MarkAttendance] All conditions met, loading schedule');
+      logger.info('All conditions met, loading schedule');
       loadTodaySchedule();
     } else {
-      console.log('❌ [MarkAttendance] Conditions not met for loading schedule:', {
+      logger.info('Conditions not met for loading schedule', {
         hasEducatorId: !!educatorId,
         hasSchoolOrCollege: !!(schoolId || collegeId),
         hasEducatorType: !!educatorType
@@ -196,7 +199,7 @@ const MarkAttendance: React.FC = () => {
         await loadCollegeSchedule();
       }
     } catch (error) {
-      console.error("Error loading schedule:", error);
+      logger.error('Error loading schedule', error);
       setTodaySlots([]);
     } finally {
       setLoading(false);
@@ -254,7 +257,7 @@ const MarkAttendance: React.FC = () => {
   };
 
   const loadCollegeSchedule = async () => {
-    console.log('🎓 [MarkAttendance] Loading college schedule:', {
+    logger.info('Loading college schedule', {
       educatorId,
       selectedDate,
       collegeId
@@ -287,7 +290,7 @@ const MarkAttendance: React.FC = () => {
       .eq("college_id", collegeId)
       .order("start_time");
 
-    console.log('🎓 [MarkAttendance] College sessions query result:', {
+    logger.info('College sessions query result', {
       data: existingSessions,
       error: sessionsError,
       query: {
@@ -298,7 +301,7 @@ const MarkAttendance: React.FC = () => {
     });
 
     if (sessionsError) {
-      console.error('❌ [MarkAttendance] Error loading college sessions:', sessionsError);
+      logger.error('Error loading college sessions', sessionsError);
       throw sessionsError;
     }
 
@@ -320,7 +323,7 @@ const MarkAttendance: React.FC = () => {
       is_locked: isSlotLocked(selectedDate)
     }));
 
-    console.log('🎓 [MarkAttendance] Converted college slots:', collegeSlots);
+    logger.info('Converted college slots', { collegeSlots });
 
     setTodaySlots(collegeSlots);
   };
@@ -522,7 +525,7 @@ const MarkAttendance: React.FC = () => {
     
     if (isOldFormat) {
       // Old format: "Department Name-Program Name-1-A"
-      console.log('🎓 [startCollegeAttendanceSession] Detected OLD format (names)');
+      logger.info('Detected OLD format (names)');
       section = classParts[classParts.length - 1];
       semester = parseInt(classParts[classParts.length - 2]);
       
@@ -530,7 +533,7 @@ const MarkAttendance: React.FC = () => {
       const programNameParts = classParts.slice(1, classParts.length - 2);
       const programName = programNameParts.join('-');
       
-      console.log('🎓 [startCollegeAttendanceSession] Parsed OLD format:', {
+      logger.info('Parsed OLD format', {
         programName,
         semester,
         section,
@@ -545,16 +548,16 @@ const MarkAttendance: React.FC = () => {
         .maybeSingle();
       
       if (programError || !programData) {
-        console.error('❌ [startCollegeAttendanceSession] Failed to find program by name:', programError);
+        logger.error('Failed to find program by name', programError);
         throw new Error(`Failed to find program: ${programName}`);
       }
       
       program_id = programData.id;
       
-      console.log('🎓 [startCollegeAttendanceSession] Found program ID:', program_id);
+      logger.info('Found program ID', { program_id });
     } else {
       // New format: UUID-based
-      console.log('🎓 [startCollegeAttendanceSession] Detected NEW format (UUIDs)');
+      logger.info('Detected NEW format (UUIDs)');
       section = classParts[classParts.length - 1];
       semester = parseInt(classParts[classParts.length - 2]);
       
@@ -562,7 +565,7 @@ const MarkAttendance: React.FC = () => {
       const programIdParts = classParts.slice(classParts.length - 7, classParts.length - 2);
       program_id = programIdParts.join('-');
       
-      console.log('🎓 [startCollegeAttendanceSession] Parsed NEW format:', {
+      logger.info('Parsed NEW format', {
         program_id,
         semester,
         section,
@@ -571,7 +574,7 @@ const MarkAttendance: React.FC = () => {
     }
 
     // Get program and department names from program_sections
-    console.log('🎓 [startCollegeAttendanceSession] Looking up program details...');
+    logger.info('Looking up program details...');
     
     const { data: programSections, error: programError } = await supabase
       .from("program_sections")
@@ -580,7 +583,7 @@ const MarkAttendance: React.FC = () => {
       .eq("semester", semester)
       .eq("section", section);
 
-    console.log('🎓 [startCollegeAttendanceSession] Program section lookup result:', {
+    logger.info('Program section lookup result', {
       programSections,
       error: programError,
       query: {
@@ -591,7 +594,7 @@ const MarkAttendance: React.FC = () => {
     });
 
     if (programError) {
-      console.error('❌ [startCollegeAttendanceSession] Failed to get program details:', programError);
+      logger.error('Failed to get program details', programError);
       throw new Error('Failed to find program information for this session');
     }
 
@@ -601,14 +604,14 @@ const MarkAttendance: React.FC = () => {
 
     // Use the first program section if multiple exist
     const programSection = programSections[0];
-    console.log('🎓 [startCollegeAttendanceSession] Using program section:', programSection);
+    logger.info('Using program section', { programSection });
 
     if (!programSection?.program_id) {
       throw new Error('No program_id found in program section');
     }
 
     // Now find students using the correct program_id
-    console.log('🎓 [startCollegeAttendanceSession] Searching students with program_id:', programSection.program_id);
+    logger.info('Searching students', { program_id: programSection.program_id });
     
     const { data: students, error } = await supabase
       .from("students")
@@ -619,7 +622,7 @@ const MarkAttendance: React.FC = () => {
       .eq("section", section)
       .order("roll_number");
 
-    console.log('🎓 [startCollegeAttendanceSession] Students query result:', {
+    logger.info('Students query result', {
       studentsFound: students?.length || 0,
       error,
       queryType: 'program_id_lookup',
@@ -760,7 +763,7 @@ const MarkAttendance: React.FC = () => {
         await submitCollegeAttendance();
       }
     } catch (error) {
-      console.error("Attendance submission error:", error);
+      logger.error('Attendance submission error', error);
       alert("Failed to submit attendance. Please try again.");
     } finally {
       setSubmitting(false);
@@ -800,7 +803,7 @@ const MarkAttendance: React.FC = () => {
           slotId = slotData.id;
         }
       } catch (error) {
-        console.error("Failed to retrieve slot_id from database:", error);
+        logger.error('Failed to retrieve slot_id from database', error);
       }
     }
     
@@ -896,7 +899,7 @@ const MarkAttendance: React.FC = () => {
       .single();
 
     if (facultyError) {
-      console.error('Failed to get faculty name:', facultyError);
+      logger.error('Failed to get faculty name', facultyError);
     }
 
     const facultyName = facultyData ? `${facultyData.first_name} ${facultyData.last_name}` : "Unknown Faculty";
@@ -943,7 +946,7 @@ const MarkAttendance: React.FC = () => {
       .eq("id", activeSession.slot.id);
 
     if (sessionUpdateError) {
-      console.error('Failed to update session status:', sessionUpdateError);
+      logger.error('Failed to update session status', sessionUpdateError);
     }
 
     // alert(activeSession.isSubmitted ? "Attendance updated successfully!" : "Attendance submitted successfully!");
