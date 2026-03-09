@@ -45,6 +45,9 @@ import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
 import factoryVisitsService from '../../services/factoryVisitsService';
 import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Opportunities');
 
 // Import Applications component content
 import useMessageNotifications from '../../hooks/useMessageNotifications';
@@ -58,7 +61,7 @@ const checkInstitutionDetailsComplete = (studentData) => {
   // Learners don't need institution details
   if (isLearner(studentData)) return true;
   
-  console.log('🔍 Checking institution details:', {
+  logger.info('Checking institution details:', {
     universityId: studentData.universityId,
     university: studentData.university,
     university_college_id: studentData.university_college_id,
@@ -93,7 +96,7 @@ const checkInstitutionDetailsComplete = (studentData) => {
     
     // Consider complete if at least college and program are filled
     const isComplete = hasCollege && hasProgram;
-    console.log('🎓 College student check:', { 
+    logger.info('College student check:', { 
       isComplete, 
       hasCollege, 
       hasProgram,
@@ -614,7 +617,7 @@ const Opportunities = () => {
         setAppliedJobs(new Set(applicationsData.map(app => app.opportunity_id)));
         setSavedJobs(new Set(savedIds));
       } catch (error) {
-        console.error('Error loading jobs data:', error);
+        logger.error('Error loading jobs data:', error);
       }
     };
 
@@ -661,7 +664,7 @@ const Opportunities = () => {
       setApplications(transformedApplications);
       setFilteredApplications(transformedApplications);
     } catch (err) {
-      console.error('Error fetching applications:', err);
+      logger.error('Error fetching applications:', err);
     }
   }, [studentId, userEmail]);
 
@@ -717,7 +720,7 @@ const Opportunities = () => {
             setRegisteredVisits(registeredIds);
           }
         } catch (error) {
-          console.error('Error fetching industrial visits:', error);
+          logger.error('Error fetching industrial visits:', error);
         } finally {
           setIndustrialVisitsLoading(false);
         }
@@ -782,13 +785,13 @@ const Opportunities = () => {
         }
       }
     } catch (error) {
-      console.error('Error toggling save:', error);
+      logger.error('Error toggling save:', error);
     }
   };
 
   const handleApply = async (opportunity) => {
     if (!studentId) {
-      console.error('Please log in to apply for jobs');
+      logger.error('Please log in to apply for jobs');
       return;
     }
 
@@ -827,10 +830,10 @@ const Opportunities = () => {
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
       } else {
-        console.error('Application failed:', result.message);
+        logger.error('Application failed:', result.message);
       }
     } catch (error) {
-      console.error('Error applying to job:', error);
+      logger.error('Error applying to job:', error);
     } finally {
       setIsApplying(false);
     }
@@ -862,7 +865,7 @@ const Opportunities = () => {
         }
       }
     } catch (error) {
-      console.error('Error registering for visit:', error);
+      logger.error('Error registering for visit:', error);
       toast.error('An error occurred while registering');
     } finally {
       setIsRegistering(false);
@@ -2136,7 +2139,7 @@ const MyApplicationsContent = ({
 
   // Handle messaging
   const handleMessage = async (app) => {
-    console.log('🔍 handleMessage called with:', {
+    logger.info('handleMessage called with:', {
       appId: app.id,
       recruiterId: app.recruiterId,
       opportunityId: app.opportunityId,
@@ -2174,8 +2177,8 @@ const MyApplicationsContent = ({
         }
       });
     } catch (error) {
-      console.error('❌ Error opening message:', error);
-      console.error('Error details:', {
+      logger.error('Error opening message:', error);
+      logger.error('Error details:', {
         message: error.message,
         code: error.code,
         details: error.details,

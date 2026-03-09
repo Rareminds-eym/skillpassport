@@ -36,6 +36,9 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { downloadCertificate, getCertificateProxyUrl } from '../../services/certificateService';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Courses');
 
 const Courses = () => {
   const navigate = useNavigate();
@@ -121,7 +124,7 @@ const Courses = () => {
           setStudentBranch(data.branch_field);
         }
       } catch (error) {
-        console.error('Error fetching student info:', error);
+        logger.error('Error fetching student info', error);
       }
     };
     
@@ -272,7 +275,7 @@ const Courses = () => {
         setInitialLoad(false);
       }
     } catch (error) {
-      console.error('Error fetching courses:', error);
+      logger.error('Error fetching courses', error);
       if (isFirstLoad) {
         setInitialLoad(false);
       }
@@ -312,7 +315,7 @@ const Courses = () => {
         
       }
     } catch (error) {
-      console.error('Error fetching enrollments:', error);
+      logger.error('Error fetching enrollments', error);
     }
   }, []);
 
@@ -359,7 +362,7 @@ const Courses = () => {
     try {
       await downloadCertificate(certUrl, courseName);
     } catch (error) {
-      console.error('Error downloading certificate:', error);
+      logger.error('Error downloading certificate', error);
     } finally {
       setDownloadingCertificate(null);
     }

@@ -308,6 +308,9 @@ import RecentUpdatesCard from "../../components/Students/components/RecentUpdate
 import useStudentMessageNotifications from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('MyExperience');
 
 const MyExperience = () => {
   const { user } = useAuth();
@@ -372,7 +375,7 @@ const MyExperience = () => {
   }, [experience]);
 
   const handleSaveExperience = async (updatedData) => {
-    console.log("💾 Saving experience data:", updatedData);
+    logger.info('💾 Saving experience data', updatedData);
     try {
       // Update local state with ALL data (including hidden items)
       // Filtering will happen at display time
@@ -381,7 +384,7 @@ const MyExperience = () => {
       ));
 
       const result = await updateExperience(updatedData);
-      console.log("✅ Save result:", result);
+      logger.info('✅ Save result', result);
 
       // Refresh the data to ensure consistency
       if (refresh) {
@@ -390,7 +393,7 @@ const MyExperience = () => {
 
       setActiveModal(null);
     } catch (error) {
-      console.error("❌ Error saving experience:", error);
+      logger.error('❌ Error saving experience', error);
       // Revert local state on error
       setLocalExperience(approvedExperience);
     }

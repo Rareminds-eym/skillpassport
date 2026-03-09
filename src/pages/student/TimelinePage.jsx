@@ -18,6 +18,9 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('TimelinePage');
 
 /**
  * TimelinePage - Digital Portfolio Journey Map
@@ -39,7 +42,7 @@ import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 const TimelinePage = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  console.log("----------------------", user);
+  logger.info('TimelinePage loaded', { userEmail: user?.email });
   
   // Get email for fetching detailed timeline data
   const userEmail = localStorage.getItem('userEmail') || user?.email;
@@ -79,16 +82,14 @@ const TimelinePage = () => {
     if (!studentData) return [];
     
     // Debug: Log the data structure
-    console.log('📊 Student Data Structure:', studentData);
-    console.log('📚 Education:', studentData.education);
-    console.log('💼 Experience:', studentData.experience);
-    console.log('🚀 Projects:', studentData.projects);
-    console.log('🏆 Certificates:', studentData.certificates);
-    console.log('⭐ Achievements:', studentData.achievements);
-    
-    // Since the user data comes from auth context, we need to check if it has profile data
-    // The data might be in different structure than expected
-    console.log('🔍 Available keys in studentData:', Object.keys(studentData));
+    logger.info('📊 Student Data Structure', {
+      education: studentData.education,
+      experience: studentData.experience,
+      projects: studentData.projects,
+      certificates: studentData.certificates,
+      achievements: studentData.achievements,
+      availableKeys: Object.keys(studentData)
+    });
     
     const milestones = [];
 
@@ -101,7 +102,7 @@ const TimelinePage = () => {
     
     // If no timeline data exists, create some sample milestones from basic user info
     if (education.length === 0 && experience.length === 0 && projects.length === 0 && certificates.length === 0 && achievements.length === 0) {
-      console.log('🔄 No timeline data found, creating basic milestones from user info');
+      logger.info('🔄 No timeline data found, creating basic milestones from user info');
       
       // Add basic education milestone if we have university info
       if (studentData.university || studentData.college_school_name) {
