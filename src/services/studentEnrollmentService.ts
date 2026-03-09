@@ -1,4 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('StudentEnrollmentService');
 
 export interface EnrolledStudentView {
   student_id: string;
@@ -109,7 +112,7 @@ export const studentEnrollmentService = {
 
       return { success: true, data: filteredData };
     } catch (error: any) {
-      console.error('Error fetching enrolled students:', error);
+      logger.error('Error fetching enrolled students', error, { filters });
       return {
         success: false,
         error: {
@@ -146,7 +149,7 @@ export const studentEnrollmentService = {
 
       return { success: true, data: student };
     } catch (error: any) {
-      console.error('Error enrolling student:', error);
+      logger.error('Error enrolling student', error, { studentId: data.student_id, programId: data.program_id });
       return {
         success: false,
         error: {
@@ -178,7 +181,7 @@ export const studentEnrollmentService = {
 
       return { success: true, data: results };
     } catch (error: any) {
-      console.error('Error bulk enrolling students:', error);
+      logger.error('Error bulk enrolling students', error, { count: enrollments.length });
       return {
         success: false,
         error: {
@@ -212,7 +215,7 @@ export const studentEnrollmentService = {
 
       return { success: true, data };
     } catch (error: any) {
-      console.error('Error updating enrollment:', error);
+      logger.error('Error updating enrollment', error, { studentId, updates });
       return {
         success: false,
         error: {
@@ -238,7 +241,7 @@ export const studentEnrollmentService = {
 
       return { success: true, data: data || [] };
     } catch (error: any) {
-      console.error('Error fetching unenrolled students:', error);
+      logger.error('Error fetching unenrolled students', error);
       return {
         success: false,
         error: {
@@ -314,7 +317,7 @@ export const studentEnrollmentService = {
 
       return { success: true, data: stats };
     } catch (error: any) {
-      console.error('Error fetching enrollment stats:', error);
+      logger.error('Error fetching enrollment stats', error, { filters });
       return {
         success: false,
         error: {

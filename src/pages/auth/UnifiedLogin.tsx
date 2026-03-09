@@ -43,7 +43,7 @@ const UnifiedLogin = () => {
 
   const getRoleDisplayName = (role: UserRole): string => {
     const roleNames: Record<UserRole, string> = {
-      student: 'Student',
+      student: 'Student/Learner',
       recruiter: 'Recruiter',
       educator: 'Educator',
       school_admin: 'School Administrator',

@@ -4,6 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { checkAssessmentStatus } from '../../services/externalAssessmentService';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('AssessmentStart');
 
 /**
  * Assessment Start Page
@@ -33,17 +36,17 @@ const AssessmentStart = () => {
     const checkStatus = async () => {
       if (studentData?.id && certificateName) {
         setCheckingStatus(true);
-        console.log('🔍 Checking assessment status for:', {
+        logger.info('Checking assessment status', {
           studentId: studentData.id,
           courseName: certificateName
         });
         
         const result = await checkAssessmentStatus(studentData.id, certificateName);
         
-        console.log('📊 Assessment status result:', result);
+        logger.info('Assessment status result', result);
         
         if (result.status === 'in_progress' && result.attempt) {
-          console.log('✅ Found in-progress attempt:', {
+          logger.info('Found in-progress attempt', {
             id: result.attempt.id,
             currentQuestionIndex: result.attempt.current_question_index,
             totalQuestions: result.attempt.total_questions,
@@ -57,7 +60,7 @@ const AssessmentStart = () => {
           navigate('/student/my-learning');
           return;
         } else {
-          console.log('ℹ️ No in-progress attempt found');
+          logger.info('No in-progress attempt found');
         }
         setCheckingStatus(false);
       } else {
@@ -73,8 +76,11 @@ const AssessmentStart = () => {
     
     // If there's an in-progress attempt, resume it
     if (inProgressAttempt) {
-      console.log('📝 Resuming in-progress assessment from question', inProgressAttempt.current_question_index + 1);
-      console.log('📦 Passing resumeAttempt to test page:', {
+      logger.info('Resuming in-progress assessment', { 
+        currentQuestionIndex: inProgressAttempt.current_question_index + 1,
+        attemptId: inProgressAttempt.id
+      });
+      logger.info('Passing resumeAttempt to test page', {
         id: inProgressAttempt.id,
         currentQuestionIndex: inProgressAttempt.current_question_index,
         questionsCount: inProgressAttempt.questions?.length,
@@ -99,13 +105,13 @@ const AssessmentStart = () => {
     // If using dynamic generation, pre-load questions here
     if (useDynamicGeneration && certificateName) {
       try {
-        console.log('🎯 Pre-generating questions for:', certificateName);
+        logger.info('Pre-generating questions', { certificateName });
         
         // Use the generateAssessment service which checks database first
         const { generateAssessment } = await import('../../services/assessmentGenerationService');
         const assessment = await generateAssessment(certificateName, level, 15, courseId);
         
-        console.log('✅ Questions loaded, navigating to test...');
+        logger.info('Questions loaded, navigating to test');
         
         // Navigate to DynamicAssessment with pre-generated questions
         navigate('/student/assessment/dynamic', { 
@@ -120,7 +126,7 @@ const AssessmentStart = () => {
           } 
         });
       } catch (error) {
-        console.error('❌ Error loading questions:', error);
+        logger.error('Error loading questions', error);
         alert('Failed to load assessment. Please try again.');
         setIsStarting(false);
       }

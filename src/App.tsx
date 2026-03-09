@@ -1,4 +1,3 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -11,19 +10,6 @@ import './utils/suppressRechartsWarnings';
 
 // Zustand stores - state management migrated from Context
 import { initializeStores } from './stores';
-
-// Create React Query client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 2 * 60 * 1000, // 2 minutes - data is fresh
-      gcTime: 5 * 60 * 1000, // 5 minutes - garbage collection time (replaces cacheTime)
-      refetchOnWindowFocus: false,
-      refetchOnMount: false, // Don't refetch on mount if data is fresh
-      retry: 1,
-    },
-  },
-});
 
 function App() {
   // Initialize stores on mount
@@ -66,7 +52,6 @@ function App() {
           />
         </TourWrapper>
       </BrowserRouter>
-    </QueryClientProvider>
   );
 }
 
