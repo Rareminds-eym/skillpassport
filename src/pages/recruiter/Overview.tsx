@@ -19,9 +19,6 @@ import { getDashboardData } from '../../services/dashboardService';
 import ActivityFeed from '../../components/ActivityFeed';
 import { useRealtimeActivities } from '../../hooks/useRealtimeActivities';
 import { trackSearchUsage } from '../../services/savedSearchesService';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('RecruiterOverview');
 
 const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   const colorClasses = {

@@ -21,12 +21,8 @@ import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import MessageService, { Conversation } from '../../services/messageService';
 import { useMessages } from '../../hooks/useMessages';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('RecruiterMessages');
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
