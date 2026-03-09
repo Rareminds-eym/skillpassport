@@ -114,7 +114,6 @@ const UnifiedForgotPassword = lazy(() => import("../pages/auth/UnifiedForgotPass
 const PasswordReset = lazy(() => import("../pages/auth/PasswordReset"));
 const TokenPasswordReset = lazy(() => import("../pages/auth/TokenPasswordReset"));
 const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
-const DebugRoles = lazy(() => import("../pages/auth/DebugRoles"));
 const SignupRecruiter = lazy(() =>
   import("../pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -173,7 +172,6 @@ const Clubs = lazy(() => import("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../pages/student/CareerAI"));
-const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
 );
@@ -201,7 +199,6 @@ const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorMyMentees = lazy(() => import("../pages/educator/MyMentees"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
 const EducatorProfile = lazy(() => import("../pages/educator/ProfileFixed"));
-const EducatorProfileDebug = lazy(() => import("../pages/educator/ProfileDebug"));
 const EducatorManagement = lazy(() => import("../pages/educator/EducatorManagement"));
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
@@ -557,7 +554,6 @@ const AppRoutes = () => {
           <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
           <Route path="/password-reset" element={<TokenPasswordReset />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/debug-roles" element={<DebugRoles />} />
 
           {/* Deprecated login routes - redirect to unified login */}
           <Route path="/login/student" element={<Navigate to="/login" replace />} />
@@ -587,7 +583,6 @@ const AppRoutes = () => {
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
-          <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route path="/network-error" element={<NetworkError />} />
           <Route
             path="/student/profile/:studentId"
@@ -1065,7 +1060,6 @@ const AppRoutes = () => {
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="profile" element={<EducatorProfile />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
-          <Route path="profile-debug" element={<EducatorProfileDebug />} />
           <Route path="management" element={<EducatorManagement />} />
           <Route path="communication" element={<EducatorCommunication />} />
           <Route path="messages" element={<EducatorMessages />} />
