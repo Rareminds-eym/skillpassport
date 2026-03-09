@@ -6,7 +6,8 @@ import TourWrapper from './components/Tours/TourWrapper';
 import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotification';
 import { SubscriptionProvider } from './context/SubscriptionContext';
 import AppRoutes from './routes/AppRoutes';
-import './utils/suppressRechartsWarnings';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './providers/QueryProvider';
 
 // Zustand stores - state management migrated from Context
 import { initializeStores } from './stores';
@@ -52,6 +53,7 @@ function App() {
           />
         </TourWrapper>
       </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 
