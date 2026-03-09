@@ -11,8 +11,7 @@ import {
     XCircle,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-// import { useAuth } from "../context/AuthContext";
-import { useAuth } from "../../context/AuthContext";
+import { useUser } from "../../stores";
 import { supabase } from "../../lib/supabaseClient";
 
 function formatDate(isoLike: string) {
@@ -37,7 +36,7 @@ const initials = (name: string) =>
     .toUpperCase();
 
 const RecruiterProfile: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [recruiter, setRecruiter] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<{ field: "email" | "phone" | null }>({

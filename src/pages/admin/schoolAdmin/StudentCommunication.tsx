@@ -27,7 +27,7 @@ import { supabase } from '../../../lib/supabaseClient';
 import { useEducatorMessages } from '../../../hooks/useEducatorMessages.js';
 import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../../context/AuthContext.jsx';
+import { useUser } from '../../../stores';
 import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
 import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
@@ -67,7 +67,7 @@ const StudentCommunication = () => {
   });
   
   // Get school admin ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   const schoolAdminId = user?.id;
   const schoolAdminName = user?.name || 'School Admin';
   const queryClient = useQueryClient();

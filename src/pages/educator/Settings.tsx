@@ -23,7 +23,7 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useState, useRef, useEffect } from 'react';
 // @ts-ignore - JSX file without declaration
-import { useAuth } from '../../context/AuthContext';
+import { useUser, useUserRole } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { validateFile, uploadFile, getDocumentUrl } from '../../services/fileUploadService';
 import { storageService } from '../../services/storageService';
@@ -274,7 +274,9 @@ const SettingSelect: React.FC<{
 );
 
 const Settings: React.FC = () => {
-  const { user, userRole, loading: authLoading } = useAuth();
+  const user = useUser();
+  const userRole = useUserRole();
+  const authLoading = false; // Zustand doesn't have loading state for auth
   const userEmail = (user as any)?.email;
   const userId = (user as any)?.user_id || (user as any)?.id;
   

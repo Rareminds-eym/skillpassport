@@ -21,7 +21,7 @@ import RestoreProgressModal from '../../components/student/courses/RestoreProgre
 import { Badge } from '../../components/Students/components/ui/badge';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useSessionRestore } from '../../hooks/useSessionRestore';
 import { supabase } from '../../lib/supabaseClient';
 import { generateCourseCertificate } from '../../services/certificateService';
@@ -33,7 +33,7 @@ import { getAuthenticatedMediaUrl, needsAuthentication } from '../../services/au
 const CoursePlayer = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
 
   // Get the correct back navigation path based on user role
   const getBackPath = () => {

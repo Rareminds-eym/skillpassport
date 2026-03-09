@@ -8,8 +8,12 @@ import {
     TrendingUp
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactApexChart from 'react-apexcharts';
 import { supabase } from '../../lib/supabaseClient';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Analytics');
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -36,7 +40,7 @@ const Analytics = () => {
         .maybeSingle();
 
       if (studentError) {
-        console.error('❌ Analytics: Error fetching student:', studentError);
+        logger.error('Error fetching student', studentError);
         return;
       }
       
@@ -62,14 +66,14 @@ const Analytics = () => {
         .order('applied_at', { ascending: false });
 
       if (jobsError) {
-        console.error('❌ Analytics: Error fetching applications:', jobsError);
+        logger.error('Error fetching applications', jobsError);
         return;
       }
       
 
       setApplications(appliedJobs || []);
     } catch (error) {
-      console.error('Error in fetchApplicationData:', error);
+      logger.error('Error in fetchApplicationData', error);
     } finally {
       setLoading(false);
     }
@@ -81,8 +85,7 @@ const Analytics = () => {
       const { data, error } = await supabase.rpc('analyze_skills_demand');
       
       if (error) {
-        console.error('❌ Error fetching skills data:', error);
-        console.error('Error details:', JSON.stringify(error));
+        logger.error('Error fetching skills data', error);
         return;
       }
       
@@ -92,7 +95,7 @@ const Analytics = () => {
       } else {
       }
     } catch (error) {
-      console.error('❌ Exception in fetchSkillsData:', error);
+      logger.error('Exception in fetchSkillsData', error);
     }
   };
 

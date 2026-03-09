@@ -9,7 +9,7 @@
 
 import React, { createContext, useContext, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../../context/AuthContext';
+import { useUser } from '../../../../stores';
 import { useAssessment } from '../../../../hooks/useAssessment';
 import { useAdaptiveAptitude } from '../../../../hooks/useAdaptiveAptitude';
 import { useAssessmentFlow, type FlowScreen } from '../hooks/useAssessmentFlow';
@@ -134,7 +134,7 @@ interface AssessmentProviderProps {
 
 export const AssessmentProvider: React.FC<AssessmentProviderProps> = ({ children }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   
   // Student grade info
   const {

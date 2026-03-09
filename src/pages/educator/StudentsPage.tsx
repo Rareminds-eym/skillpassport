@@ -22,7 +22,7 @@ import DeleteStudentModal from '../../components/educator/modals/DeleteStudentMo
 import BulkDeleteStudentsModal from '../../components/educator/modals/BulkDeleteStudentsModal';
 import { UserPlusIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 
 const FilterSection = ({ title, children, defaultOpen = false }: {
   title: string;
@@ -266,7 +266,7 @@ const StudentsPage = () => {
   const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
   // Get auth context for user ID
-  const { user } = useAuth();
+  const user = useUser();
 
   const [filters, setFilters] = useState({
     skills: [] as string[],

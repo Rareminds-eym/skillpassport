@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
-import { useSupabaseAuth } from '../context/SupabaseAuthContext';
+import { useErrorNotification, useAuthActions } from '../stores';
 
 /**
  * TokenRefreshErrorNotification Component
  * 
  * Displays error notifications for token refresh failures.
- * Integrates with SupabaseAuthContext to show user-friendly error messages.
+ * Integrates with authStore to show user-friendly error messages.
  */
 export const TokenRefreshErrorNotification = () => {
-  const { errorNotification, dismissErrorNotification } = useSupabaseAuth();
+  const errorNotification = useErrorNotification();
+  const { dismissErrorNotification } = useAuthActions();
 
   // Auto-dismiss info notifications after 5 seconds
   useEffect(() => {

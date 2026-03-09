@@ -7,7 +7,7 @@ import {
   TrashIcon 
 } from '@heroicons/react/24/outline';
 import { uploadInstructionFile, deleteInstructionFile } from '../../services/educator/assignmentsService';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { supabase } from '../../lib/supabaseClient';
 import ConfirmationModal from '../ui/ConfirmationModal';
@@ -48,7 +48,7 @@ const AssignmentFileUpload = React.forwardRef<
   className = '',
   mode = 'create'
 }, ref) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [existingFilesList, setExistingFilesList] = useState<any[]>(existingFiles);

@@ -12,8 +12,8 @@ import {
   Ban,
   User
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { usePermission } from '../../hooks/usePermissions';
+import { useUser } from '../../stores';
 import type { ClassSwapRequestWithDetails } from '../../types/classSwap';
 
 interface SwapRequestCardProps {
@@ -83,7 +83,7 @@ const SwapRequestCard: React.FC<SwapRequestCardProps> = ({
   onCancel,
   onViewDetails,
 }) => {
-  const { user } = useAuth();
+  const user = useUser();
   
   // Permission controls for Classroom Management module - same as MyTimetable
   const canView = usePermission("Classroom Management", "view");

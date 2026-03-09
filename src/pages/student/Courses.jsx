@@ -32,7 +32,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '../../components/Students/components/ui/pagination';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { downloadCertificate, getCertificateProxyUrl } from '../../services/certificateService';
 import { courseEnrollmentService } from '../../services/courseEnrollmentService';
@@ -42,7 +42,7 @@ const logger = getLogger('Courses');
 
 const Courses = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);

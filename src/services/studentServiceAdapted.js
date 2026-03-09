@@ -1,4 +1,7 @@
 import { supabase } from '../utils/api';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('student-service-adapted');
 
 /**
  * Student Service - ADAPTED for existing Supabase schema
@@ -35,7 +38,7 @@ export const getStudentProfile = async (userId) => {
       error: null 
     };
   } catch (error) {
-    console.error('Error fetching student profile:', error);
+    logger.error('Error fetching student profile', error, { userId });
     return { data: null, error };
   }
 };
@@ -68,7 +71,7 @@ export const updateStudentProfile = async (userId, updates) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating student profile:', error);
+    logger.error('Error updating student profile', error, { userId });
     return { data: null, error };
   }
 };
@@ -110,7 +113,7 @@ export const createStudentProfile = async (userId, studentData) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error creating student profile:', error);
+    logger.error('Error creating student profile', error, { userId });
     return { data: null, error };
   }
 };
@@ -156,7 +159,7 @@ const updateProfileArray = async (userId, arrayName, newArray) => {
     if (error) throw error;
     return { data: newArray, error: null };
   } catch (error) {
-    console.error(`Error updating ${arrayName}:`, error);
+    logger.error(`Error updating ${arrayName}`, error, { userId, arrayName });
     return { data: null, error };
   }
 };
@@ -514,7 +517,7 @@ export const getCompleteStudentData = async (userId) => {
       errors: null
     };
   } catch (error) {
-    console.error('Error fetching complete student data:', error);
+    logger.error('Error fetching complete student data', error, { userId });
     return {
       profile: null,
       education: [],

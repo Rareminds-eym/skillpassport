@@ -1,4 +1,4 @@
-import { useAuth } from "@/hooks/useAuth";
+import { useUser } from "../../../stores";
 import { reportsService } from "@/services/college/reportsService";
 import { ApexOptions } from "apexcharts";
 import jsPDF from 'jspdf';
@@ -49,7 +49,7 @@ interface ReportData {
 }
 
 const ReportsAnalytics: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [selectedCategory, setSelectedCategory] = useState("attendance");
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
   const [filters, setFilters] = useState<FilterState>({

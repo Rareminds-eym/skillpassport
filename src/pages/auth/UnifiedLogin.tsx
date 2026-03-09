@@ -1,7 +1,7 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail, UserCircle } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuthActions } from '../../stores';
 import { getUserRole } from '../../services/roleLookupService';
 import { signIn, UserRole } from '../../services/unifiedAuthService';
 import { redirectToRoleDashboard } from '../../utils/roleBasedRouter';
@@ -18,7 +18,7 @@ interface LoginState {
 const UnifiedLogin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login } = useAuth();
+  const { login } = useAuthActions();
   
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');

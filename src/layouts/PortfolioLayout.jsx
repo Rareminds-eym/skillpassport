@@ -6,7 +6,7 @@ import {
   usePromotionalEventContext,
 } from '../contexts/PromotionalEventContext';
 import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
-import { useAuth } from '../context/AuthContext';
+import { useUserRole } from '../stores';
 
 const PortfolioLayoutContent = () => {
   const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();
@@ -15,7 +15,7 @@ const PortfolioLayoutContent = () => {
     dismissBanner: dismissAssessmentBanner,
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotionalContext();
-  const { role } = useAuth();
+  const { role } = useUserRole();
 
   // Don't show promotional banners for admin users or learners
   const isAdminUser = role && (role.includes('admin') || role === 'admin');

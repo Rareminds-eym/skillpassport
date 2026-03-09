@@ -19,7 +19,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import MessageService, { Conversation } from '../../services/messageService';
 import { useMessages } from '../../hooks/useMessages';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
@@ -43,7 +43,7 @@ const Messages = () => {
   const markedAsReadRef = useRef<Set<string>>(new Set());
   
   // Get recruiter ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   const recruiterId = user?.id;
   const recruiterName = user?.name || 'Recruiter';
   const queryClient = useQueryClient();

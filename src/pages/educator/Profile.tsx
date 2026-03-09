@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useUser, useIsAuthenticated } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 
 interface EducatorProfile {
@@ -63,7 +63,8 @@ interface EducatorProfile {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user: authUser, isAuthenticated } = useAuth();
+  const authUser = useUser();
+  const isAuthenticated = useIsAuthenticated();
   const [profile, setProfile] = useState<EducatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);

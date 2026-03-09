@@ -3,12 +3,12 @@ import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight,
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { useAuth } from '../../context/AuthContext';
+import { useUserRole } from '../../stores';
 
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
   const { student, isLoading } = usePortfolio();
-  const { role } = useAuth();
+  const { role } = useUserRole();
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);

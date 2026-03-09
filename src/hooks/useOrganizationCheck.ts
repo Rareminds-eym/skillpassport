@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-// @ts-ignore - AuthContext is a JS file
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 import { supabase } from '../lib/supabaseClient';
 
 export type OrganizationType = 'school' | 'college' | 'university';
@@ -35,7 +34,7 @@ interface UseOrganizationCheckResult {
  * @returns Object containing organization data, loading state, and whether organization exists
  */
 export function useOrganizationCheck(organizationType: OrganizationType): UseOrganizationCheckResult {
-  const { user } = useAuth();
+  const user = useUser();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
