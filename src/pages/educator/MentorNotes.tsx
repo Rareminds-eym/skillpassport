@@ -10,6 +10,10 @@ import {
     X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('MentorNotes');
+
 // @ts-ignore
 import { FeatureGate } from "../../components/Subscription/FeatureGate";
 import ConfirmationModal from "../../components/ui/ConfirmationModal";
@@ -177,7 +181,7 @@ const MentorNotesContent = () => {
         setNotes(filteredNotes || []);
 
       } catch (err) {
-        console.error("Error loading mentor notes:", err);
+        logger.error("Error loading mentor notes:", err);
       } finally {
         setLoading(false);
       }
@@ -224,7 +228,7 @@ const MentorNotesContent = () => {
       const lastPage = Math.max(1, Math.ceil((filteredNotes?.length || 0) / pageSize));
       if (page > lastPage) setPage(lastPage);
     } catch (err) {
-      console.error("Error refreshing notes:", err);
+      logger.error("Error refreshing notes:", err);
     }
   };
 
@@ -251,7 +255,7 @@ const MentorNotesContent = () => {
       await refreshNotes();
       showNotification("Note Deleted", "Mentor note deleted successfully!", "success");
     } catch (err) {
-      console.error(err);
+      logger.error("Error deleting note:", err);
       showNotification("Delete Failed", "Unable to delete mentor note. Please try again.", "error");
     } finally {
       setIsDeleting(false);
@@ -345,7 +349,7 @@ const MentorNotesContent = () => {
       setOtherNote("");
       setIsOtherSelected(false);
     } catch (err) {
-      console.error("Save note failed:", err);
+      logger.error("Save note failed:", err);
       showNotification("Save Failed", "Unable to save mentor note. Please try again.", "error");
     } finally {
       setIsSaving(false);
@@ -408,7 +412,7 @@ const MentorNotesContent = () => {
       setEditingNote(null);
       showNotification("Note Updated", "Mentor note updated successfully!", "success");
     } catch (err) {
-      console.error(err);
+      logger.error("Error updating note:", err);
       showNotification("Update Failed", "Unable to update mentor note. Please try again.", "error");
     } finally {
       setIsSaving(false);

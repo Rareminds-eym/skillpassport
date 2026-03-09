@@ -9,6 +9,10 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('CoursesWithSupabase');
+
 import {
   PlusIcon,
   BookOpenIcon,
@@ -90,7 +94,7 @@ const CoursesWithSupabase: React.FC = () => {
         setCourses(coursesData);
       }
     } catch (err) {
-      console.error('Error fetching courses:', err);
+      logger.error('Error fetching courses:', err);
       setError('Failed to load courses. Please try again.');
     } finally {
       setLoading(false);
@@ -187,7 +191,7 @@ const CoursesWithSupabase: React.FC = () => {
       setCourses([newCourse, ...courses]);
       setShowCreateModal(false);
     } catch (err) {
-      console.error('Error creating course:', err);
+      logger.error('Error creating course:', err);
       alert('Failed to create course. Please try again.');
     }
   };
@@ -207,7 +211,7 @@ const CoursesWithSupabase: React.FC = () => {
       setEditingCourse(null);
       setShowCreateModal(false);
     } catch (err) {
-      console.error('Error updating course:', err);
+      logger.error('Error updating course:', err);
       alert('Failed to update course. Please try again.');
     }
   };
@@ -223,7 +227,7 @@ const CoursesWithSupabase: React.FC = () => {
       const updatedCourse = await updateCourse(course.id, { status: newStatus });
       setCourses(courses.map(c => c.id === updatedCourse.id ? updatedCourse : c));
     } catch (err) {
-      console.error('Error archiving course:', err);
+      logger.error('Error archiving course:', err);
       alert('Failed to archive course. Please try again.');
     }
   };
@@ -235,7 +239,7 @@ const CoursesWithSupabase: React.FC = () => {
       await deleteCourse(course.id);
       setCourses(courses.filter(c => c.id !== course.id));
     } catch (err) {
-      console.error('Error deleting course:', err);
+      logger.error('Error deleting course:', err);
       alert('Failed to delete course. Please try again.');
     }
   };
