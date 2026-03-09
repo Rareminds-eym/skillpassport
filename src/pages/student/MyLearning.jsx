@@ -13,6 +13,9 @@ import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
 import { supabase } from "../../lib/supabaseClient";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('MyLearning');
 
 const StatCardSkeleton = () => (
   <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm animate-pulse">
@@ -273,7 +276,7 @@ const MyLearning = () => {
       // Refresh the list
       await refresh();
     } catch (error) {
-      console.error('Error deleting certificate:', error);
+      logger.error('Error deleting certificate', error);
       alert('Failed to delete certificate. Please try again.');
     } finally {
       setIsDeleting(false);
@@ -305,7 +308,7 @@ const MyLearning = () => {
       const courseId = course.course_id || course.id;
       navigate(`/student/courses/${courseId}/learn`);
     } else {
-      console.log('Cannot continue external course on platform:', course);
+      logger.info('Cannot continue external course on platform', course);
     }
   };
 

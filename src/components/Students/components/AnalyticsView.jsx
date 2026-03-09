@@ -12,6 +12,9 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../lib/supabaseClient';
 import TopSkillsInDemand from './TopSkillsInDemand';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('AnalyticsView');
 
 const AnalyticsView = ({ studentId, userEmail }) => {
   const navigate = useNavigate();
@@ -22,7 +25,7 @@ const AnalyticsView = ({ studentId, userEmail }) => {
   // Debug logging
   const debugLog = (message, data = null) => {
     if (debugMode) {
-      console.log(`[AnalyticsView] ${message}`, data || '');
+      logger.info(`${message}`, data || '');
     }
   };
 
@@ -64,7 +67,7 @@ const AnalyticsView = ({ studentId, userEmail }) => {
       }
     } catch (error) {
       debugLog('Error in fetchApplicationData:', error);
-      console.error('Error in fetchApplicationData:', error);
+      logger.error('Error in fetchApplicationData:', error);
     } finally {
       setLoading(false);
     }
