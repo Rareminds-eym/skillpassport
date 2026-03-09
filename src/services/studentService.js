@@ -4,6 +4,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('student-service');
 
 /**
  * Capitalize the first letter of a name
@@ -43,7 +46,7 @@ export const createUserRecord = async (userId, userData) => {
       .single();
 
     if (error) {
-      console.error('❌ Error creating user record:', error);
+      logger.error('Error creating user record', error, { userId, email: userData.email });
       return {
         success: false,
         data: null,
@@ -51,14 +54,14 @@ export const createUserRecord = async (userId, userData) => {
       };
     }
 
-    console.log('✅ User record created successfully:', data.id);
+    logger.info('User record created successfully', { userId });
     return {
       success: true,
       data: data,
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error creating user record:', error);
+    logger.error('Unexpected error creating user record', error, { userId });
     return {
       success: false,
       data: null,
@@ -121,7 +124,7 @@ export const createStudent = async (studentData, userId) => {
       .single();
 
     if (error) {
-      console.error('❌ Error creating student record:', error);
+      logger.error('Error creating student record', error, { userId, email });
       return {
         success: false,
         data: null,
@@ -129,14 +132,14 @@ export const createStudent = async (studentData, userId) => {
       };
     }
 
-    console.log('✅ Student record created successfully:', data.id);
+    logger.info('Student record created successfully', { studentId: data.id });
     return {
       success: true,
       data: data,
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error creating student:', error);
+    logger.error('Unexpected error creating student', error, { userId, email });
     return {
       success: false,
       data: null,
@@ -230,7 +233,7 @@ export const completeStudentRegistration = async (userId, registrationData) => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Error completing student registration:', error);
+    logger.error('Error completing student registration', error);
     return {
       success: false,
       data: null,
@@ -253,7 +256,7 @@ export const getStudentByUserId = async (userId) => {
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Error fetching student:', error);
+      logger.error('Error fetching student', error, { userId });
       return {
         success: false,
         data: null,
@@ -267,7 +270,7 @@ export const getStudentByUserId = async (userId) => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error fetching student:', error);
+    logger.error('Unexpected error fetching student', error, { userId });
     return {
       success: false,
       data: null,
@@ -295,7 +298,7 @@ export const updateStudentProfile = async (userId, updates) => {
       .single();
 
     if (error) {
-      console.error('❌ Error updating student profile:', error);
+      logger.error('Error updating student profile', error, { userId });
       return {
         success: false,
         data: null,
@@ -309,7 +312,7 @@ export const updateStudentProfile = async (userId, updates) => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error updating student profile:', error);
+    logger.error('Unexpected error updating student profile', error, { userId });
     return {
       success: false,
       data: null,
@@ -331,7 +334,7 @@ export const getAllColleges = async () => {
       .order('name');
 
     if (error) {
-      console.error('❌ Error fetching colleges:', error);
+      logger.error('Error fetching colleges', error);
       return {
         success: false,
         data: null,
@@ -345,7 +348,7 @@ export const getAllColleges = async () => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error fetching colleges:', error);
+    logger.error('Unexpected error fetching colleges', error);
     return {
       success: false,
       data: null,
@@ -367,7 +370,7 @@ export const getAllSchools = async () => {
       .order('name');
 
     if (error) {
-      console.error('❌ Error fetching schools:', error);
+      logger.error('Error fetching schools', error);
       return {
         success: false,
         data: null,
@@ -381,7 +384,7 @@ export const getAllSchools = async () => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error fetching schools:', error);
+    logger.error('Unexpected error fetching schools', error);
     return {
       success: false,
       data: null,
@@ -409,7 +412,7 @@ export const updateStudent = async (studentId, updates) => {
       .single();
 
     if (error) {
-      console.error('❌ Error updating student:', error);
+      logger.error('Error updating student', error, { studentId });
       return {
         success: false,
         data: null,
@@ -423,7 +426,7 @@ export const updateStudent = async (studentId, updates) => {
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error updating student:', error);
+    logger.error('Unexpected error updating student', error, { studentId });
     return {
       success: false,
       data: null,
@@ -453,7 +456,7 @@ export const softDeleteStudent = async (studentId, educatorId) => {
       .single();
 
     if (error) {
-      console.error('❌ Error soft deleting student:', error);
+      logger.error('Error soft deleting student', error, { studentId });
       return {
         success: false,
         data: null,
@@ -461,14 +464,14 @@ export const softDeleteStudent = async (studentId, educatorId) => {
       };
     }
 
-    console.log('✅ Student soft deleted successfully:', data.id);
+    logger.info('Student soft deleted successfully', { studentId: data.id });
     return {
       success: true,
       data: data,
       error: null
     };
   } catch (error) {
-    console.error('❌ Unexpected error soft deleting student:', error);
+    logger.error('Unexpected error soft deleting student', error, { studentId });
     return {
       success: false,
       data: null,

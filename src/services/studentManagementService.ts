@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { getLogger } from '../config/logging';
 import type {
   AdmissionApplication,
   StudentProfile,
@@ -6,6 +7,8 @@ import type {
   StudentReport,
   ValidationError
 } from '@/types/StudentManagement';
+
+const logger = getLogger('StudentManagementService');
 
 // ============= ADMISSION WORKFLOW =============
 
@@ -138,7 +141,7 @@ export const admissionService = {
   async sendAdmissionConfirmation(application: AdmissionApplication): Promise<void> {
     // In production, integrate with SMS/Email service
     // For now, log the notification
-    console.log('Sending admission confirmation:', {
+    logger.info('Sending admission confirmation', {
       to: application.email,
       phone: application.phone,
       applicationNumber: application.applicationNumber,
@@ -493,7 +496,8 @@ export const attendanceService = {
 
     if (!student) return;
 
-    console.log('Notifying parent of absence:', {
+    logger.info('Notifying parent of absence', {
+      studentId,
       student: student.name,
       date,
       phone: student.parent_phone,
