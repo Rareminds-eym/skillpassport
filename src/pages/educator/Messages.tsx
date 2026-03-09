@@ -29,7 +29,7 @@ import { useCollegeEducatorAdminConversationsForEducator } from '../../hooks/use
 import { useCollegeEducatorAdminMessagesForEducator } from '../../hooks/useCollegeEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';

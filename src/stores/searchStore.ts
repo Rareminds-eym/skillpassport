@@ -292,3 +292,22 @@ export const useSearchActions = () =>
     removeFilter: state.removeFilter,
     clearFilters: state.clearFilters,
   }));
+
+// Combined hook that mimics the old Context API
+export const useSearch = () => {
+  const searchQuery = useSearchQuery();
+  const searchResults = useSearchResults();
+  const isSearching = useIsSearching();
+  const filters = useSearchFilters();
+  const searchHistory = useSearchHistory();
+  const actions = useSearchActions();
+
+  return {
+    searchQuery,
+    searchResults,
+    isSearching,
+    filters,
+    searchHistory,
+    ...actions,
+  };
+};

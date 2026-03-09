@@ -25,7 +25,7 @@ import NewAdminConversationModal from '../../components/messaging/NewAdminConver
 import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
 import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useCreateStudentAdminConversation, useStudentAdminConversations, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
@@ -37,6 +37,9 @@ import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { supabase } from '../../lib/supabaseClient';
 import MessageService from '../../services/messageService';
 import { isLearner as checkIsLearner } from '../../utils/studentType';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Messages');
 
 const Messages = () => {
   const queryClient = useQueryClient();
@@ -115,7 +118,7 @@ const Messages = () => {
     if (!loadingStudentData && availableTabs.length > 0) {
       // If current activeTab is not available, switch to first available tab
       if (!availableTabs.includes(activeTab)) {
-        console.log('🔄 Current tab not available, switching to:', availableTabs[0]);
+        logger.info('Current tab not available, switching to first available', { newTab: availableTabs[0] });
         setActiveTab(availableTabs[0]);
         setSearchParams({ tab: availableTabs[0] }, { replace: true });
       }
@@ -198,7 +201,7 @@ const Messages = () => {
   // This ensures we have fresh data when navigating from Applications page
   useEffect(() => {
     if (conversationIdFromUrl && studentId && !loadingStudentData) {
-      console.log('🔄 URL has conversation ID, forcing fresh fetch...');
+      logger.debug('URL has conversation ID, forcing fresh fetch', { conversationId: conversationIdFromUrl });
       refetchConversations();
     }
   }, []); // Empty deps - only run once on mount
@@ -225,7 +228,7 @@ const Messages = () => {
 
     if (conversationExists) {
       // Success! Conversation found
-      console.log('✅ Conversation found in list:', conversationIdFromUrl);
+      logger.info('Conversation found in list', { conversationId: conversationIdFromUrl });
       hasHandledConversationUrl.current = true;
       setSelectedConversationId(conversationIdFromUrl);
       retryAttempts.current = 0; // Reset retry counter
@@ -239,7 +242,7 @@ const Messages = () => {
       // Conversation not found - try refetching with faster backoff
       // (Cache should be pre-populated from Applications page, so this is just a safety net)
       retryAttempts.current += 1;
-      console.log(`⌛ Conversation not in list yet, retry attempt ${retryAttempts.current}/${MAX_RETRIES}...`);
+      logger.debug('Conversation not in list yet, retrying', { attempt: retryAttempts.current, max: MAX_RETRIES });
 
       const delay = retryAttempts.current * 200; // 200ms, 400ms, 600ms (faster since cache is optimistic)
       const timeoutId = setTimeout(() => {
@@ -249,7 +252,7 @@ const Messages = () => {
       return () => clearTimeout(timeoutId);
     } else if (retryAttempts.current >= MAX_RETRIES) {
       // Max retries reached - select anyway and let user see empty state
-      console.warn('⚠️ Max retries reached, selecting conversation anyway:', conversationIdFromUrl);
+      logger.warn('Max retries reached, selecting conversation anyway', { conversationId: conversationIdFromUrl });
       hasHandledConversationUrl.current = true;
       setSelectedConversationId(conversationIdFromUrl);
       retryAttempts.current = 0;
@@ -276,14 +279,14 @@ const Messages = () => {
           'recruiters';
 
     if (newTab !== activeTab) {
-      console.log('🔄 Tab switching from', activeTab, 'to', newTab);
+      logger.debug('Tab switching', { from: activeTab, to: newTab });
       setIsTabSwitching(true);
       setActiveTab(newTab);
       setSelectedConversationId(null); // Clear selection when switching tabs
 
       // Force fetch data for the new tab if we have studentId
       if (studentId && !loadingStudentData) {
-        console.log('🚀 Triggering fetch for new tab:', newTab);
+        logger.debug('Triggering fetch for new tab', { tab: newTab });
 
         // Trigger appropriate refetch based on new tab - with safety checks
         let fetchPromise = Promise.resolve();
@@ -312,13 +315,13 @@ const Messages = () => {
   // Debug logging - only when there's an issue
   useEffect(() => {
     if (!studentId && !loadingStudentData && userEmail) {
-      console.warn("⚠️ No studentId found for email:", userEmail);
+      logger.warn('No studentId found for email', { email: userEmail });
     }
   }, [studentId, loadingStudentData, userEmail]);
 
   // Helper functions for admin online status - MOVED UP to fix initialization order
   const getSchoolAdminUserId = useCallback(async (conversation) => {
-    console.log('🔍 [DEBUG] Checking admin fields:', {
+    logger.debug('Checking admin fields', {
       school_organization: conversation.school_organization,
       college_organization: conversation.college_organization,
       conversation_type: conversation.conversation_type,
@@ -345,11 +348,11 @@ const Messages = () => {
           .single();
         
         if (schoolOrg?.admin_id) {
-          console.log('✅ [DEBUG] Found school admin dynamically:', schoolOrg.admin_id);
+          logger.info('Found school admin dynamically', { adminId: schoolOrg.admin_id });
           return schoolOrg.admin_id;
         }
       } catch (error) {
-        console.error('❌ [DEBUG] Error fetching school admin:', error);
+        logger.error('Error fetching school admin', error);
       }
     }
     
@@ -364,11 +367,11 @@ const Messages = () => {
           .single();
         
         if (collegeOrg?.admin_id) {
-          console.log('✅ [DEBUG] Found college admin dynamically:', collegeOrg.admin_id);
+          logger.info('Found college admin dynamically', { adminId: collegeOrg.admin_id });
           return collegeOrg.admin_id;
         }
       } catch (error) {
-        console.error('❌ [DEBUG] Error fetching college admin:', error);
+        logger.error('Error fetching college admin', error);
       }
     }
     
@@ -387,7 +390,7 @@ const Messages = () => {
       
       if (adminConversations.length === 0) return;
       
-      console.log('🔍 [Student Messages] Fetching admin user IDs for conversations:', adminConversations.length);
+      logger.debug('Fetching admin user IDs for conversations', { count: adminConversations.length });
       
       const newAdminUserIds = { ...adminUserIds };
       
@@ -396,10 +399,10 @@ const Messages = () => {
           const adminUserId = await getSchoolAdminUserId(conv);
           if (adminUserId) {
             newAdminUserIds[conv.id] = adminUserId;
-            console.log('✅ [Student Messages] Found admin ID for conversation:', conv.id, adminUserId);
+            logger.info('Found admin ID for conversation', { conversationId: conv.id, adminUserId });
           }
         } catch (error) {
-          console.error('❌ [Student Messages] Error fetching admin ID for conversation:', conv.id, error);
+          logger.error('Error fetching admin ID for conversation', error, { conversationId: conv.id });
         }
       }
       
@@ -450,26 +453,19 @@ const Messages = () => {
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
 
   const getAdminOnlineStatus = useCallback((conversation) => {
-    console.log('🔍 [DEBUG] Full conversation object:', conversation);
+    logger.debug('Full conversation object', { conversationId: conversation.id });
     
     if (conversation.conversation_type === 'student_admin' || conversation.conversation_type === 'student_college_admin') {
       const adminUserId = adminUserIds[conversation.id];
       // Fix: Check user.userId since globalOnlineUsers contains objects
       const isOnline = adminUserId ? globalOnlineUsers.some(user => user.userId === adminUserId) : false;
       
-      console.log('✅ [Student Messages] Admin online status:', {
+      logger.debug('Admin online status', {
         conversationId: conversation.id,
         conversationType: conversation.conversation_type,
         adminUserId,
-        isOnline,
-        globalOnlineUsers
+        isOnline
       });
-      
-      console.log('🔍 Online user IDs:', globalOnlineUsers.map(user => user.userId || user));
-      console.log('🔍 Raw globalOnlineUsers:', globalOnlineUsers);
-      console.log('🔍 User types online:', globalOnlineUsers.map(user => ({ userId: user.userId, userType: user.userType })));
-      console.log('🔍 Looking for admin ID:', adminUserId);
-      console.log('🔍 Admin is in list?', globalOnlineUsers.some(user => user.userId === adminUserId));
       
       return isOnline;
     }
@@ -532,7 +528,7 @@ const Messages = () => {
         refetchType: 'none' // Don't refetch, just notify subscribers
       });
 
-      console.log('🗑️ Marked conversation as deleted:', conversationId);
+      logger.debug('Marked conversation as deleted', { conversationId });
 
       return { previousConversations, conversationId };
     },
@@ -559,7 +555,7 @@ const Messages = () => {
         refetchType: 'none' // Don't refetch, just notify
       });
 
-      console.log('✅ Conversation permanently removed from cache:', variables.conversationId);
+      logger.info('Conversation permanently removed from cache', { conversationId: variables.conversationId });
     }
   });
 
@@ -576,7 +572,7 @@ const Messages = () => {
       // Snapshot
       const previousConversations = queryClient.getQueryData(['student-conversations', studentId]);
 
-      console.log('↩️ Attempting to restore conversation:', conversationId);
+      logger.debug('Attempting to restore conversation', { conversationId });
 
       return { previousConversations, conversationId };
     },
@@ -612,7 +608,7 @@ const Messages = () => {
     try {
       await MessageService.markConversationAsRead(conversationId, studentId);
     } catch (err) {
-      console.error('❌ [Student] Failed to mark as read:', err);
+      logger.error('Failed to mark conversation as read', err, { conversationId });
       // Remove from marked set so it can be retried
       markedAsReadRef.current.delete(markKey);
       // Refetch to revert optimistic update
@@ -641,7 +637,7 @@ const Messages = () => {
       try {
         return JSON.parse(profile);
       } catch (e) {
-        console.error('Error parsing profile:', e);
+        logger.error('Error parsing profile', e);
         return {};
       }
     }
@@ -650,7 +646,7 @@ const Messages = () => {
 
   // Transform conversations for display based on active tab
   const contacts = useMemo(() => {
-    console.log('🔄 Recalculating contacts memo, conversations:', (conversations || []).length, 'tab:', activeTab);
+    logger.debug('Recalculating contacts memo', { count: (conversations || []).length, tab: activeTab });
 
     // Ensure conversations is always an array
     const safeConversations = conversations || [];
@@ -660,12 +656,11 @@ const Messages = () => {
 
     // Debug logging
     const pendingCount = safeConversations.filter(c => c._pendingDelete).length;
-    console.log(`📊 Conversations: ${safeConversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`);
-
-    if (pendingCount > 0) {
-      const pendingIds = safeConversations.filter(c => c._pendingDelete).map(c => c.id);
-      console.log('❌ Pending delete IDs:', pendingIds);
-    }
+    logger.debug('Conversations summary', {
+      total: safeConversations.length,
+      pendingDelete: pendingCount,
+      active: activeConversations.length
+    });
 
     // Transform based on tab
     if (activeTab === 'recruiters') {
@@ -726,11 +721,10 @@ const Messages = () => {
             ? `${educator.first_name} ${educator.last_name}`
             : educator?.email || 'College Lecturer';
           // ADD THIS DEBUG LOG HERE:
-console.log('🔍 Checking online for educator:', {
-  educator_id: conv.educator_id,
-  educator_user_id: conv.educator?.user_id,
-  online_users: globalOnlineUsers
-});
+          logger.debug('Checking online for college educator', {
+            educator_id: conv.educator_id,
+            educator_user_id: conv.educator?.user_id
+          });
 
           const subject = conv.subject || 'General Discussion';
           
@@ -774,11 +768,10 @@ console.log('🔍 Checking online for educator:', {
           const educatorName = educator?.first_name && educator?.last_name
             ? `${educator.first_name} ${educator.last_name}`
             : educator?.email || 'Educator';
-console.log('🔍 Checking online for educator:', {
-  educator_id: conv.educator_id,
-  educator_user_id: conv.educator?.user_id,
-  online_users: globalOnlineUsers
-});
+          logger.debug('Checking online for school educator', {
+            educator_id: conv.educator_id,
+            educator_user_id: conv.educator?.user_id
+          });
           // Get class and subject info
           const className = conv.school_class?.name || 'Class';
           const grade = conv.school_class?.grade || '';
@@ -999,7 +992,7 @@ console.log('🔍 Checking online for educator:', {
               subject: currentChat.subject
             });
           } else {
-            console.warn('No school admin found for school:', currentChat.schoolId);
+            logger.warn('No school admin found for school', { schoolId: currentChat.schoolId });
             throw new Error('No school admin available to receive message');
           }
 
@@ -1042,7 +1035,7 @@ console.log('🔍 Checking online for educator:', {
               subject: currentChat.subject
             });
           } else {
-            console.warn('No college admin found for college:', currentChat.collegeId);
+            logger.warn('No college admin found for college', { collegeId: currentChat.collegeId });
             throw new Error('No college admin available to receive message');
           }
 
@@ -1053,7 +1046,7 @@ console.log('🔍 Checking online for educator:', {
         setMessageInput('');
         setTyping(false);
       } catch (error) {
-        console.error('Error sending message:', error);
+        logger.error('Error sending message', error);
       }
     }
   };
@@ -1406,7 +1399,7 @@ console.log('🔍 Checking online for educator:', {
                       {/* Recruiters Tab - Always available */}
                       <button
                         onClick={async () => {
-                          console.log('🔄 Switching to recruiters tab');
+                          logger.debug('Switching to recruiters tab');
                           setIsTabSwitching(true);
                           setActiveTab('recruiters');
                           setSelectedConversationId(null);
@@ -1415,7 +1408,7 @@ console.log('🔍 Checking online for educator:', {
 
                           // Force refetch for recruiters tab
                           if (studentId && !loadingStudentData && refetchRecruiterConversations) {
-                            console.log('🚀 Refetching recruiter conversations');
+                            logger.debug('Refetching recruiter conversations');
                             try {
                               await refetchRecruiterConversations();
                             } finally {
@@ -1444,7 +1437,7 @@ console.log('🔍 Checking online for educator:', {
                       {!isLearnerUser && (
                         <button
                           onClick={async () => {
-                            console.log('🔄 Switching to educators tab');
+                            logger.debug('Switching to educators tab');
                             setIsTabSwitching(true);
                             setActiveTab('educators');
                             setSelectedConversationId(null);
@@ -1453,7 +1446,7 @@ console.log('🔍 Checking online for educator:', {
 
                             // Force refetch for educators tab
                             if (studentId && !loadingStudentData && refetchEducatorConversations) {
-                              console.log('🚀 Refetching educator conversations');
+                              logger.debug('Refetching educator conversations');
                               try {
                                 await refetchEducatorConversations();
                               } finally {
@@ -1483,7 +1476,7 @@ console.log('🔍 Checking online for educator:', {
                       {hasSchoolId && (
                         <button
                           onClick={async () => {
-                            console.log('🔄 Switching to admin tab');
+                            logger.debug('Switching to admin tab');
                             setIsTabSwitching(true);
                             setActiveTab('admin');
                             setSelectedConversationId(null);
@@ -1492,7 +1485,7 @@ console.log('🔍 Checking online for educator:', {
 
                             // Force refetch for admin tab
                             if (studentId && !loadingStudentData && refetchAdminConversations) {
-                              console.log('🚀 Refetching admin conversations');
+                              logger.debug('Refetching admin conversations');
                               try {
                                 await refetchAdminConversations();
                               } finally {
@@ -1522,7 +1515,7 @@ console.log('🔍 Checking online for educator:', {
                       {hasCollegeId && (
                         <button
                           onClick={async () => {
-                            console.log('🔄 Switching to college_admin tab');
+                            logger.debug('Switching to college_admin tab');
                             setIsTabSwitching(true);
                             setActiveTab('college_admin');
                             setSelectedConversationId(null);
@@ -1531,7 +1524,7 @@ console.log('🔍 Checking online for educator:', {
 
                             // Force refetch for college admin tab
                             if (studentId && !loadingStudentData && refetchCollegeAdminConversations) {
-                              console.log('🚀 Refetching college admin conversations');
+                              logger.debug('Refetching college admin conversations');
                               try {
                                 await refetchCollegeAdminConversations();
                               } finally {
@@ -1936,7 +1929,7 @@ console.log('🔍 Checking online for educator:', {
         studentId={studentId}
         onConversationCreated={async ({ educatorId, educatorType, classId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating conversation with educator:', { educatorId, educatorType, classId, subject, initialMessage });
+            logger.info('Creating conversation with educator', { educatorId, educatorType, classId, subject });
             
             let conversation;
             if (educatorType === 'college_lecturer') {
@@ -1948,7 +1941,7 @@ console.log('🔍 Checking online for educator:', {
                 null, // programSectionId - will be set by backend if available
                 subject
               );
-              console.log('✅ College lecturer conversation created:', conversation);
+              logger.info('College lecturer conversation created', { conversationId: conversation.id });
             } else {
               // Create school educator conversation
               conversation = await MessageService.getOrCreateStudentEducatorConversation(
@@ -1957,7 +1950,7 @@ console.log('🔍 Checking online for educator:', {
                 classId,
                 subject
               );
-              console.log('✅ School educator conversation created:', conversation);
+              logger.info('School educator conversation created', { conversationId: conversation.id });
             }
 
             // Send the initial message
@@ -1975,14 +1968,14 @@ console.log('🔍 Checking online for educator:', {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial message sent to college lecturer');
+                logger.info('Initial message sent to college lecturer');
               } else {
                 await MessageService.sendStudentEducatorMessage(
                   conversation.id,
                   studentId,
                   initialMessage.trim()
                 );
-                console.log('✅ Initial message sent to school educator');
+                logger.info('Initial message sent to school educator');
               }
             }
 
@@ -1994,13 +1987,13 @@ console.log('🔍 Checking online for educator:', {
 
             // Force a small delay to ensure UI updates
             setTimeout(() => {
-              console.log('📝 Conversation should now be selected:', conversation.id);
+              logger.debug('Conversation should now be selected', { conversationId: conversation.id });
             }, 100);
 
             const educatorTypeText = educatorType === 'college_lecturer' ? 'college lecturer' : 'school teacher';
             toast.success(`Conversation started with ${educatorTypeText}!`);
           } catch (error) {
-            console.error('❌ Error creating educator conversation:', error);
+            logger.error('Error creating educator conversation', error);
 
             // More specific error messages
             let errorMessage = 'Failed to start conversation';
@@ -2028,13 +2021,13 @@ console.log('🔍 Checking online for educator:', {
         studentId={studentId}
         onConversationCreated={async ({ schoolId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating admin conversation with:', { schoolId, subject, initialMessage });
+            logger.info('Creating admin conversation', { schoolId, subject });
             const conversation = await MessageService.getOrCreateStudentAdminConversation(
               studentId,
               schoolId,
               subject
             );
-            console.log('✅ Admin conversation created:', conversation);
+            logger.info('Admin conversation created', { conversationId: conversation.id });
 
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
@@ -2060,9 +2053,9 @@ console.log('🔍 Checking online for educator:', {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial admin message sent');
+                logger.info('Initial admin message sent');
               } else {
-                console.warn('No school admin found for school:', schoolId);
+                logger.warn('No school admin found for school', { schoolId });
               }
             }
 
@@ -2075,12 +2068,12 @@ console.log('🔍 Checking online for educator:', {
 
             // Force a small delay to ensure UI updates
             setTimeout(() => {
-              console.log('📝 Admin conversation should now be selected:', conversation.id);
+              logger.debug('Admin conversation should now be selected', { conversationId: conversation.id });
             }, 100);
 
             toast.success('Message sent to school administration!');
           } catch (error) {
-            console.error('❌ Error creating admin conversation:', error);
+            logger.error('Error creating admin conversation', error);
 
             // More specific error messages
             let errorMessage = 'Failed to contact school administration';
@@ -2108,13 +2101,13 @@ console.log('🔍 Checking online for educator:', {
         studentId={studentId}
         onConversationCreated={async ({ collegeId, subject, initialMessage }) => {
           try {
-            console.log('🚀 Creating college admin conversation with:', { collegeId, subject, initialMessage });
+            logger.info('Creating college admin conversation', { collegeId, subject });
             const conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
               studentId,
               collegeId,
               subject
             );
-            console.log('✅ College admin conversation created:', conversation);
+            logger.info('College admin conversation created', { conversationId: conversation.id });
 
             // Send the initial message
             if (initialMessage && initialMessage.trim()) {
@@ -2156,9 +2149,9 @@ console.log('🔍 Checking online for educator:', {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial college admin message sent');
+                logger.info('Initial college admin message sent');
               } else {
-                console.warn('No college admin found for college:', collegeId);
+                logger.warn('No college admin found for college', { collegeId });
               }
             }
 
@@ -2171,12 +2164,12 @@ console.log('🔍 Checking online for educator:', {
 
             // Force a small delay to ensure UI updates
             setTimeout(() => {
-              console.log('📝 College admin conversation should now be selected:', conversation.id);
+              logger.debug('College admin conversation should now be selected', { conversationId: conversation.id });
             }, 100);
 
             toast.success('Message sent to college administration!');
           } catch (error) {
-            console.error('❌ Error creating college admin conversation:', error);
+            logger.error('Error creating college admin conversation', error);
 
             // More specific error messages
             let errorMessage = 'Failed to contact college administration';

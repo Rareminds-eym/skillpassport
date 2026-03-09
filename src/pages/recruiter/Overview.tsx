@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('RecruiterOverview');
 import {
   UsersIcon,
   BookmarkIcon,
@@ -196,7 +199,7 @@ const Overview = () => {
           setError(result.error || 'No data returned from service');
         }
       } catch (err) {
-        logger.error('Error fetching dashboard data', err);
+        logger.error('❌ Overview: Error fetching dashboard data', err);
         setError(err);
       } finally {
         setLoading(false);

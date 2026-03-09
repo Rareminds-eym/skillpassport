@@ -17,7 +17,7 @@ import { useUser } from "../../stores"
 import { supabase } from "../../lib/supabaseClient"
 import { getLogger } from "../../config/logging"
 
-const logger = getLogger('RecruiterSettings')
+const logger = getLogger('RecruiterSettings');
 
 /* ---------- UI Primitives ---------- */
 
@@ -128,7 +128,7 @@ export default function SettingsPage() {
         .maybeSingle()
 
       if (error) {
-        logger.error("Error fetching recruiter", error)
+        logger.error("❌ Error fetching recruiter", error)
       } else {
         setRecruiter(data)
       }

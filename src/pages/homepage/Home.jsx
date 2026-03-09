@@ -11,7 +11,7 @@ import {
   ProductWalkthrough,
   AssessmentPromotionalModal,
 } from '../../components/Homepage';
-import { useAssessmentPromotionalContext } from '../../contexts/AssessmentPromotionalContext';
+import { useAssessmentPromotional } from '../../stores';
 import SEOHead from '../../components/SEO/SEOHead';
 
 const Home = () => {
@@ -19,7 +19,7 @@ const Home = () => {
     showModal: showAssessmentModal, 
     dismissModal: dismissAssessmentModal,
     getTimeRemaining: getAssessmentTimeRemaining
-  } = useAssessmentPromotionalContext();
+  } = useAssessmentPromotional();
 
   return (
     <div className="min-h-screen">

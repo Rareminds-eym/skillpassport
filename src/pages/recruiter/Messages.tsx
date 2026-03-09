@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('RecruiterMessages');
 import { 
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
@@ -23,6 +26,7 @@ import { getLogger } from '../../config/logging';
 const logger = getLogger('RecruiterMessages');
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
+import { useGlobalPresence } from '../../stores';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
@@ -127,12 +131,12 @@ const Messages = () => {
       recruiterId,
       'recruiter',
       (conversation: Conversation) => {
-        logger.info('Realtime UPDATE detected', { conversationId: conversation.id });
+        logger.info('🔄 [Recruiter] Realtime UPDATE detected', { conversationId: conversation.id });
         
         // CRITICAL: Ignore updates for conversations that were deleted
         // This prevents re-fetching deleted conversations back into the cache
         if (conversation.deleted_by_recruiter) {
-          logger.info('Ignoring UPDATE for deleted conversation', { conversationId: conversation.id });
+          logger.info('❌ [Recruiter] Ignoring UPDATE for deleted conversation', { conversationId: conversation.id });
           return; // Don't refetch
         }
         
@@ -229,7 +233,7 @@ const Messages = () => {
         refetchType: 'none' // Don't refetch, just notify subscribers
       });
       
-      logger.info('Marked conversation as deleted', { conversationId });
+      logger.info('🗑️ [Recruiter] Marked conversation as deleted', { conversationId });
       
       return { previousActive, previousArchived, conversationId };
     },
@@ -256,7 +260,7 @@ const Messages = () => {
         refetchType: 'none' // Don't refetch, just notify
       });
       
-      logger.info('Conversation permanently removed from cache', { conversationId: variables.conversationId });
+      logger.info('✅ [Recruiter] Conversation permanently removed from cache', { conversationId: variables.conversationId });
     }
   });
   
@@ -274,7 +278,7 @@ const Messages = () => {
       const previousActive = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'active']);
       const previousArchived = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'archived']);
       
-      logger.info('Attempting to restore conversation', { conversationId });
+      logger.info('↩️ [Recruiter] Attempting to restore conversation', { conversationId });
       
       return { previousActive, previousArchived, conversationId };
     },
@@ -471,22 +475,18 @@ const Messages = () => {
   // Transform and filter conversations - memoized for performance
   // Include onlineUsers as dependency so contacts update when presence changes
   const filteredContacts = useMemo(() => {
-    logger.info('Recalculating contacts memo', { conversationsCount: conversations.length });
+    logger.info('🔄 [Recruiter] Recalculating contacts memo', { conversationsCount: conversations.length });
     
     // First filter out conversations marked for deletion
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
     
     // Debug logging
     const pendingCount = conversations.filter((c: any) => c._pendingDelete).length;
-    logger.info('Conversations status', { 
-      total: conversations.length, 
-      pendingDelete: pendingCount, 
-      active: activeConversations.length 
-    });
+    logger.info(`📊 [Recruiter] Conversations`, { total: conversations.length, pendingDelete: pendingCount, active: activeConversations.length });
     
     if (pendingCount > 0) {
       const pendingIds = conversations.filter((c: any) => c._pendingDelete).map((c: any) => c.id);
-      logger.info('Pending delete IDs', { pendingIds });
+      logger.info('❌ [Recruiter] Pending delete IDs', { pendingIds });
     }
     
     const parseProfile = (profile: any) => {

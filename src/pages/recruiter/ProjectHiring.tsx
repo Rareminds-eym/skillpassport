@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('ProjectHiring');
 import {
   PlusIcon,
   MagnifyingGlassIcon,

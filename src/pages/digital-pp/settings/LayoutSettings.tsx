@@ -1,7 +1,7 @@
 import { BarChart3, Bot, FileText, Layout, Map, Palette, Save, Sparkles, Zap } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../context/PortfolioContext';
+import { usePortfolio } from '../../../stores';
 import type { DisplayPreferences, PortfolioLayout } from '../../../types/student';
 
 const LayoutSettings: React.FC = () => {

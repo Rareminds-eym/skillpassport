@@ -1804,7 +1804,7 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
 
       setApplications(data || []);
     } catch (error) {
-      logger.error('Error loading applications', error);
+      logger.error('Error', error);
     } finally {
       setLoading(false);
     }

@@ -24,11 +24,14 @@ import { useMutation } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('EducatorMessages');
 
 const EducatorMessages = () => {
   const queryClient = useQueryClient();
@@ -186,7 +189,7 @@ const EducatorMessages = () => {
     try {
       await MessageService.markConversationAsRead(conversationId, studentId);
     } catch (err) {
-      console.error('❌ Failed to mark as read:', err);
+      logger.error('❌ Failed to mark as read', err);
       markedAsReadRef.current.delete(markKey);
       refetchConversations();
     }
@@ -213,7 +216,7 @@ const EducatorMessages = () => {
       try {
         return JSON.parse(profile);
       } catch (e) {
-        console.error('Error parsing profile:', e);
+        logger.error('Error parsing profile', e);
         return {};
       }
     }
@@ -311,7 +314,7 @@ const EducatorMessages = () => {
         setMessageInput('');
         setTyping(false);
       } catch (error) {
-        console.error('Error sending message:', error);
+        logger.error('Error sending message', error);
       }
     }
   };

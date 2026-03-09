@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
 import { useUser } from '../stores';
 import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
-import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
 import FloatingAIButton from '../components/FloatingAIButton';
@@ -97,73 +96,71 @@ const StudentLayout = () => {
   const isFullScreenAssessment = isAssessmentPage && !isAssessmentResultPage;
 
   return (
-    <GlobalPresenceProvider userType="student">
-      <div className={`${isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
-        {!isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
-        {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
-        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
-          <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
-        </main>
-        {!isCareerAIPage && (
-          <footer className="bg-white border-t border-gray-200 py-4 px-6">
-            <div className="flex items-center justify-between text-sm text-gray-500">
-              <span>© {new Date().getFullYear()} Learner Portal. All rights reserved.</span>
-              <div className="flex items-center gap-4">
-                <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
-                <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
-                <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
-              </div>
+    <div className={`${isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
+      {!isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
+      {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
+      <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
+        <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
+      </main>
+      {!isCareerAIPage && (
+        <footer className="bg-white border-t border-gray-200 py-4 px-6">
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <span>© {new Date().getFullYear()} Learner Portal. All rights reserved.</span>
+            <div className="flex items-center gap-4">
+              <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
+              <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
+              <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
             </div>
-          </footer>
-        )}
-        {!isAssessmentTestPage && <FloatingAIButton />}
-        <Toaster />
+          </div>
+        </footer>
+      )}
+      {!isAssessmentTestPage && <FloatingAIButton />}
+      <Toaster />
 
-        {/* Edit Modals - Only show if not viewing someone else's profile */}
-        {!isViewingOthersProfile && (
-          <>
-            <EducationEditModal
-              isOpen={activeModal === 'education'}
-              onClose={() => setActiveModal(null)}
-              data={userData.education}
-              onSave={(data) => handleSave('education', data)}
-            />
+      {/* Edit Modals - Only show if not viewing someone else's profile */}
+      {!isViewingOthersProfile && (
+        <>
+          <EducationEditModal
+            isOpen={activeModal === 'education'}
+            onClose={() => setActiveModal(null)}
+            data={userData.education}
+            onSave={(data) => handleSave('education', data)}
+          />
 
-            <TrainingEditModal
-              isOpen={activeModal === 'training'}
-              onClose={() => setActiveModal(null)}
-              data={userData.training}
-              onSave={(data) => handleSave('training', data)}
-            />
+          <TrainingEditModal
+            isOpen={activeModal === 'training'}
+            onClose={() => setActiveModal(null)}
+            data={userData.training}
+            onSave={(data) => handleSave('training', data)}
+          />
 
-            <ExperienceEditModal
-              isOpen={activeModal === 'experience'}
-              onClose={() => setActiveModal(null)}
-              data={userData.experience}
-              onSave={(data) => handleSave('experience', data)}
-            />
+          <ExperienceEditModal
+            isOpen={activeModal === 'experience'}
+            onClose={() => setActiveModal(null)}
+            data={userData.experience}
+            onSave={(data) => handleSave('experience', data)}
+          />
 
-            <SkillsEditModal
-              isOpen={activeModal === 'softSkills'}
-              onClose={() => setActiveModal(null)}
-              data={userData.softSkills}
-              title="Soft Skills"
-              type="Skill"
-              onSave={(data) => handleSave('softSkills', data)}
-            />
+          <SkillsEditModal
+            isOpen={activeModal === 'softSkills'}
+            onClose={() => setActiveModal(null)}
+            data={userData.softSkills}
+            title="Soft Skills"
+            type="Skill"
+            onSave={(data) => handleSave('softSkills', data)}
+          />
 
-            <SkillsEditModal
-              isOpen={activeModal === 'technicalSkills'}
-              onClose={() => setActiveModal(null)}
-              data={userData.technicalSkills}
-              title="Technical Skills"
-              type="Skill"
-              onSave={(data) => handleSave('technicalSkills', data)}
-            />
-          </>
-        )}
-      </div>
-    </GlobalPresenceProvider>
+          <SkillsEditModal
+            isOpen={activeModal === 'technicalSkills'}
+            onClose={() => setActiveModal(null)}
+            data={userData.technicalSkills}
+            title="Technical Skills"
+            type="Skill"
+            onSave={(data) => handleSave('technicalSkills', data)}
+          />
+        </>
+      )}
+    </div>
   );
 };
 

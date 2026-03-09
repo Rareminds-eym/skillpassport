@@ -334,3 +334,22 @@ export const usePortfolioActions = () =>
 // Hook for checking if viewing another student's portfolio
 export const useIsViewingOtherStudent = () =>
   usePortfolioStore((state) => state.isManuallySet && state.student !== null);
+
+// Combined hook that mimics the old Context API
+export const usePortfolio = () => {
+  const student = usePortfolioStudent();
+  const settings = usePortfolioSettings();
+  const isLoading = usePortfolioLoading();
+  const viewerRole = usePortfolioViewerRole();
+  const actions = usePortfolioActions();
+  const isManuallySet = useIsViewingOtherStudent();
+
+  return {
+    student,
+    settings,
+    isLoading,
+    viewerRole,
+    isManuallySet,
+    ...actions,
+  };
+};

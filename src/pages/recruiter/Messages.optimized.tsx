@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('RecruiterMessages');
 import { 
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
@@ -18,7 +21,7 @@ import MessageService, { Conversation } from '../../services/messageService';
 import { useMessages } from '../../hooks/useMessages';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 
@@ -167,7 +170,7 @@ const Messages = () => {
     MessageService.markConversationAsRead(selectedConversationId, recruiterId)
       .then(() => refetchActive())
       .catch(err => {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read', err);
         markedAsReadRef.current.delete(markKey);
       });
   }, [selectedConversationId, recruiterId, activeConversations, refetchActive]);
@@ -205,7 +208,7 @@ const Messages = () => {
       
       await Promise.all([refetchActive(), refetchArchived()]);
     } catch (error) {
-      console.error(`Failed to ${isArchiving ? 'archive' : 'unarchive'} conversation:`, error);
+      logger.error(`Failed to ${isArchiving ? 'archive' : 'unarchive'} conversation`, error);
       refetchActive();
       refetchArchived();
     } finally {
@@ -297,7 +300,7 @@ const Messages = () => {
       refetchActive();
       inputRef.current?.focus();
     } catch (error) {
-      console.error('Failed to send message:', error);
+      logger.error('Failed to send message', error);
       // TODO: Show error toast to user
     }
   }, [messageInput, currentChat, recruiterId, isSending, sendMessage, sendNotification, selectedConversationId, setTyping, refetchActive]);

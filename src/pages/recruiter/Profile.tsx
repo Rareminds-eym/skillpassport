@@ -67,7 +67,7 @@ const RecruiterProfile: React.FC = () => {
         .maybeSingle();
 
       if (error) {
-        logger.error("Error fetching recruiter", error);
+        logger.error("❌ Error fetching recruiter", error);
       } else {
         setRecruiter(data);
       }

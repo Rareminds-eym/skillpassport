@@ -358,7 +358,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         toast.success(`${rec.studentName} has been added to Screened stage`);
       }
     } catch (error) {
-      logger.error('Error moving AI recommended candidate', error);
+      logger.error('Error moving AI recommended candidate:', error);
       toast.error('Failed to move candidate. Please try again.');
     }
   };

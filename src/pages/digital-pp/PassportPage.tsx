@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Award, Book, Briefcase, Camera, CheckCircle, ChevronLeft, ChevronRight, Code, Coffee, Dumbbell, Gamepad2, Globe, Mountain, Music, Palette, Plane, Shield, Star, Target, Users, XCircle } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../context/PortfolioContext';
+import { usePortfolio } from '../../stores';
 import { useUserRole } from '../../stores';
 
 const PassportPage: React.FC = () => {
