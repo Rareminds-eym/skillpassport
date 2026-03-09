@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useUserRole, useUser } from '../stores';
 import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
 import {
   LayoutDashboard,
@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
-  const { role, user } = useAuth();
+  const { role } = useUserRole();
+  const user = useUser();
   const location = useLocation();
 
   // Fetch student data to check school/college association

@@ -16,7 +16,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 // @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useMentorAllocation } from '../../hooks/useMentorAllocation';
 import KPICard from '../../components/admin/KPICard';
 import MentorResponseModal from '../../components/educator/MentorResponseModal';
@@ -35,7 +35,7 @@ interface AuthUser {
 
 const MyMentees: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth() as { user: AuthUser | null };
+  const user = useUser() as AuthUser | null;
   
   const collegeId = useMemo(() => {
     if (!user) return '';

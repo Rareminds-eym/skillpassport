@@ -25,8 +25,8 @@ import MessageService, { Conversation } from '../../../services/messageService';
 import { supabase } from '../../../lib/supabaseClient';
 import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
+import { useUser } from '../../../stores';
+import { useGlobalPresence } from '../../../stores';
 import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
@@ -49,7 +49,7 @@ const EducatorCommunication = () => {
   const markedAsReadRef = useRef<Set<string>>(new Set());
   
   // Get school admin ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   const schoolAdminId = user?.id;
   const schoolAdminName = user?.name || 'School Admin';
   const queryClient = useQueryClient();

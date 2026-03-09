@@ -14,7 +14,7 @@ import {
   useNotifications,
   NotificationType,
 } from "../../../hooks/useNotifications";
-import { useAuth } from "../../../context/AuthContext"; // ✅ Add this
+import { useUser } from "../../../stores";
 
 interface NotificationPanelProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   onClose,
   recruiterEmail,
 }) => {
-  const { user } = useAuth(); // ✅ Get auth user
+  const user = useUser();
 
   // ✅ Use email from props, auth user, or fallback
   const emailToUse = recruiterEmail || user?.email || null;

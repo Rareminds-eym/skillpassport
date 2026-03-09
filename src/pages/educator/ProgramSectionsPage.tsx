@@ -15,7 +15,7 @@ import { useProgramSections } from "../../hooks/useProgramSections"
 import { useEducatorSchool } from "../../hooks/useEducatorSchool"
 import toast from "react-hot-toast"
 import Pagination from "../../components/educator/Pagination"
-import { useAuth } from "../../context/AuthContext"
+import { useUser, useIsAuthenticated } from "../../stores"
 import { ProgramSection } from "../../services/programService"
 import ManageProgramStudentsModal from "../../components/educator/ManageProgramStudentsModal"
 import { usePermission } from "../../hooks/usePermissions"
@@ -186,7 +186,8 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 
 const ProgramSectionsPage = () => {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
   const { college: educatorCollege, loading: schoolLoading } = useEducatorSchool()
   
   // Permission controls for Classroom Management module

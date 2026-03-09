@@ -6,7 +6,7 @@ import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
 import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
-import useAuth from '../../hooks/useAuth';
+import { useUser, useUserRole, useIsAuthenticated, useAuthLoading } from '../../stores';
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
@@ -623,8 +623,11 @@ function SubscriptionPlans() {
     });
   }, [setSearchParams]);
 
-  // Use new authentication hook
-  const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
+  // Use Zustand auth hooks
+  const isAuthenticated = useIsAuthenticated();
+  const user = useUser();
+  const authLoading = useAuthLoading();
+  const { role: userRole } = useUserRole();
 
   // Debug logging for redirect loop investigation
   const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';

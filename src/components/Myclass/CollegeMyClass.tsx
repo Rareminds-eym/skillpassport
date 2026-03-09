@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Target, FileText, Loader2, AlertCircle, X, Upload, Paperclip } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 
 // Import shared components
@@ -44,7 +44,7 @@ type CollegeTabType = 'overview' | 'classmates' | 'assignments';
  * - Assignments management with full functionality
  */
 const CollegeMyClass: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id;

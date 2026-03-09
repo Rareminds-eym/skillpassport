@@ -27,8 +27,8 @@ import { useLocation } from 'react-router-dom';
 import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
 import NewStudentConversationModalCollegeAdmin from '../../../components/messaging/NewStudentConversationModalCollegeAdmin';
 import NewCollegeAdminEducatorConversationModal from '../../../components/messaging/NewCollegeAdminEducatorConversationModal';
-import { useAuth } from '../../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
+import { useUser } from '../../../stores';
+import { useGlobalPresence } from '../../../stores';
 import { useCollegeAdminMessages } from '../../../hooks/useCollegeAdminMessages.js';
 import { useCollegeEducatorAdminConversationsForAdmin } from '../../../hooks/useCollegeEducatorAdminConversations.js';
 import { useCollegeEducatorAdminMessagesForAdmin } from '../../../hooks/useCollegeEducatorAdminMessages.js';
@@ -61,7 +61,7 @@ const StudentCollegeAdminCommunication = () => {
   const [activeTab, setActiveTab] = useState<'students' | 'college_educators'>('students');
   
   // Get college admin ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   const collegeAdminId = user?.id;
   const collegeAdminName = user?.name || 'College Admin';
   const queryClient = useQueryClient();

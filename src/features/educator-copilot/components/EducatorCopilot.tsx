@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Plus, ArrowDown, Square } from 'lucide-react';
 import { educatorIntelligenceEngine } from '../services/educatorIntelligenceEngine';
 import { educatorWelcomeConfig, educatorChatConfig } from '../config/educatorConfig';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { StudentInsightCard } from './EducatorCards';
 
 interface Message {
@@ -15,7 +15,7 @@ interface Message {
 }
 
 const EducatorCopilot: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

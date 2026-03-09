@@ -20,8 +20,8 @@ import { supabase } from "../../lib/supabaseClient";
 import {
     saveMentorNote,
 } from "../../services/educator/mentorNotes";
-// @ts-ignore
-import { useAuth } from "../../context/AuthContext";
+import { useUser } from '../../stores';
+import { useMentorAllocation } from '../../hooks/useMentorAllocation';
 
 interface MentorNote {
   id: string;
@@ -38,7 +38,7 @@ const MentorNotesContent = () => {
   const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
   
   // Get auth context for user ID
-  const { user } = useAuth();
+  const user = useUser();
 
   // Fetch students filtered by educator's assigned classes or institution
   const { students, loading: studentsLoading } = useStudents({ 

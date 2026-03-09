@@ -23,7 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useIsAuthenticated, useUserRole, useAuthLoading, useUser } from '../../stores';
 import { ACCESS_REASONS, useSubscriptionContext } from '../../context/SubscriptionContext';
 import Loader from '../Loader';
 import SubscriptionBanner from './SubscriptionBanner';
@@ -345,7 +345,10 @@ const SubscriptionProtectedRoute = ({
   subscriptionFallbackPath = '/subscription/plans',
   loginFallbackPath = '/login',
 }) => {
-  const { isAuthenticated, role, loading: authLoading, user } = useAuth();
+  const isAuthenticated = useIsAuthenticated();
+  const { role } = useUserRole();
+  const loading = useAuthLoading();
+  const user = useUser();
   const location = useLocation();
   
   // Debug logging for redirect loop investigation
@@ -355,13 +358,13 @@ const SubscriptionProtectedRoute = ({
         path: location.pathname,
         isAuthenticated,
         role,
-        authLoading,
+        authLoading: loading,
         userId: user?.id,
         allowedRoles,
         requireSubscription,
       });
     }
-  }, [location.pathname, isAuthenticated, role, authLoading, user?.id, allowedRoles, requireSubscription]);
+  }, [location.pathname, isAuthenticated, role, loading, user?.id, allowedRoles, requireSubscription]);
   
   const {
     hasAccess,
@@ -383,7 +386,7 @@ const SubscriptionProtectedRoute = ({
 
   // Guard state machine
   const guardState = useGuardState({
-    authLoading,
+    authLoading: loading,
     isAuthenticated,
     role,
     allowedRoles,

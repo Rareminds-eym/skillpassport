@@ -22,18 +22,22 @@ import {
   Bell,
   FileText
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import AppliedJobsService from '../../services/appliedJobsService';
 import StudentPipelineService from '../../services/studentPipelineService';
 import MessageService from '../../services/messageService';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { supabase } from '../../lib/supabaseClient';
+import { useUser } from '../../stores';
+
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Applications');
 
 const Applications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
@@ -89,8 +93,7 @@ const Applications = () => {
                              app.pipeline_status?.assigned_to || 
                              null;
           
-          // Debug logging for Message button issue
-          console.log('Application recruiter data:', {
+          logger.info('Application recruiter data', {
             jobTitle: app.opportunity?.job_title,
             opportunityRecruiterId: app.opportunity?.recruiter_id,
             pipelineRecruiterId: app.pipeline_recruiter_id,
@@ -133,7 +136,7 @@ const Applications = () => {
         setApplications(transformedApplications);
         setFilteredApplications(transformedApplications);
       } catch (err) {
-        console.error('Error fetching applications:', err);
+        logger.error('Error fetching applications', err);
         setError(err.message || 'Failed to load applications');
       } finally {
         setLoading(false);
@@ -788,7 +791,7 @@ const Applications = () => {
                             setMessagingApplicationId(app.id);
                             
                             try {
-                              console.log('🚀 Creating/getting conversation for:', {
+                              logger.info('Creating/getting conversation', {
                                 studentId: app.studentId,
                                 recruiterId: app.recruiterId,
                                 applicationId: app.id,
@@ -804,7 +807,7 @@ const Applications = () => {
                                 `Application: ${app.jobTitle}`
                               );
                               
-                              console.log('✅ Conversation ready:', conversation.id);
+                              logger.info('Conversation ready', { conversationId: conversation.id });
                               
                               // OPTIMIZATION: Immediately update React Query cache with the new conversation
                               // This makes it instantly available when Messages page loads
@@ -814,7 +817,7 @@ const Applications = () => {
                               const conversationExists = cachedConversations.some(c => c.id === conversation.id);
                               
                               if (!conversationExists) {
-                                console.log('💾 Adding conversation to cache optimistically');
+                                logger.info('Adding conversation to cache optimistically');
                                 
                                 // Fetch recruiter data to display name and email properly
                                 let recruiterData = null;
@@ -826,9 +829,9 @@ const Applications = () => {
                                     .single();
                                   
                                   recruiterData = recruiter;
-                                  console.log('✅ Recruiter data fetched:', recruiter?.name || recruiter?.email);
+                                  logger.info('Recruiter data fetched', { recruiterName: recruiter?.name || recruiter?.email });
                                 } catch (err) {
-                                  console.warn('⚠️ Could not fetch recruiter data:', err);
+                                  logger.warn('Could not fetch recruiter data', err);
                                 }
                                 
                                 // Add the new conversation to cache with recruiter data
@@ -851,7 +854,7 @@ const Applications = () => {
                               // The Messages page will handle auto-selection and force refetch if needed
                               navigate(`/student/messages?conversation=${conversation.id}`);
                             } catch (error) {
-                              console.error('❌ Error opening conversation:', error);
+                              logger.error('Error opening conversation', error);
                               alert('Failed to open conversation. Please try again.');
                             } finally {
                               setMessagingApplicationId(null);
@@ -906,12 +909,9 @@ const Applications = () => {
 const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) => {
   if (!isOpen) return null;
 
-  // Debug logging
-  console.log({
+  logger.info('Application details modal opened', {
     hasPipelineStatus: application.hasPipelineStatus,
-    pipelineStage: application.pipelineStage,
-    pipelineStatus: application.pipelineStatus,
-    fullApplication: application
+    pipelineStage: application.pipelineStage
   });
 
   // Helper function to get stage order
@@ -1036,7 +1036,7 @@ const ApplicationDetailsModal = ({ isOpen, onClose, application, interviews }) =
                       const isRejected = application.pipelineStage === 'rejected';
 
                       // Debug log for each stage
-                      console.log({
+                      logger.info('Pipeline stage rendering', {
                         isCompleted,
                         isCurrent,
                         currentStage: application.pipelineStage,

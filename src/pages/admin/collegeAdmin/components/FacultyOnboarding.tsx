@@ -1,11 +1,10 @@
 import { AlertCircle, CheckCircle, FileText, Loader2, Upload, X } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { useUser } from "../../../../stores";
 import { supabase } from "../../../../lib/supabaseClient";
 import { uploadFile, uploadMultipleFiles, validateFile } from "../../../../services/fileUploadService";
 // @ts-ignore - userApiService is a .js file
 import userApiService from "../../../../services/userApiService";
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from "../../../../context/AuthContext";
 
 // Global flag to prevent redirects during faculty onboarding
 declare global {
@@ -25,7 +24,7 @@ interface FacultyOnboardingProps {
 }
 
 const FacultyOnboarding: React.FC<FacultyOnboardingProps> = ({ collegeId }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",

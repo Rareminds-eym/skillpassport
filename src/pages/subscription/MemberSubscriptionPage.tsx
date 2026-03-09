@@ -9,7 +9,7 @@ import { useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import MemberSubscriptionView from '../../components/Subscription/Organization/MemberSubscriptionView';
-import useAuth from '../../hooks/useAuth';
+import { useUser, useIsAuthenticated } from '../../stores';
 
 // Sample add-ons - in production, fetch from subscription service
 const AVAILABLE_ADDONS = [
@@ -43,7 +43,8 @@ const AVAILABLE_ADDONS = [
 
 function MemberSubscriptionPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
   
   // Check if user has organization subscription
   const hasOrganizationSubscription = useMemo(() => {

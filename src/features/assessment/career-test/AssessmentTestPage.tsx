@@ -20,8 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 // Auth & Database
-// @ts-ignore - JS file without type declarations
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 // @ts-ignore - JS file without type declarations
 import { useAssessment } from '../../../hooks/useAssessment';
 import { useAdaptiveAptitude } from '../../../hooks/useAdaptiveAptitude';
@@ -262,7 +261,7 @@ const buildSectionsWithQuestions = (
  */
 const AssessmentTestPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   
   // Tour hook - check if tour is running to pause timers
   const { isTourRunning } = useTour();

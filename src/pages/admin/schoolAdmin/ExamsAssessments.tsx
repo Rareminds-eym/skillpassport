@@ -16,7 +16,7 @@ import {
 import SearchBar from "../../../components/common/SearchBar";
 import toast from 'react-hot-toast';
 import { useExams, UIExam, UIStudentMark } from "../../../hooks/useExams";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from "../../../stores";
 import { supabase } from "../../../lib/supabaseClient";
 
 // Import components
@@ -33,7 +33,7 @@ import { EXAM_STATUSES } from "../../../components/exams/types";
 type StudentMark = UIStudentMark;
 type Exam = UIExam;
 const ExamsAssessments: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [loadingSchoolId, setLoadingSchoolId] = useState(true);
   

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 
 // Types
 export interface KPIData {
@@ -93,7 +92,7 @@ interface UseAnalyticsOptions {
 
 export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = options;
-  const { user } = useAuth();
+  const user = useUser();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   

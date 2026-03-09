@@ -16,8 +16,7 @@ import {
   useNotifications,
   NotificationType,
 } from "../../../hooks/useNotifications";
-import { useAuth } from "../../../context/AuthContext";
-
+import { useUser } from "../../../stores";
 import { useNavigate } from "react-router-dom";
 
 interface NotificationPanelProps {
@@ -33,7 +32,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
   onClose,
   studentEmail,
 }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
 

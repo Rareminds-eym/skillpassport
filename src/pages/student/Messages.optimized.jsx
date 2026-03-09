@@ -14,11 +14,14 @@ import {
 import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
 import MessageService from '../../services/messageService';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('MessagesOptimized');
 
 // Constants
 const AVATAR_BG_COLOR = 'EF4444';
@@ -46,7 +49,7 @@ const Messages = () => {
   const markedAsReadRef = useRef(new Set());
   
   // Auth & User Data
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = useMemo(() => 
     localStorage.getItem('userEmail') || user?.email, 
     [user?.email]
@@ -115,7 +118,7 @@ const Messages = () => {
     MessageService.markConversationAsRead(selectedConversationId, studentId)
       .then(() => refetchConversations())
       .catch(err => {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read', err);
         markedAsReadRef.current.delete(markKey);
       });
   }, [selectedConversationId, studentId, conversations, refetchConversations]);
@@ -221,12 +224,13 @@ const Messages = () => {
           : trimmedInput,
         type: 'message',
         link: `/recruiter/messages?conversation=${selectedConversationId}`
+      });
       
       setMessageInput('');
       setTyping(false);
       inputRef.current?.focus();
     } catch (error) {
-      console.error('Failed to send message:', error);
+      logger.error('Failed to send message', error);
       // TODO: Show error toast to user
     }
   }, [messageInput, currentChat, studentId, isSending, sendMessage, sendNotification, selectedConversationId, setTyping]);

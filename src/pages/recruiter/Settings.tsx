@@ -13,8 +13,11 @@ import {
 } from "lucide-react"
 import React, { useEffect, useId, useState } from "react"
 import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection"
-import { useAuth } from "../../context/AuthContext"
+import { useUser } from "../../stores"
 import { supabase } from "../../lib/supabaseClient"
+import { getLogger } from "../../config/logging"
+
+const logger = getLogger('RecruiterSettings');
 
 /* ---------- UI Primitives ---------- */
 
@@ -110,7 +113,7 @@ function ToggleRow({
 /* ---------- Page ---------- */
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const user = useUser()
   const [recruiter, setRecruiter] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 
@@ -125,7 +128,7 @@ export default function SettingsPage() {
         .maybeSingle()
 
       if (error) {
-        console.error("❌ Error fetching recruiter:", error.message)
+        logger.error("❌ Error fetching recruiter", error)
       } else {
         setRecruiter(data)
       }

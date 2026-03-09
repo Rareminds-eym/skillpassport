@@ -28,7 +28,10 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Assignments');
+import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import {
   getAssignmentsByStudentId,
@@ -93,7 +96,7 @@ const transformAssignment = (dbAssignment) => ({
 });
 
 const Assignments = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
@@ -150,7 +153,7 @@ const [submissionData, setSubmissionData] = useState({
         setAssignments(transformedAssignments);
         setStats(statsData);
       } catch (error) {
-        console.error('❌ Error fetching assignments:', error);
+        logger.error('Error fetching assignments:', error);
         setAssignments([]);
       } finally {
         setLoading(false);
@@ -171,7 +174,7 @@ const [submissionData, setSubmissionData] = useState({
       // Find the assignment to get student_assignment_id and check late submission policy
       const assignment = assignments.find(a => a.id === assignmentId);
       if (!assignment) {
-        console.error('Assignment not found:', assignmentId);
+        logger.error('Assignment not found:', assignmentId);
         return;
       }
 
@@ -225,7 +228,7 @@ const [submissionData, setSubmissionData] = useState({
       setShowStatusToast(true);
       setTimeout(() => setShowStatusToast(false), 3000);
     } catch (error) {
-      console.error('Error updating assignment status:', error);
+      logger.error('Error updating assignment status:', error);
       // Revert optimistic update on error
       const [assignmentsData] = await Promise.all([
         getAssignmentsByStudentId(studentId)

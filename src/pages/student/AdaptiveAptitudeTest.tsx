@@ -35,10 +35,13 @@ import {
   AlertDialogTitle,
 } from '../../components/Students/components/ui/alert-dialog';
 import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAntiCheating } from '../../hooks/useAntiCheating';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '../../types/adaptiveAptitude';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('AdaptiveAptitudeTest');
 
 // =============================================================================
 // DEBUG MODE
@@ -95,7 +98,7 @@ const CONFIDENCE_COLORS: Record<ConfidenceTag, { bg: string; text: string; borde
 const AdaptiveAptitudeTest = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const user = useUser();
   
   // Get grade level from navigation state or default to high_school
   const gradeLevel: GradeLevel = location.state?.gradeLevel || 'high_school';
@@ -128,10 +131,10 @@ const AdaptiveAptitudeTest = () => {
     studentId: studentData?.id || '',
     gradeLevel,
     onTestComplete: (testResults) => {
-      console.log('✅ Adaptive aptitude test completed:', testResults);
+      logger.info('Adaptive aptitude test completed', testResults);
     },
     onError: (err) => {
-      console.error('❌ Adaptive aptitude test error:', err);
+      logger.error('Adaptive aptitude test error', err);
     },
   });
 
@@ -141,7 +144,7 @@ const AdaptiveAptitudeTest = () => {
   // Debug logging - after hook is initialized
   useEffect(() => {
     if (DEBUG_MODE) {
-      console.log('🔍 [AdaptiveAptitudeTest] Component State:', {
+      logger.info('🔍 [AdaptiveAptitudeTest] Component State:', {
         user: user?.email,
         studentData: studentData ? { id: studentData.id, email: studentData.email } : null,
         studentLoading,
@@ -161,37 +164,34 @@ const AdaptiveAptitudeTest = () => {
   // Initialize test when student data is available
   useEffect(() => {
     const initializeTest = async () => {
-      console.log('🚀 [AdaptiveAptitudeTest] initializeTest called:', {
+      logger.info('initializeTest called', {
         hasStudentId: !!studentData?.id,
         studentId: studentData?.id,
         testInitialized,
-        loading,
+        loading
       });
       
       if (studentData?.id && !testInitialized && !loading) {
-        console.log('✅ [AdaptiveAptitudeTest] Starting test initialization...');
+        logger.info('Starting test initialization');
         setTestInitialized(true);
         
         try {
-          // Check for existing in-progress session
-          console.log('🔍 [AdaptiveAptitudeTest] Checking for existing session...');
+          logger.info('Checking for existing session');
           const hasExistingSession = await checkAndResumeSession();
-          console.log('📋 [AdaptiveAptitudeTest] Existing session check result:', hasExistingSession);
+          logger.info('Existing session check result', { hasExistingSession });
           
           if (!hasExistingSession) {
-            // Start a new test
-            console.log('🆕 [AdaptiveAptitudeTest] No existing session, starting new test...');
+            logger.info('No existing session, starting new test');
             await startTest();
-            console.log('✅ [AdaptiveAptitudeTest] New test started successfully');
+            logger.info('New test started successfully');
           } else {
-            console.log('♻️ [AdaptiveAptitudeTest] Resumed existing session');
+            logger.info('Resumed existing session');
           }
         } catch (err) {
-          console.error('❌ [AdaptiveAptitudeTest] Failed to initialize test:', err);
-          // Error will be handled by the hook's error state
+          logger.error('Failed to initialize test', err);
         }
       } else {
-        console.log('⏳ [AdaptiveAptitudeTest] Waiting for conditions:', {
+        logger.info('Waiting for conditions', {
           hasStudentId: !!studentData?.id,
           testInitialized,
           loading,
@@ -670,15 +670,16 @@ const AdaptiveAptitudeTest = () => {
                 const currentQuestionNumber = progress ? progress.questionsAnswered + 1 : 1;
                 const totalQuestions = progress?.estimatedTotalQuestions || 50;
                 const isLastQuestion = currentQuestionNumber === totalQuestions;
-                
-                // Debug logging
-                console.log('🔘 [AdaptiveTest] Button Logic:', {
-                  currentQuestionNumber,
-                  totalQuestions,
-                  questionsAnswered: progress?.questionsAnswered,
-                  isLastQuestion,
-                  submitting
-                });
+
+                if (DEBUG_MODE) {
+                  logger.info('Button logic', {
+                    currentQuestionNumber,
+                    totalQuestions,
+                    questionsAnswered: progress?.questionsAnswered,
+                    isLastQuestion,
+                    submitting
+                  });
+                }
 
                 if (submitting) {
                   return (
@@ -690,7 +691,9 @@ const AdaptiveAptitudeTest = () => {
                 }
                 
                 if (isLastQuestion) {
-                  console.log('✅ [AdaptiveTest] Showing "Complete Section" (last question)');
+                  if (DEBUG_MODE) {
+                    logger.info('✅ [AdaptiveTest] Showing "Complete Section" (last question)');
+                  }
                   return (
                     <>
                       Complete Section
@@ -699,7 +702,9 @@ const AdaptiveAptitudeTest = () => {
                   );
                 }
                 
-                console.log('➡️ [AdaptiveTest] Showing "Next"');
+                if (DEBUG_MODE) {
+                  logger.info('Showing Next button');
+                }
                 return (
                   <>
                     Next

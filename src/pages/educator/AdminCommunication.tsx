@@ -20,8 +20,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
-import { useAuth } from '../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useUser } from '../../stores';
+import { useGlobalPresence } from '../../stores';
 import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
@@ -46,7 +46,7 @@ const AdminCommunication = () => {
   const markedAsReadRef = useRef<Set<string>>(new Set());
   
   // Get educator ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   const educatorId = user?.id;
   const educatorName = user?.name || 'Educator';
   const queryClient = useQueryClient();

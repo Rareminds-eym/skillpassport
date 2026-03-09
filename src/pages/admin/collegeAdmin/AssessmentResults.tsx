@@ -10,7 +10,7 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import SearchBar from '../../../components/common/SearchBar';
 import AssessmentReportDrawer from '../../../components/shared/AssessmentReportDrawer';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
 import { formatStreamId } from '../../../utils/formatters';
 
@@ -289,7 +289,7 @@ END OF OLD Detail Modal Component */
 // Main Component
 const CollegeAdminAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
-  const { user } = useAuth();
+  const user = useUser();
 
   // State
   const [results, setResults] = useState<AssessmentResult[]>([]);

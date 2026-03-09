@@ -12,6 +12,9 @@ import {
   getStudentDocumentUrl,
   validateStudentDocument 
 } from '../../../services/studentDocumentService';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('DocumentManager');
 
 const DocumentManager = ({ studentId, className = '' }) => {
   const [documents, setDocuments] = useState([]);
@@ -39,7 +42,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
       setDocuments(docs);
     } catch (err) {
       setError('Failed to load documents');
-      console.error('Error loading documents:', err);
+      logger.error('Error loading documents:', err);
     } finally {
       setLoading(false);
     }
@@ -72,7 +75,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
       }
     } catch (err) {
       setError('Upload failed. Please try again.');
-      console.error('Upload error:', err);
+      logger.error('Upload error:', err);
     } finally {
       setUploading(false);
     }
@@ -94,7 +97,7 @@ const DocumentManager = ({ studentId, className = '' }) => {
       }
     } catch (err) {
       setError('Failed to delete document');
-      console.error('Delete error:', err);
+      logger.error('Delete error:', err);
     }
   };
 

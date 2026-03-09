@@ -7,7 +7,7 @@ import InfographicDashboard from '../../components/digital-pp/portfolio/layouts/
 import JourneyMapLayout from '../../components/digital-pp/portfolio/layouts/JourneyMapLayout';
 import ModernLayout from '../../components/digital-pp/portfolio/layouts/ModernLayout';
 import SplitScreenLayout from '../../components/digital-pp/portfolio/layouts/SplitScreenLayout';
-import { usePortfolio } from '../../context/PortfolioContext';
+import { usePortfolio } from '../../stores';
 import { exportAsHTML, exportAsPDF } from '../../utils/exportppUtils';
 
 const PortfolioPage: React.FC = () => {

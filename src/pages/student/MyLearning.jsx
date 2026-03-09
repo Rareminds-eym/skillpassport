@@ -8,11 +8,14 @@ import { TrainingEditModal } from "../../components/Students/components/ProfileE
 import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
 import { Button } from "../../components/Students/components/ui/button";
 import { Card, CardContent } from "../../components/Students/components/ui/card";
-import { useAuth } from "../../context/AuthContext";
+import { useUser } from "../../stores";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
 import { supabase } from "../../lib/supabaseClient";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('MyLearning');
 
 const StatCardSkeleton = () => (
   <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-sm animate-pulse">
@@ -134,7 +137,7 @@ const ContinueLearningSection = ({ course, onContinue }) => {
 
 const MyLearning = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = user?.email;
   const { studentData, updateTraining, updateSingleTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
   const studentId = studentData?.id;
@@ -273,7 +276,7 @@ const MyLearning = () => {
       // Refresh the list
       await refresh();
     } catch (error) {
-      console.error('Error deleting certificate:', error);
+      logger.error('Error deleting certificate', error);
       alert('Failed to delete certificate. Please try again.');
     } finally {
       setIsDeleting(false);
@@ -305,7 +308,7 @@ const MyLearning = () => {
       const courseId = course.course_id || course.id;
       navigate(`/student/courses/${courseId}/learn`);
     } else {
-      console.log('Cannot continue external course on platform:', course);
+      logger.info('Cannot continue external course on platform', course);
     }
   };
 

@@ -6,12 +6,12 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 import { supabase } from '../lib/supabaseClient';
 import * as assessmentService from '../services/assessmentService';
 
 export const useAssessment = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sections, setSections] = useState([]);

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useAuth } from '@/context/AuthContext';
 import { departmentService, DepartmentWithStats, Faculty } from '@/services/college/departmentService';
 import {
     AcademicCapIcon,
@@ -157,7 +156,7 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 };
 
 const DepartmentManagement: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const queryClient = useQueryClient();
   
   // Fetch college ID from organizations table using admin_id

@@ -27,8 +27,8 @@ import {
   Award
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useUser } from '../../../stores';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/context/AuthContext';
 import { CollegeAdminNotificationService } from '@/services/collegeAdminNotificationService';
 import TrainingDetailsModal from '@/components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '@/components/admin/schoolAdmin/ExperienceDetailsModal';
@@ -54,9 +54,9 @@ const CollegeVerifications = () => {
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
-  
-  const { user } = useAuth();
+  const [viewMode, setViewMode] = useState('grid'); 
+
+  const user = useUser();
 
   // Fetch pending trainings for college admin (Using database approval_authority)
   const fetchPendingTrainings = async () => {

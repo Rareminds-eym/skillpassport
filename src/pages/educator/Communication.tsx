@@ -26,8 +26,8 @@ import MessageService, { Conversation } from '../../services/messageService';
 import { useEducatorMessages } from '../../hooks/useEducatorMessages.js';
 import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useUser } from '../../stores';
+import { useGlobalPresence } from '../../stores';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
@@ -67,7 +67,7 @@ const Communication = () => {
   });
   
   // Get educator ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   console.log('🔍 Raw user object from auth:', user);
   const userId = user?.id;
 

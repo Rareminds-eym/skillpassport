@@ -55,7 +55,7 @@ type TimetableViewType = 'week' | 'day';
  * - Network request reduction: From 12+N to 6 requests on initial load
  */
 const SchoolMyClass: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail) as { studentData: any; loading: boolean };
   const studentId = studentData?.id;

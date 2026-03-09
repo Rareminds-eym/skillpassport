@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { getLogger } from '../../config/logging';
 
 // Import student type detection service
 import { getStudentTypeInfo } from '../../services/collegeClassService';
+
+const logger = getLogger('MyClass');
 
 // Import School Components
 import SchoolMyClass from '../../components/Myclass/SchoolMyClass';
@@ -25,7 +28,7 @@ import CollegeMyClass from '../../components/Myclass/CollegeMyClass';
  * - Professional separation of concerns
  */
 const MyClass: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id;
@@ -57,7 +60,7 @@ const MyClass: React.FC = () => {
         setStudentTypeInfo(typeInfo);
         setError(null);
       } catch (err) {
-        console.error('Error determining student type:', err);
+        logger.error('Error determining student type', err);
         setError('Failed to load student information. Please try refreshing the page.');
       } finally {
         setLoading(false);

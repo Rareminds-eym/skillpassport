@@ -14,12 +14,15 @@ import { Link } from 'react-router-dom';
 import OpportunityCard from '../../components/Students/components/OpportunityCard';
 import OpportunityListItem from '../../components/Students/components/OpportunityListItem';
 import OpportunityPreview from '../../components/Students/components/OpportunityPreview';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('SavedJobs');
 
 const SavedJobs = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const studentId = user?.id;
 
@@ -58,7 +61,7 @@ const SavedJobs = () => {
         
         setError(null);
       } catch (err) {
-        console.error('❌ Error loading saved jobs:', err);
+        logger.error('❌ Error loading saved jobs', err);
         setError(err.message || 'Failed to load saved jobs');
       } finally {
         setLoading(false);
@@ -125,7 +128,7 @@ const SavedJobs = () => {
         alert(result.message);
       }
     } catch (error) {
-      console.error('Error unsaving job:', error);
+      logger.error('Error unsaving job', error);
       alert('Failed to unsave job');
     }
   };
@@ -227,7 +230,7 @@ const SavedJobs = () => {
         alert(result.message);
       }
     } catch (error) {
-      console.error('Error clearing inactive jobs:', error);
+      logger.error('Error clearing inactive jobs', error);
       alert('Failed to clear inactive jobs');
     }
   };

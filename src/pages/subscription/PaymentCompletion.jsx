@@ -16,7 +16,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRouteGuard';
 import { useSubscription } from '../../hooks/Subscription/useSubscription';
-import useAuth from '../../hooks/useAuth';
+import { useUser, useUserRole, useIsAuthenticated, useAuthLoading } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
 
@@ -207,7 +207,10 @@ PaymentMethods.displayName = 'PaymentMethods';
 function PaymentCompletion() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, loading: authLoading, role } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
+  const authLoading = useAuthLoading();
+  const { role } = useUserRole();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
   const { plan, studentType, isUpgrade, isRenewal } = useMemo(() => location.state || {}, [location.state]);
