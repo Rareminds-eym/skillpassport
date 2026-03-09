@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
+import { useUser } from '../../stores';
 import { prefetchSubscriptionData } from '../../hooks/Subscription/useSubscriptionQuery';
 import { queryLogger } from '../../utils/queryLogger';
 
@@ -11,7 +11,7 @@ import { queryLogger } from '../../utils/queryLogger';
  */
 const SubscriptionPrefetch = () => {
   const queryClient = useQueryClient();
-  const { user } = useSupabaseAuth();
+  const user = useUser();
   const hasPrefetchedRef = useRef(false);
 
   useEffect(() => {

@@ -12,7 +12,7 @@ import { Button } from '../../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../../components/Students/components/ui/card';
 import { Label } from '../../../components/Students/components/ui/label';
 import { ProfileCompletionModal } from '../../../components/assessment/ProfileCompletionModal';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 
 /**
  * @typedef {Object} GradeSelectionScreenProps
@@ -264,7 +264,7 @@ export const GradeSelectionScreen = ({
   profileData = null,
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Check if student has incomplete profile

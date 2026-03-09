@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useAuthActions } from "../../../stores";
 import { loginAdmin } from '../../services/adminAuthService';
 import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
@@ -14,7 +14,7 @@ const LoginAdmin = () => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login } = useAuthActions();
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {

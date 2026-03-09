@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useAuth } from './AuthContext';
+import { useUser } from '../stores';
 import { useRealtimePresence } from '../hooks/useRealtimePresence';
 import { OnlineUser } from '../services/realtimeService';
 
@@ -26,7 +26,7 @@ interface GlobalPresenceProviderProps {
 }
 
 export const GlobalPresenceProvider: React.FC<GlobalPresenceProviderProps> = ({ children, userType }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [userId, setUserId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>('User');
 

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
-import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
+import { useUser } from '../../stores';
 import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
 import { queryLogger } from '../../utils/queryLogger';
 import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
@@ -72,7 +72,7 @@ const fetchSubscription = async (userId) => {
  * @returns {Object} Subscription query result
  */
 export const useSubscriptionQuery = () => {
-  const { user } = useSupabaseAuth();
+  const user = useUser();
   const queryClient = useQueryClient();
 
   // Check if the query can run

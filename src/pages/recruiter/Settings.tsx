@@ -13,7 +13,7 @@ import {
 } from "lucide-react"
 import React, { useEffect, useId, useState } from "react"
 import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection"
-import { useAuth } from "../../context/AuthContext"
+import { useUser } from "../../stores"
 import { supabase } from "../../lib/supabaseClient"
 
 /* ---------- UI Primitives ---------- */
@@ -110,7 +110,7 @@ function ToggleRow({
 /* ---------- Page ---------- */
 
 export default function SettingsPage() {
-  const { user } = useAuth()
+  const user = useUser()
   const [recruiter, setRecruiter] = useState<any>(null)
   const [loading, setLoading] = useState(false)
 

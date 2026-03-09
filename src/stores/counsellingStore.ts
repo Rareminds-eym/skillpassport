@@ -8,7 +8,7 @@ import {
   CounsellingTopicType 
 } from '../types/counselling';
 
-interface CounsellingStore {
+export interface CounsellingStore {
   sessions: CounsellingSession[];
   sessionMessages: Record<string, CounsellingMessage[]>;
   

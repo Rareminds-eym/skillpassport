@@ -15,7 +15,7 @@ import EditPoolModal, { PoolUpdateData } from '../../components/Subscription/Org
 import OrganizationSubscriptionDashboard from '../../components/Subscription/Organization/OrganizationSubscriptionDashboard';
 import PoolAssignmentsModal from '../../components/Subscription/Organization/PoolAssignmentsModal';
 import { useOrganizationSubscription } from '../../hooks/Subscription/useOrganizationSubscription';
-import useAuth from '../../hooks/useAuth';
+import { useUser, useIsAuthenticated } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 
 interface OrganizationDetails {
@@ -39,7 +39,8 @@ interface OrganizationDetails {
 
 function OrganizationSubscriptionPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
   
   // Determine organization type and ID from user context
   const organizationType = useMemo(() => {

@@ -16,7 +16,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useUser, useAuthLoading } from "../../stores";
 import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 
 /**
@@ -38,7 +38,8 @@ import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
 
 const TimelinePage = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const user = useUser();
+  const authLoading = useAuthLoading();
   console.log("----------------------", user);
   
   // Get email for fetching detailed timeline data

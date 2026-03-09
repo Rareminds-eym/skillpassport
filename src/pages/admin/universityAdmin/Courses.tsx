@@ -16,13 +16,13 @@ import CourseDetailDrawer from '../../../components/educator/courses/CourseDetai
 import CourseFilters from '../../../components/educator/courses/CourseFilters';
 import CreateCourseModal from '../../../components/educator/courses/CreateCourseModal';
 
-import toast from 'react-hot-toast';
-import { useAuth } from '../../../context/AuthContext';
+import toast from 'react-hot-toast'
+import { useUser, useIsAuthenticated } from '../../../stores'
 import { supabase } from '../../../lib/supabaseClient';
 
 const UniversityAdminCourses: React.FC = () => {
-  // @ts-ignore - AuthContext is a .jsx file
-  const { user } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
 
   // State
   const [courses, setCourses] = useState<Course[]>([]);

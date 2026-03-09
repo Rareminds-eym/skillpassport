@@ -21,7 +21,7 @@ import AssignmentFileUpload from '../../components/educator/AssignmentFileUpload
 import StudentSelectionModal from '../../components/educator/StudentSelectionModal';
 import ConfirmationModal from '../../components/ui/ConfirmationModal';
 import NotificationModal from '../../components/ui/NotificationModal';
-import { useAuth } from '../../context/AuthContext';
+import { useUser, useIsAuthenticated } from '../../stores';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 import { supabase } from '../../lib/supabaseClient';
 import { getPagesApiUrl } from '../../utils/pagesUrl';
@@ -198,7 +198,8 @@ interface Task {
 
 // Main Component
 const Assessments = () => {
-    const { user, isAuthenticated } = useAuth();
+    const user = useUser();
+    const isAuthenticated = useIsAuthenticated();
     const { school: educatorSchool, loading: schoolLoading } = useEducatorSchool();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);

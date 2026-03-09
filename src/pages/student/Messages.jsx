@@ -24,7 +24,7 @@ import DeleteConversationModal from '../../components/messaging/DeleteConversati
 import NewAdminConversationModal from '../../components/messaging/NewAdminConversationModal';
 import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
 import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
@@ -73,7 +73,7 @@ const Messages = () => {
   const newEducatorDropdownRef = useRef(null);
 
   // Get student data - same approach as Applications page
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: loadingStudentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;

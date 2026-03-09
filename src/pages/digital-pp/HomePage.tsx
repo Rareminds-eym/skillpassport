@@ -4,13 +4,13 @@ import React, { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BackgroundRippleEffect } from '../../components/digital-pp/ui/background-ripple-effect';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { useAuth } from '../../context/AuthContext';
+import { useUserRole } from '../../stores';
 
 const HomePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { setStudent } = usePortfolio();
-  const { role } = useAuth();
+  const { role } = useUserRole();
 
   useEffect(() => {
     // Set the candidate data from navigation state into PortfolioContext

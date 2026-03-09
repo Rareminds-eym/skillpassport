@@ -17,7 +17,7 @@ import {
   CheckSquare,
   Star
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { getPagesApiUrl } from '../../utils/pagesUrl';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { supabase } from '../../lib/supabaseClient';
@@ -76,7 +76,7 @@ interface SchoolClassmate {
  * - Exams and results
  */
 const SchoolMyClass: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: authLoading } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id;

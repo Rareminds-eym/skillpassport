@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
-import { useAuth } from "../context/AuthContext";
+import { useUser } from "../stores";
 import { NotificationType } from "./useNotifications";
 import { createNotification } from "../services/notificationService.ts"; 
 
@@ -69,7 +69,7 @@ export interface OfferSortOptions {
 
 // -------------------- HOOK --------------------
 export const useOffers = (filters?: OfferFilters, sort?: OfferSortOptions) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

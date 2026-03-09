@@ -7,7 +7,7 @@ import {
   XMarkIcon,
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
-import { useAuth } from "../../context/AuthContext";
+import { useUser, useAuthActions } from "../../stores";
 import NotificationPanel from "./NotificationPanel";
 import { useAdminNotifications } from "../../hooks/useAdminNotifications";
 
@@ -24,7 +24,8 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const { user, logout } = useAuth();
+  const user = useUser();
+  const { logout } = useAuthActions();
 
   const navigate = useNavigate();
   const profileRef = useRef<HTMLDivElement>(null);

@@ -1,4 +1,4 @@
-import { useAuth } from '@/context/AuthContext';
+import { useUser } from '../../../stores';
 import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { supabase } from '../../../lib/supabaseClient';
@@ -34,7 +34,7 @@ const EditDepartmentModal: React.FC<EditDepartmentModalProps> = ({
   allFaculty = [],
   facultyLoading = false,
 }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState<Faculty | null>(null);

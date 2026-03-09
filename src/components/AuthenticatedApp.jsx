@@ -1,10 +1,14 @@
 import React from 'react';
-import { useSupabaseAuth } from '../context/SupabaseAuthContext';
+import { useUser, useAuthLoading } from '../stores';
 import SimpleLogin from '../components/SimpleLogin';
 import StudentDashboard from '../pages/student/Dashboard';
 
 const AuthenticatedApp = () => {
-  const { user, loading, userProfile } = useSupabaseAuth();
+  const user = useUser();
+  const loading = useAuthLoading();
+  
+  // Note: userProfile is not stored in Zustand authStore, 
+  // it would need to be fetched separately or added to the store
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -24,6 +28,8 @@ const AuthenticatedApp = () => {
   }
 
   // If user but no profile linked yet, show loading
+  // TODO: Fetch userProfile from Supabase if needed
+  const userProfile = null; // Placeholder - needs implementation
   if (!userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">

@@ -22,7 +22,7 @@ import {
   PanelLeft
 } from 'lucide-react';
 import { streamCareerChat } from '../services/careerWorkerService';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { useCareerConversations, ConversationMessage } from '../hooks/useCareerConversations';
 import { useAIFeedback, AIFeedback } from '../hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
@@ -53,7 +53,7 @@ import {
  * Manages all state and provides it to child components via Context
  */
 const CareerAssistantContainer: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const location = useLocation();
   
   // ==================== HOOKS ====================

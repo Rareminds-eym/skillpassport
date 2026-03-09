@@ -17,7 +17,7 @@ import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 import { useSearch } from '../../context/SearchContext';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
-import { useAuth } from '../../context/AuthContext';
+import { useUser, useIsAuthenticated } from '../../stores';
 import { usePermission } from '../../hooks/usePermissions';
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
@@ -230,7 +230,8 @@ const PortfolioCard = ({ student, onViewPortfolio, canView, canCreate, canEdit, 
 
 const DigitalPortfolioPage = () => {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
   const { searchQuery, setSearchQuery } = useSearch()
   
   // Permission controls for Digital Portfolio module - same pattern as Program Sections

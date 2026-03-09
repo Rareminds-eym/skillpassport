@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Student, PortfolioSettings, DisplayPreferences } from '../types/student';
 import { getStudentPortfolioByEmail } from '../services/portfolioService';
-import { useAuth } from './AuthContext';
+import { useUser } from '../stores';
 
 interface PortfolioContextType {
   student: Student | null;
@@ -66,7 +66,8 @@ interface PortfolioProviderProps {
 }
 
 export const PortfolioProvider: React.FC<PortfolioProviderProps> = ({ children }) => {
-  const { user, loading: authLoading } = useAuth();
+  const user = useUser();
+  const authLoading = false; // Zustand doesn't have loading state like Context
   const [student, _setStudent] = useState<Student | null>(null);
   const [settings, setSettings] = useState<PortfolioSettings>(getDefaultSettings(null));
   const [isLoading, setIsLoading] = useState(true);

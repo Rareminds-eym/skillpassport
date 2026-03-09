@@ -22,13 +22,13 @@ import {
   Bell,
   FileText
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import AppliedJobsService from '../../services/appliedJobsService';
 import StudentPipelineService from '../../services/studentPipelineService';
 import MessageService from '../../services/messageService';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { supabase } from '../../lib/supabaseClient';
+import { useUser } from '../../stores';
 
 import { getLogger } from '../../config/logging';
 
@@ -37,7 +37,7 @@ const logger = getLogger('Applications');
 const Applications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;

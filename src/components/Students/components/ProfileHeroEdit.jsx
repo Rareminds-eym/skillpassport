@@ -29,7 +29,7 @@ import { FileText, Rocket, Sprout, Star, Wrench } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../hooks/useAuth";
+import { useUser, useUserRole } from "../../../stores";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
 import { supabase } from "../../../lib/supabaseClient";
 import { generateBadges } from "../../../services/badgeService";
@@ -267,7 +267,7 @@ const ProfileHeroEdit = ({ onEditClick }) => {
   const navigate = useNavigate();
 
   // Get auth state
-  const { role: userRole } = useAuth();
+  const { role: userRole } = useUserRole();
 
   // Get logged-in user's email from localStorage
   const userEmail = localStorage.getItem("userEmail");

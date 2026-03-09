@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 import addOnAnalyticsService from '../services/addOnAnalyticsService';
 
 /**
@@ -16,7 +16,7 @@ import addOnAnalyticsService from '../services/addOnAnalyticsService';
  * @returns {Object} Tracking functions
  */
 export const useAddOnTracking = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const trackedViews = useRef(new Set());
   const sessionId = useRef(`session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
 

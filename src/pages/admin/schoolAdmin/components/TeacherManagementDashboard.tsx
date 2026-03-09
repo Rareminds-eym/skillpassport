@@ -6,9 +6,9 @@ import {
     Users
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../../../../context/AuthContext';
-import { useUserRole } from '../../../../hooks/useUserRole';
-import { supabase } from '../../../../lib/supabaseClient';
+import { useUser } from "../../../../stores";
+import { useUserRole } from "../../../../hooks/useUserRole";
+import { supabase } from "../../../../lib/supabaseClient";
 import { getTeacherStatistics } from '../../../../services/teacherService';
 import TeacherBulkImport from './TeacherBulkImport';
 import TeacherList from './TeacherList';
@@ -18,7 +18,7 @@ import TimetableBuilderEnhanced from './TimetableBuilderEnhanced';
 
 const TeacherManagementDashboard: React.FC = () => {
   const { role, canAddTeacher } = useUserRole();
-  const { user } = useAuth();
+  const user = useUser();
   const [activeTab, setActiveTab] = useState<'list' | 'onboarding' | 'timetable' | 'analytics' | 'import'>('list');
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);

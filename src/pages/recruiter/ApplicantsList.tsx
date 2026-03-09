@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, UsersIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { MessageModal } from '../../components/messaging/MessageModal';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { recruiterInsights } from '../../features/recruiter-copilot/services/recruiterInsights';
 
 interface Student {
@@ -58,7 +58,7 @@ interface PipelineStage {
 }
 
 const ApplicantsList: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
