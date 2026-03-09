@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getLogger } from '../../config/logging';
 
 const logger = getLogger('ProjectHiring');
+
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -13,9 +14,6 @@ import {
 import { RocketLaunchIcon } from '@heroicons/react/24/solid';
 import ProjectList from '../../components/Recruiter/Projects/ProjectList';
 import { mockProjects, getProjectStats } from '../../data/mock/mockProjects';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('ProjectHiring');
 
 interface StatsCardProps {
   title: string;
