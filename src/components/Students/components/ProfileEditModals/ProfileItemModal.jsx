@@ -66,7 +66,7 @@ const ProfileItemModal = ({
                   description: skill.description || '',
                   verified: skill.verified !== undefined ? skill.verified : true,
                   enabled: skill.enabled !== undefined ? skill.enabled : true,
-                  approval_status: skill.approval_status || 'approved'
+                  approval_status: skill.approval_status || 'pending'
                 };
               }
               // If skill is just a string (legacy format), default to technical
@@ -77,7 +77,7 @@ const ProfileItemModal = ({
                 description: '',
                 verified: true,
                 enabled: true,
-                approval_status: 'approved'
+                approval_status: 'pending'
               };
             });
           } else {
@@ -99,6 +99,34 @@ const ProfileItemModal = ({
         }
         if (sourceData.hoursSpent !== undefined) {
           editData.hoursSpent = sourceData.hoursSpent || 0;
+        }
+        
+        // Ensure skills are properly loaded for training
+        if (sourceData.skills && Array.isArray(sourceData.skills) && sourceData.skills.length > 0) {
+          editData.skillsList = sourceData.skills.map(skill => {
+            if (typeof skill === 'object' && skill !== null && skill.name) {
+              return {
+                name: skill.name,
+                type: skill.type || 'technical',
+                level: skill.level || 3,
+                description: skill.description || '',
+                verified: skill.verified !== undefined ? skill.verified : true,
+                enabled: skill.enabled !== undefined ? skill.enabled : true,
+                approval_status: skill.approval_status || 'pending'
+              };
+            }
+            return {
+              name: typeof skill === 'string' ? skill : String(skill),
+              type: 'technical',
+              level: 3,
+              description: '',
+              verified: true,
+              enabled: true,
+              approval_status: 'pending'
+            };
+          });
+        } else if (!editData.skillsList) {
+          editData.skillsList = [];
         }
       }
       
@@ -217,7 +245,7 @@ const ProfileItemModal = ({
       description: formData.newSkillDescription?.trim() || '',
       verified: true,
       enabled: true,
-      approval_status: 'approved'
+      approval_status: 'pending'
     };
 
     setFormData(prev => {
