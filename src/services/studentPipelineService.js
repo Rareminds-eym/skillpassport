@@ -4,6 +4,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('student-pipeline');
 
 export class StudentPipelineService {
   /**
@@ -68,14 +71,14 @@ export class StudentPipelineService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching pipeline status:', error);
+        logger.error('Error fetching pipeline status', error, { studentId, studentEmail });
         throw error;
       }
 
 
       return data || [];
     } catch (error) {
-      console.error('Error in getStudentPipelineStatus:', error);
+      logger.error('Error in getStudentPipelineStatus', error, { studentId, studentEmail });
       throw error;
     }
   }
@@ -97,13 +100,17 @@ export class StudentPipelineService {
         .order('created_at', { ascending: false });
 
       const endTime = performance.now();
-      console.log(`[OPTIMIZED] getStudentPipelineActivities took ${(endTime - startTime).toFixed(2)}ms, returned ${activities?.length || 0} activities`);
+      logger.info('getStudentPipelineActivities completed', { 
+        duration: `${(endTime - startTime).toFixed(2)}ms`, 
+        count: activities?.length || 0,
+        studentId 
+      });
 
       if (error) throw error;
 
       return activities || [];
     } catch (error) {
-      console.error('Error in getStudentPipelineActivities:', error);
+      logger.error('Error in getStudentPipelineActivities', error, { studentId });
       throw error;
     }
   }
@@ -126,7 +133,7 @@ export class StudentPipelineService {
 
       return data || [];
     } catch (error) {
-      console.error('Error in getStudentInterviews:', error);
+      logger.error('Error in getStudentInterviews', error, { studentId });
       throw error;
     }
   }
@@ -140,7 +147,7 @@ export class StudentPipelineService {
    */
   static async getStudentApplicationsWithPipeline(studentId, studentEmail = null) {
     try {
-      console.log('[PIPELINE] Starting getStudentApplicationsWithPipeline for student:', studentId);
+      logger.info('Starting getStudentApplicationsWithPipeline', { studentId });
       const startTime = performance.now();
       
       // Single optimized query that fetches applications with opportunity details
@@ -221,12 +228,17 @@ export class StudentPipelineService {
       });
 
       const endTime = performance.now();
-      console.log(`[PIPELINE] ✅ Completed in ${(endTime - startTime).toFixed(2)}ms`);
-      console.log(`[PIPELINE] 📊 Results: ${combinedData.length} applications, ${pipelineStatuses.length} pipeline statuses, ${interviews.length} interviews`);
+      logger.info('getStudentApplicationsWithPipeline completed', { 
+        duration: `${(endTime - startTime).toFixed(2)}ms`,
+        applications: combinedData.length,
+        pipelineStatuses: pipelineStatuses.length,
+        interviews: interviews.length,
+        studentId
+      });
 
       return combinedData;
     } catch (error) {
-      console.error('Error in getStudentApplicationsWithPipeline:', error);
+      logger.error('Error in getStudentApplicationsWithPipeline', error, { studentId, studentEmail });
       throw error;
     }
   }
@@ -258,7 +270,7 @@ export class StudentPipelineService {
 
       return stageChanges;
     } catch (error) {
-      console.error('Error in getStageChangeNotifications:', error);
+      logger.error('Error in getStageChangeNotifications', error, { studentId });
       throw error;
     }
   }

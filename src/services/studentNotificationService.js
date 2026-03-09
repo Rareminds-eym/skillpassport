@@ -4,6 +4,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('student-notification');
 
 export class StudentNotificationService {
   /**
@@ -38,7 +41,7 @@ export class StudentNotificationService {
 
       return data || [];
     } catch (error) {
-      console.error('Error fetching student notifications:', error);
+      logger.error('Error fetching student notifications', error, { studentId });
       throw error;
     }
   }
@@ -60,7 +63,7 @@ export class StudentNotificationService {
 
       return count || 0;
     } catch (error) {
-      console.error('Error fetching unread count:', error);
+      logger.error('Error fetching unread count', error, { studentId });
       return 0;
     }
   }
@@ -88,7 +91,7 @@ export class StudentNotificationService {
 
       return !!data;
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      logger.error('Error marking notification as read', error, { notificationId });
       return false;
     }
   }
@@ -113,7 +116,7 @@ export class StudentNotificationService {
 
       return true;
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      logger.error('Error marking all notifications as read', error, { studentId });
       return false;
     }
   }
@@ -145,7 +148,7 @@ export class StudentNotificationService {
 
       return data;
     } catch (error) {
-      console.error('Error creating notification:', error);
+      logger.error('Error creating notification', error, { studentId });
       throw error;
     }
   }
@@ -168,7 +171,7 @@ export class StudentNotificationService {
 
       return true;
     } catch (error) {
-      console.error('Error deleting notification:', error);
+      logger.error('Error deleting notification', error, { notificationId });
       return false;
     }
   }

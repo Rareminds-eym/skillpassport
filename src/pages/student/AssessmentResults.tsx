@@ -2,6 +2,9 @@ import { ArrowLeft, Award, Target } from 'lucide-react';
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('AssessmentResults');
 
 const Results: React.FC = () => {
   const navigate = useNavigate();
@@ -43,9 +46,9 @@ const Results: React.FC = () => {
           })
           .eq('id', location.state.attemptId);
         
-        console.log('✅ Assessment marked as completed');
+        logger.info('Assessment marked as completed', { attemptId: location.state.attemptId });
       } catch (error) {
-        console.error('Failed to mark assessment as completed:', error);
+        logger.error('Failed to mark assessment as completed', error);
       }
     };
     
