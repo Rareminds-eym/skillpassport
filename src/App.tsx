@@ -1,4 +1,3 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
@@ -11,24 +10,10 @@ import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
 import AppRoutes from './routes/AppRoutes';
 import './utils/suppressRechartsWarnings'; // Suppress Recharts warnings globally
 
-// Create React Query client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 2 * 60 * 1000, // 2 minutes - data is fresh
-      gcTime: 5 * 60 * 1000, // 5 minutes - garbage collection time (replaces cacheTime)
-      refetchOnWindowFocus: false,
-      refetchOnMount: false, // Don't refetch on mount if data is fresh
-      retry: 1,
-    },
-  },
-});
-
 function App() {
   // No scroll lock management needed
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+    <BrowserRouter>
         <SupabaseAuthProvider>
           <AuthProvider>
             <SubscriptionProvider>
@@ -67,7 +52,6 @@ function App() {
           </AuthProvider>
         </SupabaseAuthProvider>
       </BrowserRouter>
-    </QueryClientProvider>
   );
 }
 

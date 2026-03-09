@@ -5,9 +5,11 @@ import { ReactNode } from 'react';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false, // Disable refetch on window focus
-      retry: 1, // Retry failed requests once
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 2 * 60 * 1000, // 2 minutes - data is fresh
+      gcTime: 5 * 60 * 1000, // 5 minutes - garbage collection time (replaces cacheTime)
+      refetchOnWindowFocus: false,
+      refetchOnMount: false, // Don't refetch on mount if data is fresh
+      retry: 1,
     },
   },
 });
