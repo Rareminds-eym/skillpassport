@@ -23,7 +23,6 @@ import { getLogger } from '../../config/logging';
 const logger = getLogger('RecruiterMessages');
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
@@ -90,9 +89,6 @@ const Messages = () => {
     conversationId: selectedConversationId,
     enabled: !!selectedConversationId,
   });
-
-  // Use shared global presence context (no duplicate subscription)
-  const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
 
   // Presence tracking for current conversation (for chat header)
   const { isUserOnline, getUserStatus, onlineUsers } = useRealtimePresence({
@@ -517,7 +513,7 @@ const Messages = () => {
                       avatar: profile?.profilePicture || 
                         `https://ui-avatars.com/api/?name=${encodeURIComponent(studentName)}&background=3B82F6&color=fff`,
                       lastMessage: conv.last_message_preview || 'No messages yet',
-                      online: isUserOnlineGlobal(conv.student_id),
+                      online: onlineUsers.some(u => u.userId === conv.student_id),
         time: conv.last_message_at 
           ? formatDistanceToNow(new Date(conv.last_message_at), { addSuffix: true })
           : 'No messages',
@@ -534,7 +530,7 @@ const Messages = () => {
     return contacts.filter(c => 
       c.name.toLowerCase().includes(query) || c.role.toLowerCase().includes(query)
     );
-  }, [conversations, searchQuery, globalOnlineUsers, isUserOnlineGlobal]);
+  }, [conversations, searchQuery, onlineUsers]);
 
   const currentChat = useMemo(() => 
     filteredContacts.find(c => c.id === selectedConversationId),
