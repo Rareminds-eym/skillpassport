@@ -10,6 +10,9 @@ import {
 import { RocketLaunchIcon } from '@heroicons/react/24/solid';
 import ProjectList from '../../components/Recruiter/Projects/ProjectList';
 import { mockProjects, getProjectStats } from '../../data/mock/mockProjects';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('ProjectHiring');
 
 interface StatsCardProps {
   title: string;
@@ -61,7 +64,7 @@ const ProjectHiring = () => {
 
   const handleViewProject = (id: string) => {
     // For now, just show alert - later navigate to detail page
-    console.log('View project:', id);
+    logger.info('View project', { id });
     alert(`Project Details Page\n\nProject ID: ${id}\n\nThis will navigate to the full project details page once implemented.`);
   };
 

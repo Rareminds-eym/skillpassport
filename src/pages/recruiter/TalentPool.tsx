@@ -21,6 +21,9 @@ import { useStudents } from '../../hooks/useStudents';
 import { createInterview } from '../../services/interviewService';
 import { createSavedSearch } from '../../services/savedSearchesService';
 import { addCandidateToShortlist, getShortlists } from '../../services/shortlistService';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('TalentPool');
 
 const FilterSection = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -86,7 +89,7 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
       if (error) throw error;
       setShortlists(data || []);
     } catch (err) {
-      console.error('Error fetching shortlists:', err);
+      logger.error('Error fetching shortlists', err);
       setError('Failed to load shortlists');
     } finally {
       setLoadingShortlists(false);
@@ -115,7 +118,7 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
       onSuccess?.();
       onClose();
     } catch (err) {
-      console.error('Error adding to shortlist:', err);
+      logger.error('Error adding to shortlist', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -280,7 +283,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
         meeting_notes: ''
       });
     } catch (err) {
-      console.error('Error scheduling interview:', err);
+      logger.error('Error scheduling interview', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -574,7 +577,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      console.error('Error saving search:', err);
+      logger.error('Error saving search', err);
       setError(err.message);
     } finally {
       setLoading(false);

@@ -24,6 +24,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: { persistSession: false }
 });
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('EducatorActivities');
 
 // Add animation styles
 const modalAnimationStyles = `
@@ -716,7 +719,7 @@ const Activities = () => {
 
       setActivities(allActivities);
     } catch (error) {
-      console.error('Error fetching activities:', error);
+      logger.error('Error fetching activities', error);
     } finally {
       setLoading(false);
     }
@@ -807,12 +810,10 @@ const Activities = () => {
   };
 
   const confirmBulkVerify = async () => {
-    console.log('🔵 [BULK VERIFY] Starting bulk verification...');
-    console.log('🔵 [BULK VERIFY] Selected activities:', selectedActivities);
-    console.log('🔵 [BULK VERIFY] Bulk remark:', bulkRemark);
+    logger.info('Starting bulk verification', { selectedActivities, bulkRemark });
     
     if (!bulkRemark.trim()) {
-      console.warn('⚠️ [BULK VERIFY] Remarks empty!');
+      logger.warn('Bulk verify remarks empty');
       setErrorMessage('Please provide remarks for bulk verification');
       setShowErrorModal(true);
       return;
@@ -820,18 +821,18 @@ const Activities = () => {
 
     try {
       for (const id of selectedActivities) {
-        console.log(`🔵 [BULK VERIFY] Processing activity: ${id}`);
+        logger.info('Processing activity for bulk verify', { id });
         
         const activity = activities.find(a => a.id === id);
         if (!activity) {
-          console.warn(`⚠️ [BULK VERIFY] Activity ${id} not found, skipping...`);
+          logger.warn('Activity not found, skipping', { id });
           continue;
         }
         
         const table = activity.type === 'Project' ? 'projects' : 
                      activity.type === 'Training' ? 'trainings' : 'certificates';
         
-        console.log(`🔵 [BULK VERIFY] Updating ${table} for activity ${id}`);
+        logger.info('Updating table for bulk verify', { table, id });
         
         const { data, error } = await supabase
           .from(table)
@@ -843,14 +844,14 @@ const Activities = () => {
           .eq('id', id);
 
         if (error) {
-          console.error(`❌ [BULK VERIFY] Error updating ${id}:`, error);
+          logger.error('Error updating activity', error, { id });
           throw error;
         }
         
-        console.log(`✅ [BULK VERIFY] Successfully updated ${id}`);
+        logger.info('Successfully updated activity', { id });
       }
       
-      console.log('✅ [BULK VERIFY] All activities verified!');
+      logger.info('All activities verified');
       await fetchActivities();
       setSelectedActivities([]);
       setShowBulkVerifyConfirm(false);
@@ -858,7 +859,7 @@ const Activities = () => {
       setSuccessMessage(`${selectedActivities.length} ${selectedActivities.length === 1 ? 'activity' : 'activities'} verified successfully!`);
       setShowSuccessModal(true);
     } catch (error) {
-      console.error('❌ [BULK VERIFY] Bulk verification failed:', error);
+      logger.error('Bulk verification failed', error);
       setShowBulkVerifyConfirm(false);
       setErrorMessage('Failed to verify activities. Please try again.');
       setShowErrorModal(true);
@@ -872,12 +873,10 @@ const Activities = () => {
   };
 
   const confirmBulkReject = async () => {
-    console.log('🔴 [BULK REJECT] Starting bulk rejection...');
-    console.log('🔴 [BULK REJECT] Selected activities:', selectedActivities);
-    console.log('🔴 [BULK REJECT] Bulk remark:', bulkRemark);
+    logger.info('Starting bulk rejection', { selectedActivities, bulkRemark });
     
     if (!bulkRemark.trim()) {
-      console.warn('⚠️ [BULK REJECT] Remarks empty!');
+      logger.warn('Bulk reject remarks empty');
       setErrorMessage('Please provide remarks for bulk rejection');
       setShowErrorModal(true);
       return;
@@ -885,18 +884,18 @@ const Activities = () => {
 
     try {
       for (const id of selectedActivities) {
-        console.log(`🔴 [BULK REJECT] Processing activity: ${id}`);
+        logger.info('Processing activity for bulk reject', { id });
         
         const activity = activities.find(a => a.id === id);
         if (!activity) {
-          console.warn(`⚠️ [BULK REJECT] Activity ${id} not found, skipping...`);
+          logger.warn('Activity not found, skipping', { id });
           continue;
         }
         
         const table = activity.type === 'Project' ? 'projects' : 
                      activity.type === 'Training' ? 'trainings' : 'certificates';
         
-        console.log(`🔴 [BULK REJECT] Updating ${table} for activity ${id}`);
+        logger.info('Updating table for bulk reject', { table, id });
         
         const { data, error } = await supabase
           .from(table)
@@ -908,14 +907,14 @@ const Activities = () => {
           .eq('id', id);
 
         if (error) {
-          console.error(`❌ [BULK REJECT] Error updating ${id}:`, error);
+          logger.error('Error updating activity', error, { id });
           throw error;
         }
         
-        console.log(`✅ [BULK REJECT] Successfully updated ${id}`);
+        logger.info('Successfully updated activity', { id });
       }
       
-      console.log('✅ [BULK REJECT] All activities rejected!');
+      logger.info('All activities rejected');
       await fetchActivities();
       setSelectedActivities([]);
       setShowBulkRejectConfirm(false);
@@ -923,7 +922,7 @@ const Activities = () => {
       setSuccessMessage(`${selectedActivities.length} ${selectedActivities.length === 1 ? 'activity' : 'activities'} rejected successfully!`);
       setShowSuccessModal(true);
     } catch (error) {
-      console.error('❌ [BULK REJECT] Bulk rejection failed:', error);
+      logger.error('Bulk rejection failed', error);
       setShowBulkRejectConfirm(false);
       setErrorMessage('Failed to reject activities. Please try again.');
       setShowErrorModal(true);
@@ -931,27 +930,27 @@ const Activities = () => {
   };
 
   const handleVerify = async (id: string, remark: string) => {
-    console.log('🔵 [VERIFY] Starting verification process...');
-    console.log('🔵 [VERIFY] Activity ID:', id);
-    console.log('🔵 [VERIFY] Remark:', remark);
+    logger.info('Starting verification process', { id, remark });
     
     try {
       const activity = activities.find(a => a.id === id);
-      console.log('🔵 [VERIFY] Found activity:', activity);
+      logger.info('Found activity', { activity });
       
       if (!activity) {
-        console.error('❌ [VERIFY] Activity not found!');
+        logger.error('Activity not found', { id });
         return;
       }
       
       const table = activity.type === 'Project' ? 'projects' : 
                    activity.type === 'Training' ? 'trainings' : 'certificates';
       
-      console.log('🔵 [VERIFY] Table to update:', table);
-      console.log('🔵 [VERIFY] Update payload:', {
-        approval_status: 'sent_to_admin',
-        approval_notes: remark || null,
-        updated_at: new Date().toISOString()
+      logger.info('Updating table', { 
+        table, 
+        payload: {
+          approval_status: 'sent_to_admin',
+          approval_notes: remark || null,
+          updated_at: new Date().toISOString()
+        }
       });
 
       const { data, error } = await supabase
@@ -964,50 +963,51 @@ const Activities = () => {
         .eq('id', id);
 
       if (error) {
-        console.error('❌ [VERIFY] Supabase error:', error);
-        console.error('❌ [VERIFY] Error code:', error.code);
-        console.error('❌ [VERIFY] Error message:', error.message);
-        console.error('❌ [VERIFY] Error details:', error.details);
-        console.error('❌ [VERIFY] Error hint:', error.hint);
+        logger.error('Supabase error during verify', error, { 
+          code: error.code, 
+          message: error.message, 
+          details: error.details, 
+          hint: error.hint 
+        });
         throw error;
       }
 
-      console.log('✅ [VERIFY] Update successful! Response:', data);
+      logger.info('Update successful', { data });
 
       await fetchActivities();
       setDetailModal(null);
       setSuccessMessage('Activity verified successfully!');
       setShowSuccessModal(true);
-      console.log('✅ [VERIFY] Verification complete!');
+      logger.info('Verification complete');
     } catch (error) {
-      console.error('❌ [VERIFY] Catch block error:', error);
+      logger.error('Verification failed', error);
       setErrorMessage('Failed to verify activity. Please try again.');
       setShowErrorModal(true);
     }
   };
 
   const handleReject = async (id: string, remark: string) => {
-    console.log('🔴 [REJECT] Starting rejection process...');
-    console.log('🔴 [REJECT] Activity ID:', id);
-    console.log('🔴 [REJECT] Remark:', remark);
+    logger.info('Starting rejection process', { id, remark });
     
     try {
       const activity = activities.find(a => a.id === id);
-      console.log('🔴 [REJECT] Found activity:', activity);
+      logger.info('Found activity', { activity });
       
       if (!activity) {
-        console.error('❌ [REJECT] Activity not found!');
+        logger.error('Activity not found', { id });
         return;
       }
       
       const table = activity.type === 'Project' ? 'projects' : 
                    activity.type === 'Training' ? 'trainings' : 'certificates';
       
-      console.log('🔴 [REJECT] Table to update:', table);
-      console.log('🔴 [REJECT] Update payload:', {
-        approval_status: 'rejected',
-        approval_notes: remark || null,
-        updated_at: new Date().toISOString()
+      logger.info('Updating table', { 
+        table, 
+        payload: {
+          approval_status: 'rejected',
+          approval_notes: remark || null,
+          updated_at: new Date().toISOString()
+        }
       });
 
       const { data, error } = await supabase
@@ -1020,23 +1020,24 @@ const Activities = () => {
         .eq('id', id);
 
       if (error) {
-        console.error('❌ [REJECT] Supabase error:', error);
-        console.error('❌ [REJECT] Error code:', error.code);
-        console.error('❌ [REJECT] Error message:', error.message);
-        console.error('❌ [REJECT] Error details:', error.details);
-        console.error('❌ [REJECT] Error hint:', error.hint);
+        logger.error('Supabase error during reject', error, { 
+          code: error.code, 
+          message: error.message, 
+          details: error.details, 
+          hint: error.hint 
+        });
         throw error;
       }
 
-      console.log('✅ [REJECT] Update successful! Response:', data);
+      logger.info('Update successful', { data });
 
       await fetchActivities();
       setDetailModal(null);
       setSuccessMessage('Activity rejected successfully!');
       setShowSuccessModal(true);
-      console.log('✅ [REJECT] Rejection complete!');
+      logger.info('Rejection complete');
     } catch (error) {
-      console.error('❌ [REJECT] Catch block error:', error);
+      logger.error('Rejection failed', error);
       setErrorMessage('Failed to reject activity. Please try again.');
       setShowErrorModal(true);
     }

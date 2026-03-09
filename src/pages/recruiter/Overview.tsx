@@ -16,6 +16,9 @@ import { getDashboardData } from '../../services/dashboardService';
 import ActivityFeed from '../../components/ActivityFeed';
 import { useRealtimeActivities } from '../../hooks/useRealtimeActivities';
 import { trackSearchUsage } from '../../services/savedSearchesService';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('RecruiterOverview');
 
 const KpiCard = ({ title, value, icon: Icon, trend, color = 'primary' }) => {
   const colorClasses = {
@@ -135,7 +138,7 @@ const Overview = () => {
       
       navigate(`/recruitment/talent-pool?${params.toString()}`);
     } catch (error) {
-      console.error('Error handling quick search:', error);
+      logger.error('Error handling quick search', error);
       // Navigate anyway even if tracking fails
       navigate('/recruitment/talent-pool');
     }
@@ -193,7 +196,7 @@ const Overview = () => {
           setError(result.error || 'No data returned from service');
         }
       } catch (err) {
-        console.error('❌ Overview: Error fetching dashboard data:', err);
+        logger.error('Error fetching dashboard data', err);
         setError(err);
       } finally {
         setLoading(false);

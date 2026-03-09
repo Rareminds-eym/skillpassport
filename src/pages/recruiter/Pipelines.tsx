@@ -12,6 +12,9 @@ import { usePipelineData } from '../../hooks/usePipelineData';
 import { createNotification } from '../../services/notificationService.ts';
 import { addCandidateToPipeline, moveCandidateToStage } from '../../services/pipelineService';
 import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Pipelines');
 
 // Pipeline components
 import {
@@ -355,7 +358,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         toast.success(`${rec.studentName} has been added to Screened stage`);
       }
     } catch (error) {
-      console.error('Error moving AI recommended candidate:', error);
+      logger.error('Error moving AI recommended candidate', error);
       toast.error('Failed to move candidate. Please try again.');
     }
   };

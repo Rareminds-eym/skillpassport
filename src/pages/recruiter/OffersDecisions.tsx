@@ -23,6 +23,9 @@ import {
 import { useOffers, Offer } from '../../hooks/useOffers.ts';
 import OfferAdvancedFilters, { OfferFilters, OfferSortOptions } from '../../components/Recruiter/filters/OfferAdvancedFilters';
 import OfferSortButton from '../../components/Recruiter/filters/OfferSortButton';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('OffersDecisions');
 
 const Toast = ({
   show,
@@ -975,10 +978,10 @@ const CreateOfferModal = ({ isOpen, onClose, onCreate }: {
         });
         onClose();
       } else {
-        console.error('Error creating offer:', result.error);
+        logger.error('Error creating offer', result.error);
       }
     } catch (error) {
-      console.error('Error creating offer:', error);
+      logger.error('Error creating offer', error);
 
     } finally {
       setIsSubmitting(false);
