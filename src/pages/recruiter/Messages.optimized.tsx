@@ -18,7 +18,7 @@ import MessageService, { Conversation } from '../../services/messageService';
 import { useMessages } from '../../hooks/useMessages';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 

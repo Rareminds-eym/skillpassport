@@ -189,7 +189,7 @@ export const prefetchSubscriptionData = (queryClient, userId) => {
  * Useful for quick checks when data might already be cached
  */
 export const useSubscriptionCache = () => {
-  const { user } = useSupabaseAuth();
+  const user = useUser();
   const queryClient = useQueryClient();
 
   const cachedData = queryClient.getQueryData([SUBSCRIPTION_QUERY_KEY, user?.id]);

@@ -21,7 +21,7 @@ import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
 import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';

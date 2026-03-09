@@ -16,7 +16,7 @@ import ReactPaginate from 'react-paginate';
 import { useOutletContext } from 'react-router-dom';
 import SearchBar from '../../components/common/SearchBar';
 import { FeatureGate } from '../../components/Subscription/FeatureGate';
-import { useSearch } from '../../context/SearchContext';
+import { useSearch } from '../../stores';
 import { useStudents } from '../../hooks/useStudents';
 import { createInterview } from '../../services/interviewService';
 import { createSavedSearch } from '../../services/savedSearchesService';

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from "../stores";
 import { supabase } from "../lib/supabaseClient";
-import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Recruiter/components/Header';
 import Sidebar from '../components/Recruiter/components/Sidebar';
 import MobileTabBar from '../components/Recruiter/components/MobileTabBar';
@@ -45,7 +44,6 @@ const RecruiterLayout: React.FC = () => {
   };
 
   return (
-    <GlobalPresenceProvider userType="recruiter">
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <Header
@@ -109,7 +107,6 @@ const RecruiterLayout: React.FC = () => {
       {/* Floating AI Button */}
       <FloatingRecruiterAIButton />
       </div>
-    </GlobalPresenceProvider>
   );
 };
 

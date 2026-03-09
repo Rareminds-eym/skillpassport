@@ -3,9 +3,6 @@ import { Outlet, useLocation } from "react-router-dom";
 import Header from "../components/admin/Header";
 import Sidebar from "../components/admin/Sidebar";
 import AICounsellingFAB from "../components/admin/AICounsellingFAB";
-import { GlobalPresenceProvider } from "../context/GlobalPresenceContext";
-
-
 const AdminLayout = () => {
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [activeTab, setActiveTab] = useState("dashboard");
@@ -18,7 +15,6 @@ const AdminLayout = () => {
     const handleMobileMenuClose = () => setShowMobileMenu(false);
 
     return (
-        <GlobalPresenceProvider userType="admin">
             <div className="h-screen w-full flex flex-col bg-gray-50 overflow-hidden">
             {/* ===== Fixed Header ===== */}
             <div className="fixed top-0 left-0 right-0 z-30 bg-white border-b">
@@ -78,7 +74,6 @@ const AdminLayout = () => {
             {/* AI Counselling Floating Action Button */}
             <AICounsellingFAB />
         </div>
-        </GlobalPresenceProvider>
     );
 };
 

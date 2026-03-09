@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { GlobalPresenceProvider } from "../context/GlobalPresenceContext";
 import Header from "../components/educator/Header";
 import Sidebar from "../components/educator/Sidebar";
 import StudentProfileDrawer from "../components/shared/StudentProfileDrawer";
@@ -36,7 +35,6 @@ const EducatorLayout: React.FC = () => {
   };
 
   return (
-    <GlobalPresenceProvider userType="educator">
       <div className="h-screen w-full flex flex-col bg-gray-50 overflow-hidden">
         {/* Fixed Header */}
         <div className="fixed top-0 left-0 right-0 z-30 bg-white border-b">
@@ -106,7 +104,6 @@ const EducatorLayout: React.FC = () => {
         {/* Floating AI Button */}
         <FloatingEducatorAIButton />
       </div>
-    </GlobalPresenceProvider>
   );
 };
 

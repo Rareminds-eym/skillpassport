@@ -28,7 +28,7 @@ import DeleteConversationModal from '../../../components/messaging/DeleteConvers
 import NewStudentConversationModalCollegeAdmin from '../../../components/messaging/NewStudentConversationModalCollegeAdmin';
 import NewCollegeAdminEducatorConversationModal from '../../../components/messaging/NewCollegeAdminEducatorConversationModal';
 import { useUser } from '../../../stores';
-import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../../stores';
 import { useCollegeAdminMessages } from '../../../hooks/useCollegeAdminMessages.js';
 import { useCollegeEducatorAdminConversationsForAdmin } from '../../../hooks/useCollegeEducatorAdminConversations.js';
 import { useCollegeEducatorAdminMessagesForAdmin } from '../../../hooks/useCollegeEducatorAdminMessages.js';

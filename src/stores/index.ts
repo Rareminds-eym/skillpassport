@@ -30,6 +30,7 @@ export {
 
 export {
   useSearchStore,
+  useSearch,
   useSearchQuery,
   useSearchResults,
   useIsSearching,
@@ -42,6 +43,7 @@ export {
 
 export {
   usePortfolioStore,
+  usePortfolio,
   usePortfolioStudent,
   usePortfolioSettings,
   usePortfolioLoading,
@@ -104,6 +106,7 @@ export {
 
 export {
   useGlobalPresenceStore,
+  useGlobalPresence,
   useOnlineUsers,
   useIsConnected,
   useOnlineCount,

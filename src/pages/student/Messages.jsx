@@ -25,7 +25,7 @@ import NewAdminConversationModal from '../../components/messaging/NewAdminConver
 import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
 import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
 import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
 import { useCreateStudentAdminConversation, useStudentAdminConversations, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';

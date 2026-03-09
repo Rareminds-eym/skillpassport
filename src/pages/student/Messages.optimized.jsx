@@ -16,7 +16,7 @@ import MessageService from '../../services/messageService';
 import { formatDistanceToNow } from 'date-fns';
 import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useGlobalPresence } from '../../stores';
 import { useTypingIndicator } from '../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 

@@ -147,3 +147,20 @@ export const usePresenceActions = () =>
     setCurrentUser: state.setCurrentUser,
     updateStatus: state.updateStatus,
   }));
+
+// Combined hook that mimics the old Context API
+export const useGlobalPresence = () => {
+  const onlineUsers = useOnlineUsers();
+  const isConnected = useIsConnected();
+  const { userId, userName, userType } = useCurrentPresence();
+  const actions = usePresenceActions();
+
+  return {
+    onlineUsers,
+    isConnected,
+    currentUserId: userId,
+    currentUserName: userName,
+    currentUserType: userType,
+    ...actions,
+  };
+};

@@ -1,7 +1,7 @@
 import { Save, Upload, User } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../context/PortfolioContext';
+import { usePortfolio } from '../../../stores';
 
 const ProfileSettings: React.FC = () => {
   const navigate = useNavigate();
