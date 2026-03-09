@@ -28,7 +28,7 @@ import {
   CheckCircle,
   FileText
 } from 'lucide-react';
-import { useUser } from '../../stores';
+import { useUser } from '../../../stores';
 import { SchoolAdminNotificationService } from '../../../services/schoolAdminNotificationService';
 import TrainingDetailsModal from '../../../components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '../../../components/admin/schoolAdmin/ExperienceDetailsModal';

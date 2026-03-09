@@ -1,7 +1,7 @@
 import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthActions } from "../../../stores";
+import { useAuthActions } from "../../../../../stores";
 import { loginStudent } from '../../../../../services/studentAuthService';
 
 const SignInUniversity = () => {

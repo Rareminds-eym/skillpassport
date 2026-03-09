@@ -29,7 +29,7 @@ export const hasValidAccess = (status, endDate) => {
  * @param {string} status - Subscription status
  * @returns {boolean}
  */
-export const isManageable = (status) => ['active', 'paused', 'cancelled'].includes(status);
+export const isManageable = (status) => ['active', 'paused', 'cancelled', 'expired'].includes(status);
 
 /**
  * Get status badge color classes
