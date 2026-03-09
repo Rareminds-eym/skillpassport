@@ -14,6 +14,9 @@ import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import { useEffect, useMemo, useState } from 'react';
 import ReactPaginate from 'react-paginate';
 import { useOutletContext } from 'react-router-dom';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('TalentPool');
 import SearchBar from '../../components/common/SearchBar';
 import { FeatureGate } from '../../components/Subscription/FeatureGate';
 import { useSearch } from '../../stores';
@@ -86,7 +89,7 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
       if (error) throw error;
       setShortlists(data || []);
     } catch (err) {
-      console.error('Error fetching shortlists:', err);
+      logger.error('Error fetching shortlists', err);
       setError('Failed to load shortlists');
     } finally {
       setLoadingShortlists(false);
@@ -115,7 +118,7 @@ const AddToShortlistModal = ({ isOpen, onClose, candidate, onSuccess }) => {
       onSuccess?.();
       onClose();
     } catch (err) {
-      console.error('Error adding to shortlist:', err);
+      logger.error('Error adding to shortlist', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -280,7 +283,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, candidate, onSuccess }) => {
         meeting_notes: ''
       });
     } catch (err) {
-      console.error('Error scheduling interview:', err);
+      logger.error('Error scheduling interview', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -574,7 +577,7 @@ const SaveSearchModal = ({ isOpen, onClose, searchQuery, filters, onSuccess }) =
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      console.error('Error saving search:', err);
+      logger.error('Error saving search', err);
       setError(err.message);
     } finally {
       setLoading(false);

@@ -15,6 +15,9 @@ import React, { useEffect, useId, useState } from "react"
 import { SubscriptionSettingsSection } from "../../components/Subscription/SubscriptionSettingsSection"
 import { useUser } from "../../stores"
 import { supabase } from "../../lib/supabaseClient"
+import { getLogger } from "../../config/logging"
+
+const logger = getLogger('RecruiterSettings');
 
 /* ---------- UI Primitives ---------- */
 
@@ -125,7 +128,7 @@ export default function SettingsPage() {
         .maybeSingle()
 
       if (error) {
-        console.error("❌ Error fetching recruiter:", error.message)
+        logger.error("❌ Error fetching recruiter", error)
       } else {
         setRecruiter(data)
       }

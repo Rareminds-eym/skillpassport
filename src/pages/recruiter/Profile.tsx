@@ -13,6 +13,9 @@ import {
 import React, { useEffect, useState } from "react";
 import { useUser } from "../../stores";
 import { supabase } from "../../lib/supabaseClient";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('RecruiterProfile');
 
 function formatDate(isoLike: string) {
   try {
@@ -64,7 +67,7 @@ const RecruiterProfile: React.FC = () => {
         .maybeSingle();
 
       if (error) {
-        console.error("❌ Error fetching recruiter:", error);
+        logger.error("❌ Error fetching recruiter", error);
       } else {
         setRecruiter(data);
       }

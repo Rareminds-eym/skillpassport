@@ -7,6 +7,9 @@ import { MessageModal } from '../../components/messaging/MessageModal';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { useUser } from '../../stores';
 import { recruiterInsights } from '../../features/recruiter-copilot/services/recruiterInsights';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('ApplicantsList');
 
 interface Student {
   id: string;
@@ -135,7 +138,7 @@ const ApplicantsList: React.FC = () => {
       // Fetch all applicants from applied_jobs table with pipeline data
       const applicantsData = await AppliedJobsService.getAllApplicants();
       
-      console.log('[ApplicantsList] Fetched applicants data:', {
+      logger.info('[ApplicantsList] Fetched applicants data', {
         count: applicantsData?.length,
         sample: applicantsData?.[0]
       });
@@ -181,7 +184,7 @@ const ApplicantsList: React.FC = () => {
                 opportunity_id: applicant.opportunity_id
               };
             } catch (error) {
-              console.error('Error fetching pipeline data for opportunity:', applicant.opportunity_id, error);
+              logger.error('Error fetching pipeline data for opportunity', error, { opportunityId: applicant.opportunity_id });
               return applicant;
             }
           }
@@ -197,7 +200,7 @@ const ApplicantsList: React.FC = () => {
       // AI recommendations will be fetched on-demand when user clicks the button
       
     } catch (error) {
-      console.error('Error fetching applicants:', error);
+      logger.error('Error fetching applicants', error);
     } finally {
       setLoading(false);
     }
@@ -238,7 +241,7 @@ const ApplicantsList: React.FC = () => {
         .in('id', opportunityIds);
       
       if (oppError) {
-        console.error('Error fetching opportunities:', oppError);
+        logger.error('Error fetching opportunities', oppError);
       }
       
       // Enrich with skills_required
@@ -257,7 +260,7 @@ const ApplicantsList: React.FC = () => {
       const recommendations = await recruiterInsights.analyzeApplicantsForRecommendation(enrichedApplicants);
       setAiRecommendations(recommendations);
     } catch (error) {
-      console.error('Error fetching AI recommendations:', error);
+      logger.error('Error fetching AI recommendations', error);
     } finally {
       setLoadingRecommendations(false);
     }
@@ -302,7 +305,7 @@ const ApplicantsList: React.FC = () => {
   };
 
   const handleMoveToPipelineStage = async (applicant: Applicant, newStage: string) => {
-    console.log('[ApplicantsList] handleMoveToPipelineStage called:', {
+    logger.info('[ApplicantsList] handleMoveToPipelineStage called', {
       applicant: {
         id: applicant.id,
         student_id: applicant.student_id,
@@ -357,18 +360,18 @@ const ApplicantsList: React.FC = () => {
         fetchApplicants();
         
       } catch (error) {
-        console.error('Error adding candidate to pipeline:', error);
+        logger.error('Error adding candidate to pipeline', error);
         const errorMsg = (error as any)?.message || 'Failed to add candidate to pipeline';
         alert(errorMsg);
         return;
       }
     } else if (!applicant.pipeline_candidate_id) {
-      console.log('[ApplicantsList] Candidate not in pipeline and not in applied/viewed status');
+      logger.info('[ApplicantsList] Candidate not in pipeline and not in applied/viewed status');
       alert('This applicant is not in the pipeline system yet');
       return;
     } else {
       // Use existing pipeline movement function
-      console.log('[ApplicantsList] Moving existing pipeline candidate:', {
+      logger.info('[ApplicantsList] Moving existing pipeline candidate', {
         pipeline_candidate_id: applicant.pipeline_candidate_id,
         newStage,
         user_id: user?.id
@@ -382,18 +385,18 @@ const ApplicantsList: React.FC = () => {
           `Moved to ${newStage} stage`
         );
 
-        console.log('[ApplicantsList] moveCandidateToStage result:', result);
+        logger.info('[ApplicantsList] moveCandidateToStage result', result);
 
         if (result.error) {
-          console.error('[ApplicantsList] Error from moveCandidateToStage:', result.error);
+          logger.error('[ApplicantsList] Error from moveCandidateToStage', result.error);
           throw result.error;
         }
         
         // Refresh applicants list to show updated stage
-        console.log('[ApplicantsList] Refreshing applicants list...');
+        logger.info('[ApplicantsList] Refreshing applicants list...');
         fetchApplicants();
       } catch (error) {
-        console.error('[ApplicantsList] Error moving candidate:', error);
+        logger.error('[ApplicantsList] Error moving candidate', error);
         alert('Failed to move candidate. Please try again.');
         return;
       }
@@ -434,7 +437,7 @@ const ApplicantsList: React.FC = () => {
       }
       // TODO: Add navigation to applicant details page or open modal
     } catch (error) {
-      console.error('Error updating application status:', error);
+      logger.error('Error updating application status', error);
     }
   };
 

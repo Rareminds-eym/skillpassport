@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('RecruiterOverview');
 import {
   UsersIcon,
   BookmarkIcon,
@@ -135,7 +138,7 @@ const Overview = () => {
       
       navigate(`/recruitment/talent-pool?${params.toString()}`);
     } catch (error) {
-      console.error('Error handling quick search:', error);
+      logger.error('Error handling quick search', error);
       // Navigate anyway even if tracking fails
       navigate('/recruitment/talent-pool');
     }
@@ -193,7 +196,7 @@ const Overview = () => {
           setError(result.error || 'No data returned from service');
         }
       } catch (err) {
-        console.error('❌ Overview: Error fetching dashboard data:', err);
+        logger.error('❌ Overview: Error fetching dashboard data', err);
         setError(err);
       } finally {
         setLoading(false);

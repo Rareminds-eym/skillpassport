@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('RecruiterMessages');
 import { 
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
@@ -128,12 +131,12 @@ const Messages = () => {
       recruiterId,
       'recruiter',
       (conversation: Conversation) => {
-        console.log('🔄 [Recruiter] Realtime UPDATE detected:', conversation);
+        logger.info('🔄 [Recruiter] Realtime UPDATE detected', { conversationId: conversation.id });
         
         // CRITICAL: Ignore updates for conversations that were deleted
         // This prevents re-fetching deleted conversations back into the cache
         if (conversation.deleted_by_recruiter) {
-          console.log('❌ [Recruiter] Ignoring UPDATE for deleted conversation:', conversation.id);
+          logger.info('❌ [Recruiter] Ignoring UPDATE for deleted conversation', { conversationId: conversation.id });
           return; // Don't refetch
         }
         
@@ -184,7 +187,7 @@ const Messages = () => {
     // Mark the database update
     MessageService.markConversationAsRead(selectedConversationId, recruiterId)
       .catch(err => {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read', err);
         markedAsReadRef.current.delete(markKey);
         // Revert optimistic update on error
         refetchActive();
@@ -230,7 +233,7 @@ const Messages = () => {
         refetchType: 'none' // Don't refetch, just notify subscribers
       });
       
-      console.log('🗑️ [Recruiter] Marked conversation as deleted:', conversationId);
+      logger.info('🗑️ [Recruiter] Marked conversation as deleted', { conversationId });
       
       return { previousActive, previousArchived, conversationId };
     },
@@ -257,7 +260,7 @@ const Messages = () => {
         refetchType: 'none' // Don't refetch, just notify
       });
       
-      console.log('✅ [Recruiter] Conversation permanently removed from cache:', variables.conversationId);
+      logger.info('✅ [Recruiter] Conversation permanently removed from cache', { conversationId: variables.conversationId });
     }
   });
   
@@ -275,7 +278,7 @@ const Messages = () => {
       const previousActive = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'active']);
       const previousArchived = queryClient.getQueryData(['recruiter-conversations', recruiterId, 'archived']);
       
-      console.log('↩️ [Recruiter] Attempting to restore conversation:', conversationId);
+      logger.info('↩️ [Recruiter] Attempting to restore conversation', { conversationId });
       
       return { previousActive, previousArchived, conversationId };
     },
@@ -313,7 +316,7 @@ const Messages = () => {
       
       await Promise.all([refetchActive(), refetchArchived()]);
     } catch (error) {
-      console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
+      logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation`, error);
       refetchActive();
       refetchArchived();
     } finally {
@@ -472,18 +475,18 @@ const Messages = () => {
   // Transform and filter conversations - memoized for performance
   // Include onlineUsers as dependency so contacts update when presence changes
   const filteredContacts = useMemo(() => {
-    console.log('🔄 [Recruiter] Recalculating contacts memo, conversations:', conversations.length);
+    logger.info('🔄 [Recruiter] Recalculating contacts memo', { conversationsCount: conversations.length });
     
     // First filter out conversations marked for deletion
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
     
     // Debug logging
     const pendingCount = conversations.filter((c: any) => c._pendingDelete).length;
-    console.log(`📊 [Recruiter] Conversations: ${conversations.length} total, ${pendingCount} pending delete, ${activeConversations.length} active`);
+    logger.info(`📊 [Recruiter] Conversations`, { total: conversations.length, pendingDelete: pendingCount, active: activeConversations.length });
     
     if (pendingCount > 0) {
       const pendingIds = conversations.filter((c: any) => c._pendingDelete).map((c: any) => c.id);
-      console.log('❌ [Recruiter] Pending delete IDs:', pendingIds);
+      logger.info('❌ [Recruiter] Pending delete IDs', { pendingIds });
     }
     
     const parseProfile = (profile: any) => {
@@ -564,7 +567,7 @@ const Messages = () => {
       setTyping(false);
       // Don't refetch - real-time updates will handle it
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message', error);
     }
   }, [messageInput, currentChat, recruiterId, sendMessage, sendNotification, selectedConversationId, setTyping, refetchActive]);
 
