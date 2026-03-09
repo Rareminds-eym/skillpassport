@@ -26,6 +26,9 @@ import RequisitionImport from '../../components/Recruiter/RequisitionImport';
 import { useUser } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { RequisitionFilters } from '../../types/recruiter';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Requisitions');
 
 interface Opportunity {
   id: string;
@@ -128,13 +131,13 @@ useEffect(() => {
         .order('name');
 
       if (error) {
-        console.error('Error loading recruiters:', error);
+        logger.error('Error loading recruiters', error);
         return;
       }
 
       setRecruiters(data || []);
     } catch (error) {
-      console.error('Error loading recruiters:', error);
+      logger.error('Error loading recruiters', error);
     }
   };
 
@@ -149,7 +152,7 @@ useEffect(() => {
         .maybeSingle();
 
       if (error) {
-        console.error('Error loading current recruiter:', error);
+        logger.error('Error loading current recruiter', error);
         return;
       }
 
@@ -157,7 +160,7 @@ useEffect(() => {
         setCurrentRecruiterId(data.id);
       }
     } catch (error) {
-      console.error('Error loading current recruiter:', error);
+      logger.error('Error loading current recruiter', error);
     }
   };
 
@@ -250,13 +253,13 @@ query = query.range(from, to);
 
 const { data, error, count } = await query;  // ✅ CHANGED: Added 'count'
 // 🆕 ADD THIS LINE HERE
-console.log("Fetched cards from DB:", data?.length, "out of total:", count);
+logger.info("Fetched cards from DB", { count: data?.length, total: count });
 // 🆕 ADD THIS LINE HERE:
 // Set total count for pagination
 setTotalCount(count || 0);
 
       if (error) {
-        console.error('Error loading opportunities:', error);
+        logger.error('Error loading opportunities', error);
         return;
       }
 
@@ -277,7 +280,7 @@ setTotalCount(count || 0);
 
       setRequisitions(transformedData);
     } catch (error) {
-      console.error('Error loading requisitions:', error);
+      logger.error('Error loading requisitions', error);
     } finally {
       setLoading(false);
     }
@@ -390,7 +393,7 @@ setTotalCount(count || 0);
         await deleteRequisition(id);
         setRequisitions(prev => prev.filter(r => r.id !== id));
       } catch (error) {
-        console.error('Error deleting requisition:', error);
+        logger.error('Error deleting requisition', error);
         alert('Error deleting requisition');
       }
     }
@@ -403,7 +406,7 @@ setTotalCount(count || 0);
         r.id === id ? { ...r, ...updated } : r
       ));
     } catch (error) {
-      console.error('Error updating status:', error);
+      logger.error('Error updating status', error);
       alert('Error updating status');
     }
   };
@@ -896,7 +899,7 @@ const goToPage = (page: number) => {
               setRequisitions(prev => [newReq, ...prev]);
               setShowCreateModal(false);
             } catch (error) {
-              console.error('Error creating requisition:', error);
+              logger.error('Error creating requisition', error);
               alert('Error creating requisition');
             }
           }}
@@ -918,7 +921,7 @@ const goToPage = (page: number) => {
               setShowEditModal(false);
               setSelectedRequisition(null);
             } catch (error) {
-              console.error('Error updating requisition:', error);
+              logger.error('Error updating requisition', error);
               alert('Error updating requisition');
             }
           }}
@@ -1146,7 +1149,7 @@ const CreateRequisitionModal = ({ recruiters, currentRecruiterId, onClose, onSuc
         responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
       });
     } catch (error) {
-      console.error('Error in form submission:', error);
+      logger.error('Error in form submission', error);
     }
   };
 
@@ -1505,7 +1508,7 @@ const EditRequisitionModal = ({ requisition, recruiters, onClose, onSuccess }: a
         responsibilities: formData.responsibilities.split('\n').filter(r => r.trim()),
       });
     } catch (error) {
-      console.error('Error in form submission:', error);
+      logger.error('Error in form submission', error);
     }
   };
 
@@ -1795,13 +1798,13 @@ const ApplicationsModal = ({ requisition, onClose }: any) => {
         .order('applied_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading applications:', error);
+        logger.error('Error loading applications', error);
         return;
       }
 
       setApplications(data || []);
     } catch (error) {
-      console.error('Error:', error);
+      logger.error('Error', error);
     } finally {
       setLoading(false);
     }

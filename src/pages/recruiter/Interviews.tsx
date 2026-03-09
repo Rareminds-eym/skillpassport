@@ -23,6 +23,9 @@ import { supabase } from '../../lib/supabaseClient';
 import { createInterview, sendReminder } from '../../services/interviewService';
 import { createNotification } from "../../services/notificationService.ts";
 import { useUser } from "../../stores"; // Import auth context
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Interviews');
 
 // Define TypeScript interfaces
 interface Scorecard {
@@ -148,7 +151,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
       onSave(updatedInterview);
       onClose();
     } catch (error) {
-      console.error('Error saving scorecard:', error);
+      logger.error('Error saving scorecard', error);
       alert('Failed to save scorecard. Please try again.');
     }
   };
@@ -620,7 +623,7 @@ const Interviews = () => {
 
       setInterviews(formattedData);
     } catch (error) {
-      console.error('Error fetching interviews:', error);
+      logger.error('Error fetching interviews', error);
       alert('Failed to load interviews');
     } finally {
       setLoading(false);
@@ -661,7 +664,7 @@ const Interviews = () => {
       setCandidates(formattedCandidates);
       setCandidatesLoaded(true);
     } catch (error) {
-      console.error('Error fetching candidates:', error);
+      logger.error('Error fetching candidates', error);
     } finally {
       setCandidatesLoading(false);
     }
@@ -693,7 +696,7 @@ const Interviews = () => {
         );
       }
     } catch (error) {
-      console.error('Error updating interview:', error);
+      logger.error('Error updating interview', error);
     }
   };
 
@@ -709,7 +712,7 @@ const Interviews = () => {
       const { data, error } = await sendReminder(interview.id);
 
       if (error) {
-        console.error('Reminder error received:', error);
+        logger.error('Reminder error received', error);
         throw error;
       }
 
@@ -732,7 +735,7 @@ const Interviews = () => {
         );
       }
     } catch (error) {
-      console.error('Error sending reminder:', error);
+      logger.error('Error sending reminder', error);
       const errorMessage = error?.message || error?.error?.message || 'Unknown error';
       alert(`Failed to send reminder: ${errorMessage}\n\nCheck console for details.`);
     }
@@ -1088,7 +1091,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
       setCandidateSearch('');
       setSelectedCandidate(null);
     } catch (err) {
-      console.error('Error scheduling interview:', err);
+      logger.error('Error scheduling interview', err);
       setError(err.message);
     } finally {
       setLoading(false);
