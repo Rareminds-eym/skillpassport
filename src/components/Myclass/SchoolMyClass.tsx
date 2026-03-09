@@ -283,7 +283,7 @@ const SchoolMyClass: React.FC = () => {
           )}
 
           {activeTab === 'assignments' && (
-            assignmentsHook.loading ? <AssignmentsSkeletonLoader /> : (
+            !loadedTabs.has('assignments') || assignmentsHook.loading ? <AssignmentsSkeletonLoader /> : (
               <AssignmentsTab
                 assignments={assignmentsHook.assignments}
                 paginatedAssignments={paginatedAssignments}
@@ -356,7 +356,7 @@ const SchoolMyClass: React.FC = () => {
                 </div>
               )}
 
-              {timetableHook.loading ? <TimetableSkeletonLoader /> : (
+              {!loadedTabs.has('timetable') || timetableHook.loading ? <TimetableSkeletonLoader /> : (
                 <SchoolTimetableView
                   timetable={timetableHook.timetable}
                   viewType={timetableView}
@@ -368,7 +368,7 @@ const SchoolMyClass: React.FC = () => {
           )}
 
           {activeTab === 'classmates' && (
-            classmatesHook.loading ? <ClassmatesSkeletonLoader /> : (
+            !loadedTabs.has('classmates') || classmatesHook.loading ? <ClassmatesSkeletonLoader /> : (
               <ClassmatesTab
                 classmates={classmatesHook.classmates.map(c => ({
                   id: c.id,
@@ -382,7 +382,7 @@ const SchoolMyClass: React.FC = () => {
           )}
 
           {activeTab === 'curriculars' && (
-            coCurricularsHook.loading ? <CoCurricularsSkeletonLoader /> : (
+            !loadedTabs.has('curriculars') || coCurricularsHook.loading ? <CoCurricularsSkeletonLoader /> : (
               <SchoolCoCurricularsTab
                 clubs={coCurricularsHook.clubs}
                 achievements={coCurricularsHook.achievements}
@@ -394,7 +394,7 @@ const SchoolMyClass: React.FC = () => {
           )}
 
           {activeTab === 'exams' && (
-            examsHook.loading ? <ExamsSkeletonLoader /> : (
+            !loadedTabs.has('exams') || examsHook.loading ? <ExamsSkeletonLoader /> : (
               <SchoolExamsTab
                 groupedExams={examsHook.groupedExams}
                 loading={examsHook.loading}
@@ -403,7 +403,7 @@ const SchoolMyClass: React.FC = () => {
           )}
 
           {activeTab === 'results' && (
-            examsHook.loading ? <ResultsSkeletonLoader /> : (
+            !loadedTabs.has('exams') || examsHook.loading ? <ResultsSkeletonLoader /> : (
               <SchoolResultsTab
                 results={examsHook.results}
                 resultStats={examsHook.resultStats}
