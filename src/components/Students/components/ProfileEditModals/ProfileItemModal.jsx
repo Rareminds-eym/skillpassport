@@ -25,7 +25,14 @@ const ProfileItemModal = ({
 }) => {
   const config = FIELD_CONFIGS[type];
   
-  const [formData, setFormData] = useState(config?.getDefaultValues?.() || {});
+  const [formData, setFormData] = useState(() => {
+    const defaults = config?.getDefaultValues?.() || {};
+    // Ensure skillsList is always an array for skills_manager fields
+    if (!defaults.skillsList) {
+      defaults.skillsList = [];
+    }
+    return defaults;
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -48,17 +55,31 @@ const ProfileItemModal = ({
               skillsArray = sourceData[key].split(',').map(s => s.trim()).filter(s => s);
             }
             
-            // Remove duplicates and convert to skillsList for the form
-            const uniqueSkills = [...new Set(skillsArray)]; // Remove duplicates
-            editData.skillsList = uniqueSkills.map(skillName => ({
-              name: skillName,
-              type: config.getDefaultValues().type || 'technical', // Use config default type
-              level: 3, // Default level
-              description: '',
-              verified: true,
-              enabled: true,
-              approval_status: 'approved'
-            }));
+            // Convert to skillsList for the form, preserving skill object data
+            editData.skillsList = skillsArray.map(skill => {
+              // If skill is already an object with full data, preserve it
+              if (typeof skill === 'object' && skill !== null && skill.name) {
+                return {
+                  name: skill.name,
+                  type: skill.type || 'technical', // Preserve the actual type from database
+                  level: skill.level || 3,
+                  description: skill.description || '',
+                  verified: skill.verified !== undefined ? skill.verified : true,
+                  enabled: skill.enabled !== undefined ? skill.enabled : true,
+                  approval_status: skill.approval_status || 'approved'
+                };
+              }
+              // If skill is just a string (legacy format), default to technical
+              return {
+                name: typeof skill === 'string' ? skill : String(skill),
+                type: 'technical', // Only default to technical for plain strings
+                level: 3,
+                description: '',
+                verified: true,
+                enabled: true,
+                approval_status: 'approved'
+              };
+            });
           } else {
             editData[key] = Array.isArray(sourceData[key]) 
               ? sourceData[key].join(", ") 
@@ -66,6 +87,20 @@ const ProfileItemModal = ({
           }
         }
       });
+      
+      // Special field mapping for training data
+      if (type === 'training') {
+        // Ensure numeric fields are properly set
+        if (sourceData.completedModules !== undefined) {
+          editData.completedModules = sourceData.completedModules || 0;
+        }
+        if (sourceData.totalModules !== undefined) {
+          editData.totalModules = sourceData.totalModules || 0;
+        }
+        if (sourceData.hoursSpent !== undefined) {
+          editData.hoursSpent = sourceData.hoursSpent || 0;
+        }
+      }
       
       // Special handling for skills: ensure correct field mapping
       if (type === 'skills' || type === 'technicalSkills' || type === 'softSkills') {
@@ -82,7 +117,12 @@ const ProfileItemModal = ({
       setFormData(editData);
     } else {
       // Add mode - reset to defaults
-      setFormData(config.getDefaultValues());
+      const defaults = config.getDefaultValues();
+      // Ensure skillsList is always an array for skills_manager fields
+      if (!defaults.skillsList) {
+        defaults.skillsList = [];
+      }
+      setFormData(defaults);
     }
   }, [item, isOpen, config, type]);
 
@@ -223,19 +263,15 @@ const ProfileItemModal = ({
         processedData[field.name] = parseSkills(processedData[field.name]);
       }
       if (field.type === "skills_manager") {
-        // Convert skillsList to skills array for compatibility
-        const skillsArray = processedData.skillsList?.map(skill => skill.name) || [];
-        processedData.skills = skillsArray;
+        // Send the full skillsList with type information, not just names
         
-        // Keep skillsList for detailed skill data
-        processedData.skillsData = processedData.skillsList || [];
+        // Keep the full skill objects for the training update function
+        processedData.skills = Array.isArray(processedData.skillsList) 
+          ? processedData.skillsList 
+          : [];
         
-        // IMPORTANT: Set the field name to the skills array for database storage
-        // The field name is 'skills' in the config, so we need to set that
-        processedData[field.name] = skillsArray;
-        
-        // Also ensure backward compatibility
-        processedData.skills = skillsArray;
+        // Set the field name to the full skills array
+        processedData[field.name] = processedData.skills;
       }
       if (field.type === "number") {
         processedData[field.name] = parsePositiveNumber(processedData[field.name]);
@@ -288,9 +324,6 @@ const ProfileItemModal = ({
     setIsSaving(true);
     const processedData = processFormData();
 
-    console.log('🔧 ProfileItemModal handleSave: item (existing):', item);
-    console.log('🔧 ProfileItemModal handleSave: processedData:', processedData);
-
     try {
       let savedItem;
       
@@ -319,13 +352,6 @@ const ProfileItemModal = ({
           }
         });
         
-        console.log('🔧 ProfileItemModal handleSave: savedItem (edit mode):', savedItem);
-        console.log('🔧 ProfileItemModal handleSave: ID check:', {
-          itemId: item.id,
-          savedItemId: savedItem.id,
-          approval_status: savedItem.approval_status,
-          has_pending_edit: savedItem.has_pending_edit
-        });
       } else {
         // Add mode - create new item
         savedItem = {
@@ -337,7 +363,6 @@ const ProfileItemModal = ({
           created_at: new Date().toISOString(),
         };
         
-        console.log('🔧 ProfileItemModal handleSave: savedItem (add mode):', savedItem);
       }
 
       await onSave(savedItem);
@@ -423,16 +448,16 @@ const ProfileItemModal = ({
         return (
           <div className="space-y-4">
             {/* Current Skills Display */}
-            {formData.skillsList && formData.skillsList.length > 0 && (
+            {Array.isArray(formData.skillsList) && formData.skillsList.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold text-gray-800">Current Skills</div>
                   <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                    {formData.skillsList.length} skill{formData.skillsList.length !== 1 ? 's' : ''}
+                    {Array.isArray(formData.skillsList) ? formData.skillsList.length : 0} skill{(Array.isArray(formData.skillsList) ? formData.skillsList.length : 0) !== 1 ? 's' : ''}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
-                  {formData.skillsList.map((skill, index) => (
+                  {Array.isArray(formData.skillsList) ? formData.skillsList.map((skill, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:shadow-sm transition-all">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -476,7 +501,7 @@ const ProfileItemModal = ({
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                  ))}
+                  )) : []}
                 </div>
               </div>
             )}
@@ -561,7 +586,7 @@ const ProfileItemModal = ({
             </div>
             
             {/* Empty State */}
-            {(!formData.skillsList || formData.skillsList.length === 0) && (
+            {(!Array.isArray(formData.skillsList) || formData.skillsList.length === 0) && (
               <div className="text-center py-6 text-gray-500">
                 <Briefcase className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm">No skills added yet</p>
