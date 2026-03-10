@@ -28,8 +28,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useUser, useUserRole } from '../../stores';
-import { useSubscriptionContext } from '../../context/SubscriptionContext';
+import { useUser, useUserRole, useSubscription } from '../../stores';
 import { usePaymentVerificationFromURL } from '../../hooks/Subscription/usePaymentVerification';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 import { downloadReceipt, generateReceiptBase64 } from '../../services/Subscriptions/pdfReceiptGenerator';
@@ -442,7 +441,7 @@ function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const user = useUser();
   const { role } = useUserRole();
-  const { refreshAccess } = useSubscriptionContext();
+  const { refreshAccess } = useSubscription();
   const { refreshSubscription } = useSubscriptionQuery();
 
   // State

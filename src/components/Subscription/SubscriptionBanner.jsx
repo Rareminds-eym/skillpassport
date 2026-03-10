@@ -14,7 +14,13 @@ import {
   PauseCircleIcon,
   ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
-import { WARNING_TYPES } from '../../context/SubscriptionContext';
+
+// Warning types for banner display
+const WARNING_TYPES = {
+  EXPIRING_SOON: 'expiring_soon',
+  GRACE_PERIOD: 'grace_period',
+  PAUSED: 'paused',
+};
 
 /**
  * Get the base path for subscription routes based on current location

@@ -16,6 +16,16 @@ export type WarningType =
   | 'grace_period'
   | 'paused';
 
+// Access reasons constants for UI handling
+export const ACCESS_REASONS = {
+  ACTIVE: 'active',
+  PAUSED: 'paused',
+  GRACE_PERIOD: 'grace_period',
+  EXPIRED: 'expired',
+  CANCELLED: 'cancelled',
+  NO_SUBSCRIPTION: 'no_subscription',
+} as const;
+
 export interface Subscription {
   id: string;
   status: string;
@@ -97,7 +107,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     hasAccess: false,
     accessReason: 'no_subscription',
     subscription: null,
-    isLoading: true,
+    isLoading: false,
     isRefetching: false,
     error: null,
     
@@ -289,4 +299,19 @@ export const useSubscriptionPurchase = () => {
   const clearPurchaseError = useSubscriptionStore((state) => state.clearPurchaseError);
   
   return { isPurchasing, isCancelling, purchaseError, clearPurchaseError };
+};
+
+// Combined hook that mimics the old Context API
+export const useSubscription = () => {
+  const access = useSubscriptionAccess();
+  const warnings = useSubscriptionWarnings();
+  const entitlements = useUserEntitlements();
+  const purchase = useSubscriptionPurchase();
+  
+  return {
+    ...access,
+    ...warnings,
+    ...entitlements,
+    ...purchase,
+  };
 };

@@ -379,3 +379,13 @@ export const useCareerFeedback = (messageId: string) =>
     isLoading: state.isFeedbackLoading(messageId),
     setFeedback: (feedback: FeedbackData) => state.setFeedback(messageId, feedback),
   }));
+
+// Combined hook that mimics the old Context API
+export const useCareerAssistant = () => {
+  const state = useCareerAssistantStore();
+  return {
+    ...state,
+    // Alias for backward compatibility
+    currentConversation: state.conversations.find(c => c.id === state.currentConversationId),
+  };
+};

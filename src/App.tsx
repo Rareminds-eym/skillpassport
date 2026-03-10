@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
 import TourWrapper from './components/Tours/TourWrapper';
 import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotification';
-import { SubscriptionProvider } from './context/SubscriptionContext';
 import AppRoutes from './routes/AppRoutes';
 
 
@@ -21,11 +20,9 @@ function App() {
     
       <BrowserRouter>
         <TourWrapper>
-          <SubscriptionProvider>
-            <SubscriptionPrefetch />
-            <TokenRefreshErrorNotification />
-            <AppRoutes />
-          </SubscriptionProvider>
+          <SubscriptionPrefetch />
+          <TokenRefreshErrorNotification />
+          <AppRoutes />
           <HotToaster 
             position="top-right"
             toastOptions={{

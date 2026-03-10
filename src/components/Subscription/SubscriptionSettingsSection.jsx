@@ -20,7 +20,7 @@ import {
   Users
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSubscriptionContext } from '../../context/SubscriptionContext';
+import { useSubscription } from '../../stores';
 import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
 
 /**
@@ -43,7 +43,7 @@ export function SubscriptionSettingsSection({ className = '' }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { subscriptionData, loading } = useSubscriptionQuery();
-  const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscriptionContext() || {};
+  const { activeEntitlements = [], totalAddOnCost = { monthly: 0, annual: 0 } } = useSubscription();
 
   // Get the base path for subscription routes
   const basePath = getSubscriptionBasePath(location.pathname);

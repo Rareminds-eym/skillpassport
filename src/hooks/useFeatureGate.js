@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSubscriptionContext } from '../context/SubscriptionContext';
+import { useUser, useUserEntitlements } from '../stores';
 import addOnCatalogService from '../services/addOnCatalogService';
 import entitlementService from '../services/entitlementService';
 
@@ -26,11 +26,8 @@ const clearExpiredCache = () => {
 accessCache.clear();
 
 export function useFeatureGate(featureKey) {
-  const { 
-    user, 
-    hasAddOnAccessSync, 
-    activeEntitlements
-  } = useSubscriptionContext();
+  const user = useUser();
+  const { activeEntitlements } = useUserEntitlements();
   
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
@@ -208,7 +205,8 @@ export function useFeatureGate(featureKey) {
 export function useMultipleFeatureGates(featureKeys) {
   const [results, setResults] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const { user, hasAddOnAccessSync, activeEntitlements } = useSubscriptionContext();
+  const user = useUser();
+  const { hasAddOnAccessSync, activeEntitlements } = useUserEntitlements();
   const userId = user?.id;
 
   useEffect(() => {

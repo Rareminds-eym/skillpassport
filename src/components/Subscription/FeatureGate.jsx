@@ -5,7 +5,7 @@
 import { ArrowLeft, ArrowRight, Check, Lock, Shield, Sparkles, X, Zap } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSubscriptionContext } from '../../context/SubscriptionContext';
+import { useSubscription } from '../../stores';
 import { clearFeatureAccessCache, useFeatureGate } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
 import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
@@ -20,7 +20,7 @@ export function FeatureGate({
   onUpgradeClick
 }) {
   const { hasAccess, isLoading, requiredAddOn, upgradePrice } = useFeatureGate(featureKey);
-  const { purchaseAddOn, isPurchasing } = useSubscriptionContext();
+  const { purchaseAddOn, isPurchasing } = useSubscription();
   const [showModal, setShowModal] = useState(false);
 
   const handleUpgradeClick = useCallback(() => {
@@ -229,7 +229,7 @@ function PurchaseModal({ addOn, upgradePrice, onClose, onPurchase, isPurchasing 
   const [billing, setBilling] = useState('annual'); // Default to annual for better value
   const [error, setError] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const { refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscriptionContext();
+  const { refreshAccess, fetchUserEntitlements, activeEntitlements } = useSubscription();
 
   // Check if user already owns this add-on (including cancelled but not expired)
   const isAlreadyOwned = useMemo(() => {

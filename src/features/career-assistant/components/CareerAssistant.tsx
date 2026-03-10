@@ -36,7 +36,7 @@ import { useConversationSwitcher } from '../hooks/useConversationSwitcher';
 import { VirtualMessage } from '../hooks/useVirtualMessage';
 
 // Import Context Provider
-import { CareerAssistantProvider, useCareerAssistantContext } from '../context/CareerAssistantContext';
+import { useCareerAssistant } from '../../../stores';
 
 // Import constants
 import {
@@ -445,72 +445,14 @@ const CareerAssistantContainer: React.FC = () => {
   }, [currentConversationId, loadFeedback]);
 
 
-  // ==================== CONTEXT VALUE ====================
-  
-  const contextValue = {
-    // Conversation state
-    conversations,
-    currentConversation,
-    currentConversationId,
-    conversationsLoading,
-    hasMore,
-    
-    // Message state
-    messages,
-    loading,
-    isTyping,
-    
-    // UI state
-    showWelcome,
-    selectedChips,
-    sidebarCollapsed,
-    
-    // Conversation handlers
-    onSelectConversation: selectConversation,
-    onNewConversation: handleNewConversation,
-    onDeleteConversation: deleteConversation,
-    onLoadMore: loadMore,
-    
-    // Message handlers
-    onSendMessage: handleSend,
-    onSendQuery: handleSendQuery,
-    onStopTyping: stopTyping,
-    
-    // UI handlers
-    onQuickAction: handleQuickAction,
-    onRemoveChip: removeChip,
-    onToggleSidebar: () => setSidebarCollapsed(!sidebarCollapsed),
-    
-    // Input state
-    input,
-    setInput,
-    
-    // Feedback handlers
-    onFeedback: handleFeedback,
-    getFeedback,
-    isFeedbackLoading,
-    
-    // Scroll state
-    userScrolledUp,
-    scrollToBottom,
-    setUserScrolledUp,
-    messagesEndRef,
-    messagesContainerRef,
-    handleScroll,
-  };
-
   // ==================== RENDER ====================
   
-  return (
-    <CareerAssistantProvider value={contextValue}>
-      <CareerAssistantUI />
-    </CareerAssistantProvider>
-  );
+  return <CareerAssistantUI />;
 };
 
 /**
  * Career Assistant UI Component
- * Pure presentational component that consumes context
+ * Uses Zustand store for state management
  */
 const CareerAssistantUI: React.FC = () => {
   const {
@@ -542,7 +484,7 @@ const CareerAssistantUI: React.FC = () => {
     getFeedback,
     isFeedbackLoading,
     setUserScrolledUp,
-  } = useCareerAssistantContext();
+  } = useCareerAssistant();
   
   const inputRef = useRef<HTMLInputElement>(null);
   const userInteractedRef = useRef(false);
