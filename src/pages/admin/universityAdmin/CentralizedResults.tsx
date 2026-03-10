@@ -14,6 +14,10 @@ import {
   ClockIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-centralized-results');
+
 import { 
   ResultStatusBadge, 
   GradeBadge, 
@@ -293,7 +297,7 @@ const CentralizedResults: React.FC = () => {
 
   const handleExportWithOptions = (format: string, options: any) => {
     // Mock export functionality with options
-    console.log(`Exporting ${filteredResults.length} results as ${format.toUpperCase()} with options:`, options);
+    logger.info(`Exporting ${filteredResults.length} results as ${format.toUpperCase()}`, { options });
     alert(`Exporting ${filteredResults.length} results as ${format.toUpperCase()}`);
   };
 

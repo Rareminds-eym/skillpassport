@@ -17,6 +17,9 @@ import {
   ArrowUpTrayIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-program-allocation');
 
 // Mock data for demonstration
 const mockColleges = [
@@ -228,7 +231,7 @@ const ProgramAllocation: React.FC = () => {
   const handleBulkAllocation = () => {
     if (selectedPrograms.length > 0 && selectedCollege) {
       // Handle bulk program allocation logic here
-      console.log('Allocating programs:', selectedPrograms, 'to college:', selectedCollege);
+      logger.info('Allocating programs to college:', { selectedPrograms, selectedCollege });
       setShowAllocationModal(false);
       setSelectedPrograms([]);
     }
@@ -560,7 +563,7 @@ const ProgramAllocation: React.FC = () => {
           <button
             onClick={() => {
               // Handle new allocation creation
-              console.log('Creating new allocation:', { selectedCollege, selectedPrograms });
+              logger.info('Creating new allocation:', { selectedCollege, selectedPrograms });
               setShowNewAllocationModal(false);
               setSelectedCollege(null);
               setSelectedPrograms([]);

@@ -18,6 +18,10 @@ import {
   ChartBarIcon,
   ArrowPathIcon,
   ExclamationTriangleIcon,
+} from "@heroicons/react/24/outline";
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-circulars-management');
   InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 
@@ -217,7 +221,7 @@ const CircularsManagement: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       // In a real app, this would fetch new notifications from the server
-      console.log("Checking for new notifications...");
+      logger.info("Checking for new notifications...");
     }, 30000);
 
     return () => clearInterval(interval);
@@ -379,7 +383,7 @@ const CircularsManagement: React.FC = () => {
     link.href = '#';
     link.download = attachmentName;
     link.click();
-    console.log(`Downloading ${attachmentName}...`);
+    logger.info(`Downloading ${attachmentName}...`);
   };
 
   const getPriorityColor = (priority: string) => {

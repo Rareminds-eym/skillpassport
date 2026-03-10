@@ -16,6 +16,10 @@ import Pagination from '../../../components/admin/Pagination';
 import SearchBar from '../../../components/common/SearchBar';
 import { useUser } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-college-registration');
+
 import {
     getCollegesByUniversity,
     addCollegeToUniversity,
@@ -143,7 +147,7 @@ const AddCollegeModal = ({ isOpen, onClose, onSuccess, universityId }) => {
         setError(result.error);
       }
     } catch (err) {
-      console.error('Error adding college:', err);
+      logger.error('Error adding college:', err as Error);
       setError(err.message || 'Failed to add college');
     } finally {
       setLoading(false);
@@ -593,7 +597,7 @@ const RegistrationNoteModal = ({ isOpen, onClose, college, onSuccess }: any) => 
       onSuccess?.();
       onClose();
     } catch (err: any) {
-      console.error('Error saving note:', err);
+      logger.error('Error saving note:', err as Error);
       setError(err.message || 'Failed to save note');
     } finally {
       setLoading(false);
@@ -820,20 +824,20 @@ const CollegeRegistration = () => {
           .single();
 
         if (userError) {
-          console.error('Error fetching user:', userError);
+          logger.error('Error fetching user:', userError as Error);
           throw userError;
         }
 
         const organizationId = userData?.organizationId;
         
         if (!organizationId) {
-          console.log('No organizationId found for user');
+          logger.info('No organizationId found for user');
           setColleges([]);
           setLoading(false);
           return;
         }
 
-        console.log('Fetching colleges for universityId:', organizationId);
+        logger.info('Fetching colleges for universityId:', { organizationId });
 
         // Fetch colleges linked to this university from university_colleges table
         const result = await getCollegesByUniversity(organizationId);
@@ -842,7 +846,7 @@ const CollegeRegistration = () => {
           throw new Error(result.error);
         }
         
-        console.log('University colleges found:', result.data?.length || 0);
+        logger.info('University colleges found:', { count: result.data?.length || 0 });
         
         // Map university_colleges data to component expected format
         const mappedColleges = (result.data || []).map(college => ({
@@ -883,7 +887,7 @@ const CollegeRegistration = () => {
         
         setError(null);
       } catch (err: any) {
-        console.error('Error fetching colleges:', err);
+        logger.error('Error fetching colleges:', err as Error);
         setError(err.message);
       } finally {
         setLoading(false);
