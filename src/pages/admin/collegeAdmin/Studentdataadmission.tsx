@@ -10,6 +10,7 @@ import {
   SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { UserPlusIcon } from 'lucide-react';
+import { getLogger } from '../../../config/logging';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
 import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
@@ -165,6 +166,7 @@ const StudentCard = ({ student, onViewProfile, onAddNote, onViewCareerPath, load
 };
 
 const StudentDataAdmission = () => {
+  const logger = getLogger('college-admin-student-data');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
@@ -362,7 +364,7 @@ const StudentDataAdmission = () => {
 
   const handleViewProfile = (student: any) => {
     // Debug: Log the student data to see what fields are available
-    console.log('🔍 Student data passed to profile drawer:', {
+    logger.info('Student data passed to profile drawer:', {
       id: student.id,
       name: student.name,
       semester: student.semester,
@@ -401,17 +403,17 @@ const StudentDataAdmission = () => {
       }
       
       if (result) {
-        console.log('✅ Found assessment result for student:', student.name);
+        logger.info('Found assessment result for student:', student.name);
         setAssessmentResult(result);
         setShowAssessmentReport(true);
       } else {
-        console.warn('⚠️ No assessment result found for student:', student.name);
+        logger.warn('No assessment result found for student:', student.name);
         // Still show the drawer but with no assessment data - it will show appropriate message
         setAssessmentResult(null);
         setShowAssessmentReport(true);
       }
     } catch (error) {
-      console.error('❌ Error fetching assessment result:', error);
+      logger.error('Error fetching assessment result:', error as Error);
       // Still show the drawer but with error state
       setAssessmentResult(null);
       setShowAssessmentReport(true);
@@ -948,7 +950,7 @@ const StudentDataAdmission = () => {
           }}
           student={studentForNote}
           onSuccess={() => {
-            console.log('Note saved/sent successfully');
+            logger.info('Note saved/sent successfully');
           }}
         />
       )}

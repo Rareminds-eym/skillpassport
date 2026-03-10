@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import toast from 'react-hot-toast';
 import { supabase } from "../../../lib/supabaseClient";
 import { LibraryBook, LibraryBookIssue, libraryService, LibrarySetting, LibraryStats, OverdueBook } from "../../../services/libraryService";
+import { getLogger } from "../../../config/logging";
 import { 
   LibraryHeader, 
   LibraryStatsCards, 
@@ -16,6 +17,7 @@ import {
 } from "./components/library";
 
 export default function LibraryModule() {
+  const logger = getLogger('college-admin-library');
   const [activeTab, setActiveTab] = useState("dashboard");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +162,7 @@ export default function LibraryModule() {
         loadOverdueBooks(),
       ]);
     } catch (err) {
-      console.error('Error loading library data:', err);
+      logger.error('Error loading library data:', err as Error);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load library data';
       setError(errorMessage);
       toast.error(`Failed to load library data: ${errorMessage}`);
@@ -190,7 +192,7 @@ export default function LibraryModule() {
       if (filters?.status !== undefined) setBookFilter(filters.status);
       if (filters?.page !== undefined) setCurrentPage(filters.page);
     } catch (err) {
-      console.error('Error loading books:', err);
+      logger.error('Error loading books:', err as Error);
       toast.error('Failed to load books');
     }
   };
@@ -200,7 +202,7 @@ export default function LibraryModule() {
       const { issues } = await libraryService.getBookIssues({ status: 'issued' });
       setIssuedBooks(issues);
     } catch (err) {
-      console.error('Error loading issued books:', err);
+      logger.error('Error loading issued books:', err as Error);
       toast.error('Failed to load issued books');
     }
   };
@@ -210,7 +212,7 @@ export default function LibraryModule() {
       const stats = await libraryService.getLibraryStats();
       setLibraryStats(stats);
     } catch (err) {
-      console.error('Error loading library stats:', err);
+      logger.error('Error loading library stats:', err as Error);
       toast.error('Failed to load library statistics');
     }
   };
@@ -220,7 +222,7 @@ export default function LibraryModule() {
       const overdue = await libraryService.getOverdueBooks();
       setOverdueBooks(overdue);
     } catch (err) {
-      console.error('Error loading overdue books:', err);
+      logger.error('Error loading overdue books:', err as Error);
       toast.error('Failed to load overdue books');
     }
   };
@@ -230,7 +232,7 @@ export default function LibraryModule() {
       const { issues } = await libraryService.getBookIssues();
       setBorrowHistory(issues);
     } catch (err) {
-      console.error('Error loading borrow history:', err);
+      logger.error('Error loading borrow history:', err as Error);
       toast.error('Failed to load borrow history');
     }
   };
@@ -267,7 +269,7 @@ export default function LibraryModule() {
             universityId = userData.universityId || userData.organizationId;
           }
         } catch (e) {
-          console.error('Error parsing stored user:', e);
+          logger.error('Error parsing stored user:', e as Error);
         }
       }
       
@@ -338,7 +340,7 @@ export default function LibraryModule() {
       const { data: students, error } = await query;
       
       if (error) {
-        console.error('Supabase query error:', error);
+        logger.error('Supabase query error:', error as Error);
         throw error;
       }
       
@@ -346,7 +348,7 @@ export default function LibraryModule() {
       setShowStudentDropdown(students && students.length > 0);
       
     } catch (err) {
-      console.error('Error searching students:', err);
+      logger.error('Error searching students:', err as Error);
       setStudentSearchResults([]);
       setShowStudentDropdown(false);
     } finally {
@@ -384,7 +386,7 @@ export default function LibraryModule() {
         });
       }
     } catch (err) {
-      console.error('Error checking student issued books:', err);
+      logger.error('Error checking student issued books:', err as Error);
       toast.error('Failed to check student\'s current book count');
     }
   };
@@ -428,7 +430,7 @@ export default function LibraryModule() {
         fine 
       };
     } catch (err) {
-      console.error('Error calculating fine:', err);
+      logger.error('Error calculating fine:', err as Error);
       return { 
         dueDate: new Date().toISOString().split('T')[0], 
         overdueDays: 0, 
@@ -478,7 +480,7 @@ export default function LibraryModule() {
       
       setActiveTab("details");
     } catch (err) {
-      console.error('Error adding book:', err);
+      logger.error('Error adding book:', err as Error);
       toast.error(err instanceof Error ? err.message : 'Failed to add book');
     } finally {
       setLoading(false);
@@ -534,7 +536,7 @@ export default function LibraryModule() {
       ]);
       
     } catch (err) {
-      console.error('Error issuing book:', err);
+      logger.error('Error issuing book:', err as Error);
       toast.error(err instanceof Error ? err.message : 'Failed to issue book');
     } finally {
       setLoading(false);
@@ -598,7 +600,7 @@ export default function LibraryModule() {
         });
       }
     } catch (err) {
-      console.error('Error searching issued book:', err);
+      logger.error('Error searching issued book:', err as Error);
       toast.error(err instanceof Error ? err.message : 'Failed to search book');
     } finally {
       setLoading(false);
@@ -658,7 +660,7 @@ export default function LibraryModule() {
       ]);
       
     } catch (err) {
-      console.error('Error returning book:', err);
+      logger.error('Error returning book:', err as Error);
       toast.error(err instanceof Error ? err.message : 'Failed to return book');
     } finally {
       setLoading(false);

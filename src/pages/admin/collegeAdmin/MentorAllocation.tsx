@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import { supabase } from "../../../lib/supabaseClient";
 import { useUser } from "../../../stores";
+import { getLogger } from "../../../config/logging";
 import { useMentorAllocation } from "../../../hooks/useMentorAllocation";
 import { findAllocationId, updateMentorAllocation } from "../../../services/mentorAllocationService";
 import SearchBar from "../../../components/common/SearchBar";
@@ -84,6 +85,7 @@ interface LegacyMentor {
 }
 
 const MentorAllocation: React.FC = () => {
+  const logger = getLogger('college-admin-mentor-allocation');
   const navigate = useNavigate();
   const user = useUser();
   const [collegeId, setCollegeId] = useState<string>('');
@@ -116,7 +118,7 @@ const MentorAllocation: React.FC = () => {
           setCollegeId(orgData.id);
         }
       } catch (error) {
-        console.error('Error fetching college ID:', error);
+        logger.error('Error fetching college ID:', error as Error);
       }
     };
 
@@ -360,7 +362,7 @@ const MentorAllocation: React.FC = () => {
     
     // Fetch assigned students info
     try {
-      console.log('🔍 Fetching assigned students info...');
+      logger.info('Fetching assigned students info...');
       
       const { data: allocations, error } = await supabase
         .from('college_mentor_student_allocations')
@@ -386,14 +388,14 @@ const MentorAllocation: React.FC = () => {
         }));
       }
 
-      console.log('📊 Allocations query result:', { allocations: allocationsWithMentors, error });
+      logger.info('Allocations query result:', { allocationsCount: allocationsWithMentors?.length, error });
 
       if (!error && allocationsWithMentors) {
         const assignedInfo = allocationsWithMentors.map(allocation => {
           // Find the student in dynamicStudents to get the legacy ID
           const student = dynamicStudents.find(s => s.id === allocation.student_id);
           if (!student) {
-            console.warn('⚠️ Student not found for allocation:', allocation.student_id);
+            logger.warn('Student not found for allocation:', { studentId: allocation.student_id });
             return null;
           }
           
@@ -402,7 +404,7 @@ const MentorAllocation: React.FC = () => {
             ? `${allocation.college_lecturers.first_name} ${allocation.college_lecturers.last_name}`.trim()
             : 'Unknown Mentor';
           
-          console.log('✅ Mapped student:', {
+          logger.info('Mapped student:', {
             uuid: student.id,
             legacyId: studentLegacyId,
             name: student.name,
@@ -415,13 +417,13 @@ const MentorAllocation: React.FC = () => {
           };
         }).filter(Boolean) as Array<{ studentId: number; mentorName: string }>;
         
-        console.log('✅ Final assigned students info:', assignedInfo);
+        logger.info('Final assigned students info:', { count: assignedInfo.length });
         setAssignedStudentsInfo(assignedInfo);
       } else if (error) {
-        console.error('❌ Error fetching allocations:', error);
+        logger.error('Error fetching allocations:', error as Error);
       }
     } catch (error) {
-      console.error('❌ Error fetching assigned students:', error);
+      logger.error('Error fetching assigned students:', error as Error);
     }
     
     setShowStudentSelectionModal(true);
@@ -488,7 +490,7 @@ const MentorAllocation: React.FC = () => {
         .eq('status', 'active');
 
       if (checkError) {
-        console.error('Error checking existing allocations:', checkError);
+        logger.error('Error checking existing allocations:', checkError as Error);
         toast.error('Failed to validate student assignments');
         return;
       }
@@ -551,13 +553,13 @@ const MentorAllocation: React.FC = () => {
       
       if (!activePeriod) {
         // No existing period contains the allocation date range, create a new period
-        console.log('🔄 [handleAllocateStudents] No period found containing dates:', allocationPeriod);
-        console.log('📋 [handleAllocateStudents] Available periods:', periods.map(p => ({
+        logger.info('No period found containing dates:', { allocationPeriod });
+        logger.info('Available periods:', { periods: periods.map(p => ({
           name: p.name,
           start: p.start_date,
           end: p.end_date,
           active: p.is_active
-        })));
+        })) });
         
         const currentYear = new Date().getFullYear();
         const academicYear = `${currentYear}-${currentYear + 1}`;
@@ -582,17 +584,17 @@ const MentorAllocation: React.FC = () => {
 
         try {
           activePeriod = await createPeriod(defaultPeriodData);
-          console.log('✅ [handleAllocateStudents] New period created successfully:', activePeriod);
+          logger.info('New period created successfully:', { periodId: activePeriod?.id, periodName: activePeriod?.name });
           
           // Wait a moment for the period to be available in the database
           await new Promise(resolve => setTimeout(resolve, 100));
         } catch (periodError) {
-          console.error('❌ [handleAllocateStudents] Error creating new period:', periodError);
+          logger.error('Error creating new period:', periodError as Error);
           toast.error('Failed to create mentor period. Please try again.');
           return;
         }
       } else {
-        console.log('✅ [handleAllocateStudents] Using existing period:', {
+        logger.info('Using existing period:', {
           id: activePeriod.id,
           name: activePeriod.name,
           start: activePeriod.start_date,
@@ -604,12 +606,12 @@ const MentorAllocation: React.FC = () => {
 
       // Verify the period exists and is valid
       if (!activePeriod || !activePeriod.id) {
-        console.error('❌ [handleAllocateStudents] No valid period available');
+        logger.error('No valid period available');
         toast.error('Failed to find or create a valid mentor period. Please try again.');
         return;
       }
 
-      console.log('🔄 [handleAllocateStudents] Proceeding with allocation using period:', {
+      logger.info('Proceeding with allocation using period:', {
         periodId: activePeriod.id,
         periodName: activePeriod.name,
         mentorUuid,
@@ -627,7 +629,7 @@ const MentorAllocation: React.FC = () => {
       setSelectedMentorForAllocation(null);
       setAssignedStudentsInfo([]); // Clear assigned students cache to force refresh on next allocation
     } catch (error) {
-      console.error('Error allocating students:', error);
+      logger.error('Error allocating students:', error as Error);
       toast.error('Failed to allocate students. Please try again.');
     }
   };
@@ -679,7 +681,7 @@ const MentorAllocation: React.FC = () => {
       
       toast.success('Intervention note added successfully');
     } catch (error) {
-      console.error('Error adding intervention:', error);
+      logger.error('Error adding intervention:', error as Error);
       toast.error('Failed to add intervention note. Please try again.');
     }
   };
@@ -705,7 +707,7 @@ const MentorAllocation: React.FC = () => {
       setSelectedNoteForFeedback(null);
       toast.success('Feedback saved successfully');
     } catch (error: any) {
-      console.error('Error saving feedback:', error);
+      logger.error('Error saving feedback:', error as Error);
       const errorMessage = error?.message || 'Failed to save feedback. Please try again.';
       toast.error(errorMessage);
       throw error;
@@ -723,7 +725,7 @@ const MentorAllocation: React.FC = () => {
       setSelectedNoteForFeedback(null);
       toast.success('Note resolved successfully');
     } catch (error: any) {
-      console.error('Error resolving note:', error);
+      logger.error('Error resolving note:', error as Error);
       const errorMessage = error?.message || 'Failed to resolve note. Please try again.';
       toast.error(errorMessage);
       throw error;
@@ -776,12 +778,12 @@ const MentorAllocation: React.FC = () => {
       // Store the current mentor ID before reassignment
       const currentMentorId = selectedMentor?.id;
       
-      console.log('🔄 [handleReassignStudent] Starting reassignment process...');
+      logger.info('Starting reassignment process...');
       
       // Perform the reassignment (this will call fetchData() internally and update state)
       await reassignStudent(allocationId, newMentorUuid, newPeriodUuid, 'Reassigned by admin');
       
-      console.log('✅ [handleReassignStudent] Reassignment completed, data refreshed');
+      logger.info('Reassignment completed, data refreshed');
       
       // Close modals
       setShowReassignModal(false);
@@ -793,7 +795,7 @@ const MentorAllocation: React.FC = () => {
       // Force a re-render of the drawer by incrementing the refresh key
       // The drawer will automatically pick up the updated mentor data from the mentors array
       // because React will re-render the component after the state updates from fetchData()
-      console.log('🔄 [handleReassignStudent] Forcing drawer refresh...');
+      logger.info('Forcing drawer refresh...');
       setMentorDetailsRefreshKey(prev => prev + 1);
       
       // Update the selected mentor reference to trigger drawer update
@@ -802,7 +804,7 @@ const MentorAllocation: React.FC = () => {
         if (currentMentorId) {
           const refreshedMentor = mentors.find(m => m.id === currentMentorId);
           if (refreshedMentor) {
-            console.log('✅ [handleReassignStudent] Updating drawer with refreshed mentor:', {
+            logger.info('Updating drawer with refreshed mentor:', {
               mentorId: refreshedMentor.id,
               mentorName: refreshedMentor.name,
               totalAllocations: refreshedMentor.allocations.length,
@@ -810,12 +812,12 @@ const MentorAllocation: React.FC = () => {
             });
             setSelectedMentor(refreshedMentor);
           } else {
-            console.warn('⚠️ [handleReassignStudent] Could not find refreshed mentor in updated array');
+            logger.warn('Could not find refreshed mentor in updated array');
           }
         }
       }, 100); // Small delay to ensure React has processed state updates
     } catch (error) {
-      console.error('❌ [handleReassignStudent] Error:', error);
+      logger.error('Error reassigning student:', error as Error);
       toast.error('Failed to reassign student. Please try again.');
     }
   };
@@ -825,18 +827,18 @@ const MentorAllocation: React.FC = () => {
     config: {capacity: number; officeLocation: string; availableHours: string}
   ) => {
     try {
-      console.log('🔧 [handleCapacityConfiguration] Starting update for allocation:', allocationId);
-      console.log('🔧 [handleCapacityConfiguration] New config:', config);
+      logger.info('Starting update for allocation:', { allocationId });
+      logger.info('New config:', config);
       
       // Find the allocation to get the period ID
       const allocation = allAllocations.find(a => a.id === allocationId);
       if (!allocation) {
-        console.error('❌ [handleCapacityConfiguration] Allocation not found:', allocationId);
+        logger.error('Allocation not found:', { allocationId });
         toast.error('Allocation not found');
         return;
       }
 
-      console.log('🔧 [handleCapacityConfiguration] Found allocation:', allocation);
+      logger.info('Found allocation:', { allocationId, periodId: allocation.period?.id });
 
       // Find the mentor and their specific allocation
       const mentor = dynamicMentors.find(m => 
@@ -844,35 +846,34 @@ const MentorAllocation: React.FC = () => {
       );
       
       if (!mentor || !mentor.allocations || mentor.allocations.length === 0) {
-        console.error('❌ [handleCapacityConfiguration] Mentor or allocations not found');
+        logger.error('Mentor or allocations not found');
         toast.error('Unable to find period information');
         return;
       }
 
-      console.log('🔧 [handleCapacityConfiguration] Found mentor:', mentor.first_name, mentor.last_name);
-      console.log('🔧 [handleCapacityConfiguration] Mentor allocations:', mentor.allocations.length);
+      logger.info('Found mentor:', { mentorName: `${mentor.first_name} ${mentor.last_name}`, allocationCount: mentor.allocations.length });
 
       // Get the specific allocation that matches both the allocation ID and the period dates
       const mentorAllocation = mentor.allocations.find(a => {
         const allocationMatches = parseInt(a.id.replace(/-/g, '').substring(0, 8), 16) === allocationId;
-        console.log('🔧 [handleCapacityConfiguration] Checking allocation:', a.id, 'matches:', allocationMatches);
+        logger.debug('Checking allocation:', { allocationId: a.id, matches: allocationMatches });
         return allocationMatches;
       });
 
       if (!mentorAllocation || !mentorAllocation.period) {
-        console.error('❌ [handleCapacityConfiguration] Mentor allocation or period not found');
-        console.log('Available allocations:', mentor.allocations.map(a => ({
+        logger.error('Mentor allocation or period not found');
+        logger.info('Available allocations:', { allocations: mentor.allocations.map(a => ({
           id: a.id,
           periodId: a.period?.id,
           dates: `${a.period?.start_date} to ${a.period?.end_date}`
-        })));
+        })) });
         toast.error('Unable to find period information');
         return;
       }
 
       const periodId = mentorAllocation.period.id;
-      console.log('🔧 [handleCapacityConfiguration] Found period ID:', periodId);
-      console.log('🔧 [handleCapacityConfiguration] Period details:', {
+      logger.info('Found period ID:', { periodId });
+      logger.info('Period details:', {
         name: mentorAllocation.period.name,
         dates: `${mentorAllocation.period.start_date} to ${mentorAllocation.period.end_date}`,
         currentOffice: mentorAllocation.period.default_office_location,
@@ -881,7 +882,7 @@ const MentorAllocation: React.FC = () => {
       });
 
       // Update the specific period configuration
-      console.log('🔧 [handleCapacityConfiguration] Updating period with:', {
+      logger.info('Updating period with:', {
         default_mentor_capacity: config.capacity,
         default_office_location: config.officeLocation,
         default_available_hours: config.availableHours,
@@ -893,7 +894,7 @@ const MentorAllocation: React.FC = () => {
         default_available_hours: config.availableHours,
       });
 
-      console.log('✅ [handleCapacityConfiguration] Period updated successfully');
+      logger.info('Period updated successfully');
       
       // Close modals
       setShowCapacityModal(false);
@@ -910,7 +911,7 @@ const MentorAllocation: React.FC = () => {
           // Get the refreshed mentor data from the updated mentors array
           const refreshedMentor = mentors.find(m => m.id === currentMentorId);
           if (refreshedMentor) {
-            console.log('🔄 [handleCapacityConfiguration] Refreshing mentor details with updated data');
+            logger.info('Refreshing mentor details with updated data');
             setSelectedMentor(refreshedMentor);
             setMentorDetailsRefreshKey(prev => prev + 1); // Force re-render of modal
           }
@@ -919,7 +920,7 @@ const MentorAllocation: React.FC = () => {
       
       toast.success('Allocation configuration updated successfully');
     } catch (error) {
-      console.error('❌ [handleCapacityConfiguration] Error updating allocation configuration:', error);
+      logger.error('Error updating allocation configuration:', error as Error);
       toast.error('Failed to update allocation configuration. Please try again.');
     }
   };
@@ -939,7 +940,7 @@ const MentorAllocation: React.FC = () => {
   };
 
   const handleAddStudentsToAllocation = (mentor: LegacyMentor, allocation: any) => {
-    console.log('🔍 handleAddStudentsToAllocation - using allocation ID:', allocation.id);
+    logger.info('handleAddStudentsToAllocation - using allocation ID:', { allocationId: allocation.id });
     
     // Simple approach: Just pass the allocation as-is
     // The modal will handle finding the period when needed
@@ -1000,7 +1001,7 @@ const MentorAllocation: React.FC = () => {
       await refetch();
       
     } catch (error) {
-      console.error('Error removing student:', error);
+      logger.error('Error removing student:', error as Error);
       toast.error('Failed to remove student. Please try again.');
     } finally {
       setIsRemovingStudent(false);
@@ -1034,7 +1035,7 @@ const MentorAllocation: React.FC = () => {
         .eq('period_id', periodId);
 
       if (allocError) {
-        console.error('Error deleting allocations:', allocError);
+        logger.error('Error deleting allocations:', allocError as Error);
         toast.error('Failed to delete period allocations. Please try again.');
         return;
       }
@@ -1046,7 +1047,7 @@ const MentorAllocation: React.FC = () => {
         .eq('id', periodId);
 
       if (periodError) {
-        console.error('Error deleting period:', periodError);
+        logger.error('Error deleting period:', periodError as Error);
         toast.error('Failed to delete period. Please try again.');
         return;
       }
@@ -1060,7 +1061,7 @@ const MentorAllocation: React.FC = () => {
       // Refresh data
       await refetch();
     } catch (error) {
-      console.error('Error deleting period:', error);
+      logger.error('Error deleting period:', error as Error);
       toast.error('Failed to delete period. Please try again.');
     }
   };
@@ -1097,16 +1098,16 @@ const MentorAllocation: React.FC = () => {
       let periodId: string | undefined;
       
       if (allocationForAddingStudents) {
-        console.log('🔍 Allocation object:', allocationForAddingStudents);
+        logger.info('Allocation object:', { allocationId: allocationForAddingStudents.id });
         
         // Check if allocation has a period property with an id
         if (allocationForAddingStudents.period?.id) {
           periodId = allocationForAddingStudents.period.id;
-          console.log('✅ Found period ID from allocation.period:', periodId);
+          logger.info('Found period ID from allocation.period:', { periodId });
         } else {
           // Fallback: The allocation ID in processed data IS the period ID
           const allocationLegacyId = allocationForAddingStudents.id;
-          console.log('🔍 Trying to find period using allocation legacy ID:', allocationLegacyId);
+          logger.info('Trying to find period using allocation legacy ID:', { allocationLegacyId });
           
           const matchingPeriod = periods.find(p => {
             const periodLegacyId = parseInt(p.id.replace(/-/g, '').substring(0, 8), 16);
@@ -1115,19 +1116,19 @@ const MentorAllocation: React.FC = () => {
           
           if (matchingPeriod) {
             periodId = matchingPeriod.id;
-            console.log('✅ Found period by legacy ID match:', matchingPeriod.name, periodId);
+            logger.info('Found period by legacy ID match:', { periodName: matchingPeriod.name, periodId });
           }
         }
       }
       
       if (!periodId) {
-        console.error('❌ Could not determine period ID. Allocation:', allocationForAddingStudents);
-        console.error('❌ Available periods:', periods.map(p => ({ id: p.id, name: p.name })));
+        logger.error('Could not determine period ID', { allocation: allocationForAddingStudents });
+        logger.error('Available periods:', { periods: periods.map(p => ({ id: p.id, name: p.name })) });
         toast.error('Could not find period for this allocation. Please try again.');
         return;
       }
 
-      console.log('🔄 Allocating students to period:', periodId);
+      logger.info('Allocating students to period:', { periodId });
       
       // Perform the allocation - this will throw an error if students already have allocations
       await allocateStudents(mentorUuid, studentUuids, periodId, firstLecturer);
@@ -1147,7 +1148,7 @@ const MentorAllocation: React.FC = () => {
       await refetch();
       
     } catch (error: any) {
-      console.error('Error adding students:', error);
+      logger.error('Error adding students:', error as Error);
       // Show more specific error message
       if (error.message && error.message.includes('already have active allocations')) {
         toast.error(error.message);
@@ -1829,7 +1830,7 @@ const MentorAllocation: React.FC = () => {
                 parseInt(m.id.replace(/-/g, '').substring(0, 8), 16) === selectedMentor.id
               )?.id;
               
-              console.log('🔍 [MentorDetailsModal] Debug info:', {
+              logger.info('Debug info:', {
                 selectedMentorId: selectedMentor.id,
                 mentorUuid: mentorUuid,
                 totalNotes: dynamicNotes.length,
@@ -1839,7 +1840,7 @@ const MentorAllocation: React.FC = () => {
               const filteredNotes = dynamicNotes.filter(n => {
                 const matches = n.mentor_id === mentorUuid;
                 if (matches) {
-                  console.log('🎯 [MentorDetailsModal] Found matching note:', {
+                  logger.info('Found matching note:', {
                     noteId: n.id,
                     mentorId: n.mentor_id,
                     studentId: n.student_id,
@@ -1871,7 +1872,7 @@ const MentorAllocation: React.FC = () => {
                 _fullNote: note,
               }));
               
-              console.log('✅ [MentorDetailsModal] Transformed notes:', transformedNotes);
+              logger.info('Transformed notes:', { count: transformedNotes.length });
               return transformedNotes;
             })() as any}
             onClose={() => {

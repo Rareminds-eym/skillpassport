@@ -13,6 +13,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import toast from "react-hot-toast";
+import { getLogger } from "../../../config/logging";
 
 interface ProgramSection {
   id: string;
@@ -51,6 +52,7 @@ interface Faculty {
 }
 
 const ProgramSectionManagement: React.FC = () => {
+  const logger = getLogger('college-admin-sections');
   const [collegeId, setCollegeId] = useState<string | null>(null);
   const [sections, setSections] = useState<ProgramSection[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -95,7 +97,7 @@ const ProgramSectionManagement: React.FC = () => {
           setCollegeId(orgData.id);
         }
       } catch (error) {
-        console.error('Error fetching college ID:', error);
+        logger.error('Error fetching college ID:', error as Error);
       }
     };
 
@@ -155,7 +157,7 @@ const ProgramSectionManagement: React.FC = () => {
         .eq("accountStatus", "active");
       
       if (facultyError) {
-        console.error("Error loading faculty:", facultyError);
+        logger.error("Error loading faculty:", facultyError as Error);
         // Continue without faculty data
         setFaculty([]);
       } else {
@@ -187,7 +189,7 @@ const ProgramSectionManagement: React.FC = () => {
         .order("section", { ascending: true });
       
       if (sectionsError) {
-        console.error("Error loading sections:", sectionsError);
+        logger.error("Error loading sections:", sectionsError as Error);
         setSections([]);
       } else {
         const formattedSections: ProgramSection[] = (sectionsData || []).map((s: any) => ({
@@ -208,7 +210,7 @@ const ProgramSectionManagement: React.FC = () => {
         setSections(formattedSections);
       }
     } catch (error: any) {
-      console.error("Error loading data:", error);
+      logger.error("Error loading data:", error as Error);
       toast.error(`Failed to load data: ${error.message}`);
     } finally {
       setLoading(false);
@@ -275,7 +277,7 @@ const ProgramSectionManagement: React.FC = () => {
       setIsModalOpen(false);
       loadData(); // Reload data to show changes
     } catch (error: any) {
-      console.error("Error saving section:", error);
+      logger.error("Error saving section:", error as Error);
       toast.error(`Failed to save section: ${error.message}`);
     }
   };
