@@ -2,6 +2,7 @@ import React from 'react';
 import { useUser, useAuthLoading } from '../stores';
 import SimpleLogin from '../components/SimpleLogin';
 import StudentDashboard from '../pages/student/Dashboard';
+import { SubscriptionStoreSync } from '../components/Subscription/SubscriptionStoreSync.tsx';
 
 const AuthenticatedApp = () => {
   const user = useUser();
@@ -45,7 +46,12 @@ const AuthenticatedApp = () => {
   }
 
   // User is authenticated and profile is loaded, show dashboard
-  return <StudentDashboard />;
+  return (
+    <>
+      <SubscriptionStoreSync />
+      <StudentDashboard />
+    </>
+  );
 };
 
 export default AuthenticatedApp;

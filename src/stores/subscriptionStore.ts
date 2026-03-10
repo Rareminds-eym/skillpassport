@@ -103,11 +103,11 @@ interface SubscriptionState {
 
 export const useSubscriptionStore = create<SubscriptionState>()(
   immer((set, get) => ({
-    // Initial state
+    // Initial state - start with loading true until data syncs
     hasAccess: false,
     accessReason: 'no_subscription',
     subscription: null,
-    isLoading: false,
+    isLoading: true,
     isRefetching: false,
     error: null,
     
