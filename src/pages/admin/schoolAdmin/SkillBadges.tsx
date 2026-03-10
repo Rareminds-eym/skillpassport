@@ -4,6 +4,9 @@ import { AlertCircle, Award, Download, Eye, FileText, Grid3X3, List, Loader2, Me
 import React, { useEffect, useState } from 'react';
 import KPICard from '../../../components/admin/KPICard';
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-skill-badges');
 
 const CompetitionResults = () => {
   const [activeTab, setActiveTab] = useState('results'); // 'results' or 'certificates'
@@ -61,17 +64,17 @@ const CompetitionResults = () => {
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
-          console.log('📦 Found user in localStorage:', userData.email, 'role:', userData.role);
+          logger.info('Found user in localStorage', { email: userData.email, role: userData.role });
           
           if (userData.role === 'school_admin' && userData.schoolId) {
             schoolId = userData.schoolId;
             userId = userData.id;
             userEmail = userData.email;
             userRole = 'school_admin';
-            console.log('✅ School admin detected, using schoolId from localStorage:', schoolId);
+            logger.info('School admin detected, using schoolId from localStorage', { schoolId });
           }
         } catch (e) {
-          console.error('Error parsing stored user:', e);
+          logger.error('Error parsing stored user', e as Error);
         }
       }
       
@@ -80,7 +83,7 @@ const CompetitionResults = () => {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-          console.log('🔍 Checking Supabase auth user:', user.email);
+          logger.info('Checking Supabase auth user', { email: user.email });
           userEmail = user.email;
           
           // Check school_educators table - use maybeSingle() to avoid 406 error
@@ -95,7 +98,7 @@ const CompetitionResults = () => {
             userId = educator.id;
             educatorId = educator.id;
             userRole = 'educator';
-            console.log('✅ Found school_id in school_educators:', schoolId, 'educator_id:', educatorId);
+            logger.info('Found school_id in school_educators', { schoolId, educatorId });
           } else {
             // Check organizations table by email
             const { data: org } = await supabase
@@ -109,7 +112,7 @@ const CompetitionResults = () => {
               schoolId = org.id;
               userId = org.id;
               userRole = 'school_admin';
-              console.log('✅ Found school_id in organizations table:', schoolId);
+              logger.info('Found school_id in organizations table', { schoolId });
             }
           }
         }
@@ -129,7 +132,7 @@ const CompetitionResults = () => {
         role: userRole
       });
     } catch (error) {
-      console.error('Error loading user:', error);
+      logger.error('Error loading user', error as Error);
       setNotice({ type: 'error', text: 'Failed to load user information' });
       setLoading(false);
     }
@@ -175,7 +178,7 @@ const CompetitionResults = () => {
 
       setCompetitions(competitionsWithCount);
     } catch (error) {
-      console.error('Error loading competitions:', error);
+      logger.error('Error loading competitions', error as Error, { schoolId: currentUser?.school_id });
       setNotice({ type: 'error', text: 'Failed to load competitions' });
     } finally {
       setLoading(false);
@@ -218,7 +221,7 @@ const CompetitionResults = () => {
 
       setCertificates(certsData || []);
     } catch (error) {
-      console.error('Error loading certificates:', error);
+      logger.error('Error loading certificates', error as Error, { schoolId: currentUser?.school_id });
       setNotice({ type: 'error', text: 'Failed to load certificates' });
     } finally {
       setLoading(false);
@@ -278,7 +281,7 @@ const CompetitionResults = () => {
         .eq('school_id', currentUser.school_id);
 
       if (certsError) {
-        console.error('Error loading competition certificates:', certsError);
+        logger.error('Error loading competition certificates', certsError, { compId: competition.comp_id });
         setCompetitionCertificates([]);
       } else {
         setCompetitionCertificates(competitionCerts || []);
@@ -307,7 +310,7 @@ const CompetitionResults = () => {
 
       setCompetitionResults(resultsData);
     } catch (error) {
-      console.error('Error loading registrations:', error);
+      logger.error('Error loading registrations', error as Error, { compId: competition?.comp_id });
       setNotice({ type: 'error', text: 'Failed to load participants' });
     }
   };
@@ -447,7 +450,7 @@ const CompetitionResults = () => {
       // Don't close the modal, keep it open to show certificates
       loadCompetitions(); // Refresh the list
     } catch (error) {
-      console.error('Error saving results:', error);
+      logger.error('Error saving results', error as Error, { compId: resultsModal.competition?.comp_id });
       setNotice({ 
         type: 'error', 
         text: `Failed to save results: ${error.message}` 
@@ -501,13 +504,13 @@ const CompetitionResults = () => {
         .insert(certificatesToCreate);
 
       if (certError) {
-        console.error('Error creating certificates:', certError);
+        logger.error('Error creating certificates', certError, { compId, count: certificatesToCreate.length });
         throw certError;
       }
 
-      console.log(`✅ Generated ${certificatesToCreate.length} certificates`);
+      logger.info('Generated certificates', { count: certificatesToCreate.length, compId });
     } catch (error) {
-      console.error('Certificate generation error:', error);
+      logger.error('Certificate generation error', error as Error, { compId });
       throw error;
     }
   };
@@ -570,7 +573,7 @@ const CompetitionResults = () => {
 
     // Debug logging (remove in production)
     if (awardFilter !== 'all' || certificateCategoryFilter !== 'all') {
-      console.log('Certificate filtering:', {
+      logger.info('Certificate filtering', {
         title: cert.title,
         award: cert.metadata?.award,
         category: cert.competitions?.category,
@@ -752,7 +755,7 @@ const CompetitionResults = () => {
 
       setNotice({ type: 'success', text: 'Certificate downloaded successfully!' });
     } catch (error) {
-      console.error('Error generating certificate PDF:', error);
+      logger.error('Error generating certificate PDF', error as Error, { certificateId: certificate?.certificate_id });
       setNotice({ type: 'error', text: 'Failed to generate certificate PDF' });
     }
   };

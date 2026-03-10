@@ -18,6 +18,9 @@ import {
 import { useEffect, useMemo, useState } from "react"
 import toast from "react-hot-toast"
 import { supabase } from "../../../lib/supabaseClient"
+import { getLogger } from "../../../config/logging"
+
+const logger = getLogger('school-admin-class-management');
 
 interface SchoolClass {
   id: string
@@ -650,7 +653,7 @@ const ClassManagement = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        console.log("No user found")
+        logger.warn("No user found")
         return
       }
 
@@ -662,12 +665,12 @@ const ClassManagement = () => {
         .maybeSingle()
 
       if (userError && userError.code !== 'PGRST116') {
-        console.error("Error fetching user data:", userError)
+        logger.error("Error fetching user data", userError)
         toast.error("Failed to fetch user information")
         return
       }
 
-      console.log("User role:", userData?.role)
+      logger.info("User role", { role: userData?.role })
 
       // For school_admin: lookup school from organizations table
       if (userData?.role === "school_admin") {
@@ -679,11 +682,11 @@ const ClassManagement = () => {
           .maybeSingle()
 
         if (schoolError && schoolError.code !== 'PGRST116') {
-          console.error("Error fetching school data:", schoolError)
+          logger.error("Error fetching school data", schoolError)
         }
 
         if (schoolData?.id) {
-          console.log("Found school ID from organizations:", schoolData.id)
+          logger.info("Found school ID from organizations", { schoolId: schoolData.id })
           setSchoolId(schoolData.id)
           return
         }
@@ -701,11 +704,11 @@ const ClassManagement = () => {
           .maybeSingle()
 
         if (educatorError && educatorError.code !== 'PGRST116') {
-          console.error("Error fetching educator data:", educatorError)
+          logger.error("Error fetching educator data", educatorError)
         }
 
         if (educatorData?.school_id) {
-          console.log("Found school ID from school_educators:", educatorData.school_id)
+          logger.info("Found school ID from school_educators", { schoolId: educatorData.school_id })
           setSchoolId(educatorData.school_id)
           return
         }
@@ -716,7 +719,7 @@ const ClassManagement = () => {
 
       toast.error("You don't have access to this page")
     } catch (error) {
-      console.error("Error fetching school ID:", error)
+      logger.error("Error fetching school ID", error as Error)
       toast.error("An error occurred while loading school information")
     } finally {
       setLoading(false)
@@ -725,7 +728,7 @@ const ClassManagement = () => {
 
   const fetchClasses = async () => {
     if (!schoolId) {
-      console.log("No school ID available")
+      logger.warn("No school ID available")
       return
     }
     
@@ -738,11 +741,11 @@ const ClassManagement = () => {
         .order("created_at", { ascending: false })
 
       if (error) {
-        console.error("Error fetching classes:", error)
+        logger.error("Error fetching classes", error)
         throw error
       }
       
-      console.log("Fetched classes:", data?.length || 0)
+      logger.info("Fetched classes", { count: data?.length || 0 })
       
       // Enrich classes with student data and metadata
       const enrichedClasses = await Promise.all((data || []).map(async (cls) => {
@@ -777,7 +780,7 @@ const ClassManagement = () => {
 
       setClasses(enrichedClasses)
     } catch (error: any) {
-      console.error("Failed to fetch classes:", error)
+      logger.error("Failed to fetch classes", error)
       toast.error(`Failed to fetch classes: ${error.message || 'Unknown error'}`)
     } finally {
       setLoading(false)
@@ -786,7 +789,7 @@ const ClassManagement = () => {
 
   const fetchEducators = async () => {
     if (!schoolId) {
-      console.log("No school ID available for fetching educators")
+      logger.warn("No school ID available for fetching educators")
       return
     }
 
@@ -798,20 +801,20 @@ const ClassManagement = () => {
         .eq("account_status", "active")
 
       if (error) {
-        console.error("Error fetching educators:", error)
+        logger.error("Error fetching educators", error)
         throw error
       }
       
-      console.log("Fetched educators:", data?.length || 0)
+      logger.info("Fetched educators", { count: data?.length || 0 })
       setEducators(data || [])
     } catch (error: any) {
-      console.error("Failed to fetch educators:", error)
+      logger.error("Failed to fetch educators", error)
     }
   }
 
   const fetchStudents = async () => {
     if (!schoolId) {
-      console.log("No school ID available for fetching students")
+      logger.warn("No school ID available for fetching students")
       return
     }
 
@@ -823,14 +826,14 @@ const ClassManagement = () => {
         .eq("is_deleted", false)
 
       if (error) {
-        console.error("Error fetching students:", error)
+        logger.error("Error fetching students", error)
         throw error
       }
       
-      console.log("Fetched students:", data?.length || 0)
+      logger.info("Fetched students", { count: data?.length || 0 })
       setStudents(data || [])
     } catch (error: any) {
-      console.error("Failed to fetch students:", error)
+      logger.error("Failed to fetch students", error)
     }
   }
 
@@ -849,7 +852,7 @@ const ClassManagement = () => {
       fetchClasses()
     } catch (error: any) {
       toast.error("Failed to delete class")
-      console.error(error)
+      logger.error("Delete class error", error)
     }
   }
 

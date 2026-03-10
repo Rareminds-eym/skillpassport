@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "../../../../../lib/supabaseClient";
 import toast from "react-hot-toast";
 import { StudentLedger, FeePayment, StudentFeeSummary, PaymentStatus } from "../types";
+import { getLogger } from "../../../../../config/logging";
+
+const logger = getLogger('school-admin-fee-tracking');
 
 export const useFeeTracking = (schoolId: string | null) => {
   const [ledgers, setLedgers] = useState<StudentLedger[]>([]);
@@ -13,7 +16,7 @@ export const useFeeTracking = (schoolId: string | null) => {
     
     try {
       setLoading(true);
-      console.log('🚀 [Fee Tracking] Loading student ledgers for school:', schoolId);
+      logger.info('Loading student ledgers for school', { schoolId });
 
       // Try to load from database first
       const { data, error } = await supabase
@@ -23,21 +26,21 @@ export const useFeeTracking = (schoolId: string | null) => {
         .order("student_name", { ascending: true });
       
       if (error) {
-        console.error('Student ledgers query failed:', error);
+        logger.error('Student ledgers query failed', error, { schoolId });
         // Load students and create mock ledgers
         await loadStudentsAsFallback();
         return;
       }
 
       if (data && data.length > 0) {
-        console.log(`✅ [Fee Tracking] Found ${data.length} existing ledger entries`);
+        logger.info('Found existing ledger entries', { count: data.length });
         setLedgers(data);
       } else {
         // No ledgers found, create from students
         await loadStudentsAsFallback();
       }
     } catch (err) {
-      console.error("Failed to load ledgers:", err);
+      logger.error("Failed to load ledgers", err as Error, { schoolId });
       toast.error("Failed to load student ledgers");
       setLedgers([]);
     } finally {
@@ -49,7 +52,7 @@ export const useFeeTracking = (schoolId: string | null) => {
     if (!schoolId) return;
     
     try {
-      console.log('🚀 [Fee Tracking] Loading students for school:', schoolId);
+      logger.info('Loading students for school', { schoolId });
       
       // Get all students for this school
       const { data: students, error } = await supabase
@@ -59,7 +62,7 @@ export const useFeeTracking = (schoolId: string | null) => {
         .order("name", { ascending: true });
       
       if (error) {
-        console.error('Students query failed:', error);
+        logger.error('Students query failed', error, { schoolId });
         // Create completely mock data
         const mockLedgers: StudentLedger[] = [
           {
@@ -121,11 +124,11 @@ export const useFeeTracking = (schoolId: string | null) => {
           },
         ];
         setLedgers(mockLedgers);
-        console.log('✅ [Fee Tracking] Using completely mock ledger data');
+        logger.info('Using completely mock ledger data', { count: mockLedgers.length });
         return;
       }
 
-      console.log(`✅ [Fee Tracking] Found ${students?.length || 0} students in school`);
+      logger.info('Found students in school', { count: students?.length || 0 });
 
       // Create ledger entries for all students (real + mock)
       const allLedgers = students?.map((student: any) => {
@@ -154,10 +157,10 @@ export const useFeeTracking = (schoolId: string | null) => {
         } as StudentLedger;
       }) || [];
 
-      console.log(`✅ [Fee Tracking] Created ${allLedgers.length} ledger entries`);
+      logger.info('Created ledger entries', { count: allLedgers.length });
       setLedgers(allLedgers);
     } catch (err) {
-      console.error("Failed to load students:", err);
+      logger.error("Failed to load students", err as Error, { schoolId });
       setLedgers([]);
     }
   }, [schoolId]);
@@ -173,13 +176,13 @@ export const useFeeTracking = (schoolId: string | null) => {
 
       const { data, error } = await query;
       if (error) {
-        console.error('Payments query failed:', error);
+        logger.error('Payments query failed', error, { studentId });
         setPayments([]);
         return;
       }
       setPayments(data || []);
     } catch (err) {
-      console.error("Failed to load payments:", err);
+      logger.error("Failed to load payments", err as Error, { studentId });
       setPayments([]);
     }
   }, []);
@@ -233,7 +236,7 @@ export const useFeeTracking = (schoolId: string | null) => {
         .insert(payload);
 
       if (paymentError) {
-        console.error('Payment insert failed:', paymentError);
+        logger.error('Payment insert failed', paymentError, { ledgerId, studentId });
         // For demo, just update local state
       }
 
@@ -255,7 +258,7 @@ export const useFeeTracking = (schoolId: string | null) => {
           .eq("id", ledgerId);
 
         if (updateError) {
-          console.error('Ledger update failed:', updateError);
+          logger.error('Ledger update failed', updateError, { ledgerId });
           // For demo, update local state
           setLedgers(prev => prev.map(l => 
             l.id === ledgerId 
@@ -269,7 +272,7 @@ export const useFeeTracking = (schoolId: string | null) => {
       loadLedgers();
       return true;
     } catch (err) {
-      console.error("Failed to record payment:", err);
+      logger.error("Failed to record payment", err as Error, { ledgerId, studentId });
       toast.error("Failed to record payment");
       return false;
     }
