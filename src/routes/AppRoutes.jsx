@@ -523,11 +523,12 @@ const AppRoutes = () => {
       <ScrollToTop />
       <Routes>
         {/* Skill Passport Pre-Registration - Main landing page */}
-        <Route path="/register" element={<SkillPassportPreRegistration />} />
-        
+        <Route path="/register/student" element={<SkillPassportPreRegistration />} />
+        <Route path="/register/corporate" element={<SkillPassportPreRegistration />} />
+
         {/* Internal Testing Registration */}
         <Route path="/internal-testing" element={<InternalTestingRegistration />} />
-        
+
         {/* Receipt Page - Download PDF receipt */}
         <Route path="/receipt/:orderId" element={<Receipt />} />
 
