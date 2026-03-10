@@ -14,6 +14,9 @@ import {
   DocumentTextIcon,
 } from "@heroicons/react/24/outline";
 import FacultyDocumentViewerModal from "../../../components/admin/modals/FacultyDocumentViewerModal";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('college-admin-educator-management');
 
 interface Educator {
   id: string;
