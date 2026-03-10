@@ -42,8 +42,6 @@ export default function AboutRaremindsSection() {
               <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
               <span className="font-medium text-left">ISO 9001 & ISO 21001 Certified</span>
             </div>
-            {!isCorporate && (
-              <>
                 <div className="hidden md:block w-px h-8 bg-gray-300"></div>
                 <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
                   <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
@@ -54,8 +52,6 @@ export default function AboutRaremindsSection() {
                   <Target className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
                   <span className="font-medium text-left">Focused on applied learning, employability, and skill development</span>
                 </div>
-              </>
-            )}
           </motion.div>
         </motion.div>
       </div>
