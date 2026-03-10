@@ -11,6 +11,9 @@ import { useNavigate } from "react-router-dom";
 import KPIDashboard from "../../../components/admin/KPIDashboard";
 import { useUser } from "../../../stores";
 import { supabase } from "../../../lib/supabaseClient";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('school-admin-dashboard');
 
 interface CourseStats {
   category: string;
@@ -86,7 +89,7 @@ const SchoolDashboard: React.FC = () => {
 
       // Try to get school_id from user object first
       if (user.school_id) {
-        console.log('School ID from user:', user.school_id);
+        logger.info('School ID from user', { schoolId: user.school_id });
         setSchoolId(user.school_id);
         return;
       }
@@ -100,9 +103,9 @@ const SchoolDashboard: React.FC = () => {
           .maybeSingle();
 
         if (error) {
-          console.error('Error fetching school_id from educators:', error);
+          logger.error('Error fetching school_id from educators', error);
         } else if (data?.school_id) {
-          console.log('School ID from school_educators:', data.school_id);
+          logger.info('School ID from school_educators', { schoolId: data.school_id });
           setSchoolId(data.school_id);
           return;
         }
@@ -118,19 +121,19 @@ const SchoolDashboard: React.FC = () => {
             .maybeSingle();
 
           if (schoolError) {
-            console.error('Error fetching school_id from organizations:', schoolError);
+            logger.error('Error fetching school_id from organizations', schoolError);
           } else if (schoolData?.id) {
-            console.log('School ID from organizations table:', schoolData.id);
+            logger.info('School ID from organizations table', { schoolId: schoolData.id });
             setSchoolId(schoolData.id);
             return;
           }
         }
 
-        console.warn('No school_id found for user - dashboard will show empty data');
+        logger.warn('No school_id found for user - dashboard will show empty data');
         // Keep schoolId as undefined - KPIDashboard will show 0s
         setSchoolId(undefined);
       } catch (err) {
-        console.error('Failed to fetch school_id:', err);
+        logger.error('Failed to fetch school_id', err);
         setSchoolId(undefined);
       }
     };
@@ -167,7 +170,7 @@ const SchoolDashboard: React.FC = () => {
           .order("created_at", { ascending: false });
 
         if (coursesError) {
-          console.warn("Error fetching courses:", coursesError);
+          logger.warn('Error fetching courses', coursesError);
         }
 
         // Fetch enrollments for this school's courses
@@ -182,7 +185,7 @@ const SchoolDashboard: React.FC = () => {
             .order("enrolled_at", { ascending: false });
 
           if (enrollmentsError) {
-            console.warn("Error fetching enrollments:", enrollmentsError);
+            logger.warn('Error fetching enrollments', enrollmentsError);
           } else {
             enrollmentsData = data || [];
           }
@@ -198,7 +201,7 @@ const SchoolDashboard: React.FC = () => {
           .limit(10);
 
         if (attendanceError) {
-          console.warn("Error fetching attendance:", attendanceError);
+          logger.warn('Error fetching attendance', attendanceError);
         }
 
         // Fetch recent student registrations
@@ -211,7 +214,7 @@ const SchoolDashboard: React.FC = () => {
           .limit(5);
 
         if (studentsError) {
-          console.warn("Error fetching students:", studentsError);
+          logger.warn('Error fetching students', studentsError);
         }
 
         // Group by category for chart with better data
@@ -325,7 +328,7 @@ const SchoolDashboard: React.FC = () => {
         setRecentActivities(activities.slice(0, 6));
 
       } catch (err) {
-        console.error("Error fetching dashboard data:", err);
+        logger.error('Error fetching dashboard data', err);
       } finally {
         setLoading(false);
       }

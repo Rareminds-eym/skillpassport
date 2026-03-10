@@ -26,6 +26,9 @@ import {
 import toast from 'react-hot-toast'
 import { useUser, useIsAuthenticated } from '../../../stores'
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-courses');
 
 const Courses: React.FC = () => {
   const navigate = useNavigate();
@@ -71,43 +74,39 @@ const Courses: React.FC = () => {
   useEffect(() => {
     const loadEducatorAndCourses = async () => {
       try {
-        console.log('=== LOADING SCHOOL ADMIN COURSES ===');
+        logger.info('Loading school admin courses');
         setLoading(true);
         setError(null);
 
         // Check AuthContext first
         if (!isAuthenticated || !user) {
-          console.log('❌ No authenticated user in AuthContext');
+          logger.warn('No authenticated user in AuthContext');
           setError('Please log in to view courses');
           setLoading(false);
           return;
         }
 
-        console.log('✅ User authenticated from AuthContext:', user.id);
-        console.log('User email:', user.email);
-        console.log('User role:', user.role);
+        logger.info('User authenticated from AuthContext', { userId: user.id, email: user.email, role: user.role });
 
         // Verify Supabase session and use Supabase user ID
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          console.error('❌ No Supabase session found');
+          logger.error('No Supabase session found');
           setError('Authentication session expired. Please log in again.');
           setLoading(false);
           return;
         }
-        console.log('✅ Supabase session verified:', session.user.id);
-        console.log('AuthContext user ID:', user.id);
+        logger.info('Supabase session verified', { supabaseUserId: session.user.id, authContextUserId: user.id });
         
         // IMPORTANT: Use Supabase auth user ID, not AuthContext user ID
         // This ensures the ID matches what RLS policies expect
         const supabaseUserId = session.user.id;
         setEducatorId(supabaseUserId);
-        console.log('✅ Using Supabase user ID for educator_id:', supabaseUserId);
 
         // Use full_name from AuthContext if available
         const fullName = user.full_name || user.email?.split('@')[0] || 'School Admin';
         setEducatorName(fullName);
-        console.log('✅ School Admin name set:', fullName);
+        logger.info('School admin name set', { fullName });
 
         // Get school_id from school_educators table for creating courses - use maybeSingle() to avoid 406 error
         const { data: educatorData } = await supabase
@@ -118,7 +117,7 @@ const Courses: React.FC = () => {
 
         if (educatorData?.school_id) {
           setSchoolId(educatorData.school_id);
-          console.log('✅ School ID set from school_educators:', educatorData.school_id);
+          logger.info('School ID set from school_educators', { schoolId: educatorData.school_id });
         } else {
           // Fallback: Check organizations table for school admins
           const { data: org } = await supabase
@@ -130,32 +129,20 @@ const Courses: React.FC = () => {
 
           if (org?.id) {
             setSchoolId(org.id);
-            console.log('✅ School ID set from organizations:', org.id);
+            logger.info('School ID set from organizations', { schoolId: org.id });
           } else {
-            console.warn('⚠️ No school_id found for user, will not be able to create courses');
+            logger.warn('No school_id found for user, will not be able to create courses');
           }
         }
 
         // Load ALL courses (not filtered by school)
-        console.log('📡 Fetching all courses');
         const coursesData = await getAllCourses();
-        console.log('✅ Courses loaded:', coursesData.length, 'courses');
-        
-        // Debug: Log module counts for each course
-        coursesData.forEach((course, index) => {
-          console.log(`📚 Course ${index + 1}: "${course.title}" has ${course.modules?.length || 0} modules`);
-          if (course.modules && course.modules.length > 0) {
-            course.modules.forEach((mod, modIndex) => {
-              console.log(`   └─ Module ${modIndex + 1}: "${mod.title}" has ${mod.lessons?.length || 0} lessons`);
-            });
-          }
-        });
+        logger.info('Courses loaded', { count: coursesData.length });
         
         setCourses(coursesData);
 
       } catch (err: any) {
-        console.error('❌ Error loading courses:', err);
-        console.error('Error details:', {
+        logger.error('Error loading courses', err, {
           message: err?.message,
           code: err?.code,
           details: err?.details,
@@ -164,7 +151,6 @@ const Courses: React.FC = () => {
         setError(err?.message || 'Failed to load courses.');
       } finally {
         setLoading(false);
-        console.log('=== LOADING COMPLETE ===');
       }
     };
 
@@ -262,15 +248,10 @@ const Courses: React.FC = () => {
    *  HANDLERS
    * ───────────────────────────────────────────── */
   const handleCreateCourse = async (courseData: Partial<Course>) => {
-    console.log('=== HANDLE CREATE COURSE ===');
-    console.log('School Admin ID:', educatorId);
-    console.log('School Admin Name:', educatorName);
-    console.log('Course Data:', courseData);
+    logger.info('Creating course', { educatorId, educatorName, courseTitle: courseData.title });
     
     if (!educatorId || !educatorName) {
-      console.error('❌ Missing school admin information');
-      console.log('educatorId:', educatorId);
-      console.log('educatorName:', educatorName);
+      logger.error('Missing school admin information', { educatorId, educatorName });
       setError('School admin information not available. Please refresh the page and try again.');
       toast.error('School admin information not available');
       return;
@@ -279,7 +260,7 @@ const Courses: React.FC = () => {
     // Verify Supabase session before creating
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      console.error('❌ No Supabase session');
+      logger.error('No Supabase session');
       setError('Authentication session expired. Please log in again.');
       toast.error('Session expired. Please log in again.');
       return;
@@ -287,9 +268,6 @@ const Courses: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('📡 Calling createCourse service...');
-      console.log('📡 Using educator_id:', educatorId);
-      console.log('📡 Supabase user ID:', session.user.id);
 
       const newCourse = await createCourse(
         {
@@ -312,15 +290,13 @@ const Courses: React.FC = () => {
         schoolId || undefined
       );
 
-      console.log('✅ Course created successfully:', newCourse);
+      logger.info('Course created successfully', { courseId: newCourse.id, title: newCourse.title });
       setCourses([...courses, newCourse]);
       setShowCreateModal(false);
-      console.log('✅ Modal closed, courses updated');
       toast.success('Course created successfully!');
 
     } catch (err: any) {
-      console.error('❌ Error creating course:', err);
-      console.error('Error details:', {
+      logger.error('Error creating course', err, {
         message: err?.message,
         code: err?.code,
         details: err?.details,
@@ -329,40 +305,32 @@ const Courses: React.FC = () => {
       setError('Failed to create course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
-      console.log('=== CREATE COURSE COMPLETE ===');
     }
   };
 
   const handleEditCourse = (course: Course) => {
-    console.log('Editing course:', course);
+    logger.info('Editing course', { courseId: course.id, title: course.title });
     setEditingCourse(course);
     setShowDetailDrawer(false);
     setShowCreateModal(true);
   };
 
   const handleUpdateCourse = async (courseData: Partial<Course>) => {
-    console.log('=== HANDLE UPDATE COURSE ===');
-    console.log('Editing course:', editingCourse);
-    console.log('Update data:', courseData);
-    
     if (!editingCourse) {
-      console.error('❌ No editing course set');
+      logger.error('No editing course set');
       return;
     }
 
     try {
       setLoading(true);
-      console.log('📡 Calling updateCourse service...');
       const updatedCourse = await updateCourse(editingCourse.id, courseData);
 
-      console.log('✅ Course updated successfully:', updatedCourse);
+      logger.info('Course updated successfully', { courseId: updatedCourse.id, title: updatedCourse.title });
       setCourses(courses.map(c => (c.id === editingCourse.id ? updatedCourse : c)));
       setEditingCourse(null);
       setShowCreateModal(false);
-      console.log('✅ Modal closed, courses updated');
     } catch (err: any) {
-      console.error('❌ Error updating course:', err);
-      console.error('Error details:', {
+      logger.error('Error updating course', err, {
         message: err?.message,
         code: err?.code,
         details: err?.details,
@@ -371,28 +339,26 @@ const Courses: React.FC = () => {
       setError('Failed to update course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
-      console.log('=== UPDATE COURSE COMPLETE ===');
     }
   };
 
   const handleViewCourse = (course: Course) => {
-    console.log('Viewing course:', course);
     setSelectedCourse(course);
     setShowDetailDrawer(true);
   };
 
   const handleArchiveCourse = async (course: Course) => {
     const newStatus = course.status === 'Archived' ? 'Draft' : 'Archived';
-    console.log('Archiving course:', course.id, 'New status:', newStatus);
+    logger.info('Archiving course', { courseId: course.id, newStatus });
 
     try {
       setLoading(true);
       const updatedCourse = await updateCourse(course.id, { status: newStatus });
 
-      console.log('✅ Course archived successfully');
+      logger.info('Course archived successfully', { courseId: course.id });
       setCourses(courses.map(c => (c.id === course.id ? updatedCourse : c)));
     } catch (err: any) {
-      console.error('❌ Error archiving course:', err);
+      logger.error('Error archiving course', err);
       setError('Failed to archive course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -400,18 +366,16 @@ const Courses: React.FC = () => {
   };
 
   const handleCourseUpdate = async (updatedCourse: Course) => {
-    console.log('Updating course from drawer:', updatedCourse);
-    
     try {
       setLoading(true);
 
       const savedCourse = await updateCourse(updatedCourse.id, updatedCourse);
-      console.log('✅ Course updated successfully');
+      logger.info('Course updated successfully', { courseId: savedCourse.id });
       setCourses(courses.map(c => (c.id === savedCourse.id ? savedCourse : c)));
       setSelectedCourse(savedCourse);
 
     } catch (err: any) {
-      console.error('❌ Error updating course:', err);
+      logger.error('Error updating course', err);
       setError('Failed to update course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -423,7 +387,6 @@ const Courses: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    console.log('Clearing filters');
     setSearchQuery('');
     setStatusFilter('All');
     setSkillFilter('All');
@@ -432,7 +395,6 @@ const Courses: React.FC = () => {
   };
 
   const handleAssignEducator = (course: Course) => {
-    console.log('Assigning educator for course:', course);
     setAssigningCourse(course);
     setShowAssignModal(true);
   };
@@ -442,7 +404,7 @@ const Courses: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('📡 Assigning educator:', educatorId, educatorName, 'to course:', assigningCourse.id);
+      logger.info('Assigning educator to course', { educatorId, educatorName, courseId: assigningCourse.id });
 
       // Update the course with new educator
       const { error } = await supabase
@@ -456,7 +418,7 @@ const Courses: React.FC = () => {
 
       if (error) throw error;
 
-      console.log('✅ Educator assigned successfully');
+      logger.info('Educator assigned successfully', { courseId: assigningCourse.id, educatorName });
       
       // Update local state
       setCourses(courses.map(c => 
@@ -470,7 +432,7 @@ const Courses: React.FC = () => {
       // Reload courses to get fresh data
       window.location.reload();
     } catch (err: any) {
-      console.error('❌ Error assigning educator:', err);
+      logger.error('Error assigning educator', err);
       toast.error('Failed to assign educator: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -542,20 +504,6 @@ const Courses: React.FC = () => {
             {educatorName && <span className="ml-2 text-indigo-600">• {educatorName}</span>}
           </p>
         </div>
-
-        {/* <button
-          onClick={() => {
-            console.log('Create Course button clicked');
-            console.log('Current educatorId:', educatorId);
-            console.log('Current educatorName:', educatorName);
-            setEditingCourse(null);
-            setShowCreateModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm"
-        >
-          <PlusIcon className="h-5 w-5" />
-          Create Course
-        </button> */}
       </div>
 
       {/* Tabs */}
@@ -701,7 +649,6 @@ const Courses: React.FC = () => {
       <CreateCourseModal
         isOpen={showCreateModal}
         onClose={() => {
-          console.log('Modal onClose called');
           setShowCreateModal(false);
           setEditingCourse(null);
         }}
