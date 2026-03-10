@@ -460,19 +460,34 @@ const ViewLessonPlanModal = ({
                               onClick={() => {
                                 const storageApiUrl = getPagesApiUrl('storage');
                                 let viewUrl;
+                                let method = 'unknown';
+                                
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
                                   const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
                                   if (keyMatch) {
                                     const extractedKey = 'lesson-plans/' + keyMatch[1];
                                     viewUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=inline`;
+                                    method = 'key-extraction';
+                                    logger.info('Using KEY method for view', { extractedKey });
                                   }
                                 }
                                 // Fallback to full URL parameter
                                 if (!viewUrl) {
                                   viewUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=inline`;
+                                  method = 'full-url';
+                                  logger.info('Using FULL URL method for view');
                                 }
-                                window.open(viewUrl, '_blank');
+                                
+                                logger.info('View method used', { method });
+                                logger.info('Final view URL generated', { url: viewUrl, urlLength: viewUrl.length });
+                                
+                                try {
+                                  window.open(viewUrl, '_blank');
+                                  logger.info('View window opened successfully');
+                                } catch (error) {
+                                  logger.error('Invalid view URL', error);
+                                }
                               }}
                               className="text-xs text-blue-600 hover:underline"
                               title="View file inline"
@@ -1936,19 +1951,34 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                       onClick={() => {
                                         const storageApiUrl = getPagesApiUrl('storage');
                                         let viewUrl;
+                                        let method = 'unknown';
+                                        
                                         // Extract key from lesson-plans URL pattern
                                         if (file.url!.includes('lesson-plans/')) {
                                           const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
                                           if (keyMatch) {
                                             const extractedKey = 'lesson-plans/' + keyMatch[1];
                                             viewUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=inline`;
+                                            method = 'key-extraction';
+                                            logger.info('Using KEY method for view', { extractedKey });
                                           }
                                         }
                                         // Fallback to full URL parameter
                                         if (!viewUrl) {
                                           viewUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=inline`;
+                                          method = 'full-url';
+                                          logger.info('Using FULL URL method for view');
                                         }
-                                        window.open(viewUrl, '_blank');
+                                        
+                                        logger.info('View method used', { method });
+                                        logger.info('Final view URL generated', { url: viewUrl, urlLength: viewUrl.length });
+                                        
+                                        try {
+                                          window.open(viewUrl, '_blank');
+                                          logger.info('View window opened successfully');
+                                        } catch (error) {
+                                          logger.error('Invalid view URL', error);
+                                        }
                                       }}
                                       className="text-xs text-blue-600 hover:underline"
                                       title="View file inline"
