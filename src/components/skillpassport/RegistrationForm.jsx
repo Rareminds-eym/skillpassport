@@ -18,17 +18,13 @@ import {
   X
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
 
-const REGISTRATION_FEE_STUDENT = 499;
-const REGISTRATION_FEE_CORPORATE = 7500;
-const EMAIL_API_URL = import.meta.env.DEV 
-  ? 'http://localhost:8788/api/email'
-  : 'https://skillpassport.rareminds.in/api/email';
+const REGISTRATION_FEE = 499;
+const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -245,10 +241,6 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
 };
 
 export default function RegistrationForm({ campaign = 'skill-passport' }) {
-  const location = useLocation();
-  const isCorporate = location.pathname.includes('/register/corporate');
-  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_STUDENT;
-  
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -350,7 +342,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: isCorporate ? 'Skill Ecosystem' : 'Skill Passport',
+        name: 'Skill Passport',
         description: 'Registration Fee',
         order_id: orderData.id,
         prefill: {
@@ -450,7 +442,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   <Check className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-emerald-600" strokeWidth={3} />
                 </motion.div>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 sm:mb-3">Payment Successful!</h2>
-                <p className="text-emerald-100 text-base sm:text-lg">Welcome to {isCorporate ? 'Skill Ecosystem' : 'Skill Passport'}</p>
+                <p className="text-emerald-100 text-base sm:text-lg">Welcome to Skill Passport</p>
               </div>
             </div>
 
@@ -499,34 +491,30 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
-          {!isCorporate && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
-            >
-              <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
-                <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
-                  <DotLottieReact
-                    src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
-                    loop
-                    autoplay
-                    style={{ width: '32px', height: '32px' }}
-                  />
-                </div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
+          >
+            <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
+              <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
+                <DotLottieReact
+                  src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
+                  loop
+                  autoplay
+                  style={{ width: '32px', height: '32px' }}
+                />
               </div>
-              <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
-            </motion.div>
-          )}
+            </div>
+            <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
+          </motion.div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
-            {isCorporate ? 'Corporate Registration' : 'Registration'}
+            Registration
           </h2>
           <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
-            {isCorporate 
-              ? 'Access skilled talent and hire confidently' 
-              : 'Secure your access to Skill Ecosystem today'}
+            Secure your access to Skill Passport today
           </p>
         </motion.div>
 
