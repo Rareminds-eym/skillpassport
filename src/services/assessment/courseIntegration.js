@@ -12,6 +12,7 @@ import {
 } from '../courseRecommendationService';
 import { supabase } from '../../lib/supabaseClient';
 import { updateProgress } from './geminiApiService.js';
+import { getLogger } from '../../config/logging';
 
 /**
  * Add course recommendations to assessment results
@@ -22,9 +23,11 @@ import { updateProgress } from './geminiApiService.js';
  * @param {string} studentId - Student ID to fetch all past assessments
  * @returns {Promise<Object>} - Results with platformCourses, coursesByType, and skillGapCourses added
  */
+const logger = getLogger('course-integration');
+
 export const addCourseRecommendations = async (assessmentResults, studentId = null) => {
   try {
-    console.log('=== Adding Course Recommendations ===');
+    logger.info('=== Adding Course Recommendations ===');
     updateProgress('courses', 'Finding relevant courses...');
 
     let aggregatedProfile = assessmentResults;
@@ -60,7 +63,7 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
           };
         }
       } catch (fetchError) {
-        console.warn('Failed to fetch past assessments:', fetchError.message);
+        logger.warn('Failed to fetch past assessments:', { error: fetchError.message });
       }
     }
 
@@ -75,11 +78,11 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
         platformCourses = await getRecommendedCourses(aggregatedProfile);
       }
     } catch (error) {
-      console.warn('Failed to get platform course recommendations:', error.message);
+      logger.warn('Failed to get platform course recommendations:', { error: error.message });
       try {
         platformCourses = await getRecommendedCourses(aggregatedProfile);
       } catch (fallbackError) {
-        console.warn('Fallback also failed:', fallbackError.message);
+        logger.warn('Fallback also failed:', { error: fallbackError.message });
       }
     }
 
@@ -90,7 +93,7 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
         skillGapCourses = await getCoursesForMultipleSkillGaps(skillGaps);
       }
     } catch (error) {
-      console.warn('Failed to get skill gap course mappings:', error.message);
+      logger.warn('Failed to get skill gap course mappings:', { error: error.message });
     }
 
     return {
@@ -100,7 +103,7 @@ export const addCourseRecommendations = async (assessmentResults, studentId = nu
       skillGapCourses
     };
   } catch (error) {
-    console.error('Error adding course recommendations:', error);
+    logger.error('Error adding course recommendations:', error);
     return {
       ...assessmentResults,
       platformCourses: [],

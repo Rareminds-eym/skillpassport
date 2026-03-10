@@ -5,6 +5,10 @@
  * @version 2.1.0
  */
 
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('scoring-engine');
+
 /**
  * Calculate aptitude score from answers
  */
@@ -27,7 +31,10 @@ export const calculateAptitudeScore = (answers) => {
   const scoredCount = answers.filter(a => a.isCorrect !== null && a.isCorrect !== undefined).length;
   
   if (scoredCount < answers.length) {
-    console.warn(`⚠️ ${answers.length - scoredCount} answers could not be scored (missing correct answer data)`);
+    logger.warn(`⚠️ ${answers.length - scoredCount} answers could not be scored (missing correct answer data)`, {
+      unscored: answers.length - scoredCount,
+      total: answers.length
+    });
   }
   
   return {

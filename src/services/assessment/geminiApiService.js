@@ -7,6 +7,9 @@
 
 import { prepareAssessmentData, validateResults } from './assessmentDataPrep.js';
 import { addCourseRecommendations } from './courseIntegration.js';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('gemini-api-service');
 
 // ============================================================================
 // PROGRESS TRACKING
@@ -35,8 +38,8 @@ export const updateProgress = (stage, message) => {
  * @returns {Promise<Object>} - The analyzed results from AI
  */
 export const callOpenRouterAssessment = async (assessmentData) => {
-  console.log('[FRONTEND] === CALLING ANALYZE-ASSESSMENT API ===');
-  console.log('[FRONTEND] Assessment data:', {
+  logger.info('[FRONTEND] === CALLING ANALYZE-ASSESSMENT API ===');
+  logger.info('[FRONTEND] Assessment data:', {
     gradeLevel: assessmentData.gradeLevel,
     stream: assessmentData.stream,
     hasStudentContext: !!assessmentData.studentContext,
@@ -55,14 +58,14 @@ export const callOpenRouterAssessment = async (assessmentData) => {
   const token = session?.access_token;
 
   if (!token) {
-    console.error('[FRONTEND] ❌ No auth token found');
+    logger.error('[FRONTEND] ❌ No auth token found');
     updateProgress('error', 'Authentication required');
     throw new Error('Authentication required for assessment analysis');
   }
 
-  console.log('[FRONTEND] 🤖 Sending assessment data to backend for analysis...');
-  console.log('[FRONTEND] 📊 Grade Level:', assessmentData.gradeLevel, 'Stream:', assessmentData.stream);
-  console.log('[FRONTEND] 🎯 STREAM CONTEXT: Student is in', assessmentData.stream, 'stream, AI should recommend careers from this stream');
+  logger.info('[FRONTEND] 🤖 Sending assessment data to backend for analysis...');
+  logger.info('[FRONTEND] 📊 Grade Level:', { gradeLevel: assessmentData.gradeLevel, stream: assessmentData.stream });
+  logger.info('[FRONTEND] 🎯 STREAM CONTEXT: Student is in', { stream: assessmentData.stream, message: 'stream, AI should recommend careers from this stream' });
 
   updateProgress('analyzing', 'AI is processing your responses...');
 
@@ -82,24 +85,23 @@ export const callOpenRouterAssessment = async (assessmentData) => {
       body: JSON.stringify(requestBody)
     });
 
-    console.log('[FRONTEND] 📡 Response received');
-    console.log('[FRONTEND] 📊 Response status:', response.status, response.statusText);
+    logger.info('[FRONTEND] 📡 Response received');
+    logger.info('[FRONTEND] 📊 Response status:', { status: response.status, statusText: response.statusText });
 
     if (!response.ok) {
-      console.error('[FRONTEND] ❌ API request failed');
+      logger.error('[FRONTEND] ❌ API request failed');
       const errorText = await response.text();
-      console.error('[FRONTEND] ❌ Error response:', errorText);
-      console.error('❌ === API CALL FAILED ===');
-      console.error('❌ Status Code:', response.status);
-      console.error('❌ Status Text:', response.statusText);
-      console.error('❌ Error Response:', errorText);
-      console.error('❌ Request Summary:');
-      console.error('   - API URL:', API_URL);
-      console.error('   - Grade Level:', assessmentData.gradeLevel);
-      console.error('   - Stream:', assessmentData.stream);
-      console.error('   - RIASEC Answers Count:', Object.keys(assessmentData.riasecAnswers || {}).length);
-      console.error('   - Aptitude Scores:', JSON.stringify(assessmentData.aptitudeScores));
-      console.error('❌ === END API CALL FAILED ===');
+      logger.error('[FRONTEND] ❌ Error response:', { error: errorText });
+      logger.error('❌ === API CALL FAILED ===', {
+        statusCode: response.status,
+        statusText: response.statusText,
+        errorResponse: errorText,
+        apiUrl: API_URL,
+        gradeLevel: assessmentData.gradeLevel,
+        stream: assessmentData.stream,
+        riasecAnswersCount: Object.keys(assessmentData.riasecAnswers || {}).length,
+        aptitudeScores: JSON.stringify(assessmentData.aptitudeScores)
+      });
       
       let errorData;
       try {
@@ -114,63 +116,50 @@ export const callOpenRouterAssessment = async (assessmentData) => {
     updateProgress('processing', 'Processing AI results...');
 
     const result = await response.json();
-    console.log('📦 API Response:', { success: result.success, hasData: !!result.data, error: result.error });
+    logger.info('📦 API Response:', { success: result.success, hasData: !!result.data, error: result.error });
 
     if (!result.success || !result.data) {
-      console.error('❌ Invalid response:', result);
-      console.error('❌ Response success:', result.success);
-      console.error('❌ Response data:', result.data);
-      console.error('❌ Response error:', result.error);
-      console.error('❌ Response details:', result.details);
+      logger.error('❌ Invalid response:', { success: result.success, data: result.data, error: result.error, details: result.details });
       updateProgress('error', result.error || 'Invalid response from server');
       throw new Error(result.error || result.details || 'Invalid response from server');
     }
 
-    console.log('✅ Assessment analysis successful');
-    console.log('📊 Response keys:', Object.keys(result.data));
+    logger.info('✅ Assessment analysis successful');
+    logger.info('📊 Response keys:', { keys: Object.keys(result.data) });
     
     // Log seed for deterministic verification
     if (result.data._metadata?.seed) {
-      console.log('🎲 DETERMINISTIC SEED:', result.data._metadata.seed);
-      console.log('🎲 Model used:', result.data._metadata.model);
-      console.log('🎲 Deterministic:', result.data._metadata.deterministic);
+      logger.info('🎲 DETERMINISTIC SEED:', { seed: result.data._metadata.seed, model: result.data._metadata.model, deterministic: result.data._metadata.deterministic });
       
       // Log failure details if any models failed before success
       if (result.data._metadata.failureDetails && result.data._metadata.failureDetails.length > 0) {
-        console.warn('⚠️ MODEL FAILURES BEFORE SUCCESS:');
-        result.data._metadata.failureDetails.forEach((failure, idx) => {
-          console.warn(`   ${idx + 1}. ❌ ${failure.model}`);
-          if (failure.status) {
-            console.warn(`      Status: ${failure.status}`);
-          }
-          console.warn(`      Error: ${failure.error}`);
+        logger.warn('⚠️ MODEL FAILURES BEFORE SUCCESS:', {
+          failures: result.data._metadata.failureDetails.map((f, idx) => `${idx + 1}. ❌ ${f.model} - ${f.status || ''} - ${f.error}`),
+          finalModel: result.data._metadata.model
         });
-        console.log(`✅ Final success with: ${result.data._metadata.model}`);
       }
     } else {
-      console.warn('⚠️ NO SEED IN RESPONSE - Using old worker version?');
+      logger.warn('⚠️ NO SEED IN RESPONSE - Using old worker version?');
     }
     
     // Debug: Log career clusters to verify stream alignment
     if (result.data.careerFit?.clusters) {
-      console.log('🎯 AI CAREER CLUSTERS (from worker):');
-      result.data.careerFit.clusters.forEach((cluster, idx) => {
-        console.log(`   ${idx + 1}. ${cluster.title} (${cluster.fit} - ${cluster.matchScore}%)`);
+      logger.info('🎯 AI CAREER CLUSTERS (from worker):', {
+        clusters: result.data.careerFit.clusters.map((c, idx) => `${idx + 1}. ${c.title} (${c.fit} - ${c.matchScore}%)`)
       });
     }
     
     return result.data;
   } catch (error) {
-    console.error('❌ === ASSESSMENT API CALL EXCEPTION ===');
-    console.error('❌ Error Message:', error.message);
-    console.error('❌ Error Stack:', error.stack);
-    console.error('❌ Request Context:');
-    console.error('   - Grade Level:', assessmentData.gradeLevel);
-    console.error('   - Stream:', assessmentData.stream);
-    console.error('   - RIASEC Answers:', Object.keys(assessmentData.riasecAnswers || {}).length);
-    console.error('   - BigFive Answers:', Object.keys(assessmentData.bigFiveAnswers || {}).length);
-    console.error('   - Aptitude Scores:', JSON.stringify(assessmentData.aptitudeScores));
-    console.error('❌ === END ASSESSMENT API CALL EXCEPTION ===');
+    logger.error('❌ === ASSESSMENT API CALL EXCEPTION ===', {
+      errorMessage: error.message,
+      errorStack: error.stack,
+      gradeLevel: assessmentData.gradeLevel,
+      stream: assessmentData.stream,
+      riasecAnswers: Object.keys(assessmentData.riasecAnswers || {}).length,
+      bigFiveAnswers: Object.keys(assessmentData.bigFiveAnswers || {}).length,
+      aptitudeScores: JSON.stringify(assessmentData.aptitudeScores)
+    });
     
     updateProgress('error', error.message);
     throw error;
@@ -203,20 +192,20 @@ export const analyzeAssessmentWithOpenRouter = async (
   studentContext = {}, 
   adaptiveResults = null
 ) => {
-  console.log('=== analyzeAssessmentWithGemini START ===');
-  console.log('🤖 Starting assessment analysis...');
-  console.log('📊 Grade Level:', gradeLevel);
-  console.log('📊 Stream:', stream);
-  console.log('📊 Student ID:', studentId || 'Not provided');
-  console.log('📊 Has adaptive results:', !!adaptiveResults);
-  console.log('📊 Pre-calculated scores:', !!preCalculatedScores);
-  console.log('📊 Question banks:', {
-    riasec: questionBanks.riasecQuestions?.length || 0,
-    aptitude: questionBanks.aptitudeQuestions?.length || 0,
-    bigFive: questionBanks.bigFiveQuestions?.length || 0,
-    values: questionBanks.workValuesQuestions?.length || 0,
-    employability: questionBanks.employabilityQuestions?.length || 0,
-    knowledge: questionBanks.streamKnowledgeQuestions ? Object.keys(questionBanks.streamKnowledgeQuestions).length : 0
+  logger.info('=== analyzeAssessmentWithGemini START ===', {
+    gradeLevel,
+    stream,
+    studentId: studentId || 'Not provided',
+    hasAdaptiveResults: !!adaptiveResults,
+    hasPreCalculatedScores: !!preCalculatedScores,
+    questionBanks: {
+      riasec: questionBanks.riasecQuestions?.length || 0,
+      aptitude: questionBanks.aptitudeQuestions?.length || 0,
+      bigFive: questionBanks.bigFiveQuestions?.length || 0,
+      values: questionBanks.workValuesQuestions?.length || 0,
+      employability: questionBanks.employabilityQuestions?.length || 0,
+      knowledge: questionBanks.streamKnowledgeQuestions ? Object.keys(questionBanks.streamKnowledgeQuestions).length : 0
+    }
   });
   
   updateProgress('preparing', 'Preparing your assessment data...');
@@ -239,22 +228,22 @@ export const analyzeAssessmentWithOpenRouter = async (
 
     // Validate stream recommendation for After 10th students
     if (gradeLevel === 'after10' && parsedResults.streamRecommendation) {
-      console.log('🎯 Validating After 10th stream recommendation with rule-based engine...');
-      const ruleBasedStreams = calculateStreamRecommendations(parsedResults);
-      console.log('🎯 Rule-based streams:', ruleBasedStreams.map(s => s.stream));
+      logger.info('🎯 Validating After 10th stream recommendation with rule-based engine...', {
+        ruleBasedStreams: calculateStreamRecommendations(parsedResults).map(s => s.stream)
+      });
     }
 
     // Validate the results
     const { isValid, missingFields } = validateResults(parsedResults);
     if (!isValid) {
-      console.warn('⚠️ Response has missing fields:', missingFields);
+      logger.warn('⚠️ Response has missing fields:', { missingFields });
     }
 
-    console.log('📋 Skipping course generation (will be generated on-demand)');
+    logger.info('📋 Skipping course generation (will be generated on-demand)');
     
     updateProgress('saving', 'Saving your results...');
     
-    console.log('✅ Assessment analysis complete');
+    logger.info('✅ Assessment analysis complete');
     
     // Mark as complete after a short delay to show the saving stage
     setTimeout(() => updateProgress('complete', 'Analysis complete!'), 500);
@@ -263,7 +252,7 @@ export const analyzeAssessmentWithOpenRouter = async (
     return parsedResults;
 
   } catch (error) {
-    console.error('❌ Assessment analysis failed:', error.message);
+    logger.error('❌ Assessment analysis failed:', { error: error.message });
     updateProgress('error', error.message);
     throw new Error(`Assessment analysis failed: ${error.message}. Please try again.`);
   }

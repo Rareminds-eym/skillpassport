@@ -6,6 +6,9 @@
  */
 
 import { calculateStreamRecommendations } from '../../features/assessment/assessment-result/utils/streamMatchingEngine';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('assessment-data-prep');
 
 // ============================================================================
 // VALIDATION
@@ -42,7 +45,7 @@ export const validateResults = (results) => {
 
   // Optional but log if missing
   if (!results.timingAnalysis?.overallPace) {
-    console.log('Note: timingAnalysis not included in response');
+    logger.info('Note: timingAnalysis not included in response');
   }
 
   return {
@@ -191,9 +194,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     adaptiveResults = answers.adaptive_aptitude_results;
   }
 
-  console.log('=== prepareAssessmentData EXTRACTION START ===');
-  console.log('📊 Grade Level:', gradeLevel);
-  console.log('📊 Stream:', stream);
+  logger.info('=== prepareAssessmentData EXTRACTION START ===', { gradeLevel, stream });
 
   // Extract answers by section
   const riasecAnswers = {};
@@ -227,7 +228,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     }
   });
 
-  console.log('RIASEC answers extracted:', Object.keys(riasecAnswers).length);
+  logger.info('RIASEC answers extracted:', { count: Object.keys(riasecAnswers).length });
 
   // Extract BigFive answers
   Object.entries(answers).forEach(([key, value]) => {
@@ -241,7 +242,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     }
   });
 
-  console.log('BigFive answers extracted:', Object.keys(bigFiveAnswers).length);
+  logger.info('BigFive answers extracted:', { count: Object.keys(bigFiveAnswers).length });
 
   // Extract Work Values answers
   Object.entries(answers).forEach(([key, value]) => {
@@ -255,7 +256,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     }
   });
 
-  console.log('WorkValues answers extracted:', Object.keys(workValuesAnswers).length);
+  logger.info('WorkValues answers extracted:', { count: Object.keys(workValuesAnswers).length });
 
   // Extract Knowledge answers
   const streamQuestions = streamKnowledgeQuestions?.[stream] || [];
@@ -276,7 +277,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
     }
   });
 
-  console.log('Knowledge answers extracted:', Object.keys(knowledgeAnswers).length);
+  logger.info('Knowledge answers extracted:', { count: Object.keys(knowledgeAnswers).length });
 
   // Calculate timing metrics
   const timingData = {
@@ -314,7 +315,7 @@ export const prepareAssessmentData = (answers, stream, questionBanks, sectionTim
   };
   timingData.totalFormatted = formatTimeForPrompt(timingData.totalTime);
 
-  console.log('=== ASSESSMENT DATA PREPARED ===');
+  logger.info('=== ASSESSMENT DATA PREPARED ===');
 
   return {
     stream,
