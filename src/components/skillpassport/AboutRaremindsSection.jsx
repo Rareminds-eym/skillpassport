@@ -1,11 +1,8 @@
 import { motion } from 'framer-motion';
 import { ShieldCheck, Users, Target } from 'lucide-react';
 import { Sparkles } from '@/components/ui/sparkles';
-import { useLocation } from 'react-router-dom';
 
 export default function AboutRaremindsSection() {
-  const location = useLocation();
-  const isCorporate = location.pathname.includes('/register/corporate');
   return (
     <section className="relative py-20 bg-white overflow-hidden">
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,20 +39,16 @@ export default function AboutRaremindsSection() {
               <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
               <span className="font-medium text-left">ISO 9001 & ISO 21001 Certified</span>
             </div>
-            {!isCorporate && (
-              <>
-                <div className="hidden md:block w-px h-8 bg-gray-300"></div>
-                <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
-                  <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
-                  <span className="font-medium text-left">Trusted by educational institutions and learners across India</span>
-                </div>
-                <div className="hidden md:block w-px h-8 bg-gray-300"></div>
-                <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
-                  <Target className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
-                  <span className="font-medium text-left">Focused on applied learning, employability, and skill development</span>
-                </div>
-              </>
-            )}
+            <div className="hidden md:block w-px h-8 bg-gray-300"></div>
+            <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
+              <Users className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
+              <span className="font-medium text-left">Trusted by educational institutions and learners across India</span>
+            </div>
+            <div className="hidden md:block w-px h-8 bg-gray-300"></div>
+            <div className="flex items-start md:items-center gap-3 w-full md:w-auto">
+              <Target className="w-5 h-5 md:w-6 md:h-6 text-indigo-600 flex-shrink-0 mt-0.5 md:mt-0" />
+              <span className="font-medium text-left">Focused on applied learning, employability, and skill development</span>
+            </div>
           </motion.div>
         </motion.div>
       </div>

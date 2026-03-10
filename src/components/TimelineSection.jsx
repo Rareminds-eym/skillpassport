@@ -3,14 +3,10 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Check, X, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const TimelineSection = () => {
-  const location = useLocation();
-  const isCorporate = location.pathname.includes('/register/corporate');
-  const brandName = isCorporate ? 'Skill Ecosystem' : 'Skill Passport';
   const sectionRef = useRef(null);
   const timelineLineRef = useRef(null);
   const item1Ref = useRef(null);
@@ -113,13 +109,10 @@ const TimelineSection = () => {
           className="text-center mb-12 sm:mb-16 md:mb-20"
         >
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
-            {isCorporate ? 'Why Skill Ecosystem Matters' : 'Why Skill Passport Matters'}
+            Why Skill Passport Matters
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">
-            {isCorporate 
-              ? 'Making early-career hiring more skill-driven and efficient'
-              : 'The journey from invisible to unmissable'
-            }
+            The journey from invisible to unmissable
           </p>
         </motion.div>
 
@@ -146,12 +139,9 @@ const TimelineSection = () => {
                         <X className="w-6 h-6 sm:w-7 sm:h-7 text-red-600" />
                       </div>
                       <div>
-                        <p className="text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wide mb-2">Today's Challenge</p>
+                        <p className="text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wide mb-2">Today's Problem</p>
                         <p className="text-base sm:text-lg font-semibold text-gray-800">
-                          {isCorporate 
-                            ? "Resumes don't clearly show real skills"
-                            : 'Degrees are common'
-                          }
+                          Degrees are common
                         </p>
                       </div>
                     </div>
@@ -172,12 +162,9 @@ const TimelineSection = () => {
                         <Check className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                       </div>
                       <div>
-                        <p className="text-xs sm:text-sm font-bold text-blue-100 uppercase tracking-wide mb-2">Skill Ecosystem Helps</p>
+                        <p className="text-xs sm:text-sm font-bold text-blue-100 uppercase tracking-wide mb-2">Skill Passport Helps</p>
                         <p className="text-base sm:text-lg font-semibold text-white">
-                          {isCorporate 
-                            ? 'Discover candidates through structured skill profiles and learning portfolios'
-                            : 'Demonstrate industry-relevant skills'
-                          }
+                          Demonstrate industry-relevant skills
                         </p>
                       </div>
                     </div>
@@ -203,12 +190,9 @@ const TimelineSection = () => {
                         <X className="w-6 h-6 sm:w-7 sm:h-7 text-red-600" />
                       </div>
                       <div>
-                        <p className="text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wide mb-2">Today's Challenge</p>
+                        <p className="text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wide mb-2">Today's Problem</p>
                         <p className="text-base sm:text-lg font-semibold text-gray-800">
-                          {isCorporate 
-                            ? 'Identifying job-ready students takes time'
-                            : 'Resumes look the same'
-                          }
+                          Resumes look the same
                         </p>
                       </div>
                     </div>
@@ -228,12 +212,9 @@ const TimelineSection = () => {
                         <Check className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                       </div>
                       <div>
-                        <p className="text-xs sm:text-sm font-bold text-blue-100 uppercase tracking-wide mb-2">Skill Ecosystem Helps</p>
+                        <p className="text-xs sm:text-sm font-bold text-blue-100 uppercase tracking-wide mb-2">Skill Passport Helps</p>
                         <p className="text-base sm:text-lg font-semibold text-white">
-                          {isCorporate 
-                            ? 'Access candidates who showcase projects, certifications, and learning journeys'
-                            : 'Organize learning, projects, and certifications in one place'
-                          }
+                          Organize learning, projects, and certifications in one place
                         </p>
                       </div>
                     </div>
@@ -259,12 +240,9 @@ const TimelineSection = () => {
                         <X className="w-6 h-6 sm:w-7 sm:h-7 text-red-600" />
                       </div>
                       <div>
-                        <p className="text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wide mb-2">Today's Challenge</p>
+                        <p className="text-xs sm:text-sm font-bold text-red-600 uppercase tracking-wide mb-2">Today's Problem</p>
                         <p className="text-base sm:text-lg font-semibold text-gray-800">
-                          {isCorporate 
-                            ? "Degrees alone don't predict workplace readiness"
-                            : 'Employers care about skills, not just scores'
-                          }
+                          Employers care about skills, not just scores
                         </p>
                       </div>
                     </div>
@@ -284,12 +262,9 @@ const TimelineSection = () => {
                         <Check className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                       </div>
                       <div>
-                        <p className="text-xs sm:text-sm font-bold text-blue-100 uppercase tracking-wide mb-2">Skill Ecosystem Helps</p>
+                        <p className="text-xs sm:text-sm font-bold text-blue-100 uppercase tracking-wide mb-2">Skill Passport Helps</p>
                         <p className="text-base sm:text-lg font-semibold text-white">
-                          {isCorporate 
-                            ? 'Evaluate candidates through demonstrated skills and experiences'
-                            : 'Present yourself with clarity and confidence'
-                          }
+                          Present yourself with clarity and confidence
                         </p>
                       </div>
                     </div>
