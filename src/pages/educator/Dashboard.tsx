@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ReactApexChart from 'react-apexcharts';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Dashboard');
+
 import {
   UserGroupIcon,
   CheckCircleIcon,
@@ -52,16 +56,16 @@ const Dashboard = () => {
       if (!mounted) return;
 
       if (event === 'TOKEN_REFRESHED') {
-        console.log('✅ Token auto-refreshed by Supabase');
+        logger.info('Token auto-refreshed by Supabase');
       }
 
       if (session?.user) {
-        console.log('✅ Auth state change - user authenticated');
+        logger.info('Auth state change - user authenticated');
         setIsAuthenticated(true);
         setError(null);
         loadDashboardData();
       } else {
-        console.log('❌ Auth state change - no user');
+        logger.warn('Auth state change - no user');
         setIsAuthenticated(false);
         setLoading(false);
         setError('Please log in to view the dashboard');
@@ -76,7 +80,7 @@ const Dashboard = () => {
         if (!mounted) return;
 
         if (error) {
-          console.error('Session error:', error);
+          logger.error('Session error:', error);
           // Don't manually refresh - Supabase handles this automatically
           // Just check if we have a valid session
           if (!session?.user) {
@@ -88,18 +92,18 @@ const Dashboard = () => {
         }
 
         if (session?.user) {
-          console.log('✅ Session check - user found, loading data...');
+          logger.info('Session check - user found, loading data');
           setIsAuthenticated(true);
           setError(null);
           loadDashboardData();
         } else {
-          console.log('❌ Session check - no user');
+          logger.warn('Session check - no user');
           setIsAuthenticated(false);
           setLoading(false);
           setError('Please log in to view the dashboard');
         }
       } catch (err) {
-        console.error('Authentication error:', err);
+        logger.error('Authentication error:', err);
         if (mounted) {
           setIsAuthenticated(false);
           setLoading(false);
@@ -134,7 +138,7 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
       
-      console.log('🔄 Starting data load...');
+      logger.info('Starting data load');
       
       const [kpisData, activitiesData, analyticsData, announcementsData] = await Promise.all([
         dashboardApi.getKPIs(),
@@ -143,11 +147,9 @@ const Dashboard = () => {
         dashboardApi.getAnnouncements(),
       ]);
 
-      console.log('📊 Data loaded successfully:', {
-        kpis: kpisData,
-        activities: activitiesData.length,
-        analytics: analyticsData,
-        announcements: announcementsData.length
+      logger.info('Data loaded successfully', {
+        hasKpis: !!kpisData,
+        activitiesCount: activitiesData.length
       });
 
       setKpis(kpisData);
@@ -155,7 +157,7 @@ const Dashboard = () => {
       setSkillAnalytics(analyticsData);
       setAnnouncements(announcementsData);
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+      logger.error('Failed to load dashboard data:', error);
       
       // Check if it's an educator registration issue
       if (error instanceof Error && error.message.includes('not registered with any school')) {
@@ -187,7 +189,7 @@ const Dashboard = () => {
         setNewAnnouncement('');
       }
     } catch (error) {
-      console.error('Failed to send announcement:', error);
+      logger.error('Failed to send announcement:', error);
     } finally {
       setSendingAnnouncement(false);
     }
@@ -207,7 +209,7 @@ const Dashboard = () => {
       setRecentActivities(moreActivities);
       setShowAllActivities(true);
     } catch (error) {
-      console.error('Failed to load more activities:', error);
+      logger.error('Failed to load more activities:', error);
     } finally {
       setLoadingMoreActivities(false);
     }

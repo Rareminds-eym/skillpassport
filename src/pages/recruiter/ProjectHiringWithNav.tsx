@@ -15,6 +15,9 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - FeatureGate is a JSX component
 import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('ProjectHiringWithNav');
 
 // Import components
 import ProjectList from '../../components/Recruiter/Projects/ProjectList';
@@ -156,7 +159,7 @@ const ProjectHiringWithNavContent = () => {
   });
 
   const handleViewProject = (id: string) => {
-    console.log('View project:', id);
+    logger.info('View project', { id });
     alert(`Project Details\n\nNavigating to project details for: ${id}\n\nThis will open a full project details page with:\n- Overview\n- Proposals\n- Milestones\n- Activity timeline`);
   };
 

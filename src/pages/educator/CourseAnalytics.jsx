@@ -1,4 +1,8 @@
 import { motion } from 'framer-motion';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('CourseAnalytics');
+
 import {
     Activity,
     Award,
@@ -53,7 +57,7 @@ const CourseAnalytics = () => {
         setEnrollments(enrollResult.data);
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      logger.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }

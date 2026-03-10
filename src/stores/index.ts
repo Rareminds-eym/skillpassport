@@ -121,6 +121,7 @@ export {
 
 export {
   useTestStore,
+  useTest,
   useTestQuestions,
   useTestAnswers,
   useTestLoading,

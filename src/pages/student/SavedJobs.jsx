@@ -17,6 +17,9 @@ import OpportunityPreview from '../../components/Students/components/Opportunity
 import { useUser } from '../../stores';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('SavedJobs');
 
 const SavedJobs = () => {
   const user = useUser();
@@ -58,7 +61,7 @@ const SavedJobs = () => {
         
         setError(null);
       } catch (err) {
-        console.error('❌ Error loading saved jobs:', err);
+        logger.error('❌ Error loading saved jobs', err);
         setError(err.message || 'Failed to load saved jobs');
       } finally {
         setLoading(false);
@@ -125,7 +128,7 @@ const SavedJobs = () => {
         alert(result.message);
       }
     } catch (error) {
-      console.error('Error unsaving job:', error);
+      logger.error('Error unsaving job', error);
       alert('Failed to unsave job');
     }
   };
@@ -227,7 +230,7 @@ const SavedJobs = () => {
         alert(result.message);
       }
     } catch (error) {
-      console.error('Error clearing inactive jobs:', error);
+      logger.error('Error clearing inactive jobs', error);
       alert('Failed to clear inactive jobs');
     }
   };

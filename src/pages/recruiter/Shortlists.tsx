@@ -33,6 +33,9 @@ import {
 import jsPDF from 'jspdf';
 import SearchBar from '../../components/common/SearchBar';
 import AdvancedShortlistFilters, { ShortlistFilters } from '../../components/Recruiter/components/AdvancedShortlistFilters';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Shortlists');
 
 // Define TypeScript interfaces for our data
 interface ShortlistCandidate {
@@ -315,7 +318,7 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
       setShareLink(generatedLink);
       return generatedLink;
     } catch (error) {
-      console.error('Error sharing shortlist:', error);
+      logger.error('Error sharing shortlist', error);
       alert('Failed to generate share link. Please try again.');
       return null;
     } finally {
@@ -348,14 +351,14 @@ const ShareModal = ({ shortlist, isOpen, onClose, onShare }) => {
           textArea.remove();
           alert('Link copied to clipboard!');
         } catch (err) {
-          console.error('Fallback copy failed:', err);
+          logger.error('Fallback copy failed', err);
           textArea.remove();
           // Show the link for manual copying
           prompt('Copy this link manually:', link);
         }
       }
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
+      logger.error('Error copying to clipboard', error);
       // Last resort - show prompt for manual copy
       prompt('Copy this link manually:', link);
     }
@@ -619,7 +622,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
         
         doc.addImage(rmLogoData, 'PNG', centerX, centerY, centerWidth, centerHeight, undefined, 'FAST');
       } catch (error) {
-        console.error('Failed to load watermark images:', error);
+        logger.error('Failed to load watermark images', error);
         // Fallback to text watermark if images fail
         doc.setFontSize(40);
         doc.setTextColor(200, 200, 200);
@@ -718,7 +721,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
       
       const { data: candidates, error: candidatesError } = await getShortlistCandidates(shortlist.id);
       if (candidatesError) {
-        console.error('Error fetching candidates:', candidatesError);
+        logger.error('Error fetching candidates', candidatesError);
         throw candidatesError;
       }
       
@@ -771,7 +774,7 @@ const ExportModal = ({ shortlist, isOpen, onClose, onExport }) => {
       onExport(shortlist, exportSettings);
       onClose();
     } catch (error) {
-      console.error('Error exporting shortlist:', error);
+      logger.error('Error exporting shortlist', error);
       alert('Failed to export shortlist. Please try again.');
     }
   };
@@ -910,7 +913,7 @@ const EditShortlistModal = ({ shortlist, isOpen, onClose, onUpdate }) => {
       onUpdate(updatedShortlist);
       onClose();
     } catch (error) {
-      console.error('Error updating shortlist:', error);
+      logger.error('Error updating shortlist', error);
       alert('Failed to update shortlist. Please try again.');
     }
   };
@@ -1011,7 +1014,7 @@ const CreateShortlistModal = ({ isOpen, onClose, onCreate }) => {
       setFormData({ name: '', description: '', tags: '' });
       onClose();
     } catch (error) {
-      console.error('Error creating shortlist:', error);
+      logger.error('Error creating shortlist', error);
       alert('Failed to create shortlist. Please try again.');
     }
   };
@@ -1354,7 +1357,7 @@ const Shortlists = () => {
 
       setShortlists(formatted);
     } catch (error) {
-      console.error('Error fetching shortlists:', error);
+      logger.error('Error fetching shortlists', error);
       alert('Failed to load shortlists');
     } finally {
       setLoading(false);
@@ -1378,7 +1381,7 @@ const Shortlists = () => {
         alert('Share link copied to clipboard!');
       }
     } catch (error) {
-      console.error('Error handling share:', error);
+      logger.error('Error handling share', error);
       alert('Share link generated but failed to copy to clipboard.');
     }
   };
@@ -1400,7 +1403,7 @@ const Shortlists = () => {
       });
       
     } catch (error) {
-      console.error('Error logging export activity:', error);
+      logger.error('Error logging export activity', error);
     }
   };
 
@@ -1423,7 +1426,7 @@ const Shortlists = () => {
 
         setShortlists(prev => prev.filter(sl => sl.id !== shortlistId));
       } catch (error) {
-        console.error('Error deleting shortlist:', error);
+        logger.error('Error deleting shortlist', error);
         alert('Failed to delete shortlist. Please try again.');
       }
     }
@@ -1721,7 +1724,7 @@ const Shortlists = () => {
                   const { data: candidates, error } = await getShortlistCandidates(sl.id);
                   
                   if (error) {
-                    console.error('Database error:', error);
+                    logger.error('Database error', error);
                     const errorMsg = typeof error === 'object' && error !== null && 'message' in error 
                       ? (error as { message: string }).message 
                       : String(error);
@@ -1736,7 +1739,7 @@ const Shortlists = () => {
                   setSelectedCandidates(candidates || []);
                   setShowViewModal(true);
                 } catch (error) {
-                  console.error('Error fetching candidates:', error);
+                  logger.error('Error fetching candidates', error);
                   const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                   alert(`Failed to load candidates: ${errorMessage}`);
                 }

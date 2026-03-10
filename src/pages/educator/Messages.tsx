@@ -28,6 +28,9 @@ import { useCollegeLecturerMessages } from '../../hooks/useCollegeLecturerMessag
 import { useCollegeEducatorAdminConversationsForEducator } from '../../hooks/useCollegeEducatorAdminConversations.js';
 import { useCollegeEducatorAdminMessagesForEducator } from '../../hooks/useCollegeEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('EducatorMessages');
 import { useUser } from '../../stores';
 import { useGlobalPresence } from '../../stores';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
@@ -62,10 +65,10 @@ const CollegeLecturerMessages = () => {
   
   // Get college lecturer ID from auth
   const user = useUser();
-  console.log('🔍 Raw user object from auth:', user);
+  logger.info('🔍 Raw user object from auth:', user);
   // Use the real user ID from auth
   const userId = user?.id;
-  console.log('🔍 Final userId value:', userId);
+  logger.info('🔍 Final userId value:', userId);
   const lecturerName = user?.name || 'College Lecturer';
   const queryClient = useQueryClient();
   
@@ -84,7 +87,7 @@ const CollegeLecturerMessages = () => {
     queryKey: ['college-lecturer-details', userId],
     queryFn: async () => {
       if (!userId) return null;
-      console.log('🔍 Querying college lecturer details with user_id:', userId);
+      logger.info('🔍 Querying college lecturer details with user_id:', userId);
       const { data, error } = await supabase
         .from('college_lecturers')
         .select('id, collegeId, first_name, last_name, email, department, specialization')
@@ -92,10 +95,10 @@ const CollegeLecturerMessages = () => {
         .single();
       
       if (error) {
-        console.error('❌ Error fetching college lecturer details:', error);
+        logger.error('❌ Error fetching college lecturer details:', error);
         throw error;
       }
-      console.log('✅ College lecturer details found:', data);
+      logger.info('✅ College lecturer details found:', data);
       return data;
     },
     enabled: !!userId,
@@ -118,11 +121,11 @@ const CollegeLecturerMessages = () => {
         .single();
       
       if (error) {
-        console.error('❌ Error fetching college admin ID:', error);
+        logger.error('❌ Error fetching college admin ID:', error);
         return null;
       }
       
-      console.log('✅ College admin data:', data);
+      logger.info('✅ College admin data:', data);
       return data;
     },
     enabled: !!collegeId,
@@ -135,10 +138,10 @@ const CollegeLecturerMessages = () => {
     queryKey: ['college-lecturer-conversations', collegeLecturerRecordId, 'active'],
     queryFn: async () => {
       if (!collegeLecturerRecordId) return [];
-      console.log('🔍 Fetching college student conversations for lecturer record ID:', collegeLecturerRecordId);
+      logger.info('🔍 Fetching college student conversations for lecturer record ID:', collegeLecturerRecordId);
       const allConversations = await MessageService.getUserConversations(collegeLecturerRecordId, 'college_educator', false);
       const collegeStudentConversations = allConversations.filter(conv => conv.conversation_type === 'student_college_educator');
-      console.log('📚 Found college student conversations:', collegeStudentConversations.length);
+      logger.info('📚 Found college student conversations:', collegeStudentConversations.length);
       return collegeStudentConversations;
     },
     enabled: !!collegeLecturerRecordId,
@@ -185,25 +188,25 @@ const CollegeLecturerMessages = () => {
 
   // Debug logging
   useEffect(() => {
-    console.log('🔍 [College-Messages-Page] === USER & LECTURER DEBUG ===');
-    console.log('� Aut h User:', {
+    logger.info('🔍 [College-Messages-Page] === USER & LECTURER DEBUG ===');
+    logger.info('� Aut h User:', {
       id: user?.id,
       email: user?.email,
       name: user?.name
     });
-    console.log('🎓 College Lecturer Data:', collegeLecturerData);
-    console.log('🆔 IDs:', {
+    logger.info('🎓 College Lecturer Data:', collegeLecturerData);
+    logger.info('🆔 IDs:', {
       userId,
       userAuthId,
       collegeLecturerRecordId,
       collegeId
     });
-    console.log('🏁 [College-Messages-Page] === USER & LECTURER DEBUG END ===');
+    logger.info('🏁 [College-Messages-Page] === USER & LECTURER DEBUG END ===');
   }, [user, userId, userAuthId, collegeLecturerData, collegeLecturerRecordId, collegeId]);
 
   useEffect(() => {
     if (collegeLecturerData) {
-      console.log('👨‍🏫 College Lecturer data:', {
+      logger.info('👨‍🏫 College Lecturer data:', {
         id: collegeLecturerData.id,
         collegeId: collegeLecturerData.collegeId,
         name: `${collegeLecturerData.first_name} ${collegeLecturerData.last_name}`,
@@ -241,8 +244,8 @@ const CollegeLecturerMessages = () => {
   
   // Debug conversations loading
   useEffect(() => {
-    console.log('🔍 [College-Messages-Page] === CONVERSATIONS DEBUG ===');
-    console.log('📋 Conversations state:', {
+    logger.info('🔍 [College-Messages-Page] === CONVERSATIONS DEBUG ===');
+    logger.info('📋 Conversations state:', {
       activeCount: activeCollegeStudentConversations?.length || 0,
       archivedCount: archivedCollegeStudentConversations?.length || 0,
       showArchived,
@@ -251,12 +254,12 @@ const CollegeLecturerMessages = () => {
     });
     
     if (conversations && conversations.length > 0) {
-      console.log('📋 [College-Messages-Page] Sample conversation:', conversations[0]);
-      console.log('📋 [College-Messages-Page] All conversation IDs:', 
+      logger.info('📋 [College-Messages-Page] Sample conversation:', conversations[0]);
+      logger.info('📋 [College-Messages-Page] All conversation IDs:', 
         conversations.map(c => ({ id: c.id, student_name: c.student?.name }))
       );
     }
-    console.log('🏁 [College-Messages-Page] === CONVERSATIONS DEBUG END ===');
+    logger.info('🏁 [College-Messages-Page] === CONVERSATIONS DEBUG END ===');
   }, [activeCollegeStudentConversations, archivedCollegeStudentConversations, conversations, showArchived, loadingConversations]);
   
   // Fetch messages for selected conversation - use appropriate hook based on tab
@@ -275,21 +278,21 @@ const CollegeLecturerMessages = () => {
   const { messages, isLoading: loadingMessages, sendMessage, isSending } = activeTab === 'college_students' ? studentMessages : adminMessages;
   // Debug messages loading
   useEffect(() => {
-    console.log('🔍 [College-Messages-Page] === MESSAGES DEBUG ===');
-    console.log('📋 Selected Conversation ID:', selectedConversationId);
-    console.log('📨 Messages loaded:', {
+    logger.info('🔍 [College-Messages-Page] === MESSAGES DEBUG ===');
+    logger.info('📋 Selected Conversation ID:', selectedConversationId);
+    logger.info('📨 Messages loaded:', {
       count: messages?.length || 0,
       isLoading: loadingMessages,
       hasMessages: !!messages && messages.length > 0
     });
     
     if (messages && messages.length > 0) {
-      console.log('📨 [College-Messages-Page] First message:', messages[0]);
-      console.log('📨 [College-Messages-Page] Last message:', messages[messages.length - 1]);
+      logger.info('📨 [College-Messages-Page] First message:', messages[0]);
+      logger.info('📨 [College-Messages-Page] Last message:', messages[messages.length - 1]);
     } else if (selectedConversationId && !loadingMessages) {
-      console.log('⚠️ [College-Messages-Page] No messages found for selected conversation');
+      logger.info('⚠️ [College-Messages-Page] No messages found for selected conversation');
     }
-    console.log('🏁 [College-Messages-Page] === MESSAGES DEBUG END ===');
+    logger.info('🏁 [College-Messages-Page] === MESSAGES DEBUG END ===');
   }, [selectedConversationId, messages, loadingMessages]);
 
   // Use shared global presence context
@@ -297,8 +300,8 @@ const CollegeLecturerMessages = () => {
   
   // Debug presence system
   useEffect(() => {
-    console.log('🔍 [Messages] Global presence system loaded');
-    console.log('🔍 [Messages] isUserOnlineGlobal function:', typeof isUserOnlineGlobal);
+    logger.info('🔍 [Messages] Global presence system loaded');
+    logger.info('🔍 [Messages] isUserOnlineGlobal function:', typeof isUserOnlineGlobal);
   }, [isUserOnlineGlobal]);
 
   // Presence tracking for current conversation
@@ -354,10 +357,10 @@ const CollegeLecturerMessages = () => {
       (conversation: Conversation) => {
         // Handle both student and admin conversations
         if (conversation.conversation_type === 'student_college_educator') {
-          console.log('🔄 [College Lecturer] Student conversation UPDATE:', conversation);
+          logger.info('🔄 [College Lecturer] Student conversation UPDATE:', conversation);
           
           if (conversation.deleted_by_college_educator) {
-            console.log('❌ [College Lecturer] Ignoring deleted student conversation:', conversation.id);
+            logger.info('❌ [College Lecturer] Ignoring deleted student conversation:', conversation.id);
             return;
           }
           
@@ -370,10 +373,10 @@ const CollegeLecturerMessages = () => {
             refetchType: 'active'
           });
         } else if (conversation.conversation_type === 'college_educator_admin') {
-          console.log('🔄 [College Lecturer] Admin conversation UPDATE:', conversation);
+          logger.info('🔄 [College Lecturer] Admin conversation UPDATE:', conversation);
           
           if (conversation.deleted_by_educator) {
-            console.log('❌ [College Lecturer] Ignoring deleted admin conversation:', conversation.id);
+            logger.info('❌ [College Lecturer] Ignoring deleted admin conversation:', conversation.id);
             return;
           }
           
@@ -437,7 +440,7 @@ const CollegeLecturerMessages = () => {
         });
       })
       .catch(err => {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read:', err);
         markedAsReadRef.current.delete(markKey);
         refetchConversations();
       });
@@ -521,7 +524,7 @@ const CollegeLecturerMessages = () => {
         ]);
       }
     } catch (error) {
-      console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
+      logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
       refetchConversations();
     } finally {
       setTimeout(() => setIsTransitioning(false), 300);
@@ -556,11 +559,11 @@ const CollegeLecturerMessages = () => {
   
   // Transform and filter conversations
   const filteredContacts = useMemo(() => {
-    console.log('🔍 [Messages] Processing conversations for activeTab:', activeTab);
-    console.log('🔍 [Messages] Raw conversations:', conversations);
+    logger.info('🔍 [Messages] Processing conversations for activeTab:', activeTab);
+    logger.info('🔍 [Messages] Raw conversations:', conversations);
     
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
-    console.log('🔍 [Messages] Active conversations after filtering:', activeConversations);
+    logger.info('🔍 [Messages] Active conversations after filtering:', activeConversations);
 
     const contacts = activeConversations.map((conv: any) => {
       if (activeTab === 'college_students') {
@@ -580,7 +583,7 @@ const CollegeLecturerMessages = () => {
         }
         
         const isOnline = isUserOnlineGlobal(conv.student_id);
-        console.log('🔍 [Messages] Student online check:', {
+        logger.info('🔍 [Messages] Student online check:', {
           studentId: conv.student_id,
           studentName,
           isOnline,
@@ -604,7 +607,7 @@ const CollegeLecturerMessages = () => {
         };
       } else {
         // College admin conversations
-        console.log('🔍 [Messages] Processing college admin conversation:', conv);
+        logger.info('🔍 [Messages] Processing college admin conversation:', conv);
         const adminName = conv.college?.name ? `${conv.college.name} Admin` : 'College Admin';
         const subject = conv.subject || 'General Discussion';
         
@@ -612,7 +615,7 @@ const CollegeLecturerMessages = () => {
         const adminId = conv.college?.admin_id || collegeAdminId;
         const isOnline = isUserOnlineGlobal(adminId);
         
-        console.log('🔍 [Messages] Admin online check:', {
+        logger.info('🔍 [Messages] Admin online check:', {
           adminId,
           adminName,
           isOnline,
@@ -637,7 +640,7 @@ const CollegeLecturerMessages = () => {
           type: 'college_admin'
         };
         
-        console.log('🔍 [Messages] Mapped college admin contact:', contact);
+        logger.info('🔍 [Messages] Mapped college admin contact:', contact);
         return contact;
       }
     });
@@ -711,7 +714,7 @@ const CollegeLecturerMessages = () => {
       setMessageInput('');
       setTyping(false);
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message:', error);
     }
   }, [messageInput, currentChat, userAuthId, collegeLecturerRecordId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
 
@@ -727,12 +730,12 @@ const CollegeLecturerMessages = () => {
   }, [messages]);
 
   const displayMessages = useMemo(() => {
-    console.log('🔍 [College-Messages-Page] === DISPLAY MESSAGES DEBUG ===');
-    console.log('📨 Raw messages:', messages);
-    console.log('📊 Messages count:', messages?.length || 0);
+    logger.info('🔍 [College-Messages-Page] === DISPLAY MESSAGES DEBUG ===');
+    logger.info('📨 Raw messages:', messages);
+    logger.info('📊 Messages count:', messages?.length || 0);
     
     const processed = messages.map((msg: any) => {
-      console.log('🔄 [College-Messages-Page] Processing message:', {
+      logger.info('🔄 [College-Messages-Page] Processing message:', {
         id: msg.id,
         sender_type: msg.sender_type,
         receiver_type: msg.receiver_type,
@@ -749,8 +752,8 @@ const CollegeLecturerMessages = () => {
       };
     });
     
-    console.log('✅ [College-Messages-Page] Processed messages:', processed);
-    console.log('🏁 [College-Messages-Page] === DISPLAY MESSAGES DEBUG END ===');
+    logger.info('✅ [College-Messages-Page] Processed messages:', processed);
+    logger.info('🏁 [College-Messages-Page] === DISPLAY MESSAGES DEBUG END ===');
     
     return processed;
   }, [messages]);
@@ -1009,15 +1012,15 @@ const CollegeLecturerMessages = () => {
                   >
                     <button
                       onClick={() => {
-                        console.log('🔍 [College-Messages-Page] === CONVERSATION SELECTION ===');
-                        console.log('📋 Selecting conversation:', {
+                        logger.info('🔍 [College-Messages-Page] === CONVERSATION SELECTION ===');
+                        logger.info('📋 Selecting conversation:', {
                           id: contact.id,
                           name: contact.name,
                           studentId: contact.studentId,
                           previousSelection: selectedConversationId
                         });
                         setSelectedConversationId(contact.id);
-                        console.log('✅ [College-Messages-Page] Conversation selected, should trigger message fetch');
+                        logger.info('✅ [College-Messages-Page] Conversation selected, should trigger message fetch');
                       }}
                       className="flex-1 px-4 py-3 flex items-center gap-3 transition-all text-left"
                     >
@@ -1297,7 +1300,7 @@ const CollegeLecturerMessages = () => {
           collegeId={collegeId}
           onCreateConversation={async ({ studentId, collegeLecturerId: lecturerId, programSectionId, subject, initialMessage }) => {
             try {
-              console.log('🚀 Creating college lecturer conversation:', { studentId, lecturerId, collegeId, programSectionId, subject, initialMessage });
+              logger.info('🚀 Creating college lecturer conversation:', { studentId, lecturerId, collegeId, programSectionId, subject, initialMessage });
               
               const conversation = await MessageService.getOrCreateStudentCollegeLecturerConversation(
                 studentId,
@@ -1306,7 +1309,7 @@ const CollegeLecturerMessages = () => {
                 programSectionId,
                 subject
               );
-              console.log('✅ College lecturer conversation created:', conversation);
+              logger.info('✅ College lecturer conversation created:', conversation);
 
               // Send the initial message if provided
               if (initialMessage && initialMessage.trim()) {
@@ -1322,7 +1325,7 @@ const CollegeLecturerMessages = () => {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial message sent to college student');
+                logger.info('✅ Initial message sent to college student');
               }
 
               // Refetch conversations and select the new one
@@ -1331,7 +1334,7 @@ const CollegeLecturerMessages = () => {
               
               toast.success('Conversation started with college student!');
             } catch (error) {
-              console.error('❌ Error creating college lecturer conversation:', error);
+              logger.error('❌ Error creating college lecturer conversation:', error);
               toast.error('Failed to start conversation with college student');
             }
           }}
@@ -1347,14 +1350,14 @@ const CollegeLecturerMessages = () => {
           collegeId={collegeId}
           onCreateConversation={async ({ educatorId, collegeId: cId, adminId, subject, initialMessage }) => {
             try {
-              console.log('🚀 Creating college educator-admin conversation:', { educatorId, collegeId: cId, adminId, subject, initialMessage });
+              logger.info('🚀 Creating college educator-admin conversation:', { educatorId, collegeId: cId, adminId, subject, initialMessage });
               
               const conversation = await MessageService.getOrCreateCollegeEducatorAdminConversation(
                 educatorId,
                 cId,
                 subject
               );
-              console.log('✅ College educator-admin conversation created:', conversation);
+              logger.info('✅ College educator-admin conversation created:', conversation);
 
               // Send the initial message if provided
               if (initialMessage && initialMessage.trim()) {
@@ -1370,7 +1373,7 @@ const CollegeLecturerMessages = () => {
                   null, // classId
                   subject
                 );
-                console.log('✅ Initial message sent to college admin');
+                logger.info('✅ Initial message sent to college admin');
               }
 
               // Refetch conversations and select the new one
@@ -1379,7 +1382,7 @@ const CollegeLecturerMessages = () => {
               
               toast.success('Conversation started with college admin!');
             } catch (error) {
-              console.error('❌ Error creating college educator-admin conversation:', error);
+              logger.error('❌ Error creating college educator-admin conversation:', error);
               toast.error('Failed to start conversation with college admin');
             }
           }}

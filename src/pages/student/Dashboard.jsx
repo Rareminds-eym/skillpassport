@@ -55,6 +55,9 @@ import {
 import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
 import { Badge } from "../../components/Students/components/ui/badge";
 import { Button } from "../../components/Students/components/ui/button";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('Dashboard');
 import {
   Card,
   CardContent,
@@ -837,7 +840,7 @@ const StudentDashboard = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
     education: educationData,
-    training: trainingData,
+    training: [],
     experience: experienceData,
     technicalSkills: technicalSkills,
     softSkills: softSkills,
@@ -1424,7 +1427,7 @@ const StudentDashboard = () => {
           refreshRecentUpdates();
         }
       } catch (err) {
-        console.error("Error saving:", err);
+        logger.error("Error saving", err);
       }
     }
   };
@@ -1476,7 +1479,7 @@ const StudentDashboard = () => {
         .eq('id', skillId);
 
       if (error) {
-        console.error('🔧 Dashboard - Database error:', error);
+        logger.error('🔧 Dashboard - Database error', error);
         throw error;
       }
 
@@ -1491,7 +1494,7 @@ const StudentDashboard = () => {
         duration: 3000,
       });
     } catch (error) {
-      console.error('🔧 Dashboard - Error toggling technical skill visibility:', error);
+      logger.error('🔧 Dashboard - Error toggling technical skill visibility', error);
       toast({
         title: "Error",
         description: "Failed to update visibility. Please try again.",
@@ -1545,7 +1548,7 @@ const StudentDashboard = () => {
         duration: 3000,
       });
     } catch (error) {
-      console.error('Error toggling soft skill visibility:', error);
+      logger.error('Error toggling soft skill visibility', error);
       toast({
         title: "Error",
         description: "Failed to update visibility. Please try again.",
@@ -1697,7 +1700,7 @@ const StudentDashboard = () => {
 
     // Fallback: Show error if ID exists but data is null (broken foreign key)
     if (studentData?.college_id && !studentData?.college) {
-      console.error('⚠️ College ID exists but college data is null. College may have been deleted.');
+      logger.error('⚠️ College ID exists but college data is null. College may have been deleted.');
       return {
         type: 'College',
         name: 'College Not Found',
@@ -1709,7 +1712,7 @@ const StudentDashboard = () => {
     }
 
     if (studentData?.school_id && !studentData?.school) {
-      console.error('⚠️ School ID exists but school data is null. School may have been deleted.');
+      logger.error('⚠️ School ID exists but school data is null. School may have been deleted.');
       return {
         type: 'School',
         name: 'School Not Found',
@@ -1785,7 +1788,7 @@ const StudentDashboard = () => {
                           alert('Assessment data cleared! Refreshing page...');
                           window.location.reload();
                         } catch (err) {
-                          console.error('Error clearing assessment:', err);
+                          logger.error('Error clearing assessment:', err);
                           alert('Failed to clear assessment: ' + err.message);
                         }
                       }}

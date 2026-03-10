@@ -3,6 +3,9 @@ import React, { useEffect, useState } from "react";
 import toast from 'react-hot-toast';
 import { supabase } from "../../../../lib/supabaseClient";
 import { getAllTimetableConflicts, validateTimetableSlot, ValidationConflict } from "../../../../utils/timetableValidation";
+import { getLogger } from "../../../../config/logging";
+
+const logger = getLogger('school-admin-timetable-builder');
 
 interface Teacher {
   id: string;
@@ -113,7 +116,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.error('No user found');
+        logger.error('No user found');
         return null;
       }
 
@@ -153,7 +156,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
 
       return null;
     } catch (error) {
-      console.error("Error fetching school ID:", error);
+      logger.error("Error fetching school ID", error as Error);
       return null;
     }
   };
@@ -161,7 +164,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
   const loadTeachers = async () => {
     const schoolId = await getSchoolId();
     if (!schoolId) {
-      console.error('No school_id found');
+      logger.error('No school_id found');
       return;
     }
 
@@ -179,7 +182,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
   // const loadClasses = async () => {
   //   const schoolId = await getSchoolId();
   //   if (!schoolId) {
-  //     console.error('No school_id found for classes');
+  //     logger.error('No school_id found for classes');
   //     return;
   //   }
 
@@ -192,13 +195,13 @@ const TimetableBuilderEnhanced: React.FC = () => {
   //     .order("grade")
   //     .order("section");
     
-  //   console.log('Loaded classes:', data);
+  //   logger.info('Loaded classes', { count: data?.length || 0 });
   //   if (data) setClasses(data);
   // };
 const loadClasses = async () => {
     const schoolId = await getSchoolId();
     if (!schoolId) {
-      console.error('No school_id found for classes');
+      logger.error('No school_id found for classes');
       return;
     }
 
@@ -211,13 +214,13 @@ const loadClasses = async () => {
       .order("grade")
       .order("section");
     
-    console.log('Loaded classes:', data);
+    logger.info('Loaded classes', { count: data?.length || 0 });
     if (data) setClasses(data);
   };
   const loadOrCreateTimetable = async () => {
     const schoolId = await getSchoolId();
     if (!schoolId) {
-      console.error('No school_id found for timetable');
+      logger.error('No school_id found for timetable');
       return;
     }
 
@@ -232,11 +235,11 @@ const loadClasses = async () => {
       .maybeSingle();
 
     if (existing) {
-      console.log('Found existing timetable:', existing.id);
+      logger.info('Found existing timetable', { timetableId: existing.id });
       setTimetableId(existing.id);
       setPublishStatus(existing.status);
     } else {
-      console.log('Creating new timetable for school:', schoolId);
+      logger.info('Creating new timetable for school', { schoolId });
       const { data: newTimetable, error } = await supabase
         .from("timetables")
         .insert({
@@ -251,12 +254,12 @@ const loadClasses = async () => {
         .single();
       
       if (error) {
-        console.error('Error creating timetable:', error);
+        logger.error('Error creating timetable', error);
         return;
       }
       
       if (newTimetable) {
-        console.log('Created new timetable:', newTimetable.id);
+        logger.info('Created new timetable', { timetableId: newTimetable.id });
         setTimetableId(newTimetable.id);
       }
     }
@@ -265,7 +268,7 @@ const loadClasses = async () => {
 const loadSubjects = async () => {
   const schoolId = await getSchoolId();
   if (!schoolId) {
-    console.error('No school_id found for subjects');
+    logger.error('No school_id found for subjects');
     return;
   }
 
@@ -277,7 +280,7 @@ const loadSubjects = async () => {
     .order("display_order")
     .order("name");
   
-  console.log('Loaded subjects:', data);
+  logger.info('Loaded subjects', { count: data?.length || 0 });
   if (data) setSubjects(data);
 };
 
@@ -297,7 +300,7 @@ const loadRooms = () => {
       .filter(room => room && room.trim() !== '')
   )].sort();
   
-  console.log('Loaded rooms:', uniqueRooms);
+  logger.info('Loaded rooms', { count: uniqueRooms.length });
   setRooms(uniqueRooms as string[]);
 };
 
@@ -327,12 +330,12 @@ const loadAllSlots = async () => {
       .order("period_number");
     
     if (error) {
-      console.error("Error loading slots:", error);
+      logger.error("Error loading slots", error);
       return;
     }
     
     if (data) {
-      console.log("Raw slots data:", data);
+      logger.info("Raw slots data", { count: data.length });
       const slotsWithNames = data.map((slot: any) => ({
         ...slot,
         // Fix: Ensure both teacher_id and educator_id are properly mapped
@@ -341,7 +344,7 @@ const loadAllSlots = async () => {
         teacher_name: slot.school_educators ? `${slot.school_educators.first_name} ${slot.school_educators.last_name}` : "",
         class_name: slot.school_classes ? slot.school_classes.name : ""
       }));
-      console.log("Processed slots:", slotsWithNames);
+      logger.info("Processed slots", { count: slotsWithNames.length });
       setAllSlots(slotsWithNames);
       
       // Fix: Validate all slots with proper field mapping

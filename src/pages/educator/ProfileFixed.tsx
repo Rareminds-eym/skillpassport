@@ -12,6 +12,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
 import { getDocumentUrl } from '../../services/fileUploadService';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('EducatorProfileFixed');
 
 interface EducatorProfile {
   id: string;
@@ -102,7 +105,7 @@ const ProfileFixed = () => {
         const userData = JSON.parse(storedUser);
         return userData.email || storedEmail;
       } catch (e) {
-        console.error('Error parsing stored user:', e);
+        logger.error('Error parsing stored user', e);
       }
     }
     
@@ -120,17 +123,17 @@ const ProfileFixed = () => {
     
     try {
       setLoading(true);
-      console.log('🔍 Loading profile for:', email);
+      logger.info('Loading profile', { email });
 
       // Get current user ID from auth
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        console.error('❌ No authenticated user');
+        logger.error('No authenticated user');
         navigate('/login/educator');
         return;
       }
 
-      console.log('👤 User ID:', user.id);
+      logger.info('User ID', { userId: user.id });
 
       // Try school educators first
       const { data: schoolData, error: schoolError } = await supabase
@@ -146,7 +149,7 @@ const ProfileFixed = () => {
         .maybeSingle();
 
       if (schoolData) {
-        console.log('✅ Found school educator data');
+        logger.info('Found school educator data');
         const profileData: EducatorProfile = {
           // Primary fields
           id: schoolData.id,
@@ -214,7 +217,7 @@ const ProfileFixed = () => {
         .maybeSingle();
 
       if (collegeData) {
-        console.log('✅ Found college lecturer data');
+        logger.info('Found college lecturer data');
         const profileData: EducatorProfile = {
           // Primary fields
           id: collegeData.id,
@@ -269,9 +272,7 @@ const ProfileFixed = () => {
       }
 
       // No educator data found
-      console.warn('⚠️ No educator data found for user:', user.id);
-      console.log('School error:', schoolError);
-      console.log('College error:', collegeError);
+      logger.warn('No educator data found', { userId: user.id, schoolError, collegeError });
       
       // Create fallback profile
       setProfile({
@@ -280,7 +281,7 @@ const ProfileFixed = () => {
         full_name: 'Educator',
       });
     } catch (error) {
-      console.error('💥 Failed to load profile:', error);
+      logger.error('Failed to load profile', error);
       // Create fallback profile
       setProfile({
         id: '',
@@ -296,12 +297,12 @@ const ProfileFixed = () => {
   useEffect(() => {
     if (!initialized) {
       const email = getUserEmail();
-      console.log('🚀 Initializing profile with email:', email);
+      logger.info('Initializing profile', { email });
       
       if (email) {
         loadProfile(email);
       } else {
-        console.log('❌ No email found, redirecting to login');
+        logger.info('No email found, redirecting to login');
         navigate('/login/educator');
       }
       
@@ -409,8 +410,8 @@ const ProfileFixed = () => {
         }
       });
 
-      console.log('💾 Saving profile:', updateData);
-      console.log('🖼️ Photo URL debug:', {
+      logger.info('Saving profile', { updateData });
+      logger.info('Photo URL debug', {
         'formData.photo_url': formData.photo_url,
         'profile.photo_url': profile.photo_url,
         'hasOwnProperty': formData.hasOwnProperty('photo_url'),
@@ -433,13 +434,13 @@ const ProfileFixed = () => {
       setFormData({});
       
       // Notify Header component to refresh
-      console.log('📢 Emitting profile update event for header refresh')
-      window.dispatchEvent(new CustomEvent('educatorProfileUpdated'))
+      logger.info('Emitting profile update event for header refresh');
+      window.dispatchEvent(new CustomEvent('educatorProfileUpdated'));
       
       alert('Profile saved successfully!');
-      console.log('✅ Profile saved successfully');
+      logger.info('Profile saved successfully');
     } catch (error) {
-      console.error('💥 Save error:', error);
+      logger.error('Save error', error);
       alert(`Failed to save: ${(error as Error).message}`);
     } finally {
       setSaving(false);
@@ -522,7 +523,7 @@ const ProfileFixed = () => {
                     className="h-24 w-24 rounded-full object-cover border-2 border-gray-200 shadow-sm"
                     onError={(e) => {
                       // Fallback to icon if image fails to load
-                      console.log('Photo failed to load, showing fallback');
+                      logger.info('Photo failed to load, showing fallback');
                       e.currentTarget.style.display = 'none';
                       const parent = e.currentTarget.parentNode;
                       if (parent && parent.nextSibling) {

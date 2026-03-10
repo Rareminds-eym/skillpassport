@@ -25,6 +25,9 @@ import * as XLSX from 'xlsx';
 import { supabase } from "../../../lib/supabaseClient";
 import * as clubsService from "../../../services/clubsService";
 import * as competitionsService from "../../../services/competitionsService";
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-skill-curricular');
 
 import 'react-datepicker/dist/react-datepicker.css';
 
@@ -331,7 +334,7 @@ export default function ClubsActivitiesPage() {
                 setClubs(clubsData);
                 setCompetitions(competitionsData);
             } catch (error) {
-                console.error('Error fetching data:', error);
+                logger.error('Error fetching data', error);
                 // Silently handle initial load errors - data will show as empty
             } finally {
                 setLoading(false);
@@ -382,10 +385,10 @@ export default function ClubsActivitiesPage() {
                 
                 // Get logged-in user's email
                 const userEmail = localStorage.getItem('userEmail');
-                console.log('🔍 [SkillCurricular] Fetching students for user:', userEmail);
+                logger.info('Fetching students for user', { userEmail });
                 
                 if (!userEmail) {
-                    console.warn('❌ [SkillCurricular] No user email found in localStorage');
+                    logger.warn('No user email found in localStorage');
                     setAllStudents([]);
                     setLoadingStudents(false);
                     return;
@@ -401,10 +404,10 @@ export default function ClubsActivitiesPage() {
                         const userData = JSON.parse(storedUser);
                         if (userData.role === 'school_admin' && userData.schoolId) {
                             schoolId = userData.schoolId;
-                            console.log('✅ [SkillCurricular] Found school_id from localStorage:', schoolId);
+                            logger.info('Found school_id from localStorage', { schoolId });
                         }
                     } catch (e) {
-                        console.error('Error parsing stored user:', e);
+                        logger.error('Error parsing stored user', e);
                     }
                 }
                 
@@ -417,10 +420,10 @@ export default function ClubsActivitiesPage() {
                         .maybeSingle();
 
                     if (educatorError) {
-                        console.error('❌ [SkillCurricular] Error fetching educator data:', educatorError);
+                        logger.error('Error fetching educator data', educatorError);
                     } else if (educatorData?.school_id) {
                         schoolId = educatorData.school_id;
-                        console.log('✅ [SkillCurricular] Found school_id from school_educators:', schoolId);
+                        logger.info('Found school_id from school_educators', { schoolId });
                     }
                 }
                 
@@ -434,21 +437,21 @@ export default function ClubsActivitiesPage() {
                         .maybeSingle();
 
                     if (orgError) {
-                        console.error('❌ [SkillCurricular] Error fetching organization data:', orgError);
+                        logger.error('Error fetching organization data', orgError);
                     } else if (orgData?.id) {
                         schoolId = orgData.id;
-                        console.log('✅ [SkillCurricular] Found school_id from organizations table:', schoolId);
+                        logger.info('Found school_id from organizations table', { schoolId });
                     }
                 }
 
                 if (!schoolId) {
-                    console.warn('❌ [SkillCurricular] No school_id found for user:', userEmail);
+                    logger.warn('No school_id found for user', { userEmail });
                     setAllStudents([]);
                     setLoadingStudents(false);
                     return;
                 }
 
-                console.log('📡 [SkillCurricular] Fetching students for school_id:', schoolId);
+                logger.info('Fetching students for school_id', { schoolId });
 
                 // Fetch students from this school only
                 const { data, error } = await supabase
@@ -459,14 +462,14 @@ export default function ClubsActivitiesPage() {
                     .order('name');
 
                 if (error) {
-                    console.error('❌ [SkillCurricular] Error fetching students:', error);
+                    logger.error('Error fetching students', error);
                     setAllStudents([]);
                     setLoadingStudents(false);
                     return;
                 }
 
                 if (!data || data.length === 0) {
-                    console.log('⚠️ [SkillCurricular] No students found for school_id:', schoolId);
+                    logger.info('No students found for school_id', { schoolId });
                     setAllStudents([]);
                     setLoadingStudents(false);
                     return;
@@ -483,12 +486,11 @@ export default function ClubsActivitiesPage() {
                     school_id: student.school_id
                 }));
                 
-                console.log(`✅ [SkillCurricular] Loaded ${mappedStudents.length} students from school ${schoolId}`);
-                console.log('📋 [SkillCurricular] Sample student:', mappedStudents[0]);
+                logger.info('Loaded students from school', { count: mappedStudents.length, schoolId });
                 setAllStudents(mappedStudents);
                 
             } catch (err) {
-                console.error('❌ [SkillCurricular] Error loading students:', err);
+                logger.error('Error loading students', err);
                 setAllStudents([]);
             } finally {
                 setLoadingStudents(false);
@@ -602,7 +604,7 @@ export default function ClubsActivitiesPage() {
             setClubs(updated);
             setNotice({ type: "info", text: `Left ${club.name}` });
         } catch (error) {
-            console.error('Error leaving club:', error);
+            logger.error('Error leaving club', error);
             setNotice({ type: "error", text: "Failed to leave club. Please try again." });
         }
     };
@@ -661,7 +663,7 @@ export default function ClubsActivitiesPage() {
             setAttendanceModal({ open: false, club: null });
             setAttendanceRecords({});
         } catch (error) {
-            console.error('Error saving attendance:', error);
+            logger.error('Error saving attendance', error);
             setNotice({ type: "error", text: "Failed to save attendance. Please try again." });
         }
     };
@@ -688,7 +690,7 @@ export default function ClubsActivitiesPage() {
         setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
         setNotice({ type: "success", text: `Student enrolled in ${club.name}` });
     } catch (error) {
-        console.error('Error enrolling student:', error);
+        logger.error('Error enrolling student', error);
         setNotice({ type: "error", text: "Failed to enroll student. Please try again." });
     }
 };
@@ -711,7 +713,7 @@ const handleStudentLeave = async (studentId, club) => {
         setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
         setNotice({ type: "info", text: `Student removed from ${club.name}` });
     } catch (error) {
-        console.error('Error removing student:', error);
+        logger.error('Error removing student', error);
         setNotice({ type: "error", text: "Failed to remove student. Please try again." });
     }
 };
@@ -724,7 +726,7 @@ const handleStudentLeave = async (studentId, club) => {
                 .select('*');
             
             if (error) {
-                console.error('Error fetching club report:', error);
+                logger.error('Error fetching club report', error);
                 // Fallback to localStorage data
                 return clubs.map((c) => ({
                     "Club Name": c.name,
@@ -743,7 +745,7 @@ const handleStudentLeave = async (studentId, club) => {
                 "Participation score": row.participation_score ? row.participation_score + '%' : '--'
             }));
         } catch (err) {
-            console.error('Error building club report:', err);
+            logger.error('Error building club report', err);
             // Fallback to localStorage data
             return clubs.map((c) => ({
                 "Club Name": c.name,
@@ -763,7 +765,7 @@ const handleStudentLeave = async (studentId, club) => {
                 .select('*');
             
             if (error) {
-                console.error('Error fetching competition report:', error);
+                logger.error('Error fetching competition report', error);
                 // Fallback to localStorage data
                 return competitions.map((t) => ({
                     "Competition Name": t.name,
@@ -783,7 +785,7 @@ const handleStudentLeave = async (studentId, club) => {
                 "Average Score": row.avg_score || '--'
             }));
         } catch (err) {
-            console.error('Error building competition report:', err);
+            logger.error('Error building competition report', err);
             // Fallback to localStorage data
             return competitions.map((t) => ({
                 "Competition Name": t.name,
@@ -924,7 +926,7 @@ const handleStudentLeave = async (studentId, club) => {
             setAddClubModal(false);
             setNewClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
         } catch (error) {
-            console.error('Error creating club:', error);
+            logger.error('Error creating club', error);
             setNotice({ type: "error", text: "Failed to create club. Please try again." });
         }
     };
@@ -980,7 +982,7 @@ const handleStudentLeave = async (studentId, club) => {
             setEditClubModal(null);
             setEditClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
         } catch (error) {
-            console.error('Error updating club:', error);
+            logger.error('Error updating club', error);
             setNotice({ type: "error", text: "Failed to update club. Please try again." });
         }
     };
@@ -998,7 +1000,7 @@ const handleStudentLeave = async (studentId, club) => {
             
             setNotice({ type: "success", text: `${club.name} has been deleted successfully!` });
         } catch (error) {
-            console.error('Error deleting club:', error);
+            logger.error('Error deleting club', error);
             setNotice({ type: "error", text: "Failed to delete club. Please try again." });
         }
     };
@@ -1023,7 +1025,7 @@ const handleStudentLeave = async (studentId, club) => {
             const registrations = await competitionsService.getCompetitionRegistrations(compId);
             setCompetitionRegistrations(registrations);
         } catch (error) {
-            console.error('Error loading registrations:', error);
+            logger.error('Error loading registrations', error);
         } finally {
             setLoadingRegistrations(false);
         }
@@ -1090,7 +1092,7 @@ const handleStudentLeave = async (studentId, club) => {
                     );
                     setCompetitions(updatedCompetitions);
                 } catch (statusError) {
-                    console.warn('Failed to update competition status:', statusError);
+                    logger.warn('Failed to update competition status', statusError);
                     // Don't fail the whole registration if status update fails
                 }
             }
@@ -1102,7 +1104,7 @@ const handleStudentLeave = async (studentId, club) => {
             setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
             setEditingRegistration(null);
         } catch (error) {
-            console.error('Error registering for competition:', error);
+            logger.error('Error registering for competition', error);
             setNotice({ type: "error", text: error.message || "Failed to register. Please try again." });
         }
     };
@@ -1127,7 +1129,7 @@ const handleStudentLeave = async (studentId, club) => {
             setNotice({ type: "success", text: "Registration deleted successfully" });
             await loadCompetitionRegistrations(registerCompModal.comp_id);
         } catch (error) {
-            console.error('Error deleting registration:', error);
+            logger.error('Error deleting registration', error);
             setNotice({ type: "error", text: "Failed to delete registration" });
         }
     };
@@ -1226,7 +1228,7 @@ const handleStudentLeave = async (studentId, club) => {
                     setBulkUploadProgress(`Processed ${i + 1}/${jsonData.length} registrations...`);
                     
                 } catch (error) {
-                    console.error(`Error processing row ${i + 2}:`, error);
+                    logger.error('Error processing row', error, { row: i + 2 });
                     errors.push(`Row ${i + 2}: ${error.message || 'Registration failed'}`);
                     errorCount++;
                 }
@@ -1250,7 +1252,7 @@ const handleStudentLeave = async (studentId, club) => {
 
             // Show detailed errors if any
             if (errors.length > 0 && errors.length <= 5) {
-                console.log("Upload errors:", errors);
+                logger.info('Upload errors', { errors });
                 setTimeout(() => {
                     toast.error("Upload errors:\n" + errors.join('\n'));
                 }, 1000);
@@ -1261,7 +1263,7 @@ const handleStudentLeave = async (studentId, club) => {
             setBulkUploadProgress(null);
             
         } catch (error) {
-            console.error('Bulk upload error:', error);
+            logger.error('Bulk upload error', error);
             setNotice({ type: "error", text: "Failed to process bulk upload. Please check file format." });
             setBulkUploadProgress(null);
         }
@@ -1338,7 +1340,7 @@ const handleStudentLeave = async (studentId, club) => {
                 participatingClubs: []
             });
         } catch (error) {
-            console.error('Error creating competition:', error);
+            logger.error('Error creating competition', error);
             setNotice({ type: "error", text: "Failed to create competition. Please try again." });
         }
     };
@@ -1397,7 +1399,7 @@ const handleStudentLeave = async (studentId, club) => {
                 participatingClubs: []
             });
         } catch (error) {
-            console.error('Error updating competition:', error);
+            logger.error('Error updating competition', error);
             setNotice({ type: "error", text: "Failed to update competition. Please try again." });
         }
     };
@@ -1415,7 +1417,7 @@ const handleStudentLeave = async (studentId, club) => {
             
             setNotice({ type: "success", text: `${comp.name} has been deleted successfully!` });
         } catch (error) {
-            console.error('Error deleting competition:', error);
+            logger.error('Error deleting competition', error);
             setNotice({ type: "error", text: "Failed to delete competition. Please try again." });
         }
     };
