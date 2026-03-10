@@ -34,6 +34,9 @@ import { getSubjects, getClasses, getAcademicYears, getCurrentAcademicYear } fro
 import { supabase } from "../../../lib/supabaseClient";
 import { uploadFile, validateFile, deleteFile } from "../../../services/fileUploadService";
 import { getPagesApiUrl } from "../../../utils/pagesUrl";
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-lesson-plan');
 
 /* ==============================
    TYPES & INTERFACES
@@ -457,19 +460,34 @@ const ViewLessonPlanModal = ({
                               onClick={() => {
                                 const storageApiUrl = getPagesApiUrl('storage');
                                 let viewUrl;
+                                let method = 'unknown';
+                                
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
                                   const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
                                   if (keyMatch) {
                                     const extractedKey = 'lesson-plans/' + keyMatch[1];
                                     viewUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=inline`;
+                                    method = 'key-extraction';
+                                    logger.info('Using KEY method for view', { extractedKey });
                                   }
                                 }
                                 // Fallback to full URL parameter
                                 if (!viewUrl) {
                                   viewUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=inline`;
+                                  method = 'full-url';
+                                  logger.info('Using FULL URL method for view');
                                 }
-                                window.open(viewUrl, '_blank');
+                                
+                                logger.info('View method used', { method });
+                                logger.info('Final view URL generated', { url: viewUrl, urlLength: viewUrl.length });
+                                
+                                try {
+                                  window.open(viewUrl, '_blank');
+                                  logger.info('View window opened successfully');
+                                } catch (error) {
+                                  logger.error('Invalid view URL', error);
+                                }
                               }}
                               className="text-xs text-blue-600 hover:underline"
                               title="View file inline"
@@ -479,21 +497,38 @@ const ViewLessonPlanModal = ({
                             
                             <button
                               onClick={() => {
+                                logger.info('Download button clicked', { fileName: file.name, fileType: file.type });
+                                
                                 const storageApiUrl = getPagesApiUrl('storage');
                                 let downloadUrl;
+                                let method = 'unknown';
+                                
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
                                   const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
                                   if (keyMatch) {
                                     const extractedKey = 'lesson-plans/' + keyMatch[1];
                                     downloadUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=download`;
+                                    method = 'key-extraction';
+                                    logger.info('Using KEY method for download', { extractedKey });
                                   }
                                 }
                                 // Fallback to full URL parameter
                                 if (!downloadUrl) {
                                   downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=download`;
+                                  method = 'full-url';
+                                  logger.info('Using FULL URL method for download');
                                 }
-                                window.open(downloadUrl, '_blank');
+                                
+                                logger.info('Download method used', { method });
+                                logger.info('Final download URL generated', { url: downloadUrl, urlLength: downloadUrl.length });
+                                
+                                try {
+                                  window.open(downloadUrl, '_blank');
+                                  logger.info('Download window opened successfully');
+                                } catch (error) {
+                                  logger.error('Invalid download URL', error);
+                                }
                               }}
                               className="text-xs text-blue-600 hover:underline"
                               title="Download file"
@@ -738,7 +773,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
           setFormData(prev => ({ ...prev, academicYear: currentYear }));
         }
       } catch (error) {
-        console.error('Error loading filter data:', error);
+        logger.error('Error loading filter data', error);
       }
     };
 
@@ -936,7 +971,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       }
 
     } catch (error) {
-      console.error('File upload error:', error);
+      logger.error('File upload error', error);
       toast.error('Error uploading files. Please try again.');
     } finally {
       setUploadingFiles(false);
@@ -952,7 +987,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
         // Delete from R2 storage
         await deleteFile(fileToRemove.url);
       } catch (error) {
-        console.error('Error deleting file from storage:', error);
+        logger.error('Error deleting file from storage', error);
         // Continue with removal from UI even if storage deletion fails
       }
     }
@@ -1098,14 +1133,14 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
             .limit(1);
           
           if (classError) {
-            console.error('Error fetching class:', classError);
+            logger.error('Error fetching class', classError);
           }
           
           const classData = classDataArray?.[0];
           classId = classData?.id || null;
           
           if (!classId) {
-            console.warn('No class found for:', {
+            logger.warn('No class found', {
               school_id: currentSchoolId,
               grade: formData.class,
               academic_year: formData.academicYear
@@ -1113,7 +1148,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
           }
         } else {
           // Last resort: try to find any class with matching grade and academic year
-          console.warn('No school_id found, searching for any matching class');
+          logger.warn('No school_id found, searching for any matching class');
           const { data: classDataArray, error: classError } = await supabase
             .from('school_classes')
             .select('id, school_id')
@@ -1124,12 +1159,12 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
           const classData = classDataArray?.[0];
           
           if (classError) {
-            console.error('Error fetching class (no school filter):', classError);
+            logger.error('Error fetching class (no school filter)', classError);
           }
           
           if (classData) {
             classId = classData.id;
-            console.log('Found class:', classData);
+            logger.info('Found class', { classData });
           }
         }
       }
@@ -1228,7 +1263,7 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
       resetForm();
       setShowEditor(false);
     } catch (error: any) {
-      console.error("Error saving lesson plan:", error);
+      logger.error('Error saving lesson plan', error);
       toast.error("Error: " + (error.message || "Failed to save lesson plan"));
     } finally {
       setSubmitting(false);
@@ -1914,63 +1949,36 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                   <div className="flex items-center gap-1">
                                     <button
                                       onClick={() => {
-                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - DEBUGGING START');
-                                        console.log('📄 File Object (Modal):', file);
-                                        console.log('🔗 Original File URL (Modal):', file.url);
-                                        console.log('📝 File Name (Modal):', file.name);
-                                        console.log('📊 File Size (Modal):', file.size);
-                                        console.log('🏷️ File Type (Modal):', file.type);
-                                        
-                                        // Use the storage API endpoint directly for inline viewing
                                         const storageApiUrl = getPagesApiUrl('storage');
-                                        
-                                        // Try different URL construction methods
                                         let viewUrl;
                                         let method = 'unknown';
                                         
-                                        // Method 1: If the URL contains a key pattern, extract it
+                                        // Extract key from lesson-plans URL pattern
                                         if (file.url!.includes('lesson-plans/')) {
                                           const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
                                           if (keyMatch) {
                                             const extractedKey = 'lesson-plans/' + keyMatch[1];
                                             viewUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=inline`;
                                             method = 'key-extraction';
-                                            console.log('🔑 Using KEY method (Modal)');
-                                            console.log('🔑 Extracted Key (Modal):', extractedKey);
-                                            console.log('🔑 Encoded Key (Modal):', encodeURIComponent(extractedKey));
+                                            logger.info('Using KEY method for view', { extractedKey });
                                           }
                                         }
-                                        
-                                        // Method 2: Use the full URL parameter
+                                        // Fallback to full URL parameter
                                         if (!viewUrl) {
                                           viewUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=inline`;
                                           method = 'full-url';
-                                          console.log('🌐 Using FULL URL method (Modal)');
-                                          console.log('🌐 Encoded URL (Modal):', encodeURIComponent(file.url!));
+                                          logger.info('Using FULL URL method for view');
                                         }
                                         
-                                        console.log('⚙️ Method Used (Modal):', method);
-                                        console.log('🎯 Final View URL (Modal):', viewUrl);
-                                        console.log('📋 URL Length (Modal):', viewUrl.length);
-                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - OPENING WINDOW');
+                                        logger.info('View method used', { method });
+                                        logger.info('Final view URL generated', { url: viewUrl, urlLength: viewUrl.length });
                                         
-                                        // Test the URL construction
                                         try {
-                                          const testUrl = new URL(viewUrl);
-                                          console.log('✅ URL is valid (Modal)');
-                                          console.log('🏠 Host (Modal):', testUrl.host);
-                                          console.log('🛤️ Pathname (Modal):', testUrl.pathname);
-                                          console.log('🔍 Search Params (Modal):', testUrl.searchParams.toString());
-                                          console.log('📄 Mode Parameter (Modal):', testUrl.searchParams.get('mode'));
-                                          console.log('🔗 URL Parameter (Modal):', testUrl.searchParams.get('url'));
-                                          console.log('🔑 Key Parameter (Modal):', testUrl.searchParams.get('key'));
+                                          window.open(viewUrl, '_blank');
+                                          logger.info('View window opened successfully');
                                         } catch (error) {
-                                          console.error('❌ Invalid URL (Modal):', error);
+                                          logger.error('Invalid view URL', error);
                                         }
-                                        
-                                        window.open(viewUrl, '_blank');
-                                        console.log('🚀 Window.open executed (Modal)');
-                                        console.log('🔍 VIEW BUTTON CLICKED (MODAL) - DEBUGGING END');
                                       }}
                                       className="text-xs text-blue-600 hover:underline"
                                       title="View file inline"
@@ -1980,44 +1988,38 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                     
                                     <button
                                       onClick={() => {
-                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - DEBUGGING START');
-                                        console.log('📄 File Object (Modal):', file);
-                                        console.log('🔗 Original File URL (Modal):', file.url);
-                                        console.log('📝 File Name (Modal):', file.name);
+                                        logger.info('Download button clicked', { fileName: file.name, fileType: file.type });
                                         
-                                        // Use the storage API endpoint directly for download
                                         const storageApiUrl = getPagesApiUrl('storage');
-                                        
-                                        // Try different URL construction methods
                                         let downloadUrl;
                                         let method = 'unknown';
                                         
-                                        // Method 1: If the URL contains a key pattern, extract it
+                                        // Extract key from lesson-plans URL pattern
                                         if (file.url!.includes('lesson-plans/')) {
                                           const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
                                           if (keyMatch) {
                                             const extractedKey = 'lesson-plans/' + keyMatch[1];
                                             downloadUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=download`;
                                             method = 'key-extraction';
-                                            console.log('🔑 Using KEY method for download (Modal)');
-                                            console.log('🔑 Extracted Key (Modal):', extractedKey);
+                                            logger.info('Using KEY method for download', { extractedKey });
                                           }
                                         }
-                                        
-                                        // Method 2: Use the full URL parameter
+                                        // Fallback to full URL parameter
                                         if (!downloadUrl) {
                                           downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=download`;
                                           method = 'full-url';
-                                          console.log('🌐 Using FULL URL method for download (Modal)');
+                                          logger.info('Using FULL URL method for download');
                                         }
                                         
-                                        console.log('⚙️ Download Method Used (Modal):', method);
-                                        console.log('🎯 Final Download URL (Modal):', downloadUrl);
-                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - OPENING WINDOW');
+                                        logger.info('Download method used', { method });
+                                        logger.info('Final download URL generated', { url: downloadUrl, urlLength: downloadUrl.length });
                                         
-                                        window.open(downloadUrl, '_blank');
-                                        console.log('🚀 Download Window.open executed (Modal)');
-                                        console.log('⬇️ DOWNLOAD BUTTON CLICKED (MODAL) - DEBUGGING END');
+                                        try {
+                                          window.open(downloadUrl, '_blank');
+                                          logger.info('Download window opened successfully');
+                                        } catch (error) {
+                                          logger.error('Invalid download URL', error);
+                                        }
                                       }}
                                       className="text-xs text-blue-600 hover:underline"
                                       title="Download file"

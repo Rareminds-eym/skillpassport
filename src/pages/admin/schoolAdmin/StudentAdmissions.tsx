@@ -22,6 +22,9 @@ import { useStudents } from '../../../hooks/useAdminStudents';
 import AssessmentReportDrawer from '@/components/shared/AssessmentReportDrawer';
 // @ts-ignore - JS file without types
 import { getLatestResult } from '../../../services/assessmentService';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-student-admissions');
 
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
@@ -380,17 +383,17 @@ const StudentAdmissions = () => {
       }
       
       if (result) {
-        console.log('✅ Found assessment result for student:', student.name);
+        logger.info('Found assessment result for student', { studentName: student.name });
         setAssessmentResult(result);
         setShowAssessmentReport(true);
       } else {
-        console.warn('⚠️ No assessment result found for student:', student.name);
+        logger.warn('No assessment result found for student', { studentName: student.name });
         // Still show the drawer but with no assessment data - it will show appropriate message
         setAssessmentResult(null);
         setShowAssessmentReport(true);
       }
     } catch (error) {
-      console.error('❌ Error fetching assessment result:', error);
+      logger.error('Error fetching assessment result', error);
       // Still show the drawer but with error state
       setAssessmentResult(null);
       setShowAssessmentReport(true);
@@ -818,8 +821,8 @@ const StudentAdmissions = () => {
           }, 300);
         }}
         onSuccess={() => {
-          // Success is handled in the modal - just log it
-          console.log('Student created successfully');
+          // Success is handled in the modal
+          logger.info('Student created successfully');
         }}
       />
 
@@ -833,7 +836,7 @@ const StudentAdmissions = () => {
           }}
           student={studentForNote}
           onSuccess={() => {
-            console.log('Note saved/sent successfully');
+            logger.info('Note saved/sent successfully');
           }}
         />
       )}
