@@ -5,6 +5,7 @@ import { persist } from 'zustand/middleware';
 // Types
 export type AssessmentFlowStatus =
   | 'idle'
+  | 'loading'
   | 'checkingEligibility'
   | 'gradeSelection'
   | 'categorySelection'
@@ -22,6 +23,61 @@ export type GradeLevel = '9' | '10' | '11' | '12' | 'college';
 export type StreamCategory = 'after_10th' | 'after_12th' | 'college';
 export type AnswerValue = string | number | string[] | boolean | null;
 
+export interface SJTAnswer {
+  best: string | null;
+  worst: string | null;
+}
+
+export interface Question {
+  id: string;
+  text: string;
+  type: 'single' | 'multiple' | 'multiselect' | 'text' | 'rating' | 'sjt';
+  partType?: 'sjt' | 'aptitude' | 'knowledge';
+  options?: Array<{
+    id: string;
+    text: string;
+    value: string | number;
+  }>;
+  maxSelections?: number;
+  minLength?: number;
+  required?: boolean;
+}
+
+export interface ResponseScale {
+  id: string;
+  label: string;
+  value: number;
+  description?: string;
+}
+
+export interface CurrentAttempt {
+  id: string;
+  user_id: string;
+  grade_level: GradeLevel;
+  stream_id: string | null;
+  current_section_index: number;
+  current_question_index: number;
+  section_timings: SectionTimings;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Section {
+  id: string;
+  title: string;
+  description: string;
+  color: string;
+  instruction: string;
+  questions: Question[];
+  responseScale?: ResponseScale[];
+  isTimed?: boolean;
+  timeLimit?: number;
+  isAptitude?: boolean;
+  isAdaptive?: boolean;
+  individualTimeLimit?: number;
+}
+
 export interface Answers {
   [questionId: string]: AnswerValue;
 }
@@ -37,7 +93,9 @@ export interface AssessmentAttempt {
   current_section_index: number;
   current_question_index: number;
   section_timings: SectionTimings;
-  [key: string]: any;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface AssessmentFlowState {
@@ -51,8 +109,14 @@ export interface AssessmentFlowState {
   sectionTimings: SectionTimings;
   timeRemaining: number | null;
   elapsedTime: number;
+  aptitudeQuestionTimer: number;
+  aptitudePhase: 'individual' | 'shared';
   error: string | null;
   pendingAttempt: AssessmentAttempt | null;
+  sections: Section[];
+  currentAttempt: CurrentAttempt | null;
+  useDatabase: boolean;
+  adaptiveAptitudeAnswer: string | null;
 }
 
 interface AssessmentStore extends AssessmentFlowState {
@@ -71,6 +135,12 @@ interface AssessmentStore extends AssessmentFlowState {
   showSectionComplete: boolean;
   canGoPrevious: boolean;
   canGoNext: boolean;
+  isLastSection: boolean;
+  isLastQuestion: boolean;
+  isCurrentQuestionAnswered: boolean;
+  currentSection: Section | null;
+  currentQuestion: Question | null;
+  questionId: string;
   
   // Actions - State setters
   setStatus: (status: AssessmentFlowStatus) => void;
@@ -86,10 +156,15 @@ interface AssessmentStore extends AssessmentFlowState {
   decrementTime: () => void;
   incrementElapsedTime: () => void;
   setElapsedTime: (time: number) => void;
+  setAptitudeQuestionTimer: (time: number) => void;
   setSectionTiming: (sectionId: string, time: number) => void;
   setSectionTimings: (timings: SectionTimings) => void;
   setError: (error: string | null) => void;
   setPendingAttempt: (attempt: AssessmentAttempt | null) => void;
+  setSections: (sections: Section[]) => void;
+  setCurrentAttempt: (attempt: CurrentAttempt | null) => void;
+  setUseDatabase: (use: boolean) => void;
+  setAdaptiveAptitudeAnswer: (answer: string | null) => void;
   
   // Actions - Navigation
   nextQuestion: () => void;
@@ -126,8 +201,14 @@ const initialState: AssessmentFlowState = {
   sectionTimings: {},
   timeRemaining: null,
   elapsedTime: 0,
+  aptitudeQuestionTimer: 60,
+  aptitudePhase: 'individual',
   error: null,
   pendingAttempt: null,
+  sections: [],
+  currentAttempt: null,
+  useDatabase: false,
+  adaptiveAptitudeAnswer: null,
 };
 
 export const useAssessmentStore = create<AssessmentStore>()(
@@ -179,6 +260,63 @@ export const useAssessmentStore = create<AssessmentStore>()(
         get canGoNext() {
           // Logic depends on your specific requirements
           return true;
+        },
+        get isLastSection() {
+          return get().currentSectionIndex === get().sections.length - 1;
+        },
+        get isLastQuestion() {
+          const state = get();
+          const currentSection = state.sections[state.currentSectionIndex];
+          if (!currentSection) return false;
+          if (currentSection.isAdaptive) return false; // Adaptive sections handle their own completion
+          return state.currentQuestionIndex === (currentSection.questions?.length || 1) - 1;
+        },
+        get isCurrentQuestionAnswered() {
+          const state = get();
+          const currentSection = state.sections[state.currentSectionIndex];
+          const currentQuestion = currentSection?.questions?.[state.currentQuestionIndex];
+          const questionId = currentSection && currentQuestion 
+            ? `${currentSection.id}_${currentQuestion.id}` 
+            : '';
+          
+          if (!questionId || !currentQuestion) return false;
+          
+          const answer = state.answers[questionId];
+          if (answer === undefined || answer === null) return false;
+          
+          // SJT questions need both best and worst
+          if (currentQuestion.partType === 'sjt') {
+            const sjtAnswer = answer as unknown as SJTAnswer;
+            return Boolean(sjtAnswer?.best && sjtAnswer?.worst);
+          }
+          
+          // Multiselect questions
+          if (currentQuestion.type === 'multiselect') {
+            return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
+          }
+          
+          // Text questions
+          if (currentQuestion.type === 'text') {
+            return typeof answer === 'string' && answer.trim().length >= 10;
+          }
+          
+          return true;
+        },
+        get currentSection() {
+          return get().sections[get().currentSectionIndex] || null;
+        },
+        get currentQuestion() {
+          const state = get();
+          const currentSection = state.sections[state.currentSectionIndex];
+          return currentSection?.questions?.[state.currentQuestionIndex] || null;
+        },
+        get questionId() {
+          const state = get();
+          const currentSection = state.sections[state.currentSectionIndex];
+          const currentQuestion = currentSection?.questions?.[state.currentQuestionIndex];
+          return currentSection && currentQuestion 
+            ? `${currentSection.id}_${currentQuestion.id}` 
+            : '';
         },
 
         // State setters
@@ -267,6 +405,12 @@ export const useAssessmentStore = create<AssessmentStore>()(
           });
         },
 
+        setAptitudeQuestionTimer: (time) => {
+          set((state) => {
+            state.aptitudeQuestionTimer = time;
+          });
+        },
+
         setSectionTiming: (sectionId, time) => {
           set((state) => {
             state.sectionTimings[sectionId] = time;
@@ -289,6 +433,30 @@ export const useAssessmentStore = create<AssessmentStore>()(
         setPendingAttempt: (attempt) => {
           set((state) => {
             state.pendingAttempt = attempt;
+          });
+        },
+
+        setSections: (sections) => {
+          set((state) => {
+            state.sections = sections;
+          });
+        },
+
+        setCurrentAttempt: (attempt) => {
+          set((state) => {
+            state.currentAttempt = attempt;
+          });
+        },
+
+        setUseDatabase: (use) => {
+          set((state) => {
+            state.useDatabase = use;
+          });
+        },
+
+        setAdaptiveAptitudeAnswer: (answer) => {
+          set((state) => {
+            state.adaptiveAptitudeAnswer = answer;
           });
         },
 
@@ -475,4 +643,45 @@ export const useAssessmentNavigation = () => {
   const canGoPrevious = useAssessmentStore((state) => state.canGoPrevious);
   const canGoNext = useAssessmentStore((state) => state.canGoNext);
   return { nextQuestion, previousQuestion, goToQuestion, nextSection, goToSection, canGoPrevious, canGoNext };
+};
+
+// Additional convenience hooks for the merged functionality
+export const useAssessmentSections = () => {
+  const sections = useAssessmentStore((state) => state.sections);
+  const currentSection = useAssessmentStore((state) => state.currentSection);
+  const currentSectionIndex = useAssessmentStore((state) => state.currentSectionIndex);
+  const setSections = useAssessmentStore((state) => state.setSections);
+  return { sections, currentSection, currentSectionIndex, setSections };
+};
+
+export const useAssessmentQuestion = () => {
+  const currentQuestion = useAssessmentStore((state) => state.currentQuestion);
+  const currentQuestionIndex = useAssessmentStore((state) => state.currentQuestionIndex);
+  const questionId = useAssessmentStore((state) => state.questionId);
+  const isCurrentQuestionAnswered = useAssessmentStore((state) => state.isCurrentQuestionAnswered);
+  const isLastQuestion = useAssessmentStore((state) => state.isLastQuestion);
+  return { currentQuestion, currentQuestionIndex, questionId, isCurrentQuestionAnswered, isLastQuestion };
+};
+
+export const useAssessmentDatabase = () => {
+  const currentAttempt = useAssessmentStore((state) => state.currentAttempt);
+  const useDatabase = useAssessmentStore((state) => state.useDatabase);
+  const setCurrentAttempt = useAssessmentStore((state) => state.setCurrentAttempt);
+  const setUseDatabase = useAssessmentStore((state) => state.setUseDatabase);
+  return { currentAttempt, useDatabase, setCurrentAttempt, setUseDatabase };
+};
+
+export const useAssessmentAdaptive = () => {
+  const adaptiveAptitudeAnswer = useAssessmentStore((state) => state.adaptiveAptitudeAnswer);
+  const setAdaptiveAptitudeAnswer = useAssessmentStore((state) => state.setAdaptiveAptitudeAnswer);
+  const aptitudeQuestionTimer = useAssessmentStore((state) => state.aptitudeQuestionTimer);
+  const aptitudePhase = useAssessmentStore((state) => state.aptitudePhase);
+  const setAptitudeQuestionTimer = useAssessmentStore((state) => state.setAptitudeQuestionTimer);
+  return { 
+    adaptiveAptitudeAnswer, 
+    setAdaptiveAptitudeAnswer, 
+    aptitudeQuestionTimer, 
+    aptitudePhase, 
+    setAptitudeQuestionTimer 
+  };
 };
