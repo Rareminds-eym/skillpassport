@@ -26,6 +26,9 @@ import {
 import toast from 'react-hot-toast';
 import { useUser, useIsAuthenticated } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('college-admin-courses');
 
 const CollegeAdminCourses: React.FC = () => {
   const navigate = useNavigate();
@@ -69,29 +72,29 @@ const CollegeAdminCourses: React.FC = () => {
   useEffect(() => {
     const loadEducatorAndCourses = async () => {
       try {
-        console.log('=== LOADING COLLEGE ADMIN COURSES ===');
+        logger.info('=== LOADING COLLEGE ADMIN COURSES ===');
         setLoading(true);
         setError(null);
 
         // Check AuthContext first
         if (!isAuthenticated || !user) {
-          console.log('❌ No authenticated user in AuthContext');
+          logger.info('❌ No authenticated user in AuthContext');
           setError('Please log in to view courses');
           setLoading(false);
           return;
         }
 
-        console.log('✅ User authenticated from AuthContext:', user.id);
-        console.log('User email:', user.email);
-        console.log('User role:', user.role);
+        logger.info('✅ User authenticated from AuthContext:', { value: user.id });
+        logger.info('User email:', { value: user.email });
+        logger.info('User role:', { value: user.role });
 
         setEducatorId(user.id);
-        console.log('✅ College Admin ID set:', user.id);
+        logger.info('✅ College Admin ID set:', { value: user.id });
 
         // Use full_name from AuthContext if available
         const fullName = user.full_name || user.email?.split('@')[0] || 'College Admin';
         setEducatorName(fullName);
-        console.log('✅ College Admin name set:', fullName);
+        logger.info('✅ College Admin name set:', { value: fullName });
 
         // Get school_id from school_educators table for creating courses
         const { data: educatorData, error: educatorError } = await supabase
@@ -102,22 +105,22 @@ const CollegeAdminCourses: React.FC = () => {
 
         if (educatorData) {
           setSchoolId(educatorData.school_id);
-          console.log('✅ School ID set:', educatorData.school_id);
+          logger.info('✅ School ID set:', { value: educatorData.school_id });
         } else {
-          console.warn('⚠️ No school_id found for user, will not be able to create courses');
+          logger.warn('⚠️ No school_id found for user, will not be able to create courses');
         }
 
         // Load ALL courses (not filtered by school)
-        console.log('📡 Fetching all courses');
+        logger.info('📡 Fetching all courses');
         const coursesData = await getAllCourses();
-        console.log('✅ Courses loaded:', coursesData.length, 'courses');
+        logger.info('✅ Courses loaded:', { count: coursesData.length });
         
         // Debug: Log module counts for each course
         coursesData.forEach((course, index) => {
-          console.log(`📚 Course ${index + 1}: "${course.title}" has ${course.modules?.length || 0} modules`);
+          logger.info(`Course ${index + 1}: "${course.title}" has ${course.modules?.length || 0} modules`);
           if (course.modules && course.modules.length > 0) {
             course.modules.forEach((mod, modIndex) => {
-              console.log(`   └─ Module ${modIndex + 1}: "${mod.title}" has ${mod.lessons?.length || 0} lessons`);
+              logger.info(`   Module ${modIndex + 1}: "${mod.title}" has ${mod.lessons?.length || 0} lessons`);
             });
           }
         });
@@ -125,17 +128,17 @@ const CollegeAdminCourses: React.FC = () => {
         setCourses(coursesData);
 
       } catch (err: any) {
-        console.error('❌ Error loading courses:', err);
-        console.error('Error details:', {
+        logger.error('❌ Error loading courses:', err as Error);
+        logger.error('Error details:', {
           message: err?.message,
           code: err?.code,
           details: err?.details,
           hint: err?.hint
-        });
+        } as Error);
         setError(err?.message || 'Failed to load courses.');
       } finally {
         setLoading(false);
-        console.log('=== LOADING COMPLETE ===');
+        logger.info('=== LOADING COMPLETE ===');
       }
     };
 
@@ -233,24 +236,24 @@ const CollegeAdminCourses: React.FC = () => {
    *  HANDLERS
    * ───────────────────────────────────────────── */
   const handleCreateCourse = async (courseData: Partial<Course>) => {
-    console.log('=== HANDLE CREATE COURSE ===');
-    console.log('College Admin ID:', educatorId);
-    console.log('College Admin Name:', educatorName);
-    console.log('School ID:', schoolId);
-    console.log('Course Data:', courseData);
+    logger.info('=== HANDLE CREATE COURSE ===');
+    logger.info('College Admin ID:', { value: educatorId });
+    logger.info('College Admin Name:', { value: educatorName });
+    logger.info('School ID:', { value: schoolId });
+    logger.info('Course Data:', { value: courseData });
     
     if (!educatorId || !educatorName || !schoolId) {
-      console.error('❌ Missing college admin information');
-      console.log('educatorId:', educatorId);
-      console.log('educatorName:', educatorName);
-      console.log('schoolId:', schoolId);
+      logger.error('❌ Missing college admin information');
+      logger.info('educatorId:', { value: educatorId });
+      logger.info('educatorName:', { value: educatorName });
+      logger.info('schoolId:', { value: schoolId });
       setError('College admin information not available. Please refresh the page and try again.');
       return;
     }
 
     try {
       setLoading(true);
-      console.log('📡 Calling createCourse service...');
+      logger.info('📡 Calling createCourse service...');
 
       const newCourse = await createCourse(
         {
@@ -273,87 +276,87 @@ const CollegeAdminCourses: React.FC = () => {
         schoolId
       );
 
-      console.log('✅ Course created successfully:', newCourse);
+      logger.info('✅ Course created successfully:', { value: newCourse });
       setCourses([...courses, newCourse]);
       setShowCreateModal(false);
-      console.log('✅ Modal closed, courses updated');
+      logger.info('✅ Modal closed, courses updated');
       toast.success('Course created successfully!');
 
     } catch (err: any) {
-      console.error('❌ Error creating course:', err);
-      console.error('Error details:', {
+      logger.error('❌ Error creating course:', err as Error);
+      logger.error('Error details:', {
         message: err?.message,
         code: err?.code,
         details: err?.details,
         hint: err?.hint
-      });
+      } as Error);
       setError('Failed to create course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
-      console.log('=== CREATE COURSE COMPLETE ===');
+      logger.info('=== CREATE COURSE COMPLETE ===');
     }
   };
 
   const handleEditCourse = (course: Course) => {
-    console.log('Editing course:', course);
+    logger.info('Editing course:', { value: course });
     setEditingCourse(course);
     setShowDetailDrawer(false);
     setShowCreateModal(true);
   };
 
   const handleUpdateCourse = async (courseData: Partial<Course>) => {
-    console.log('=== HANDLE UPDATE COURSE ===');
-    console.log('Editing course:', editingCourse);
-    console.log('Update data:', courseData);
+    logger.info('=== HANDLE UPDATE COURSE ===');
+    logger.info('Editing course:', { value: editingCourse });
+    logger.info('Update data:', { value: courseData });
     
     if (!editingCourse) {
-      console.error('❌ No editing course set');
+      logger.error('❌ No editing course set');
       return;
     }
 
     try {
       setLoading(true);
-      console.log('📡 Calling updateCourse service...');
+      logger.info('📡 Calling updateCourse service...');
       const updatedCourse = await updateCourse(editingCourse.id, courseData);
 
-      console.log('✅ Course updated successfully:', updatedCourse);
+      logger.info('✅ Course updated successfully:', { value: updatedCourse });
       setCourses(courses.map(c => (c.id === editingCourse.id ? updatedCourse : c)));
       setEditingCourse(null);
       setShowCreateModal(false);
-      console.log('✅ Modal closed, courses updated');
+      logger.info('✅ Modal closed, courses updated');
     } catch (err: any) {
-      console.error('❌ Error updating course:', err);
-      console.error('Error details:', {
+      logger.error('❌ Error updating course:', err as Error);
+      logger.error('Error details:', {
         message: err?.message,
         code: err?.code,
         details: err?.details,
         hint: err?.hint
-      });
+      } as Error);
       setError('Failed to update course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
-      console.log('=== UPDATE COURSE COMPLETE ===');
+      logger.info('=== UPDATE COURSE COMPLETE ===');
     }
   };
 
   const handleViewCourse = (course: Course) => {
-    console.log('Viewing course:', course);
+    logger.info('Viewing course:', { value: course });
     setSelectedCourse(course);
     setShowDetailDrawer(true);
   };
 
   const handleArchiveCourse = async (course: Course) => {
     const newStatus = course.status === 'Archived' ? 'Draft' : 'Archived';
-    console.log('Archiving course:', course.id, 'New status:', newStatus);
+    logger.info('Archiving course:', { courseId: course.id, newStatus });
 
     try {
       setLoading(true);
       const updatedCourse = await updateCourse(course.id, { status: newStatus });
 
-      console.log('✅ Course archived successfully');
+      logger.info('✅ Course archived successfully');
       setCourses(courses.map(c => (c.id === course.id ? updatedCourse : c)));
     } catch (err: any) {
-      console.error('❌ Error archiving course:', err);
+      logger.error('❌ Error archiving course:', err as Error);
       setError('Failed to archive course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -361,18 +364,18 @@ const CollegeAdminCourses: React.FC = () => {
   };
 
   const handleCourseUpdate = async (updatedCourse: Course) => {
-    console.log('Updating course from drawer:', updatedCourse);
+    logger.info('Updating course from drawer:', { value: updatedCourse });
     
     try {
       setLoading(true);
 
       const savedCourse = await updateCourse(updatedCourse.id, updatedCourse);
-      console.log('✅ Course updated successfully');
+      logger.info('✅ Course updated successfully');
       setCourses(courses.map(c => (c.id === savedCourse.id ? savedCourse : c)));
       setSelectedCourse(savedCourse);
 
     } catch (err: any) {
-      console.error('❌ Error updating course:', err);
+      logger.error('❌ Error updating course:', err as Error);
       setError('Failed to update course: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
@@ -384,7 +387,7 @@ const CollegeAdminCourses: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    console.log('Clearing filters');
+    logger.info('Clearing filters');
     setSearchQuery('');
     setStatusFilter('All');
     setSkillFilter('All');
@@ -458,9 +461,9 @@ const CollegeAdminCourses: React.FC = () => {
 
         {/* <button
           onClick={() => {
-            console.log('Create Course button clicked');
-            console.log('Current educatorId:', educatorId);
-            console.log('Current educatorName:', educatorName);
+            logger.info('Create Course button clicked');
+            logger.info('Current educatorId:', { value: educatorId });
+            logger.info('Current educatorName:', { value: educatorName });
             setEditingCourse(null);
             setShowCreateModal(true);
           }}
@@ -633,3 +636,4 @@ const CollegeAdminCourses: React.FC = () => {
 };
 
 export default CollegeAdminCourses;
+

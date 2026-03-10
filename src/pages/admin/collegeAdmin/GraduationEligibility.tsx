@@ -24,6 +24,9 @@ import {
 import toast from 'react-hot-toast';
 import SearchBar from '../../../components/common/SearchBar';
 import KPICard from '../../../components/admin/KPICard';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('college-admin-graduation-eligibility');
 
 // Types
 interface Student {
@@ -398,7 +401,7 @@ const ActionModal = ({
       await onConfirm(reason);
       onClose();
     } catch (error) {
-      console.error('Action failed:', error);
+      logger.error('Action failed:', error as Error);
     } finally {
       setLoading(false);
     }
@@ -1049,7 +1052,7 @@ const GraduationEligibility: React.FC = () => {
 
     try {
       // In a real app, this would make API calls to update the database
-      console.log(`Action: ${actionType}, Student: ${selectedStudent.name}, Reason: ${reason}`);
+      logger.info('Student action performed', { actionType, studentName: selectedStudent.name, reason });
       
       // Update local state for demo
       setStudents(prev => prev.map(s => {
@@ -1073,7 +1076,7 @@ const GraduationEligibility: React.FC = () => {
       // Show success message (you can add toast notification here)
       toast.success(`Action completed successfully!`);
     } catch (error) {
-      console.error('Action failed:', error);
+      logger.error('Action failed:', error as Error);
       toast.error('Action failed. Please try again.');
     }
   };
@@ -1094,7 +1097,7 @@ const GraduationEligibility: React.FC = () => {
 
   const handleGenerateEligibilityList = () => {
     const eligibleStudents = students.filter(s => s.eligibility_flag);
-    console.log('Generating eligibility list for:', eligibleStudents);
+    logger.info('Generating eligibility list', { eligibleCount: eligibleStudents.length });
     toast.success(`Generated eligibility list for ${eligibleStudents.length} students`);
   };
 
