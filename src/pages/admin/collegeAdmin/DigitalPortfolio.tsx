@@ -13,6 +13,9 @@ import Pagination from '../../../components/admin/Pagination';
 import SearchBar from '../../../components/common/SearchBar';
 import { useUser } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('college-admin-digital-portfolio');
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -216,7 +219,7 @@ const CollegeAdminDigitalPortfolio = () => {
           .maybeSingle();
 
         if (orgError || !org?.id) {
-          console.error('Error fetching organization:', orgError, 'for email:', user.email);
+          logger.error('Error fetching organization', orgError, { email: user.email });
           setLoading(false);
           return;
         }
@@ -254,7 +257,7 @@ const CollegeAdminDigitalPortfolio = () => {
           .not('college_id', 'is', null);
 
         if (studentsError) {
-          console.error('Error fetching students:', studentsError);
+          logger.error('Error fetching students:', studentsError as Error);
           throw studentsError;
         }
 
@@ -298,10 +301,10 @@ const CollegeAdminDigitalPortfolio = () => {
           };
         }) || [];
 
-        console.log('Transformed students:', transformedStudents);
+        logger.info('Transformed students', { count: transformedStudents.length });
         setStudents(transformedStudents);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        logger.error('Error fetching data:', error as Error);
       } finally {
         setLoading(false);
       }

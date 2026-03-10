@@ -26,6 +26,9 @@ import { markEntryService } from "../../../services/college/markEntryService";
 import { transcriptService } from "../../../services/college/transcriptService";
 import { departmentService } from "../../../services/college/departmentService";
 import { supabase } from "../../../lib/supabaseClient";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('college-admin-examination-management');
 import AssessmentFormModal from "./components/AssessmentFormModal";
 import TimetableScheduler from "./components/TimetableScheduler";
 import MarkEntryGrid from "./components/MarkEntryGrid";
@@ -370,7 +373,7 @@ const ExaminationManagement: React.FC = () => {
       }
       return { success: true };
     } catch (error: any) {
-      console.error('Error saving assessment:', error);
+      logger.error('Error saving assessment:', error);
       return { success: false, error: error.message };
     }
   };
@@ -426,7 +429,7 @@ const ExaminationManagement: React.FC = () => {
       toast.success('Exam timetable scheduled successfully');
       return { success: true };
     } catch (error: any) {
-      console.error('Error saving schedule:', error);
+      logger.error('Error saving schedule:', error);
       toast.error('Failed to schedule exam: ' + error.message);
       return { success: false, error: error.message };
     }
@@ -450,7 +453,7 @@ const ExaminationManagement: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       return { success: true };
     } catch (error: any) {
-      console.error('Error saving marks:', error);
+      logger.error('Error saving marks:', error);
       return { success: false, error: error.message };
     }
   };
@@ -489,7 +492,7 @@ const ExaminationManagement: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       return { success: true };
     } catch (error: any) {
-      console.error('Error moderating marks:', error);
+      logger.error('Error moderating marks:', error);
       return { success: false, error: error.message };
     }
   };
@@ -527,7 +530,7 @@ const ExaminationManagement: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       return { success: true };
     } catch (error: any) {
-      console.error('Error assigning invigilator:', error);
+      logger.error('Error assigning invigilator:', error);
       return { success: false, error: error.message };
     }
   };
@@ -545,7 +548,7 @@ const ExaminationManagement: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['examSlots'] });
       return { success: true };
     } catch (error: any) {
-      console.error('Error removing invigilator:', error);
+      logger.error('Error removing invigilator:', error);
       return { success: false, error: error.message };
     }
   };
@@ -572,7 +575,7 @@ const ExaminationManagement: React.FC = () => {
       setShowTranscriptModal(false);
       return { success: true, data: transcript };
     } catch (error: any) {
-      console.error('Error generating transcript:', error);
+      logger.error('Error generating transcript:', error);
       return { success: false, error: error.message };
     }
   };
