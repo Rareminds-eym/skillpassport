@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import { PromotionalBanner, AssessmentPromotionalBanner } from '../components/Homepage';
-import { useCurrentPromotional, useAssessmentPromotional, useUserRole } from '../stores';
+import { useUserRole, useCurrentPromotional, useAssessmentPromotional } from '../stores';
 
 const PortfolioLayout = () => {
   const { event, showBanner, dismissBanner, getTimeRemaining } = useCurrentPromotional();

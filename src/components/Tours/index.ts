@@ -4,7 +4,7 @@ export { default as AssessmentTestTour } from './AssessmentTestTour';
 export { default as AssessmentResultTour } from './AssessmentResultTour';
 export { default as GlobalTourManager } from './GlobalTourManager';
 export { default as TourWrapper } from './TourWrapper';
-export { TourProvider, useTour } from './TourProvider';
+export { useTour } from '../../stores';
 export * from './types';
 export * from './constants';
 export * from './utils';

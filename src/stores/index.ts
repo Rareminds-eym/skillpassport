@@ -81,6 +81,7 @@ export {
   useTourProgress,
   useTourActions,
   useTourEligibility,
+  useTour,
   type TourKey,
   type TourProgress,
   type TourState 
@@ -93,6 +94,8 @@ export {
   useSubscriptionWarnings,
   useUserEntitlements,
   useSubscriptionPurchase,
+  useSubscription,
+  ACCESS_REASONS,
   type AccessReason,
   type WarningType,
   type Subscription,
@@ -143,6 +146,7 @@ export {
   useCareerUIState,
   useCareerAssistantActions,
   useCareerFeedback,
+  useCareerAssistant,
   type Conversation,
   type Message,
   type FeedbackData 

@@ -4,11 +4,17 @@ import { supabase } from '../lib/supabaseClient';
 
 // Types (from TourProvider)
 export type TourKey = 
+  // Legacy keys (kept for backward compatibility)
+  | 'dashboard'
+  | 'assessment_test'
+  | 'assessment_result'
+  | 'assessment_result_after12'
+  | 'assessment_result_generic'
+  // Modern keys
   | 'student_dashboard'
   | 'student_assessment'
   | 'student_learning'
   | 'student_profile'
-  | 'assessment_result'
   | 'assessment_result_12'
   | 'educator_dashboard'
   | 'admin_dashboard';
@@ -426,3 +432,33 @@ export const useTourEligibility = (tourKey: TourKey) =>
     isCompleted: state.isCompleted(tourKey),
     isSkipped: state.isSkipped(tourKey),
   }));
+
+// Combined hook that mimics the old Context API
+export const useTour = () => {
+  const state = useTourState();
+  const loading = useTourLoading();
+  const isTourRunning = useIsTourRunning();
+  const activeTourKey = useActiveTourKey();
+  const progress = useTourProgress();
+  const tourStore = useTourStore();
+  
+  return {
+    ...state,
+    loading,
+    isTourRunning,
+    activeTourKey,
+    progress,
+    // Actions
+    startTour: tourStore.startTour,
+    completeTour: tourStore.completeTour,
+    skipTour: tourStore.skipTour,
+    stopTour: tourStore.stopTour,
+    nextStep: tourStore.nextStep,
+    previousStep: tourStore.previousStep,
+    goToStep: tourStore.goToStep,
+    // State checks
+    isEligible: tourStore.isEligible,
+    isCompleted: tourStore.isCompleted,
+    isSkipped: tourStore.isSkipped,
+  };
+};

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Conversation } from '../hooks/useCareerConversations';
 import { VirtualMessage } from '../hooks/useVirtualMessage';
-import { useCareerAssistantContext } from '../context/CareerAssistantContext';
+import { useCareerAssistant } from '../../../stores';
 import { formatConversationDate, getConversationGroup } from '../utils/dateUtils';
 import { LoadingSpinner } from './LoadingSpinner';
 import {
@@ -32,7 +32,7 @@ export const ConversationSidebar: React.FC = () => {
     conversationsLoading,
     hasMore,
     onLoadMore,
-  } = useCareerAssistantContext();
+  } = useCareerAssistant();
 
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
