@@ -12,6 +12,9 @@ import {
   XCircleIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
+import { getLogger } from '../../../../config/logging';
+
+const logger = getLogger('university-admin-hr-payroll-management');
 import {
   Users,
   AlertTriangle,

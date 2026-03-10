@@ -18,6 +18,10 @@ import {
   StarIcon,
   ChevronDownIcon,
   ArrowUpTrayIcon,
+} from '@heroicons/react/24/outline';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-faculty-empanelment');
   ArrowDownTrayIcon,
   PrinterIcon,
   ShareIcon,
@@ -139,12 +143,12 @@ const FacultyEmpanelment: React.FC = () => {
   };
 
   const handleApprove = (facultyId: string) => {
-    console.log('Approving faculty:', facultyId);
+    logger.info('Approving faculty:', { facultyId });
     // Implementation for approval
   };
 
   const handleReject = (facultyId: string) => {
-    console.log('Rejecting faculty:', facultyId);
+    logger.info('Rejecting faculty:', { facultyId });
     // Implementation for rejection
   };
 
@@ -159,7 +163,7 @@ const FacultyEmpanelment: React.FC = () => {
   };
 
   const handleBulkAction = (action: string) => {
-    console.log(`Performing bulk action: ${action} on`, selectedFaculty);
+    logger.info(`Performing bulk action: ${action}`, { selectedFaculty });
     // Implementation for bulk actions
   };
   const AddFacultyModal = () => (

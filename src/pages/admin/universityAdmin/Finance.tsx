@@ -18,6 +18,10 @@ import {
   Eye,
   Edit,
   Trash2,
+} from 'lucide-react';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-finance');
   IndianRupee,
   Receipt,
   PieChart
@@ -324,7 +328,7 @@ const UniversityFinance: React.FC = () => {
       setEditingFeeStructure(null);
       return true;
     } catch (error) {
-      console.error('Error saving fee structure:', error);
+      logger.error('Error saving fee structure:', error as Error);
       return false;
     } finally {
       setLoading(false);
@@ -338,7 +342,7 @@ const UniversityFinance: React.FC = () => {
       const updatedStructures = feeStructures.filter(structure => structure.id !== id);
       setFeeStructures(updatedStructures);
     } catch (error) {
-      console.error('Error deleting fee structure:', error);
+      logger.error('Error deleting fee structure:', error as Error);
     }
   };
 
