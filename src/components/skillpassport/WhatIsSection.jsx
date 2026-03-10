@@ -1,11 +1,7 @@
 import { motion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
 
 export default function WhatIsSection() {
-  const location = useLocation();
-  const isCorporate = location.pathname.includes('/register/corporate');
-  const brandName = isCorporate ? 'Skill Ecosystem' : 'Skill Passport';
   return (
     <section id="what-is-skill-passport" className="py-12 sm:py-16 md:py-20 bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -17,7 +13,7 @@ export default function WhatIsSection() {
           className="text-center mb-10 sm:mb-12 md:mb-16"
         >
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
-            What is {brandName}?
+            What is Skill Passport?
           </h2>
         </motion.div>
 
@@ -77,11 +73,9 @@ export default function WhatIsSection() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mt-8 sm:mt-10 md:mt-12 text-center"
         >
-          {!isCorporate && (
-            <p className="text-xl sm:text-2xl font-bold text-gray-900">
-              This is your skill identity—designed for the real world.
-            </p>
-          )}
+          <p className="text-xl sm:text-2xl font-bold text-gray-900">
+            This is your skill identity—designed for the real world.
+          </p>
         </motion.div>
       </div>
     </section>

@@ -1,12 +1,7 @@
 import { motion } from 'framer-motion';
 import { BadgeCheck, Clock, FastForward, Crown, Check } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
 
 export default function WhatYouGetSection() {
-  const location = useLocation();
-  const isCorporate = location.pathname.includes('/register/corporate');
-  const brandName = isCorporate ? 'Skill Ecosystem' : 'Skill Passport';
-  const registrationFee = isCorporate ? '7,500' : '499';
   return (
     <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-b from-gray-50 to-white relative">
       <div className="overflow-hidden px-4 sm:px-0">
@@ -293,10 +288,10 @@ export default function WhatYouGetSection() {
           className="text-center mb-10 sm:mb-12 md:mb-16"
         >
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
-            What You Get After Registration
+            What You Get After Pre-Registration
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
-            Once you complete registration, you will receive:
+            Once you complete pre-registration, you will receive:
           </p>
         </motion.div>
 
@@ -313,7 +308,7 @@ export default function WhatYouGetSection() {
               colors: ['#D1D5DB', '#E5E7EB'],
               Icon: Clock,
               title: 'Early Access',
-              text: `Get priority access to the ${brandName} platform before the public launch.`
+              text: 'Get priority access to the Skill Passport platform before the public launch.'
             },
             {
               colors: ['#3B82F6', '#60A5FA'],
@@ -363,6 +358,28 @@ export default function WhatYouGetSection() {
             );
           })}
         </div>
+
+        {/* Bottom CTA Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.8 }}
+          className="mt-12 sm:mt-16 md:mt-20 relative"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl sm:rounded-3xl blur-xl opacity-20" />
+          <div className="relative bg-gradient-to-r from-emerald-50 to-teal-50 p-6 sm:p-8 md:p-10 rounded-2xl sm:rounded-3xl border-2 border-emerald-200 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-emerald-500 rounded-full mb-3 sm:mb-4">
+              <Check className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+            </div>
+            <p className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 px-2">
+              No recurring charges. No hidden fees.
+            </p>
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 px-2">
+              One-time payment of ₹499 for early access
+            </p>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
