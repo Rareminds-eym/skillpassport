@@ -25,6 +25,10 @@ import { useUser, useIsAuthenticated } from '../../stores';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
 import { supabase } from '../../lib/supabaseClient';
 import { getPagesApiUrl } from '../../utils/pagesUrl';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('EducatorAssessments');
+import { getPagesApiUrl } from '../../utils/pagesUrl';
 import {
     assignToStudents,
     createAssignmentsForClasses,
@@ -281,7 +285,7 @@ const Assessments = () => {
                         const parsedUser = JSON.parse(storedUser);
                         educatorId = parsedUser.educator_id;
                     } catch (e) {
-                        console.error('Error parsing stored user:', e);
+                        logger.error('Error parsing stored user', e);
                     }
                 }
 
@@ -312,7 +316,7 @@ const Assessments = () => {
                 }
 
                 if (!educatorId) {
-                    console.warn('No educator_id found');
+                    logger.warn('No educator_id found');
                     setCurrentEducatorId(null);
                     setTasks([]);
                     setError(null);
@@ -383,7 +387,7 @@ const Assessments = () => {
                 setTasks(transformedTasks);
                 setError(null);
             } catch (err) {
-                console.error('Error fetching assignments:', err);
+                logger.error('Error fetching assignments', err);
                 setError('Failed to load assignments');
             } finally {
                 setLoading(false);
@@ -410,7 +414,7 @@ const Assessments = () => {
                     setCurriculumSubjects(data);
                 }
             } catch (err) {
-                console.error('Error fetching curriculum subjects:', err);
+                logger.error('Error fetching curriculum subjects', err);
             }
         };
         
@@ -537,7 +541,7 @@ const Assessments = () => {
                 // Edit mode with unchanged dates - show warning if dates are in past
                 const dueDate = new Date(newTask.deadline);
                 if (dueDate < now) {
-                    console.warn('⚠️ This assignment has past dates');
+                    logger.warn('This assignment has past dates');
                     // Don't block, just log warning
                 }
             }
@@ -590,7 +594,7 @@ const Assessments = () => {
                     try {
                         await fileUploadRef.current.uploadStagedFiles(selectedTask.id);
                     } catch (uploadError) {
-                        console.error('Failed to upload staged files:', uploadError);
+                        logger.error('Failed to upload staged files', uploadError);
                         // Continue with assignment update even if file upload fails
                     }
                 }
@@ -630,7 +634,7 @@ const Assessments = () => {
                             const uploadResults = await fileUploadRef.current.uploadStagedFiles(assignment.assignment_id);
                             assignment.instruction_files = uploadResults;
                         } catch (uploadError) {
-                            console.error('Failed to upload files for assignment:', assignment.assignment_id, uploadError);
+                            logger.error('Failed to upload files for assignment', uploadError, { assignmentId: assignment.assignment_id });
                             // Continue with other assignments even if one fails
                         }
                     }
@@ -665,7 +669,7 @@ const Assessments = () => {
                 }
             }
         } catch (err) {
-            console.error('Error creating assignment:', err);
+            logger.error('Error creating assignment', err);
             showNotificationModal('error', 'Creation Failed', 'Failed to create assignment. Please try again.');
         } finally {
             setIsUploading(false);
@@ -681,7 +685,7 @@ const Assessments = () => {
             setTasks(tasks.filter(t => t.id !== taskToDelete.id));
             showNotificationModal('success', 'Task Deleted', 'Assignment has been successfully deleted.');
         } catch (err) {
-            console.error('Error deleting assignment:', err);
+            logger.error('Error deleting assignment', err);
             showNotificationModal('error', 'Delete Failed', 'Failed to delete assignment. Please try again.');
         } finally {
             setIsDeleting(false);
@@ -800,7 +804,7 @@ const Assessments = () => {
                 attachments: prev.attachments.filter(name => name !== deletedFile.file_name)
             }));
         } else {
-            console.warn('⚠️ [PARENT WARNING] Could not find deleted file in existingFiles list');
+            logger.warn('Could not find deleted file in existingFiles list');
         }
 
         // Also remove from drawer files if they're loaded
@@ -814,7 +818,7 @@ const Assessments = () => {
             try {
                 await fetchInstructionFilesForDrawer(selectedTask.id);
             } catch (error) {
-                console.error('❌ [DRAWER REFRESH ERROR] Failed to refresh drawer files:', error);
+                logger.error('Failed to refresh drawer files', error);
             }
         }
 
@@ -824,7 +828,7 @@ const Assessments = () => {
                 const freshFiles = await getInstructionFiles(selectedTask.id);
                 setExistingFiles(freshFiles);
             } catch (error) {
-                console.error('❌ [FORCE REFRESH ERROR] Failed to fetch fresh files:', error);
+                logger.error('Failed to fetch fresh files', error);
             }
         }
     };
@@ -834,7 +838,7 @@ const Assessments = () => {
             const files = await getInstructionFiles(assignmentId);
             setDrawerInstructionFiles(files);
         } catch (error) {
-            console.error('Error fetching instruction files:', error);
+            logger.error('Error fetching instruction files', error);
             setDrawerInstructionFiles([]);
         }
     };
@@ -861,7 +865,7 @@ const Assessments = () => {
             setSelectedClassesForAssignment([]);
             resetTaskForm();
         } catch (err) {
-            console.error('Error assigning students:', err);
+            logger.error('Error assigning students', err);
             showNotificationModal('error', 'Assignment Failed', 'Failed to assign students. Please try again.');
         }
     };
@@ -1114,11 +1118,11 @@ const Assessments = () => {
                                         setSelectedTask(task);
                                         setShowTaskModal(true);
                                     } else {
-                                        console.error('Error fetching assignment:', error);
+                                        logger.error('Error fetching assignment', error);
                                         showNotificationModal('error', 'Load Error', 'Failed to load assignment details');
                                     }
                                 } catch (err) {
-                                    console.error('Error fetching assignment details:', err);
+                                    logger.error('Error fetching assignment details', err);
                                     showNotificationModal('error', 'Load Error', 'Failed to load assignment details');
                                 }
                             }}

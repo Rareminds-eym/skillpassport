@@ -10,6 +10,10 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('ProfileSimple');
+
 import { supabase } from '../../lib/supabaseClient';
 
 interface EducatorProfile {
@@ -56,13 +60,13 @@ const ProfileSimple = () => {
           const userData = JSON.parse(storedUser);
           email = userData.email || email;
         } catch (e) {
-          console.error('Error parsing stored user:', e);
+          logger.error('Error parsing stored user:', e);
         }
       } else if (storedEmail) {
         email = storedEmail;
       }
 
-      console.log('🔍 Loading profile for email:', email);
+      logger.info('Loading profile for email', { email });
 
       // Fetch educator profile - try multiple approaches
       let educatorData = null;
@@ -82,7 +86,7 @@ const ProfileSimple = () => {
         .maybeSingle();
 
       if (directError) {
-        console.log('❌ Direct query failed:', directError.message);
+        logger.info('Direct query failed', { error: directError.message });
         
         // Approach 2: Case insensitive
         const { data: ciData, error: ciError } = await supabase
@@ -93,7 +97,7 @@ const ProfileSimple = () => {
           .maybeSingle();
           
         if (ciError) {
-          console.log('❌ Case insensitive query failed:', ciError.message);
+          logger.info('Case insensitive query failed', { error: ciError.message });
           error = ciError;
         } else {
           educatorData = ciData;
@@ -102,7 +106,7 @@ const ProfileSimple = () => {
         educatorData = directData;
       }
 
-      console.log('📊 Query result:', { educatorData, error });
+      logger.info('Query result', { hasEducatorData: !!educatorData, hasError: !!error });
 
       if (educatorData) {
         const profileData: EducatorProfile = {
@@ -124,10 +128,10 @@ const ProfileSimple = () => {
             : educatorData.first_name || 'Educator',
         };
 
-        console.log('✅ Profile loaded:', profileData);
+        logger.info('Profile loaded successfully', { educatorId: profileData.id });
         setProfile(profileData);
       } else {
-        console.log('❌ No educator data found');
+        logger.warn('No educator data found');
         // Create a basic profile with just the email
         setProfile({
           id: '',
@@ -136,7 +140,7 @@ const ProfileSimple = () => {
         });
       }
     } catch (error) {
-      console.error('💥 Error loading profile:', error);
+      logger.error('Error loading profile:', error);
       setProfile({
         id: '',
         email: 'karthikeyan@rareminds.in',
@@ -177,7 +181,7 @@ const ProfileSimple = () => {
         updated_at: new Date().toISOString(),
       };
 
-      console.log('💾 Saving profile:', updateData);
+      logger.info('Saving profile', { educatorId: profile.id });
 
       if (profile.id) {
         // Update existing record
@@ -201,7 +205,7 @@ const ProfileSimple = () => {
       // Reload profile
       setTimeout(() => loadProfile(), 1000);
     } catch (error) {
-      console.error('💥 Save error:', error);
+      logger.error('Save error:', error);
       alert(`Failed to save: ${error.message}`);
     } finally {
       setSaving(false);
