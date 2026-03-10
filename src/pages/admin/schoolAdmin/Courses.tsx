@@ -366,6 +366,8 @@ const Courses: React.FC = () => {
   };
 
   const handleCourseUpdate = async (updatedCourse: Course) => {
+    logger.info('Updating course from drawer', { courseId: updatedCourse.id, title: updatedCourse.title });
+    
     try {
       setLoading(true);
 

@@ -482,21 +482,38 @@ const ViewLessonPlanModal = ({
                             
                             <button
                               onClick={() => {
+                                logger.info('Download button clicked', { fileName: file.name, fileType: file.type });
+                                
                                 const storageApiUrl = getPagesApiUrl('storage');
                                 let downloadUrl;
+                                let method = 'unknown';
+                                
                                 // Extract key from lesson-plans URL pattern
                                 if (file.url!.includes('lesson-plans/')) {
                                   const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
                                   if (keyMatch) {
                                     const extractedKey = 'lesson-plans/' + keyMatch[1];
                                     downloadUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=download`;
+                                    method = 'key-extraction';
+                                    logger.info('Using KEY method for download', { extractedKey });
                                   }
                                 }
                                 // Fallback to full URL parameter
                                 if (!downloadUrl) {
                                   downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=download`;
+                                  method = 'full-url';
+                                  logger.info('Using FULL URL method for download');
                                 }
-                                window.open(downloadUrl, '_blank');
+                                
+                                logger.info('Download method used', { method });
+                                logger.info('Final download URL generated', { url: downloadUrl, urlLength: downloadUrl.length });
+                                
+                                try {
+                                  window.open(downloadUrl, '_blank');
+                                  logger.info('Download window opened successfully');
+                                } catch (error) {
+                                  logger.error('Invalid download URL', error);
+                                }
                               }}
                               className="text-xs text-blue-600 hover:underline"
                               title="Download file"
@@ -1941,21 +1958,38 @@ const LessonPlan: React.FC<LessonPlanProps> = ({
                                     
                                     <button
                                       onClick={() => {
+                                        logger.info('Download button clicked', { fileName: file.name, fileType: file.type });
+                                        
                                         const storageApiUrl = getPagesApiUrl('storage');
                                         let downloadUrl;
+                                        let method = 'unknown';
+                                        
                                         // Extract key from lesson-plans URL pattern
                                         if (file.url!.includes('lesson-plans/')) {
                                           const keyMatch = file.url!.match(/lesson-plans\/(.+)$/);
                                           if (keyMatch) {
                                             const extractedKey = 'lesson-plans/' + keyMatch[1];
                                             downloadUrl = `${storageApiUrl}/document-access?key=${encodeURIComponent(extractedKey)}&mode=download`;
+                                            method = 'key-extraction';
+                                            logger.info('Using KEY method for download', { extractedKey });
                                           }
                                         }
                                         // Fallback to full URL parameter
                                         if (!downloadUrl) {
                                           downloadUrl = `${storageApiUrl}/document-access?url=${encodeURIComponent(file.url!)}&mode=download`;
+                                          method = 'full-url';
+                                          logger.info('Using FULL URL method for download');
                                         }
-                                        window.open(downloadUrl, '_blank');
+                                        
+                                        logger.info('Download method used', { method });
+                                        logger.info('Final download URL generated', { url: downloadUrl, urlLength: downloadUrl.length });
+                                        
+                                        try {
+                                          window.open(downloadUrl, '_blank');
+                                          logger.info('Download window opened successfully');
+                                        } catch (error) {
+                                          logger.error('Invalid download URL', error);
+                                        }
                                       }}
                                       className="text-xs text-blue-600 hover:underline"
                                       title="Download file"
