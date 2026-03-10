@@ -840,7 +840,7 @@ const StudentDashboard = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [userData, setUserData] = useState({
     education: educationData,
-    training: trainingData,
+    training: [],
     experience: experienceData,
     technicalSkills: technicalSkills,
     softSkills: softSkills,

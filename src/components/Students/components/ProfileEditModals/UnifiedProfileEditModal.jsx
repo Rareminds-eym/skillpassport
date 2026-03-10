@@ -167,9 +167,14 @@ const UnifiedProfileEditModal = ({
                 };
               });
             } else {
-              editData[key] = Array.isArray(item[key])
-                ? item[key].join(", ")
-                : item[key];
+              // Special handling for numeric fields to ensure they're properly set
+              if (key === 'completedModules' || key === 'totalModules' || key === 'hoursSpent') {
+                editData[key] = item[key] || 0;
+              } else {
+                editData[key] = Array.isArray(item[key])
+                  ? item[key].join(", ")
+                  : item[key];
+              }
             }
           }
         });
@@ -321,9 +326,14 @@ const UnifiedProfileEditModal = ({
     // Copy only valid fields from the item
     Object.keys(item).forEach(key => {
       if (item[key] !== undefined && allowedFields.includes(key)) {
-        editData[key] = Array.isArray(item[key])
-          ? item[key].join(", ")
-          : item[key];
+        // Special handling for numeric fields to ensure they're properly set
+        if (key === 'completedModules' || key === 'totalModules' || key === 'hoursSpent') {
+          editData[key] = item[key] || 0;
+        } else {
+          editData[key] = Array.isArray(item[key])
+            ? item[key].join(", ")
+            : item[key];
+        }
       }
     });
 
@@ -1086,25 +1096,33 @@ const UnifiedProfileEditModal = ({
           {(item.technologies || item.tech || item.tech_stack || item.skills) && (
             <div className="flex flex-wrap gap-2 mt-3">
               {(() => {
-                const techArray = Array.isArray(item.technologies)
-                  ? item.technologies
-                  : Array.isArray(item.tech)
-                    ? item.tech
-                    : Array.isArray(item.tech_stack)
-                      ? item.tech_stack
-                      : Array.isArray(item.skills)
-                        ? item.skills
-                        : typeof item.skills === 'string' && item.skills.trim()
-                          ? item.skills.split(',').map(t => t.trim())
-                          : typeof item.technologies === 'string' && item.technologies.trim()
-                            ? item.technologies.split(',').map(t => t.trim())
-                            : typeof item.tech === 'string' && item.tech.trim()
-                              ? item.tech.split(',').map(t => t.trim())
-                              : typeof item.tech_stack === 'string' && item.tech_stack.trim()
-                                ? item.tech_stack.split(',').map(t => t.trim())
-                                : [];
+                let techArray = [];
+                
+                if (Array.isArray(item.technologies)) {
+                  techArray = item.technologies;
+                } else if (Array.isArray(item.tech)) {
+                  techArray = item.tech;
+                } else if (Array.isArray(item.tech_stack)) {
+                  techArray = item.tech_stack;
+                } else if (Array.isArray(item.skills)) {
+                  // Handle skills array - extract names from skill objects
+                  techArray = item.skills.map(skill => {
+                    if (typeof skill === 'object' && skill !== null && skill.name) {
+                      return skill.name;
+                    }
+                    return typeof skill === 'string' ? skill : String(skill);
+                  });
+                } else if (typeof item.skills === 'string' && item.skills.trim()) {
+                  techArray = item.skills.split(',').map(t => t.trim());
+                } else if (typeof item.technologies === 'string' && item.technologies.trim()) {
+                  techArray = item.technologies.split(',').map(t => t.trim());
+                } else if (typeof item.tech === 'string' && item.tech.trim()) {
+                  techArray = item.tech.split(',').map(t => t.trim());
+                } else if (typeof item.tech_stack === 'string' && item.tech_stack.trim()) {
+                  techArray = item.tech_stack.split(',').map(t => t.trim());
+                }
 
-                return techArray.map((tech, i) => (
+                return techArray.filter(tech => tech && tech.trim()).map((tech, i) => (
                   <Badge key={i} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
                     {tech}
                   </Badge>
