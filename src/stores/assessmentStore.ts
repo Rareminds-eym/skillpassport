@@ -292,12 +292,12 @@ export const useAssessmentStore = create<AssessmentStore>()(
           
           // Multiselect questions
           if (currentQuestion.type === 'multiselect') {
-            return Array.isArray(answer) && answer.length === currentQuestion.maxSelections;
+            return Array.isArray(answer) && answer.length === (currentQuestion.maxSelections || 1);
           }
           
           // Text questions
           if (currentQuestion.type === 'text') {
-            return typeof answer === 'string' && answer.trim().length >= 10;
+            return typeof answer === 'string' && answer.trim().length >= (currentQuestion.minLength || 10);
           }
           
           return true;
