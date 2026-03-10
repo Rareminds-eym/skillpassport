@@ -13,6 +13,9 @@ import AssessmentReportDrawer from '../../../components/shared/AssessmentReportD
 import { useUser } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
 import { formatStreamId } from '../../../utils/formatters';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('college-admin-assessment-results');
 
 // Types
 interface AssessmentResult {
@@ -336,7 +339,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
         .maybeSingle();
 
       if (orgError || !org?.id) {
-        console.error('Error fetching organization:', orgError, 'for email:', userEmail);
+        logger.error('Error fetching organization:', orgError, 'for email:', userEmail as Error);
         setError('No college associated with your account');
         setLoading(false);
         return;
@@ -446,7 +449,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
 
       setResults(enrichedResults as AssessmentResult[]);
     } catch (err: any) {
-      console.error('Error fetching assessment results:', err);
+      logger.error('Error fetching assessment results:', err as Error);
       setError(err?.message || 'Failed to load assessment results');
     } finally {
       setLoading(false);
@@ -1006,3 +1009,4 @@ const CollegeAdminAssessmentResults: React.FC = () => {
 };
 
 export default CollegeAdminAssessmentResults;
+

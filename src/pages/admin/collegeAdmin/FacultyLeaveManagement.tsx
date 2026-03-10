@@ -20,6 +20,9 @@ import {
   Edit,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('college-admin-faculty-leave-management');
 
 interface FacultyLeaveManagementProps {
   collegeId: string | null;
@@ -1462,7 +1465,7 @@ const AssignSubstituteModal: React.FC<{
 
         setAvailability(availMap);
       } catch (error) {
-        console.error('Error fetching availability:', error);
+        logger.error('Error fetching availability:', error as Error);
       } finally {
         setLoadingAvailability(false);
       }

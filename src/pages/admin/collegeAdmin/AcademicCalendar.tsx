@@ -16,6 +16,9 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import toast from "react-hot-toast";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('college-admin-academic-calendar');
 
 interface CalendarEvent {
   id: string;
@@ -124,7 +127,7 @@ const AcademicCalendar: React.FC = () => {
 
       setEvents(mockEvents);
     } catch (error: any) {
-      console.error("Error loading events:", error);
+      logger.error('Error loading events', error);
       toast.error("Failed to load calendar events");
     } finally {
       setLoading(false);
@@ -162,7 +165,7 @@ const AcademicCalendar: React.FC = () => {
           setEvents((prev) => prev.filter((e) => e.id !== id));
           toast.success("Event deleted successfully");
         } catch (error: any) {
-          console.error("Error deleting event:", error);
+          logger.error('Error deleting event', error);
           toast.error("Failed to delete event");
         }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -178,7 +181,7 @@ const AcademicCalendar: React.FC = () => {
       );
       toast.success("Event published successfully. Notifications sent to all users.");
     } catch (error: any) {
-      console.error("Error publishing event:", error);
+      logger.error('Error publishing event', error);
       toast.error("Failed to publish event");
     }
   };
@@ -191,7 +194,7 @@ const AcademicCalendar: React.FC = () => {
       );
       toast.success("Event locked. Modifications prevented.");
     } catch (error: any) {
-      console.error("Error locking event:", error);
+      logger.error('Error locking event', error);
       toast.error("Failed to lock event");
     }
   };
@@ -209,7 +212,7 @@ const AcademicCalendar: React.FC = () => {
           );
           toast.success("Event unlocked. Modifications allowed.");
         } catch (error: any) {
-          console.error("Error unlocking event:", error);
+          logger.error('Error unlocking event', error);
           toast.error("Failed to unlock event");
         }
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -239,7 +242,7 @@ const AcademicCalendar: React.FC = () => {
       }
       setIsModalOpen(false);
     } catch (error: any) {
-      console.error("Error saving event:", error);
+      logger.error('Error saving event', error);
       toast.error("Failed to save event");
     }
   };

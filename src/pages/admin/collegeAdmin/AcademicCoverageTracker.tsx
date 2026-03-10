@@ -11,6 +11,9 @@ import {
   FunnelIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('college-admin-academic-coverage');
 
 interface CoverageData {
   id: string;
@@ -112,7 +115,7 @@ const AcademicCoverageTracker: React.FC = () => {
 
       setCoverageData(coverage);
     } catch (error: any) {
-      console.error("Error loading coverage data:", error);
+      logger.error("Error loading coverage data:", error as Error);
     } finally {
       setLoading(false);
     }
@@ -404,3 +407,4 @@ const AcademicCoverageTracker: React.FC = () => {
 };
 
 export default AcademicCoverageTracker;
+
