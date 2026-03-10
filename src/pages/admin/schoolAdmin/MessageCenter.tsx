@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect } from "react";
+import { getLogger } from '../../../config/logging';
 import {
   ChatBubbleLeftRightIcon,
   PaperClipIcon,
@@ -181,6 +182,8 @@ const MessageBubble = ({
 /* ==============================
    MAIN MESSAGE CENTER COMPONENT
    ============================== */
+const logger = getLogger('school-admin-message-center');
+
 const MessageCenter: React.FC = () => {
   const [conversations] = useState<Conversation[]>([
     {
@@ -297,9 +300,9 @@ const MessageCenter: React.FC = () => {
     if (!messageText.trim() && attachments.length === 0) return;
 
     // Here you would send the message to your backend
-    console.log("Sending message:", {
-      text: messageText,
-      attachments,
+    logger.info('Sending message', {
+      hasText: !!messageText.trim(),
+      attachmentCount: attachments.length
     });
 
     // Clear form

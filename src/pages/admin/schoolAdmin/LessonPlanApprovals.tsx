@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BookOpen, CheckCircle, XCircle, Eye, MessageSquare, Clock } from "lucide-react";
 import toast from 'react-hot-toast';
+import { getLogger } from '../../../config/logging';
 import { supabase } from "../../../lib/supabaseClient";
 
 interface LessonPlan {
@@ -22,6 +23,8 @@ interface LessonPlan {
   submitted_at: string | null;
   created_at: string;
 }
+
+const logger = getLogger('school-admin-lesson-plan-approvals');
 
 const LessonPlanApprovals: React.FC = () => {
   const [lessonPlans, setLessonPlans] = useState<LessonPlan[]>([]);
@@ -55,7 +58,7 @@ const LessonPlanApprovals: React.FC = () => {
 
       setLessonPlans(formattedData || []);
     } catch (error: any) {
-      console.error("Error loading lesson plans:", error);
+      logger.error('Error loading lesson plans', error);
     } finally {
       setLoading(false);
     }
