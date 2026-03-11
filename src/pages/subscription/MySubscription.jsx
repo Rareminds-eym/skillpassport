@@ -25,8 +25,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { SubscriptionDashboard } from '../../components/Subscription/SubscriptionDashboard';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
-import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
-import { useUser, useUserRole, useAuthLoading } from '../../stores';
+
+import { useUser, useUserRole, useAuthLoading, useSubscriptionAccess } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { getUserSubscriptions } from '../../services/Subscriptions/subscriptionService';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
@@ -84,7 +84,7 @@ function MySubscription() {
   const user = useUser();
   const { role } = useUserRole();
   const authLoading = useAuthLoading();
-  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
+  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionAccess();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);

@@ -37,7 +37,7 @@ interface AuthState {
   session: Session | null;
   loading: boolean;
   isAuthenticated: boolean;
-  
+
   // Role helpers
   role: string | null;
   isStudent: boolean;
@@ -48,7 +48,7 @@ interface AuthState {
 
   // Error notifications
   errorNotification: ErrorNotification | null;
-  
+
   // Auth actions
   login: (userData: User, sessionData?: Session) => void;
   logout: () => Promise<void>;
@@ -56,45 +56,45 @@ interface AuthState {
   setUser: (user: User | null) => void;
   setSession: (session: Session | null) => void;
   setLoading: (loading: boolean) => void;
-  
+
   // Error notification actions
   showErrorNotification: (notification: ErrorNotification) => void;
   dismissErrorNotification: () => void;
-  
+
   // Session management
   initialize: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   checkSessionValidity: () => Promise<Session | null>;
-  
+
   // Utilities
   restoreUserFromStorage: (sessionUser: any) => User;
 }
 
 // Role checks
-const isStudentRole = (role: string | null | undefined): boolean => 
+const isStudentRole = (role: string | null | undefined): boolean =>
   role === 'student' || role === 'school_student' || role === 'college_student';
 
-const isEducatorRole = (role: string | null | undefined): boolean => 
+const isEducatorRole = (role: string | null | undefined): boolean =>
   role === 'educator' || role === 'school_educator' || role === 'college_educator';
 
-const isAdminRole = (role: string | null | undefined): boolean => 
-  role === 'admin' || 
-  role === 'school_admin' || 
-  role === 'college_admin' || 
+const isAdminRole = (role: string | null | undefined): boolean =>
+  role === 'admin' ||
+  role === 'school_admin' ||
+  role === 'college_admin' ||
   role === 'university_admin';
 
-const isRecruiterRole = (role: string | null | undefined): boolean => 
+const isRecruiterRole = (role: string | null | undefined): boolean =>
   role === 'recruiter' || role === 'hr';
 
-const isLearnerRole = (role: string | null | undefined): boolean => 
+const isLearnerRole = (role: string | null | undefined): boolean =>
   role === 'learner';
 
 // Helper to get specific admin role from storage
 const getSpecificAdminRole = (sessionUser: any, storedUser: User | null): string => {
-  const sessionRole = sessionUser.user_metadata?.user_role || 
-                      sessionUser.user_metadata?.role || 
-                      'user';
-  
+  const sessionRole = sessionUser.user_metadata?.user_role ||
+    sessionUser.user_metadata?.role ||
+    'user';
+
   // Handle legacy "admin" role
   if (sessionRole === 'admin' && storedUser?.role) {
     const specificRoles = ['school_admin', 'college_admin', 'university_admin'];
@@ -102,7 +102,7 @@ const getSpecificAdminRole = (sessionUser: any, storedUser: User | null): string
       return storedUser.role;
     }
   }
-  
+
   return sessionRole;
 };
 
@@ -138,7 +138,7 @@ export const useAuthStore = create<AuthState>()(
             state.isRecruiter = isRecruiterRole(userData.role);
             state.isLearner = isLearnerRole(userData.role);
           });
-          
+
           // Persist to localStorage (legacy compatibility)
           localStorage.setItem('user', JSON.stringify(userData));
           if (userData.email) {
@@ -153,7 +153,7 @@ export const useAuthStore = create<AuthState>()(
           } catch (err) {
             console.error('Error signing out:', err);
           }
-          
+
           set((state) => {
             state.user = null;
             state.session = null;
@@ -165,7 +165,7 @@ export const useAuthStore = create<AuthState>()(
             state.isRecruiter = false;
             state.isLearner = false;
           });
-          
+
           localStorage.removeItem('user');
           localStorage.removeItem('userEmail');
           localStorage.removeItem('pendingUser');
@@ -250,7 +250,7 @@ export const useAuthStore = create<AuthState>()(
 
           try {
             const { data: { session }, error } = await supabase.auth.getSession();
-            
+
             if (error) {
               console.error('Error getting session:', error);
               set((state) => {
@@ -304,17 +304,17 @@ export const useAuthStore = create<AuthState>()(
         refreshSession: async () => {
           try {
             const { data, error } = await supabase.auth.refreshSession();
-            
+
             if (error) {
               console.warn('Session refresh failed:', error.message);
               return false;
             }
-            
+
             if (data?.session) {
               get().setSession(data.session as Session);
               return true;
             }
-            
+
             return false;
           } catch (err) {
             console.error('Session refresh error:', err);
@@ -326,12 +326,12 @@ export const useAuthStore = create<AuthState>()(
         checkSessionValidity: async () => {
           try {
             const { data: { session }, error } = await supabase.auth.getSession();
-            
+
             if (error) {
               console.error('Session check error:', error);
               return null;
             }
-            
+
             return session as Session | null;
           } catch (err) {
             console.error('Session validity check failed:', err);
@@ -342,16 +342,16 @@ export const useAuthStore = create<AuthState>()(
         // Restore user from storage/session
         restoreUserFromStorage: (sessionUser) => {
           const sessionRole = getSpecificAdminRole(sessionUser, get().user);
-          
+
           const storedUser = localStorage.getItem('user');
           if (storedUser) {
             try {
               const parsedUser = JSON.parse(storedUser);
-              const userMatches = 
-                parsedUser.user_id === sessionUser.id || 
+              const userMatches =
+                parsedUser.user_id === sessionUser.id ||
                 parsedUser.id === sessionUser.id ||
                 parsedUser.email === sessionUser.email;
-              
+
               if (userMatches) {
                 return {
                   ...parsedUser,
@@ -363,7 +363,7 @@ export const useAuthStore = create<AuthState>()(
               // Ignore parse errors
             }
           }
-          
+
           // Create new user from session
           return {
             id: sessionUser.id,
@@ -377,7 +377,7 @@ export const useAuthStore = create<AuthState>()(
       {
         name: 'auth-storage',
         storage: secureStorage as any, // Use secure storage for auth data
-        partialize: (state) => ({ 
+        partialize: (state) => ({
           user: state.user,
           role: state.role,
           isAuthenticated: state.isAuthenticated,
@@ -392,9 +392,9 @@ export const useAuthStore = create<AuthState>()(
 if (typeof window !== 'undefined') {
   supabase.auth.onAuthStateChange((event, session) => {
     const store = useAuthStore.getState();
-    
+
     console.log('Auth state changed:', event, session?.user?.id);
-    
+
     if (event === 'SIGNED_IN' && session?.user) {
       store.setSession(session as Session);
     } else if (event === 'SIGNED_OUT') {
@@ -425,7 +425,7 @@ export const useUserRole = () => {
   const isAdmin = useAuthStore((state) => state.isAdmin);
   const isRecruiter = useAuthStore((state) => state.isRecruiter);
   const isLearner = useAuthStore((state) => state.isLearner);
-  
+
   return { role, isStudent, isEducator, isAdmin, isRecruiter, isLearner };
 };
 
@@ -437,7 +437,7 @@ export const useAuthActions = () => {
   const refreshSession = useAuthStore((state) => state.refreshSession);
   const showErrorNotification = useAuthStore((state) => state.showErrorNotification);
   const dismissErrorNotification = useAuthStore((state) => state.dismissErrorNotification);
-  
+
   return {
     login,
     logout,
@@ -453,17 +453,10 @@ export const useAuthActions = () => {
 export const useTokenRefreshErrorNotification = () => {
   const showErrorNotification = useAuthStore((state) => state.showErrorNotification);
   const dismissErrorNotification = useAuthStore((state) => state.dismissErrorNotification);
-  
+
   return { showErrorNotification, dismissErrorNotification };
 };
 
-// Subscription Prefetch
-export const useSubscriptionPrefetch = () => {
-  const user = useAuthStore((state) => state.user);
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  
-  return { user, isAuthenticated };
-};
 
 // Export store for direct access
 export default useAuthStore;

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
 
 export interface SearchResult {
@@ -20,38 +21,38 @@ interface SearchState {
   searchResults: SearchResult[];
   isSearching: boolean;
   searchError: string | null;
-  
+
   // Filters
   filters: SearchFilters;
   activeFilters: string[];
-  
+
   // History
   searchHistory: string[];
-  
+
   // Pagination
   totalResults: number;
   currentPage: number;
   resultsPerPage: number;
   hasMoreResults: boolean;
-  
+
   // Actions
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: SearchResult[]) => void;
   setIsSearching: (isSearching: boolean) => void;
   setSearchError: (error: string | null) => void;
-  
+
   // Filter actions
   setFilters: (filters: SearchFilters) => void;
   addFilter: (key: keyof SearchFilters, value: any) => void;
   removeFilter: (key: keyof SearchFilters) => void;
   clearFilters: () => void;
   setActiveFilters: (filters: string[]) => void;
-  
+
   // History actions
   addToHistory: (query: string) => void;
   clearHistory: () => void;
   removeFromHistory: (query: string) => void;
-  
+
   // Pagination actions
   setCurrentPage: (page: number) => void;
   setTotalResults: (total: number) => void;
@@ -59,11 +60,11 @@ interface SearchState {
   setHasMoreResults: (hasMore: boolean) => void;
   nextPage: () => void;
   previousPage: () => void;
-  
+
   // Main actions
   handleSearch: (query: string) => void;
   clearSearch: () => void;
-  
+
   // Computed
   hasResults: () => boolean;
   hasActiveFilters: () => boolean;
@@ -79,12 +80,12 @@ export const useSearchStore = create<SearchState>()(
     searchResults: [],
     isSearching: false,
     searchError: null,
-    
+
     filters: {},
     activeFilters: [],
-    
+
     searchHistory: [],
-    
+
     totalResults: 0,
     currentPage: 1,
     resultsPerPage: 20,
@@ -165,7 +166,7 @@ export const useSearchStore = create<SearchState>()(
     // History actions
     addToHistory: (query) => {
       if (!query.trim()) return;
-      
+
       set((state) => {
         // Remove duplicate if exists
         state.searchHistory = state.searchHistory.filter((q) => q !== query);
@@ -282,7 +283,7 @@ export const useIsSearching = () => useSearchStore((state) => state.isSearching)
 export const useSearchFilters = () => useSearchStore((state) => state.filters);
 export const useSearchHistory = () => useSearchStore((state) => state.searchHistory);
 export const useSearchActions = () =>
-  useSearchStore((state) => ({
+  useSearchStore(useShallow((state) => ({
     handleSearch: state.handleSearch,
     clearSearch: state.clearSearch,
     setSearchQuery: state.setSearchQuery,
@@ -291,9 +292,9 @@ export const useSearchActions = () =>
     addFilter: state.addFilter,
     removeFilter: state.removeFilter,
     clearFilters: state.clearFilters,
-  }));
+  })));
 
-// Combined hook that mimics the old Context API
+// Combined convenience hook
 export const useSearch = () => {
   const searchQuery = useSearchQuery();
   const searchResults = useSearchResults();

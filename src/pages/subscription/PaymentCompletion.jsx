@@ -15,8 +15,7 @@ import {
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SubscriptionRouteGuard from '../../components/Subscription/SubscriptionRouteGuard';
-import { useSubscription } from '../../hooks/Subscription/useSubscription';
-import { useUser, useUserRole, useIsAuthenticated, useAuthLoading } from '../../stores';
+import { useUser, useUserRole, useIsAuthenticated, useAuthLoading, useSubscription } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { initiateRazorpayPayment } from '../../services/Subscriptions/razorpayService';
 

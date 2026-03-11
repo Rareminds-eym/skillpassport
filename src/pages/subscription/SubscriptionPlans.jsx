@@ -5,8 +5,8 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
 import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
 import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
-import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
-import { useUser, useUserRole, useIsAuthenticated, useAuthLoading } from '../../stores';
+
+import { useUser, useUserRole, useIsAuthenticated, useAuthLoading, useSubscriptionAccess } from '../../stores';
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';
@@ -707,7 +707,7 @@ function SubscriptionPlans() {
 
   const studentType = type || 'student';
 
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
+  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionAccess();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
   // Combined loading state — wait for auth, subscription, AND plans from API.
