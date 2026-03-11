@@ -1,9 +1,10 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
 import { supabase } from '../lib/supabaseClient';
 
 // Types (from TourProvider)
-export type TourKey = 
+export type TourKey =
   // Legacy keys (kept for backward compatibility)
   | 'dashboard'
   | 'assessment_test'
@@ -43,7 +44,7 @@ interface TourStore {
   loadedForStudentId: string | null;
   isTourRunning: boolean;
   activeTourKey: TourKey | null;
-  
+
   // Actions
   startTour: (tourKey: TourKey) => boolean;
   completeTour: (tourKey: TourKey) => Promise<void>;
@@ -53,19 +54,19 @@ interface TourStore {
   nextStep: () => void;
   previousStep: () => void;
   stopTour: () => void;
-  
+
   // Checkers
   isEligible: (tourKey: TourKey) => boolean;
   isCompleted: (tourKey: TourKey) => boolean;
   isSkipped: (tourKey: TourKey) => boolean;
-  
+
   // Loading & sync
   setLoading: (loading: boolean) => void;
   setInitialized: (initialized: boolean) => void;
   setLoadedForStudentId: (studentId: string | null) => void;
   loadTourProgress: (studentId: string) => Promise<void>;
   saveTourProgress: (progress: TourProgress, studentId?: string) => Promise<void>;
-  
+
   // Reset
   reset: () => void;
   clearAllProgress: () => Promise<void>;
@@ -131,7 +132,7 @@ export const useTourStore = create<TourStore>()(
     // Start tour
     startTour: (tourKey) => {
       const { loading, state, isTourRunning, activeTourKey } = get();
-      
+
       // Don't start if still loading
       if (loading) {
         console.log(`⚠️ Tour ${tourKey} requested but tour progress is still loading`);
@@ -174,12 +175,12 @@ export const useTourStore = create<TourStore>()(
     // Complete tour
     completeTour: async (tourKey) => {
       const { state, saveTourProgress, loadedForStudentId } = get();
-      
+
       const tourEntry = {
         completed: true,
         completedAt: new Date().toISOString(),
       };
-      
+
       const updatedProgress: TourProgress = {
         ...state.progress,
         [tourKey]: tourEntry,
@@ -202,13 +203,13 @@ export const useTourStore = create<TourStore>()(
     // Skip tour
     skipTour: async (tourKey) => {
       const { state, saveTourProgress, loadedForStudentId } = get();
-      
+
       const tourEntry = {
         completed: true,
         skipped: true,
         skippedAt: new Date().toISOString(),
       };
-      
+
       const updatedProgress: TourProgress = {
         ...state.progress,
         [tourKey]: tourEntry,
@@ -231,9 +232,9 @@ export const useTourStore = create<TourStore>()(
     // Update progress
     updateProgress: async (progressUpdate) => {
       const { state, saveTourProgress, loadedForStudentId } = get();
-      const updatedProgress: TourProgress = { 
+      const updatedProgress: TourProgress = {
         ...state.progress,
-        ...progressUpdate as TourProgress 
+        ...progressUpdate as TourProgress
       };
       await saveTourProgress(updatedProgress, loadedForStudentId || undefined);
     },
@@ -308,7 +309,7 @@ export const useTourStore = create<TourStore>()(
     // Load tour progress
     loadTourProgress: async (studentId) => {
       const { loadedForStudentId, initialized } = get();
-      
+
       // Don't load if already loaded for this studentId
       if (loadedForStudentId === studentId && initialized) {
         return;
@@ -416,7 +417,7 @@ export const useActiveTourKey = () => useTourStore((state) => state.activeTourKe
 export const useTourProgress = () => useTourStore((state) => state.state.progress);
 
 export const useTourActions = () =>
-  useTourStore((state) => ({
+  useTourStore(useShallow((state) => ({
     startTour: state.startTour,
     completeTour: state.completeTour,
     skipTour: state.skipTour,
@@ -424,16 +425,16 @@ export const useTourActions = () =>
     nextStep: state.nextStep,
     previousStep: state.previousStep,
     goToStep: state.goToStep,
-  }));
+  })));
 
 export const useTourEligibility = (tourKey: TourKey) =>
-  useTourStore((state) => ({
+  useTourStore(useShallow((state) => ({
     isEligible: state.isEligible(tourKey),
     isCompleted: state.isCompleted(tourKey),
     isSkipped: state.isSkipped(tourKey),
-  }));
+  })));
 
-// Combined hook that mimics the old Context API
+// Combined convenience hook
 export const useTour = () => {
   const state = useTourState();
   const loading = useTourLoading();
@@ -441,7 +442,7 @@ export const useTour = () => {
   const activeTourKey = useActiveTourKey();
   const progress = useTourProgress();
   const tourStore = useTourStore();
-  
+
   return {
     ...state,
     loading,

@@ -2,12 +2,12 @@ import React from 'react';
 import { useUser, useAuthLoading } from '../stores';
 import SimpleLogin from '../components/SimpleLogin';
 import StudentDashboard from '../pages/student/Dashboard';
-import { SubscriptionStoreSync } from '../components/Subscription/SubscriptionStoreSync.tsx';
+
 
 const AuthenticatedApp = () => {
   const user = useUser();
   const loading = useAuthLoading();
-  
+
   // Note: userProfile is not stored in Zustand authStore, 
   // it would need to be fetched separately or added to the store
 
@@ -48,7 +48,6 @@ const AuthenticatedApp = () => {
   // User is authenticated and profile is loaded, show dashboard
   return (
     <>
-      <SubscriptionStoreSync />
       <StudentDashboard />
     </>
   );

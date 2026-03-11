@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
 import { getStudentPortfolioByEmail } from '../services/portfolioService';
 
@@ -41,12 +42,12 @@ interface PortfolioState {
   student: Student | null;
   settings: PortfolioSettings;
   viewerRole: string | null;
-  
+
   // Loading states
   isLoading: boolean;
   isManuallySet: boolean;
   loadedUserEmail: string | null;
-  
+
   // Actions
   setStudent: (studentData: Student) => Promise<void>;
   setStudentSync: (studentData: Student) => void;
@@ -58,7 +59,7 @@ interface PortfolioState {
   setIsManuallySet: (isManuallySet: boolean) => void;
   loadStudentByEmail: (email: string) => Promise<void>;
   clearStudent: () => void;
-  
+
   // Getters
   hasStudent: () => boolean;
   getSettingsKey: () => string;
@@ -116,12 +117,12 @@ export const usePortfolioStore = create<PortfolioState>()(
     // Set student with async data fetching
     setStudent: async (studentData) => {
       const { isLoading, student } = get();
-      
+
       // Prevent infinite loops - already loading same student
       if (isLoading && student?.email === studentData.email) {
         return;
       }
-      
+
       // Already have this student's data
       if (student?.email === studentData.email && !isLoading) {
         set((state) => {
@@ -139,7 +140,7 @@ export const usePortfolioStore = create<PortfolioState>()(
         if (studentData.email) {
           const result = await getStudentPortfolioByEmail(studentData.email) as ServiceResponse<Student>;
           const studentResult = result.data;
-        
+
           if (result.success && studentResult) {
             set((state) => {
               state.student = studentResult;
@@ -183,7 +184,7 @@ export const usePortfolioStore = create<PortfolioState>()(
     updateSettings: (newSettings) => {
       set((state) => {
         state.settings = { ...state.settings, ...newSettings };
-        
+
         // Persist to localStorage
         const settingsKey = `portfolioSettings_${state.viewerRole || 'guest'}`;
         localStorage.setItem(settingsKey, JSON.stringify(state.settings));
@@ -204,7 +205,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       set((state) => {
         const roleBasedDefaults = getDefaultSettings(state.viewerRole);
         state.settings = roleBasedDefaults;
-        
+
         // Clear saved settings for this role
         const settingsKey = `portfolioSettings_${state.viewerRole || 'guest'}`;
         localStorage.removeItem(settingsKey);
@@ -215,12 +216,12 @@ export const usePortfolioStore = create<PortfolioState>()(
     setViewerRole: (role) => {
       set((state) => {
         state.viewerRole = role;
-        
+
         // Load role-specific settings
         const settingsKey = `portfolioSettings_${role || 'guest'}`;
         const savedSettings = localStorage.getItem(settingsKey);
         const roleBasedDefaults = getDefaultSettings(role);
-        
+
         if (savedSettings) {
           try {
             const parsed = JSON.parse(savedSettings);
@@ -251,7 +252,7 @@ export const usePortfolioStore = create<PortfolioState>()(
     // Load student by email
     loadStudentByEmail: async (email) => {
       const { loadedUserEmail, isManuallySet } = get();
-      
+
       if (isManuallySet) return;
       if (loadedUserEmail === email) {
         set((state) => {
@@ -267,7 +268,7 @@ export const usePortfolioStore = create<PortfolioState>()(
       try {
         const result = await getStudentPortfolioByEmail(email) as ServiceResponse<Student>;
         const studentResult = result.data;
-        
+
         if (result.success && studentResult) {
           set((state) => {
             state.student = studentResult;
@@ -308,20 +309,20 @@ export const usePortfolioStore = create<PortfolioState>()(
 );
 
 // Convenience hooks
-export const usePortfolioStudent = () => 
+export const usePortfolioStudent = () =>
   usePortfolioStore((state) => state.student);
 
-export const usePortfolioSettings = () => 
+export const usePortfolioSettings = () =>
   usePortfolioStore((state) => state.settings);
 
-export const usePortfolioLoading = () => 
+export const usePortfolioLoading = () =>
   usePortfolioStore((state) => state.isLoading);
 
-export const usePortfolioViewerRole = () => 
+export const usePortfolioViewerRole = () =>
   usePortfolioStore((state) => state.viewerRole);
 
 export const usePortfolioActions = () =>
-  usePortfolioStore((state) => ({
+  usePortfolioStore(useShallow((state) => ({
     setStudent: state.setStudent,
     setStudentSync: state.setStudentSync,
     updateSettings: state.updateSettings,
@@ -329,13 +330,13 @@ export const usePortfolioActions = () =>
     resetToRoleDefaults: state.resetToRoleDefaults,
     clearStudent: state.clearStudent,
     loadStudentByEmail: state.loadStudentByEmail,
-  }));
+  })));
 
 // Hook for checking if viewing another student's portfolio
 export const useIsViewingOtherStudent = () =>
   usePortfolioStore((state) => state.isManuallySet && state.student !== null);
 
-// Combined hook that mimics the old Context API
+// Combined convenience hook
 export const usePortfolio = () => {
   const student = usePortfolioStudent();
   const settings = usePortfolioSettings();

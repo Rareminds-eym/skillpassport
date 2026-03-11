@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
 
 // Types
@@ -14,15 +15,15 @@ interface GlobalPresenceState {
   // Data
   onlineUsers: OnlineUser[];
   isConnected: boolean;
-  
+
   // User info
   currentUserId: string | null;
   currentUserName: string;
   currentUserType: 'student' | 'recruiter' | 'educator' | null;
-  
+
   // Computed
   getOnlineCount: () => number;
-  
+
   // Actions
   setOnlineUsers: (users: OnlineUser[]) => void;
   addOnlineUser: (user: OnlineUser) => void;
@@ -30,7 +31,7 @@ interface GlobalPresenceState {
   updateUserStatus: (userId: string, status: OnlineUser['status']) => void;
   setIsConnected: (connected: boolean) => void;
   setCurrentUser: (userId: string | null, userName: string, userType: 'student' | 'recruiter' | 'educator') => void;
-  
+
   // Checkers
   isUserOnline: (userId: string) => boolean;
   getUserStatus: (userId: string) => 'online' | 'away' | 'busy' | 'offline';
@@ -45,7 +46,7 @@ export const useGlobalPresenceStore = create<GlobalPresenceState>()(
     currentUserId: null,
     currentUserName: 'User',
     currentUserType: null,
-    
+
     // Computed
     getOnlineCount: () => {
       return get().onlineUsers.length;
@@ -128,17 +129,17 @@ export const useOnlineUsers = () => useGlobalPresenceStore((state) => state.onli
 export const useIsConnected = () => useGlobalPresenceStore((state) => state.isConnected);
 export const useOnlineCount = () => useGlobalPresenceStore((state) => state.getOnlineCount());
 export const useCurrentPresence = () =>
-  useGlobalPresenceStore((state) => ({
+  useGlobalPresenceStore(useShallow((state) => ({
     userId: state.currentUserId,
     userName: state.currentUserName,
     userType: state.currentUserType,
-  }));
+  })));
 
 export const useUserOnlineStatus = (userId: string) =>
   useGlobalPresenceStore((state) => state.isUserOnline(userId));
 
 export const usePresenceActions = () =>
-  useGlobalPresenceStore((state) => ({
+  useGlobalPresenceStore(useShallow((state) => ({
     setOnlineUsers: state.setOnlineUsers,
     addOnlineUser: state.addOnlineUser,
     removeOnlineUser: state.removeOnlineUser,
@@ -146,9 +147,9 @@ export const usePresenceActions = () =>
     setIsConnected: state.setIsConnected,
     setCurrentUser: state.setCurrentUser,
     updateStatus: state.updateStatus,
-  }));
+  })));
 
-// Combined hook that mimics the old Context API
+// Combined convenience hook
 export const useGlobalPresence = () => {
   const onlineUsers = useOnlineUsers();
   const isConnected = useIsConnected();
@@ -161,6 +162,11 @@ export const useGlobalPresence = () => {
     currentUserId: userId,
     currentUserName: userName,
     currentUserType: userType,
+    isUserOnline: (uid: string) => onlineUsers.some((u) => u.userId === uid && u.status === 'online'),
+    getUserStatus: (uid: string) => {
+      const user = onlineUsers.find((u) => u.userId === uid);
+      return user ? user.status : 'offline';
+    },
     ...actions,
   };
 };

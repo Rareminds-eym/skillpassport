@@ -27,42 +27,42 @@ interface PromotionalState {
   assessmentEvent: PromotionalEvent | null;
   isAssessmentModalDismissed: boolean;
   isAssessmentBannerDismissed: boolean;
-  
+
   // General promotional
   currentEvent: PromotionalEvent | null;
   isModalDismissed: boolean;
   isBannerDismissed: boolean;
-  
+
   // Loading
   isLoading: boolean;
   isLoaded: boolean;
-  
+
   // Computed
   showAssessmentModal: boolean;
   showAssessmentBanner: boolean;
   showModal: boolean;
   showBanner: boolean;
-  
+
   // Actions
   setAssessmentEvent: (event: PromotionalEvent | null) => void;
   setCurrentEvent: (event: PromotionalEvent | null) => void;
   setIsLoading: (isLoading: boolean) => void;
   setIsLoaded: (isLoaded: boolean) => void;
-  
+
   // Dismissal actions
   dismissAssessmentModal: () => void;
   dismissAssessmentBanner: () => void;
   dismissModal: () => void;
   dismissBanner: () => void;
-  
+
   // Time calculations
   getAssessmentTimeRemaining: () => TimeRemaining | null;
   getTimeRemaining: () => TimeRemaining | null;
-  
+
   // Fetching
   fetchAssessmentEvent: () => Promise<void>;
   fetchCurrentEvent: () => Promise<void>;
-  
+
   // Reset
   reset: () => void;
 }
@@ -79,11 +79,11 @@ export const usePromotionalStore = create<PromotionalState>()(
         assessmentEvent: null,
         isAssessmentModalDismissed: true, // Start true, check on init
         isAssessmentBannerDismissed: false,
-        
+
         currentEvent: null,
         isModalDismissed: false,
         isBannerDismissed: false,
-        
+
         isLoading: false,
         isLoaded: false,
 
@@ -171,7 +171,7 @@ export const usePromotionalStore = create<PromotionalState>()(
         // Time remaining calculations
         getAssessmentTimeRemaining: () => {
           const { assessmentEvent } = get();
-          
+
           let endDate: Date;
           if (assessmentEvent?.end_date) {
             endDate = new Date(assessmentEvent.end_date);
@@ -179,12 +179,12 @@ export const usePromotionalStore = create<PromotionalState>()(
             endDate = new Date();
             endDate.setDate(endDate.getDate() + 7);
           }
-          
+
           const now = new Date();
           const diff = endDate.getTime() - now.getTime();
-          
+
           if (diff <= 0) return null;
-          
+
           return {
             days: Math.floor(diff / (1000 * 60 * 60 * 24)),
             hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -196,15 +196,15 @@ export const usePromotionalStore = create<PromotionalState>()(
 
         getTimeRemaining: () => {
           const { currentEvent } = get();
-          
+
           if (!currentEvent?.end_date) return null;
-          
+
           const end = new Date(currentEvent.end_date);
           const now = new Date();
           const diff = end.getTime() - now.getTime();
-          
+
           if (diff <= 0) return null;
-          
+
           return {
             days: Math.floor(diff / (1000 * 60 * 60 * 24)),
             hours: Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
@@ -256,9 +256,7 @@ export const usePromotionalStore = create<PromotionalState>()(
         },
 
         fetchCurrentEvent: async () => {
-          // This would typically use a React Query hook
-          // For now, placeholder
-          console.log('Fetch current event - implement with usePromotionalEvent hook');
+          // TODO: Implement when current promotional events feature is built
         },
 
         // Reset
@@ -276,9 +274,8 @@ export const usePromotionalStore = create<PromotionalState>()(
       }),
       {
         name: 'promotional-storage',
-        partialize: (state) => ({
-          // Only persist non-session-based state
-        }),
+        // Only persist dismissal state, not event data
+        partialize: () => ({}),
       }
     )
   )
@@ -294,7 +291,7 @@ export const useAssessmentPromotional = () => {
   const dismissModal = usePromotionalStore((state) => state.dismissAssessmentModal);
   const dismissBanner = usePromotionalStore((state) => state.dismissAssessmentBanner);
   const getTimeRemaining = usePromotionalStore((state) => state.getAssessmentTimeRemaining);
-  
+
   return { event, showModal, showBanner, isModalDismissed, isBannerDismissed, dismissModal, dismissBanner, getTimeRemaining };
 };
 
@@ -307,7 +304,7 @@ export const useCurrentPromotional = () => {
   const dismissModal = usePromotionalStore((state) => state.dismissModal);
   const dismissBanner = usePromotionalStore((state) => state.dismissBanner);
   const getTimeRemaining = usePromotionalStore((state) => state.getTimeRemaining);
-  
+
   return { event, showModal, showBanner, isModalDismissed, isBannerDismissed, dismissModal, dismissBanner, getTimeRemaining };
 };
 
@@ -318,6 +315,6 @@ export const usePromotionalActions = () => {
   const dismissAssessmentBanner = usePromotionalStore((state) => state.dismissAssessmentBanner);
   const dismissModal = usePromotionalStore((state) => state.dismissModal);
   const dismissBanner = usePromotionalStore((state) => state.dismissBanner);
-  
+
   return { fetchAssessmentEvent, fetchCurrentEvent, dismissAssessmentModal, dismissAssessmentBanner, dismissModal, dismissBanner };
 };

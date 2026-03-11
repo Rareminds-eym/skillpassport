@@ -1,9 +1,15 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { useQueryClient } from '@tanstack/react-query';
+import { getActiveSubscription } from '../services/Subscriptions/subscriptionService';
+import addOnPaymentService from '../services/addOnPaymentService';
+import { supabase } from '../lib/supabaseClient';
+import { entitlementService } from '../services/entitlementService';
 
+// ============================================================================
 // Types
-export type AccessReason = 
+// ============================================================================
+
+export type AccessReason =
   | 'active'
   | 'paused'
   | 'grace_period'
@@ -11,12 +17,11 @@ export type AccessReason =
   | 'cancelled'
   | 'no_subscription';
 
-export type WarningType = 
+export type WarningType =
   | 'expiring_soon'
   | 'grace_period'
   | 'paused';
 
-// Access reasons constants for UI handling
 export const ACCESS_REASONS = {
   ACTIVE: 'active',
   PAUSED: 'paused',
@@ -30,8 +35,27 @@ export interface Subscription {
   id: string;
   status: string;
   plan_type?: string;
+  plan?: string;
+  planName?: string;
+  planPrice?: number;
+  billingCycle?: string;
   was_revoked?: boolean;
   end_date?: string;
+  startDate?: string;
+  endDate?: string;
+  autoRenew?: boolean;
+  isOrganizationLicense?: boolean;
+  organizationId?: string;
+  organizationType?: string;
+  licenseAssignmentId?: string;
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  razorpaySubscriptionId?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  features?: any[];
+  userRole?: string;
   [key: string]: any;
 }
 
@@ -48,6 +72,10 @@ export interface SubscriptionCost {
   annual: number;
 }
 
+// ============================================================================
+// Store State Interface
+// ============================================================================
+
 interface SubscriptionState {
   // Access state
   hasAccess: boolean;
@@ -56,84 +84,332 @@ interface SubscriptionState {
   isLoading: boolean;
   isRefetching: boolean;
   error: Error | null;
-  
+
   // Warning state
   showWarning: boolean;
   warningType: WarningType | null;
   warningMessage: string | null;
   daysUntilExpiry: number | null;
-  
+
   // Entitlements
   userEntitlements: Entitlement[];
   activeEntitlements: Entitlement[];
   totalAddOnCost: SubscriptionCost;
   isLoadingEntitlements: boolean;
   entitlementsError: Error | null;
-  
+
   // Purchase state
   isPurchasing: boolean;
   isCancelling: boolean;
   purchaseError: string | null;
-  
-  // Computed helpers (as methods)
+
+  // Internal
+  _lastFetchTime: number | null;
+  _currentUserId: string | null;
+
+  // Computed helpers
   getIsActive: () => boolean;
   getIsPaused: () => boolean;
   getIsInGracePeriod: () => boolean;
   getIsExpired: () => boolean;
   getHasNoSubscription: () => boolean;
-  
-  // Actions
+
+  // Core actions
+  fetchSubscription: (userId: string) => Promise<void>;
+  refreshSubscription: () => Promise<void>;
+  fetchUserEntitlements: (userId?: string) => Promise<void>;
   setAccessData: (data: Partial<SubscriptionState>) => void;
   setEntitlementsData: (data: Partial<SubscriptionState>) => void;
   setPurchaseState: (state: { isPurchasing?: boolean; isCancelling?: boolean; purchaseError?: string | null }) => void;
-  refreshAccess: () => void;
-  fetchUserEntitlements: () => void;
   clearAccessCache: () => void;
   clearPurchaseError: () => void;
-  
-  // Feature access check
+
+  // Feature access
   hasAddOnAccessSync: (featureKey: string) => boolean;
   hasAddOnAccess: (featureKey: string) => Promise<boolean>;
-  
-  // Mutations (to be called with your mutation hooks)
-  purchaseAddOn: (featureKey: string, billingPeriod: 'monthly' | 'annual') => Promise<void>;
-  purchaseBundle: (bundleId: string, billingPeriod: 'monthly' | 'annual') => Promise<void>;
-  cancelAddOn: (entitlementId: string) => Promise<void>;
 }
+
+// ============================================================================
+// Stale time (2 minutes)
+// ============================================================================
+
+const STALE_TIME = 2 * 60 * 1000;
+
+// ============================================================================
+// Format raw subscription data from Supabase into normalized shape
+// ============================================================================
+
+function formatSubscriptionData(data: any): Subscription {
+  const planId = data.subscription_plans?.plan_code || data.plan_type || data.plan_code;
+  const planName = data.subscription_plans?.name || data.plan_type;
+
+  return {
+    id: data.id,
+    plan: planId,
+    plan_type: planId,
+    status: data.status,
+    startDate: data.subscription_start_date,
+    endDate: data.subscription_end_date,
+    end_date: data.subscription_end_date,
+    features: data.features || [],
+    autoRenew: data.auto_renew !== false,
+    planName,
+    planPrice: data.plan_amount,
+    fullName: data.full_name,
+    email: data.email,
+    phone: data.phone,
+    billingCycle: data.billing_cycle,
+    razorpaySubscriptionId: data.razorpay_subscription_id,
+    cancelledAt: data.cancelled_at,
+    cancellationReason: data.cancellation_reason,
+    userRole: data.users?.role || null,
+    isOrganizationLicense: data.is_organization_license || false,
+    organizationId: data.organization_id || null,
+    organizationType: data.organization_type || null,
+    licenseAssignmentId: data.license_assignment_id || null,
+    was_revoked: false,
+  };
+}
+
+// ============================================================================
+// Compute access, warning, and reason from subscription data
+// ============================================================================
+
+function computeAccessState(sub: Subscription | null) {
+  if (!sub) {
+    return {
+      hasAccess: false,
+      accessReason: 'no_subscription' as AccessReason,
+      showWarning: false,
+      warningType: null as WarningType | null,
+      warningMessage: null as string | null,
+      daysUntilExpiry: null as number | null,
+    };
+  }
+
+  const status = sub.status;
+  let accessReason: AccessReason = 'no_subscription';
+  let hasAccess = false;
+  let showWarning = false;
+  let warningType: WarningType | null = null;
+  let warningMessage: string | null = null;
+  let daysUntilExpiry: number | null = null;
+
+  if (status === 'active') {
+    accessReason = 'active';
+    hasAccess = true;
+  } else if (status === 'paused') {
+    accessReason = 'paused';
+    hasAccess = true;
+    showWarning = true;
+    warningType = 'paused';
+    warningMessage = 'Your subscription is paused. Some features may be limited.';
+  } else if (status === 'grace_period') {
+    accessReason = 'grace_period';
+    hasAccess = true;
+    showWarning = true;
+    warningType = 'grace_period';
+    const endDate = sub.endDate || sub.end_date;
+    const daysLeft = endDate
+      ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
+    warningMessage = daysLeft != null && daysLeft > 0
+      ? `Your subscription is in a grace period. Renew within ${daysLeft} day${daysLeft !== 1 ? 's' : ''} to avoid losing access.`
+      : 'Your subscription is in a grace period. Please renew to continue access.';
+  } else if (status === 'cancelled') {
+    accessReason = 'cancelled';
+    // Cancelled but not expired — user keeps access until end date
+    const endDate = sub.endDate || sub.end_date;
+    if (endDate && new Date(endDate) >= new Date()) {
+      hasAccess = true;
+    }
+  }
+
+  // Check expiry warning (for active/paused)
+  if (hasAccess) {
+    const endDate = sub.endDate || sub.end_date;
+    if (endDate) {
+      const msUntilExpiry = new Date(endDate).getTime() - Date.now();
+      daysUntilExpiry = Math.ceil(msUntilExpiry / (1000 * 60 * 60 * 24));
+
+      if (daysUntilExpiry <= 7 && daysUntilExpiry > 0 && status === 'active') {
+        showWarning = true;
+        warningType = 'expiring_soon';
+        warningMessage = `Your subscription expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''}. Renew now to avoid interruption.`;
+      }
+    }
+  }
+
+  return { hasAccess, accessReason, showWarning, warningType, warningMessage, daysUntilExpiry };
+}
+
+// ============================================================================
+// Store
+// ============================================================================
 
 export const useSubscriptionStore = create<SubscriptionState>()(
   immer((set, get) => ({
-    // Initial state - start with loading true until data syncs
+    // Initial state
     hasAccess: false,
     accessReason: 'no_subscription',
     subscription: null,
     isLoading: true,
     isRefetching: false,
     error: null,
-    
+
     showWarning: false,
     warningType: null,
     warningMessage: null,
     daysUntilExpiry: null,
-    
+
     userEntitlements: [],
     activeEntitlements: [],
     totalAddOnCost: { monthly: 0, annual: 0 },
     isLoadingEntitlements: false,
     entitlementsError: null,
-    
+
     isPurchasing: false,
     isCancelling: false,
     purchaseError: null,
-    
-    // Computed (as methods)
+
+    _lastFetchTime: null,
+    _currentUserId: null,
+
+    // Computed helpers
     getIsActive: () => get().accessReason === 'active',
     getIsPaused: () => get().accessReason === 'paused',
     getIsInGracePeriod: () => get().accessReason === 'grace_period',
     getIsExpired: () => get().accessReason === 'expired',
     getHasNoSubscription: () => get().accessReason === 'no_subscription',
 
-    // Set access data (called from React Query)
+    // ====================================================================
+    // fetchSubscription — the SINGLE async action that replaces React Query
+    // ====================================================================
+    fetchSubscription: async (userId: string) => {
+      const state = get();
+
+      // Skip if data is fresh (within stale time) and for the same user
+      if (
+        state._lastFetchTime &&
+        state._currentUserId === userId &&
+        Date.now() - state._lastFetchTime < STALE_TIME &&
+        !state.error
+      ) {
+        // Data is fresh, just make sure loading is false
+        if (state.isLoading) {
+          set((s) => { s.isLoading = false; });
+        }
+        return;
+      }
+
+      // Set loading (isRefetching if we already have data)
+      const isRefetch = !!state.subscription;
+      set((s) => {
+        s.isLoading = !isRefetch;
+        s.isRefetching = isRefetch;
+        s._currentUserId = userId;
+      });
+
+      try {
+        const result = await getActiveSubscription();
+
+        // Race condition guard: if user changed while we were fetching, discard
+        if (get()._currentUserId !== userId) return;
+
+        if (result.success && result.data) {
+          const subscription = formatSubscriptionData(result.data);
+          const accessState = computeAccessState(subscription);
+
+          set((s) => {
+            s.subscription = subscription;
+            s.hasAccess = accessState.hasAccess;
+            s.accessReason = accessState.accessReason;
+            s.showWarning = accessState.showWarning;
+            s.warningType = accessState.warningType;
+            s.warningMessage = accessState.warningMessage;
+            s.daysUntilExpiry = accessState.daysUntilExpiry;
+            s.isLoading = false;
+            s.isRefetching = false;
+            s.error = null;
+            s._lastFetchTime = Date.now();
+          });
+        } else {
+          // No subscription
+          set((s) => {
+            s.subscription = null;
+            s.hasAccess = false;
+            s.accessReason = 'no_subscription';
+            s.showWarning = false;
+            s.warningType = null;
+            s.warningMessage = null;
+            s.daysUntilExpiry = null;
+            s.isLoading = false;
+            s.isRefetching = false;
+            s.error = null;
+            s._lastFetchTime = Date.now();
+          });
+        }
+      } catch (err) {
+        set((s) => {
+          s.isLoading = false;
+          s.isRefetching = false;
+          s.error = err instanceof Error ? err : new Error(String(err));
+          s._lastFetchTime = Date.now();
+        });
+      }
+    },
+
+    // Force refresh — bypasses stale time
+    refreshSubscription: async () => {
+      const userId = get()._currentUserId;
+      if (!userId) return;
+
+      // Clear stale time to force refetch
+      set((s) => { s._lastFetchTime = null; });
+      await get().fetchSubscription(userId);
+    },
+
+    // Fetch user entitlements from the DB (separate from subscription)
+    // Accepts optional explicit userId to prevent stale reads during sequential calls
+    fetchUserEntitlements: async (explicitUserId?: string) => {
+      const userId = explicitUserId || get()._currentUserId;
+      if (!userId) return;
+
+      set((s) => { s.isLoadingEntitlements = true; s.entitlementsError = null; });
+      try {
+        const result = await entitlementService.getUserEntitlements(userId);
+
+        // Race condition guard
+        if (get()._currentUserId !== userId) return;
+
+        if (result.success && result.data) {
+          const entitlements = result.data;
+          const now = new Date();
+          set((s) => {
+            s.userEntitlements = entitlements as any;
+            s.activeEntitlements = (entitlements as any[]).filter((ent) => {
+              if (ent.status === 'active' || ent.status === 'grace_period') return true;
+              if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+              return false;
+            });
+            s.isLoadingEntitlements = false;
+          });
+        } else {
+          set((s) => {
+            s.isLoadingEntitlements = false;
+            s.entitlementsError = new Error(result.error || 'Failed to fetch entitlements');
+          });
+        }
+      } catch (err) {
+        if (get()._currentUserId !== userId) return;
+        set((s) => {
+          s.isLoadingEntitlements = false;
+          s.entitlementsError = err instanceof Error ? err : new Error(String(err));
+        });
+      }
+    },
+
+    // Manual setter (for edge cases or testing)
     setAccessData: (data) => {
       set((state) => {
         if (data.hasAccess !== undefined) state.hasAccess = data.hasAccess;
@@ -149,12 +425,11 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       });
     },
 
-    // Set entitlements data (called from React Query)
+    // Set entitlements data
     setEntitlementsData: (data) => {
       set((state) => {
         if (data.userEntitlements) {
           state.userEntitlements = data.userEntitlements;
-          // Compute active entitlements
           const now = new Date();
           state.activeEntitlements = data.userEntitlements.filter((ent) => {
             if (ent.status === 'active' || ent.status === 'grace_period') return true;
@@ -177,27 +452,16 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       });
     },
 
-    // Trigger refresh (component calls invalidateQueries)
-    refreshAccess: () => {
-      // Components should call:
-      // queryClient.invalidateQueries({ queryKey: ['subscription-access', userId] })
-    },
-
-    fetchUserEntitlements: () => {
-      // Components should call:
-      // queryClient.invalidateQueries({ queryKey: ['user-entitlements', userId] })
-    },
-
     clearAccessCache: () => {
-      // Components should call:
-      // queryClient.removeQueries({ queryKey: ['subscription-access'] })
-      // queryClient.removeQueries({ queryKey: ['user-entitlements'] })
       set((state) => {
         state.hasAccess = false;
         state.accessReason = 'no_subscription';
         state.subscription = null;
         state.userEntitlements = [];
         state.activeEntitlements = [];
+        state.isLoading = true;
+        state._lastFetchTime = null;
+        state._currentUserId = null;
       });
     },
 
@@ -213,101 +477,135 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       return activeEntitlements.some((ent) => ent.feature_key === featureKey);
     },
 
-    // Async check (fetches fresh data)
+    // Async check (for now returns sync check)
     hasAddOnAccess: async (featureKey) => {
-      // This would call your entitlement service
-      // For now, return sync check
       return get().hasAddOnAccessSync(featureKey);
-    },
-
-    // Placeholder mutations - actual implementation uses React Query mutations
-    purchaseAddOn: async () => {
-      // Component should use useMutation with addOnPaymentService.createAddOnOrder
-      throw new Error('Use React Query mutation for purchases');
-    },
-
-    purchaseBundle: async () => {
-      // Component should use useMutation with addOnPaymentService.createBundleOrder
-      throw new Error('Use React Query mutation for purchases');
-    },
-
-    cancelAddOn: async () => {
-      // Component should use useMutation with entitlementService.cancelAddOn
-      throw new Error('Use React Query mutation for cancellations');
     },
   }))
 );
 
-// Hook for React Query integration
-export const useSyncSubscriptionWithQuery = () => {
-  const queryClient = useQueryClient();
-  const store = useSubscriptionStore.getState();
+// ============================================================================
+// Convenience Hooks
+// ============================================================================
+
+export const useSubscriptionAccess = () => {
+  const hasAccess = useSubscriptionStore((s) => s.hasAccess);
+  const accessReason = useSubscriptionStore((s) => s.accessReason);
+  const subscription = useSubscriptionStore((s) => s.subscription);
+  const isLoading = useSubscriptionStore((s) => s.isLoading);
+  const isRefetching = useSubscriptionStore((s) => s.isRefetching);
+  const error = useSubscriptionStore((s) => s.error);
+  const isActive = useSubscriptionStore((s) => s.getIsActive());
+  const isPaused = useSubscriptionStore((s) => s.getIsPaused());
+  const isInGracePeriod = useSubscriptionStore((s) => s.getIsInGracePeriod());
+  const isExpired = useSubscriptionStore((s) => s.getIsExpired());
+  const hasNoSubscription = useSubscriptionStore((s) => s.getHasNoSubscription());
+  const refreshSubscription = useSubscriptionStore((s) => s.refreshSubscription);
+  const fetchEntitlements = useSubscriptionStore((s) => s.fetchUserEntitlements);
+
+  // refreshAccess refreshes BOTH subscription + entitlements
+  // Captures userId upfront to prevent stale reads between sequential calls
+  const refreshAccess = async () => {
+    const userId = useSubscriptionStore.getState()._currentUserId;
+    if (!userId) return;
+    await refreshSubscription();
+    // Pass userId explicitly — _currentUserId may have changed during refreshSubscription
+    await fetchEntitlements(userId);
+  };
 
   return {
-    refreshAccess: (userId: string) => {
-      queryClient.invalidateQueries({ queryKey: ['subscription-access', userId] });
-    },
-    fetchUserEntitlements: (userId: string) => {
-      queryClient.invalidateQueries({ queryKey: ['user-entitlements', userId] });
-    },
-    clearAccessCache: () => {
-      queryClient.removeQueries({ queryKey: ['subscription-access'] });
-      queryClient.removeQueries({ queryKey: ['user-entitlements'] });
-      store.clearAccessCache();
-    },
+    hasAccess, accessReason, subscription, isLoading, isRefetching, error,
+    isActive, isPaused, isInGracePeriod, isExpired, hasNoSubscription,
+    refreshSubscription,
+    // Aliases for consumer compatibility (useSubscriptionQuery used these names)
+    subscriptionData: subscription,
+    loading: isLoading,
+    // refreshAccess refreshes both subscription and entitlements
+    refreshAccess,
+    // fetchUserEntitlements fetches only entitlements from the DB
+    fetchUserEntitlements: fetchEntitlements,
   };
 };
 
-// Convenience hooks
-export const useSubscriptionAccess = () => {
-  const hasAccess = useSubscriptionStore((state) => state.hasAccess);
-  const accessReason = useSubscriptionStore((state) => state.accessReason);
-  const subscription = useSubscriptionStore((state) => state.subscription);
-  const isLoading = useSubscriptionStore((state) => state.isLoading);
-  const isActive = useSubscriptionStore((state) => state.getIsActive());
-  const isPaused = useSubscriptionStore((state) => state.getIsPaused());
-  const isInGracePeriod = useSubscriptionStore((state) => state.getIsInGracePeriod());
-  const isExpired = useSubscriptionStore((state) => state.getIsExpired());
-  const hasNoSubscription = useSubscriptionStore((state) => state.getHasNoSubscription());
-  
-  return { hasAccess, accessReason, subscription, isLoading, isActive, isPaused, isInGracePeriod, isExpired, hasNoSubscription };
-};
-
 export const useSubscriptionWarnings = () => {
-  const showWarning = useSubscriptionStore((state) => state.showWarning);
-  const warningType = useSubscriptionStore((state) => state.warningType);
-  const warningMessage = useSubscriptionStore((state) => state.warningMessage);
-  const daysUntilExpiry = useSubscriptionStore((state) => state.daysUntilExpiry);
-  
+  const showWarning = useSubscriptionStore((s) => s.showWarning);
+  const warningType = useSubscriptionStore((s) => s.warningType);
+  const warningMessage = useSubscriptionStore((s) => s.warningMessage);
+  const daysUntilExpiry = useSubscriptionStore((s) => s.daysUntilExpiry);
+
   return { showWarning, warningType, warningMessage, daysUntilExpiry };
 };
 
 export const useUserEntitlements = () => {
-  const userEntitlements = useSubscriptionStore((state) => state.userEntitlements);
-  const activeEntitlements = useSubscriptionStore((state) => state.activeEntitlements);
-  const totalAddOnCost = useSubscriptionStore((state) => state.totalAddOnCost);
-  const isLoadingEntitlements = useSubscriptionStore((state) => state.isLoadingEntitlements);
-  const entitlementsError = useSubscriptionStore((state) => state.entitlementsError);
-  
-  return { userEntitlements, activeEntitlements, totalAddOnCost, isLoadingEntitlements, entitlementsError };
+  const userEntitlements = useSubscriptionStore((s) => s.userEntitlements);
+  const activeEntitlements = useSubscriptionStore((s) => s.activeEntitlements);
+  const totalAddOnCost = useSubscriptionStore((s) => s.totalAddOnCost);
+  const isLoadingEntitlements = useSubscriptionStore((s) => s.isLoadingEntitlements);
+  const entitlementsError = useSubscriptionStore((s) => s.entitlementsError);
+  const hasAddOnAccessSync = useSubscriptionStore((s) => s.hasAddOnAccessSync);
+
+  return { userEntitlements, activeEntitlements, totalAddOnCost, isLoadingEntitlements, entitlementsError, hasAddOnAccessSync };
 };
 
 export const useSubscriptionPurchase = () => {
-  const isPurchasing = useSubscriptionStore((state) => state.isPurchasing);
-  const isCancelling = useSubscriptionStore((state) => state.isCancelling);
-  const purchaseError = useSubscriptionStore((state) => state.purchaseError);
-  const clearPurchaseError = useSubscriptionStore((state) => state.clearPurchaseError);
-  
-  return { isPurchasing, isCancelling, purchaseError, clearPurchaseError };
+  const isPurchasing = useSubscriptionStore((s) => s.isPurchasing);
+  const isCancelling = useSubscriptionStore((s) => s.isCancelling);
+  const purchaseError = useSubscriptionStore((s) => s.purchaseError);
+  const clearPurchaseError = useSubscriptionStore((s) => s.clearPurchaseError);
+  const setPurchaseState = useSubscriptionStore((s) => s.setPurchaseState);
+
+  // Convenience wrapper: create add-on order via the payments API
+  const purchaseAddOn = async (featureKey: string, billingPeriod: string = 'monthly') => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Not authenticated');
+    setPurchaseState({ isPurchasing: true, purchaseError: null });
+    try {
+      const result = await addOnPaymentService.createAddOnOrder({
+        featureKey,
+        userId: session.user.id,
+        billingPeriod,
+        userEmail: session.user.email || '',
+        userName: session.user.user_metadata?.name || session.user.email || '',
+      });
+      setPurchaseState({ isPurchasing: false });
+      return result;
+    } catch (err: any) {
+      setPurchaseState({ isPurchasing: false, purchaseError: err.message });
+      throw err;
+    }
+  };
+
+  // Convenience wrapper: create bundle order via the payments API
+  const purchaseBundle = async (bundleId: string, billingPeriod: string = 'monthly') => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Not authenticated');
+    setPurchaseState({ isPurchasing: true, purchaseError: null });
+    try {
+      const result = await addOnPaymentService.createBundleOrder({
+        bundleId,
+        userId: session.user.id,
+        billingPeriod,
+        userEmail: session.user.email || '',
+        userName: session.user.user_metadata?.name || session.user.email || '',
+      });
+      setPurchaseState({ isPurchasing: false });
+      return result;
+    } catch (err: any) {
+      setPurchaseState({ isPurchasing: false, purchaseError: err.message });
+      throw err;
+    }
+  };
+
+  return { isPurchasing, isCancelling, purchaseError, clearPurchaseError, purchaseAddOn, purchaseBundle };
 };
 
-// Combined hook that mimics the old Context API
+// Combined hook — single import for components that need everything
 export const useSubscription = () => {
   const access = useSubscriptionAccess();
   const warnings = useSubscriptionWarnings();
   const entitlements = useUserEntitlements();
   const purchase = useSubscriptionPurchase();
-  
+
   return {
     ...access,
     ...warnings,
