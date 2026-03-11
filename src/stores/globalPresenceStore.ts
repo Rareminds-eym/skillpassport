@@ -162,6 +162,11 @@ export const useGlobalPresence = () => {
     currentUserId: userId,
     currentUserName: userName,
     currentUserType: userType,
+    isUserOnline: (uid: string) => onlineUsers.some((u) => u.userId === uid && u.status === 'online'),
+    getUserStatus: (uid: string) => {
+      const user = onlineUsers.find((u) => u.userId === uid);
+      return user ? user.status : 'offline';
+    },
     ...actions,
   };
 };

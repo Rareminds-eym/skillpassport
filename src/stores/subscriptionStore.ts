@@ -542,8 +542,9 @@ export const useUserEntitlements = () => {
   const totalAddOnCost = useSubscriptionStore((s) => s.totalAddOnCost);
   const isLoadingEntitlements = useSubscriptionStore((s) => s.isLoadingEntitlements);
   const entitlementsError = useSubscriptionStore((s) => s.entitlementsError);
+  const hasAddOnAccessSync = useSubscriptionStore((s) => s.hasAddOnAccessSync);
 
-  return { userEntitlements, activeEntitlements, totalAddOnCost, isLoadingEntitlements, entitlementsError };
+  return { userEntitlements, activeEntitlements, totalAddOnCost, isLoadingEntitlements, entitlementsError, hasAddOnAccessSync };
 };
 
 export const useSubscriptionPurchase = () => {
