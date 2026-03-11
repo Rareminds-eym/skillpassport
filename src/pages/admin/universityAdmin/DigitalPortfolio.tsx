@@ -12,6 +12,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from '../../../components/common/SearchBar';
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-digital-portfolio');
 
 // Filter Section Component
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
@@ -215,7 +218,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
             universityId = userData.universityId || userData.organizationId;
           }
         } catch (e) {
-          console.error('Error parsing stored user:', e);
+          logger.error('Error parsing stored user from localStorage', { error: (e as Error).message });
         }
       }
       
@@ -240,10 +243,10 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
 
       // Filter by universityId if available
       if (universityId) {
-        console.log('✅ Filtering portfolios by universityId:', universityId);
+        logger.info('Filtering portfolios by universityId:', { universityId });
         query = query.eq('universityId', universityId);
       } else {
-        console.warn('⚠️ No universityId found for university admin');
+        logger.warn('No universityId found for university admin');
       }
 
       const { data, error: fetchError } = await query;
@@ -251,7 +254,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
       if (fetchError) throw fetchError;
       setStudents(data || []);
     } catch (err: any) {
-      console.error('Error fetching students:', err);
+      logger.error('Error fetching students:', err as Error);
       setError(err?.message || 'Failed to load students');
     } finally {
       setLoading(false);
@@ -272,7 +275,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
             universityId = userData.universityId || userData.organizationId;
           }
         } catch (e) {
-          console.error('Error parsing stored user:', e);
+          logger.error('Error parsing stored user in fetchPortfolios', { error: (e as Error).message });
         }
       }
       
@@ -305,7 +308,7 @@ const UniversityAdminDigitalPortfolio: React.FC = () => {
         setColleges(data);
       }
     } catch (err) {
-      console.error('Error fetching colleges:', err);
+      logger.error('Error fetching colleges:', err as Error);
     }
   };
 
