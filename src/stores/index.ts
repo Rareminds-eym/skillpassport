@@ -24,6 +24,23 @@ export {
   type Session 
 } from './authStore';
 
+export {
+  useStudentStore,
+  useStudent,
+  useStudentId,
+  useStudentLoading,
+  useStudentError,
+  useStudentEducation,
+  useStudentExperience,
+  useStudentSkills,
+  useStudentProjects,
+  useStudentTrainings,
+  useStudentCertificates,
+  useStudentActions,
+  useStudentEntityActions,
+  useStudentProfile,
+} from './studentStore';
+
 // ====================
 // Feature Stores
 // ====================
@@ -185,6 +202,7 @@ export const resetAllStores = async () => {
   const { useTourStore } = await import('./tourStore');
   const { useAssessmentStore } = await import('./assessmentStore');
   const { useSubscriptionStore } = await import('./subscriptionStore');
+  const { useStudentStore } = await import('./studentStore');
 
   // Reset individual stores
   useAuthStore.getState().logout();
@@ -193,12 +211,20 @@ export const resetAllStores = async () => {
   useTourStore.getState().reset();
   useAssessmentStore.getState().reset();
   useSubscriptionStore.getState().clearAccessCache();
+  useStudentStore.getState().clearStudent();
 };
 
 // Initialize all stores on app load
 export const initializeStores = async () => {
   const { useAuthStore } = await import('./authStore');
+  const { useStudentStore } = await import('./studentStore');
   
   // Initialize auth first (other stores may depend on it)
   await useAuthStore.getState().initialize();
+  
+  // Load student data if user is authenticated
+  const user = useAuthStore.getState().user;
+  if (user?.id) {
+    await useStudentStore.getState().loadStudentByUserId(user.id);
+  }
 };

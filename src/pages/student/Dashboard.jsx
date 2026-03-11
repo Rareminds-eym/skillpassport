@@ -81,11 +81,11 @@ import {
 } from "../../components/Students/data/mockData";
 import { useAIRecommendations } from "../../hooks/useAIRecommendations";
 import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
-import { useUserRole } from "../../stores";
+import { useUserRole, useUser } from "../../stores";
 import { useOpportunities } from "../../hooks/useOpportunities";
 import { useStudentAchievements } from "../../hooks/useStudentAchievements";
 import { useStudentCertificates } from "../../hooks/useStudentCertificates";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentData } from "../../hooks/useStudentData";
 import { useStudentEducation } from "../../hooks/useStudentEducation";
 import { useStudentExperience } from "../../hooks/useStudentExperience";
 import { useStudentTechnicalSkills, useStudentSoftSkills } from "../../hooks/useStudentSkills";
@@ -718,29 +718,34 @@ const StudentDashboard = () => {
     }
   }, []);
 
-  // Use authenticated student data instead of localStorage
-  // Get user email from localStorage or context (customize as needed)
-  const userEmail = localStorage.getItem("userEmail");
-
-  // Use the same hook as ProfileEditSection for fetching and updating
+  // Use new Zustand-based student data hook
+  const user = useUser();
+  const userEmail = user?.email;
+  
   const {
-    studentData,
-    loading: authStudentLoading,
+    student: studentData,
+    studentId,
+    education: studentEducation,
+    experience: studentExperience,
+    skills: studentSkills,
+    projects: studentProjects,
+    trainings: studentTrainings,
+    certificates: studentCertificates,
+    isLoading: authStudentLoading,
     error: authStudentError,
-    refresh,
-    updateProfile,
-    updateEducation,
-    updateTraining,
-    updateExperience,
-    updateSkills,
-    updateTechnicalSkills,
-    updateSoftSkills,
-    updateProjects,
-    updateCertificates,
-  } = useStudentDataByEmail(userEmail);
+    updateStudentData: updateProfile,
+    updateEducationBulk: updateEducation,
+    updateTrainingsBulk: updateTraining,
+    updateExperienceBulk: updateExperience,
+    updateSkillsBulk: updateSkills,
+    updateProjectsBulk: updateProjects,
+    updateCertificatesBulk: updateCertificates,
+    refreshProfile: refresh,
+  } = useStudentData({ loadRelated: true });
 
-  // Get student ID for messaging
-  const studentId = studentData?.id;
+  // Map technical/soft skills to the same bulk update function
+  const updateTechnicalSkills = updateSkills;
+  const updateSoftSkills = updateSkills;
 
   // Fetch data from separate tables
   const {
@@ -858,11 +863,11 @@ const StudentDashboard = () => {
   }, [studentData?.id]);
 
   // Memoize studentSkills to prevent infinite re-renders
-  const studentSkills = useMemo(() => {
+  const studentSkillsNames = useMemo(() => {
     return (
-      studentData?.profile?.technicalSkills?.map((skill) => skill.name) || []
+      studentSkills?.filter(s => s.type === 'technical').map((skill) => skill.name) || []
     );
-  }, [studentData?.profile?.technicalSkills]);
+  }, [studentSkills]);
 
   const enabledProjects = useMemo(() => {
     // Prioritize table data over profile data
@@ -1367,7 +1372,7 @@ const StudentDashboard = () => {
     }));
 
     // Save to Supabase if studentData exists
-    if (userEmail && studentData?.profile) {
+    if (studentId && studentData) {
       try {
         let result;
         switch (section) {

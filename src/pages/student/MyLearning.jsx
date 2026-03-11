@@ -9,7 +9,7 @@ import SelectCourseModal from "../../components/Students/components/SelectCourse
 import { Button } from "../../components/Students/components/ui/button";
 import { Card, CardContent } from "../../components/Students/components/ui/card";
 import { useUser } from "../../stores";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentData } from "../../hooks/useStudentData";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
 import { supabase } from "../../lib/supabaseClient";
@@ -138,9 +138,15 @@ const ContinueLearningSection = ({ course, onContinue }) => {
 const MyLearning = () => {
   const navigate = useNavigate();
   const user = useUser();
-  const userEmail = user?.email;
-  const { studentData, updateTraining, updateSingleTraining, refresh: refreshStudentData, loading: studentLoading } = useStudentDataByEmail(userEmail, false);
-  const studentId = studentData?.id;
+  const { 
+    student: studentData,
+    studentId,
+    trainings,
+    isLoading: loading,
+    updateTrainingsBulk: updateTraining,
+    updateTrainingItem: updateSingleTraining,
+    refreshProfile: refresh
+  } = useStudentData({ loadRelated: true });
 
   // State for view toggle and layout
   const [activeView, setActiveView] = useState('learning'); // 'learning' or 'analytics'
@@ -162,11 +168,15 @@ const MyLearning = () => {
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const { trainings = [], loading: trainingsLoading, stats = { total: 0, completed: 0, ongoing: 0 }, refetch: refetchTrainings } = useStudentTrainings(studentId, {
+  // Use table trainings as primary source (includes filtering/sorting from hook)
+  const { trainings: tableTrainings = [], loading: trainingsLoading, stats = { total: 0, completed: 0, ongoing: 0 }, refetch: refetchTrainings } = useStudentTrainings(studentId, {
     sortBy, sortDirection, status: statusFilter, approvalStatus: approvalFilter, searchTerm,
   });
+  
+  // Use tableTrainings as the primary data source (already filtered/sorted)
+  const displayTrainings = tableTrainings.length > 0 ? tableTrainings : trainings;
 
-  const loading = studentLoading || trainingsLoading;
+  const isLoading = loading || trainingsLoading;
   const hasActiveFilters = statusFilter !== 'all' || approvalFilter !== 'all' || searchTerm.trim() !== '';
 
   // Continue learning course - optimized selection of most complete (but not 100%) INTERNAL course
@@ -180,7 +190,7 @@ const MyLearning = () => {
     };
 
     // Filter and map in single pass for better performance
-    const candidateCourses = trainings
+    const candidateCourses = displayTrainings
       .filter(t => {
         // Quick early returns for performance
         if (t.status === 'completed') return false;
@@ -211,13 +221,13 @@ const MyLearning = () => {
       });
     
     return candidateCourses.length > 0 ? candidateCourses[0].course : null;
-  }, [trainings]);
+  }, [displayTrainings]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(trainings.length / itemsPerPage);
+  const totalPages = Math.ceil(displayTrainings.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedTrainings = trainings.slice(startIndex, endIndex);
+  const paginatedTrainings = displayTrainings.slice(startIndex, endIndex);
 
   // Centralized filter handler that resets pagination
   const handleFilterChange = (filterType, value) => {
@@ -274,7 +284,7 @@ const MyLearning = () => {
       if (error) throw error;
       
       // Refresh the list
-      await refresh();
+      await refreshAll();
     } catch (error) {
       logger.error('Error deleting certificate', error);
       alert('Failed to delete certificate. Please try again.');
@@ -296,7 +306,7 @@ const MyLearning = () => {
     setCurrentPage(1); // Reset pagination when clearing filters
   };
   
-  const refresh = async () => { await refreshStudentData(); refetchTrainings(); };
+  const refreshAll = async () => { await refresh(); refetchTrainings(); };
   
   const handleContinueLearning = (course) => {
     // Check if this is an internal course that can be continued on the platform
@@ -391,11 +401,11 @@ const MyLearning = () => {
 
         {/* Conditional Rendering based on active view */}
         {activeView === 'analytics' ? (
-          <LearningAnalyticsDashboard trainings={trainings} stats={stats} />
+          <LearningAnalyticsDashboard trainings={displayTrainings} stats={stats} />
         ) : (
           <>
             {/* Continue Learning Section */}
-            {!loading && continueLearningCourse && (
+            {!isLoading && continueLearningCourse && (
               <ContinueLearningSection course={continueLearningCourse} onContinue={handleContinueLearning} />
             )}
 
@@ -560,7 +570,7 @@ const MyLearning = () => {
 
             {/* Content Section */}
             <div className="space-y-8">
-              {loading ? (
+              {isLoading ? (
                 <>
                   {/* Stats Skeleton */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -575,7 +585,7 @@ const MyLearning = () => {
                     <LearningCardSkeleton />
                   </div>
                 </>
-              ) : trainings.length > 0 ? (
+              ) : displayTrainings.length > 0 ? (
                 <>
                   {/* Enhanced Stats Cards */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -625,7 +635,7 @@ const MyLearning = () => {
                         </h2>
                         {hasActiveFilters && (
                           <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium">
-                            {trainings.length} results
+                            {displayTrainings.length} results
                           </span>
                         )}
                       </div>
@@ -657,7 +667,7 @@ const MyLearning = () => {
                         <Pagination
                           currentPage={currentPage}
                           totalPages={totalPages}
-                          totalItems={trainings.length}
+                          totalItems={displayTrainings.length}
                           itemsPerPage={itemsPerPage}
                           onPageChange={handlePageChange}
                         />
@@ -722,7 +732,7 @@ const MyLearning = () => {
             onClose={() => { 
               setActiveModal(null); 
               setEditingItem(null); 
-              // Don't call refresh() here - only refresh when data is actually saved
+              // Don't call refreshAll() here - only refresh when data is actually saved
             }}
             onSave={async (updatedItems) => { 
               const item = updatedItems[0]; 
@@ -730,7 +740,7 @@ const MyLearning = () => {
               
               // Use the single training update function instead of updating all trainings
               await updateSingleTraining(item.id, item);
-              await refresh(); 
+              await refreshAll(); 
             }}
             data={[editingItem]} 
             singleEditMode={true} 

@@ -13,7 +13,7 @@ import {
   X,
   MessageCircle as MessageCircleIcon
 } from 'lucide-react';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import { useUser } from '../../stores';
 import { SkillsEditModal } from '../../components/Students/components/ProfileEditModals';
 import { useStudentRealtimeActivities } from '../../hooks/useStudentRealtimeActivities';
@@ -28,15 +28,18 @@ import {
 
 const MySkills = () => {
   const user = useUser();
-  const userEmail = user?.email;
-  const { studentData, updateTechnicalSkills, updateSoftSkills } = useStudentDataByEmail(userEmail, false);
+  const { 
+    student,
+    studentId,
+    skills,
+    isLoading,
+    updateSkillsBulk 
+  } = useStudentData({ loadRelated: true });
 
-  const technicalSkills = studentData?.technicalSkills || [];
-  const softSkills = studentData?.softSkills || [];
-  const suggestions = studentData?.suggestions || mockSuggestions;
-
-  // Get student ID for messaging
-  const studentId = studentData?.id;
+  // Separate technical and soft skills
+  const technicalSkills = skills?.filter(s => s.type === 'technical') || [];
+  const softSkills = skills?.filter(s => s.type === 'soft') || [];
+  const suggestions = mockSuggestions;
 
   // Setup message notifications with hot-toast
   useStudentMessageNotifications({
@@ -64,14 +67,14 @@ const MySkills = () => {
     isError: recentUpdatesError,
     refetch: refreshRecentUpdates,
     isConnected: realtimeConnected,
-  } = useStudentRealtimeActivities(userEmail, 10);
+  } = useStudentRealtimeActivities(user?.email, 10);
 
   // AI Job Matching - Get top 3 matched jobs for student
   const {
     matchedJobs,
     loading: matchingLoading,
     error: matchingError,
-  } = useAIJobMatching(studentData, true, 3);
+  } = useAIJobMatching(student, true, 3);
 
   const [activeModal, setActiveModal] = useState(null);
   const [showAllRecentUpdates, setShowAllRecentUpdates] = useState(false);
@@ -90,9 +93,25 @@ const MySkills = () => {
 
   const handleSaveSkills = async (updatedData) => {
     if (activeModal === 'technicalSkills') {
-      await updateTechnicalSkills(updatedData.technicalSkills);
+      // Map to database format
+      const skillRecords = updatedData.technicalSkills.map(skill => ({
+        id: skill.id,
+        name: skill.name,
+        type: 'technical',
+        level: skill.level,
+        description: skill.description,
+      }));
+      await updateSkillsBulk(skillRecords);
     } else if (activeModal === 'softSkills') {
-      await updateSoftSkills(updatedData.softSkills);
+      // Map to database format
+      const skillRecords = updatedData.softSkills.map(skill => ({
+        id: skill.id,
+        name: skill.name,
+        type: 'soft',
+        level: skill.level,
+        description: skill.description,
+      }));
+      await updateSkillsBulk(skillRecords);
     }
     setActiveModal(null);
   };
