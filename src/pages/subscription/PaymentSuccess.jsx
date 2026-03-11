@@ -441,7 +441,7 @@ function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const user = useUser();
   const { role } = useUserRole();
-  const { refreshSubscription } = useSubscription();
+  const { refreshSubscription, refreshAccess } = useSubscription();
 
   // State
   const [activationStatus, setActivationStatus] = useState(ACTIVATION_STATES.PENDING);
@@ -499,7 +499,7 @@ function PaymentSuccess() {
   }, [user, role]);
 
   // Cache refresh hook
-  const cacheRefresh = useCacheRefresh(refreshSubscription, refreshSubscription);
+  const cacheRefresh = useCacheRefresh(refreshAccess, refreshSubscription);
 
   // Navigation state hook
   const navigation = useNavigationState(cacheRefresh, getDashboardUrl, navigate);
