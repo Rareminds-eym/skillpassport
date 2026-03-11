@@ -4,6 +4,36 @@
  */
 
 import { getPagesApiUrl, getAuthHeaders } from '../utils/pagesUrl';
+import { 
+  SignupData,
+  SchoolAdminSignupData,
+  EducatorSignupData,
+  StudentSignupData,
+  CollegeAdminSignupData,
+  CollegeEducatorSignupData,
+  CollegeStudentSignupData,
+  UniversityAdminSignupData,
+  UniversityEducatorSignupData,
+  UniversityStudentSignupData,
+  RecruiterSignupData,
+  RecruiterAdminSignupData,
+  ApiResponse,
+  CreateUserData,
+  CreateTeacherData,
+  DocumentUpdateData,
+  InterviewDetails,
+  InterviewInviteData,
+  CollegeStaffData,
+  SchoolData,
+  CollegeData,
+  UniversityData,
+  CompanyData,
+  CodeCheckResponse,
+  EmailCheckResponse,
+  ResetPasswordParams,
+  CreateEventUserParams,
+  InterviewReminderParams,
+} from '../types/auth';
 
 const API_URL = getPagesApiUrl('user');
 
@@ -24,7 +54,7 @@ interface UnifiedSignupData {
   referralCode?: string;
 }
 
-export async function unifiedSignup(data: UnifiedSignupData): Promise<any> {
+export async function unifiedSignup(data: UnifiedSignupData): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -40,11 +70,18 @@ export async function unifiedSignup(data: UnifiedSignupData): Promise<any> {
   return result;
 }
 
-export async function signupSchoolAdmin(data: any): Promise<any> {
+export async function signupSchoolAdmin(data: SchoolAdminSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+  };
+
   const response = await fetch(`${API_URL}/signup/school-admin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -56,11 +93,18 @@ export async function signupSchoolAdmin(data: any): Promise<any> {
   return result;
 }
 
-export async function signupEducator(data: any): Promise<any> {
+export async function signupEducator(data: EducatorSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+  };
+
   const response = await fetch(`${API_URL}/signup/educator`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -72,11 +116,22 @@ export async function signupEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupStudent(data: any): Promise<any> {
+export async function signupStudent(data: StudentSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+    // Ensure guardian fields match database schema
+    guardianName: data.guardianName,
+    guardianPhone: data.guardianPhone,
+    guardianEmail: data.guardianEmail,
+  };
+
   const response = await fetch(`${API_URL}/signup/student`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -88,7 +143,7 @@ export async function signupStudent(data: any): Promise<any> {
   return result;
 }
 
-export async function getSchools(): Promise<any> {
+export async function getSchools(): Promise<SchoolData[]> {
   const response = await fetch(`${API_URL}/schools`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
@@ -103,7 +158,7 @@ export async function getSchools(): Promise<any> {
   return result;
 }
 
-export async function checkSchoolCode(code: string): Promise<any> {
+export async function checkSchoolCode(code: string): Promise<CodeCheckResponse> {
   const response = await fetch(`${API_URL}/check-school-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -119,7 +174,7 @@ export async function checkSchoolCode(code: string): Promise<any> {
   return result;
 }
 
-export async function checkEmail(email: string): Promise<any> {
+export async function checkEmail(email: string): Promise<EmailCheckResponse> {
   const response = await fetch(`${API_URL}/check-email`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -137,11 +192,18 @@ export async function checkEmail(email: string): Promise<any> {
 
 // ==================== COLLEGE SIGNUP ENDPOINTS ====================
 
-export async function signupCollegeAdmin(data: any): Promise<any> {
+export async function signupCollegeAdmin(data: CollegeAdminSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+  };
+
   const response = await fetch(`${API_URL}/signup/college-admin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -153,11 +215,18 @@ export async function signupCollegeAdmin(data: any): Promise<any> {
   return result;
 }
 
-export async function signupCollegeEducator(data: any): Promise<any> {
+export async function signupCollegeEducator(data: CollegeEducatorSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+  };
+
   const response = await fetch(`${API_URL}/signup/college-educator`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -169,11 +238,22 @@ export async function signupCollegeEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupCollegeStudent(data: any): Promise<any> {
+export async function signupCollegeStudent(data: CollegeStudentSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+    // Ensure guardian fields match database schema
+    guardianName: data.guardianName,
+    guardianPhone: data.guardianPhone,
+    guardianEmail: data.guardianEmail,
+  };
+
   const response = await fetch(`${API_URL}/signup/college-student`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -185,7 +265,7 @@ export async function signupCollegeStudent(data: any): Promise<any> {
   return result;
 }
 
-export async function getColleges(): Promise<any> {
+export async function getColleges(): Promise<CollegeData[]> {
   const response = await fetch(`${API_URL}/colleges`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
@@ -200,7 +280,7 @@ export async function getColleges(): Promise<any> {
   return result;
 }
 
-export async function checkCollegeCode(code: string): Promise<any> {
+export async function checkCollegeCode(code: string): Promise<CodeCheckResponse> {
   const response = await fetch(`${API_URL}/check-college-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -218,11 +298,18 @@ export async function checkCollegeCode(code: string): Promise<any> {
 
 // ==================== UNIVERSITY SIGNUP ENDPOINTS ====================
 
-export async function signupUniversityAdmin(data: any): Promise<any> {
+export async function signupUniversityAdmin(data: UniversityAdminSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+  };
+
   const response = await fetch(`${API_URL}/signup/university-admin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -234,11 +321,18 @@ export async function signupUniversityAdmin(data: any): Promise<any> {
   return result;
 }
 
-export async function signupUniversityEducator(data: any): Promise<any> {
+export async function signupUniversityEducator(data: UniversityEducatorSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+  };
+
   const response = await fetch(`${API_URL}/signup/university-educator`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -250,11 +344,22 @@ export async function signupUniversityEducator(data: any): Promise<any> {
   return result;
 }
 
-export async function signupUniversityStudent(data: any): Promise<any> {
+export async function signupUniversityStudent(data: UniversityStudentSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+    // Ensure guardian fields match database schema
+    guardianName: data.guardianName,
+    guardianPhone: data.guardianPhone,
+    guardianEmail: data.guardianEmail,
+  };
+
   const response = await fetch(`${API_URL}/signup/university-student`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -266,7 +371,7 @@ export async function signupUniversityStudent(data: any): Promise<any> {
   return result;
 }
 
-export async function getUniversities(): Promise<any> {
+export async function getUniversities(): Promise<UniversityData[]> {
   const response = await fetch(`${API_URL}/universities`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
@@ -281,7 +386,7 @@ export async function getUniversities(): Promise<any> {
   return result;
 }
 
-export async function checkUniversityCode(code: string): Promise<any> {
+export async function checkUniversityCode(code: string): Promise<CodeCheckResponse> {
   const response = await fetch(`${API_URL}/check-university-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -299,11 +404,18 @@ export async function checkUniversityCode(code: string): Promise<any> {
 
 // ==================== RECRUITER SIGNUP ENDPOINTS ====================
 
-export async function signupRecruiterAdmin(data: any): Promise<any> {
+export async function signupRecruiterAdmin(data: RecruiterAdminSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+  };
+
   const response = await fetch(`${API_URL}/signup/recruiter-admin`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -315,11 +427,18 @@ export async function signupRecruiterAdmin(data: any): Promise<any> {
   return result;
 }
 
-export async function signupRecruiter(data: any): Promise<any> {
+export async function signupRecruiter(data: RecruiterSignupData): Promise<ApiResponse> {
+  // Transform data to match database schema
+  const payload = {
+    ...data,
+    // Combine firstName and lastName into name field for database
+    name: `${data.firstName} ${data.lastName}`.trim(),
+  };
+
   const response = await fetch(`${API_URL}/signup/recruiter`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json();
@@ -331,7 +450,7 @@ export async function signupRecruiter(data: any): Promise<any> {
   return result;
 }
 
-export async function getCompanies(): Promise<any> {
+export async function getCompanies(): Promise<CompanyData[]> {
   const response = await fetch(`${API_URL}/companies`, {
     method: 'GET',
     headers: { 'Content-Type': 'application/json' },
@@ -346,7 +465,7 @@ export async function getCompanies(): Promise<any> {
   return result;
 }
 
-export async function checkCompanyCode(code: string): Promise<any> {
+export async function checkCompanyCode(code: string): Promise<CodeCheckResponse> {
   const response = await fetch(`${API_URL}/check-company-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -364,7 +483,7 @@ export async function checkCompanyCode(code: string): Promise<any> {
 
 // ==================== AUTHENTICATED ENDPOINTS ====================
 
-export async function createStudent(studentData: any, token?: string): Promise<any> {
+export async function createStudent(studentData: CreateUserData, token?: string): Promise<ApiResponse> {
   console.log('🔑 userApiService.createStudent called with token length:', token?.length || 'no token');
   
   const response = await fetch(`${API_URL}/create-student`, {
@@ -397,7 +516,7 @@ export async function createStudent(studentData: any, token?: string): Promise<a
   return result;
 }
 
-export async function createTeacher(teacherData: any, token?: string): Promise<any> {
+export async function createTeacher(teacherData: CreateTeacherData, token?: string): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/create-teacher`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -412,15 +531,8 @@ export async function createTeacher(teacherData: any, token?: string): Promise<a
   return response.json();
 }
 
-interface ResetPasswordParams {
-  userId?: string;
-  newPassword?: string;
-  action?: string;
-  email?: string;
-  otp?: string;
-}
 
-export async function resetPassword(params: ResetPasswordParams, token?: string): Promise<any> {
+export async function resetPassword(params: ResetPasswordParams, token?: string): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/reset-password`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -435,17 +547,9 @@ export async function resetPassword(params: ResetPasswordParams, token?: string)
   return response.json();
 }
 
-interface CreateEventUserParams {
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  phone?: string;
-  registrationId?: string;
-  metadata?: any;
-}
 
-export async function createEventUser(params: CreateEventUserParams, token?: string): Promise<any> {
+
+export async function createEventUser(params: CreateEventUserParams, token?: string): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/create-event-user`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -460,14 +564,9 @@ export async function createEventUser(params: CreateEventUserParams, token?: str
   return response.json();
 }
 
-interface InterviewReminderParams {
-  interviewId: string;
-  recipientEmail: string;
-  recipientName: string;
-  interviewDetails: any;
-}
 
-export async function sendInterviewReminder(params: InterviewReminderParams, token?: string): Promise<any> {
+
+export async function sendInterviewReminder(params: InterviewReminderParams, token?: string): Promise<ApiResponse> {
   const response = await fetch(`${API_URL}/send-interview-reminder`, {
     method: 'POST',
     headers: getAuthHeaders(token),
@@ -484,9 +583,9 @@ export async function sendInterviewReminder(params: InterviewReminderParams, tok
 
 export async function updateStudentDocuments(
   studentId: string,
-  documents: any,
+  documents: DocumentUpdateData,
   token?: string
-): Promise<any> {
+): Promise<ApiResponse> {
   console.log('🔑 userApiService.updateStudentDocuments called with token length:', token?.length || 'no token');
   
   const response = await fetch(`${API_URL}/update-student-documents`, {
@@ -521,9 +620,9 @@ export async function updateStudentDocuments(
 
 export async function updateTeacherDocuments(
   teacherId: string,
-  documents: any,
+  documents: DocumentUpdateData,
   token?: string
-): Promise<any> {
+): Promise<ApiResponse> {
   console.log('🔑 userApiService.updateTeacherDocuments called with token length:', token?.length || 'no token');
   
   const response = await fetch(`${API_URL}/update-teacher-documents`, {
@@ -556,7 +655,7 @@ export async function updateTeacherDocuments(
   return result;
 }
 
-export async function createCollegeStaff(staffData: any, token?: string): Promise<any> {
+export async function createCollegeStaff(staffData: CollegeStaffData, token?: string): Promise<ApiResponse> {
   console.log('🔑 userApiService.createCollegeStaff called with token length:', token?.length || 'no token');
   
   const response = await fetch(`${API_URL}/create-college-staff`, {

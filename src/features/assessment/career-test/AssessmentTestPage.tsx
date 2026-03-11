@@ -18,6 +18,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
+import { AssessmentQuestion, AssessmentSection, SectionConfig, AIQuestionsState, AdaptiveTestResults, PendingAttempt } from '../../../types/assessment';
 
 // Auth & Database
 import { useUser } from '../../../stores';
@@ -179,13 +180,13 @@ const shouldShowErrorScreen = (errorMessage: string): boolean => {
 const buildSectionsWithQuestions = (
   gradeLevel: GradeLevel,
   _studentStream: string | null,
-  aiQuestions: any,
+  aiQuestions: AIQuestionsState,
   _selectedCategory: string | null
 ) => {
   const sectionConfigs = getSectionsForGrade(gradeLevel);
 
   return sectionConfigs.map(config => {
-    let questions: any[] = [];
+    let questions: AssessmentQuestion[] = [];
     let responseScale = config.responseScale;
 
     // Map section ID to question data
@@ -296,11 +297,11 @@ const AssessmentTestPage: React.FC = () => {
   } = useAssessment();
 
   // Local state
-  const [sections, setSections] = useState<any[]>([]);
+  const [sections, setSections] = useState<AssessmentSection[]>([]);
   const [useDatabase, setUseDatabase] = useState(false);
   const [testMode, setTestMode] = useState(false);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
-  const [pendingAttempt, setPendingAttempt] = useState<any>(null);
+  const [pendingAttempt, setPendingAttempt] = useState<PendingAttempt | null>(null);
   const [checkingExistingAttempt, setCheckingExistingAttempt] = useState(true);
   const [assessmentStarted, setAssessmentStarted] = useState(false);
   const [skipResumeCheck, setSkipResumeCheck] = useState(false); // Flag to skip resume check after abandoning
@@ -403,7 +404,7 @@ const AssessmentTestPage: React.FC = () => {
 
   // Memoize callbacks to prevent infinite re-render loop
   // These callbacks were causing the hook to re-initialize on every render
-  const handleAdaptiveTestComplete = useCallback(async (testResults: any) => {
+  const handleAdaptiveTestComplete = useCallback(async (testResults: AdaptiveTestResults) => {
     console.log('🎉 [AssessmentTestPage] Adaptive test completed, results:', testResults);
     flow.setAnswer('adaptive_aptitude_results', testResults);
     flow.setAnswer('adaptive_aptitude_session_id', testResults.sessionId);
@@ -432,9 +433,10 @@ const AssessmentTestPage: React.FC = () => {
     flow.completeSection();
   }, [flow, currentAttempt?.id]);
 
-  const handleAdaptiveTestError = useCallback((err: any) => {
+  const handleAdaptiveTestError = useCallback((err: unknown) => {
+    const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('❌ [AssessmentTestPage] Adaptive aptitude test error:', err);
-    flow.setError(`Adaptive test error: ${err}`);
+    flow.setError(`Adaptive test error: ${errorMessage}`);
   }, [flow]);
 
   const adaptiveAptitude = useAdaptiveAptitude({
@@ -1623,7 +1625,8 @@ const AssessmentTestPage: React.FC = () => {
       flow.goToNextQuestion();
       console.log('✅ [NAVIGATION] Navigation completed');
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       // CRITICAL FIX 3: Handle network errors and other exceptions
       console.error('❌ [CRITICAL ERROR] Unexpected error during navigation:', error);
 
@@ -1776,7 +1779,8 @@ const AssessmentTestPage: React.FC = () => {
           }
 
           console.log('✅ [CRITICAL SAVE] Section save successful - Navigation ALLOWED');
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           console.error('❌ [SAVE BLOCK] Section save error - Navigation BLOCKED');
           console.error('❌ [SAVE BLOCK] Error details:', error);
 
@@ -1804,7 +1808,7 @@ const AssessmentTestPage: React.FC = () => {
     }
   }, [flow, sections, submission, currentAttempt, user, useDatabase, dbUpdateProgress]);
 
-  const handleAnswerChange = useCallback((value: any) => {
+  const handleAnswerChange = useCallback((value: string | number | boolean) => {
     const currentSection = sections[flow.currentSectionIndex];
     const qId = flow.questionId; // Capture questionId at the time of answer
 
@@ -1832,7 +1836,7 @@ const AssessmentTestPage: React.FC = () => {
   // Test mode functions
   const autoFillAllAnswers = useCallback(async () => {
     sections.forEach(section => {
-      section.questions?.forEach((question: any) => {
+      section.questions?.forEach((question: AssessmentQuestion) => {
         const questionId = `${section.id}_${question.id}`;
 
         // Handle SJT questions (best/worst)
@@ -1878,7 +1882,7 @@ const AssessmentTestPage: React.FC = () => {
 
     // Fill all previous sections with dummy answers
     sections.slice(0, sectionIndex).forEach(section => {
-      section.questions?.forEach((question: any) => {
+      section.questions?.forEach((question: AssessmentQuestion) => {
         const questionId = `${section.id}_${question.id}`;
 
         // Handle SJT questions (best/worst)
@@ -2176,7 +2180,7 @@ const AssessmentTestPage: React.FC = () => {
         } else {
           // For current section, count actual answered questions from flow.answers
           // This ensures progress is accurate after resume
-          const sectionAnswerCount = section.questions?.filter((q: any) => {
+          const sectionAnswerCount = section.questions?.filter((q: AssessmentQuestion) => {
             const questionId = `${section.id}_${q.id}`;
             return flow.answers[questionId] !== undefined;
           }).length || 0;

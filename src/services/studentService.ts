@@ -5,6 +5,19 @@
 
 import { supabase } from '../lib/supabaseClient';
 import { getLogger } from '../config/logging';
+import { 
+  Student,
+  StudentProfile, 
+  StudentUpdateData,
+  TrainingData, 
+  SkillData, 
+  ExperienceData, 
+  EducationData, 
+  CertificateData, 
+  ProjectData, 
+  ServiceResponse, 
+  UserCreationData 
+} from '../types/student';
 
 const logger = getLogger('student-service');
 
@@ -99,7 +112,7 @@ function generateAvatar(name?: string): string {
 /**
  * Create a user record in the users table
  */
-export const createUserRecord = async (userId: string, userData: any): Promise<ServiceResponse> => {
+export const createUserRecord = async (userId: string, userData: UserCreationData): Promise<ServiceResponse> => {
   try {
     const { email, firstName, lastName, user_role, role, dateOfBirth } = userData;
 
@@ -128,9 +141,10 @@ export const createUserRecord = async (userId: string, userData: any): Promise<S
 
     logger.info('User record created successfully', { userId });
     return { success: true, data: data, error: null };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     logger.error('Unexpected error creating user record', error, { userId });
-    return { success: false, data: null, error: error.message };
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -186,9 +200,10 @@ export const createStudent = async (studentData: StudentData, userId: string): P
 
     logger.info('Student record created successfully', { studentId: data.id });
     return { success: true, data: data, error: null };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     logger.error('Unexpected error creating student', error, { userId, email: studentData.email });
-    return { success: false, data: null, error: error.message };
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -196,7 +211,7 @@ export const createStudent = async (studentData: StudentData, userId: string): P
 /**
  * Update student by student ID
  */
-export const updateStudent = async (studentId: string, updates: any): Promise<ServiceResponse> => {
+export const updateStudent = async (studentId: string, updates: StudentUpdateData): Promise<ServiceResponse> => {
   try {
     const { data, error } = await supabase
       .from('students')
@@ -214,9 +229,10 @@ export const updateStudent = async (studentId: string, updates: any): Promise<Se
     }
 
     return { success: true, data: data, error: null };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     logger.error('Unexpected error updating student', error, { studentId });
-    return { success: false, data: null, error: error.message };
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -244,9 +260,10 @@ export const softDeleteStudent = async (studentId: string, educatorId: string): 
 
     logger.info('Student soft deleted successfully', { studentId: data.id });
     return { success: true, data: data, error: null };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     logger.error('Unexpected error soft deleting student', error, { studentId });
-    return { success: false, data: null, error: error.message };
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -255,7 +272,7 @@ export const softDeleteStudent = async (studentId: string, educatorId: string): 
 /**
  * Transform profile data to consistent format
  */
-function transformProfileData(profile: any, email: string, studentRecord: any = null): any {
+function transformProfileData(profile: StudentProfile | null, email: string, studentRecord: Student | null = null): StudentProfile | null {
   if (!profile && !studentRecord) {
     return null;
   }
@@ -510,8 +527,8 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
     // Format skills from skills table
     const tableSkills = Array.isArray(data?.skills) ? data.skills : [];
     const technicalSkills = tableSkills
-      .filter((skill: any) => skill.type === 'technical')
-      .map((skill: any) => ({
+      .filter((skill: { type: string }) => skill.type === 'technical')
+      .map((skill: { id: string; name: string; level: number; proficiency_level?: string; description?: string }) => ({
         id: skill.id,
         name: skill.name,
         level: skill.level || 3,
@@ -528,8 +545,8 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
       }));
 
     const softSkills = tableSkills
-      .filter((skill: any) => skill.type === 'soft')
-      .map((skill: any) => ({
+      .filter((skill: { type: string }) => skill.type === 'soft')
+      .map((skill: { id: string; name: string; level: number; proficiency_level?: string; description?: string }) => ({
         id: skill.id,
         name: skill.name,
         level: skill.level || 3,
@@ -811,9 +828,10 @@ export const getStudentByEmail = async (email: string): Promise<ServiceResponse>
     };
 
     return { success: true, data: mergedData, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ getStudentByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -903,9 +921,10 @@ export const getStudentById = async (studentId: string): Promise<ServiceResponse
     // Use the same data processing logic as getStudentByEmail
     const email = data.email;
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ getStudentById exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 };
 
@@ -930,16 +949,17 @@ export async function findStudentByEmail(email: string): Promise<ServiceResponse
     }
 
     return { success: true, data: studentRecord, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ findStudentByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update student by email
  */
-export async function updateStudentByEmail(email: string, updates: any): Promise<ServiceResponse> {
+export async function updateStudentByEmail(email: string, updates: StudentUpdateData): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -950,7 +970,7 @@ export async function updateStudentByEmail(email: string, updates: any): Promise
     const studentRecord = findResult.data;
 
     // Map updates to correct column names
-    const columnUpdates: any = {};
+    const columnUpdates: Record<string, unknown> = {};
     
     const fieldMapping: Record<string, string> = {
       'name': 'name',
@@ -1076,9 +1096,10 @@ export async function updateStudentByEmail(email: string, updates: any): Promise
       error: null
     };
 
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ Unexpected error in updateStudentByEmail:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 // ==================== UPDATE FUNCTIONS FOR SPECIFIC DATA TYPES ====================
@@ -1086,7 +1107,7 @@ export async function updateStudentByEmail(email: string, updates: any): Promise
 /**
  * Update training by email
  */
-export async function updateTrainingByEmail(email: string, trainingData: any[] = []): Promise<ServiceResponse> {
+export async function updateTrainingByEmail(email: string, trainingData: TrainingData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1109,14 +1130,14 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
 
     // Format training data for database
     const formatted = (trainingData || [])
-      .filter((train: any) => {
+      .filter((train: TrainingData) => {
         const titleField = train.course || train.title;
         return train && typeof titleField === 'string' && titleField.trim().length > 0;
       })
-      .map((train: any) => {
+      .map((train: TrainingData) => {
         const titleValue = train.course || train.title || '';
         
-        const record: any = {
+        const record: Record<string, unknown> = {
           student_id: studentId,
           title: titleValue.trim(),
           organization: train.provider?.trim() || train.organization?.trim() || null,
@@ -1323,16 +1344,17 @@ export async function updateTrainingByEmail(email: string, trainingData: any[] =
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateTrainingByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update technical skills by email
  */
-export async function updateTechnicalSkillsByEmail(email: string, skillsData: any[] = []): Promise<ServiceResponse> {
+export async function updateTechnicalSkillsByEmail(email: string, skillsData: SkillData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1415,16 +1437,17 @@ export async function updateTechnicalSkillsByEmail(email: string, skillsData: an
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateTechnicalSkillsByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update soft skills by email
  */
-export async function updateSoftSkillsByEmail(email: string, skillsData: any[] = []): Promise<ServiceResponse> {
+export async function updateSoftSkillsByEmail(email: string, skillsData: SkillData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1507,16 +1530,17 @@ export async function updateSoftSkillsByEmail(email: string, skillsData: any[] =
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateSoftSkillsByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update experience by email
  */
-export async function updateExperienceByEmail(email: string, experienceData: any[] = []): Promise<ServiceResponse> {
+export async function updateExperienceByEmail(email: string, experienceData: ExperienceData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1599,16 +1623,17 @@ export async function updateExperienceByEmail(email: string, experienceData: any
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateExperienceByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update education by email
  */
-export async function updateEducationByEmail(email: string, educationData: any[] = []): Promise<ServiceResponse> {
+export async function updateEducationByEmail(email: string, educationData: EducationData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1694,16 +1719,17 @@ export async function updateEducationByEmail(email: string, educationData: any[]
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateEducationByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update certificates by email
  */
-export async function updateCertificatesByEmail(email: string, certificatesData: any[] = []): Promise<ServiceResponse> {
+export async function updateCertificatesByEmail(email: string, certificatesData: CertificateData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1791,16 +1817,17 @@ export async function updateCertificatesByEmail(email: string, certificatesData:
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateCertificatesByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update skills by email - handles both technical and soft skills
  */
-export async function updateSkillsByEmail(email: string, skillsData: any[] = []): Promise<ServiceResponse> {
+export async function updateSkillsByEmail(email: string, skillsData: SkillData[] = []): Promise<ServiceResponse> {
   try {
     // Separate skills by type
     const technicalSkills = skillsData.filter(skill => skill.type === 'technical');
@@ -1823,16 +1850,17 @@ export async function updateSkillsByEmail(email: string, skillsData: any[] = [])
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateSkillsByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update projects by email
  */
-export async function updateProjectsByEmail(email: string, projectsData: any[] = []): Promise<ServiceResponse> {
+export async function updateProjectsByEmail(email: string, projectsData: ProjectData[] = []): Promise<ServiceResponse> {
   try {
     const findResult = await findStudentByEmail(email);
     if (!findResult.success) {
@@ -1922,16 +1950,17 @@ export async function updateProjectsByEmail(email: string, projectsData: any[] =
     }
 
     return await getStudentByEmail(email);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ updateProjectsByEmail exception:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }
 
 /**
  * Update a single training record by ID
  */
-export async function updateSingleTrainingById(trainingId: string, updateData: any): Promise<ServiceResponse> {
+export async function updateSingleTrainingById(trainingId: string, updateData: TrainingData): Promise<ServiceResponse> {
   try {
     const nowIso = new Date().toISOString();
     const updateRecord = {
@@ -2059,8 +2088,9 @@ export async function updateSingleTrainingById(trainingId: string, updateData: a
     }
 
     return { success: true, data: updatedTraining, error: null };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
     console.error('❌ Error updating single training:', err);
-    return { success: false, data: null, error: err.message };
+    return { success: false, data: null, error: errorMessage };
   }
 }

@@ -1,3 +1,4 @@
+// Main Student interface
 export interface Student {
   id: string;
   universityId: string;
@@ -25,11 +26,9 @@ export interface Student {
   approval_status: 'pending' | 'approved' | 'rejected';
   created_at: string;
   updated_at: string;
-  
   // Academic fields
   semester?: number;
   current_semester?: string;
-
   // Additional fields for school students
   student_type?: string;
   student_id?: string;
@@ -42,12 +41,10 @@ export interface Student {
   };
   grade?: string;
   section?: string;
-
   // Location fields
   city?: string;
   state?: string;
   country?: string;
-
   // University relationship
   universityInfo?: {
     id: string;
@@ -55,12 +52,10 @@ export interface Student {
     code?: string;
     state?: string;
   };
-
   // Portfolio fields
   hobbies?: string[];
   languages?: Language[];
   interests?: string[];
-  
   // Additional database fields
   school_id?: string;
   college_id?: string;
@@ -172,7 +167,6 @@ export interface Training {
 }
 
 export type PortfolioLayout = 'modern' | 'classic' | 'creative' | 'minimal' | 'splitscreen' | 'aipersona' | 'infographic' | 'resume' | 'journey';
-
 export type AnimationType = 'fade' | 'slide' | 'bounce' | 'float' | 'none';
 
 export interface DisplayPreferences {
@@ -193,4 +187,132 @@ export interface PortfolioSettings {
   fontSize: number;
   profileImage?: string;
   displayPreferences?: DisplayPreferences;
+}
+
+export interface StudentUpdateData extends Partial<StudentProfile> {
+  profile?: Partial<StudentProfile>;
+}
+
+export interface TrainingData {
+  id?: string;
+  title: string;
+  course?: string;
+  organization?: string;
+  provider?: string;
+  startDate?: string;
+  endDate?: string;
+  duration?: string;
+  description?: string;
+  status?: 'ongoing' | 'completed' | 'paused';
+  completedModules?: number;
+  totalModules?: number;
+  hoursSpent?: number;
+  skills?: SkillData[];
+  skillsList?: SkillData[];
+  approvalStatus?: 'pending' | 'approved' | 'verified' | 'rejected';
+  enabled?: boolean;
+}
+
+export interface SkillData {
+  id?: string;
+  name: string;
+  type: 'technical' | 'soft';
+  level?: number;
+  rating?: number;
+  proficiencyLevel?: string;
+  description?: string;
+  verified?: boolean;
+  enabled?: boolean;
+  approvalStatus?: 'pending' | 'approved' | 'verified' | 'rejected';
+}
+
+export interface ExperienceData {
+  id?: string;
+  organization: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+  duration?: string;
+  description?: string;
+  verified?: boolean;
+  approvalStatus?: 'pending' | 'approved' | 'verified' | 'rejected';
+  enabled?: boolean;
+}
+
+export interface EducationData {
+  id?: string;
+  level?: string;
+  degree?: string;
+  qualification?: string;
+  department?: string;
+  university?: string;
+  yearOfPassing?: string;
+  cgpa?: string;
+  status?: 'ongoing' | 'completed';
+  approvalStatus?: 'pending' | 'approved' | 'verified' | 'rejected';
+  enabled?: boolean;
+}
+
+export interface CertificateData {
+  id?: string;
+  title: string;
+  issuer?: string;
+  issuedOn?: string;
+  expiryDate?: string;
+  level?: string;
+  description?: string;
+  credentialId?: string;
+  link?: string;
+  documentLink?: string;
+  category?: string;
+  platform?: string;
+  instructor?: string;
+  status?: 'active' | 'expired';
+  approvalStatus?: 'pending' | 'approved' | 'verified' | 'rejected';
+  enabled?: boolean;
+}
+
+export interface ProjectData {
+  id?: string;
+  title: string;
+  description?: string;
+  role?: string;
+  status?: 'ongoing' | 'completed' | 'paused';
+  startDate?: string;
+  endDate?: string;
+  duration?: string;
+  organization?: string;
+  techStack?: string[];
+  tech?: string[];
+  technologies?: string[];
+  demoLink?: string;
+  link?: string;
+  demoUrl?: string;
+  githubLink?: string;
+  github?: string;
+  githubUrl?: string;
+  certificateUrl?: string;
+  videoUrl?: string;
+  pptUrl?: string;
+  approvalStatus?: 'pending' | 'approved' | 'verified' | 'rejected';
+  enabled?: boolean;
+}
+
+export interface ServiceResponse<T = unknown> {
+  success: boolean;
+  data: T | null;
+  error: string | null;
+}
+
+export interface UserCreationData {
+  email: string;
+  firstName: string;
+  lastName: string;
+  user_role?: string;
+  role?: string;
+  dateOfBirth?: string;
+}
+// Additional Student Management Types for Service Layer
+export interface StudentUpdateData extends Partial<StudentProfile> {
+  profile?: Partial<StudentProfile>;
 }
