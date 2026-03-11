@@ -18,8 +18,9 @@ import {
   Star
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 import { getPagesApiUrl } from '../../utils/pagesUrl';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentProfile } from '@/features/student-profile';
 import { supabase } from '../../lib/supabaseClient';
 import SchoolClassHeader, { SchoolClassInfo } from './common/SchoolClassHeader';
 // Import shared components
@@ -40,7 +41,7 @@ import {
   getClassmates,
   getClassTimetable,
   getTodaySchedule
-} from '../../services/studentClassService';
+} from '@/features/student-profile/api';
 import {
   getAssignmentsByStudentId,
   getAssignmentStats,
@@ -52,7 +53,7 @@ import {
   getGroupedStudentExams,
   getStudentResults,
   getStudentResultStats
-} from '../../services/studentExamService';
+} from '@/features/student-profile/api';
 
 type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates' | 'curriculars' | 'exams' | 'results';
 type TimetableViewType = 'week' | 'day';

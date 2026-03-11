@@ -20,7 +20,7 @@ import {
   Video,
 } from "lucide-react";
 import toast from 'react-hot-toast';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 import { opportunitiesService } from '@/services/opportunitiesService';
 import type { Opportunity } from '@/services/opportunitiesService';
 import { applicationTrackingService } from '@/services/applicationTrackingService';

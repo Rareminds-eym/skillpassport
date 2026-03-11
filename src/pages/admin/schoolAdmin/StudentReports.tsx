@@ -10,7 +10,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../../../lib/supabaseClient';
-import { attendanceService, studentReportService } from '../../../services/studentManagementService';
+import { attendanceService, studentReportService } from '@/features/student-profile/api';
 
 interface StudentReportData {
   id: string;

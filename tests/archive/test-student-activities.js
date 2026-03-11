@@ -4,7 +4,7 @@
  * Or just paste this in browser console after importing the service
  */
 
-import { getStudentRecentActivity } from './src/services/studentActivityService.js';
+import { getStudentRecentActivity } from '@/features/student-profile/api';
 
 // Test with a student email
 const testEmail = 'student@example.com'; // Replace with actual student email

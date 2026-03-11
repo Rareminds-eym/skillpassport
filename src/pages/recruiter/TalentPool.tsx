@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import ReactPaginate from 'react-paginate';
 import { useOutletContext } from 'react-router-dom';
 import SearchBar from '../../components/common/SearchBar';
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { FeatureGate } from '@/features/subscription/ui/shared';
 import { useSearch } from '../../context/SearchContext';
 import { useStudents } from '../../hooks/useStudents';
 import { createInterview } from '../../services/interviewService';

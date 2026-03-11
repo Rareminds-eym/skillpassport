@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { isJwtExpiryError } from '../utils/authErrorHandler';
+import { isJwtExpiryError } from '@/features/auth/lib';
 
 const PromotionalEventContext = createContext(null);
 

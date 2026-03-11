@@ -12,9 +12,8 @@ import {
 import { UserPlusIcon } from 'lucide-react';
 import SearchBar from '../../../components/common/SearchBar';
 import Pagination from '../../../components/admin/Pagination';
-import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
+import { StudentProfileDrawer, AdmissionNoteModal } from '@/features/student-profile';
 import AddStudentModal from '../../../components/educator/modals/Addstudentmodal';
-import { AdmissionNoteModal } from '@/components/shared/StudentProfileDrawer/modals';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import AssessmentReportDrawer from '@/components/shared/AssessmentReportDrawer';
 // @ts-ignore - JS file without types

@@ -20,8 +20,7 @@ import {
   TrendingUp,
   Info,
 } from 'lucide-react';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
+import { Button, Card, CardContent } from '@/shared/ui';
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
 import {
@@ -35,8 +34,9 @@ import {
   AlertDialogTitle,
 } from '../../components/Students/components/ui/alert-dialog';
 import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
-import { useAuth } from '../../context/AuthContext';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useAuth } from '@/features/auth';
+import { useStudentProfile } from '@/features/student-profile';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 import { useAntiCheating } from '../../hooks/useAntiCheating';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '../../types/adaptiveAptitude';
 

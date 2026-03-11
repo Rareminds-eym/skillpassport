@@ -5,7 +5,7 @@
 
 import React from 'react';
 import DocumentManager from '../components/Students/components/DocumentManager';
-import { useAuth } from '../hooks/useAuth'; // Adjust import path as needed
+import { useAuth } from '@/features/auth'; // Adjust import path as needed
 
 const StudentDashboard = () => {
   const { user } = useAuth(); // Get current authenticated user

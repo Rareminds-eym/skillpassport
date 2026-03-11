@@ -7,8 +7,8 @@ import {
   usePromotionalEventContext,
 } from '../contexts/PromotionalEventContext';
 import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
-import useAuth from '../hooks/useAuth';
-import { useSubscriptionQuery } from '../hooks/Subscription/useSubscriptionQuery';
+import { useAuth } from '@/features/auth';
+import { useSubscriptionQuery } from '@/features/subscription/model';
 import { isActiveOrPaused } from '../utils/subscriptionHelpers';
 
 // Import role-specific headers

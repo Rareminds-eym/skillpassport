@@ -42,6 +42,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import toast, { Toaster } from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
 import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
 import AnalyticsView from "../../components/Students/components/AnalyticsView";
 import {
@@ -53,14 +54,7 @@ import {
   TrainingEditModal,
 } from "../../components/Students/components/ProfileEditModals";
 import TrainingRecommendations from "../../components/Students/components/TrainingRecommendations";
-import { Badge } from "../../components/Students/components/ui/badge";
-import { Button } from "../../components/Students/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,16 +73,17 @@ import {
 import { useAIRecommendations } from "../../hooks/useAIRecommendations";
 import { useAssessmentRecommendations } from "../../hooks/useAssessmentRecommendations";
 import { useOpportunities } from "../../hooks/useOpportunities";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useStudentCertificates } from "../../hooks/useStudentCertificates";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useStudentEducation } from "../../hooks/useStudentEducation";
+import { useStudentProfile, useStudentPortfolio, useStudentActivity, useStudentMessages } from "@/features/student-profile";
+import { useStudentDataByEmail } from "@/hooks/useStudentDataByEmail";
+import { useStudentCertificates } from "@/hooks/useStudentCertificates";
+import { useStudentLearning } from "@/hooks/useStudentLearning";
+import { useStudentProjects } from "../../hooks/useStudentProjects";
 import { useStudentExperience } from "../../hooks/useStudentExperience";
+import { useStudentEducation } from "../../hooks/useStudentEducation";
 import { useStudentTechnicalSkills, useStudentSoftSkills } from "../../hooks/useStudentSkills";
-import { useStudentLearning } from "../../hooks/useStudentLearning";
 import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
-import { useStudentProjects } from "../../hooks/useStudentProjects";
+import { useStudentAchievements } from "../../hooks/useStudentAchievements";
 import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
 import { supabase } from "../../lib/supabaseClient";
 import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
@@ -638,6 +633,7 @@ const OpportunitiesCardContent = ({ opportunities, studentData, navigate, matche
 const StudentDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme } = useTheme();
 
   // Helper function to calculate duration in simple format
   const calculateDuration = (startDate, endDate) => {
@@ -1446,6 +1442,32 @@ const StudentDashboard = () => {
             return;
         }
         if (result?.success) {
+          // Show success toast notification with theme-aware styling
+          const sectionNames = {
+            education: 'Education',
+            training: 'Training',
+            experience: 'Experience',
+            skills: 'Skills',
+            technicalSkills: 'Technical Skills',
+            softSkills: 'Soft Skills',
+            projects: 'Projects',
+            certificates: 'Certificates',
+            personalInfo: 'Personal Information'
+          };
+          
+          toast.success(`${sectionNames[section] || 'Profile'} updated successfully!`, {
+            style: {
+              background: theme === 'dark' ? '#374151' : '#ffffff',
+              color: theme === 'dark' ? '#f3f4f6' : '#111827',
+              border: theme === 'dark' ? '1px solid #4b5563' : '1px solid #e5e7eb',
+            },
+            iconTheme: {
+              primary: theme === 'dark' ? '#60a5fa' : '#3b82f6',
+              secondary: theme === 'dark' ? '#374151' : '#ffffff',
+            },
+            duration: 3000,
+          });
+
           // Refresh from database to ensure sync
           await refresh();
 
@@ -1471,6 +1493,19 @@ const StudentDashboard = () => {
         }
       } catch (err) {
         console.error("Error saving:", err);
+        // Show error toast notification with theme-aware styling
+        toast.error('Failed to update profile. Please try again.', {
+          style: {
+            background: theme === 'dark' ? '#374151' : '#ffffff',
+            color: theme === 'dark' ? '#f3f4f6' : '#111827',
+            border: theme === 'dark' ? '1px solid #4b5563' : '1px solid #e5e7eb',
+          },
+          iconTheme: {
+            primary: theme === 'dark' ? '#ef4444' : '#dc2626',
+            secondary: theme === 'dark' ? '#374151' : '#ffffff',
+          },
+          duration: 4000,
+        });
       }
     }
   };

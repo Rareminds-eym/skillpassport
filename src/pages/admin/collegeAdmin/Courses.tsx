@@ -12,10 +12,10 @@ import {
 import { Course } from '../../../types/educator/course';
 import { SKILL_CATEGORIES, CLASSES } from '../../../data/educator/mockCourses';
 
-import CourseCard from '../../../components/educator/courses/CourseCard';
-import CourseFilters from '../../../components/educator/courses/CourseFilters';
-import CreateCourseModal from '../../../components/educator/courses/CreateCourseModal';
-import CourseDetailDrawer from '../../../components/educator/courses/CourseDetailDrawer';
+import CourseCard from '@/features/courses/ui/CourseCard';
+import CourseFilters from '@/features/courses/ui/CourseFilters';
+import CreateCourseModal from '@/features/courses/ui/CreateCourseModal';
+import CourseDetailDrawer from '@/features/courses/ui/CourseDetailDrawer';
 
 import {
   getCoursesByEducator,

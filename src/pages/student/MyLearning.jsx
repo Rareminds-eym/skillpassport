@@ -6,12 +6,13 @@ import LearningAnalyticsDashboard from "../../components/Students/components/Lea
 import ModernLearningCard from "../../components/Students/components/ModernLearningCard";
 import { TrainingEditModal } from "../../components/Students/components/ProfileEditModals";
 import SelectCourseModal from "../../components/Students/components/SelectCourseModal";
-import { Button } from "../../components/Students/components/ui/button";
-import { Card, CardContent } from "../../components/Students/components/ui/card";
+import { Button, Card, CardContent } from '@/shared/ui';
 import { useAuth } from "../../context/AuthContext";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
+import { useStudentProfile, useStudentMessages } from "@/features/student-profile";
+import { useStudentPortfolio } from "@/features/student-profile";
+import { useStudentDataByEmail } from "@/hooks/useStudentDataByEmail";
 import { useStudentTrainings } from "../../hooks/useStudentTrainings";
+import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
 import { supabase } from "../../lib/supabaseClient";
 
 const StatCardSkeleton = () => (

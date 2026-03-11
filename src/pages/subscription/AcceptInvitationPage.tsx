@@ -9,7 +9,7 @@
  */
 
 import { memberInvitationService, OrganizationInvitation } from '@/services/organization/memberInvitationService';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 import { AlertCircle, Building2, Check, Clock, LogIn, RefreshCw, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';

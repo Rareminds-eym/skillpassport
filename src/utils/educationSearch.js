@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 
 // Search universities only (using unified organizations table)
 export const searchUniversities = async (searchTerm) => {

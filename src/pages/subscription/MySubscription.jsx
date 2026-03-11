@@ -23,12 +23,11 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { SubscriptionDashboard } from '../../components/Subscription/SubscriptionDashboard';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
-import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
-import useAuth from '../../hooks/useAuth';
+import { SubscriptionDashboard } from '@/features/subscription/ui/individual';
+import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
-import { getUserSubscriptions } from '../../services/Subscriptions/subscriptionService';
+import { getUserSubscriptions } from '@/features/subscription/api';
 import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../services/paymentsApiService';
 import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '../../utils/subscriptionHelpers';
 import { useUsageStatistics } from '../../hooks/useUsageStatistics';

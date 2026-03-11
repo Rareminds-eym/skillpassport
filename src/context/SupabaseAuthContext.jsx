@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { handleAuthError, isJwtExpiryError } from '../utils/authErrorHandler';
-import { getGlobalTokenMonitor } from '../utils/tokenMonitor';
+import { handleAuthError, isJwtExpiryError } from '@/features/auth/lib';
+import { getGlobalTokenMonitor } from '@/features/auth/lib';
 import { getGlobalRefreshCoordinator } from '../utils/refreshCoordinator';
 import { getGlobalActivityTracker } from '../utils/activityTracker';
 import { getGlobalTokenRefreshErrorHandler } from '../utils/tokenRefreshErrorHandler';

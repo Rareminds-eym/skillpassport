@@ -6,8 +6,8 @@
  */
 
 import React, { useState } from 'react';
-import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
-import { useAuth } from '../context/AuthContext';
+import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
+import { useAuth } from '../../../context/AuthContext';
 
 const AddDataTest = () => {
   const { user } = useAuth();

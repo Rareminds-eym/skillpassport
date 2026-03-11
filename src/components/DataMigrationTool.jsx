@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../Students/components/ui/card';
-import { Button } from '../Students/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, Button } from '@/shared/ui';
 import { Alert, AlertDescription } from '../Students/components/ui/alert';
 import { runMigration, clearStudentData, checkStudentExists } from '../utils/dataMigration';
 import { Loader2, Database, Trash2, CheckCircle, AlertCircle } from 'lucide-react';

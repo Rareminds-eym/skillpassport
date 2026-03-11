@@ -11,10 +11,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CLASSES, SKILL_CATEGORIES } from '../../../data/educator/mockCourses';
 import { Course } from '../../../types/educator/course';
 
-import CourseCard from '../../../components/educator/courses/CourseCard';
-import CourseDetailDrawer from '../../../components/educator/courses/CourseDetailDrawer';
-import CourseFilters from '../../../components/educator/courses/CourseFilters';
-import CreateCourseModal from '../../../components/educator/courses/CreateCourseModal';
+import CourseCard from '@/features/courses/ui/CourseCard';
+import CourseDetailDrawer from '@/features/courses/ui/CourseDetailDrawer';
+import CourseFilters from '@/features/courses/ui/CourseFilters';
+import CreateCourseModal from '@/features/courses/ui/CreateCourseModal';
 
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../context/AuthContext';

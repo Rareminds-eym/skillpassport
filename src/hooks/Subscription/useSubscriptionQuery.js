@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
-import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
+import { getActiveSubscription } from '@/features/subscription/api';
 import { queryLogger } from '../../utils/queryLogger';
 import { isActiveOrPaused } from '../../utils/subscriptionHelpers';
 

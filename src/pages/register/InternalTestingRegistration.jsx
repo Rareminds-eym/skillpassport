@@ -20,7 +20,7 @@ import {
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
-import { signupStudent } from '../../services/studentAuthService';
+import { signupStudent } from '@/services/studentAuthService';
 import { supabase } from '../../lib/supabaseClient';
 
 const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';

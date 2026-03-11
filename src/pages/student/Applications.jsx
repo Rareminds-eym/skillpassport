@@ -22,11 +22,11 @@ import {
   Bell,
   FileText
 } from 'lucide-react';
-import { useAuth } from '../../context/AuthContext';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useAuth } from '@/features/auth';
+import { useStudentProfile } from '@/features/student-profile';
 import AppliedJobsService from '../../services/appliedJobsService';
-import StudentPipelineService from '../../services/studentPipelineService';
-import MessageService from '../../services/messageService';
+import { studentPipelineService } from '@/features/student-profile/api';
+import { MessageService } from '@/features/messaging';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { supabase } from '../../lib/supabaseClient';
 

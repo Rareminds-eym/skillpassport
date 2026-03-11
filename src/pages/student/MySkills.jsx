@@ -1,7 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
-import { Button } from '../../components/Students/components/ui/button';
-import { Badge } from '../../components/Students/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import {
   Code,
   MessageCircle,
@@ -13,21 +11,18 @@ import {
   X,
   MessageCircle as MessageCircleIcon
 } from 'lucide-react';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useAuth } from '../../context/AuthContext';
-import { SkillsEditModal } from '../../components/Students/components/ProfileEditModals';
-import { useStudentRealtimeActivities } from '../../hooks/useStudentRealtimeActivities';
-import { useStudentMessageNotifications } from '../../hooks/useStudentMessageNotifications';
-import { useStudentUnreadCount } from '../../hooks/useStudentMessages';
+import { useStudentProfile, useStudentActivity, useStudentMessages } from '@/features/student-profile';
 import { useAIJobMatching } from '../../hooks/useAIJobMatching';
 import SuggestedNextSteps from '../../components/Students/components/SuggestedNextSteps';
 import RecentUpdatesCard from '../../components/Students/components/RecentUpdatesCard';
 import {
   suggestions as mockSuggestions
 } from '../../components/Students/data/mockData';
+import { showProfileUpdateToast, showProfileErrorToast, PROFILE_UPDATE_MESSAGES } from '../../utils/profileToast';
 
 const MySkills = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const userEmail = user?.email;
   const { studentData, updateTechnicalSkills, updateSoftSkills } = useStudentDataByEmail(userEmail, false);
 
@@ -89,12 +84,28 @@ const MySkills = () => {
   };
 
   const handleSaveSkills = async (updatedData) => {
-    if (activeModal === 'technicalSkills') {
-      await updateTechnicalSkills(updatedData.technicalSkills);
-    } else if (activeModal === 'softSkills') {
-      await updateSoftSkills(updatedData.softSkills);
+    try {
+      let result;
+      if (activeModal === 'technicalSkills') {
+        result = await updateTechnicalSkills(updatedData.technicalSkills);
+      } else if (activeModal === 'softSkills') {
+        result = await updateSoftSkills(updatedData.softSkills);
+      }
+
+      if (result?.success) {
+        // Show success toast notification
+        showProfileUpdateToast(PROFILE_UPDATE_MESSAGES.skills, theme);
+      } else {
+        // Show error toast notification
+        showProfileErrorToast('Failed to update skills. Please try again.', theme);
+      }
+
+      setActiveModal(null);
+    } catch (error) {
+      console.error('❌ Error saving skills:', error);
+      // Show error toast notification
+      showProfileErrorToast('Failed to update skills. Please try again.', theme);
     }
-    setActiveModal(null);
   };
 
   // Skills selection options for the modal

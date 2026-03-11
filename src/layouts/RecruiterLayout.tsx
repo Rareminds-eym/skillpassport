@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/features/auth';
 import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Recruiter/components/Header';
 import Sidebar from '../components/Recruiter/components/Sidebar';

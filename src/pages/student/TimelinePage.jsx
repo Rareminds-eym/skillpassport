@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentProfile } from '@/features/student-profile';
 
 /**
  * TimelinePage - Digital Portfolio Journey Map

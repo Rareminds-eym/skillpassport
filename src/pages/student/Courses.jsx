@@ -17,12 +17,10 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SearchBar from '../../components/common/SearchBar';
-import CourseDetailModal from '../../components/student/courses/CourseDetailModal';
+import CourseDetailModal from '@/features/courses/ui/CourseDetailModal';
 import WeeklyLearningTracker from '../../components/student/WeeklyLearningTracker';
 import CourseAdvancedFilters from '../../components/Students/components/CourseAdvancedFilters';
-import { Badge } from '../../components/Students/components/ui/badge';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import {
   Pagination,
   PaginationContent,
@@ -35,7 +33,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { downloadCertificate, getCertificateProxyUrl } from '../../services/certificateService';
-import { courseEnrollmentService } from '../../services/courseEnrollmentService';
+import { enrollmentService as courseEnrollmentService } from '@/features/courses/api/enrollmentService';
 
 const Courses = () => {
   const navigate = useNavigate();

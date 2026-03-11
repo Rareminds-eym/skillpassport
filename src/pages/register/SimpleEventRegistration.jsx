@@ -38,8 +38,7 @@ import Footer from '../../components/Footer';
 import OTPInput from '../../components/OTPInput';
 import Header from '../../layouts/Header';
 import paymentsApiService from '../../services/paymentsApiService';
-import { ShinyButton } from '../../components/ui/shiny-button';
-import { Sparkles } from '@/components/ui/sparkles';
+import { ShinyButton, Sparkles } from '@/shared/ui';
 
 // Fixed registration fee
 const REGISTRATION_FEE = 250;

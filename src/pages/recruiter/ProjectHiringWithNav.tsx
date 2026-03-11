@@ -14,7 +14,7 @@ import { RocketLaunchIcon } from '@heroicons/react/24/solid';
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 // @ts-ignore - FeatureGate is a JSX component
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { FeatureGate } from '@/features/subscription/ui/shared';
 
 // Import components
 import ProjectList from '../../components/Recruiter/Projects/ProjectList';

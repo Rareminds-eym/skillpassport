@@ -39,7 +39,8 @@ import IndustrialVisitPreview from '../../components/Students/components/Industr
 import Pagination from '../../components/educator/Pagination';
 import { useAuth } from '../../context/AuthContext';
 import { useOpportunities } from '../../hooks/useOpportunities';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentProfile } from '@/features/student-profile';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
@@ -48,8 +49,8 @@ import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
 
 // Import Applications component content
 import useMessageNotifications from '../../hooks/useMessageNotifications';
-import MessageService from '../../services/messageService';
-import StudentPipelineService from '../../services/studentPipelineService';
+import { MessageService } from '@/features/messaging';
+import { studentPipelineService as StudentPipelineService } from '@/features/student-profile/api';
 
 const Opportunities = () => {
   const navigate = useNavigate();

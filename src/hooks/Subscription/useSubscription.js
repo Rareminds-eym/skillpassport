@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
 import { supabase } from '../../lib/supabaseClient';
-import { getActiveSubscription } from '../../services/Subscriptions/subscriptionService';
+import { getActiveSubscription } from '@/features/subscription/api';
 import paymentsApiService from '../../services/paymentsApiService';
 
 /**

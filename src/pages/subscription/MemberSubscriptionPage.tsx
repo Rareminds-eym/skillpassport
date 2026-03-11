@@ -8,8 +8,8 @@
 import { useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import MemberSubscriptionView from '../../components/Subscription/Organization/MemberSubscriptionView';
-import useAuth from '../../hooks/useAuth';
+import { MemberSubscriptionView } from '@/features/subscription/ui/organization';
+import { useAuth } from '@/features/auth';
 
 // Sample add-ons - in production, fetch from subscription service
 const AVAILABLE_ADDONS = [

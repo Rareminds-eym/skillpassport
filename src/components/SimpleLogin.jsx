@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useSupabaseAuth } from '../context/SupabaseAuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/Students/components/ui/card';
-import { Button } from '../components/Students/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, Button } from '@/shared/ui';
 import { Input } from '../components/Students/components/ui/input';
 import { Alert, AlertDescription } from '../components/Students/components/ui/alert';
 

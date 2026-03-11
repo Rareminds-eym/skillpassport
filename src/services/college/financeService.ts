@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 
 export interface FeeStructure {
   id: string;

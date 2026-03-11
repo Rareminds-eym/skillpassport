@@ -5,7 +5,7 @@ import PipelineAdvancedFilters from '../../components/Recruiter/components/Pipel
 import PipelineSortMenu from '../../components/Recruiter/components/PipelineSortMenu';
 import { PipelineStats, QuickStats } from '../../components/Recruiter/components/PipelineStats';
 import { useToast } from '../../components/Recruiter/components/Toast';
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { FeatureGate } from '@/features/subscription/ui/shared';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { usePipelineData } from '../../hooks/usePipelineData';

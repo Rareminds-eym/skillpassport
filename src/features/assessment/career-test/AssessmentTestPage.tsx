@@ -88,7 +88,7 @@ import {
   highSchoolLearningQuestions,
   highSchoolAptitudeQuestions,
 } from '../../assessment/data/questions';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 
 // Tour context to detect when tour is running
 import { useTour } from '../../../components/Tours/TourProvider';

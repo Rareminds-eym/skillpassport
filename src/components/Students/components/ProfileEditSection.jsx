@@ -12,6 +12,8 @@ import {
 } from './ProfileEditModals';
 import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../../context/AuthContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { showProfileUpdateToast, showProfileErrorToast, PROFILE_UPDATE_MESSAGES } from '../../../utils/profileToast';
 import DatabaseSaveVerification from './DatabaseSaveVerification';
 import StudentFindingDebug from './StudentFindingDebug';
 import QuickFix from './QuickFix';
@@ -31,8 +33,9 @@ const ProfileEditSection = ({ profileEmail }) => {
   const [refreshCounter, setRefreshCounter] = useState(0);
   const [showResumeParser, setShowResumeParser] = useState(false);
   
-  // Get user email from auth context
+  // Get user email from auth context and theme
   const { user } = useAuth();
+  const { theme } = useTheme();
   const userEmail = user?.email;
   
   // Determine which email to fetch data for
@@ -132,11 +135,26 @@ const ProfileEditSection = ({ profileEmail }) => {
         }
 
         if (result?.success) {
+          // Show success toast notification
+          const sectionMessages = {
+            education: PROFILE_UPDATE_MESSAGES.education,
+            training: PROFILE_UPDATE_MESSAGES.training,
+            experience: PROFILE_UPDATE_MESSAGES.experience,
+            projects: PROFILE_UPDATE_MESSAGES.projects,
+            certificates: PROFILE_UPDATE_MESSAGES.certifications,
+            technicalSkills: PROFILE_UPDATE_MESSAGES.skills,
+            softSkills: PROFILE_UPDATE_MESSAGES.skills,
+            personalInfo: PROFILE_UPDATE_MESSAGES.personalInfo
+          };
+          
+          showProfileUpdateToast(sectionMessages[section] || PROFILE_UPDATE_MESSAGES.profile, theme);
         } else {
           console.error(`❌ ProfileEditSection: Error saving ${section}:`, result?.error);
+          showProfileErrorToast(`Failed to update ${section}. Please try again.`, theme);
         }
       } catch (err) {
         console.error(`❌ ProfileEditSection: Error saving ${section} to Supabase:`, err);
+        showProfileErrorToast(`Failed to update ${section}. Please try again.`, theme);
       }
     } else {
     }

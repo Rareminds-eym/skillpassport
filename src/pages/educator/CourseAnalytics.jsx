@@ -11,11 +11,9 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 import { supabase } from '../../lib/supabaseClient';
-import { courseEnrollmentService } from '../../services/courseEnrollmentService';
+import { enrollmentService as courseEnrollmentService } from '@/features/courses/api/enrollmentService';
 
 const CourseAnalytics = () => {
   const { courseId } = useParams();

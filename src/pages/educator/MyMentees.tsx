@@ -16,7 +16,7 @@ import {
   CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 // @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth';
 import { useMentorAllocation } from '../../hooks/useMentorAllocation';
 import KPICard from '../../components/admin/KPICard';
 import MentorResponseModal from '../../components/educator/MentorResponseModal';

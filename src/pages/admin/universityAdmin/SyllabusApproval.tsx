@@ -17,9 +17,7 @@ import {
   ChevronRightIcon,
   BookOpenIcon,
 } from '@heroicons/react/24/outline';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/Students/components/ui/card';
-import { Button } from '../../../components/Students/components/ui/button';
-import { Badge } from '../../../components/Students/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { curriculumApprovalService, type CurriculumApprovalDashboard } from '../../../services/curriculumApprovalService';

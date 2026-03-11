@@ -18,7 +18,7 @@ import DashboardWithSupabase from './components/Students/components/DashboardWit
 
 // Your existing components
 import Home from './pages/homepage/Home';
-import LoginStudent from './pages/auth/LoginStudent';
+import { LoginStudent } from './features/auth/ui';
 import Register from './pages/auth/Register';
 
 function App() {

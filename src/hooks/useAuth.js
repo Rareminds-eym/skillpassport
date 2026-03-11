@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { checkAuthentication } from '../services/authService';
+import { checkAuthentication } from '@/features/auth/api';
 import {
     AUTH_ERROR_CODES,
     generateCorrelationId,

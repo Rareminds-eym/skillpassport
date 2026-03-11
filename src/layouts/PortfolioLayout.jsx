@@ -6,7 +6,7 @@ import {
   usePromotionalEventContext,
 } from '../contexts/PromotionalEventContext';
 import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/features/auth';
 
 const PortfolioLayoutContent = () => {
   const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();

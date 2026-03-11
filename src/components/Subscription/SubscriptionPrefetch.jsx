@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSupabaseAuth } from '../../context/SupabaseAuthContext';
-import { prefetchSubscriptionData } from '../../hooks/Subscription/useSubscriptionQuery';
+import { prefetchSubscriptionData } from '@/features/subscription/model';
 import { queryLogger } from '../../utils/queryLogger';
 
 /**

@@ -3,8 +3,8 @@ import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getUserRole } from '../../services/roleLookupService';
-import { signIn, UserRole } from '../../services/unifiedAuthService';
-import { redirectToRoleDashboard } from '../../utils/roleBasedRouter';
+import { signIn, UserRole } from '@/features/auth/api';
+import { redirectToRoleDashboard } from '@/features/auth/lib';
 
 interface LoginState {
   email: string;
@@ -43,7 +43,7 @@ const UnifiedLogin = () => {
 
   const getRoleDisplayName = (role: UserRole): string => {
     const roleNames: Record<UserRole, string> = {
-      student: 'Student',
+      student: 'Learners',
       recruiter: 'Recruiter',
       educator: 'Educator',
       school_admin: 'School Administrator',

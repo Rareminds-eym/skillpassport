@@ -2,11 +2,9 @@ import { AlertCircle, Building2, Calendar, Check, ChevronDown, ChevronUp, Clock,
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import AddOnMarketplace from '../../components/Subscription/AddOnMarketplace';
-import { OrganizationPurchasePanel } from '../../components/Subscription/Organization';
-import { useSubscriptionPlansData } from '../../hooks/Subscription/useSubscriptionPlansData';
-import { useSubscriptionQuery } from '../../hooks/Subscription/useSubscriptionQuery';
-import useAuth from '../../hooks/useAuth';
+import { AddOnMarketplace, OrganizationPurchasePanel } from '@/features/subscription/ui';
+import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
+import { useAuth } from '@/features/auth';
 
 import { getEntityContent, getEntityTypeParam, getRoleTypeParam, parseStudentType } from '../../utils/getEntityContent';
 import { calculateDaysRemaining, isActiveOrPaused } from '../../utils/subscriptionHelpers';

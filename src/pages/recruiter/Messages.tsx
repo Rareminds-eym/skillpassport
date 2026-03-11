@@ -16,15 +16,15 @@ import {
 } from '@heroicons/react/24/outline';
 import { CheckIcon } from '@heroicons/react/24/solid';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import MessageService, { Conversation } from '../../services/messageService';
-import { useMessages } from '../../hooks/useMessages';
+import { MessageService, Conversation } from '@/features/messaging';
+import { useMessages } from '@/features/messaging';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
+import { DeleteConversationModal } from '@/features/messaging';
 
 const Messages = () => {
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);

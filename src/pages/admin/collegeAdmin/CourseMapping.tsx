@@ -22,7 +22,7 @@ import toast from 'react-hot-toast';
 import SearchBar from "../../../components/common/SearchBar";
 import KPICard from "../../../components/admin/KPICard";
 import Pagination from "../../../components/admin/Pagination";
-import ConfirmationModal from "../../../components/ui/ConfirmationModal";
+import { ConfirmationModal } from '@/shared/ui';
 import {
     getDepartments,
     getPrograms,

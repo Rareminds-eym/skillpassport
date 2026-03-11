@@ -10,7 +10,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
-import { studentEnrollmentService, type EnrolledStudentView } from "../../../services/studentEnrollmentService";
+import { studentEnrollmentService, type EnrolledStudentView } from "@/features/student-profile/api";
 // @ts-ignore - AuthContext is a JS file
 import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";

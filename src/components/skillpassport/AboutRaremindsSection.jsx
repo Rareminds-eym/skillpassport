@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { ShieldCheck, Users, Target } from 'lucide-react';
-import { Sparkles } from '@/components/ui/sparkles';
+import { Sparkles } from '@/shared/ui';
 
 export default function AboutRaremindsSection() {
   return (

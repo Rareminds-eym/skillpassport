@@ -5,8 +5,8 @@
  * Creates orders, processes payments, and creates organization subscriptions.
  */
 
-import { supabase } from '@/lib/supabaseClient';
-import { getRazorpayKeyId, getRazorpayKeyMode } from '@/config/payment';
+import { supabase } from '@/shared/api';
+import { getRazorpayKeyId, getRazorpayKeyMode } from '@/shared/config';
 
 const WORKER_URL = import.meta.env.VITE_PAYMENTS_API_URL;
 

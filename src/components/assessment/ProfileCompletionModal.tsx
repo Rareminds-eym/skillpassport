@@ -8,12 +8,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, Save, X, Loader2 } from 'lucide-react';
-import { Button } from '../Students/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../Students/components/ui/card';
+import { Button, Card, CardContent, CardHeader, CardTitle } from '@/shared/ui';
 // @ts-ignore - JS hook without types
-import { useToast } from '../../hooks/use-toast';
+import { useToast } from '@/shared/lib/hooks';
 // @ts-ignore - JS hook without types
-import { useStudentSettings } from '../../hooks/useStudentSettings';
+import { useStudentSettings } from '@/features/student-profile';
 // @ts-ignore - JS hook without types
 import { useInstitutions } from '../../hooks/useInstitutions';
 import { isCollegeStudent as checkIsCollegeStudent, isSchoolStudent as checkIsSchoolStudent } from '../../utils/studentType';

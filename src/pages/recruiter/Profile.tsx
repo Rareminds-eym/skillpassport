@@ -11,8 +11,7 @@ import {
     XCircle,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-// import { useAuth } from "../context/AuthContext";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/features/auth";
 import { supabase } from "../../lib/supabaseClient";
 
 function formatDate(isoLike: string) {

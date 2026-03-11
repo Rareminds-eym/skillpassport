@@ -20,22 +20,23 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useSearchParams } from 'react-router-dom';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
-import NewAdminConversationModal from '../../components/messaging/NewAdminConversationModal';
-import NewCollegeAdminConversationModal from '../../components/messaging/NewCollegeAdminConversationModal';
-import NewEducatorConversationModal from '../../components/messaging/NewEducatorConversationModal';
+import { DeleteConversationModal, ConversationModal } from '@/features/messaging';
+import NewEducatorConversationModal from '@/features/messaging/ui/NewEducatorConversationModal';
+import NewAdminConversationModal from '@/features/messaging/ui/NewAdminConversationModal';
+import NewCollegeAdminConversationModal from '@/features/messaging/ui/NewCollegeAdminConversationModal';
 import { useAuth } from '../../context/AuthContext';
 import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useCreateStudentAdminConversation, useStudentAdminConversations, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
-import { useCreateStudentCollegeAdminConversation, useStudentCollegeAdminConversations, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
+import { useStudentConversations } from '../../hooks/useStudentMessages';
 import { useStudentEducatorConversations, useStudentEducatorMessages } from '../../hooks/useStudentEducatorMessages';
-import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { useStudentAdminConversations, useCreateStudentAdminConversation, useStudentAdminMessages } from '../../hooks/useStudentAdminMessages';
+import { useStudentCollegeAdminConversations, useCreateStudentCollegeAdminConversation, useStudentCollegeAdminMessages } from '../../hooks/useStudentCollegeAdminMessages';
+import { useTypingIndicator } from '@/features/messaging';
 import { supabase } from '../../lib/supabaseClient';
-import MessageService from '../../services/messageService';
+import { MessageService } from '@/features/messaging';
 
 const Messages = () => {
   const queryClient = useQueryClient();

@@ -8,7 +8,7 @@
 // import { Button } from "../../components/Students/components/ui/button";
 // import { Badge } from "../../components/Students/components/ui/badge";
 // import { Users, CheckCircle, Edit, Plus, Bell, MessageCircleIcon } from "lucide-react";
-// import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+// import { useStudentProfile } from "@/features/student-profile";
 // import { useAuth } from "../../context/AuthContext";
 // import { ExperienceEditModal } from "../../components/Students/components/ProfileEditModals";
 // import { useRecentUpdates } from "../../hooks/useRecentUpdates";
@@ -287,30 +287,14 @@
 
 // export default MyExperience;
 import React, { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Badge } from "../../components/Students/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import { Users, CheckCircle, Edit, Plus, Bell, MessageCircle } from "lucide-react";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useAuth } from "../../context/AuthContext";
-import { ExperienceEditModal } from "../../components/Students/components/ProfileEditModals";
-import { useRecentUpdates } from "../../hooks/useRecentUpdates";
-import { useRecentUpdatesLegacy } from "../../hooks/useRecentUpdatesLegacy";
-import { useAIJobMatching } from "../../hooks/useAIJobMatching";
-import SuggestedNextSteps from "../../components/Students/components/SuggestedNextSteps";
-import { suggestions as mockSuggestions } from "../../components/Students/data/mockData";
-import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
-import useStudentMessageNotifications from "../../hooks/useStudentMessageNotifications";
-import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
-import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
+import { useStudentProfile, useStudentActivity, useStudentMessages } from "@/features/student-profile";
+import { showProfileUpdateToast, showProfileErrorToast, PROFILE_UPDATE_MESSAGES } from "../../utils/profileToast";
 
 const MyExperience = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const userEmail = user?.email;
   const { studentData, updateExperience, refresh } = useStudentDataByEmail(
     userEmail,
@@ -383,6 +367,14 @@ const MyExperience = () => {
       const result = await updateExperience(updatedData);
       console.log("✅ Save result:", result);
 
+      if (result?.success) {
+        // Show success toast notification
+        showProfileUpdateToast(PROFILE_UPDATE_MESSAGES.experience, theme);
+      } else {
+        // Show error toast notification
+        showProfileErrorToast('Failed to update experience. Please try again.', theme);
+      }
+
       // Refresh the data to ensure consistency
       if (refresh) {
         await refresh();
@@ -391,6 +383,8 @@ const MyExperience = () => {
       setActiveModal(null);
     } catch (error) {
       console.error("❌ Error saving experience:", error);
+      // Show error toast notification
+      showProfileErrorToast('Failed to update experience. Please try again.', theme);
       // Revert local state on error
       setLocalExperience(approvedExperience);
     }

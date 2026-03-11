@@ -11,9 +11,9 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 // @ts-ignore
-import { FeatureGate } from "../../components/Subscription/FeatureGate";
-import ConfirmationModal from "../../components/ui/ConfirmationModal";
-import NotificationModal from "../../components/ui/NotificationModal";
+import { FeatureGate } from "@/features/subscription/ui/shared";
+import ConfirmationModal from '@/shared/ui/ConfirmationModal';
+import NotificationModal from '@/shared/ui/NotificationModal';
 import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import { useStudents } from "../../hooks/useStudents";
 import { supabase } from "../../lib/supabaseClient";
@@ -21,7 +21,7 @@ import {
     saveMentorNote,
 } from "../../services/educator/mentorNotes";
 // @ts-ignore
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "@/features/auth";
 
 interface MentorNote {
   id: string;

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { clearFeatureAccessCache, useFeatureGate } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
-import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
+import { loadRazorpayScript } from '@/features/subscription/api';
 
 export function FeatureGate({
   featureKey,

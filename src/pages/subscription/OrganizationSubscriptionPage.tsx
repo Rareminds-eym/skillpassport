@@ -8,14 +8,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import AssignToPoolModal from '../../components/Subscription/Organization/AssignToPoolModal';
-import CreatePoolModal, { PoolFormData } from '../../components/Subscription/Organization/CreatePoolModal';
-import DeletePoolModal from '../../components/Subscription/Organization/DeletePoolModal';
-import EditPoolModal, { PoolUpdateData } from '../../components/Subscription/Organization/EditPoolModal';
-import OrganizationSubscriptionDashboard from '../../components/Subscription/Organization/OrganizationSubscriptionDashboard';
-import PoolAssignmentsModal from '../../components/Subscription/Organization/PoolAssignmentsModal';
-import { useOrganizationSubscription } from '../../hooks/Subscription/useOrganizationSubscription';
-import useAuth from '../../hooks/useAuth';
+import {
+  AssignToPoolModal,
+  CreatePoolModal,
+  DeletePoolModal,
+  EditPoolModal,
+  OrganizationSubscriptionDashboard,
+  PoolAssignmentsModal
+} from '@/features/subscription/ui/organization';
+import type { PoolFormData, PoolUpdateData } from '@/features/subscription/ui/organization';
+import { useOrganizationSubscription } from '@/features/subscription/model';
+import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
 
 interface OrganizationDetails {

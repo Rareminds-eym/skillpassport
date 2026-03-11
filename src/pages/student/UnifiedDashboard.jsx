@@ -3,11 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-} from "../../components/Students/components/ui/card";
-import { Button } from "../../components/Students/components/ui/button";
-import { Badge } from "../../components/Students/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import ReactApexChart from 'react-apexcharts';
 import {
   TrendingUp,
@@ -56,20 +52,7 @@ import {
   ProjectsEditModal,
   CertificatesEditModal,
 } from "../../components/Students/components/ProfileEditModals";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
-import { useOpportunities } from "../../hooks/useOpportunities";
-import { useStudentRealtimeActivities } from "../../hooks/useStudentRealtimeActivities";
-import { useAIJobMatching } from "../../hooks/useAIJobMatching";
-import { supabase } from "../../lib/supabaseClient";
-import { useStudentMessageNotifications } from "../../hooks/useStudentMessageNotifications";
-import { useStudentUnreadCount } from "../../hooks/useStudentMessages";
-import { Toaster } from "react-hot-toast";
-import AchievementsTimeline from "../../components/Students/components/AchievementsTimeline";
-import RecentUpdatesCard from "../../components/Students/components/RecentUpdatesCard";
-import { useStudentAchievements } from "../../hooks/useStudentAchievements";
-import { useStudentLearning } from "../../hooks/useStudentLearning";
-import { useStudentCertificates } from "../../hooks/useStudentCertificates";
-import { useStudentProjects } from "../../hooks/useStudentProjects";
+import { useStudentProfile, useStudentPortfolio, useStudentActivity, useStudentMessages } from "@/features/student-profile";
 
 const UnifiedDashboard = () => {
   const location = useLocation();

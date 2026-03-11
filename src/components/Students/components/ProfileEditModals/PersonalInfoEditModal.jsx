@@ -5,7 +5,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Save, Loader2, User } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/shared/lib/hooks";
 import { AutocompleteInput } from "../ui/autocomplete";
 import { searchUniversities, searchCollegesAndSchools } from "@/utils/educationSearch";
 

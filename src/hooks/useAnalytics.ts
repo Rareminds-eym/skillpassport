@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 // @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/features/auth';
 
 // Types
 export interface KPIData {

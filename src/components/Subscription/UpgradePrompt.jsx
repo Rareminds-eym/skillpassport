@@ -18,7 +18,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useSubscriptionContext } from '../../context/SubscriptionContext';
 import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
-import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
+import { loadRazorpayScript } from '@/features/subscription/api';
 
 /**
  * Get the base path for subscription routes based on current location

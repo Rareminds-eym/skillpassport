@@ -22,9 +22,9 @@ import {
   FULL_REGISTRATION_START_DATE
 } from '../../config/registrationConfig';
 // @ts-ignore - JS module without types
-import { sendOtp, verifyOtp as verifyOtpApi } from '../../services/otpService';
+import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 // @ts-ignore - JS module without types
-import DatePicker from '../../components/Subscription/shared/DatePicker';
+import DatePicker from '@/features/subscription/ui/shared/DatePicker';
 import { supabase } from '../../lib/supabaseClient';
 
 type UserRole = 'school_student' | 'college_student' | 'recruiter' | 'school_educator' | 'college_educator' | 'school_admin' | 'college_admin' | 'university_admin';

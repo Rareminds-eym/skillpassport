@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
 
 interface EducatorProfile {

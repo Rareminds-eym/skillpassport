@@ -11,8 +11,7 @@ import {
   AlertCircle,
   ChevronRight
 } from 'lucide-react';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
+import { Button, Card, CardContent } from '@/shared/ui';
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
 import { Label } from '../../components/Students/components/ui/label';
 import {
@@ -32,7 +31,7 @@ import {
   completeAssessment,
   checkAssessmentStatus
 } from '../../services/externalAssessmentService';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentProfile } from '@/features/student-profile';
 import { useAuth } from '../../context/AuthContext';
 
 /**

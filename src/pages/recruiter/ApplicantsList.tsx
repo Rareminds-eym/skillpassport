@@ -3,9 +3,9 @@ import AppliedJobsService from '../../services/appliedJobsService';
 import { getAllPipelineCandidatesByStage, moveCandidateToStage } from '../../services/pipelineService';
 import { supabase } from '../../lib/supabaseClient';
 import { EyeIcon, ChatBubbleLeftIcon, MagnifyingGlassIcon, FunnelIcon, ArrowDownTrayIcon, UsersIcon, ChevronRightIcon, ChevronDownIcon, ChevronUpIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { MessageModal } from '../../components/messaging/MessageModal';
+import { MessageModal } from '@/features/messaging';
 import useMessageNotifications from '../../hooks/useMessageNotifications';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '@/features/auth';
 import { recruiterInsights } from '../../features/recruiter-copilot/services/recruiterInsights';
 
 interface Student {

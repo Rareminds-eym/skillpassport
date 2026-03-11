@@ -3,7 +3,7 @@
  * This script tests that the description field is properly stored and fetched
  */
 
-import { updateExperienceByEmail, getStudentByEmail } from './src/services/studentServiceProfile.js';
+import { updateExperienceByEmail, getStudentByEmail } from '@/features/student-profile/api';
 
 const testExperienceDescription = async () => {
   console.log('🧪 Testing Experience Description Field...\n');

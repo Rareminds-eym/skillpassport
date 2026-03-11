@@ -1,7 +1,7 @@
 import { City, State } from 'country-state-city';
 import { useEffect, useRef, useState } from 'react';
-import { capitalizeFirstLetter } from '../../../../../components/Subscription/shared/signupValidation';
-import { sendOtp, verifyOtp as verifyOtpApi } from '../../../../../services/otpService';
+import { capitalizeFirstLetter } from '@/features/subscription/lib';
+import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api';
 
 // Languages list
 const LANGUAGES = [

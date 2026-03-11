@@ -1,4 +1,4 @@
-import { FeatureGate } from '../../components/Subscription/FeatureGate';
+import { FeatureGate } from '@/features/subscription/ui/shared';
 import RecruiterCopilot from '../../features/recruiter-copilot/components/RecruiterCopilot';
 
 /**

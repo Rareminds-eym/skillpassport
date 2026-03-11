@@ -11,7 +11,7 @@ import {
     Code,
     Heart
 } from 'lucide-react';
-import { Button } from '../../Students/components/ui/button';
+import { Button } from '@/shared/ui';
 // @ts-ignore - JS file without types
 import { useAssessmentRecommendations } from '../../../hooks/useAssessmentRecommendations';
 // @ts-ignore - JS file without types
