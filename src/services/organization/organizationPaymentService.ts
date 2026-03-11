@@ -11,10 +11,6 @@ import { API_ENDPOINTS } from '@/config/api';
 
 // Use centralized API configuration
 const WORKER_URL = API_ENDPOINTS.payments.base;
-import { API_ENDPOINTS } from '../api';
-
-// Use centralized API configuration
-const WORKER_URL = API_ENDPOINTS.payments.base;
 
 // ============================================================================
 // Types

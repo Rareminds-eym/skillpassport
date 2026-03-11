@@ -21,7 +21,6 @@
     "test:e2e:debug": "HEADLESS=false SLOW_MO=500 bash tests/e2e/run-tests.sh",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "workers:dev": "concurrently -n \"email,embed,pay,razorpay\" -c \"blue,green,yellow,cyan\" \"npm run workers:email\" \"npm run workers:embedding\" \"npm run workers:payments\" \"sleep 3 && npm run workers:razorpay\"",
-    "workers:dev": "concurrently -n \"embed,razorpay\" -c \"green,yellow\" \"npm run workers:embedding\" \"sleep 3 && npm run workers:razorpay\"",
     "pages:dev": "wrangler pages dev dist --compatibility-date=2024-01-01 --port=8788",
     "pages:build": "npm run build && npm run pages:dev",
     "workers:email": "cd cloudflare-workers/email-api && wrangler dev --port=9001 --inspector-port=9229",
