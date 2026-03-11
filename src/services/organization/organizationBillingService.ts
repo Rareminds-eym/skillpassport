@@ -5,7 +5,7 @@
  * for organization-level subscriptions.
  */
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 
 // ============================================================================
 // Types & Interfaces

@@ -5,7 +5,7 @@
  * in different contexts and with different customizations.
  */
 
-import { ShinyButton } from "@/components/ui/shiny-button";
+import { ShinyButton } from "@/shared/ui";
 import { Lock, ChevronRight, Download, Send, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 

@@ -15,17 +15,17 @@ import { getLogger } from "../../config/logging";
 const logger = getLogger('MentorNotes');
 
 // @ts-ignore
-import { FeatureGate } from "../../components/Subscription/FeatureGate";
-import ConfirmationModal from "../../components/ui/ConfirmationModal";
-import NotificationModal from "../../components/ui/NotificationModal";
+import { FeatureGate } from "@/features/subscription/ui/shared";
+import ConfirmationModal from '@/shared/ui/ConfirmationModal';
+import NotificationModal from '@/shared/ui/NotificationModal';
 import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import { useStudents } from "../../hooks/useStudents";
 import { supabase } from "../../lib/supabaseClient";
 import {
     saveMentorNote,
 } from "../../services/educator/mentorNotes";
-import { useUser } from '../../stores';
-import { useMentorAllocation } from '../../hooks/useMentorAllocation';
+// @ts-ignore
+import { useAuth } from "@/features/auth";
 
 interface MentorNote {
   id: string;

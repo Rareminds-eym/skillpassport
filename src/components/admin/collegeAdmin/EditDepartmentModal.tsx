@@ -1,4 +1,4 @@
-import { useUser } from '../../../stores';
+import { useAuth } from '@/features/auth';
 import { ChevronDownIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import React, { useEffect, useState } from "react";
 import { supabase } from '../../../lib/supabaseClient';

@@ -2,11 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-} from '../../components/Students/components/ui/card';
-import { Button } from '../../components/Students/components/ui/button';
-import { Badge } from '../../components/Students/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from '@/shared/ui';
 import {
   ClipboardList,
   Calendar as CalendarIcon,
@@ -28,11 +24,8 @@ import {
   ChevronDown,
   Loader2,
 } from 'lucide-react';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('Assignments');
-import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useAuth } from '../../context/AuthContext';
+import { useStudentProfile } from '@/features/student-profile';
 import {
   getAssignmentsByStudentId,
   getAssignmentStats,

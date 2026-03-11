@@ -12,7 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser, useIsAuthenticated } from '../../stores';
+import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
 import { getLogger } from '../../config/logging';
 

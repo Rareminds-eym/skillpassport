@@ -19,18 +19,15 @@ import { formatDistanceToNow } from 'date-fns';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useLocation } from 'react-router-dom';
-import DeleteConversationModal from '../../components/messaging/DeleteConversationModal';
-import { useUser } from '../../stores';
-import { useGlobalPresence } from '../../stores';
+import { DeleteConversationModal } from '@/features/messaging';
+import { useAuth } from '../../context/AuthContext.jsx';
+import { useGlobalPresence } from '../../context/GlobalPresenceContext';
 import { useEducatorAdminMessages } from '../../hooks/useEducatorAdminMessages.js';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { useRealtimePresence } from '../../hooks/useRealtimePresence';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { useTypingIndicator } from '@/features/messaging';
 import { supabase } from '../../lib/supabaseClient';
-import MessageService, { Conversation } from '../../services/messageService';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('AdminCommunication');
+import { MessageService, Conversation } from '@/features/messaging';
 
 const AdminCommunication = () => {
   const location = useLocation();

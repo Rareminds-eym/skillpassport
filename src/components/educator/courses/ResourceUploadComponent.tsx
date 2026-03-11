@@ -11,6 +11,8 @@ import {
   ExclamationCircleIcon
 } from '@heroicons/react/24/outline';
 import { Resource, FileUpload } from '../../../types/educator/course';
+import { validateFileSize, getValidationErrorMessage } from '../../../utils/fileValidation';
+import { getFileSizeLimit, formatFileSize as formatFileSizeUtil } from '../../../config/fileSizeLimits';
 
 // Extend FileUpload type locally to include serverProgress
 interface ExtendedFileUpload extends FileUpload {
@@ -31,7 +33,6 @@ interface ResourceUploadComponentProps {
   lessonId: string;
 }
 
-const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 const UPLOAD_TIMEOUT = 600000; // 10 minutes in milliseconds
 const ALLOWED_FILE_TYPES = {
   pdf: ['.pdf'],
@@ -118,9 +119,12 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
   };
 
   const validateFile = (file: File): string | null => {
-    if (file.size > MAX_FILE_SIZE) {
-      return `File size exceeds ${formatFileSize(MAX_FILE_SIZE)} limit`;
+    // Validate file size using centralized validation
+    const sizeValidation = validateFileSize(file, { context: 'course_resource' });
+    if (!sizeValidation.valid) {
+      return getValidationErrorMessage(sizeValidation);
     }
+
     const ext = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
     const allAllowedTypes = Object.values(ALLOWED_FILE_TYPES).flat();
     if (!allAllowedTypes.includes(ext)) {
@@ -575,11 +579,11 @@ const ResourceUploadComponent: React.FC<ResourceUploadComponentProps> = ({
                   className="hidden"
                 />
                 <p className="text-xs text-gray-500 mt-4">
-                  Supported: PDF, DOC, DOCX, PPT, PPTX, MP4, Images (Max {formatFileSize(MAX_FILE_SIZE)})
+                  Supported: PDF, DOC, DOCX, PPT, PPTX, MP4, Images (Max {getFileSizeLimit('course_resource').displaySize})
                 </p>
                 <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-xs text-yellow-700">
-                    <strong>Note:</strong> Large files (over 100MB) may take several minutes to upload.
+                    <strong>Note:</strong> Large files (over {getFileSizeLimit('course_resource').displaySize}) may take several minutes to upload.
                     Please be patient and maintain a stable internet connection.
                   </p>
                 </div>

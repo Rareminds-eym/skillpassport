@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { courseProgressService } from '../services/courseProgressService';
+import { courseProgressService } from '@/features/courses/api/courseProgressService';
 
 /**
  * Custom hook for session restoration logic

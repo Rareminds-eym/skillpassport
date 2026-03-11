@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { getStudentByEmail } from '../services/studentServiceProfile';
+import { getStudentByEmail } from '@/features/student-profile/api';
 
 export const useStudentDataByEmail = (email, fallbackToMock = true) => {
   const [studentData, setStudentData] = useState(null);

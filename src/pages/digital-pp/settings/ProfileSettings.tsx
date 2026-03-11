@@ -1,13 +1,15 @@
 import { Save, Upload, User } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../stores';
+import { usePortfolio } from '../../../context/PortfolioContext';
+import { useTheme } from '../../../context/ThemeContext';
+import { showProfileUpdateToast } from '../../../utils/profileToast';
 
 const ProfileSettings: React.FC = () => {
   const navigate = useNavigate();
   const { settings, updateSettings } = usePortfolio();
+  const { theme } = useTheme();
   const [profileImage, setProfileImage] = useState(settings.profileImage || '');
-  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -26,22 +28,11 @@ const ProfileSettings: React.FC = () => {
       profileImage: profileImage
     });
     
-    setShowSaveConfirmation(true);
-    setTimeout(() => {
-      setShowSaveConfirmation(false);
-    }, 2000);
+    showProfileUpdateToast('Profile settings saved successfully!', theme);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-slate-900 dark:to-indigo-950 transition-colors duration-300">
-      {/* Save Confirmation Toast */}
-      {showSaveConfirmation && (
-        <div className="fixed top-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center space-x-2 animate-slide-in">
-          <Save className="w-5 h-5" />
-          <span>Settings saved successfully!</span>
-        </div>
-      )}
-
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-8">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-colors duration-300">

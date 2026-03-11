@@ -2,7 +2,7 @@
 import AddAttendanceSessionModal from "@/components/admin/modals/AddAttendanceSessionModal";
 import AttendanceDetailsModal from "@/components/admin/modals/AttendanceDetailsModal";
 import StudentHistoryModal from "@/components/admin/modals/StudentHistoryModal";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/shared/api";
 import { AttendanceRecord, AttendanceSession, SubjectGroup, Student as AttendanceStudent } from "@/types/Attendance";
 import { Student as ProfileStudent } from "@/types/student";
 import { curriculumService } from "@/services/college/curriculumService";

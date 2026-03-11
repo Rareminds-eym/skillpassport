@@ -11,13 +11,9 @@ import {
   CheckCheck,
   Loader2
 } from 'lucide-react';
-import { useStudentConversations, useStudentMessages } from '../../hooks/useStudentMessages';
-import MessageService from '../../services/messageService';
-import { formatDistanceToNow } from 'date-fns';
-import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { useGlobalPresence } from '../../stores';
-import { useTypingIndicator } from '../../hooks/useTypingIndicator';
+import { useStudentProfile, useStudentMessages } from '@/features/student-profile';
+import { useGlobalPresence } from '../../context/GlobalPresenceContext';
+import { useTypingIndicator } from '@/features/messaging';
 import { useNotificationBroadcast } from '../../hooks/useNotificationBroadcast';
 import { getLogger } from '../../config/logging';
 

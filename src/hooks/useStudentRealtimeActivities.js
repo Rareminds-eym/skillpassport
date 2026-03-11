@@ -6,7 +6,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { getStudentRecentActivity } from '../services/studentActivityService';
+import { getStudentRecentActivity } from '@/features/student-profile/api';
 
 /**
  * Helper — format timestamps into "2 min ago" / "Oct 24" etc.

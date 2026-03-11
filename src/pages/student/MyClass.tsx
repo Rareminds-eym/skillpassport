@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
-import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import { getLogger } from '../../config/logging';
+import { useAuth } from '../../context/AuthContext';
+import { useStudentProfile } from '../../features/student-profile/model/useStudentProfile';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 
 // Import student type detection service
 import { getStudentTypeInfo } from '../../services/collegeClassService';

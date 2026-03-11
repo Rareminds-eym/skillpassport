@@ -1,4 +1,4 @@
-import { ShinyButton } from "@/components/ui/shiny-button";
+import { ShinyButton } from "@/shared/ui";
 
 export default function ShinyButtonDemo() {
   return (

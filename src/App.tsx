@@ -1,8 +1,16 @@
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
-import { useEffect } from 'react';
+import { ToastProvider } from './components/Recruiter/components/Toast';
+import { Toaster } from './components/Students/components/ui/toaster';
+import { SubscriptionPrefetch } from '@/features/subscription/ui/shared';
 import TourWrapper from './components/Tours/TourWrapper';
 import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotification';
+import { AuthProvider } from './context/AuthContext';
+import { SearchProvider } from './context/SearchContext';
+import { SubscriptionProvider } from './context/SubscriptionContext';
+import { SupabaseAuthBridgeProvider } from './context/SupabaseAuthBridge';
+import { SupabaseAuthProvider } from './context/SupabaseAuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import AppRoutes from './routes/AppRoutes';
 
 // Zustand stores - state management migrated from Context
@@ -56,39 +64,54 @@ function App() {
   }, []);
 
   return (
-
-    <BrowserRouter>
-      <TourWrapper>
-        <SubscriptionInitializer />
-        <TokenRefreshErrorNotification />
-        <AppRoutes />
-        <HotToaster
-          position="top-right"
-          toastOptions={{
-            duration: 5000,
-            style: {
-              background: '#fff',
-              color: '#363636',
-            },
-            success: {
-              duration: 3000,
-              iconTheme: {
-                primary: '#10b981',
-                secondary: '#fff',
-              },
-            },
-            error: {
-              duration: 4000,
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#fff',
-              },
-            },
-          }}
-        />
-      </TourWrapper>
-    </BrowserRouter>
-
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <ThemeProvider>
+          <SupabaseAuthProvider>
+            <AuthProvider>
+              <SupabaseAuthBridgeProvider>
+                <SubscriptionProvider>
+                  <SearchProvider>
+                    <ToastProvider>
+                      <TourWrapper>
+                        <SubscriptionPrefetch />
+                        <TokenRefreshErrorNotification />
+                        <AppRoutes />
+                        <Toaster />
+                      <HotToaster 
+                        position="top-right"
+                        toastOptions={{
+                          duration: 5000,
+                          style: {
+                            background: '#fff',
+                            color: '#363636',
+                          },
+                          success: {
+                            duration: 3000,
+                            iconTheme: {
+                              primary: '#10b981',
+                              secondary: '#fff',
+                            },
+                          },
+                          error: {
+                            duration: 4000,
+                            iconTheme: {
+                              primary: '#ef4444',
+                              secondary: '#fff',
+                            },
+                          },
+                        }}
+                      />
+                      </TourWrapper>
+                    </ToastProvider>
+                  </SearchProvider>
+                </SubscriptionProvider>
+              </SupabaseAuthBridgeProvider>
+            </AuthProvider>
+          </SupabaseAuthProvider>
+        </ThemeProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 

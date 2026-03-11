@@ -39,7 +39,8 @@ import IndustrialVisitPreview from '../../components/Students/components/Industr
 import Pagination from '../../components/educator/Pagination';
 import { useUser } from '../../stores';
 import { useOpportunities } from '../../hooks/useOpportunities';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentProfile } from '@/features/student-profile';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
 import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
@@ -51,8 +52,8 @@ const logger = getLogger('Opportunities');
 
 // Import Applications component content
 import useMessageNotifications from '../../hooks/useMessageNotifications';
-import MessageService from '../../services/messageService';
-import StudentPipelineService from '../../services/studentPipelineService';
+import { MessageService } from '@/features/messaging';
+import { studentPipelineService as StudentPipelineService } from '@/features/student-profile/api';
 
 // Helper function to check if institution details are complete
 const checkInstitutionDetailsComplete = (studentData) => {

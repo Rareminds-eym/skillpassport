@@ -1,9 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
-import SchoolClassHeader from './common/SchoolClassHeader';
-import OverviewTab from './Tabs/OverviewTab';
+import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
+import { getPagesApiUrl } from '../../utils/pagesUrl';
+import { useStudentProfile } from '@/features/student-profile';
+import { supabase } from '../../lib/supabaseClient';
+import SchoolClassHeader, { SchoolClassInfo } from './common/SchoolClassHeader';
+// Import shared components
+import OverviewTab, { AssignmentStats } from './Tabs/OverviewTab';
 import ClassmatesTab from './Tabs/ClassmatesTab';
 import AssignmentsTab from './Tabs/AssignmentsTab';
 import SchoolTimetableView from './Tabs/TimetableViewTab';
@@ -17,30 +21,23 @@ import AssignmentDetailsModal from './components/AssignmentDetailsModal';
 
 // Skeleton Loaders
 import {
-  OverviewSkeletonLoader,
-  AssignmentsSkeletonLoader,
-  TimetableSkeletonLoader,
-  ClassmatesSkeletonLoader,
-  CoCurricularsSkeletonLoader,
-  ExamsSkeletonLoader,
-  ResultsSkeletonLoader,
-  SkeletonStyles
-} from './components/SkeletonLoaders';
-
-// Custom Hooks
-import { useClassInfo } from './hooks/useClassInfo';
-import { useOverviewData } from './hooks/useOverviewData';
-import { useAssignmentsData } from './hooks/useAssignmentsData';
-import { useTimetableData } from './hooks/useTimetableData';
-import { useClassmatesData } from './hooks/useClassmatesData';
-import { useOptimizedCoCurricularsData } from './hooks/useOptimizedCoCurricularsData';
-import { useOptimizedExamsData } from './hooks/useOptimizedExamsData';
-import { useAssignmentActions } from './hooks/useAssignmentActions';
-import { useNotification } from './hooks/useNotification';
-
-// Utils
-import { parseAsLocalDate, isOverdue, getStatusBadge } from './utils/assignmentHelpers';
-import { TimetableSlot } from './Tabs/OverviewTab';
+  getStudentClassInfo,
+  getClassmates,
+  getClassTimetable,
+  getTodaySchedule
+} from '@/features/student-profile/api';
+import {
+  getAssignmentsByStudentId,
+  getAssignmentStats,
+  updateAssignmentStatus,
+  submitAssignmentWithStagedFiles,
+  getAssignmentWithFiles
+} from '../../services/assignmentsService';
+import {
+  getGroupedStudentExams,
+  getStudentResults,
+  getStudentResultStats
+} from '@/features/student-profile/api';
 
 type TabType = 'overview' | 'assignments' | 'timetable' | 'classmates' | 'curriculars' | 'exams' | 'results';
 type TimetableViewType = 'week' | 'day';

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
-import { useUser } from '../stores';
-import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
+import { useAuth } from '@/features/auth';
+import { useStudentProfile } from '@/features/student-profile';
+import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
 import FloatingAIButton from '../components/FloatingAIButton';
@@ -96,26 +97,27 @@ const StudentLayout = () => {
   const isFullScreenAssessment = isAssessmentPage && !isAssessmentResultPage;
 
   return (
-    <div className={`${isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
-      {!isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
-      {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
-      <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
-        <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
-      </main>
-      {!isCareerAIPage && (
-        <footer className="bg-white border-t border-gray-200 py-4 px-6">
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <span>© {new Date().getFullYear()} Learner Portal. All rights reserved.</span>
-            <div className="flex items-center gap-4">
-              <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
-              <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
-              <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+    <GlobalPresenceProvider userType="student">
+      <div className={`${isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
+        {!isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
+        {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
+        <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
+          <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
+        </main>
+        {!isCareerAIPage && (
+          <footer className="bg-white border-t border-gray-200 py-4 px-6">
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>© {new Date().getFullYear()} Learners Portal. All rights reserved.</span>
+              <div className="flex items-center gap-4">
+                <Link to="/privacy-policy" className="hover:text-gray-700 transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="hover:text-gray-700 transition-colors">Terms of Service</Link>
+                <a href="#" className="hover:text-gray-700 transition-colors">Help</a>
+              </div>
             </div>
-          </div>
-        </footer>
-      )}
-      {!isAssessmentTestPage && <FloatingAIButton />}
-      <Toaster />
+          </footer>
+        )}
+        {!isAssessmentTestPage && <FloatingAIButton />}
+        <Toaster />
 
       {/* Edit Modals - Only show if not viewing someone else's profile */}
       {!isViewingOthersProfile && (

@@ -28,6 +28,8 @@ import {
     type PricingBreakdown,
 } from '@/services/organization/organizationSubscriptionService';
 import { useCallback, useEffect, useState } from 'react';
+// @ts-ignore - useAuth is a JS file
+import { useAuth } from '@/features/auth';
 
 interface UseOrganizationSubscriptionOptions {
   organizationId: string;

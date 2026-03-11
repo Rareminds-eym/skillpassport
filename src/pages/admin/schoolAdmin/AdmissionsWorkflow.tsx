@@ -3,7 +3,7 @@ import {
   UserPlus, Upload, CheckCircle, XCircle, DollarSign, 
   FileText, Search, Filter, Download 
 } from 'lucide-react';
-import { admissionService } from '@/services/studentManagementService';
+import { admissionService } from '@/features/student-profile/api';
 import type { AdmissionApplication } from '@/types/StudentManagement';
 
 const AdmissionsWorkflow: React.FC = () => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import Header from "../components/educator/Header";
 import Sidebar from "../components/educator/Sidebar";
-import StudentProfileDrawer from "../components/shared/StudentProfileDrawer";
+import { StudentProfileDrawer } from "@/features/student-profile";
 import FloatingEducatorAIButton from "../components/FloatingEducatorAIButton";
 import { useEducatorSchool } from "../hooks/useEducatorSchool";
 

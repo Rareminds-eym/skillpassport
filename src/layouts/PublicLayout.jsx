@@ -2,8 +2,13 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from '../components/Footer';
 import { PromotionalBanner, AssessmentPromotionalBanner } from '../components/Homepage';
-import { useAssessmentPromotional, useCurrentPromotional } from '../stores';
-import { useIsAuthenticated, useUserRole, useUser, useSubscriptionAccess } from '../stores';
+import {
+  PromotionalEventProvider,
+  usePromotionalEventContext,
+} from '../contexts/PromotionalEventContext';
+import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
+import { useAuth } from '@/features/auth';
+import { useSubscriptionQuery } from '@/features/subscription/model';
 import { isActiveOrPaused } from '../utils/subscriptionHelpers';
 
 // Import role-specific headers

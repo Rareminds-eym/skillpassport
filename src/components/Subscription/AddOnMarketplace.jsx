@@ -19,7 +19,7 @@ import { useSubscription } from '../../stores';
 import { useAddOnCatalog } from '../../hooks/useAddOnCatalog';
 import { clearFeatureAccessCache } from '../../hooks/useFeatureGate';
 import addOnPaymentService from '../../services/addOnPaymentService';
-import { loadRazorpayScript } from '../../services/Subscriptions/razorpayService';
+import { loadRazorpayScript } from '@/features/subscription/api';
 import { AddOnCard } from './AddOnCard';
 import { BundleCard } from './BundleCard';
 

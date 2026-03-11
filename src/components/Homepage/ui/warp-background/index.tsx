@@ -4,7 +4,7 @@ import {
   CardContent,
   CardDescription,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/shared/ui";
 
 export function ExampleComponentDemo() {
   return (

@@ -1,7 +1,12 @@
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import { PromotionalBanner, AssessmentPromotionalBanner } from '../components/Homepage';
-import { useUserRole, useCurrentPromotional, useAssessmentPromotional } from '../stores';
+import {
+  PromotionalEventProvider,
+  usePromotionalEventContext,
+} from '../contexts/PromotionalEventContext';
+import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
+import { useAuth } from '@/features/auth';
 
 const PortfolioLayout = () => {
   const { event, showBanner, dismissBanner, getTimeRemaining } = useCurrentPromotional();

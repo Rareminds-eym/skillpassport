@@ -17,16 +17,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AITutorPanel, VideoLearningPanel } from '../../components/ai-tutor';
-import RestoreProgressModal from '../../components/student/courses/RestoreProgressModal';
-import { Badge } from '../../components/Students/components/ui/badge';
-import { Button } from '../../components/Students/components/ui/button';
-import { Card, CardContent } from '../../components/Students/components/ui/card';
-import { useUser } from '../../stores';
+import RestoreProgressModal from '@/features/courses/ui/RestoreProgressModal';
+import { Badge, Button, Card, CardContent } from '@/shared/ui';
+import { useAuth } from '../../context/AuthContext';
 import { useSessionRestore } from '../../hooks/useSessionRestore';
 import { supabase } from '../../lib/supabaseClient';
 import { generateCourseCertificate } from '../../services/certificateService';
-import { courseEnrollmentService } from '../../services/courseEnrollmentService';
-import { courseProgressService } from '../../services/courseProgressService';
+import { enrollmentService as courseEnrollmentService } from '@/features/courses/api';
+import { courseProgressService } from '@/features/courses/api/courseProgressService';
 import { fileService } from '../../services/fileService';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '../../services/authenticatedMediaService';
 

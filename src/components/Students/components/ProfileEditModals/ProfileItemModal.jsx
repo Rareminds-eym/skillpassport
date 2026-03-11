@@ -1,4 +1,4 @@
-import toast from 'react-hot-toast';
+import { useToast } from "@/shared/lib/hooks";
 import {
     Briefcase,
     Loader2,

@@ -3,7 +3,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import Loader from "../components/Loader";
 import ProtectedRoute from "../components/ProtectedRoute";
 import ScrollToTop from "../components/ScrollToTop";
-import SubscriptionProtectedRoute from "../components/Subscription/SubscriptionProtectedRoute";
+import { SubscriptionProtectedRoute } from "@/features/subscription/ui/shared";
 import OrganizationGuard from "../components/organization/OrganizationGuard";
 
 import AdminLayout from "../layouts/AdminLayout";

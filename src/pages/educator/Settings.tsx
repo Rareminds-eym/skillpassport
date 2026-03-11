@@ -23,15 +23,12 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useState, useRef, useEffect } from 'react';
 // @ts-ignore - JSX file without declaration
-import { useUser, useUserRole } from '../../stores';
+import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
 import { validateFile, uploadFile, getDocumentUrl } from '../../services/fileUploadService';
 import { storageService } from '../../services/storageService';
 // @ts-ignore - JSX file without declaration
-import { SubscriptionSettingsSection } from '../../components/Subscription/SubscriptionSettingsSection';
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('EducatorSettings');
+import { SubscriptionSettingsSection } from '@/features/subscription/ui/shared';
 interface SettingsState {
   fullName: string;
   email: string;

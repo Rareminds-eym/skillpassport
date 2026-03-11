@@ -11,17 +11,21 @@ import {
     updateEducationByEmail,
     updateExperienceByEmail,
     updateProjectsByEmail,
-    updateSingleTrainingById,
-    updateSkillsByEmail,
-    updateSoftSkillsByEmail,
-    updateStudentByEmail,
     updateTechnicalSkillsByEmail,
     updateTrainingByEmail
+<<<<<<< HEAD
+} from '@/features/student-profile/api';
+import { updateSingleTrainingById, updateSkillsByEmail, updateSoftSkillsByEmail, updateStudentByEmail } from '@/services/studentServiceProfile';
+=======
 } from '../services/studentService';
+>>>>>>> 671d7d32e0483a5f964254def742552c6208ec47
 // Note: Embedding regeneration is now handled automatically by database triggers
 // No need to call scheduleEmbeddingRegeneration from frontend
 
+console.log('🔍 [useStudentDataByEmail] Hook module loaded');
+
 export const useStudentDataByEmail = (email, fallbackToMock = true) => {
+  console.log('🔍 [useStudentDataByEmail] Hook called with email:', email);
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

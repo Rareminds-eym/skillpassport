@@ -17,7 +17,7 @@ import {
   addSoftSkill,
   updateSoftSkill,
   deleteSoftSkill
-} from '../services/studentServiceAdapted';
+} from '@/features/student-profile/api';
 
 /**
  * Custom hook to manage student data from Supabase (ADAPTED for existing schema)

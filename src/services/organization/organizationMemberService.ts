@@ -5,7 +5,7 @@
  * Integrates with license assignments to show member subscription status.
  */
 
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/shared/api';
 
 // ============================================================================
 // Types & Interfaces

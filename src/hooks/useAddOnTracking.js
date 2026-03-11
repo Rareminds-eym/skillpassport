@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useRef } from 'react';
-import { useUser } from '../stores';
+import { useAuth } from '@/features/auth';
 import addOnAnalyticsService from '../services/addOnAnalyticsService';
 
 /**

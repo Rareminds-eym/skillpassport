@@ -36,7 +36,7 @@ import { SchoolAdminNotificationService } from '../../../services/schoolAdminNot
 import TrainingDetailsModal from '../../../components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '../../../components/admin/schoolAdmin/ExperienceDetailsModal';
 import ProjectDetailsModal from '../../../components/admin/schoolAdmin/ProjectDetailsModal';
-import toast from 'react-hot-toast';
+import { useToast } from '@/shared/lib/hooks';
 import { supabase } from '../../../lib/supabaseClient';
 
 const Verifications: React.FC = () => {

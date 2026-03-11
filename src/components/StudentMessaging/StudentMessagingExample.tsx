@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { MessageSquare, Send, Loader2 } from 'lucide-react';
-import { useStudentMessages, useStudentUnreadCount, useStudentConversations } from '../../hooks/useStudentMessages';
-import { useStudentMessageNotifications } from '../../hooks/useStudentMessageNotifications';
-import { useMessageStore } from '../../stores/useMessageStore';
+import { useStudentMessages } from '@/features/student-profile';
+import { useMessageStore } from '@/features/messaging';
 
 interface StudentMessagingExampleProps {
   studentId: string;

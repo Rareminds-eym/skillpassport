@@ -1,5 +1,8 @@
 // Teacher Onboarding Validation Rules
 
+import { validateFileSize } from './fileValidation';
+import { getFileSizeLimit } from '../config/fileSizeLimits';
+
 export interface ValidationResult {
   isValid: boolean;
   error?: string;
@@ -72,7 +75,7 @@ export const validateSubjects = (subjects: any[]): ValidationResult => {
 };
 
 /**
- * Validates document file (PDF/JPG only, max 5MB)
+ * Validates document file (PDF/JPG only, max size from config)
  */
 export const validateDocument = (file: File | null, required: boolean = false): ValidationResult => {
   if (!file) {
@@ -88,10 +91,11 @@ export const validateDocument = (file: File | null, required: boolean = false): 
     return { isValid: false, error: "Invalid file format. Only PDF/JPG/PNG allowed." };
   }
   
-  // Check file size (5 MB max)
-  const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
-  if (file.size > MAX_SIZE) {
-    return { isValid: false, error: "File exceeds 5 MB limit." };
+  // Use centralized file size validation
+  const sizeValidation = validateFileSize(file, { context: 'document' });
+  if (!sizeValidation.valid) {
+    const config = getFileSizeLimit('document');
+    return { isValid: false, error: `File exceeds ${config.displaySize} limit.` };
   }
   
   return { isValid: true };

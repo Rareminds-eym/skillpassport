@@ -21,11 +21,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { supabase } from '../../lib/supabaseClient';
 import { createInterview, sendReminder } from '../../services/interviewService';
-import { createNotification } from "../../services/notificationService.ts";
-import { useUser } from "../../stores"; // Import auth context
-import { getLogger } from '../../config/logging';
-
-const logger = getLogger('Interviews');
+import { createNotification } from "../../services/notificationService.ts"; // ✅ Import notification service
+import { useAuth } from "@/features/auth"; // ✅ Import auth context
 
 // Define TypeScript interfaces
 interface Scorecard {

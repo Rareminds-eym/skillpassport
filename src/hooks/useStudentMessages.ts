@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useState, useMemo } from 'react';
-import MessageService, { Message } from '../services/messageService';
-import { useMessageStore } from '../stores/useMessageStore';
+import { MessageService, Message } from '@/features/messaging';
+import { useMessageStore } from '@/features/messaging';
 import { supabase } from '../lib/supabaseClient';
 
 interface UseStudentMessagesOptions {

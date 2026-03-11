@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/shared/api";
 import { exportCurriculum } from "@/services/curriculumExportService";
 import {
     AcademicCapIcon,

@@ -8,6 +8,8 @@ import { saveResumeToTables } from '../../../services/resumeDataService';
 import { supabase } from '../../../utils/api';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+import { validateFileSize, getValidationErrorMessage } from '../../../utils/fileValidation';
+import { getFileSizeLimit } from '../../../config/fileSizeLimits';
 
 // Configure PDF.js worker - using local worker file from node_modules
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -63,9 +65,10 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
         return;
       }
 
-      // Validate file size (max 5MB)
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        setError('File size must be less than 5MB');
+      // Validate file size using centralized validation
+      const sizeValidation = validateFileSize(selectedFile, { context: 'resume' });
+      if (!sizeValidation.valid) {
+        setError(getValidationErrorMessage(sizeValidation));
         return;
       }
 
@@ -343,7 +346,7 @@ const ResumeParser = ({ onDataExtracted, onClose, userEmail, studentData, user }
                 {file ? file.name : 'Click to upload your resume'}
               </span>
               <span className="text-sm text-gray-500">
-                Supported formats: PDF, DOC, DOCX, TXT (Max 5MB)
+                Supported formats: PDF, DOC, DOCX, TXT (Max {getFileSizeLimit('resume').displaySize})
               </span>
             </label>
           </div>

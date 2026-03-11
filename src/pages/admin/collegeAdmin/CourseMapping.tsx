@@ -22,10 +22,7 @@ import toast from 'react-hot-toast';
 import SearchBar from "../../../components/common/SearchBar";
 import KPICard from "../../../components/admin/KPICard";
 import Pagination from "../../../components/admin/Pagination";
-import ConfirmationModal from "../../../components/ui/ConfirmationModal";
-import { getLogger } from "../../../config/logging";
-
-const logger = getLogger('college-admin-course-mapping');
+import { ConfirmationModal } from '@/shared/ui';
 import {
     getDepartments,
     getPrograms,

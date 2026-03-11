@@ -26,9 +26,9 @@ import {
   Mail,
   Award
 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { useUser } from '../../../stores';
-import { supabase } from '@/lib/supabaseClient';
+import { useToast } from '@/shared/lib/hooks';
+import { supabase } from '@/shared/api';
+import { useAuth } from '@/features/auth';
 import { CollegeAdminNotificationService } from '@/services/collegeAdminNotificationService';
 import TrainingDetailsModal from '@/components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '@/components/admin/schoolAdmin/ExperienceDetailsModal';

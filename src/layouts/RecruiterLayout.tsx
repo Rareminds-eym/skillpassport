@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useUser } from "../stores";
-import { supabase } from "../lib/supabaseClient";
+import { Outlet, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/features/auth';
+import { GlobalPresenceProvider } from '../context/GlobalPresenceContext';
 import Header from '../components/Recruiter/components/Header';
 import Sidebar from '../components/Recruiter/components/Sidebar';
 import MobileTabBar from '../components/Recruiter/components/MobileTabBar';

@@ -11,7 +11,7 @@ import {
     XCircle,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { useUser } from "../../stores";
+import { useAuth } from "@/features/auth";
 import { supabase } from "../../lib/supabaseClient";
 import { getLogger } from "../../config/logging";
 

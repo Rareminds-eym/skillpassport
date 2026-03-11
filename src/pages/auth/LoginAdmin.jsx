@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Loader2 } from 'lucide-react';
-import { useAuthActions } from "../../../stores";
-import { loginAdmin } from '../../services/adminAuthService';
-import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
+import { loginAdmin } from '@/features/auth/api';
+import { useToast } from '@/shared/lib/hooks';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/Students/components/ui/card';
 import { Label } from '../../components/Students/components/ui/label';
 import { Input } from '../../components/Students/components/ui/input';
