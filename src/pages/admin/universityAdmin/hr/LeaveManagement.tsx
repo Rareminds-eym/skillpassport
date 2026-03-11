@@ -20,6 +20,9 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import KPICard from '../../../../components/admin/KPICard';
+import { getLogger } from '../../../../config/logging';
+
+const logger = getLogger('university-admin-hr-leave-management');
 
 interface LeaveRequest {
   id: string;
@@ -287,7 +290,7 @@ const LeaveManagement: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Leave Requests ({filteredRequests.length})</h3>
         <button 
-          onClick={() => console.log('Add leave request functionality would be implemented here')}
+          onClick={() => logger.info('Add leave request functionality would be implemented here')}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
           <Plus className="h-4 w-4" />
@@ -364,7 +367,7 @@ const LeaveManagement: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={() => console.log('View request:', request)}
+                  onClick={() => logger.info('View request', { request })}
                   className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
                 >
                   <EyeIcon className="h-4 w-4" />
@@ -414,7 +417,7 @@ const LeaveManagement: React.FC = () => {
               
               <div className="flex gap-2">
                 <button 
-                  onClick={() => console.log('View details:', request)}
+                  onClick={() => logger.info('View details', { request })}
                   className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm rounded-xl hover:bg-gray-200 flex items-center justify-center gap-1 font-medium transition-all duration-200"
                 >
                   <EyeIcon className="h-4 w-4" />
@@ -423,14 +426,14 @@ const LeaveManagement: React.FC = () => {
                 {request.status === 'Pending' && (
                   <>
                     <button 
-                      onClick={() => console.log('Approve request:', request)}
+                      onClick={() => logger.info('Approve request', { request })}
                       className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center gap-1"
                     >
                       <CheckCircleIcon className="h-4 w-4" />
                       Approve
                     </button>
                     <button 
-                      onClick={() => console.log('Reject request:', request)}
+                      onClick={() => logger.info('Reject request', { request })}
                       className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center gap-1"
                     >
                       <XCircleIcon className="h-4 w-4" />
@@ -463,7 +466,7 @@ const LeaveManagement: React.FC = () => {
       </p>
       <div className="mt-6">
         <button 
-          onClick={() => console.log('Calendar functionality would be implemented here')}
+          onClick={() => logger.info('Calendar functionality would be implemented here')}
           className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
           <CalendarDaysIcon className="h-4 w-4 mr-2" />

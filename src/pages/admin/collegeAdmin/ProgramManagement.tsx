@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { supabase } from "../../../lib/supabaseClient";
 import toast from "react-hot-toast";
+import { getLogger } from "../../../config/logging";
 
 interface Program {
   id: string;
@@ -34,6 +35,7 @@ interface Department {
 }
 
 const ProgramManagement: React.FC = () => {
+  const logger = getLogger('college-admin-programs');
   const [collegeId, setCollegeId] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -75,7 +77,7 @@ const ProgramManagement: React.FC = () => {
           setCollegeId(orgData.id);
         }
       } catch (error) {
-        console.error('Error fetching college ID:', error);
+        logger.error('Error fetching college ID:', error as Error);
       }
     };
 
@@ -134,7 +136,7 @@ const ProgramManagement: React.FC = () => {
 
       setPrograms(formattedPrograms);
     } catch (error: any) {
-      console.error("Error loading data:", error);
+      logger.error('Error loading data:', error as Error);
       toast.error(`Failed to load data: ${error.message}`);
     } finally {
       setLoading(false);
@@ -167,7 +169,7 @@ const ProgramManagement: React.FC = () => {
       toast.success("Program deleted successfully");
       loadData();
     } catch (error: any) {
-      console.error("Error deleting program:", error);
+      logger.error("Error deleting program:", error as Error);
       toast.error(`Failed to delete program: ${error.message}`);
     }
   };
@@ -214,7 +216,7 @@ const ProgramManagement: React.FC = () => {
       setIsModalOpen(false);
       loadData();
     } catch (error: any) {
-      console.error("Error saving program:", error);
+      logger.error("Error saving program:", error as Error);
       toast.error(`Failed to save program: ${error.message}`);
     }
   };

@@ -12,6 +12,9 @@ import SearchBar from '../../../components/common/SearchBar';
 import AssessmentReportDrawer from '../../../components/shared/AssessmentReportDrawer';
 import { supabase } from '../../../lib/supabaseClient';
 import { formatStreamId } from '../../../utils/formatters';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-assessment-results');
 
 // Types
 interface AssessmentResult {
@@ -359,7 +362,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
         setResults([]);
       }
     } catch (err: any) {
-      console.error('Error fetching assessment results:', err);
+      logger.error('Error fetching assessment results:', err as Error);
       setError(err?.message || 'Failed to load assessment results');
     } finally {
       setLoading(false);
@@ -379,7 +382,7 @@ const UniversityAdminAssessmentResults: React.FC = () => {
         setColleges(data);
       }
     } catch (err) {
-      console.error('Error fetching colleges:', err);
+      logger.error('Error fetching colleges:', err as Error);
     }
   };
 
