@@ -16,8 +16,8 @@
  * - POST /generate/single - Generate a single adaptive question
  */
 
-import { jsonResponse } from '../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { jsonResponse } from '../../lib/response';
+import type { PagesFunction, PagesEnv } from '../../lib/types';
 
 import { generateAptitudeQuestions } from './handlers/career-aptitude';
 import { generateKnowledgeQuestions } from './handlers/career-knowledge';

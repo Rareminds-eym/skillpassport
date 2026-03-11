@@ -140,8 +140,8 @@
  * @see {@link validateSVGContent} for SVG XSS protection logic
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse } from '../../../lib';
 import { R2Client } from '../utils/r2-client';
 import type { AuthenticatedContext } from '../[[path]]';
 import {

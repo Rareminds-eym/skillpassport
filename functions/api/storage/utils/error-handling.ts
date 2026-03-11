@@ -5,7 +5,7 @@
  * Ensures consistent error messages and proper security logging without exposing sensitive data.
  */
 
-import { jsonResponse } from '../../../../src/functions-lib';
+import { jsonResponse } from '../../../lib';
 
 /**
  * Standard error messages

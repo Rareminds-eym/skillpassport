@@ -3,8 +3,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesEnv } from '../../../lib/types';
+import { jsonResponse } from '../../../lib';
 import { verifyOtpHash } from '../utils/crypto';
 import { deleteOtp, getOtpRecord, incrementAttempts, markOtpVerified } from '../utils/supabase';
 

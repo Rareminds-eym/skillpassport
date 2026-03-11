@@ -3,8 +3,8 @@
  * Handles OTP-based password reset flow
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { jsonResponse } from '../../../lib/response';
 import { sendPasswordResetEmail } from '../utils/email';
 
 /**

@@ -10,7 +10,7 @@
  * - Requires OPENROUTER_API_KEY environment variable
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 import { authenticateUser, isValidUUID } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getAPIKeys, AI_MODELS, API_CONFIG } from '../../shared/ai-config';

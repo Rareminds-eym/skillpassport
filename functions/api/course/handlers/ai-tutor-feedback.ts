@@ -7,10 +7,10 @@
  * Requirements: 7.5
  */
 
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesFunction, PagesEnv } from '../../../lib/types';
 import { authenticateUser } from '../../shared/auth';
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseClient } from '../../../lib/supabase';
+import { jsonResponse } from '../../../lib/response';
 
 interface FeedbackRequestBody {
   conversationId?: string;

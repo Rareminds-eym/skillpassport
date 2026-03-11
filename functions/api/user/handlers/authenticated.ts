@@ -6,8 +6,8 @@
  * - Update student documents
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { jsonResponse } from '../../../lib/response';
 import { authenticateUser } from '../../shared/auth';
 import {
   calculateAge,

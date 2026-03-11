@@ -11,9 +11,9 @@
  * - No authentication required (public endpoint)
  */
 
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseClient } from '../../../lib/supabase';
+import { jsonResponse } from '../../../lib/response';
+import type { PagesFunction, PagesEnv } from '../../../lib/types';
 import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
 
 /**

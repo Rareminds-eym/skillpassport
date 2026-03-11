@@ -5,9 +5,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import type { EventConfirmationRequest, EventOTPRequest } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { jsonResponse } from '../../../lib';
 import { EmailWorkerClient } from '../services/worker-client';
 import { getEmailWorkerConfig, APP_URL } from '../config';
 import { eventConfirmationTemplate, otpTemplate } from '../templates';

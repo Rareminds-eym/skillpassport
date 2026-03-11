@@ -2,7 +2,7 @@
  * Email API Configuration
  */
 
-import type { PagesEnv } from '../../../src/functions-lib/types';
+import type { PagesEnv } from '../../lib/types';
 
 export interface EmailWorkerConfig {
   url: string;

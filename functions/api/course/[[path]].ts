@@ -18,8 +18,8 @@
  * - POST /ai-video-summarizer - Transcribe and summarize videos
  */
 
-import { jsonResponse } from '../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { jsonResponse } from '../../lib/response';
+import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { handleAiTutorSuggestions } from './handlers/ai-tutor-suggestions';
 import { handleAiTutorChat } from './handlers/ai-tutor-chat';
 import { onRequestPost as handleAiTutorFeedback } from './handlers/ai-tutor-feedback';

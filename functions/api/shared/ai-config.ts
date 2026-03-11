@@ -8,7 +8,7 @@
  * - Model fallback chains organized by use case
  */
 
-import { PagesEnv } from '../../../src/functions-lib/types';
+import { PagesEnv } from '../../lib/types';
 
 // ============================================================================
 // Types & Interfaces

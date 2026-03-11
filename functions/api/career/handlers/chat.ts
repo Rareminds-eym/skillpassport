@@ -10,7 +10,7 @@
  * - Enhanced system prompt with few-shot examples and chain-of-thought
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 
 import { authenticateUser, sanitizeInput, generateConversationTitle } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';

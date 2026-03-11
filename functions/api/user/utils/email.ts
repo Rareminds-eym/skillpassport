@@ -3,7 +3,7 @@
  * Uses email-api Cloudflare Worker for sending emails
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 const FROM_EMAIL = 'noreply@rareminds.in';
 const FROM_NAME = 'SkillPassport';

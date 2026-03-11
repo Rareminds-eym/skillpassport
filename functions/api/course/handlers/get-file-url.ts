@@ -9,7 +9,7 @@
  * Source: cloudflare-workers/course-api/src/index.ts (handleGetFileUrl)
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 import { AwsClient } from 'aws4fetch';
 
 export async function handleGetFileUrl(request: Request, env: Record<string, any>): Promise<Response> {

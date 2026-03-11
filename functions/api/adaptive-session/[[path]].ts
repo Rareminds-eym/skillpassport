@@ -17,8 +17,8 @@
  * - POST /link-to-attempt - Link adaptive session to assessment attempt
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { jsonResponse } from '../../../src/functions-lib/response';
+import type { PagesFunction } from '../../lib/types';
+import { jsonResponse } from '../../lib/response';
 import { initializeHandler } from './handlers/initialize';
 import { nextQuestionHandler } from './handlers/next-question';
 import { submitAnswerHandler } from './handlers/submit-answer';

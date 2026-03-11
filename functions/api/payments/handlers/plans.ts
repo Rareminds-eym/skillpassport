@@ -6,7 +6,7 @@
  */
 
 import type { Env } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { jsonResponse } from '../../../lib';
 import { createSupabaseAdmin } from '../utils/supabase';
 
 /**

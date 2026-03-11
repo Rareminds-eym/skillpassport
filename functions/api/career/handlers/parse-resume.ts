@@ -9,7 +9,7 @@
  * Source: cloudflare-workers/career-api/src/index.ts (handleParseResume)
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 import { getOpenRouterKey } from '../[[path]]';

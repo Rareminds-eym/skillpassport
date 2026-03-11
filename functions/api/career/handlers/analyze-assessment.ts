@@ -17,7 +17,7 @@
  * Migrated: Now calls /api/analyze-assessment Pages Function
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../utils/rate-limit';
 

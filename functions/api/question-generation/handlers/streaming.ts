@@ -5,9 +5,9 @@
  * Generates aptitude questions progressively and sends them to the client as they're created
  */
 
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
-import { PagesEnv } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { createSupabaseClient } from '../../../lib/supabase';
+import { PagesEnv } from '../../../lib/types';
+import { jsonResponse } from '../../../lib/response';
 import { SCHOOL_SUBJECT_PROMPT, APTITUDE_PROMPT } from '../prompts';
 import {
     callOpenRouterWithRetry,

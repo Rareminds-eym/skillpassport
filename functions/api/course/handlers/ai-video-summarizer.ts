@@ -12,9 +12,9 @@
  * Requirements: 7.7, 7.8
  */
 
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import type { PagesFunction, PagesEnv } from '../../../lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { jsonResponse } from '../../../lib/response';
 import { transcribeVideo } from '../utils/transcription';
 import { 
   generateVideoSummary, 

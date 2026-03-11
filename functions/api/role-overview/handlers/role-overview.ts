@@ -9,8 +9,8 @@
  * - Simplified fallback chain (OpenRouter with model fallback → Static fallback)
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse } from '../../../lib';
 import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
 import { buildRoleOverviewPrompt, SYSTEM_PROMPT } from '../prompts/role-overview';
 import { parseRoleOverviewResponse } from '../utils/parser';

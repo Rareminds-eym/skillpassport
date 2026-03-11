@@ -14,7 +14,7 @@
 
 import { createSupabaseAdmin } from '../utils/supabase';
 import type { Env } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { jsonResponse } from '../../../lib';
 import { EMAIL_API_URL } from '../config';
 
 /**

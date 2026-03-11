@@ -16,8 +16,8 @@
  * - POST /match-courses - AI-powered course matching for a role
  */
 
-import { jsonResponse } from '../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { jsonResponse } from '../../lib/response';
+import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES } from '../shared/ai-config';
 import { createClient } from '@supabase/supabase-js';
 import { handleCourseMatching } from './handlers/course-matching';

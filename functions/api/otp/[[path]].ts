@@ -8,8 +8,8 @@
  * - POST /resend - Resend OTP
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, jsonResponse, createSupabaseClient } from '../../lib';
 import { sendOtpHandler } from './handlers/send';
 import { verifyOtpHandler } from './handlers/verify';
 import { resendOtpHandler } from './handlers/resend';

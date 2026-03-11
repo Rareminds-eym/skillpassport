@@ -4,7 +4,7 @@
  */
 
 import { callOpenRouterWithRetry, getAPIKeys, AI_MODELS } from '../../shared/ai-config';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 export interface JobMarketData {
   category: string;

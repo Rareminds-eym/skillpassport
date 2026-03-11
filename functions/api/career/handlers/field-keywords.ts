@@ -9,7 +9,7 @@
  * Source: cloudflare-workers/career-api/src/index.ts (handleGenerateFieldKeywords)
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 import { getOpenRouterKey } from '../[[path]]';
 import { getModelForUseCase, callOpenRouterWithRetry } from '../../shared/ai-config';
 import { authenticateUser } from '../../shared/auth';

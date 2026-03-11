@@ -4,9 +4,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import type { GenericEmailRequest } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { jsonResponse } from '../../../lib';
 import { EmailWorkerClient } from '../services/worker-client';
 import { getEmailWorkerConfig } from '../config';
 

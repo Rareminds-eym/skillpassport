@@ -5,8 +5,8 @@
  * Migrated from cloudflare-workers/analyze-assessment-api
  */
 
-import { jsonResponse } from '../../../src/functions-lib/response';
-import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
+import { jsonResponse } from '../../lib/response';
+import type { PagesFunction, PagesEnv } from '../../lib/types';
 import { handleAnalyzeAssessment } from './handlers/analyze';
 import { handleGenerateProgramCareerPaths } from './handlers/program-career-paths';
 

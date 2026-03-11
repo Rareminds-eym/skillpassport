@@ -11,9 +11,9 @@
  * - /api/career/parse-resume - Parse resume text
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders } from '../../../src/functions-lib/cors';
-import { jsonResponse } from '../../../src/functions-lib/response';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders } from '../../lib/cors';
+import { jsonResponse } from '../../lib/response';
 import { getAPIKeys } from '../shared/ai-config';
 import { handleCareerChat } from './handlers/chat';
 import { handleRecommendOpportunities } from './handlers/recommend';

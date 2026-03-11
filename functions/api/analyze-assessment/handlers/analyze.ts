@@ -3,12 +3,12 @@
  * Main handler for /analyze-assessment endpoint
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import type { AssessmentData, AnalysisResult } from '../types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 import { authenticateUser } from '../../shared/auth';
 import { checkRateLimit } from '../../career/utils/rate-limit';
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
 import { getSystemMessage } from '../prompts';
 import { buildHighSchoolPrompt } from '../prompts/high-school';
 import { buildMiddleSchoolPrompt } from '../prompts/middle-school';

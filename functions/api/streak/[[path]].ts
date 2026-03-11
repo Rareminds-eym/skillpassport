@@ -10,8 +10,8 @@
  * - POST /reset-daily - Reset daily flags (cron)
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, jsonResponse, createSupabaseClient } from '../../lib';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ==================== GET STUDENT STREAK ====================

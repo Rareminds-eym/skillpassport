@@ -10,8 +10,8 @@
  * - Simplified fallback chain (OpenRouter → Empty result)
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse } from '../../../lib';
 import { callOpenRouterWithRetry, getAPIKeys, repairAndParseJSON } from '../../shared/ai-config';
 import { buildCourseMatchingPrompt, COURSE_MATCHING_SYSTEM_PROMPT } from '../prompts/role-overview';
 

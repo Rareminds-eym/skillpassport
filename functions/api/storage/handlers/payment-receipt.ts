@@ -6,9 +6,9 @@
  * - GET /payment-receipt - Get payment receipt file
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
-import { corsHeaders } from '../../../../src/functions-lib/cors';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse } from '../../../lib';
+import { corsHeaders } from '../../../lib/cors';
 import { R2Client } from '../utils/r2-client';
 import {
   createAuthenticationError,

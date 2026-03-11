@@ -20,8 +20,8 @@
  * - GET /files/:courseId/:lessonId - List files in lesson
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, jsonResponse } from '../../lib';
 import { authenticateUser, AuthResult } from '../shared/auth';
 import { createAuthenticationError } from './utils/error-handling';
 

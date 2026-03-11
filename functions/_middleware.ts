@@ -5,8 +5,8 @@
  * It intercepts all requests and adds appropriate CORS headers with origin validation.
  */
 
-import type { PagesFunction } from '../src/functions-lib/types';
-import { getCorsHeaders, handleCorsPreflightRequest } from '../src/functions-lib/cors';
+import type { PagesFunction } from './lib/types';
+import { getCorsHeaders, handleCorsPreflightRequest } from './lib/cors';
 
 export const onRequest: PagesFunction = async (context) => {
   // Get origin from request

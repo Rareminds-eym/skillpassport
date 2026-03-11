@@ -1,7 +1,7 @@
 // Get Grade-Appropriate Career Actions
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 
 export interface CareerAction {
   id: string;

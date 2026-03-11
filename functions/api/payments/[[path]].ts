@@ -58,8 +58,8 @@
  * - POST /process-auto-renewals - Process auto-renewals
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, jsonResponse } from '../../lib';
 import { authenticateUser } from './utils/auth';
 
 // Payment handlers
@@ -181,9 +181,7 @@ export const onRequest: PagesFunction = async (context) => {
       return await handleCreateOrder(request, env);
     }
     if (path === '/verify-payment' && request.method === 'POST') {
-      const auth = await authenticateUser(request, env);
-      if (!auth) return jsonResponse({ error: 'Unauthorized' }, 401);
-      return await handleVerifyPayment(request, env, auth.user);
+      return await handleVerifyPayment(request, env);
     }
     if (path === '/webhook' && request.method === 'POST') {
       return await handleWebhook(request, env);

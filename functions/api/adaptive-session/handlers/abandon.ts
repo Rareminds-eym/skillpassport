@@ -5,9 +5,9 @@
  * Marks a session as abandoned
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse } from '../../../lib/response';
+import { createSupabaseClient, createSupabaseAdminClient } from '../../../lib/supabase';
 import { authenticateUser } from '../../shared/auth';
 
 /**

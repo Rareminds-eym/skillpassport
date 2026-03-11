@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { R2Client } from '../r2-client';
-import type { PagesEnv } from '../../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../../lib/types';
 
 // Mock aws4fetch
 vi.mock('aws4fetch', () => ({

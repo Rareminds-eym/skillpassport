@@ -9,7 +9,7 @@
  */
 
 import { R2Client } from '../utils/r2-client';
-import { jsonResponse } from '../../../../src/functions-lib';
+import { jsonResponse } from '../../../lib';
 import type { AuthenticatedContext } from '../[[path]]';
 import {
   createAuthenticationError,

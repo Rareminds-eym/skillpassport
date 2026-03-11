@@ -2,7 +2,7 @@
  * AWS SNS utility for sending SMS
  */
 
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 
 interface SnsConfig {
   accessKeyId: string;

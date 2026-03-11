@@ -7,9 +7,9 @@
  * Uses unified 'organizations' table with organization_type='school'
  */
 
-import { createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseAdminClient } from '../../../lib/supabase';
+import { jsonResponse } from '../../../lib/response';
+import type { PagesEnv } from '../../../lib/types';
 import type { SchoolAdminSignupRequest, EducatorSignupRequest, StudentSignupRequest } from '../types';
 import { sendWelcomeEmail } from '../utils/email';
 import {

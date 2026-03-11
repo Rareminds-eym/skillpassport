@@ -6,9 +6,9 @@
  * Uses admin client to bypass RLS for foreign key constraint
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { jsonResponse } from '../../../src/functions-lib/response';
-import { createSupabaseAdminClient } from '../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../lib/types';
+import { jsonResponse } from '../../lib/response';
+import { createSupabaseAdminClient } from '../../lib/supabase';
 import { authenticateUser } from '../shared/auth';
 
 export const onRequestPost: PagesFunction = async (context) => {

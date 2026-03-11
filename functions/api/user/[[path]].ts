@@ -33,8 +33,8 @@
  * - POST /reset-password - Reset password
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, jsonResponse } from '../../lib';
 import {
   handleGetSchools,
   handleGetColleges,

@@ -5,9 +5,9 @@
  * - POST /extract-content - Extract content from PDF resources
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib';
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse } from '../../../lib';
+import { createSupabaseClient } from '../../../lib/supabase';
 
 interface ExtractContentRequestBody {
   resourceId?: string;

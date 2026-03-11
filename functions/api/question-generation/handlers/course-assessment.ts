@@ -1,6 +1,6 @@
 
-import { createSupabaseClient } from '../../../../src/functions-lib/supabase';
-import { PagesEnv } from '../../../../src/functions-lib/types';
+import { createSupabaseClient } from '../../../lib/supabase';
+import { PagesEnv } from '../../../lib/types';
 import { SYSTEM_PROMPT } from '../prompts';
 import {
     callOpenRouterWithRetry,

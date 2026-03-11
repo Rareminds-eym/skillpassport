@@ -6,8 +6,8 @@
  * - POST / - Fetch certificate page HTML and metadata
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, jsonResponse } from '../../lib';
 
 const ALLOWED_DOMAINS = [
   'udemy.com',

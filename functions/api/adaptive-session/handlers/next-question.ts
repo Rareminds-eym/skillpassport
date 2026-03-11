@@ -5,9 +5,9 @@
  * Returns the next question for the current session
  */
 
-import type { PagesFunction } from '../../../../src/functions-lib/types';
-import { jsonResponse } from '../../../../src/functions-lib/response';
-import { createSupabaseClient, createSupabaseAdminClient } from '../../../../src/functions-lib/supabase';
+import type { PagesFunction } from '../../../lib/types';
+import { jsonResponse } from '../../../lib/response';
+import { createSupabaseClient, createSupabaseAdminClient } from '../../../lib/supabase';
 import type { NextQuestionResult, TestPhase, DifficultyLevel, GradeLevel, Question } from '../types';
 import { DEFAULT_ADAPTIVE_TEST_CONFIG, ALL_SUBTAGS } from '../types';
 import { validateExclusionListComplete, validateQuestionNotDuplicate } from '../utils/validation';

@@ -12,8 +12,8 @@
  * - GET /api/email/download-receipt/:orderId - Download PDF receipt
  */
 
-import type { PagesFunction } from '../../../src/functions-lib/types';
-import { corsHeaders, jsonResponse, createSupabaseClient } from '../../../src/functions-lib';
+import type { PagesFunction } from '../../lib/types';
+import { corsHeaders, jsonResponse, createSupabaseClient } from '../../lib';
 import { handleGenericEmail } from './handlers/generic';
 import { handleInvitationEmail } from './handlers/invitation';
 import { handleCountdownEmail } from './handlers/countdown';

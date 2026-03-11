@@ -19,8 +19,8 @@ export interface PagesEnv {
   OPENROUTER_API_KEY?: string;
 
   // Other service keys
-  RAZORPAY_KEY_ID?: string;
-  RAZORPAY_KEY_SECRET?: string;
+  RAZORPAY_WORKER_URL?: string;
+  RAZORPAY_WORKER_API_KEY?: string;
   RESEND_API_KEY?: string;
 
   // AWS credentials (for SNS, S3, etc.)

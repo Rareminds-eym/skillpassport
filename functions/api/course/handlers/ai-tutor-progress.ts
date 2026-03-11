@@ -8,9 +8,9 @@
  * Requirements: 7.6
  */
 
-import type { PagesFunction, PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesFunction, PagesEnv } from '../../../lib/types';
 import { authenticateUser } from '../../shared/auth';
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 
 interface UpdateProgressRequestBody {
   courseId?: string;

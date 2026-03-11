@@ -5,9 +5,9 @@
 
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Env } from '../../../../src/functions-lib/types';
+import type { Env } from '../../../lib/types';
 import type { PreRegistration } from '../types';
-import { jsonResponse, corsHeaders } from '../../../../src/functions-lib';
+import { jsonResponse, corsHeaders } from '../../../lib';
 import { getPreRegistrationByOrderId } from '../services/database';
 
 export async function handlePDFReceipt(

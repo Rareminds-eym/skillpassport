@@ -3,9 +3,9 @@
  * Generate AI-powered career paths for degree programs
  */
 
-import { jsonResponse } from '../../../../src/functions-lib/response';
+import { jsonResponse } from '../../../lib/response';
 import { authenticateUser } from '../../shared/auth';
-import type { PagesEnv } from '../../../../src/functions-lib/types';
+import type { PagesEnv } from '../../../lib/types';
 import { callOpenRouterWithRetry, getAPIKeys } from '../../shared/ai-config';
 
 interface CareerPath {
