@@ -27,8 +27,8 @@ import { useLocation } from 'react-router-dom';
 import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
 import NewStudentConversationModalCollegeAdmin from '../../../components/messaging/NewStudentConversationModalCollegeAdmin';
 import NewCollegeAdminEducatorConversationModal from '../../../components/messaging/NewCollegeAdminEducatorConversationModal';
-import { useAuth } from '../../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
+import { useUser } from '../../../stores';
+import { useGlobalPresence } from '../../../stores';
 import { useCollegeAdminMessages } from '../../../hooks/useCollegeAdminMessages.js';
 import { useCollegeEducatorAdminConversationsForAdmin } from '../../../hooks/useCollegeEducatorAdminConversations.js';
 import { useCollegeEducatorAdminMessagesForAdmin } from '../../../hooks/useCollegeEducatorAdminMessages.js';
@@ -37,8 +37,10 @@ import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
 import { supabase } from '../../../lib/supabaseClient';
 import MessageService, { Conversation } from '../../../services/messageService';
+import { getLogger } from '../../../config/logging';
 
 const StudentCollegeAdminCommunication = () => {
+  const logger = getLogger('college-admin-communication');
   const location = useLocation();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [messageInput, setMessageInput] = useState('');
@@ -61,7 +63,7 @@ const StudentCollegeAdminCommunication = () => {
   const [activeTab, setActiveTab] = useState<'students' | 'college_educators'>('students');
   
   // Get college admin ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   const collegeAdminId = user?.id;
   const collegeAdminName = user?.name || 'College Admin';
   const queryClient = useQueryClient();
@@ -243,8 +245,8 @@ const StudentCollegeAdminCommunication = () => {
   
   // Debug presence system
   useEffect(() => {
-    console.log('🔍 [CollegeAdmin] Global presence system loaded');
-    console.log('🔍 [CollegeAdmin] isUserOnlineGlobal function:', typeof isUserOnlineGlobal);
+    logger.info('Global presence system loaded');
+    logger.info('isUserOnlineGlobal function:', typeof isUserOnlineGlobal);
   }, [isUserOnlineGlobal]);
 
   // Presence tracking for current conversation
@@ -300,10 +302,10 @@ const StudentCollegeAdminCommunication = () => {
       (conversation: Conversation) => {
         // Handle both student and educator conversations
         if (conversation.conversation_type === 'student_college_admin') {
-          console.log('🔄 [College Admin] Student conversation UPDATE:', conversation);
+          logger.info('Student conversation UPDATE:', conversation);
           
           if (conversation.deleted_by_college_admin) {
-            console.log('❌ [College Admin] Ignoring deleted student conversation:', conversation.id);
+            logger.info('Ignoring deleted student conversation:', conversation.id);
             return;
           }
           
@@ -316,10 +318,10 @@ const StudentCollegeAdminCommunication = () => {
             refetchType: 'active'
           });
         } else if (conversation.conversation_type === 'college_educator_admin') {
-          console.log('🔄 [College Admin] Educator conversation UPDATE:', conversation);
+          logger.info('Educator conversation UPDATE:', conversation);
           
           if (conversation.deleted_by_college_admin) {
-            console.log('❌ [College Admin] Ignoring deleted educator conversation:', conversation.id);
+            logger.info('Ignoring deleted educator conversation:', conversation.id);
             return;
           }
           
@@ -344,7 +346,7 @@ const StudentCollegeAdminCommunication = () => {
       }
 
       try {
-        console.log('🎯 Auto-creating conversation with student:', targetStudent);
+        logger.info('Auto-creating conversation with student:', targetStudent);
         
         // Check if conversation already exists
         const existingConversation = activeConversations.find(conv => 
@@ -352,21 +354,21 @@ const StudentCollegeAdminCommunication = () => {
         );
         
         if (existingConversation) {
-          console.log('✅ Found existing conversation:', existingConversation.id);
+          logger.info('Found existing conversation:', existingConversation.id);
           setSelectedConversationId(existingConversation.id);
           toast.success(`Opened conversation with ${targetStudent.targetStudentName}`);
           return;
         }
         
         // Create new conversation
-        console.log('🆕 Creating new conversation...');
+        logger.info('Creating new conversation...');
         const conversation = await MessageService.getOrCreateStudentCollegeAdminConversation(
           targetStudent.targetStudentId,
           collegeId,
           'General Discussion' // default subject
         );
         
-        console.log('✅ Conversation created:', conversation);
+        logger.info('Conversation created:', conversation);
         
         // Refresh conversations to include the new one
         await refetchActive();
@@ -377,7 +379,7 @@ const StudentCollegeAdminCommunication = () => {
         toast.success(`Started conversation with ${targetStudent.targetStudentName}`);
         
       } catch (error) {
-        console.error('❌ Error creating conversation:', error);
+        logger.error('Error creating conversation:', error as Error);
         toast.error(`Failed to start conversation with ${targetStudent.targetStudentName}`);
       }
     };
@@ -420,7 +422,7 @@ const StudentCollegeAdminCommunication = () => {
         });
       })
       .catch(err => {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read:', err as Error);
         markedAsReadRef.current.delete(markKey);
         refetchActive();
       });
@@ -499,7 +501,7 @@ const StudentCollegeAdminCommunication = () => {
       
       await Promise.all([refetchActive(), refetchArchived()]);
     } catch (error) {
-      console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
+      logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error as Error);
       refetchActive();
       refetchArchived();
     } finally {
@@ -512,7 +514,7 @@ const StudentCollegeAdminCommunication = () => {
     if (!collegeId) return;
     
     try {
-      console.log('🆕 Creating new conversation with student:', studentId, 'subject:', subject);
+      logger.info('Creating new conversation with student:', studentId, 'subject:', subject);
       
       // Check if conversation already exists
       const existingConversation = activeConversations.find(conv => 
@@ -520,7 +522,7 @@ const StudentCollegeAdminCommunication = () => {
       );
       
       if (existingConversation) {
-        console.log('✅ Found existing conversation:', existingConversation.id);
+        logger.info('Found existing conversation:', existingConversation.id);
         setSelectedConversationId(existingConversation.id);
         setShowNewConversationModal(false);
         toast.success('Opened existing conversation');
@@ -534,7 +536,7 @@ const StudentCollegeAdminCommunication = () => {
         subject
       );
       
-      console.log('✅ New conversation created:', conversation);
+      logger.info('New conversation created:', conversation);
       
       // Send initial message if provided
       if (initialMessage && initialMessage.trim()) {
@@ -550,7 +552,7 @@ const StudentCollegeAdminCommunication = () => {
           null, // classId
           subject
         );
-        console.log('✅ Initial message sent to student');
+        logger.info('Initial message sent to student');
       }
       
       // Refresh conversations to include the new one
@@ -563,7 +565,7 @@ const StudentCollegeAdminCommunication = () => {
       toast.success('New conversation started');
       
     } catch (error) {
-      console.error('❌ Error creating conversation:', error);
+      logger.error('Error creating conversation:', error as Error);
       toast.error('Failed to start conversation');
     }
   }, [collegeId, activeConversations, refetchActive, collegeAdminId]);
@@ -603,11 +605,11 @@ const StudentCollegeAdminCommunication = () => {
   
   // Transform and filter conversations
   const filteredContacts = useMemo(() => {
-    console.log('🔍 [CollegeAdmin] Processing conversations for activeTab:', activeTab);
-    console.log('🔍 [CollegeAdmin] Raw conversations:', conversations);
+    logger.info('Processing conversations for activeTab:', activeTab);
+    logger.info('Raw conversations:', conversations);
     
     const activeConversations = conversations.filter((conv: any) => !conv._pendingDelete);
-    console.log('🔍 [CollegeAdmin] Active conversations after filtering:', activeConversations);
+    logger.info('Active conversations after filtering:', activeConversations);
 
     const contacts = activeConversations.map((conv: any) => {
       if (activeTab === 'students') {
@@ -626,7 +628,7 @@ const StudentCollegeAdminCommunication = () => {
         }
         
         const isOnline = isUserOnlineGlobal(conv.student_id);
-        console.log('🔍 [CollegeAdmin] Student online check:', {
+        logger.info('Student online check:', {
           studentId: conv.student_id,
           studentName,
           isOnline,
@@ -655,7 +657,7 @@ const StudentCollegeAdminCommunication = () => {
         };
       } else {
         // College educator conversations
-        console.log('🔍 [CollegeAdmin] Processing college educator conversation:', conv);
+        logger.info('Processing college educator conversation:', conv);
         
         const educatorName = conv.college_educator?.first_name && conv.college_educator?.last_name 
           ? `${conv.college_educator.first_name} ${conv.college_educator.last_name}`
@@ -810,7 +812,8 @@ const StudentCollegeAdminCommunication = () => {
       
       setTyping(false);
     } catch (error) {
-      console.error('Error sending message:', error);
+      const err = error as Error;
+      logger.error('Error sending message', err);
       // Restore message on error (unless it was a duplicate)
       if (error.message !== 'DUPLICATE_MESSAGE') {
         setMessageInput(messageToSend);
@@ -1414,3 +1417,11 @@ const StudentCollegeAdminCommunication = () => {
 };
 
 export default StudentCollegeAdminCommunication;
+
+
+
+
+
+
+
+

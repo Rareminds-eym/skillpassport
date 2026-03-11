@@ -4,6 +4,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('student-pipeline');
 
 export class StudentPipelineService {
   /**
@@ -68,14 +71,14 @@ export class StudentPipelineService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching pipeline status:', error);
+        logger.error('Error fetching pipeline status', error, { studentId, studentEmail });
         throw error;
       }
 
 
       return data || [];
     } catch (error) {
-      console.error('Error in getStudentPipelineStatus:', error);
+      logger.error('Error in getStudentPipelineStatus', error, { studentId, studentEmail });
       throw error;
     }
   }
@@ -87,29 +90,27 @@ export class StudentPipelineService {
    */
   static async getStudentPipelineActivities(studentId) {
     try {
-      // First get all pipeline_candidate records for this student
-      const { data: candidates, error: candidatesError } = await supabase
-        .from('pipeline_candidates')
-        .select('id')
-        .eq('student_id', studentId);
-
-      if (candidatesError) throw candidatesError;
-      if (!candidates || candidates.length === 0) return [];
-
-      const candidateIds = candidates.map(c => c.id);
-
-      // Fetch activities for these candidates
-      const { data: activities, error: activitiesError } = await supabase
+      // Direct query using student_id (leverages idx_pipeline_activities_student_id index)
+      const startTime = performance.now();
+      
+      const { data: activities, error } = await supabase
         .from('pipeline_activities')
         .select('*')
-        .in('pipeline_candidate_id', candidateIds)
+        .eq('student_id', studentId)
         .order('created_at', { ascending: false });
 
-      if (activitiesError) throw activitiesError;
+      const endTime = performance.now();
+      logger.info('getStudentPipelineActivities completed', { 
+        duration: `${(endTime - startTime).toFixed(2)}ms`, 
+        count: activities?.length || 0,
+        studentId 
+      });
+
+      if (error) throw error;
 
       return activities || [];
     } catch (error) {
-      console.error('Error in getStudentPipelineActivities:', error);
+      logger.error('Error in getStudentPipelineActivities', error, { studentId });
       throw error;
     }
   }
@@ -132,7 +133,7 @@ export class StudentPipelineService {
 
       return data || [];
     } catch (error) {
-      console.error('Error in getStudentInterviews:', error);
+      logger.error('Error in getStudentInterviews', error, { studentId });
       throw error;
     }
   }
@@ -146,6 +147,9 @@ export class StudentPipelineService {
    */
   static async getStudentApplicationsWithPipeline(studentId, studentEmail = null) {
     try {
+      logger.info('Starting getStudentApplicationsWithPipeline', { studentId });
+      const startTime = performance.now();
+      
       // Single optimized query that fetches applications with opportunity details
       // Pipeline status and interviews are fetched in parallel
       const [applicationsResult, pipelineResult, interviewsResult] = await Promise.all([
@@ -223,9 +227,18 @@ export class StudentPipelineService {
         };
       });
 
+      const endTime = performance.now();
+      logger.info('getStudentApplicationsWithPipeline completed', { 
+        duration: `${(endTime - startTime).toFixed(2)}ms`,
+        applications: combinedData.length,
+        pipelineStatuses: pipelineStatuses.length,
+        interviews: interviews.length,
+        studentId
+      });
+
       return combinedData;
     } catch (error) {
-      console.error('Error in getStudentApplicationsWithPipeline:', error);
+      logger.error('Error in getStudentApplicationsWithPipeline', error, { studentId, studentEmail });
       throw error;
     }
   }
@@ -257,7 +270,7 @@ export class StudentPipelineService {
 
       return stageChanges;
     } catch (error) {
-      console.error('Error in getStageChangeNotifications:', error);
+      logger.error('Error in getStageChangeNotifications', error, { studentId });
       throw error;
     }
   }

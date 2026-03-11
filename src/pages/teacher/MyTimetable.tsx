@@ -167,7 +167,8 @@ const getSlotColor = (subjectName: string) => {
 
 const MyTimetable: React.FC = () => {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
   
   // Permission controls for Classroom Management module - same as Program Sections
   const canView = usePermission("Classroom Management", "view")

@@ -5,7 +5,7 @@
 
 import type { PagesEnv } from '../../../../src/functions-lib/types';
 
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+const EMAIL_API_URL = 'https://skillpassport.rareminds.in/api/email';
 const FROM_EMAIL = 'noreply@rareminds.in';
 const FROM_NAME = 'SkillPassport';
 

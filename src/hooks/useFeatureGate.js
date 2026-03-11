@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSubscriptionContext } from '../context/SubscriptionContext';
+import { useUser, useUserEntitlements } from '../stores';
 import addOnCatalogService from '../services/addOnCatalogService';
 import entitlementService from '../services/entitlementService';
 
@@ -26,18 +26,15 @@ const clearExpiredCache = () => {
 accessCache.clear();
 
 export function useFeatureGate(featureKey) {
-  const { 
-    user, 
-    hasAddOnAccessSync, 
-    activeEntitlements
-  } = useSubscriptionContext();
-  
+  const user = useUser();
+  const { activeEntitlements, hasAddOnAccessSync } = useUserEntitlements();
+
   const [isLoading, setIsLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [accessSource, setAccessSource] = useState(null);
   const [requiredAddOn, setRequiredAddOn] = useState(null);
   const [error, setError] = useState(null);
-  
+
   const checkInProgress = useRef(false);
   const userId = user?.id;
 
@@ -58,7 +55,7 @@ export function useFeatureGate(featureKey) {
 
       const cacheKey = `${userId || 'anonymous'}-${featureKey}`;
       const cached = accessCache.get(cacheKey);
-      
+
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         setHasAccess(cached.hasAccess);
         setAccessSource(cached.accessSource);
@@ -73,18 +70,18 @@ export function useFeatureGate(featureKey) {
       if (hasAddOnAccessSync && hasAddOnAccessSync(featureKey)) {
         const entitlement = activeEntitlements?.find(e => e.feature_key === featureKey);
         const source = entitlement?.bundle_id ? 'bundle' : 'addon';
-        
+
         setHasAccess(true);
         setAccessSource(source);
         setRequiredAddOn(null);
-        
+
         accessCache.set(cacheKey, {
           hasAccess: true,
           accessSource: source,
           requiredAddOn: null,
           timestamp: Date.now()
         });
-        
+
         setIsLoading(false);
         checkInProgress.current = false;
         return;
@@ -102,20 +99,20 @@ export function useFeatureGate(featureKey) {
 
       if (userId) {
         const result = await entitlementService.hasFeatureAccess(userId, featureKey);
-        
+
         if (result.success) {
           const { hasAccess: access, accessSource: source } = result.data;
-          
+
           setHasAccess(access);
           setAccessSource(source);
-          
+
           if (!access) {
             setRequiredAddOn(fetchedAddOn);
           } else {
             setRequiredAddOn(null);
             fetchedAddOn = null;
           }
-          
+
           accessCache.set(cacheKey, {
             hasAccess: access,
             accessSource: source,
@@ -132,7 +129,7 @@ export function useFeatureGate(featureKey) {
         setHasAccess(false);
         setAccessSource(null);
         setRequiredAddOn(fetchedAddOn);
-        
+
         accessCache.set(cacheKey, {
           hasAccess: false,
           accessSource: null,
@@ -208,7 +205,8 @@ export function useFeatureGate(featureKey) {
 export function useMultipleFeatureGates(featureKeys) {
   const [results, setResults] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const { user, hasAddOnAccessSync, activeEntitlements } = useSubscriptionContext();
+  const user = useUser();
+  const { hasAddOnAccessSync, activeEntitlements } = useUserEntitlements();
   const userId = user?.id;
 
   useEffect(() => {

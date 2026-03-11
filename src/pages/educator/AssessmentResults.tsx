@@ -10,9 +10,12 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import SearchBar from '../../components/common/SearchBar';
 import AssessmentReportDrawer from '../../components/shared/AssessmentReportDrawer';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { supabase } from '../../lib/supabaseClient';
 import { formatStreamId } from '../../utils/formatters';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('EducatorAssessmentResults');
 
 // Types
 interface AssessmentResult {
@@ -242,7 +245,7 @@ const AssessmentCard = ({
 // Main Component
 const EducatorAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
-  const { user } = useAuth();
+  const user = useUser();
 
   // State
   const [results, setResults] = useState<AssessmentResult[]>([]);
@@ -275,7 +278,7 @@ const EducatorAssessmentResults: React.FC = () => {
       // Get current user's email and id
       const userEmail = user?.email;
       const userId = user?.id;
-      console.log('📊 [Assessment Results] Starting fetch for user:', { userId, userEmail });
+      logger.info('Starting fetch for user', { userId, userEmail });
       
       if (!userEmail || !userId) {
         setError('User not authenticated');
@@ -378,7 +381,7 @@ const EducatorAssessmentResults: React.FC = () => {
         if (collegeLecturerData?.collegeId) {
           // College lecturer - check for program section assignments
           schoolId = collegeLecturerData.collegeId;
-          console.log('📚 [Assessment Results] College lecturer found:', { 
+          logger.info('College lecturer found', { 
             lecturerId: collegeLecturerData.id, 
             collegeId: schoolId,
             department: collegeLecturerData.department 
@@ -391,7 +394,7 @@ const EducatorAssessmentResults: React.FC = () => {
             .eq('faculty_id', userId)
             .eq('status', 'active');
 
-          console.log('📋 [Assessment Results] Program sections:', { 
+          logger.info('Program sections', { 
             count: programSections?.length || 0, 
             error: programSectionsError 
           });
@@ -403,7 +406,7 @@ const EducatorAssessmentResults: React.FC = () => {
               `and(program_id.eq.${ps.program_id},semester.eq.${ps.semester},section.eq.${ps.section})`
             ).join(',');
             
-            console.log('🔍 [Assessment Results] Filtering students by program sections:', orConditions);
+            logger.info('Filtering students by program sections', { orConditions });
             
             studentsQuery = studentsQuery
               .eq('college_id', schoolId)
@@ -414,11 +417,11 @@ const EducatorAssessmentResults: React.FC = () => {
             
             if (isCollegeAdmin) {
               // College admin can see all students in their college
-              console.log('👑 [Assessment Results] College admin - showing all students');
+              logger.info('College admin - showing all students');
               studentsQuery = studentsQuery.eq('college_id', schoolId);
             } else {
               // Regular lecturer with no assignments - return empty results
-              console.log('❌ [Assessment Results] No program sections assigned - returning empty');
+              logger.info('No program sections assigned - returning empty');
               setResults([]);
               setSchoolName('');
               
@@ -444,7 +447,7 @@ const EducatorAssessmentResults: React.FC = () => {
           
           schoolName = orgData?.name || '';
         } else {
-          console.error('No educator found for user:', { userId, userEmail });
+          logger.error('No educator found for user', { userId, userEmail });
           setError('No school or college associated with your account. Please contact your administrator.');
           setLoading(false);
           return;
@@ -456,7 +459,7 @@ const EducatorAssessmentResults: React.FC = () => {
       // Get students based on the filtered query
       const { data: studentsData, error: studentsError } = await studentsQuery;
 
-      console.log('👥 [Assessment Results] Students query result:', { 
+      logger.info('Students query result', { 
         count: studentsData?.length || 0, 
         error: studentsError,
         sampleStudents: studentsData?.slice(0, 3).map(s => ({ 
@@ -477,7 +480,7 @@ const EducatorAssessmentResults: React.FC = () => {
       // Filter out students with null user_id to avoid UUID parsing errors
       const validStudents = studentsData.filter((s) => s.user_id != null);
       
-      console.log('✅ [Assessment Results] Valid students (with user_id):', { 
+      logger.info('Valid students (with user_id)', { 
         total: studentsData.length,
         valid: validStudents.length,
         invalid: studentsData.length - validStudents.length
@@ -518,7 +521,7 @@ const EducatorAssessmentResults: React.FC = () => {
         .in('student_id', studentIds)
         .order('created_at', { ascending: false });
 
-      console.log('📊 [Assessment Results] Assessment results query:', { 
+      logger.info('Assessment results query', { 
         count: data?.length || 0, 
         error: fetchError,
         sampleResults: data?.slice(0, 2).map(r => ({ 
@@ -562,7 +565,7 @@ const EducatorAssessmentResults: React.FC = () => {
       });
 
       setResults(enrichedResults as unknown as AssessmentResult[]);
-      console.log('✅ [Assessment Results] Final results set:', { 
+      logger.info('Final results set', { 
         count: enrichedResults.length,
         sampleEnriched: enrichedResults.slice(0, 2).map(r => ({
           id: r.id,
@@ -573,7 +576,7 @@ const EducatorAssessmentResults: React.FC = () => {
         }))
       });
     } catch (err: any) {
-      console.error('Error fetching assessment results:', err);
+      logger.error('Error fetching assessment results', err);
       setError(err?.message || 'Failed to load assessment results');
     } finally {
       setLoading(false);

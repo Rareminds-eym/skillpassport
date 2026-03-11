@@ -14,7 +14,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { useSubscriptionContext } from '../../context/SubscriptionContext';
+import { useSubscriptionAccess } from '../../stores';
 
 // Plan hierarchy for access-control comparisons (lowest → highest).
 // Must match plan_code values in the Supabase subscription_plans table.
@@ -92,11 +92,7 @@ const SubscriptionGate = ({
   const location = useLocation();
   const basePath = getSubscriptionBasePath(location.pathname);
   const userType = getUserTypeFromPath(location.pathname);
-  const {
-    hasAccess,
-    subscription,
-    isLoading,
-  } = useSubscriptionContext();
+  const { hasAccess, subscription, isLoading } = useSubscriptionAccess();
 
   // Show nothing while loading
   if (isLoading) {

@@ -25,12 +25,15 @@ import MessageService, { Conversation } from '../../../services/messageService';
 import { supabase } from '../../../lib/supabaseClient';
 import { useEducatorAdminMessages } from '../../../hooks/useEducatorAdminMessages.js';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '../../../context/AuthContext.jsx';
-import { useGlobalPresence } from '../../../context/GlobalPresenceContext';
+import { useUser } from '../../../stores';
+import { useGlobalPresence } from '../../../stores';
 import { useRealtimePresence } from '../../../hooks/useRealtimePresence';
 import { useTypingIndicator } from '../../../hooks/useTypingIndicator';
 import { useNotificationBroadcast } from '../../../hooks/useNotificationBroadcast';
 import DeleteConversationModal from '../../../components/messaging/DeleteConversationModal';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-educator-communication');
 
 const EducatorCommunication = () => {
   const location = useLocation();
@@ -49,7 +52,7 @@ const EducatorCommunication = () => {
   const markedAsReadRef = useRef<Set<string>>(new Set());
   
   // Get school admin ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   const schoolAdminId = user?.id;
   const schoolAdminName = user?.name || 'School Admin';
   const queryClient = useQueryClient();
@@ -207,10 +210,10 @@ const EducatorCommunication = () => {
         // Only handle educator-admin conversations
         if (conversation.conversation_type !== 'educator_admin') return;
         
-        console.log('🔄 [School Admin] Realtime UPDATE detected:', conversation);
+        logger.info('Realtime UPDATE detected', { conversationId: conversation.id });
         
         if (conversation.deleted_by_admin) {
-          console.log('❌ [School Admin] Ignoring UPDATE for deleted conversation:', conversation.id);
+          logger.info('Ignoring UPDATE for deleted conversation', { conversationId: conversation.id });
           return;
         }
         
@@ -234,7 +237,7 @@ const EducatorCommunication = () => {
       }
 
       try {
-        console.log('🎯 Auto-creating conversation with educator:', targetEducator);
+        logger.info('Auto-creating conversation with educator', { educatorId: targetEducator.targetEducatorId });
         
         // Check if conversation already exists
         const existingConversation = activeConversations.find(conv => 
@@ -242,21 +245,21 @@ const EducatorCommunication = () => {
         );
         
         if (existingConversation) {
-          console.log('✅ Found existing conversation:', existingConversation.id);
+          logger.info('Found existing conversation', { conversationId: existingConversation.id });
           setSelectedConversationId(existingConversation.id);
           toast.success(`Opened conversation with ${targetEducator.targetEducatorName}`);
           return;
         }
         
         // Create new conversation
-        console.log('🆕 Creating new conversation...');
+        logger.info('Creating new conversation');
         const conversation = await MessageService.getOrCreateEducatorAdminConversation(
           targetEducator.targetEducatorId,
           schoolId,
           'General Discussion' // default subject
         );
         
-        console.log('✅ Conversation created:', conversation);
+        logger.info('Conversation created', { conversationId: conversation.id });
         
         // Refresh conversations to include the new one
         await refetchActive();
@@ -267,7 +270,7 @@ const EducatorCommunication = () => {
         toast.success(`Started conversation with ${targetEducator.targetEducatorName}`);
         
       } catch (error) {
-        console.error('❌ Error creating conversation:', error);
+        logger.error('Error creating conversation', error as Error, { educatorId: targetEducator?.targetEducatorId });
         toast.error(`Failed to start conversation with ${targetEducator.targetEducatorName}`);
       }
     };
@@ -303,7 +306,7 @@ const EducatorCommunication = () => {
     
     MessageService.markConversationAsRead(selectedConversationId, schoolAdminId)
       .catch(err => {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read', err, { conversationId: selectedConversationId });
         markedAsReadRef.current.delete(markKey);
         refetchActive();
       });
@@ -369,7 +372,7 @@ const EducatorCommunication = () => {
       
       await Promise.all([refetchActive(), refetchArchived()]);
     } catch (error) {
-      console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
+      logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation`, error as Error, { conversationId });
       refetchActive();
       refetchArchived();
     } finally {
@@ -382,7 +385,7 @@ const EducatorCommunication = () => {
     if (!schoolId) return;
     
     try {
-      console.log('🆕 Creating new conversation with educator:', educatorId, 'subject:', subject);
+      logger.info('Creating new conversation with educator', { educatorId, subject });
       
       // Check if conversation already exists
       const existingConversation = activeConversations.find(conv => 
@@ -390,7 +393,7 @@ const EducatorCommunication = () => {
       );
       
       if (existingConversation) {
-        console.log('✅ Found existing conversation:', existingConversation.id);
+        logger.info('Found existing conversation', { conversationId: existingConversation.id });
         setSelectedConversationId(existingConversation.id);
         setShowNewConversationModal(false);
         toast.success('Opened existing conversation');
@@ -404,7 +407,7 @@ const EducatorCommunication = () => {
         subject
       );
       
-      console.log('✅ New conversation created:', conversation);
+      logger.info('New conversation created', { conversationId: conversation.id });
       
       // Refresh conversations to include the new one
       await refetchActive();
@@ -416,7 +419,7 @@ const EducatorCommunication = () => {
       toast.success('New conversation started');
       
     } catch (error) {
-      console.error('❌ Error creating conversation:', error);
+      logger.error('Error creating conversation', error as Error, { educatorId, subject });
       toast.error('Failed to start conversation');
     }
   }, [schoolId, activeConversations, refetchActive]);
@@ -543,7 +546,7 @@ const EducatorCommunication = () => {
       setMessageInput('');
       setTyping(false);
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message', error as Error, { conversationId: selectedConversationId });
     }
   }, [messageInput, currentChat, schoolAdminId, sendMessage, sendNotification, selectedConversationId, setTyping]);
 

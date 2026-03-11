@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('ProjectHiring');
+
 import {
   PlusIcon,
   MagnifyingGlassIcon,
@@ -61,7 +65,7 @@ const ProjectHiring = () => {
 
   const handleViewProject = (id: string) => {
     // For now, just show alert - later navigate to detail page
-    console.log('View project:', id);
+    logger.info('View project', { id });
     alert(`Project Details Page\n\nProject ID: ${id}\n\nThis will navigate to the full project details page once implemented.`);
   };
 

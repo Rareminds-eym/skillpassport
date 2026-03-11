@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useStudents, UICandidate } from '../../hooks/useStudents';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import { useSearch } from '../../context/SearchContext';
+import { useSearch } from '../../stores';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
 import AddStudentModal from '../../components/educator/modals/Addstudentmodal';
@@ -266,7 +266,7 @@ const StudentsPage = () => {
   const { school: educatorSchool, college: educatorCollege, educatorType, educatorRole, assignedClassIds, loading: schoolLoading } = useEducatorSchool();
 
   // Get auth context for user ID
-  const { user } = useAuth();
+  const user = useUser();
 
   const [filters, setFilters] = useState({
     skills: [] as string[],
@@ -450,7 +450,7 @@ const StudentsPage = () => {
   const handleDeleteClick = (student: UICandidate) => {
     // Disable delete functionality for college lecturers
     if (educatorType === 'college') {
-      console.log('Delete functionality disabled for college lecturers');
+      logger.info('Delete functionality disabled for college lecturers');
       return;
     }
     setStudentToDelete(student);
@@ -494,7 +494,7 @@ const StudentsPage = () => {
   const handleBulkDelete = () => {
     // Disable bulk delete functionality for college lecturers
     if (educatorType === 'college') {
-      console.log('Bulk delete functionality disabled for college lecturers');
+      logger.info('Bulk delete functionality disabled for college lecturers');
       return;
     }
     setShowBulkDeleteModal(true);
@@ -519,7 +519,7 @@ const StudentsPage = () => {
         }
       });
     } catch (error) {
-      console.error('Error initiating message:', error);
+      logger.error('Error initiating message', error);
       alert('Failed to start conversation. Please try again.');
     }
   };

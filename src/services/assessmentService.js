@@ -1129,8 +1129,6 @@ export const getLatestResult = async (studentIdOrUserId) => {
   }
 
   // If not found, try looking up by user_id (in case we were passed auth.uid())
-  console.log('🔄 No direct match, trying user_id lookup...');
-
   try {
     // Get student.id from user_id
     const { data: student, error: studentError } = await supabase
@@ -1459,8 +1457,6 @@ export const getInProgressAttempt = async (studentIdOrUserId) => {
   }
 
   // If not found or abandoned, try looking up by user_id (in case we were passed auth.uid())
-  console.log('🔄 No direct match, trying user_id lookup...');
-
   try {
     // Get student.id from user_id
     const { data: student, error: studentError } = await supabase

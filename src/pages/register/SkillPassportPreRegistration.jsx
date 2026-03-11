@@ -9,6 +9,7 @@ import TimelineSection from '../../components/TimelineSection';
 import WhatYouGetSection from '../../components/skillpassport/WhatYouGetSection';
 import AboutRaremindsSection from '../../components/skillpassport/AboutRaremindsSection';
 import NeedHelpSection from '../../components/skillpassport/NeedHelpSection';
+import { useLocation } from 'react-router-dom';
 
 export default function SkillPassportPreRegistration() {
   return (
@@ -18,7 +19,7 @@ export default function SkillPassportPreRegistration() {
       {/* <HeroSection /> */}
       <WhatIsSection />
       <WhoIsThisForSection />
-      <EarlyAccessSection />
+      {/* <EarlyAccessSection /> */}
       <TimelineSection />
       <WhatYouGetSection />
       <AboutRaremindsSection />

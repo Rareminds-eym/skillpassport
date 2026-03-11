@@ -1,8 +1,12 @@
 import { motion } from 'framer-motion';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { GraduationCap, Briefcase, Target, BookOpen } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 export default function WhoIsThisForSection() {
+  const location = useLocation();
+  const isCorporate = location.pathname.includes('/register/corporate');
+  const brandName = isCorporate ? 'Skill Ecosystem' : 'Skill Passport';
   return (
     <section className="py-12 sm:py-16 md:py-20 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -14,20 +18,31 @@ export default function WhoIsThisForSection() {
           className="text-center mb-12 sm:mb-16 md:mb-24"
         >
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-4 sm:mb-6">
-            Who is This For?
+            {isCorporate ? 'Who is Skill Ecosystem for?' : 'Who is This For?'}
           </h2>
           <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
-            Skill Passport is designed for students who are serious about their career
+            {isCorporate 
+              ? 'Skill Ecosystem helps organizations discover and hire candidates with relevant skills and learning portfolios'
+              : `${brandName} is designed for students who are serious about their career`
+            }
           </p>
           {/* Lottie Animation - Mobile Only */}
           <div className="lg:hidden mb-6 sm:mb-8 flex justify-center">
             <div className="w-40 h-40 sm:w-48 sm:h-48">
-              <DotLottieReact
-                src="https://lottie.host/8762c3c1-db94-4087-9ccc-46615033bf52/2wX4r7hVjN.lottie"
-                loop
-                autoplay
-                className="w-full h-full"
-              />
+              {isCorporate ? (
+                <img 
+                  src="/assets/HomePage/corporate.webp" 
+                  alt="Corporate hiring illustration"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <DotLottieReact
+                  src="https://lottie.host/8762c3c1-db94-4087-9ccc-46615033bf52/2wX4r7hVjN.lottie"
+                  loop
+                  autoplay
+                  className="w-full h-full"
+                />
+              )}
             </div>
           </div>
         </motion.div>
@@ -36,7 +51,28 @@ export default function WhoIsThisForSection() {
         <div className="relative max-w-5xl mx-auto">
           {/* Mobile: Stack vertically */}
           <div className="flex flex-col gap-4 sm:gap-6 md:gap-8 lg:hidden">
-            {[
+            {(isCorporate ? [
+              { 
+                icon: GraduationCap, 
+                desc: 'Recruiters looking to discover candidates with demonstrated skills and learning portfolios',
+                color: 'from-blue-500 to-blue-600'
+              },
+              { 
+                icon: Briefcase, 
+                desc: 'Organizations seeking job-ready candidates beyond just academic degrees',
+                color: 'from-blue-500 to-blue-600'
+              },
+              { 
+                icon: Target, 
+                desc: 'Companies building structured pipelines of skilled student talent',
+                color: 'from-blue-500 to-blue-600'
+              },
+              { 
+                icon: BookOpen, 
+                desc: 'Employers who want more signal than just resumes and GPAs',
+                color: 'from-blue-500 to-blue-600'
+              }
+            ] : [
               { 
                 icon: GraduationCap, 
                 desc: 'Undergraduate & postgraduate students',
@@ -57,7 +93,7 @@ export default function WhoIsThisForSection() {
                 desc: 'Learners building skills beyond college curriculum',
                 color: 'from-blue-500 to-blue-600'
               }
-            ].map((persona, idx) => (
+            ]).map((persona, idx) => (
               <motion.div
                 key={idx}
                 initial={{ opacity: 0, x: -30 }}
@@ -83,19 +119,60 @@ export default function WhoIsThisForSection() {
           {/* Desktop: Circular Orbit */}
           <div className="hidden lg:block relative h-[300px]">
             {/* Center Circle - Lottie Animation */}
-            <div className="absolute top-[25%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+            <div className="absolute top-[25%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10" style={{ marginLeft: isCorporate ? '-40px' : '0' }}>
               <div style={{ width: '250px', height: '250px' }}>
-                <DotLottieReact
-                  src="https://lottie.host/8762c3c1-db94-4087-9ccc-46615033bf52/2wX4r7hVjN.lottie"
-                  loop
-                  autoplay
-                  className="w-full h-full"
-                />
+                {isCorporate ? (
+                  <img 
+                    src="/assets/HomePage/corporate.webp" 
+                    alt="Corporate hiring illustration"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <DotLottieReact
+                    src="https://lottie.host/8762c3c1-db94-4087-9ccc-46615033bf52/2wX4r7hVjN.lottie"
+                    loop
+                    autoplay
+                    className="w-full h-full"
+                  />
+                )}
               </div>
             </div>
 
             {/* Orbit Items */}
-            {[
+            {(isCorporate ? [
+              { 
+                icon: GraduationCap, 
+                desc: 'Recruiters looking to discover candidates with demonstrated skills and learning portfolios',
+                color: 'from-blue-500 to-blue-600',
+                position: 'top-[5%] right-[-5%]',
+                textAlign: 'left',
+                iconOrder: ''
+              },
+              { 
+                icon: Briefcase, 
+                desc: 'Organizations seeking job-ready candidates beyond just academic degrees',
+                color: 'from-blue-500 to-blue-600',
+                position: 'bottom-[15%] right-[8%]',
+                textAlign: 'left',
+                iconOrder: ''
+              },
+              { 
+                icon: Target, 
+                desc: 'Companies building structured pipelines of skilled student talent',
+                color: 'from-blue-500 to-blue-600',
+                position: 'bottom-[15%] left-[8%]',
+                textAlign: 'right',
+                iconOrder: 'order-2'
+              },
+              { 
+                icon: BookOpen, 
+                desc: 'Employers who want more signal than just resumes and GPAs',
+                color: 'from-blue-500 to-blue-600',
+                position: 'top-[5%] left-[-5%]',
+                textAlign: 'right',
+                iconOrder: 'order-2'
+              }
+            ] : [
               { 
                 icon: GraduationCap, 
                 desc: 'Undergraduate & postgraduate students',
@@ -128,7 +205,7 @@ export default function WhoIsThisForSection() {
                 textAlign: 'right',
                 iconOrder: 'order-2'
               }
-            ].map((persona, idx) => (
+            ]).map((persona, idx) => (
               <motion.div
                 key={idx}
                 initial={{ opacity: 0, scale: 0 }}

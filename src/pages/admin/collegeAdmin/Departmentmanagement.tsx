@@ -26,6 +26,9 @@ import { toast } from 'react-hot-toast';
 import Pagination from "../../../components/admin/Pagination";
 import SearchBar from "../../../components/common/SearchBar";
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('college-admin-department-management');
 
 // Import modal components
 import AddDepartmentModal from "../../../components/admin/collegeAdmin/AddDepartmentModal";
@@ -157,14 +160,14 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 };
 
 const DepartmentManagement: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const queryClient = useQueryClient();
   
   // Fetch college ID from organizations table using admin_id
   const { data: collegeData, error: collegeError } = useQuery({
     queryKey: ['userCollege', user?.id],
     queryFn: async () => {
-      console.log('Fetching college for user:', user?.id);
+      logger.info('Fetching college for user:', { userId: user?.id });
       const { data, error } = await supabase
         .from('organizations')
         .select('id, name')
@@ -173,11 +176,11 @@ const DepartmentManagement: React.FC = () => {
         .maybeSingle();
       
       if (error) {
-        console.error('Error fetching college from organizations:', error);
+        logger.error('Error fetching college from organizations:', error);
         throw error;
       }
       
-      console.log('College data fetched from organizations:', data);
+      logger.info('College data fetched from organizations:', { data });
       return data;
     },
     enabled: !!user?.id,
@@ -187,9 +190,9 @@ const DepartmentManagement: React.FC = () => {
   const collegeId = collegeData?.id;
   
   useEffect(() => {
-    console.log('College ID updated:', collegeId);
-    console.log('College data:', collegeData);
-    console.log('College error:', collegeError);
+    logger.info('College ID updated:', { collegeId });
+    logger.info('College data:', { collegeData });
+    logger.info('College error:', { collegeError });
   }, [collegeId, collegeData, collegeError]);
 
   const [viewMode, setViewMode] = useState("grid");
@@ -260,9 +263,9 @@ const DepartmentManagement: React.FC = () => {
   // Create department mutation
   const createDepartmentMutation = useMutation({
     mutationFn: (data: any) => {
-      console.log('Creating department with collegeId:', collegeId);
-      console.log('User ID:', user?.id);
-      console.log('Form data:', data);
+      logger.info('Creating department with collegeId:', { collegeId });
+      logger.info('User ID:', { userId: user?.id });
+      logger.info('Form data:', { data });
       
       if (!collegeId) {
         throw new Error('College ID not found. Please refresh the page and try again.');
@@ -554,7 +557,7 @@ const DepartmentManagement: React.FC = () => {
       const faculty = await departmentService.getDepartmentFaculty(dept.id);
       setAssignedFaculty(faculty);
     } catch (error) {
-      console.error('Error loading department faculty:', error);
+      logger.error('Error loading department faculty:', error as Error);
       setAssignedFaculty([]);
     }
     
@@ -599,7 +602,7 @@ const DepartmentManagement: React.FC = () => {
       setSelectedDepartment(null);
       setAssignedFaculty([]);
     } catch (error: any) {
-      console.error('Error assigning HOD:', error);
+      logger.error('Error assigning HOD:', error);
       toast.error(error.message || 'Failed to assign HOD');
     }
   };

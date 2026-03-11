@@ -14,6 +14,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { supabase } from '../../lib/supabaseClient';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('EducatorProfile');
 
 interface EducatorProfile {
   id: string;
@@ -63,7 +66,8 @@ interface EducatorProfile {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user: authUser, isAuthenticated } = useAuth();
+  const authUser = useUser();
+  const isAuthenticated = useIsAuthenticated();
   const [profile, setProfile] = useState<EducatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -80,7 +84,7 @@ const Profile = () => {
       
       // Method 1: Try AuthContext user
       if (authUser && authUser.email) {
-        console.log('✅ Using AuthContext user:', authUser.email);
+        logger.info('Using AuthContext user', { email: authUser.email });
         if (isMounted) await loadProfileByEmail(authUser.email);
         return;
       }
@@ -92,16 +96,16 @@ const Profile = () => {
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser);
-          console.log('✅ Using localStorage user:', userData);
+          logger.info('Using localStorage user', { userData });
           if (isMounted) await loadProfileByEmail(userData.email || storedEmail);
           return;
         } catch (e) {
-          console.error('Error parsing stored user:', e);
+          logger.error('Error parsing stored user', e);
         }
       }
       
       if (storedEmail) {
-        console.log('✅ Using stored email:', storedEmail);
+        logger.info('Using stored email', { email: storedEmail });
         if (isMounted) await loadProfileByEmail(storedEmail);
         return;
       }
@@ -110,13 +114,13 @@ const Profile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user && user.email) {
-        console.log('✅ Using Supabase user:', user.email);
+        logger.info('Using Supabase user', { email: user.email });
         if (isMounted) await loadProfileByEmail(user.email);
         return;
       }
       
       // No authentication found
-      console.log('❌ No authenticated user found, redirecting to login');
+      logger.info('No authenticated user found, redirecting to login');
       if (isMounted) navigate('/login/educator');
     };
     
@@ -129,7 +133,7 @@ const Profile = () => {
 
   const loadProfileByEmail = async (email: string) => {
     if (loadingProfile) {
-      console.log('⏳ Profile already loading, skipping...');
+      logger.info('Profile already loading, skipping...');
       return;
     }
     
@@ -137,14 +141,14 @@ const Profile = () => {
       setLoadingProfile(true);
       setLoading(true);
       
-      console.log('🔍 Loading profile by email:', email);
+      logger.info('Loading profile by email', { email });
 
       // Try multiple approaches to fetch educator data
       let educatorData = null;
       let educatorError = null;
 
       // Approach 1: Direct query by email
-      console.log('📧 Trying direct email query...');
+      logger.info('Trying direct email query...');
       const { data: directData, error: directError } = await supabase
         .from('school_educators')
         .select(`
@@ -158,10 +162,10 @@ const Profile = () => {
         .maybeSingle();
 
       if (directError) {
-        console.log('❌ Direct query error:', directError.message);
+        logger.info('Direct query error', { error: directError.message });
         
         // Approach 2: Try with RLS bypass (if we have service role)
-        console.log('🔓 Trying with different approach...');
+        logger.info('Trying with different approach...');
         const { data: altData, error: altError } = await supabase
           .from('school_educators')
           .select('*')
@@ -170,25 +174,26 @@ const Profile = () => {
           .maybeSingle();
           
         if (altError) {
-          console.log('❌ Alternative query error:', altError.message);
+          logger.info('Alternative query error', { error: altError.message });
           educatorError = altError;
         } else {
           educatorData = altData;
-          console.log('✅ Found data with alternative approach');
+          logger.info('Found data with alternative approach');
         }
       } else {
         educatorData = directData;
-        console.log('✅ Found data with direct approach');
+        logger.info('Found data with direct approach');
       }
 
-      console.log('=== EDUCATOR PROFILE DEBUG (BY EMAIL) ===');
-      console.log('Email:', email);
-      console.log('Educator data:', educatorData);
-      console.log('Educator error:', educatorError);
-      console.log('Data fields:', educatorData ? Object.keys(educatorData) : 'No data');
+      logger.info('Educator profile debug', {
+        email,
+        educatorData,
+        educatorError,
+        dataFields: educatorData ? Object.keys(educatorData) : 'No data'
+      });
       
       if (educatorData) {
-        console.log('📋 Educator details:', {
+        logger.info('Educator details', {
           id: educatorData.id,
           first_name: educatorData.first_name,
           last_name: educatorData.last_name,
@@ -199,16 +204,15 @@ const Profile = () => {
           user_id: educatorData.user_id,
         });
       }
-      console.log('=== END DEBUG ===');
 
       if (educatorData) {
         await processEducatorData(educatorData, email);
       } else {
-        console.log('⚠️ No educator data found, creating fallback profile');
+        logger.info('No educator data found, creating fallback profile');
         await createFallbackProfile(email);
       }
     } catch (error) {
-      console.error('💥 Failed to load profile by email:', error);
+      logger.error('Failed to load profile by email', error);
       await createFallbackProfile(email);
     } finally {
       setLoading(false);
@@ -227,11 +231,11 @@ const Profile = () => {
       }
       
       if (!user) {
-        console.error('No authenticated user found');
+        logger.error('No authenticated user found');
         return;
       }
 
-      console.log('Current user:', user.id);
+      logger.info('Current user', { userId: user.id });
 
       // Fetch educator profile from school_educators table
       const { data: educatorData, error: educatorError } = await supabase
@@ -240,18 +244,19 @@ const Profile = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      console.log('=== EDUCATOR PROFILE DEBUG ===');
-      console.log('User ID:', user.id);
-      console.log('Educator data:', educatorData);
-      console.log('Educator error:', educatorError);
+      logger.info('Educator profile debug', {
+        userId: user.id,
+        educatorData,
+        educatorError
+      });
       
       if (educatorError) {
-        console.error('Error fetching educator data:', educatorError);
+        logger.error('Error fetching educator data', educatorError);
       }
 
       await processEducatorData(educatorData, user.email, user);
     } catch (error) {
-      console.error('Failed to load profile:', error);
+      logger.error('Failed to load profile', error);
       await createFallbackProfile(user?.email, user);
     } finally {
       setLoading(false);
@@ -265,10 +270,10 @@ const Profile = () => {
     if (educatorData?.schools?.name) {
       // School data was joined in the query
       schoolName = educatorData.schools.name;
-      console.log('✅ School name from join:', schoolName);
+      logger.info('School name from join', { schoolName });
     } else if (educatorData?.school_id) {
       // Fetch school name separately from organizations table
-      console.log('🏫 Fetching school name for ID:', educatorData.school_id);
+      logger.info('Fetching school name', { schoolId: educatorData.school_id });
       const { data: org, error: orgError } = await supabase
         .from('organizations')
         .select('name')
@@ -276,10 +281,10 @@ const Profile = () => {
         .maybeSingle();
       
       if (orgError) {
-        console.log('❌ Organization fetch error:', orgError.message);
+        logger.info('Organization fetch error', { error: orgError.message });
       } else {
         schoolName = org?.name || '';
-        console.log('✅ School name fetched from organizations:', schoolName);
+        logger.info('School name fetched from organizations', { schoolName });
       }
     }
 
@@ -343,7 +348,7 @@ const Profile = () => {
       pending_activities: 0,
     };
 
-    console.log('✅ Final profile created:', {
+    logger.info('Final profile created', {
       id: profileData.id,
       full_name: profileData.full_name,
       email: profileData.email,
@@ -403,53 +408,53 @@ const Profile = () => {
         updated_at: new Date().toISOString(),
       };
 
-      console.log('💾 Saving profile data:', updateData);
+      logger.info('Saving profile data', { updateData });
 
       let success = false;
 
       // Try multiple update approaches
       if (profile.id) {
         // Approach 1: Update by ID
-        console.log('📝 Updating by ID:', profile.id);
+        logger.info('Updating by ID', { id: profile.id });
         const { error: idError } = await supabase
           .from('school_educators')
           .update(updateData)
           .eq('id', profile.id);
 
         if (idError) {
-          console.log('❌ Update by ID failed:', idError.message);
+          logger.info('Update by ID failed', { error: idError.message });
           
           // Approach 2: Update by email
-          console.log('📝 Trying update by email:', profile.email);
+          logger.info('Trying update by email', { email: profile.email });
           const { error: emailError } = await supabase
             .from('school_educators')
             .update(updateData)
             .eq('email', profile.email);
 
           if (emailError) {
-            console.error('❌ Update by email also failed:', emailError.message);
+            logger.error('Update by email also failed', emailError);
             throw new Error(`Failed to update profile: ${emailError.message}`);
           } else {
-            console.log('✅ Profile updated by email successfully');
+            logger.info('Profile updated by email successfully');
             success = true;
           }
         } else {
-          console.log('✅ Profile updated by ID successfully');
+          logger.info('Profile updated by ID successfully');
           success = true;
         }
       } else if (profile.email) {
         // No ID, try update by email
-        console.log('📝 Updating by email (no ID):', profile.email);
+        logger.info('Updating by email (no ID)', { email: profile.email });
         const { error: emailError } = await supabase
           .from('school_educators')
           .update(updateData)
           .eq('email', profile.email);
 
         if (emailError) {
-          console.error('❌ Update by email failed:', emailError.message);
+          logger.error('Update by email failed', emailError);
           throw new Error(`Failed to update profile: ${emailError.message}`);
         } else {
-          console.log('✅ Profile updated by email successfully');
+          logger.info('Profile updated by email successfully');
           success = true;
         }
       }
@@ -462,14 +467,14 @@ const Profile = () => {
         setFormData({});
         
         // Notify Header component to refresh
-        console.log('📢 Emitting profile update event for header refresh')
-        window.dispatchEvent(new CustomEvent('educatorProfileUpdated'))
+        logger.info('Emitting profile update event for header refresh');
+        window.dispatchEvent(new CustomEvent('educatorProfileUpdated'));
         
         // Show success message
         alert('Profile saved successfully!');
       }
     } catch (error) {
-      console.error('💥 Failed to save profile:', error);
+      logger.error('Failed to save profile', error);
       alert(`Failed to save profile: ${error.message}`);
     } finally {
       setSaving(false);

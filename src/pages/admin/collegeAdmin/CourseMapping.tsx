@@ -790,7 +790,7 @@ const ElectiveManagementModal = ({
             setEditingMapping(null);
             setTempData({ mappingId: "", facultyId: "", capacity: "" });
         } catch (error) {
-            console.error('Failed to update mapping:', error);
+            logger.error('Failed to update mapping:', error as Error);
         } finally {
             setSubmitting(false);
         }
@@ -1060,7 +1060,7 @@ const CourseMapping: React.FC = () => {
                 setSelectedProgramId(programData[0].id);
             }
         } catch (err: any) {
-            console.error('Failed to load programs:', err);
+            logger.error('Failed to load programs:', err as Error);
         }
     };
 
@@ -1069,7 +1069,7 @@ const CourseMapping: React.FC = () => {
             const facultyData = await getFaculty(selectedDeptId);
             setFaculties(facultyData);
         } catch (err: any) {
-            console.error('Failed to load faculty:', err);
+            logger.error('Failed to load faculty:', err as Error);
         }
     };
 
@@ -1078,7 +1078,7 @@ const CourseMapping: React.FC = () => {
             const mappingsData = await getCourseMappings(selectedProgramId, selectedSemester, searchQuery, typeFilter || undefined);
             setCourseMappings(mappingsData);
         } catch (err: any) {
-            console.error('Failed to load course mappings:', err);
+            logger.error('Failed to load course mappings:', err as Error);
         }
     };
 
@@ -1087,7 +1087,7 @@ const CourseMapping: React.FC = () => {
             const locked = await isSemesterLocked(selectedProgramId, selectedSemester);
             setIsLocked(locked);
         } catch (err: any) {
-            console.error('Failed to check semester lock:', err);
+            logger.error('Failed to check semester lock:', err as Error);
         }
     };
 

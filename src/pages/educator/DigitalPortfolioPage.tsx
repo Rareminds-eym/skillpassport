@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('DigitalPortfolioPage');
+
 import {
   FolderIcon,
   EyeIcon,
@@ -14,7 +18,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useStudents } from '../../hooks/useStudents';
 import { useEducatorSchool } from '../../hooks/useEducatorSchool';
-import { useSearch } from '../../context/SearchContext';
+import { useSearch } from '../../stores';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/educator/Pagination';
 import { useAuth } from '@/features/auth';
@@ -94,23 +98,11 @@ const PortfolioCard = ({ student, onViewPortfolio, canView, canCreate, canEdit, 
       className="bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md transition-all duration-200 cursor-pointer group"
       onClick={() => {
         if (!canView) {
-          console.log('❌ [DigitalPortfolioPage] Action Blocked: Card Click - No View Permission');
+          logger.warn('Action blocked: Card click - no view permission');
           alert('❌ Access Denied: You need VIEW permission to view portfolios');
           return;
         }
-        console.log('📁 [DigitalPortfolioPage] Action: Portfolio Card Clicked', {
-          userRole: user?.role,
-          module: 'Digital Portfolio',
-          action: 'View Portfolio',
-          permissions: {
-            canView: canView.allowed,
-            canCreate: canCreate.allowed,
-            canEdit: canEdit.allowed
-          },
-          studentId: student.id,
-          studentName: student.name,
-          timestamp: new Date().toISOString()
-        });
+        logger.info('Portfolio card clicked', { studentId: student.id });
         onViewPortfolio(student);
       }}
     >
@@ -193,23 +185,11 @@ const PortfolioCard = ({ student, onViewPortfolio, canView, canCreate, canEdit, 
           onClick={(e) => {
             e.stopPropagation();
             if (!canView) {
-              console.log('❌ [DigitalPortfolioPage] Action Blocked: View Portfolio Button - No View Permission');
+              logger.warn('Action blocked: View portfolio button - no view permission');
               alert('❌ Access Denied: You need VIEW permission to view portfolios');
               return;
             }
-            console.log('📁 [DigitalPortfolioPage] Action: View Portfolio Button Clicked', {
-              userRole: user?.role,
-              module: 'Digital Portfolio',
-              action: 'View Portfolio',
-              permissions: {
-                canView: canView.allowed,
-                canCreate: canCreate.allowed,
-                canEdit: canEdit.allowed
-              },
-              studentId: student.id,
-              studentName: student.name,
-              timestamp: new Date().toISOString()
-            });
+            logger.info('View portfolio button clicked', { studentId: student.id });
             onViewPortfolio(student);
           }}
           disabled={!canView.allowed}
@@ -230,7 +210,8 @@ const PortfolioCard = ({ student, onViewPortfolio, canView, canCreate, canEdit, 
 
 const DigitalPortfolioPage = () => {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
   const { searchQuery, setSearchQuery } = useSearch()
   
   // Permission controls for Digital Portfolio module - same pattern as Program Sections
@@ -270,7 +251,7 @@ const DigitalPortfolioPage = () => {
     }
     
     if (user?.role !== 'educator' && user?.role !== 'college_educator') {
-      console.error('Unauthorized access attempt to digital portfolio page')
+      logger.error('Unauthorized access attempt to digital portfolio page')
       navigate('/auth/login')
       return
     }
@@ -279,7 +260,7 @@ const DigitalPortfolioPage = () => {
   // Permission check - redirect if no view permission - same as Program Sections
   useEffect(() => {
     if (!canView) {
-      console.warn('Access denied: No view permission for Digital Portfolio')
+      logger.warn('Access denied: No view permission for Digital Portfolio')
       navigate('/educator/dashboard')
       return
     }
@@ -459,25 +440,12 @@ const DigitalPortfolioPage = () => {
 
   const handleViewPortfolio = (student: any) => {
     if (!canView) {
-      console.log('❌ [DigitalPortfolioPage] Action Blocked: View Portfolio - No View Permission');
+      logger.warn('Action blocked: View portfolio - no view permission');
       alert('❌ Access Denied: You need VIEW permission to view portfolios');
       return;
     }
     
-    console.log('📁 [DigitalPortfolioPage] Action: View Portfolio Clicked', {
-      userRole: user?.role,
-      module: 'Digital Portfolio',
-      action: 'View Portfolio',
-      permissions: {
-        canView: canView.allowed,
-        canCreate: canCreate.allowed,
-        canEdit: canEdit.allowed
-      },
-      studentId: student.id,
-      studentName: student.name,
-      timestamp: new Date().toISOString()
-    });
-    
+    logger.info('View portfolio clicked', { studentId: student.id });
     navigate('/digital-pp/homepage', { state: { candidate: student } });
   };
 
@@ -916,23 +884,11 @@ const DigitalPortfolioPage = () => {
                               <button
                                 onClick={() => {
                                   if (!canView) {
-                                    console.log('❌ [DigitalPortfolioPage] Action Blocked: View Portfolio (Table) - No View Permission');
+                                    logger.warn('Action blocked: View portfolio (table) - no view permission');
                                     alert('❌ Access Denied: You need VIEW permission to view portfolios');
                                     return;
                                   }
-                                  console.log('📁 [DigitalPortfolioPage] Action: View Portfolio Clicked (Table)', {
-                                    userRole: user?.role,
-                                    module: 'Digital Portfolio',
-                                    action: 'View Portfolio',
-                                    permissions: {
-                                      canView: canView.allowed,
-                                      canCreate: canCreate.allowed,
-                                      canEdit: canEdit.allowed
-                                    },
-                                    studentId: student.id,
-                                    studentName: student.name,
-                                    timestamp: new Date().toISOString()
-                                  });
+                                  logger.info('View portfolio clicked (table)', { studentId: student.id });
                                   handleViewPortfolio(student);
                                 }}
                                 disabled={!canView.allowed}

@@ -14,6 +14,9 @@ import {
 import { supabase } from "../../lib/supabaseClient";
 import * as clubsService from "../../services/clubsService";
 import * as competitionsService from "../../services/competitionsService";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('StudentClubs');
 
 export default function StudentDashboard() {
     // Get logged-in student's email from localStorage
@@ -33,10 +36,10 @@ export default function StudentDashboard() {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                console.log('🔍 [Student Clubs] Fetching data for student:', userEmail);
+                logger.info('Fetching data for student', { userEmail });
                 
                 if (!userEmail) {
-                    console.warn('❌ [Student Clubs] No user email found');
+                    logger.warn('No user email found');
                     setLoading(false);
                     return;
                 }
@@ -70,10 +73,12 @@ export default function StudentDashboard() {
                     .eq('status', 'active');
 
                 if (membershipError) {
-                    console.error('❌ [Student Clubs] Error fetching club memberships:', membershipError);
+                    logger.error('Error fetching club memberships', membershipError);
                 } else {
-                    console.log('✅ [Student Clubs] Student is member of', membershipData?.length || 0, 'clubs');
-                    console.log('📋 [Student Clubs] Membership data:', membershipData);
+                    logger.info('Student club memberships loaded', { 
+                        count: membershipData?.length || 0,
+                        membershipData 
+                    });
                 }
 
                 // Transform membership data into clubs format
@@ -110,7 +115,7 @@ export default function StudentDashboard() {
                             .eq('club_id', club.club_id)
                             .eq('status', 'active');
 
-                        console.log(`👥 [Student Clubs] Club "${club.name}" has ${memberCount} members`);
+                        logger.info('Club member count', { clubName: club.name, memberCount: memberCount || 0 });
 
                         return {
                             ...club,
@@ -130,7 +135,7 @@ export default function StudentDashboard() {
                         .then(res => res.data?.school_id)
                     : null;
 
-                console.log('🏫 [Student Clubs] School ID:', schoolId);
+                logger.info('School ID retrieved', { schoolId });
 
                 // Fetch competitions for the student's school
                 let competitionsData = [];
@@ -142,9 +147,9 @@ export default function StudentDashboard() {
                         .order('competition_date', { ascending: true });
 
                     if (competitionsError) {
-                        console.error('❌ [Student Clubs] Error fetching competitions:', competitionsError);
+                        logger.error('Error fetching competitions', competitionsError);
                     } else {
-                        console.log('✅ [Student Clubs] Loaded', compsData?.length || 0, 'competitions');
+                        logger.info('Competitions loaded', { count: compsData?.length || 0 });
                         competitionsData = compsData || [];
                     }
                 }
@@ -199,9 +204,9 @@ export default function StudentDashboard() {
                     .order('rank', { ascending: true });
 
                 if (resultsError) {
-                    console.error('❌ [Student Clubs] Error fetching competition results:', resultsError);
+                    logger.error('Error fetching competition results', resultsError);
                 } else {
-                    console.log('✅ [Student Clubs] Loaded', resultsData?.length || 0, 'competition results');
+                    logger.info('Competition results loaded', { count: resultsData?.length || 0 });
                     setMyAchievementsData(resultsData || []);
                 }
 
@@ -226,9 +231,9 @@ export default function StudentDashboard() {
                     .order('issued_date', { ascending: false });
 
                 if (certificatesError) {
-                    console.error('❌ [Student Clubs] Error fetching certificates:', certificatesError);
+                    logger.error('Error fetching certificates', certificatesError);
                 } else {
-                    console.log('✅ [Student Clubs] Loaded', certificatesData?.length || 0, 'certificates');
+                    logger.info('Certificates loaded', { count: certificatesData?.length || 0 });
                     setMyCertificates(certificatesData || []);
                 }
 
@@ -236,7 +241,7 @@ export default function StudentDashboard() {
                 setCompetitions(competitionsData);
                 
             } catch (error) {
-                console.error('❌ [Student Clubs] Error fetching data:', error);
+                logger.error('Error fetching data', error);
             } finally {
                 setLoading(false);
             }

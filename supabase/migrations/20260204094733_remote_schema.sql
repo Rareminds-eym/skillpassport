@@ -37570,7 +37570,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
-
+  drop policy if exists "Anyone can view course images" on "storage"."objects";
   create policy "Anyone can view course images"
   on "storage"."objects"
   as permissive
@@ -37579,7 +37579,7 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 using ((bucket_id = 'course-images'::text));
 
 
-
+  drop policy if exists "Authenticated users can upload course images" on "storage"."objects";
   create policy "Authenticated users can upload course images"
   on "storage"."objects"
   as permissive
@@ -37588,7 +37588,7 @@ using ((bucket_id = 'course-images'::text));
 with check (((bucket_id = 'course-images'::text) AND (auth.role() = 'authenticated'::text)));
 
 
-
+  drop policy if exists "School staff can upload admission documents" on "storage"."objects";
   create policy "School staff can upload admission documents"
   on "storage"."objects"
   as permissive
@@ -37597,7 +37597,7 @@ with check (((bucket_id = 'course-images'::text) AND (auth.role() = 'authenticat
 with check (((bucket_id = 'admission-documents'::text) AND (auth.role() = 'authenticated'::text)));
 
 
-
+  drop policy if exists "School staff can view admission documents" on "storage"."objects";
   create policy "School staff can view admission documents"
   on "storage"."objects"
   as permissive
@@ -37606,7 +37606,7 @@ with check (((bucket_id = 'admission-documents'::text) AND (auth.role() = 'authe
 using (((bucket_id = 'admission-documents'::text) AND (auth.role() = 'authenticated'::text)));
 
 
-
+  drop policy if exists "Users can delete course images" on "storage"."objects";
   create policy "Users can delete course images"
   on "storage"."objects"
   as permissive
@@ -37615,7 +37615,7 @@ using (((bucket_id = 'admission-documents'::text) AND (auth.role() = 'authentica
 using (((bucket_id = 'course-images'::text) AND (auth.role() = 'authenticated'::text)));
 
 
-
+  drop policy if exists "Users can update course images" on "storage"."objects";
   create policy "Users can update course images"
   on "storage"."objects"
   as permissive

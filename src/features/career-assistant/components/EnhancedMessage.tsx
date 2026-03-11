@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import rehypeSanitize from 'rehype-sanitize';
 import { useNavigate } from 'react-router-dom';
 import { X, Star } from 'lucide-react';
 import { InteractiveCardRenderer } from './InteractiveCards';
 import { VisualizationContainer } from './Visualizations';
+import { formatMessageTime } from '../utils/dateUtils';
 import {
   EnhancedAIResponse,
   ActionButton,
@@ -17,7 +19,11 @@ interface EnhancedMessageProps {
   onSendQuery: (query: string) => void;
 }
 
-export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
+/**
+ * Enhanced Message Component
+ * OPTIMIZATION: Memoized to prevent unnecessary re-renders
+ */
+export const EnhancedMessage: React.FC<EnhancedMessageProps> = memo(({
   response,
   timestamp,
   onSendQuery
@@ -54,7 +60,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
       >
         {response.message && (
           <div className="prose prose-sm max-w-none mb-4">
-            <ReactMarkdown>{response.message}</ReactMarkdown>
+            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{response.message}</ReactMarkdown>
           </div>
         )}
 
@@ -162,7 +168,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
         )}
 
         <p className="text-xs text-gray-500 mt-3">
-          {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {formatMessageTime(timestamp)}
           {response.interactive?.metadata && (
             <span className="ml-2 text-gray-400">
               • {response.interactive.metadata.intentHandled}
@@ -172,7 +178,9 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = ({
       </motion.div>
     </div>
   );
-};
+});
+
+EnhancedMessage.displayName = 'EnhancedMessage';
 
 // Simple text message component (for user messages and AI responses)
 interface FeedbackData {
@@ -191,7 +199,11 @@ interface SimpleMessageProps {
   feedbackLoading?: boolean;
 }
 
-export const SimpleMessage: React.FC<SimpleMessageProps> = ({
+/**
+ * Simple Message Component
+ * OPTIMIZATION: Memoized to prevent unnecessary re-renders
+ */
+export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
   content,
   timestamp,
   isUser = false,
@@ -253,6 +265,7 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
           ) : (
             <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-800 prose-strong:text-gray-900 prose-code:bg-gray-200 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-gray-800 prose-code:before:content-none prose-code:after:content-none prose-pre:bg-gray-800 prose-pre:text-gray-100 prose-li:text-gray-800 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline">
               <ReactMarkdown
+                rehypePlugins={[rehypeSanitize]}
                 components={{
                   code({ inline, className, children, ...props }: any) {
                     return !inline ? (
@@ -322,7 +335,7 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
           {/* Timestamp and Feedback */}
           <div className={`flex items-center justify-between mt-2 ${isUser ? '' : 'border-t border-gray-200 pt-2'}`}>
             <p className={`text-xs ${isUser ? 'text-gray-400' : 'text-gray-500'}`}>
-              {new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {formatMessageTime(timestamp)}
             </p>
             
             {/* Feedback buttons for AI messages only */}
@@ -480,4 +493,6 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = ({
       </AnimatePresence>
     </>
   );
-};
+});
+
+SimpleMessage.displayName = 'SimpleMessage';

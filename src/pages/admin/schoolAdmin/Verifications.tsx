@@ -28,7 +28,10 @@ import {
   CheckCircle,
   FileText
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-verifications');
+import { useUser } from '../../../stores';
 import { SchoolAdminNotificationService } from '../../../services/schoolAdminNotificationService';
 import TrainingDetailsModal from '../../../components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '../../../components/admin/schoolAdmin/ExperienceDetailsModal';
@@ -37,8 +40,7 @@ import { useToast } from '@/shared/lib/hooks';
 import { supabase } from '../../../lib/supabaseClient';
 
 const Verifications: React.FC = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const user = useUser();
   const [activeTab, setActiveTab] = useState<"trainings" | "experiences" | "certificates" | "projects">("trainings");
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [pendingTrainings, setPendingTrainings] = useState<any[]>([]);
@@ -64,20 +66,20 @@ const Verifications: React.FC = () => {
   // Get school ID
   useEffect(() => {
     const getSchoolId = async () => {
-      console.log('🏫 Getting school ID for user:', user);
+      logger.info('Getting school ID for user', { hasUser: !!user });
       
       if (!user) {
-        console.log('❌ No user available');
+        logger.warn('No user available');
         return;
       }
 
       if (user.school_id) {
-        console.log('✅ Found user.school_id:', user.school_id);
+        logger.info('Found user.school_id', { schoolId: user.school_id });
         setSchoolId(user.school_id);
         return;
       }
 
-      console.log('🔍 user.school_id not found, checking school_educators table...');
+      logger.info('user.school_id not found, checking school_educators table');
       
       try {
         const { data, error } = await supabase
@@ -87,17 +89,17 @@ const Verifications: React.FC = () => {
           .maybeSingle();
 
         if (error) {
-          console.error('❌ Error fetching school_id:', error);
+          logger.error('Error fetching school_id', error);
           setSchoolId(undefined);
         } else if (data?.school_id) {
-          console.log('✅ Found school_id from educators table:', data.school_id);
+          logger.info('Found school_id from educators table', { schoolId: data.school_id });
           setSchoolId(data.school_id);
         } else {
-          console.log('❌ No school_id found in educators table');
+          logger.warn('No school_id found in educators table');
           setSchoolId(undefined);
         }
       } catch (err) {
-        console.error('❌ Failed to fetch school_id:', err);
+        logger.error('Failed to fetch school_id', err as Error);
         setSchoolId(undefined);
       }
     };
@@ -123,17 +125,13 @@ const Verifications: React.FC = () => {
     
     setLoading(true);
     try {
-      console.log('🔍 Fetching trainings for school:', schoolId);
+      logger.info('Fetching trainings for school', { schoolId });
       const pendingData = await SchoolAdminNotificationService.getPendingTrainings(schoolId);
-      console.log('📊 Received training data:', pendingData);
+      logger.info('Received training data', { count: pendingData?.length || 0 });
       setPendingTrainings(pendingData || []);
     } catch (error) {
-      console.error('Error fetching training data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load training data",
-        variant: "destructive",
-      });
+      logger.error('Error fetching training data', error as Error);
+      toast.error("Failed to load training data");
     } finally {
       setLoading(false);
     }
@@ -144,45 +142,35 @@ const Verifications: React.FC = () => {
     
     setLoading(true);
     try {
-      console.log('🔍 Fetching experiences for school:', schoolId);
+      logger.info('Fetching experiences for school', { schoolId });
       const pendingData = await SchoolAdminNotificationService.getPendingExperiences(schoolId);
-      console.log('📊 Received experience data:', pendingData);
+      logger.info('Received experience data', { count: pendingData?.length || 0 });
       setPendingExperiences(pendingData || []);
     } catch (error) {
-      console.error('Error fetching experience data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load experience data",
-        variant: "destructive",
-      });
+      logger.error('Error fetching experience data', error as Error);
+      toast.error("Failed to load experience data");
     } finally {
       setLoading(false);
     }
   };
 
   const fetchProjectData = async () => {
-    console.log('🚀 fetchProjectData called, schoolId:', schoolId);
-    console.log('👤 Current user:', user);
+    logger.info('fetchProjectData called', { schoolId, hasUser: !!user });
     
     if (!schoolId) {
-      console.log('❌ No schoolId available, cannot fetch projects');
+      logger.warn('No schoolId available, cannot fetch projects');
       return;
     }
     
     setLoading(true);
     try {
-      console.log('🔍 Fetching projects for school:', schoolId);
+      logger.info('Fetching projects for school', { schoolId });
       const pendingData = await SchoolAdminNotificationService.getPendingProjects(schoolId);
-      console.log('📊 Received project data:', pendingData);
-      console.log('📊 Project count:', pendingData?.length || 0);
+      logger.info('Received project data', { count: pendingData?.length || 0 });
       setPendingProjects(pendingData || []);
     } catch (error) {
-      console.error('❌ Error fetching project data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load project data",
-        variant: "destructive",
-      });
+      logger.error('Error fetching project data', error as Error);
+      toast.error("Failed to load project data");
     } finally {
       setLoading(false);
     }
@@ -194,10 +182,7 @@ const Verifications: React.FC = () => {
       setShowTrainingModal(true);
     } else if (action === 'approved' || action === 'rejected') {
       fetchTrainingData(); // Refresh data
-      toast({
-        title: "Success",
-        description: `Training ${action} successfully!`,
-      });
+      toast.success(`Training ${action} successfully!`);
     }
   };
 
@@ -207,10 +192,7 @@ const Verifications: React.FC = () => {
       setShowExperienceModal(true);
     } else if (action === 'approved' || action === 'rejected') {
       fetchExperienceData(); // Refresh data
-      toast({
-        title: "Success",
-        description: `Experience ${action} successfully!`,
-      });
+      toast.success(`Experience ${action} successfully!`);
     }
   };
 
@@ -220,10 +202,7 @@ const Verifications: React.FC = () => {
       setShowProjectModal(true);
     } else if (action === 'approved' || action === 'rejected') {
       fetchProjectData(); // Refresh data
-      toast({
-        title: "Success",
-        description: `Project ${action} successfully!`,
-      });
+      toast.success(`Project ${action} successfully!`);
     }
   };
 
@@ -254,10 +233,7 @@ const Verifications: React.FC = () => {
       fetchProjectData()
     ]);
     setLoading(false);
-    toast({
-      title: "Refreshed",
-      description: "Data has been refreshed successfully",
-    });
+    toast.success("Data has been refreshed successfully");
   };
 
   // Pagination helper functions

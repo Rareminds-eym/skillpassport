@@ -20,8 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 // Auth & Database
-// @ts-ignore - JS file without type declarations
-import { useAuth } from '../../../context/AuthContext';
+import { useUser, useTour } from '../../../stores';
 // @ts-ignore - JS file without type declarations
 import { useAssessment } from '../../../hooks/useAssessment';
 import { useAdaptiveAptitude } from '../../../hooks/useAdaptiveAptitude';
@@ -89,9 +88,6 @@ import {
   highSchoolAptitudeQuestions,
 } from '../../assessment/data/questions';
 import { supabase } from '@/shared/api';
-
-// Tour context to detect when tour is running
-import { useTour } from '../../../components/Tours/TourProvider';
 
 /**
  * Get icon image path for a section based on section ID
@@ -262,7 +258,7 @@ const buildSectionsWithQuestions = (
  */
 const AssessmentTestPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   
   // Tour hook - check if tour is running to pause timers
   const { isTourRunning } = useTour();

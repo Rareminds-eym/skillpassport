@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../context/AuthContext';
+import { useUser } from '../stores';
 
 // Type assertion for AuthContext
 interface AuthUser {
@@ -62,7 +61,7 @@ export interface ProcessedStudent extends Student {
 }
 
 export const useMentorAllocation = (collegeId: string) => {
-  const { user } = useAuth() as { user: AuthUser | null };
+  const user = useUser() as AuthUser | null;
   
   // Debug logging for college ID
   console.log('🔍 [useMentorAllocation] College ID received:', collegeId);
@@ -180,17 +179,21 @@ export const useMentorAllocation = (collegeId: string) => {
         periodAllocations.forEach(allocation => {
           const student = students.find(s => s.id === allocation.student_id);
           if (student) {
-            // Add intervention count and last interaction from notes
-            const studentNotes = notes.filter(n => n.student_id === student.id && n.mentor_id === mentor.id);
-            const lastNote = studentNotes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-            
-            const processedStudent = {
-              ...student,
-              intervention_count: studentNotes.length,
-              last_interaction: lastNote?.note_date || undefined,
-            };
-            
-            acc[key].students.push(processedStudent);
+            // Check if student is already in the list (prevent duplicates)
+            const alreadyAdded = acc[key].students.some(s => s.id === student.id);
+            if (!alreadyAdded) {
+              // Add intervention count and last interaction from notes
+              const studentNotes = notes.filter(n => n.student_id === student.id && n.mentor_id === mentor.id);
+              const lastNote = studentNotes.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+              
+              const processedStudent = {
+                ...student,
+                intervention_count: studentNotes.length,
+                last_interaction: lastNote?.note_date || undefined,
+              };
+              
+              acc[key].students.push(processedStudent);
+            }
           }
         });
 
@@ -220,7 +223,7 @@ export const useMentorAllocation = (collegeId: string) => {
   // Get unallocated students
   const unallocatedStudents = useMemo(() => {
     const allocatedStudentIds = allocations
-      .filter(allocation => allocation.status === 'active')
+      .filter(allocation => allocation.status === 'active' || allocation.status === 'pending')
       .map(allocation => allocation.student_id);
     
     return students.filter(student => !allocatedStudentIds.includes(student.id));
@@ -294,27 +297,30 @@ export const useMentorAllocation = (collegeId: string) => {
     try {
       // Find the period to determine the correct status
       const period = periods.find(p => p.id === periodId);
-      if (!period) {
-        throw new Error('Period not found');
-      }
-
+      
       // Determine allocation status based on period dates
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const startDate = new Date(period.start_date);
-      startDate.setHours(0, 0, 0, 0);
+      let allocationStatus: 'pending' | 'active' = 'active'; // Default to active
       
-      // If period hasn't started yet, status should be 'pending'
-      // If period has started, status should be 'active'
-      const allocationStatus = today < startDate ? 'pending' : 'active';
-      
-      console.log('🔍 [allocateStudents] Period status check:', {
-        periodId,
-        periodName: period.name,
-        startDate: period.start_date,
-        today: today.toISOString().split('T')[0],
-        status: allocationStatus
-      });
+      if (period) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const startDate = new Date(period.start_date);
+        startDate.setHours(0, 0, 0, 0);
+        
+        // If period hasn't started yet, status should be 'pending'
+        // If period has started, status should be 'active'
+        allocationStatus = today < startDate ? 'pending' : 'active';
+        
+        console.log('🔍 [allocateStudents] Period status check:', {
+          periodId,
+          periodName: period.name,
+          startDate: period.start_date,
+          today: today.toISOString().split('T')[0],
+          status: allocationStatus
+        });
+      } else {
+        console.warn('⚠️ [allocateStudents] Period not in local state, using default status: active');
+      }
 
       const allocationsToCreate = studentIds.map(studentId => ({
         mentor_id: mentorId,

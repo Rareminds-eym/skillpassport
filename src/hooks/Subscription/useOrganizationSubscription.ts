@@ -59,8 +59,6 @@ export function useOrganizationSubscription(
   options: UseOrganizationSubscriptionOptions
 ): UseOrganizationSubscriptionReturn {
   const { organizationId, organizationType, autoFetch = true } = options;
-  // Note: useAuth available for future use when implementing purchase/assign actions
-  useAuth();
   
   const [subscriptions, setSubscriptions] = useState<OrganizationSubscription[]>([]);
   const [licensePools, setLicensePools] = useState<LicensePool[]>([]);

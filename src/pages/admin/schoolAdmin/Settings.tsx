@@ -27,6 +27,9 @@ import {
 import { useEffect, useState } from "react";
 import SearchBar from "../../../components/common/SearchBar";
 import { SubscriptionSettingsSection } from "../../../components/Subscription/SubscriptionSettingsSection";
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-settings');
 // import { supabase } from "../../../supabaseClient";
 
 /* ==============================
@@ -612,7 +615,7 @@ const SystemConfigModal = ({
         .eq("organization_type", "school");
 
       if (error) {
-        console.error("Error updating school:", error);
+        logger.error('Error updating school', error);
         toast.error("Failed to update school information");
         return;
       }
@@ -621,7 +624,7 @@ const SystemConfigModal = ({
       onClose();
       toast.success("School information updated successfully");
     } catch (error) {
-      console.error("Error in handleSubmit:", error);
+      logger.error('Error in handleSubmit', error);
       toast.error("Failed to update school information");
     } finally {
       setSubmitting(false);
@@ -1751,7 +1754,7 @@ const Settings = () => {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        console.error("No authenticated user");
+        logger.error('No authenticated user');
         return;
       }
 
@@ -1779,7 +1782,7 @@ const Settings = () => {
       }
 
       if (!schoolId) {
-        console.error("Could not find school for user:", user.id);
+        logger.error('Could not find school for user', { userId: user.id });
         return;
       }
 
@@ -1793,7 +1796,7 @@ const Settings = () => {
         .maybeSingle(); // Use maybeSingle() to avoid 406 error
 
       if (orgError || !org) {
-        console.error("Error fetching organization:", orgError);
+        logger.error('Error fetching organization', orgError);
         return;
       }
 
@@ -1810,7 +1813,7 @@ const Settings = () => {
         enableBiometric: false,
       });
     } catch (error) {
-      console.error("Error in fetchCurrentSchool:", error);
+      logger.error('Error in fetchCurrentSchool', error);
     } finally {
       setLoading(false);
     }
@@ -1837,7 +1840,7 @@ const Settings = () => {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching educators:", error);
+        logger.error('Error fetching educators', error);
         return;
       }
 
@@ -1854,7 +1857,7 @@ const Settings = () => {
 
       setUsers(mappedUsers);
     } catch (error) {
-      console.error("Error in fetchSchoolEducators:", error);
+      logger.error('Error in fetchSchoolEducators', error);
     }
   };
 
@@ -1870,7 +1873,7 @@ const Settings = () => {
         .order("grade", { ascending: true });
 
       if (error) {
-        console.error("Error fetching classes:", error);
+        logger.error('Error fetching classes', error);
         return;
       }
 
@@ -1883,7 +1886,7 @@ const Settings = () => {
 
       setClasses(mappedClasses);
     } catch (error) {
-      console.error("Error in fetchSchoolClasses:", error);
+      logger.error('Error in fetchSchoolClasses', error);
     }
   };
 
@@ -1899,7 +1902,7 @@ const Settings = () => {
         .order("year", { ascending: false });
 
       if (error) {
-        console.error("Error fetching academic years:", error);
+        logger.error('Error fetching academic years', error);
         return;
       }
 
@@ -1923,7 +1926,7 @@ const Settings = () => {
 
       setAcademicYears(mappedYears);
     } catch (error) {
-      console.error("Error in fetchAcademicYears:", error);
+      logger.error('Error in fetchAcademicYears', error);
     }
   };
 
@@ -1940,7 +1943,7 @@ const Settings = () => {
         .order("display_order", { ascending: true });
 
       if (error) {
-        console.error("Error fetching subjects:", error);
+        logger.error('Error fetching subjects', error);
         return;
       }
 
@@ -1968,7 +1971,7 @@ const Settings = () => {
 
       setSubjects(subjectsWithClasses);
     } catch (error) {
-      console.error("Error in fetchSubjects:", error);
+      logger.error('Error in fetchSubjects', error);
     }
   };
 
@@ -1997,7 +2000,7 @@ const Settings = () => {
         .limit(50);
 
       if (error) {
-        console.error("Error fetching audit logs:", error);
+        logger.error('Error fetching audit logs', error);
         return;
       }
 
@@ -2064,7 +2067,7 @@ const Settings = () => {
 
       setAuditLogs(mappedLogs);
     } catch (error) {
-      console.error("Error in fetchAuditLogs:", error);
+      logger.error('Error in fetchAuditLogs', error);
     }
   };
 
@@ -2084,7 +2087,7 @@ const Settings = () => {
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching role permissions:", error);
+        logger.error('Error fetching role permissions', error);
         return;
       }
 
@@ -2108,7 +2111,7 @@ const Settings = () => {
         await saveRolePermissionsToDb(defaultPermissions);
       }
     } catch (error) {
-      console.error("Error in fetchRolePermissions:", error);
+      logger.error('Error in fetchRolePermissions', error);
     }
   };
 
@@ -2142,7 +2145,7 @@ const Settings = () => {
           .eq("user_id", user.id);
 
         if (error) {
-          console.error("Error updating role permissions:", error);
+          logger.error('Error updating role permissions', error);
         }
       } else {
         // Insert new record
@@ -2158,11 +2161,11 @@ const Settings = () => {
           });
 
         if (error) {
-          console.error("Error inserting role permissions:", error);
+          logger.error('Error inserting role permissions', error);
         }
       }
     } catch (error) {
-      console.error("Error in saveRolePermissionsToDb:", error);
+      logger.error('Error in saveRolePermissionsToDb', error);
     }
   };
 
@@ -2182,7 +2185,7 @@ const Settings = () => {
         .maybeSingle();
 
       if (error) {
-        console.error("Error fetching notification settings:", error);
+        logger.error('Error fetching notification settings', error);
         return;
       }
 
@@ -2233,7 +2236,7 @@ const Settings = () => {
         await saveNotificationSettingsToDb(defaultSettings);
       }
     } catch (error) {
-      console.error("Error in fetchNotificationSettings:", error);
+      logger.error('Error in fetchNotificationSettings', error);
     }
   };
 
@@ -2267,7 +2270,7 @@ const Settings = () => {
           .eq("user_id", user.id);
 
         if (error) {
-          console.error("Error updating notification settings:", error);
+          logger.error('Error updating notification settings', error);
         }
       } else {
         // Insert new record
@@ -2283,11 +2286,11 @@ const Settings = () => {
           });
 
         if (error) {
-          console.error("Error inserting notification settings:", error);
+          logger.error('Error inserting notification settings', error);
         }
       }
     } catch (error) {
-      console.error("Error in saveNotificationSettingsToDb:", error);
+      logger.error('Error in saveNotificationSettingsToDb', error);
     }
   };
 
@@ -2404,7 +2407,7 @@ const Settings = () => {
           .eq("id", user.id);
 
         if (error) {
-          console.error("Error updating educator:", error);
+          logger.error('Error updating educator', error);
           toast.error("Failed to update user");
           return;
         }
@@ -2416,7 +2419,7 @@ const Settings = () => {
         toast.error("Creating new users requires additional setup. Please use the user management system.");
       }
     } catch (error) {
-      console.error("Error saving user:", error);
+      logger.error('Error saving user', error);
       toast.error("Failed to save user");
     }
   };
@@ -2437,7 +2440,7 @@ const Settings = () => {
         .eq("id", userId);
 
       if (error) {
-        console.error("Error updating user status:", error);
+        logger.error('Error updating user status', error);
         toast.error("Failed to update user status");
         return;
       }
@@ -2450,7 +2453,7 @@ const Settings = () => {
       }));
       toast.success(`User status updated to ${newStatus}`);
     } catch (error) {
-      console.error("Error in handleToggleUserStatus:", error);
+      logger.error('Error in handleToggleUserStatus', error);
       toast.error("Failed to update user status");
     }
   };
@@ -2483,7 +2486,7 @@ const Settings = () => {
           .eq("id", year.id);
 
         if (error) {
-          console.error("Error updating academic year:", error);
+          logger.error('Error updating academic year', error);
           toast.error("Failed to update academic year");
           return;
         }
@@ -2506,7 +2509,7 @@ const Settings = () => {
           .single();
 
         if (error) {
-          console.error("Error creating academic year:", error);
+          logger.error('Error creating academic year', error);
           toast.error("Failed to create academic year");
           return;
         }
@@ -2515,7 +2518,7 @@ const Settings = () => {
         toast.success("Academic year created successfully");
       }
     } catch (error) {
-      console.error("Error saving academic year:", error);
+      logger.error('Error saving academic year', error);
       toast.error("Failed to save academic year");
     }
   };
@@ -2537,7 +2540,7 @@ const Settings = () => {
         .eq("id", yearId);
 
       if (error) {
-        console.error("Error activating academic year:", error);
+        logger.error('Error activating academic year', error);
         toast.error("Failed to activate academic year");
         return;
       }
@@ -2548,7 +2551,7 @@ const Settings = () => {
       })));
       toast.success("Academic year activated successfully");
     } catch (error) {
-      console.error("Error in handleActivateAcademicYear:", error);
+      logger.error('Error in handleActivateAcademicYear', error);
       toast.error("Failed to activate academic year");
     }
   };
@@ -2563,7 +2566,7 @@ const Settings = () => {
         .eq("id", yearId);
 
       if (error) {
-        console.error("Error deleting academic year:", error);
+        logger.error('Error deleting academic year', error);
         toast.error("Failed to delete academic year");
         return;
       }
@@ -2571,7 +2574,7 @@ const Settings = () => {
       setAcademicYears(academicYears.filter((y) => y.id !== yearId));
       toast.success("Academic year deleted successfully");
     } catch (error) {
-      console.error("Error in handleDeleteAcademicYear:", error);
+      logger.error('Error in handleDeleteAcademicYear', error);
       toast.error("Failed to delete academic year");
     }
   };
@@ -2649,7 +2652,7 @@ const Settings = () => {
           .eq("id", cls.id);
 
         if (error) {
-          console.error("Error updating class:", error);
+          logger.error('Error updating class', error);
           toast.error("Failed to update class");
           return;
         }
@@ -2673,7 +2676,7 @@ const Settings = () => {
           .select();
 
         if (error) {
-          console.error("Error creating class:", error);
+          logger.error('Error creating class', error);
           toast.error("Failed to create class");
           return;
         }
@@ -2683,7 +2686,7 @@ const Settings = () => {
         toast.success("Class created successfully");
       }
     } catch (error) {
-      console.error("Error saving class:", error);
+      logger.error('Error saving class', error);
       toast.error("Failed to save class");
     }
   };
@@ -2698,7 +2701,7 @@ const Settings = () => {
         .eq("id", classId);
 
       if (error) {
-        console.error("Error deleting class:", error);
+        logger.error('Error deleting class', error);
         toast.error("Failed to delete class");
         return;
       }
@@ -2710,7 +2713,7 @@ const Settings = () => {
       })));
       toast.success("Class deleted successfully");
     } catch (error) {
-      console.error("Error in handleDeleteClass:", error);
+      logger.error('Error in handleDeleteClass', error);
       toast.error("Failed to delete class");
     }
   };
@@ -2742,7 +2745,7 @@ const Settings = () => {
           .eq("id", subject.id);
 
         if (error) {
-          console.error("Error updating subject:", error);
+          logger.error('Error updating subject', error);
           toast.error("Failed to update subject");
           return;
         }
@@ -2764,7 +2767,7 @@ const Settings = () => {
           .single();
 
         if (error) {
-          console.error("Error creating subject:", error);
+          logger.error('Error creating subject', error);
           toast.error("Failed to create subject");
           return;
         }
@@ -2773,7 +2776,7 @@ const Settings = () => {
         toast.success("Subject created successfully");
       }
     } catch (error) {
-      console.error("Error saving subject:", error);
+      logger.error('Error saving subject', error);
       toast.error("Failed to save subject");
     }
   };
@@ -2792,7 +2795,7 @@ const Settings = () => {
         .eq("id", subjectId);
 
       if (error) {
-        console.error("Error deleting subject:", error);
+        logger.error('Error deleting subject', error);
         toast.error("Failed to delete subject");
         return;
       }
@@ -2800,7 +2803,7 @@ const Settings = () => {
       setSubjects(subjects.filter((s) => s.id !== subjectId));
       toast.success("Subject deleted successfully");
     } catch (error) {
-      console.error("Error in handleDeleteSubject:", error);
+      logger.error('Error in handleDeleteSubject', error);
       toast.error("Failed to delete subject");
     }
   };

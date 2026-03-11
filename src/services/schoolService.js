@@ -1,4 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('school-service');
 
 /**
  * School Service
@@ -52,7 +55,7 @@ export const createSchool = async (schoolData, userId = null) => {
             .single();
 
         if (error) {
-            console.error('❌ Error creating school:', error);
+            logger.error('Error creating school', error, { schoolName: schoolData.name });
             return {
                 success: false,
                 data: null,
@@ -66,7 +69,7 @@ export const createSchool = async (schoolData, userId = null) => {
             error: null
         };
     } catch (error) {
-        console.error('❌ Unexpected error creating school:', error);
+        logger.error('Unexpected error creating school', error);
         return {
             success: false,
             data: null,
@@ -90,7 +93,7 @@ export const checkSchoolCode = async (name) => {
             .maybeSingle();
 
         if (error) {
-            console.error('Error checking school name:', error);
+            logger.error('Error checking school name', error, { name });
             return { isUnique: false, error: error.message };
         }
 
@@ -99,7 +102,7 @@ export const checkSchoolCode = async (name) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error checking school name:', error);
+        logger.error('Unexpected error checking school name', error);
         return { isUnique: false, error: error.message };
     }
 };
@@ -119,7 +122,7 @@ export const getSchoolByOwner = async (userId) => {
             .maybeSingle();
 
         if (error) {
-            console.error('Error fetching school by owner:', error);
+            logger.error('Error fetching school by owner', error, { userId });
             return {
                 success: false,
                 data: null,
@@ -133,7 +136,7 @@ export const getSchoolByOwner = async (userId) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching school by owner:', error);
+        logger.error('Unexpected error fetching school by owner', error, { userId });
         return {
             success: false,
             data: null,
@@ -157,7 +160,7 @@ export const getSchoolById = async (schoolId) => {
             .single();
 
         if (error) {
-            console.error('Error fetching school by ID:', error);
+            logger.error('Error fetching school by ID', error, { schoolId });
             return {
                 success: false,
                 data: null,
@@ -171,7 +174,7 @@ export const getSchoolById = async (schoolId) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching school by ID:', error);
+        logger.error('Unexpected error fetching school by ID', error, { schoolId });
         return {
             success: false,
             data: null,
@@ -193,7 +196,7 @@ export const getAllSchools = async () => {
             .order('name');
 
         if (error) {
-            console.error('Error fetching schools:', error);
+            logger.error('Error fetching schools', error);
             return {
                 success: false,
                 data: null,
@@ -207,7 +210,7 @@ export const getAllSchools = async () => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching schools:', error);
+        logger.error('Unexpected error fetching schools', error);
         return {
             success: false,
             data: null,
@@ -231,7 +234,7 @@ export const getSchoolByEmail = async (email) => {
             .maybeSingle();
 
         if (error) {
-            console.error('Error fetching school by email:', error);
+            logger.error('Error fetching school by email', error, { email });
             return {
                 success: false,
                 data: null,
@@ -245,7 +248,7 @@ export const getSchoolByEmail = async (email) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching school by email:', error);
+        logger.error('Unexpected error fetching school by email', error, { email });
         return {
             success: false,
             data: null,

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   AlertCircle,
   Bell,
@@ -12,7 +13,7 @@ import {
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { useAuth } from "../../../../context/AuthContext";
+import { useUser } from "../../../../stores";
 import { useStudentSettings } from "../../../../hooks/useStudentSettings";
 import { useStudentDataByEmail } from "../../../../hooks/useStudentDataByEmail";
 import { useStudentCertificates } from "../../../../hooks/useStudentCertificates";
@@ -30,7 +31,7 @@ import {
   CertificatesEditModal, 
   ProjectsEditModal 
 } from "../ProfileEditModals";
-import { useToast } from "../../../../hooks/use-toast";
+import toast from 'react-hot-toast';
 import useStudentMessageNotifications from "../../../../hooks/useStudentMessageNotifications";
 import { useStudentUnreadCount } from "../../../../hooks/useStudentMessages";
 import { useStudentRealtimeActivities } from "../../../../hooks/useStudentRealtimeActivities";
@@ -45,8 +46,8 @@ import NotificationsTab from "./NotificationsTab";
 import PrivacyTab from "./PrivacyTab";
 
 const MainSettings = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const user = useUser();
+  const location = useLocation();
   const userEmail = user?.email;
   const recentUpdatesRef = useRef(null);
 
@@ -158,19 +159,17 @@ const MainSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const savingRef = useRef(false);
 
+  // Handle navigation state to set active tab
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
+
   // Education management state - now using real data from dedicated table
   const educationData = Array.isArray(tableEducation) && tableEducation.length > 0 
     ? tableEducation 
     : studentDataWithEducation?.education || [];
-  
-  // Debug: Log education data source
-  console.log('🔍 MainSettings - Education data source:', {
-    tableEducationLength: tableEducation?.length || 0,
-    tableEducation: tableEducation,
-    fallbackLength: (studentDataWithEducation?.education || []).length,
-    usingTableData: Array.isArray(tableEducation) && tableEducation.length > 0,
-    finalEducationData: educationData
-  });
   
   const [showEducationModal, setShowEducationModal] = useState(false);
 
@@ -340,6 +339,7 @@ const MainSettings = () => {
         university: studentData.university || "",
         branch: studentData.branch || "",
         college: studentData.college || "",
+        schoolName: studentData.schoolName || "",
         registrationNumber: studentData.registrationNumber || "",
         enrollmentNumber: studentData.enrollmentNumber || "",
         currentCgpa: studentData.currentCgpa || "",
@@ -380,19 +380,27 @@ const MainSettings = () => {
       });
 
       // Detect custom entries (B2C students) and show custom input fields
-      // Check if it's a school path (has schoolId or schoolClassId) vs university path
-      const isSchoolPath = studentData.schoolId || studentData.schoolClassId || (!studentData.universityId && !studentData.universityCollegeId && !studentData.programId);
-      const isUniversityPath = studentData.universityId || studentData.universityCollegeId || studentData.programId;
+      // Determine student type from role
+      const userRole = studentData?.userRole;
+      const isSchoolStudent = userRole === 'school_student';
+      const isCollegeStudent = userRole === 'college_student';
       
-      // Custom school name (stored in college field when no schoolId)
-      if (studentData.college && !studentData.schoolId && !isUniversityPath) {
+      // Check if it's a school path (has schoolId or schoolClassId) vs university path
+      // For role-based detection, also consider the role itself
+      const hasSchoolData = studentData.schoolId || studentData.schoolClassId || studentData.schoolName;
+      const hasUniversityData = studentData.universityId || studentData.universityCollegeId || studentData.programId || studentData.university || studentData.college;
+      const isSchoolPath = hasSchoolData || (isSchoolStudent && !hasUniversityData);
+      const isUniversityPath = hasUniversityData || (isCollegeStudent && !hasSchoolData);
+      
+      // Custom school name (for school students, stored in schoolName field)
+      if (isSchoolStudent && studentData.schoolName && (!studentData.schoolId || studentData.schoolId === '')) {
         setShowCustomSchool(true);
-        setCustomSchoolName(studentData.college);
+        setCustomSchoolName(studentData.schoolName);
       }
       
       // Custom school class - derive from grade field, NOT from section
       // Section field should remain independent for roll numbers
-      if (studentData.grade && !studentData.schoolClassId && (studentData.schoolId || studentData.college) && !isUniversityPath) {
+      if (studentData.grade && (!studentData.schoolClassId || studentData.schoolClassId === '') && (studentData.schoolId || studentData.schoolName) && !isUniversityPath) {
         // Extract numeric grade from grade field (e.g., "Grade 10" -> "10")
         const gradeMatch = studentData.grade.match(/Grade\s*(\d+)/i);
         if (gradeMatch) {
@@ -401,26 +409,47 @@ const MainSettings = () => {
         }
       }
       
-      // Custom college name (only for university path)
-      if (studentData.college && !studentData.universityCollegeId && isUniversityPath) {
-        setShowCustomCollege(true);
-        setCustomCollegeName(studentData.college);
-      }
-      
       // Custom university name
-      if (studentData.university && !studentData.universityId) {
+      console.log('🔍 Checking university:', {
+        university: studentData.university,
+        universityId: studentData.universityId,
+        shouldShow: studentData.university && (!studentData.universityId || studentData.universityId === '')
+      });
+      if (studentData.university && (!studentData.universityId || studentData.universityId === '')) {
         setShowCustomUniversity(true);
         setCustomUniversityName(studentData.university);
+        console.log('✅ Set custom university:', studentData.university);
+      }
+      
+      // Custom college name (for college students, stored in college field)
+      // Check after university to ensure university path is established
+      console.log('🔍 Checking college:', {
+        isCollegeStudent,
+        college: studentData.college,
+        universityCollegeId: studentData.universityCollegeId,
+        shouldShow: isCollegeStudent && studentData.college && (!studentData.universityCollegeId || studentData.universityCollegeId === '')
+      });
+      if (isCollegeStudent && studentData.college && (!studentData.universityCollegeId || studentData.universityCollegeId === '')) {
+        setShowCustomCollege(true);
+        setCustomCollegeName(studentData.college);
+        console.log('✅ Set custom college:', studentData.college);
+        
+        // IMPORTANT: If there's a custom college but no university, enable custom university input
+        // This allows B2C college students to enter both custom college and custom university
+        if (!studentData.university && !studentData.universityId) {
+          console.log('🔓 Enabling custom university input for custom college');
+          setShowCustomUniversity(true);
+        }
       }
       
       // Custom program name
-      if (studentData.branch && !studentData.programId) {
+      if (studentData.branch && (!studentData.programId || studentData.programId === '')) {
         setShowCustomProgram(true);
         setCustomProgramName(studentData.branch);
       }
       
       // Custom semester (only for university path)
-      if (studentData.section && !studentData.programSectionId && isUniversityPath) {
+      if (studentData.section && (!studentData.programSectionId || studentData.programSectionId === '') && isUniversityPath) {
         setShowCustomSemester(true);
         setCustomSemesterName(studentData.section);
       }
@@ -493,10 +522,7 @@ const MainSettings = () => {
         return;
       }
       
-      toast({
-        title: `Add New ${typeMap[field]}`,
-        description: `Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`,
-      });
+      toast.success(`Please contact your administrator to add a new ${typeMap[field].toLowerCase()}.`);
       return;
     }
     
@@ -552,10 +578,7 @@ const MainSettings = () => {
         
         setShowEducationModal(false);
         
-        toast({
-          title: "Success",
-          description: "Education updated successfully",
-        });
+        toast.success("Education updated successfully");
         
         try {
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
@@ -571,11 +594,7 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error saving education:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save education",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save education");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -597,20 +616,13 @@ const MainSettings = () => {
           await refreshSoftSkills();
         }
         
-        toast({
-          title: "Success",
-          description: "Soft skills updated successfully",
-        });
+        toast.success("Soft skills updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update soft skills');
       }
     } catch (error) {
       console.error('❌ Error saving soft skills:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save soft skills",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save soft skills");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -641,20 +653,13 @@ const MainSettings = () => {
           await refreshTechnicalSkills();
         }
         
-        toast({
-          title: "Success",
-          description: "Technical skills updated successfully",
-        });
+        toast.success("Technical skills updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update technical skills');
       }
     } catch (error) {
       console.error('❌ Error saving technical skills:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save technical skills",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save technical skills");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -682,20 +687,13 @@ const MainSettings = () => {
         
         setShowExperienceModal(false);
         
-        toast({
-          title: "Success",
-          description: "Experience updated successfully",
-        });
+        toast.success("Experience updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update experience');
       }
     } catch (error) {
       console.error('❌ Error saving experience:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save experience",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save experience");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -741,20 +739,13 @@ const MainSettings = () => {
           refreshProjects();
         }
         
-        toast({
-          title: "Success",
-          description: "Projects updated successfully",
-        });
+        toast.success("Projects updated successfully");
       } else {
         throw new Error(result.error || 'Failed to update projects');
       }
     } catch (error) {
       console.error('❌ Error saving projects:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to save projects",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to save projects");
       return { success: false, error: error.message };
     } finally {
       setIsSaving(false);
@@ -770,12 +761,7 @@ const MainSettings = () => {
     
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
-      toast({ 
-        title: "Cannot Hide/Show", 
-        description: "You cannot hide or show skills that are pending verification or approval.",
-        variant: "destructive",
-        duration: 4000,
-      });
+      toast.error("You cannot hide or show skills that are pending verification or approval.", { duration: 4000 });
       return;
     }
     
@@ -800,18 +786,10 @@ const MainSettings = () => {
         await refreshTechnicalSkills();
       }
       
-      toast({ 
-        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
-        description: `Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
-        duration: 3000,
-      });
+      toast.success(`Technical skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
     } catch (error) {
       console.error('Error toggling technical skill visibility:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to update visibility. Please try again.", 
-        variant: "destructive" 
-      });
+      toast.error("Failed to update visibility. Please try again.");
     }
   };
 
@@ -824,12 +802,7 @@ const MainSettings = () => {
     
     // Don't allow hiding/showing items that are pending verification or approval
     if (skill.approval_status === 'pending' || skill._hasPendingEdit) {
-      toast({ 
-        title: "Cannot Hide/Show", 
-        description: "You cannot hide or show skills that are pending verification or approval.",
-        variant: "destructive",
-        duration: 4000,
-      });
+      toast.error("You cannot hide or show skills that are pending verification or approval.", { duration: 4000 });
       return;
     }
     
@@ -854,18 +827,10 @@ const MainSettings = () => {
         await refreshSoftSkills();
       }
       
-      toast({ 
-        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
-        description: `Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
-        duration: 3000,
-      });
+      toast.success(`Soft skill ${newState ? 'is now visible' : 'is now hidden'} on your profile.`, { duration: 3000 });
     } catch (error) {
       console.error('Error toggling soft skill visibility:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to update visibility. Please try again.", 
-        variant: "destructive" 
-      });
+      toast.error("Failed to update visibility. Please try again.");
     }
   };
 
@@ -874,20 +839,12 @@ const MainSettings = () => {
     // Validate Aadhar number before saving (only if it has a value and is not empty)
     if (profileData.aadharNumber && profileData.aadharNumber.trim() !== '') {
       if (profileData.aadharNumber.length !== 12) {
-        toast({
-          title: "Validation Error",
-          description: "Aadhar number must be exactly 12 digits",
-          variant: "destructive",
-        });
+        toast.error("Aadhar number must be exactly 12 digits");
         return;
       }
       
       if (profileData.aadharNumber.startsWith('0') || profileData.aadharNumber.startsWith('1')) {
-        toast({
-          title: "Validation Error",
-          description: "Aadhar number cannot start with 0 or 1",
-          variant: "destructive",
-        });
+        toast.error("Aadhar number cannot start with 0 or 1");
         return;
       }
     }
@@ -895,10 +852,7 @@ const MainSettings = () => {
     setIsSaving(true);
     try {
       await updateProfile(profileData);
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      });
+      toast.success("Profile updated successfully");
       
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
         detail: { type: 'profile_updated', data: profileData }
@@ -913,11 +867,7 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error updating profile:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update profile",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
@@ -974,51 +924,31 @@ const MainSettings = () => {
   const handleSaveAdditionalInfo = async () => {
     setIsSaving(true);
     
-    // Merge custom institution fields into profileData before saving
-    const dataToSave = { ...profileData };
-    
-    if (showCustomProgram && customProgramName) {
-      dataToSave.branch = customProgramName;
-      dataToSave.programId = null;
-    }
-    
-    if (showCustomCollege && customCollegeName) {
-      dataToSave.college = customCollegeName;
-      dataToSave.universityCollegeId = null;
-    }
-    
-    if (showCustomUniversity && customUniversityName) {
-      dataToSave.university = customUniversityName;
-      dataToSave.universityId = null;
-    }
-    
-    if (showCustomSchool && customSchoolName) {
-      dataToSave.college = customSchoolName;
-      dataToSave.schoolId = null;
-    }
-    
-    if (showCustomSemester && customSemesterName) {
-      dataToSave.section = customSemesterName;
-      dataToSave.programSectionId = null;
-    }
-    
-    if (showCustomSchoolClass && customSchoolClassName) {
-      // Don't store custom class in section field - section should remain independent
-      dataToSave.schoolClassId = null;
-      // Only update grade based on custom class, not section
-    }
+    // Only send fields relevant to Additional Info tab
+    const additionalInfoFields = {
+      aadharNumber: profileData.aadharNumber,
+      gapInStudies: profileData.gapInStudies,
+      gapYears: profileData.gapYears,
+      gapReason: profileData.gapReason,
+      workExperience: profileData.workExperience,
+      currentBacklogs: profileData.currentBacklogs,
+      backlogsHistory: profileData.backlogsHistory,
+      interests: profileData.interests,
+      languages: profileData.languages,
+      hobbies: profileData.hobbies,
+    };
 
     const result = await safeSave(
-      () => updateProfile(dataToSave),
+      () => updateProfile(additionalInfoFields),
       {
         section: 'additional',
         action: 'update_additional_info',
         validationFields: ['aadhar'],
-        data: dataToSave,
+        data: additionalInfoFields,
         toast,
         onSuccess: () => {
           window.dispatchEvent(new CustomEvent('student_settings_updated', {
-            detail: { type: 'profile_updated', data: dataToSave }
+            detail: { type: 'profile_updated', data: additionalInfoFields }
           }));
           
           if (refreshRecentUpdates && typeof refreshRecentUpdates === 'function') {
@@ -1040,6 +970,11 @@ const MainSettings = () => {
     
     try {
       const dataToSave = { ...profileData };
+      
+      // Determine student type from role
+      const userRole = studentData?.userRole;
+      const isSchoolStudent = userRole === 'school_student';
+      const isCollegeStudent = userRole === 'college_student';
       
       // Determine which path the student is on
       const isUniversityPath = dataToSave.universityId || showCustomUniversity || customUniversityName || 
@@ -1100,7 +1035,7 @@ const MainSettings = () => {
         dataToSave.programId = null;
       }
       
-      // Custom college name → college field
+      // Custom college name → college field (for college students)
       if (showCustomCollege && customCollegeName) {
         dataToSave.college = customCollegeName;
         dataToSave.universityCollegeId = null;
@@ -1112,7 +1047,8 @@ const MainSettings = () => {
         dataToSave.universityId = null;
       }
       
-      // Custom school name → college field (school uses same field)
+      // Custom school name → college field (for school students)
+      // The college_school_name column is shared between school and college students
       if (showCustomSchool && customSchoolName) {
         dataToSave.college = customSchoolName;
         dataToSave.schoolId = null;
@@ -1126,27 +1062,61 @@ const MainSettings = () => {
         // Auto-detect year from semester and update grade for university students
         const lowerSemester = customSemesterName.toLowerCase();
         let yearNumber = null;
+        let semesterNumber = null;
+        let validationError = null;
         
         // Check for patterns like "1st year", "2nd year", "3rd year", "4th year"
         const yearMatch = lowerSemester.match(/(\d+)(?:st|nd|rd|th)?\s*year/);
         if (yearMatch) {
           yearNumber = parseInt(yearMatch[1]);
+          
+          // Validate year based on program type
+          if (dataToSave.grade && dataToSave.grade.includes('UG') && yearNumber > 5) {
+            validationError = 'UG programs typically have max 5 years (10 semesters)';
+          } else if (dataToSave.grade && dataToSave.grade.includes('PG') && yearNumber > 2) {
+            validationError = 'PG programs typically have max 2 years (4 semesters)';
+          }
         } else {
           // Check for semester numbers and convert to year
           const semMatch = lowerSemester.match(/(?:semester|sem)?\s*(\d+)/);
           if (semMatch) {
-            const semNumber = parseInt(semMatch[1]);
-            yearNumber = Math.ceil(semNumber / 2);
+            semesterNumber = parseInt(semMatch[1]);
+            
+            // Validate semester based on program type
+            if (dataToSave.grade && dataToSave.grade.includes('UG') && semesterNumber > 10) {
+              validationError = 'UG programs typically have max 10 semesters';
+            } else if (dataToSave.grade && dataToSave.grade.includes('PG') && semesterNumber > 4) {
+              validationError = 'PG programs typically have max 4 semesters';
+            } else if (dataToSave.grade && dataToSave.grade.includes('Diploma') && semesterNumber > 6) {
+              validationError = 'Diploma programs typically have max 6 semesters';
+            }
+            
+            yearNumber = Math.ceil(semesterNumber / 2);
           }
         }
         
-        // Update grade based on detected year and current program type
+        // Show validation error if semester/year is invalid
+        if (validationError) {
+          toast.error(validationError);
+          return; // Don't save if validation fails
+        }
+        
+        // Update grade based on detected year and current program type (only if no validation error)
         if (yearNumber && dataToSave.grade) {
+          let newGrade = '';
           if (dataToSave.grade.includes('UG')) {
-            dataToSave.grade = `UG Year ${yearNumber}`;
+            newGrade = `UG Year ${yearNumber}`;
           } else if (dataToSave.grade.includes('PG')) {
-            dataToSave.grade = `PG Year ${yearNumber}`;
+            newGrade = `PG Year ${yearNumber}`;
           }
+          
+          // Validate grade length (database limit is 10 characters)
+          if (newGrade && newGrade.length > 10) {
+            toast.error("Grade value is too long. Please use shorter format (max 10 characters).");
+            return;
+          }
+          
+          dataToSave.grade = newGrade;
         }
       }
       
@@ -1176,10 +1146,7 @@ const MainSettings = () => {
       }
       
       await updateProfile(dataToSave);
-      toast({
-        title: "Success",
-        description: "Institution details updated successfully",
-      });
+      toast.success("Institution details updated successfully");
       
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
         detail: { type: 'profile_updated', data: dataToSave }
@@ -1194,11 +1161,7 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error updating institution details:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update institution details",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to update institution details");
     } finally {
       setIsSaving(false);
     }
@@ -1217,10 +1180,7 @@ const MainSettings = () => {
       };
       
       await updateProfile(academicFields);
-      toast({
-        title: "Success",
-        description: "Academic details updated successfully",
-      });
+      toast.success("Academic details updated successfully");
       
       window.dispatchEvent(new CustomEvent('student_settings_updated', {
         detail: { type: 'profile_updated', data: academicFields }
@@ -1235,11 +1195,7 @@ const MainSettings = () => {
       }
     } catch (error) {
       console.error('❌ Error updating academic details:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update academic details",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to update academic details");
     } finally {
       setIsSaving(false);
     }
@@ -1325,47 +1281,27 @@ const MainSettings = () => {
   const handleSavePassword = async () => {
     // Validation
     if (!passwordData.currentPassword) {
-      toast({
-        title: "Error",
-        description: "Please enter your current password",
-        variant: "destructive",
-      });
+      toast.error("Please enter your current password");
       return;
     }
 
     if (!passwordData.newPassword) {
-      toast({
-        title: "Error",
-        description: "Please enter a new password",
-        variant: "destructive",
-      });
+      toast.error("Please enter a new password");
       return;
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords do not match",
-        variant: "destructive",
-      });
+      toast.error("New passwords do not match");
       return;
     }
 
     if (passwordData.newPassword.length < 8) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 8 characters long",
-        variant: "destructive",
-      });
+      toast.error("Password must be at least 8 characters long");
       return;
     }
 
     if (passwordData.newPassword === passwordData.currentPassword) {
-      toast({
-        title: "Error",
-        description: "New password must be different from current password",
-        variant: "destructive",
-      });
+      toast.error("New password must be different from current password");
       return;
     }
 
@@ -1481,10 +1417,7 @@ const MainSettings = () => {
         }
       }
       
-      toast({
-        title: "Success",
-        description: "Profile auto-filled from resume successfully!",
-      });
+      toast.success("Profile auto-filled from resume successfully!");
       
       setShowResumeParser(false);
       
@@ -1496,11 +1429,7 @@ const MainSettings = () => {
         console.warn('Could not refresh recent updates:', refreshError);
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to auto-fill profile from resume. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to auto-fill profile from resume. Please try again.");
     }
   };
 
@@ -1657,6 +1586,7 @@ const MainSettings = () => {
                 handleProfileChange={handleProfileChange}
                 handleInstitutionChange={handleInstitutionChange}
                 isSaving={isSaving}
+                initialActiveSubTab={location.state?.activeSubTab}
                 // Tab-specific save handlers
                 handleSavePersonalInfo={handleSavePersonalInfo}
                 handleSaveAdditionalInfo={handleSaveAdditionalInfo}

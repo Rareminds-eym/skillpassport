@@ -83,13 +83,13 @@ const getStatusColor = (status) => {
 const getMeetingTypeIcon = (type) => {
   switch (type) {
     case 'teams':
-      return '👥';
+      return '';
     case 'meet':
-      return '📹';
+      return '';
     case 'zoom':
-      return '🎥';
+      return '';
     default:
-      return '📞';
+      return '';
   }
 };
 
@@ -148,7 +148,7 @@ const ScorecardModal = ({ interview, isOpen, onClose, onSave }) => {
       onSave(updatedInterview);
       onClose();
     } catch (error) {
-      console.error('Error saving scorecard:', error);
+      logger.error('Error saving scorecard', error);
       alert('Failed to save scorecard. Please try again.');
     }
   };
@@ -573,7 +573,7 @@ const CandidateSearchDropdown = ({
 };
 
 const Interviews = () => {
-  const { user } = useAuth(); // ✅ Get auth user
+  const user = useUser();
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -585,7 +585,7 @@ const Interviews = () => {
   const [viewMode, setViewMode] = useState('list');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // ✅ Get recruiter ID from user or localStorage
+  // Get recruiter ID from user or localStorage
   const getRecruiterId = () => {
     if (user?.id || user?.recruiter_id) {
       return user.id || user.recruiter_id;
@@ -620,7 +620,7 @@ const Interviews = () => {
 
       setInterviews(formattedData);
     } catch (error) {
-      console.error('Error fetching interviews:', error);
+      logger.error('Error fetching interviews', error);
       alert('Failed to load interviews');
     } finally {
       setLoading(false);
@@ -661,7 +661,7 @@ const Interviews = () => {
       setCandidates(formattedCandidates);
       setCandidatesLoaded(true);
     } catch (error) {
-      console.error('Error fetching candidates:', error);
+      logger.error('Error fetching candidates', error);
     } finally {
       setCandidatesLoading(false);
     }
@@ -669,17 +669,17 @@ const Interviews = () => {
 
   useEffect(() => {
     fetchInterviews();
-    // ⚡ Candidates data only fetched when schedule modal opens - performance optimization
+    // Candidates data only fetched when schedule modal opens - performance optimization
   }, []);
 
-  // ✅ Handle saving scorecard with notification
+  // Handle saving scorecard with notification
   const handleSaveScorecard = async (updatedInterview: Interview) => {
     try {
       setInterviews(prev => prev.map(interview =>
         interview.id === updatedInterview.id ? updatedInterview : interview
       ));
 
-      // ✅ Create notification when scorecard is completed
+      // Create notification when scorecard is completed
       const recruiterId = getRecruiterId();
       if (recruiterId) {
         const recommendation = updatedInterview.scorecard?.recommendation || 'N/A';
@@ -693,7 +693,7 @@ const Interviews = () => {
         );
       }
     } catch (error) {
-      console.error('Error updating interview:', error);
+      logger.error('Error updating interview', error);
     }
   };
 
@@ -703,13 +703,13 @@ const Interviews = () => {
     }
   };
 
-  // ✅ Handle sending reminder with notification
+  // Handle sending reminder with notification
   const handleSendReminder = async (interview: Interview) => {
     try {
       const { data, error } = await sendReminder(interview.id);
 
       if (error) {
-        console.error('Reminder error received:', error);
+        logger.error('Reminder error received', error);
         throw error;
       }
 
@@ -721,7 +721,7 @@ const Interviews = () => {
 
       alert(`Interview reminder sent successfully to ${interview.candidate_name}!`);
 
-      // ✅ Create notification for reminder sent
+      // Create notification for reminder sent
       const recruiterId = getRecruiterId();
       if (recruiterId) {
         await createNotification(
@@ -732,7 +732,7 @@ const Interviews = () => {
         );
       }
     } catch (error) {
-      console.error('Error sending reminder:', error);
+      logger.error('Error sending reminder', error);
       const errorMessage = error?.message || error?.error?.message || 'Unknown error';
       alert(`Failed to send reminder: ${errorMessage}\n\nCheck console for details.`);
     }
@@ -942,7 +942,7 @@ const Interviews = () => {
 };
 
 const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen, candidatesLoading }) => {
-  const { user } = useAuth(); // ✅ Get auth user
+  const user = useUser();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [candidateSearch, setCandidateSearch] = useState('');
@@ -1088,7 +1088,7 @@ const ScheduleInterviewModal = ({ isOpen, onClose, onSuccess, candidates, onOpen
       setCandidateSearch('');
       setSelectedCandidate(null);
     } catch (err) {
-      console.error('Error scheduling interview:', err);
+      logger.error('Error scheduling interview', err);
       setError(err.message);
     } finally {
       setLoading(false);

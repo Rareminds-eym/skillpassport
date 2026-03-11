@@ -6,6 +6,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('organization-helper');
 
 export type OrganizationType = 'school' | 'college' | 'university';
 
@@ -37,7 +40,7 @@ export async function getCurrentUserOrganizationId(
       .maybeSingle();
 
     if (error) {
-      console.error(`[organizationHelper] Error fetching ${organizationType}:`, error);
+      logger.error(`Error fetching ${organizationType}`, error as Error);
       return { id: null, name: null, error: error.message };
     }
 
@@ -47,7 +50,7 @@ export async function getCurrentUserOrganizationId(
 
     return { id: null, name: null, error: null };
   } catch (err) {
-    console.error('[organizationHelper] Unexpected error:', err);
+    logger.error('Unexpected error in organizationHelper', err as Error);
     return { id: null, name: null, error: 'An unexpected error occurred' };
   }
 }

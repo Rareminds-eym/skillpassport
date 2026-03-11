@@ -16,6 +16,9 @@ import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import toast from "react-hot-toast";
 import * as collegeAssignmentService from "../../services/collegeAssignmentService";
 import { getDocumentUrl, uploadMultipleFiles, deleteFile } from "../../services/fileUploadService";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('CollegeSkillTasks');
 
 // Types
 interface Department {
@@ -165,11 +168,15 @@ export default function CollegeSkillTasks() {
     const [selectedStatus, setSelectedStatus] = useState("all");
     
     // Student selection states
-    const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+    const [assignedStudentIds, setAssignedStudentIds] = useState<string[]>([]);
     const [studentSearchQuery, setStudentSearchQuery] = useState("");
     
     // Get educator information
     const { college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool();
+    
+    // Extract college ID to prevent infinite loop from object reference changes
+    const educatorCollegeId = educatorCollege?.id;
 
     // Form reset effect based on modal mode
     useEffect(() => {
@@ -207,10 +214,10 @@ export default function CollegeSkillTasks() {
 
     // Fetch initial data
     useEffect(() => {
-        if (!schoolLoading && educatorCollege && educatorType === 'college') {
+        if (!schoolLoading && educatorCollegeId && educatorType === 'college') {
             fetchInitialData();
         }
-    }, [educatorCollege, educatorType, schoolLoading]);
+    }, [educatorCollegeId, educatorType, schoolLoading]);
 
     const fetchInitialData = async () => {
         try {
@@ -232,7 +239,7 @@ export default function CollegeSkillTasks() {
                 fetchStatistics(user.id)
             ]);
         } catch (error) {
-            console.error('Error fetching initial data:', error);
+            logger.error('Error fetching initial data', error);
             toast.error('Failed to load data');
         } finally {
             setLoading(false);
@@ -248,7 +255,7 @@ export default function CollegeSkillTasks() {
         
         const { data, error } = await collegeAssignmentService.fetchEducatorDepartments(user.id);
         if (error) {
-            console.error('Error fetching departments:', error);
+            logger.error('Error fetching departments', error);
             toast.error('Failed to load departments');
         } else {
             setDepartments(data || []);
@@ -267,7 +274,7 @@ export default function CollegeSkillTasks() {
             taskForm.department_id || undefined
         );
         if (error) {
-            console.error('Error fetching programs:', error);
+            logger.error('Error fetching programs', error);
             toast.error('Failed to load programs');
         } else {
             setPrograms(data || []);
@@ -275,14 +282,14 @@ export default function CollegeSkillTasks() {
     };
 
     const fetchProgramSections = async (userId: string) => {
-        console.log('📑 COMPONENT: Fetching program sections for user:', userId);
+        logger.info('Fetching program sections for user', { userId });
         const { data, error } = await collegeAssignmentService.fetchEducatorProgramSections(userId);
         if (error) {
-            console.error('❌ COMPONENT: Error fetching program sections:', error);
+            logger.error('Error fetching program sections', error);
             toast.error('Failed to load program sections');
         } else {
-            console.log('✅ COMPONENT: Received', data?.length || 0, 'program sections');
-            console.log('📋 COMPONENT: Program sections data:', data);
+            logger.info('Received program sections', { count: data?.length || 0 });
+            logger.info('Program sections data', { data });
             setProgramSections(data || []);
         }
     };
@@ -296,7 +303,7 @@ export default function CollegeSkillTasks() {
     const fetchAssignments = async (userId: string) => {
         const { data, error } = await collegeAssignmentService.fetchEducatorAssignments(userId);
         if (error) {
-            console.error('Error fetching assignments:', error);
+            logger.error('Error fetching assignments', error);
             toast.error('Failed to load assignments');
         } else {
             setAssignments(data || []);
@@ -304,9 +311,9 @@ export default function CollegeSkillTasks() {
     };
 
     const fetchStatistics = async (userId: string) => {
-        const { data, error } = await collegeAssignmentService.getAssignmentStatistics(userId);
+        const { data, error} = await collegeAssignmentService.getAssignmentStatistics(userId);
         if (error) {
-            console.error('Error fetching statistics:', error);
+            logger.error('Error fetching statistics', error);
         } else {
             setStatistics(data || {
                 totalAssignments: 0,
@@ -319,31 +326,33 @@ export default function CollegeSkillTasks() {
     };
 
     const fetchStudentsForSection = async (sectionId: string) => {
-        console.log('🎯 Component: Fetching students for section:', sectionId);
+        logger.info('Fetching students for section', { sectionId });
         const { data, error } = await collegeAssignmentService.fetchProgramSectionStudents(sectionId);
         if (error) {
-            console.error('❌ Component: Error fetching students:', error);
+            logger.error('Error fetching students', error);
             toast.error('Failed to load students');
             setStudents([]);
         } else {
-            console.log('✅ Component: Received students:', data?.length || 0, 'students');
-            console.log('📦 Component: Student data:', data);
+            logger.info('Received students', { count: data?.length || 0 });
+            logger.info('Student data', { data });
             setStudents(data || []);
         }
     };
 
     // Filtered data
     const filteredSections = useMemo(() => {
-        console.log('🔍 COMPONENT: Filtering sections...');
-        console.log('📊 COMPONENT: Total sections:', programSections.length);
-        console.log('🏢 COMPONENT: Selected department:', selectedDepartment);
-        console.log('🎓 COMPONENT: Selected program (form):', taskForm.program_id);
+        logger.info('Filtering sections', {
+            totalSections: programSections.length,
+            selectedDepartment,
+            selectedProgram: taskForm.program_id
+        });
         
         const filtered = programSections.filter(section => {
             const deptMatch = selectedDepartment === "all" || section.department_id === selectedDepartment;
             const progMatch = selectedProgram === "all" || section.program_id === selectedProgram;
             
-            console.log('🔎 COMPONENT: Section', section.id, {
+            logger.info('Section filter check', {
+                sectionId: section.id,
                 program: section.program?.name,
                 semester: section.semester,
                 section: section.section,
@@ -357,71 +366,82 @@ export default function CollegeSkillTasks() {
             return deptMatch && progMatch;
         });
         
-        console.log('✅ COMPONENT: Filtered sections count:', filtered.length);
-        console.log('📋 COMPONENT: Filtered sections:', filtered.map(s => ({
-            id: s.id,
-            program: s.program?.name,
-            semester: s.semester,
-            section: s.section
-        })));
+        logger.info('Filtered sections result', {
+            count: filtered.length,
+            sections: filtered.map(s => ({
+                id: s.id,
+                program: s.program?.name,
+                semester: s.semester,
+                section: s.section
+            }))
+        });
         
         return filtered;
     }, [programSections, selectedDepartment, selectedProgram]);
 
     // Sections for dropdown (filtered by form program_id)
     const sectionsForDropdown = useMemo(() => {
-        console.log('\n' + '='.repeat(70));
-        console.log('📝 DROPDOWN COMPUTATION START');
-        console.log('='.repeat(70));
-        console.log('🎓 Form program_id:', taskForm.program_id);
-        console.log('📊 Total programSections:', programSections.length);
-        console.log('📊 Filtered sections available:', filteredSections.length);
-        
-        console.log('\n📋 ALL PROGRAM SECTIONS:');
-        programSections.forEach((s, i) => {
-            console.log(`  ${i + 1}. ID: ${s.id}`);
-            console.log(`     Program: ${s.program?.name} (${s.program_id})`);
-            console.log(`     Semester: ${s.semester}, Section: ${s.section}`);
-            console.log(`     Academic Year: ${s.academic_year}`);
+        logger.info('Dropdown computation start', {
+            formProgramId: taskForm.program_id,
+            totalProgramSections: programSections.length,
+            filteredSectionsAvailable: filteredSections.length
         });
         
-        console.log('\n📋 FILTERED SECTIONS (after dept/prog filter):');
-        filteredSections.forEach((s, i) => {
-            console.log(`  ${i + 1}. ID: ${s.id}`);
-            console.log(`     Program: ${s.program?.name} (${s.program_id})`);
-            console.log(`     Semester: ${s.semester}, Section: ${s.section}`);
-            console.log(`     Matches form program? ${s.program_id === taskForm.program_id ? '✅ YES' : '❌ NO'}`);
+        logger.info('All program sections', {
+            sections: programSections.map((s, i) => ({
+                index: i + 1,
+                id: s.id,
+                program: `${s.program?.name} (${s.program_id})`,
+                semester: s.semester,
+                section: s.section,
+                academicYear: s.academic_year
+            }))
+        });
+        
+        logger.info('Filtered sections (after dept/prog filter)', {
+            sections: filteredSections.map((s, i) => ({
+                index: i + 1,
+                id: s.id,
+                program: `${s.program?.name} (${s.program_id})`,
+                semester: s.semester,
+                section: s.section,
+                matchesFormProgram: s.program_id === taskForm.program_id
+            }))
         });
         
         if (!taskForm.program_id) {
-            console.log('\n⚠️ NO PROGRAM SELECTED - Returning empty array');
-            console.log('='.repeat(70) + '\n');
+            logger.warn('No program selected - returning empty array');
             return [];
         }
         
         const sections = filteredSections.filter(section => {
             const matches = section.program_id === taskForm.program_id;
-            console.log(`\n🔍 Checking section ${section.id}:`);
-            console.log(`   section.program_id: "${section.program_id}"`);
-            console.log(`   taskForm.program_id: "${taskForm.program_id}"`);
-            console.log(`   Match: ${matches ? '✅ YES' : '❌ NO'}`);
+            logger.info('Checking section', {
+                sectionId: section.id,
+                sectionProgramId: section.program_id,
+                formProgramId: taskForm.program_id,
+                match: matches
+            });
             return matches;
         });
         
-        console.log('\n✅ FINAL SECTIONS FOR DROPDOWN:', sections.length);
-        sections.forEach((s, i) => {
-            console.log(`  ${i + 1}. Sem ${s.semester} - ${s.section} (${s.academic_year})`);
+        logger.info('Final sections for dropdown', {
+            count: sections.length,
+            sections: sections.map((s, i) => ({
+                index: i + 1,
+                display: `Sem ${s.semester} - ${s.section} (${s.academic_year})`
+            }))
         });
         
         if (sections.length === 0 && taskForm.program_id) {
-            console.log('\n❌ WARNING: No sections match the selected program!');
-            console.log('🔍 Possible reasons:');
-            console.log('   1. program_id mismatch (check exact UUID values)');
-            console.log('   2. Sections filtered out by department/program filter');
-            console.log('   3. No sections assigned to this program');
+            logger.warn('No sections match the selected program', {
+                possibleReasons: [
+                    'program_id mismatch (check exact UUID values)',
+                    'Sections filtered out by department/program filter',
+                    'No sections assigned to this program'
+                ]
+            });
         }
-        
-        console.log('='.repeat(70) + '\n');
         return sections;
     }, [filteredSections, taskForm.program_id, programSections]);
 
@@ -450,7 +470,7 @@ export default function CollegeSkillTasks() {
     };
 
     const handleDepartmentChange = async (departmentId: string) => {
-        console.log('🏢 COMPONENT: Department changed to:', departmentId);
+        logger.info('Department changed', { departmentId });
         
         setTaskForm(prev => ({
             ...prev,
@@ -469,36 +489,35 @@ export default function CollegeSkillTasks() {
         
         // Fetch programs for this department
         if (departmentId) {
-            console.log('📞 COMPONENT: Fetching programs for department:', departmentId);
+            logger.info('Fetching programs for department', { departmentId });
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                console.log('👤 COMPONENT: User ID:', user.id);
+                logger.info('User ID', { userId: user.id });
                 const { data, error } = await collegeAssignmentService.fetchEducatorPrograms(user.id, departmentId);
                 if (error) {
-                    console.error('❌ COMPONENT: Error fetching programs:', error);
+                    logger.error('Error fetching programs', error);
                     toast.error('Failed to load programs');
                 } else {
-                    console.log('✅ COMPONENT: Loaded', data?.length || 0, 'programs');
-                    console.log('📋 COMPONENT: Programs:', data);
+                    logger.info('Loaded programs', { count: data?.length || 0, programs: data });
                     setPrograms(data || []);
                 }
             }
         } else {
-            console.log('⚠️ COMPONENT: No department selected, clearing data');
+            logger.warn('No department selected, clearing data');
         }
     };
 
     const handleProgramChange = async (programId: string) => {
-        console.log('\n' + '🎓'.repeat(35));
-        console.log('🎓 PROGRAM CHANGE EVENT');
-        console.log('🎓'.repeat(35));
-        console.log('Selected program ID:', programId);
-        console.log('Previous program ID:', taskForm.program_id);
+        logger.info('Program change event', {
+            selectedProgramId: programId,
+            previousProgramId: taskForm.program_id
+        });
         
         setTaskForm(prev => {
-            console.log('📝 Updating form state...');
-            console.log('   Old program_id:', prev.program_id);
-            console.log('   New program_id:', programId);
+            logger.info('Updating form state', {
+                oldProgramId: prev.program_id,
+                newProgramId: programId
+            });
             return {
                 ...prev,
                 program_id: programId,
@@ -514,26 +533,23 @@ export default function CollegeSkillTasks() {
         
         // Fetch courses for this program
         if (programId) {
-            console.log('📚 COMPONENT: Fetching courses for program:', programId);
+            logger.info('Fetching courses for program', { programId });
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
-                console.log('👤 COMPONENT: User ID:', user.id);
+                logger.info('User ID', { userId: user.id });
                 const { data, error } = await collegeAssignmentService.fetchEducatorCoursesByProgram(user.id, programId);
                 if (error) {
-                    console.error('❌ COMPONENT: Error fetching courses:', error);
+                    logger.error('Error fetching courses', error);
                     toast.error('Failed to load courses');
                     setCourses([]);
                 } else {
-                    console.log('✅ COMPONENT: Loaded', data?.length || 0, 'courses');
-                    console.log('📚 COMPONENT: Courses:', data);
+                    logger.info('Loaded courses', { count: data?.length || 0, courses: data });
                     setCourses(data || []);
                 }
             }
         } else {
-            console.log('⚠️ COMPONENT: No program selected, clearing courses');
+            logger.warn('No program selected, clearing courses');
         }
-        
-        console.log('🎓'.repeat(35) + '\n');
     };
 
     const handleFileUpload = (files: FileList | null) => {
@@ -574,7 +590,7 @@ export default function CollegeSkillTasks() {
     };
 
     const handleSectionChange = async (sectionId: string) => {
-        console.log('  COcMPONENT: Section changed to:', sectionId);
+        logger.info('Section changed', { sectionId });
         setTaskForm(prev => ({
             ...prev,
             section_id: sectionId
@@ -582,10 +598,10 @@ export default function CollegeSkillTasks() {
         
         // Fetch students for this section
         if (sectionId) {
-            console.log('  COMPOnNENT: Fetching students for section:', sectionId);
+            logger.info('Fetching students for section', { sectionId });
             await fetchStudentsForSection(sectionId);
         } else {
-            console.log('⚠️ COMPONENT: No section ID provided, clearing students');
+            logger.warn('No section ID provided, clearing students');
             setStudents([]);
         }
     };
@@ -649,6 +665,7 @@ export default function CollegeSkillTasks() {
             toast.success("Task created successfully");
             setCreateTaskModal(false);
             setSelectedAssignment(assignment);
+            setSelectedStudentIds([]); // Clear previous selections
             
             // Fetch students for the section
             await fetchStudentsForSection(taskForm.section_id);
@@ -678,31 +695,96 @@ export default function CollegeSkillTasks() {
             await fetchAssignments(user.id);
             await fetchStatistics(user.id);
         } catch (error) {
-            console.error('Error creating task:', error);
+            logger.error('Error creating task', error);
             toast.error('Failed to create task');
         }
     };
 
     const handleAssignToStudents = async () => {
         try {
-            if (!selectedAssignment || selectedStudents.length === 0) {
+            if (!selectedAssignment || selectedStudentIds.length === 0) {
                 toast.error("Please select students to assign the task");
                 return;
             }
 
+            logger.info('Starting assignment process', {
+                selectedStudentIds,
+                filteredStudentsCount: filteredStudents.length
+            });
+
+            // Get selected students
+            const selectedStudents = filteredStudents.filter(student => 
+                selectedStudentIds.includes(student.id)
+            );
+
+            logger.info('Selected students', { selectedStudents });
+
+            if (selectedStudents.length === 0) {
+                toast.error("No students selected");
+                return;
+            }
+
+            // Get emails from selected students
+            const selectedEmails = selectedStudents
+                .map(student => student.email)
+                .filter(email => email);
+
+            logger.info('Selected emails', { selectedEmails });
+
+            if (selectedEmails.length === 0) {
+                toast.error("Selected students do not have email addresses");
+                return;
+            }
+
+            // Query students table to get user IDs by email
+            const { data: students, error: studentsError } = await supabase
+                .from('students')
+                .select('id, user_id, email')
+                .in('email', selectedEmails);
+
+            logger.info('Students query result', { students });
+
+            if (studentsError) {
+                logger.error('Error fetching students', studentsError);
+                toast.error('Failed to fetch student accounts');
+                return;
+            }
+
+            if (!students || students.length === 0) {
+                toast.error("No matching student accounts found for selected students");
+                return;
+            }
+
+            // Filter students who have user_id (required for foreign key constraint)
+            const studentsWithUserId = students.filter(student => student.user_id !== null);
+            
+            if (studentsWithUserId.length === 0) {
+                toast.error("Selected students don't have user accounts. Please ensure students are registered.");
+                return;
+            }
+
+            const userIds = studentsWithUserId.map(student => student.user_id);
+            logger.info('User IDs to assign', { userIds });
+
+            if (studentsWithUserId.length < selectedStudents.length) {
+                const skipped = selectedStudents.length - studentsWithUserId.length;
+                toast(`Warning: ${skipped} student(s) skipped (no user account). Assigning to ${studentsWithUserId.length} students.`);
+            }
+
             const { error } = await collegeAssignmentService.assignTaskToStudents(
                 selectedAssignment.assignment_id,
-                selectedStudents
+                userIds
             );
 
             if (error) {
+                logger.error('Assignment service error', error);
                 toast.error(error);
                 return;
             }
 
-            toast.success(`Task assigned to ${selectedStudents.length} students`);
+            toast.success(`Task assigned to ${userIds.length} students`);
             setAssignStudentsModal(false);
-            setSelectedStudents([]);
+            setSelectedStudentIds([]);
             setSelectedAssignment(null);
             
             // Refresh statistics
@@ -711,14 +793,12 @@ export default function CollegeSkillTasks() {
                 await fetchStatistics(user.id);
             }
         } catch (error) {
-            console.error('Error assigning task to students:', error);
+            logger.error('Error assigning task to students', error);
             toast.error('Failed to assign task to students');
         }
     };
 
-    const handleViewDetails = (assignment: TaskAssignment) => {
-        setSelectedAssignment(assignment);
-        setViewDetailsModal(true);
+    const handleCloseMenu = () => {
         setOpenMenuId(null);
     };
 
@@ -838,7 +918,7 @@ export default function CollegeSkillTasks() {
                     await deleteFile(oldFileUrl);
                     newInstructionFiles = [];
                 } catch (error) {
-                    console.error('Error deleting old file:', error);
+                    logger.error('Error deleting old file', error);
                     // Continue with update even if file deletion fails
                 }
             }
@@ -866,7 +946,7 @@ export default function CollegeSkillTasks() {
                         type: taskForm.instruction_files[index].type
                     }));
                 } catch (error) {
-                    console.error('Error uploading files:', error);
+                    logger.error('Error uploading files', error);
                     toast.error('Failed to upload instruction files');
                     return;
                 }
@@ -880,7 +960,7 @@ export default function CollegeSkillTasks() {
                 updateData.document_pdf = taskForm.document_pdf;
             }
 
-            console.log('Updating assignment with data:', updateData);
+            logger.info('Updating assignment with data', { updateData });
 
             const { error } = await supabase
                 .from('college_assignments')
@@ -888,7 +968,7 @@ export default function CollegeSkillTasks() {
                 .eq('assignment_id', selectedAssignment.assignment_id);
 
             if (error) {
-                console.error('Supabase update error:', error);
+                logger.error('Supabase update error', error);
                 throw error;
             }
 
@@ -925,7 +1005,7 @@ export default function CollegeSkillTasks() {
                 await fetchStatistics(user.id);
             }
         } catch (error: any) {
-            console.error('Error updating task:', error);
+            logger.error('Error updating task', error);
             toast.error(error?.message || 'Failed to update task');
         }
     };
@@ -952,7 +1032,7 @@ export default function CollegeSkillTasks() {
                 await fetchStatistics(user.id);
             }
         } catch (error) {
-            console.error('Error deleting task:', error);
+            logger.error('Error deleting task', error);
             toast.error('Failed to delete task');
         }
     };
@@ -1136,9 +1216,9 @@ export default function CollegeSkillTasks() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredAssignments.map((assignment) => (
-                                    <div key={assignment.assignment_id} className="border border-gray-200 rounded-lg p-5 hover:shadow-lg transition-shadow bg-white relative">
+                                    <div key={assignment.assignment_id} className="border border-gray-200 rounded-lg hover:shadow-lg transition-shadow bg-white relative flex flex-col">
                                         {/* 3-Dot Menu */}
-                                        <div className="absolute top-4 right-4">
+                                        <div className="absolute top-4 right-4 z-10">
                                             <button
                                                 onClick={() => setOpenMenuId(openMenuId === assignment.assignment_id ? null : assignment.assignment_id)}
                                                 className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -1173,38 +1253,41 @@ export default function CollegeSkillTasks() {
                                             )}
                                         </div>
 
-                                        <div className="pr-8">
+                                        {/* Card Content - grows to fill space */}
+                                        <div className="p-5 pr-12 flex-grow flex flex-col">
                                             <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{assignment.title}</h3>
-                                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{assignment.description}</p>
+                                            <p className="text-sm text-gray-600 mb-4 line-clamp-2">{assignment.description}</p>
                                             
                                             <div className="space-y-2 mb-4">
-                                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                    <Calendar className="w-4 h-4" />
+                                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                    <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                                     <span>Due: {new Date(assignment.due_date).toLocaleDateString()}</span>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                    <Trophy className="w-4 h-4" />
+                                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                    <Trophy className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                                                     <span>{assignment.total_points} points</span>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                    <BookOpenIcon className="w-4 h-4" />
+                                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                    <BookOpenIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
                                                     <span className="truncate">{assignment.course_name}</span>
                                                 </div>
                                                 {assignment.program_name && (
-                                                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                                                        <AcademicCapIcon className="w-4 h-4" />
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <AcademicCapIcon className="w-4 h-4 text-indigo-500 flex-shrink-0" />
                                                         <span className="truncate">{assignment.program_name}</span>
                                                     </div>
                                                 )}
                                                 {assignment.semester && assignment.section && (
-                                                    <div className="text-sm text-gray-500">
-                                                        Sem {assignment.semester} - {assignment.section}
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                                                            Sem {assignment.semester} - {assignment.section}
+                                                        </span>
                                                     </div>
                                                 )}
                                                 {/* Show file count if files exist */}
                                                 {assignment.instruction_files && assignment.instruction_files.length > 0 && (
                                                     <div className="flex items-center gap-2 text-sm text-blue-600">
-                                                        <PaperClipIcon className="w-4 h-4" />
+                                                        <PaperClipIcon className="w-4 h-4 flex-shrink-0" />
                                                         <span>{assignment.instruction_files.length} file(s) attached</span>
                                                     </div>
                                                 )}
@@ -1225,24 +1308,52 @@ export default function CollegeSkillTasks() {
                                                 </div>
                                             )}
                                             
+                                            {/* Spacer to push button to bottom */}
+                                            <div className="flex-grow"></div>
+                                            
                                             <button
                                                 onClick={async () => {
-                                                    console.log('🎯 Assign button clicked for assignment:', assignment.assignment_id);
-                                                    console.log('📋 Assignment program_section_id:', assignment.program_section_id);
+                                                    logger.info('Assign button clicked', {
+                                                        assignmentId: assignment.assignment_id,
+                                                        programSectionId: assignment.program_section_id
+                                                    });
                                                     
                                                     setSelectedAssignment(assignment);
+                                                    setSelectedStudentIds([]); // Clear previous selections
                                                     
                                                     if (assignment.program_section_id) {
-                                                        console.log('✅ Fetching students for section:', assignment.program_section_id);
+                                                        logger.info('Fetching students for section', {
+                                                            sectionId: assignment.program_section_id
+                                                        });
                                                         await fetchStudentsForSection(assignment.program_section_id);
+                                                        
+                                                        // Fetch already assigned students
+                                                        try {
+                                                            const { data: assignedStudents, error } = await supabase
+                                                                .from('college_student_assignments')
+                                                                .select('student_id')
+                                                                .eq('assignment_id', assignment.assignment_id)
+                                                                .eq('is_deleted', false);
+                                                            
+                                                            if (error) {
+                                                                logger.error('Error fetching assigned students', error);
+                                                                setAssignedStudentIds([]);
+                                                            } else {
+                                                                const assignedIds = (assignedStudents || []).map(sa => sa.student_id);
+                                                                setAssignedStudentIds(assignedIds);
+                                                            }
+                                                        } catch (error) {
+                                                            logger.error('Error fetching assigned students', error);
+                                                            setAssignedStudentIds([]);
+                                                        }
                                                     } else {
-                                                        console.error('❌ No program_section_id found in assignment');
+                                                        logger.error('No program_section_id found in assignment');
                                                         toast.error('Assignment is missing section information');
                                                     }
                                                     
                                                     setAssignStudentsModal(true);
                                                 }}
-                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm mt-4"
                                             >
                                                 <UserPlus size={16} />
                                                 Assign to Section
@@ -1355,7 +1466,7 @@ export default function CollegeSkillTasks() {
                                             >
                                                 <option value="">Select Section</option>
                                                 {sectionsForDropdown.map(section => {
-                                                    console.log('🎨 COMPONENT: Rendering section option:', {
+                                                    logger.info('Rendering section option', {
                                                         id: section.id,
                                                         display: `Sem ${section.semester} - ${section.section} (${section.academic_year})`,
                                                         program_id: section.program_id
@@ -1608,12 +1719,12 @@ export default function CollegeSkillTasks() {
                                 <label className="flex items-center">
                                     <input
                                         type="checkbox"
-                                        checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
+                                        checked={selectedStudentIds.length === filteredStudents.length && filteredStudents.length > 0}
                                         onChange={(e) => {
                                             if (e.target.checked) {
-                                                setSelectedStudents(filteredStudents.map(s => s.user_id));
+                                                setSelectedStudentIds(filteredStudents.map(s => s.id));
                                             } else {
-                                                setSelectedStudents([]);
+                                                setSelectedStudentIds([]);
                                             }
                                         }}
                                         className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
@@ -1622,8 +1733,8 @@ export default function CollegeSkillTasks() {
                                         Select All ({filteredStudents.length} students found)
                                     </span>
                                 </label>
-                                {selectedStudents.length > 0 && (
-                                    <p className="text-sm text-blue-600 mt-1">{selectedStudents.length} selected</p>
+                                {selectedStudentIds.length > 0 && (
+                                    <p className="text-sm text-blue-600 mt-1">{selectedStudentIds.length} selected</p>
                                 )}
                             </div>
 
@@ -1636,19 +1747,22 @@ export default function CollegeSkillTasks() {
                                     </div>
                                 ) : (
                                     <div className="divide-y divide-gray-200">
-                                        {filteredStudents.map((student) => (
-                                            <label key={student.id} className="flex items-center p-4 hover:bg-gray-50 cursor-pointer">
+                                        {filteredStudents.map((student) => {
+                                            const isAssigned = assignedStudentIds.includes(student.user_id);
+                                            return (
+                                            <label key={student.id} className={`flex items-center p-4 ${isAssigned ? 'bg-gray-50 cursor-not-allowed' : 'hover:bg-gray-50 cursor-pointer'}`}>
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedStudents.includes(student.user_id)}
+                                                    checked={selectedStudentIds.includes(student.id)}
+                                                    disabled={isAssigned}
                                                     onChange={(e) => {
                                                         if (e.target.checked) {
-                                                            setSelectedStudents(prev => [...prev, student.user_id]);
+                                                            setSelectedStudentIds(prev => [...prev, student.id]);
                                                         } else {
-                                                            setSelectedStudents(prev => prev.filter(id => id !== student.user_id));
+                                                            setSelectedStudentIds(prev => prev.filter(id => id !== student.id));
                                                         }
                                                     }}
-                                                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 />
                                                 <div className="ml-3 flex-1">
                                                     <div className="flex items-center justify-between">
@@ -1659,11 +1773,17 @@ export default function CollegeSkillTasks() {
                                                         <div className="text-right">
                                                             <p className="text-sm text-gray-500">Roll: {student.roll_number}</p>
                                                             <p className="text-sm text-gray-500">Sem {student.semester} - {student.section}</p>
+                                                            {isAssigned && (
+                                                                <span className="inline-block mt-1 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                                                                    Assigned
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
                                             </label>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -1677,10 +1797,10 @@ export default function CollegeSkillTasks() {
                                 </button>
                                 <button
                                     onClick={handleAssignToStudents}
-                                    disabled={selectedStudents.length === 0}
+                                    disabled={selectedStudentIds.length === 0}
                                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                 >
-                                    Assign to {selectedStudents.length} Student{selectedStudents.length !== 1 ? 's' : ''}
+                                    Assign to {selectedStudentIds.length} Student{selectedStudentIds.length !== 1 ? 's' : ''}
                                 </button>
                             </div>
                         </div>

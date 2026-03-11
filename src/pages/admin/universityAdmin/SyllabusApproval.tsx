@@ -23,6 +23,9 @@ import { motion } from 'framer-motion';
 import { curriculumApprovalService, type CurriculumApprovalDashboard } from '../../../services/curriculumApprovalService';
 import { curriculumChangeRequestService } from '../../../services/curriculumChangeRequestService';
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-syllabus-approval');
 
 interface ApprovalFilters {
   status: string;
@@ -85,13 +88,13 @@ const SyllabusApproval: React.FC = () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          console.log('❌ No authenticated user found');
+          logger.warn('No authenticated user found');
           toast.error('User not authenticated');
           setLoadingUser(false);
           return;
         }
 
-        console.log('✅ User authenticated:', user.email);
+        logger.info('User authenticated:', { email: user.email });
 
         const { data: userData, error } = await supabase
           .from('users')
@@ -99,18 +102,18 @@ const SyllabusApproval: React.FC = () => {
           .eq('id', user.id)
           .single();
 
-        console.log('👤 User data query result:', { userData, error });
+        logger.info('User data query result', { userData, error });
 
         if (error) {
-          console.error('❌ Error fetching user data:', error);
+          logger.error('Error fetching user data', { error: (error as Error).message });
           toast.error('Failed to load user data');
           setLoadingUser(false);
           return;
         }
 
         if (userData.role !== 'university_admin') {
-          console.log('❌ User role is not university_admin:', userData.role);
-          console.log('🔧 Temporarily allowing access for testing');
+          logger.warn('User role is not university_admin:', { role: userData.role });
+          logger.info('Temporarily allowing access for testing');
           // Temporary fix: Allow access for testing
           // toast.error('Access denied: University admin role required');
           // setLoadingUser(false);
@@ -118,20 +121,20 @@ const SyllabusApproval: React.FC = () => {
         }
 
         if (!userData.organizationId) {
-          console.log('❌ User has no organizationId, using test university ID');
+          logger.warn('User has no organizationId, using test university ID');
           // Temporary fix: Use the university ID from the test data
           const testUniversityId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
-          console.log('🔧 Using test university ID:', testUniversityId);
+          logger.info('Using test university ID', { testUniversityId });
           setUniversityId(testUniversityId);
           setLoadingUser(false);
           return;
         }
 
-        console.log('✅ University admin authenticated with organizationId:', userData.organizationId);
+        logger.info('University admin authenticated with organizationId:', { organizationId: userData.organizationId });
         setUniversityId(userData.organizationId);
         setLoadingUser(false);
       } catch (error) {
-        console.error('💥 Error in fetchUserUniversityId:', error);
+        logger.error('Error in fetchUserUniversityId', { error: (error as Error).message });
         toast.error('Failed to load user information');
         setLoadingUser(false);
       }
@@ -176,15 +179,15 @@ const SyllabusApproval: React.FC = () => {
             filter: `university_id=eq.${universityId}` // Only listen to changes for this university
           },
           (payload) => {
-            console.log('🔄 Real-time curriculum change detected:', payload);
+            logger.info('Real-time curriculum change detected', { payload });
             
             // Auto-refresh data when changes are detected
             if (activeTab === 'approvals') {
-              console.log('📊 Refreshing approval requests...');
+              logger.info('Refreshing approval requests');
               loadApprovalRequests();
               loadStatistics();
             } else if (activeTab === 'changes') {
-              console.log('📋 Refreshing change requests...');
+              logger.info('Refreshing change requests');
               loadChangeRequests();
             }
 
@@ -210,7 +213,7 @@ const SyllabusApproval: React.FC = () => {
                 
                 // If we have a curriculum view modal open for this curriculum, refresh it
                 if (showViewModal && selectedRequest && selectedRequest.curriculum_id === curriculum.id) {
-                  console.log('🔄 Auto-refreshing curriculum view modal after real-time update...');
+                  logger.info('Auto-refreshing curriculum view modal after real-time update');
                   setTimeout(() => {
                     handleViewCurriculum(selectedRequest);
                   }, 500); // Small delay to ensure database consistency
@@ -220,13 +223,13 @@ const SyllabusApproval: React.FC = () => {
           }
         )
         .subscribe((status) => {
-          console.log('🔌 Real-time subscription status:', status);
+          logger.info('Real-time subscription status', { status });
           setIsRealTimeConnected(status === 'SUBSCRIBED');
           
           if (status === 'SUBSCRIBED') {
-            console.log('✅ Real-time updates enabled for curriculum changes');
+            logger.info('Real-time updates enabled for curriculum changes');
           } else if (status === 'CHANNEL_ERROR') {
-            console.error('❌ Real-time subscription error');
+            logger.error('Real-time subscription error');
             // Retry connection after 5 seconds
             setTimeout(setupRealTimeSubscription, 5000);
           }
@@ -240,7 +243,7 @@ const SyllabusApproval: React.FC = () => {
     // Cleanup on unmount or university change
     return () => {
       if (subscriptionRef.current) {
-        console.log('🔌 Cleaning up real-time subscription');
+        logger.info('Cleaning up real-time subscription');
         supabase.removeChannel(subscriptionRef.current);
         subscriptionRef.current = null;
       }
@@ -263,7 +266,7 @@ const SyllabusApproval: React.FC = () => {
           filter: `type=eq.approval_required`
         },
         (payload) => {
-          console.log('🔔 New approval notification:', payload);
+          logger.info('New approval notification', { payload });
           
           // Refresh data when new approval notifications are received
           if (activeTab === 'changes') {
@@ -283,7 +286,7 @@ const SyllabusApproval: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('🔍 Loading approval requests for university:', universityId);
+      logger.info('Loading approval requests for university', { universityId });
       
       // Handle the approved filter - include both 'approved' and 'published' statuses
       let statusFilter: string | undefined = filters.status;
@@ -293,7 +296,7 @@ const SyllabusApproval: React.FC = () => {
         statusFilter = undefined; // We'll filter manually after fetching
       }
       
-      console.log('📊 Calling curriculumApprovalService.getApprovalRequests with:', {
+      logger.info('Calling curriculumApprovalService.getApprovalRequests', {
         universityId,
         filters: {
           status: statusFilter,
@@ -310,22 +313,22 @@ const SyllabusApproval: React.FC = () => {
         limit: 50,
       });
 
-      console.log('📋 Service result:', result);
+      logger.info('Service result', { result });
 
       if (result.success) {
         let data = result.data || [];
-        console.log('✅ Raw data from service:', data.length, 'records');
+        logger.info('Raw data from service:', { recordCount: data.length });
         
         // Manual filtering for approved status (include both approved and published)
         if (filters.status === 'approved') {
           data = data.filter(item => item.request_status === 'approved' || item.request_status === 'published');
-          console.log('📊 Filtered data for approved status:', data.length, 'records');
+          logger.info('Filtered data for approved status', { recordCount: data.length });
         }
         
         setApprovalRequests(data);
-        console.log('✅ Approval requests set successfully:', data.length, 'records');
+        logger.info('Approval requests set successfully:', { recordCount: data.length });
       } else {
-        console.error('❌ Service returned error:', result.error);
+        logger.error('Service returned error', { error: result.error });
         toast.error(result.error || 'Failed to load approval requests');
       }
 
@@ -337,7 +340,7 @@ const SyllabusApproval: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
     } catch (error) {
-      console.error('💥 Error loading approval requests:', error);
+      logger.error('Error loading approval requests', { error: (error as Error).message });
       toast.error('Failed to load approval requests');
       
       // Still wait for 1 second even on error
@@ -353,9 +356,9 @@ const SyllabusApproval: React.FC = () => {
 
   const loadStatistics = async () => {
     try {
-      console.log('📊 Loading statistics for university:', universityId);
+      logger.info('Loading statistics for university', { universityId });
       const result = await curriculumApprovalService.getApprovalStatistics(universityId);
-      console.log('📈 Statistics result:', result);
+      logger.info('Statistics result', { result });
       
       if (result.success && result.data) {
         // Adjust the statistics to combine approved and published counts
@@ -363,13 +366,13 @@ const SyllabusApproval: React.FC = () => {
           ...result.data,
           approved: result.data.approved + result.data.published, // Combine approved and published
         };
-        console.log('✅ Statistics loaded successfully:', adjustedStats);
+        logger.info('Statistics loaded successfully:', { adjustedStats });
         setStatistics(adjustedStats);
       } else {
-        console.error('❌ Failed to load statistics:', result.error);
+        logger.error('Failed to load statistics', { error: result.error });
       }
     } catch (error) {
-      console.error('💥 Error loading statistics:', error);
+      logger.error('Error loading statistics', { error: (error as Error).message });
     }
   };
 
@@ -378,16 +381,16 @@ const SyllabusApproval: React.FC = () => {
 
     try {
       setLoadingChanges(true);
-      console.log('🔄 Loading change requests for university:', universityId);
+      logger.info('Loading change requests for university', { universityId });
       
       const result = await curriculumChangeRequestService.getAllPendingChangesForUniversity(universityId);
-      console.log('📋 Change requests result:', result);
+      logger.info('Change requests result', { result });
 
       if (result.success) {
-        console.log('✅ Change requests loaded successfully:', result.data?.length || 0, 'records');
+        logger.info('Change requests loaded successfully:', { recordCount: result.data?.length || 0 });
         setChangeRequests(result.data || []);
       } else {
-        console.error('❌ Failed to load change requests:', result.error);
+        logger.error('Failed to load change requests', { error: result.error });
         toast.error(result.error || 'Failed to load change requests');
       }
 
@@ -399,7 +402,7 @@ const SyllabusApproval: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
     } catch (error) {
-      console.error('💥 Error loading change requests:', error);
+      logger.error('Error loading change requests', { error: (error as Error).message });
       toast.error('Failed to load change requests');
       
       const elapsedTime = Date.now() - startTime;
@@ -426,7 +429,7 @@ const SyllabusApproval: React.FC = () => {
     setCurriculumData(null);
 
     try {
-      console.log('📖 Loading curriculum details for:', request.curriculum_id);
+      logger.info('Loading curriculum details', { curriculumId: request.curriculum_id });
       
       // First, fetch the curriculum details
       const { data: curriculumData, error: curriculumError } = await supabase
@@ -436,7 +439,7 @@ const SyllabusApproval: React.FC = () => {
         .single();
 
       if (curriculumError) {
-        console.error('Error fetching curriculum:', curriculumError);
+        logger.error('Error fetching curriculum', { error: (curriculumError as Error).message });
         toast.error('Failed to load curriculum details');
         setLoadingCurriculum(false);
         return;
@@ -450,7 +453,7 @@ const SyllabusApproval: React.FC = () => {
         .order('order_index', { ascending: true });
 
       if (unitsError) {
-        console.error('Error fetching units:', unitsError);
+        logger.error('Error fetching units', { error: (unitsError as Error).message });
         // Continue even if units fail - show curriculum without units
       }
 
@@ -464,15 +467,15 @@ const SyllabusApproval: React.FC = () => {
             .order('created_at', { ascending: true });
 
           if (outcomesError) {
-            console.error('Error fetching outcomes for unit:', unit.id, outcomesError);
+            logger.error('Error fetching outcomes for unit', { unitId: unit.id, error: (outcomesError as Error).message });
           }
 
-          console.log(`📋 Loaded ${outcomes?.length || 0} outcomes for unit: ${unit.name}`);
+          logger.info('Loaded outcomes for unit', { unitName: unit.name, outcomeCount: outcomes?.length || 0 });
           
           // Log assessment mappings for debugging
           outcomes?.forEach((outcome, idx) => {
             if (outcome.assessment_mappings && outcome.assessment_mappings.length > 0) {
-              console.log(`🎯 Outcome ${idx + 1} assessment mappings:`, outcome.assessment_mappings);
+              logger.info('Outcome assessment mappings', { outcomeIndex: idx + 1, assessmentMappings: outcome.assessment_mappings });
             }
           });
 
@@ -489,14 +492,14 @@ const SyllabusApproval: React.FC = () => {
         college_curriculum_units: unitsWithOutcomes
       };
 
-      console.log('✅ Curriculum data loaded successfully:', {
+      logger.info('Curriculum data loaded successfully:', {
         units: unitsWithOutcomes.length,
         totalOutcomes: unitsWithOutcomes.reduce((sum, unit) => sum + (unit.college_curriculum_outcomes?.length || 0), 0)
       });
 
       setCurriculumData(completeData);
     } catch (error) {
-      console.error('Error loading curriculum:', error);
+      logger.error('Error loading curriculum', { error: (error as Error).message });
       toast.error('Failed to load curriculum details');
     } finally {
       setLoadingCurriculum(false);
@@ -554,7 +557,7 @@ const SyllabusApproval: React.FC = () => {
         toast.error(result.error || `Failed to ${reviewAction} curriculum`);
       }
     } catch (error) {
-      console.error(`Error ${reviewAction}ing curriculum:`, error);
+      logger.error(`Error ${reviewAction}ing curriculum`, { error: (error as Error).message });
       toast.error(`Failed to ${reviewAction} curriculum`);
     }
   };
@@ -570,7 +573,7 @@ const SyllabusApproval: React.FC = () => {
     if (!selectedChange) return;
 
     try {
-      console.log('🔄 Starting change review process:', {
+      logger.info('Starting change review process', {
         changeId: selectedChange.change_id,
         curriculumId: selectedChange.curriculum_id,
         action: changeReviewAction,
@@ -579,7 +582,7 @@ const SyllabusApproval: React.FC = () => {
 
       let result;
       if (changeReviewAction === 'approve') {
-        console.log('✅ Approving change...');
+        logger.info('Approving change...');
         result = await curriculumChangeRequestService.approveChange(
           selectedChange.curriculum_id,
           selectedChange.change_id,
@@ -590,7 +593,7 @@ const SyllabusApproval: React.FC = () => {
           toast.error('Please provide feedback for rejection');
           return;
         }
-        console.log('❌ Rejecting change...');
+        logger.info('Rejecting change...');
         result = await curriculumChangeRequestService.rejectChange(
           selectedChange.curriculum_id,
           selectedChange.change_id,
@@ -598,7 +601,7 @@ const SyllabusApproval: React.FC = () => {
         );
       }
 
-      console.log('📋 Change review result:', result);
+      logger.info('Change review result', { result });
 
       if (result.success) {
         const successMessage = changeReviewAction === 'approve' 
@@ -610,7 +613,7 @@ const SyllabusApproval: React.FC = () => {
         setSelectedChange(null);
         setChangeReviewNotes('');
         
-        console.log('🔄 Refreshing data after change review...');
+        logger.info('Refreshing data after change review');
         
         // Comprehensive refresh after approval/rejection
         await Promise.all([
@@ -621,7 +624,7 @@ const SyllabusApproval: React.FC = () => {
 
         // If we have a curriculum view modal open for the same curriculum, refresh it
         if (showViewModal && selectedRequest && selectedRequest.curriculum_id === selectedChange.curriculum_id) {
-          console.log('🔄 Refreshing curriculum view modal after change approval...');
+          logger.info('Refreshing curriculum view modal after change approval');
           await handleViewCurriculum(selectedRequest);
         }
 
@@ -649,11 +652,11 @@ const SyllabusApproval: React.FC = () => {
           }, 2000);
         }
       } else {
-        console.error('❌ Change review failed:', result.error);
+        logger.error('Change review failed', { error: result.error });
         toast.error(result.error || `Failed to ${changeReviewAction} change`);
       }
     } catch (error) {
-      console.error(`💥 Error ${changeReviewAction}ing change:`, error);
+      logger.error(`Error ${changeReviewAction}ing change`, { error: (error as Error).message });
       toast.error(`Failed to ${changeReviewAction} change`);
     }
   };
@@ -728,7 +731,7 @@ const SyllabusApproval: React.FC = () => {
       const hoursDifference = (now.getTime() - reqDate.getTime()) / (1000 * 60 * 60);
       return hoursDifference <= 24;
     } catch (error) {
-      console.error('Error parsing date:', dateString, error);
+      logger.error('Error parsing date', { dateString, error: (error as Error).message });
       return false;
     }
   };

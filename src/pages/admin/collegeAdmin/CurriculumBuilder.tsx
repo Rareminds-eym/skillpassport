@@ -131,7 +131,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
             filter: `id=eq.${curriculumId}` // Only listen to changes for this specific curriculum
           },
           (payload) => {
-            console.log('🔄 Real-time curriculum change detected:', payload);
+            logger.info('🔄 Real-time curriculum change detected:', { value: payload });
             
             // Auto-refresh curriculum data when changes are detected
             loadExistingCurriculum();
@@ -154,7 +154,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
             filter: `curriculum_id=eq.${curriculumId}` // Listen to unit changes for current curriculum
           },
           (payload) => {
-            console.log('🔄 Real-time unit change detected:', payload);
+            logger.info('🔄 Real-time unit change detected:', { value: payload });
             
             // Refresh curriculum data when units change
             loadExistingCurriculum();
@@ -177,7 +177,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
             filter: `curriculum_id=eq.${curriculumId}` // Listen to outcome changes for current curriculum
           },
           (payload) => {
-            console.log('🔄 Real-time outcome change detected:', payload);
+            logger.info('🔄 Real-time outcome change detected:', { value: payload });
             
             // Refresh curriculum data when outcomes change
             loadExistingCurriculum();
@@ -192,13 +192,13 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
           }
         )
         .subscribe((status) => {
-          console.log('🔌 Real-time subscription status:', status);
+          logger.info('🔌 Real-time subscription status:', { value: status });
           setIsRealTimeConnected(status === 'SUBSCRIBED');
           
           if (status === 'SUBSCRIBED') {
-            console.log('✅ Real-time updates enabled for curriculum changes');
+            logger.info('✅ Real-time updates enabled for curriculum changes');
           } else if (status === 'CHANNEL_ERROR') {
-            console.error('❌ Real-time subscription error');
+            logger.error('❌ Real-time subscription error');
             // Retry connection after 5 seconds
             setTimeout(setupRealTimeSubscription, 5000);
           }
@@ -212,7 +212,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
     // Cleanup on unmount or curriculum change
     return () => {
       if (subscriptionRef.current) {
-        console.log('🔌 Cleaning up real-time subscription');
+        logger.info('🔌 Cleaning up real-time subscription');
         supabase.removeChannel(subscriptionRef.current);
         subscriptionRef.current = null;
       }
@@ -264,7 +264,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       }
 
     } catch (error: any) {
-      console.error('Error loading configuration:', error);
+      logger.error('Error loading configuration:', error as Error);
       toast.error('Failed to load configuration data');
     } finally {
       setLoading(false);
@@ -281,7 +281,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         setPrograms([]);
       }
     } catch (error) {
-      console.error('Error loading programs:', error);
+      logger.error('Error loading programs:', error as Error);
       toast.error('Failed to load programs');
       setPrograms([]);
     }
@@ -297,7 +297,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         setSemesters([]);
       }
     } catch (error) {
-      console.error('Error loading semesters:', error);
+      logger.error('Error loading semesters:', error as Error);
       toast.error('Failed to load semesters');
       setSemesters([]);
     }
@@ -313,7 +313,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         setCourses([]);
       }
     } catch (error) {
-      console.error('Error loading courses:', error);
+      logger.error('Error loading courses:', error as Error);
       toast.error('Failed to load courses');
       setCourses([]);
     }
@@ -326,7 +326,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('🔍 Loading existing curriculum with filters:', {
+      logger.info('Loading existing curriculum with filters:', {
         department_id: selectedDepartment,
         program_id: selectedProgram,
         semester: parseInt(selectedSemester),
@@ -337,7 +337,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       // Get the selected course details
       const selectedCourseData = courses.find(c => c.id === selectedCourse);
       if (!selectedCourseData) {
-        console.log('❌ Course not found, clearing curriculum data');
+        logger.info('❌ Course not found, clearing curriculum data');
         // Course not found, clear curriculum data
         setCurriculumId(null);
         setUnits([]);
@@ -356,10 +356,10 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         // Don't filter by status - include all statuses
       });
 
-      console.log('📊 getCurriculums result:', result);
+      logger.info('📊 getCurriculums result:', { value: result });
 
       if (result.success && result.data && result.data.length > 0) {
-        console.log(`✅ Found ${result.data.length} existing curriculum(s)`);
+        logger.info(`Found ${result.data.length} existing curriculum(s)`);
         
         // Load existing curriculum (prioritize published/approved over draft)
         const sortedCurriculums = result.data.sort((a, b) => {
@@ -373,7 +373,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         });
         
         const existingCurriculum = sortedCurriculums[0];
-        console.log(`📋 Loading curriculum with status: ${existingCurriculum.status}`);
+        logger.info(`Loading curriculum with status: ${existingCurriculum.status}`);
         
         const detailResult = await curriculumService.getCurriculumById(existingCurriculum.id);
         if (detailResult.success && detailResult.data) {
@@ -382,20 +382,20 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
           setLearningOutcomes(detailResult.data.outcomes);
           setStatus(detailResult.data.status);
           
-          console.log(`✅ Curriculum loaded successfully:`, {
+          logger.info(`✅ Curriculum loaded successfully:`, { value: {
             id: detailResult.data.id,
             status: detailResult.data.status,
             unitsCount: detailResult.data.units.length,
             outcomesCount: detailResult.data.outcomes.length,
-          });
+          } });
           
           toast.success(`Existing curriculum loaded (${detailResult.data.status})`);
         } else {
-          console.error('❌ Failed to load curriculum details:', detailResult.error);
+          logger.error('❌ Failed to load curriculum details:', detailResult.error as Error);
           toast.error('Failed to load curriculum details');
         }
       } else {
-        console.log('ℹ️ No existing curriculum found - ready to create new');
+        logger.info('ℹ️ No existing curriculum found - ready to create new');
         // No existing curriculum found - clear state but don't create yet
         setCurriculumId(null);
         setUnits([]);
@@ -403,7 +403,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         setStatus("draft");
       }
     } catch (error: any) {
-      console.error('❌ Error loading curriculum:', error);
+      logger.error('❌ Error loading curriculum:', error as Error);
       toast.error('Failed to load curriculum');
       // Clear state on error
       setCurriculumId(null);
@@ -436,7 +436,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         return null;
       }
     } catch (error: any) {
-      console.error('Error creating curriculum:', error);
+      logger.error('Error creating curriculum:', error as Error);
       toast.error('Failed to create curriculum');
       return null;
     }
@@ -528,7 +528,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error saving unit:', error);
+      logger.error('Error saving unit:', error as Error);
       toast.error('Failed to save unit');
     }
   };
@@ -569,7 +569,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         toast.error(result.error?.message || 'Failed to delete unit');
       }
     } catch (error: any) {
-      console.error('Error deleting unit:', error);
+      logger.error('Error deleting unit:', error as Error);
       toast.error('Failed to delete unit');
     }
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -634,7 +634,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         }
       }
     } catch (error: any) {
-      console.error('Error saving outcome:', error);
+      logger.error('Error saving outcome:', error as Error);
       toast.error('Failed to save outcome');
     }
   };
@@ -673,7 +673,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         toast.error(result.error?.message || 'Failed to delete outcome');
       }
     } catch (error: any) {
-      console.error('Error deleting outcome:', error);
+      logger.error('Error deleting outcome:', error as Error);
       toast.error('Failed to delete outcome');
     }
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -695,7 +695,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
       // Data is already saved when units/outcomes are added, so this is just a confirmation
       toast.success('Draft saved successfully - all changes are automatically saved');
     } catch (error: any) {
-      console.error('Error saving draft:', error);
+      logger.error('Error saving draft:', error as Error);
       toast.error('Failed to save draft');
     }
   };
@@ -724,7 +724,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         toast.error(result.error?.message || 'Failed to approve curriculum');
       }
     } catch (error: any) {
-      console.error('Error approving curriculum:', error);
+      logger.error('Error approving curriculum:', error as Error);
       toast.error('Failed to approve curriculum');
     }
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -760,7 +760,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         toast.error(result.error || 'Failed to submit curriculum for approval');
       }
     } catch (error: any) {
-      console.error('Error submitting for approval:', error);
+      logger.error('Error submitting for approval:', error as Error);
       toast.error('Failed to submit curriculum for approval');
     }
   };
@@ -777,7 +777,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         toast.error(result.error?.message || 'Failed to publish curriculum');
       }
     } catch (error: any) {
-      console.error('Error publishing curriculum:', error);
+      logger.error('Error publishing curriculum:', error as Error);
       toast.error('Failed to publish curriculum');
     }
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -806,14 +806,14 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         toast.error(result.error?.message || 'Failed to clone curriculum');
       }
     } catch (error: any) {
-      console.error('Error cloning curriculum:', error);
+      logger.error('Error cloning curriculum:', error as Error);
       toast.error('Failed to clone curriculum');
     }
   };
 
   // NEW: Refresh curriculum data function for when changes are approved
   const handleRefreshCurriculum = async () => {
-    console.log('🔄 Refreshing curriculum data after approved changes...');
+    logger.info('🔄 Refreshing curriculum data after approved changes...');
     await loadExistingCurriculum();
   };
 
@@ -920,7 +920,7 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         toast.error(result.error?.message || 'Failed to export curriculum');
       }
     } catch (error: any) {
-      console.error('Error exporting curriculum:', error);
+      logger.error('Error exporting curriculum:', error as Error);
       toast.error('Failed to export curriculum');
     }
   };
@@ -1031,3 +1031,4 @@ const CollegeCurriculumBuilder: React.FC = () => (
 );
 
 export default CollegeCurriculumBuilder;
+

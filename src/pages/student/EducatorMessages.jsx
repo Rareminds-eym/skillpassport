@@ -40,7 +40,7 @@ const EducatorMessages = () => {
   const menuRef = useRef(null);
   
   // Get student data
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData, loading: loadingStudentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id || user?.id;
@@ -181,7 +181,7 @@ const EducatorMessages = () => {
     try {
       await MessageService.markConversationAsRead(conversationId, studentId);
     } catch (err) {
-      console.error('❌ Failed to mark as read:', err);
+      logger.error('❌ Failed to mark as read', err);
       markedAsReadRef.current.delete(markKey);
       refetchConversations();
     }
@@ -208,7 +208,7 @@ const EducatorMessages = () => {
       try {
         return JSON.parse(profile);
       } catch (e) {
-        console.error('Error parsing profile:', e);
+        logger.error('Error parsing profile', e);
         return {};
       }
     }
@@ -306,7 +306,7 @@ const EducatorMessages = () => {
         setMessageInput('');
         setTyping(false);
       } catch (error) {
-        console.error('Error sending message:', error);
+        logger.error('Error sending message', error);
       }
     }
   };

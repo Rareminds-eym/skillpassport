@@ -9,7 +9,7 @@ import { UICandidate } from './useStudents';
  * This provides the same UICandidate format as useStudents but from conversation data
  */
 export function useConversationStudents() {
-  const { user } = useAuth();
+  const user = useUser();
   const educatorId = user?.id;
 
   // Fetch active conversations with comprehensive student data

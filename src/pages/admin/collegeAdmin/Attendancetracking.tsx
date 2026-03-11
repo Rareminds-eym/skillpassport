@@ -7,6 +7,9 @@ import { AttendanceRecord, AttendanceSession, SubjectGroup, Student as Attendanc
 import { Student as ProfileStudent } from "@/types/student";
 import { curriculumService } from "@/services/college/curriculumService";
 import toast from "react-hot-toast";
+import { getLogger } from "@/config/logging";
+
+const logger = getLogger('college-admin-attendance-tracking');
 import {
     ArrowDownTrayIcon,
     BellAlertIcon,
@@ -477,7 +480,7 @@ const AttendanceTracking: React.FC = () => {
         lowAttendanceSessions,
       });
     } catch (err: any) {
-      console.error('Failed to fetch analytics:', err);
+      logger.error('Failed to fetch analytics:', err as Error);
     }
   };
 
@@ -512,7 +515,7 @@ const AttendanceTracking: React.FC = () => {
         }
       }
 
-      console.log('Current user college_id:', currentCollegeId);
+      logger.info('Current user college_id:', { value: currentCollegeId });
 
       // Get departments from program_sections_view
       const departmentsQuery = supabase
@@ -566,7 +569,7 @@ const AttendanceTracking: React.FC = () => {
 
       const { data: facultyData, error: facultyError } = await facultyQuery;
 
-      console.log('Faculty query result:', { data: facultyData, error: facultyError });
+      logger.info('Faculty query result:', { value: { data: facultyData, error: facultyError } });
 
       // Get subjects from college_courses (filtered by college)
       const subjectsQuery = supabase
@@ -591,7 +594,7 @@ const AttendanceTracking: React.FC = () => {
         
         const collegeName = f.collegeId || 'Unknown College';
         
-        console.log(`Faculty: ${displayName} belongs to college: ${collegeName} (ID: ${f.collegeId})`);
+        logger.info('Faculty college mapping', { displayName, collegeName, collegeId: f.collegeId });
         
         return {
           value: f.id, // Use actual faculty UUID
@@ -599,7 +602,7 @@ const AttendanceTracking: React.FC = () => {
         };
       });
 
-      console.log('Filter Options Loaded:', {
+      logger.info('Filter options loaded', {
         currentCollegeId,
         departments: uniqueDepartments.length,
         programs: uniquePrograms.length,
@@ -609,7 +612,7 @@ const AttendanceTracking: React.FC = () => {
         subjects: (subjectsData || []).length
       });
 
-      console.log('Faculty list with colleges:', facultyOptions);
+      logger.info('Faculty list with colleges:', { value: facultyOptions });
 
       setFilterOptions({
         departments: uniqueDepartments,
@@ -620,7 +623,7 @@ const AttendanceTracking: React.FC = () => {
         subjects: subjectsData || [],
       });
     } catch (err: any) {
-      console.error('Failed to fetch filter options:', err);
+      logger.error('Failed to fetch filter options:', err as Error);
     }
   };
 
@@ -656,13 +659,13 @@ const AttendanceTracking: React.FC = () => {
 
       setAttendanceRecords(transformedRecords);
     } catch (err: any) {
-      console.error('Failed to fetch attendance records:', err);
+      logger.error('Failed to fetch attendance records:', err as Error);
     }
   };
 
   const fetchStudentCount = async (department: string, course: string, semester: string, section: string) => {
     try {
-      console.log('Fetching student count for:', { department, course, semester, section });
+      logger.info('Fetching student count for:', { value: { department, course, semester, section } });
       
       const { data, error } = await supabase
         .from('program_sections_view')
@@ -673,22 +676,22 @@ const AttendanceTracking: React.FC = () => {
         .eq('section', section)
         .eq('status', 'active');
 
-      console.log('Student count query result:', { data, error });
+      logger.info('Student count query result:', { value: { data, error } });
 
       if (error) {
-        console.error('Supabase error:', error);
+        logger.error('Supabase error:', error as Error);
         throw error;
       }
       
       if (data && data.length > 0) {
-        console.log('Found matching record:', data[0]);
+        logger.info('Found matching record:', { value: data[0] });
         return data[0].max_students || 0;
       } else {
-        console.log('No matching records found');
+        logger.info('No matching records found');
         return 0;
       }
     } catch (err: any) {
-      console.error('Failed to fetch student count:', err);
+      logger.error('Failed to fetch student count:', err as Error);
       return 0;
     }
   };
@@ -703,7 +706,7 @@ const AttendanceTracking: React.FC = () => {
         toast.error('Failed to load departments');
       }
     } catch (error) {
-      console.error('Error loading departments:', error);
+      logger.error('Error loading departments:', error as Error);
       toast.error('Failed to load departments');
     }
   };
@@ -718,7 +721,7 @@ const AttendanceTracking: React.FC = () => {
         setProgramsData([]);
       }
     } catch (error) {
-      console.error('Error loading programs:', error);
+      logger.error('Error loading programs:', error as Error);
       toast.error('Failed to load programs');
       setProgramsData([]);
     }
@@ -734,7 +737,7 @@ const AttendanceTracking: React.FC = () => {
         setSemestersData([]);
       }
     } catch (error) {
-      console.error('Error loading semesters:', error);
+      logger.error('Error loading semesters:', error as Error);
       toast.error('Failed to load semesters');
       setSemestersData([]);
     }
@@ -750,7 +753,7 @@ const AttendanceTracking: React.FC = () => {
         setCoursesData([]);
       }
     } catch (error) {
-      console.error('Error loading courses:', error);
+      logger.error('Error loading courses:', error as Error);
       toast.error('Failed to load courses');
       setCoursesData([]);
     }
@@ -785,7 +788,7 @@ const AttendanceTracking: React.FC = () => {
           setCollegeId(orgData.id);
         }
       } catch (error) {
-        console.error('Error fetching college ID:', error);
+        logger.error('Error fetching college ID:', error as Error);
       }
     };
 
@@ -923,7 +926,7 @@ const AttendanceTracking: React.FC = () => {
         .order('date', { ascending: false });
 
       if (sessionsError) {
-        console.error('Error fetching sessions:', sessionsError);
+        logger.error('Error fetching sessions:', sessionsError as Error);
         alert('Error loading session details');
         return;
       }
@@ -962,13 +965,13 @@ const AttendanceTracking: React.FC = () => {
       
       setShowDetailsModal(true);
     } catch (err: any) {
-      console.error('Error in handleViewDetails:', err);
+      logger.error('Error in handleViewDetails:', err as Error);
       alert('Error loading details');
     }
   };
 
   const handleEdit = (subjectGroup: SubjectGroup) => {
-    console.log("Edit subject group:", subjectGroup);
+    logger.info("Edit subject group:", { value: subjectGroup });
     // Implement edit logic
   };
 
@@ -1159,7 +1162,7 @@ const AttendanceTracking: React.FC = () => {
         .single();
 
       if (facultyError || !facultyData) {
-        console.error('Faculty lookup error:', facultyError);
+        logger.error('Faculty lookup error:', facultyError as Error);
         alert("Unable to find faculty member. Please try again.");
         return;
       }
@@ -1173,7 +1176,7 @@ const AttendanceTracking: React.FC = () => {
       const subjectData = coursesData.find(c => c.id === sessionFormData.subject);
       const subjectName = subjectData ? `${subjectData.course_code} - ${subjectData.course_name}` : sessionFormData.subject;
 
-      console.log('Creating session with CORRECT logic:', {
+      logger.info('Creating session with CORRECT logic:', { value: {
         facultyId: sessionFormData.faculty,
         facultyName: facultyName,
         collegeId: collegeId,  // ✅ This is now the faculty's college_id
@@ -1181,7 +1184,7 @@ const AttendanceTracking: React.FC = () => {
         departmentName,
         programName,
         subjectName
-      });
+      } });
 
       const { error } = await supabase
         .from('college_attendance_sessions')

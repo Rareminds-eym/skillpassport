@@ -67,7 +67,7 @@ const BrowseCourses = () => {
 
       if (error) throw error;
 
-      console.log('📚 Fetched courses for students:', data?.length || 0);
+      logger.info('Fetched courses for students', { count: data?.length || 0 });
       setCourses(data || []);
 
       // Ensure loader displays for at least 1 second
@@ -78,7 +78,7 @@ const BrowseCourses = () => {
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
     } catch (error) {
-      console.error('Error fetching courses:', error);
+      logger.error('Error fetching courses', error);
       // Still wait for 1 second even on error
       const elapsedTime = Date.now() - startTime;
       const remainingTime = Math.max(0, 1000 - elapsedTime);

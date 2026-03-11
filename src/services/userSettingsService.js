@@ -4,6 +4,9 @@
  */
 
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('user-settings');
 
 /**
  * Get or create user settings
@@ -20,7 +23,7 @@ export const getUserSettings = async (userId) => {
       .maybeSingle();
 
     if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching user settings:', error);
+      logger.error('Error fetching user settings', error, { userId });
       return { success: false, error: error.message };
     }
 
@@ -55,7 +58,7 @@ export const getUserSettings = async (userId) => {
         .single();
 
       if (createError) {
-        console.error('Error creating user settings:', createError);
+        logger.error('Error creating user settings', createError, { userId });
         return { success: false, error: createError.message };
       }
 
@@ -64,7 +67,7 @@ export const getUserSettings = async (userId) => {
 
     return { success: true, data };
   } catch (err) {
-    console.error('getUserSettings exception:', err);
+    logger.error('getUserSettings exception', err);
     return { success: false, error: err.message };
   }
 };
@@ -93,13 +96,13 @@ export const updateNotificationPreferences = async (userId, preferences) => {
       .single();
 
     if (error) {
-      console.error('Error updating notification preferences:', error);
+      logger.error('Error updating notification preferences', error, { userId });
       return { success: false, error: error.message };
     }
 
     return { success: true, data };
   } catch (err) {
-    console.error('updateNotificationPreferences exception:', err);
+    logger.error('updateNotificationPreferences exception', err);
     return { success: false, error: err.message };
   }
 };
@@ -128,13 +131,13 @@ export const updatePrivacySettings = async (userId, settings) => {
       .single();
 
     if (error) {
-      console.error('Error updating privacy settings:', error);
+      logger.error('Error updating privacy settings', error, { userId });
       return { success: false, error: error.message };
     }
 
     return { success: true, data };
   } catch (err) {
-    console.error('updatePrivacySettings exception:', err);
+    logger.error('updatePrivacySettings exception', err);
     return { success: false, error: err.message };
   }
 };
@@ -154,7 +157,7 @@ export const getNotificationPreferencesByEmail = async (email) => {
       .maybeSingle();
 
     if (studentError || !student?.user_id) {
-      console.warn('Student not found for email:', email);
+      logger.warn('Student not found for email', { email });
       return { success: false, error: 'Student not found' };
     }
 
@@ -170,7 +173,7 @@ export const getNotificationPreferencesByEmail = async (email) => {
       data: result.data.notification_preferences || {},
     };
   } catch (err) {
-    console.error('getNotificationPreferencesByEmail exception:', err);
+    logger.error('getNotificationPreferencesByEmail exception', err);
     return { success: false, error: err.message };
   }
 };
@@ -190,7 +193,7 @@ export const getPrivacySettingsByEmail = async (email) => {
       .maybeSingle();
 
     if (studentError || !student?.user_id) {
-      console.warn('Student not found for email:', email);
+      logger.warn('Student not found for email', { email });
       return { success: false, error: 'Student not found' };
     }
 
@@ -206,7 +209,7 @@ export const getPrivacySettingsByEmail = async (email) => {
       data: result.data.privacy_settings || {},
     };
   } catch (err) {
-    console.error('getPrivacySettingsByEmail exception:', err);
+    logger.error('getPrivacySettingsByEmail exception', err);
     return { success: false, error: err.message };
   }
 };

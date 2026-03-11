@@ -19,6 +19,8 @@
 import { jsonResponse } from '../../../src/functions-lib/response';
 import type { PagesFunction, PagesEnv } from '../../../src/functions-lib/types';
 import { callOpenRouterWithRetry, getAPIKeys, MODEL_PROFILES } from '../shared/ai-config';
+import { createClient } from '@supabase/supabase-js';
+import { handleCourseMatching } from './handlers/course-matching';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request, env } = context;
@@ -49,8 +51,186 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
           'GET /health - Health check',
           'POST /role-overview - Generate role overview data',
           'POST /match-courses - AI-powered course matching for a role',
+          'GET /storage?attemptId=xxx&roleName=xxx - Retrieve stored role overview',
+          'POST /storage - Store role overview data',
         ],
       });
+    }
+
+    // Retrieve stored role overview from DB
+    if (path === '/storage' && request.method === 'GET') {
+      const url = new URL(request.url);
+      const attemptId = url.searchParams.get('attemptId');
+      const roleName = url.searchParams.get('roleName');
+
+      if (!attemptId || !roleName) {
+        return jsonResponse({ error: 'Missing required query parameters: attemptId and roleName' }, 400);
+      }
+
+      console.log(`[Storage] Retrieving: ${roleName} for attempt ${attemptId}`);
+
+      if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+        return jsonResponse({ error: 'Supabase not configured' }, 500);
+      }
+
+      const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+      // Query database for stored role overview
+      const { data, error } = await supabase
+        .from('personal_assessment_results')
+        .select('gemini_results')
+        .eq('attempt_id', attemptId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[Storage] DB error:', error);
+        return jsonResponse({ exists: false, data: null }, 200);
+      }
+
+      if (!data || !data.gemini_results) {
+        console.log('[Storage] No gemini_results data found');
+        return jsonResponse({ exists: false, data: null }, 200);
+      }
+
+      // Search for role in all three arrays: highFit, mediumFit, exploreLater
+      const specificOptions = data.gemini_results?.careerFit?.specificOptions;
+      if (!specificOptions) {
+        console.log('[Storage] No specificOptions found in gemini_results');
+        return jsonResponse({ exists: false, data: null }, 200);
+      }
+
+      const highFit = specificOptions.highFit || [];
+      const mediumFit = specificOptions.mediumFit || [];
+      const exploreLater = specificOptions.exploreLater || [];
+
+      // Search in all arrays
+      let roleData = highFit.find((role: any) => role.name === roleName);
+      if (!roleData) {
+        roleData = mediumFit.find((role: any) => role.name === roleName);
+      }
+      if (!roleData) {
+        roleData = exploreLater.find((role: any) => role.name === roleName);
+      }
+
+      if (!roleData || !roleData.roleOverview) {
+        console.log(`[Storage] Role "${roleName}" not found in any fit array or no roleOverview`);
+        return jsonResponse({ exists: false, data: null }, 200);
+      }
+
+      console.log(`[Storage] ✅ Found roleOverview for: ${roleName}`);
+      return jsonResponse({ exists: true, data: roleData.roleOverview }, 200);
+    }
+
+    // Store role overview in DB
+    if (path === '/storage' && request.method === 'POST') {
+      const body = await request.json() as { 
+        attemptId: string; 
+        roleName: string; 
+        roleOverview: any;
+      };
+
+      if (!body.attemptId || !body.roleName || !body.roleOverview) {
+        return jsonResponse({ error: 'Missing required fields: attemptId, roleName, roleOverview' }, 400);
+      }
+
+      console.log(`[Storage] Storing: ${body.roleName} for attempt ${body.attemptId}`);
+
+      if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+        return jsonResponse({ error: 'Supabase not configured' }, 500);
+      }
+
+      const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+      // Get current gemini_results data
+      const { data: currentData, error: fetchError } = await supabase
+        .from('personal_assessment_results')
+        .select('gemini_results')
+        .eq('attempt_id', body.attemptId)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error('[Storage] DB fetch error:', fetchError);
+        return jsonResponse({ error: 'Failed to fetch current data' }, 500);
+      }
+
+      if (!currentData || !currentData.gemini_results) {
+        console.error('[Storage] No gemini_results found for attempt:', body.attemptId);
+        return jsonResponse({ error: 'Assessment result not found' }, 404);
+      }
+
+      // Update the roleOverview for the specific role in gemini_results
+      const geminiResults = currentData.gemini_results || {};
+      const careerFit = geminiResults.careerFit || {};
+      const specificOptions = careerFit.specificOptions || {};
+      
+      const highFit = specificOptions.highFit || [];
+      const mediumFit = specificOptions.mediumFit || [];
+      const exploreLater = specificOptions.exploreLater || [];
+      
+      // Find role in all three arrays
+      let roleIndex = highFit.findIndex((role: any) => role.name === body.roleName);
+      let targetArray = highFit;
+      let arrayName = 'highFit';
+      
+      if (roleIndex === -1) {
+        roleIndex = mediumFit.findIndex((role: any) => role.name === body.roleName);
+        if (roleIndex !== -1) {
+          targetArray = mediumFit;
+          arrayName = 'mediumFit';
+        }
+      }
+      
+      if (roleIndex === -1) {
+        roleIndex = exploreLater.findIndex((role: any) => role.name === body.roleName);
+        if (roleIndex !== -1) {
+          targetArray = exploreLater;
+          arrayName = 'exploreLater';
+        }
+      }
+      
+      if (roleIndex === -1) {
+        console.error(`[Storage] Role "${body.roleName}" not found in any fit array`);
+        return jsonResponse({ error: 'Role not found in assessment results' }, 404);
+      }
+
+      console.log(`[Storage] Found role in ${arrayName} array at index ${roleIndex}`);
+
+      // Merge new data with existing roleOverview
+      const existingOverview = targetArray[roleIndex].roleOverview || {};
+      const roleOverviewWithMeta = {
+        ...existingOverview,
+        ...body.roleOverview,
+        lastUpdated: new Date().toISOString(),
+      };
+
+      // Add generatedAt only if it doesn't exist
+      if (!existingOverview.generatedAt) {
+        roleOverviewWithMeta.generatedAt = new Date().toISOString();
+      }
+
+      targetArray[roleIndex].roleOverview = roleOverviewWithMeta;
+      
+      // Update the correct array in specificOptions
+      specificOptions.highFit = highFit;
+      specificOptions.mediumFit = mediumFit;
+      specificOptions.exploreLater = exploreLater;
+      
+      careerFit.specificOptions = specificOptions;
+      geminiResults.careerFit = careerFit;
+
+      // Update database
+      const { error: updateError } = await supabase
+        .from('personal_assessment_results')
+        .update({ gemini_results: geminiResults })
+        .eq('attempt_id', body.attemptId);
+
+      if (updateError) {
+        console.error('[Storage] DB update error:', updateError);
+        return jsonResponse({ error: 'Failed to store data' }, 500);
+      }
+
+      console.log(`[Storage] ✅ Stored roleOverview for: ${body.roleName}`);
+      return jsonResponse({ success: true, message: 'Role overview stored successfully' }, 200);
     }
 
     // Generate role overview

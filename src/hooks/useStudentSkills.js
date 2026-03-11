@@ -8,7 +8,6 @@ export const useStudentSkills = (studentId, skillType, enabled = true) => {
 
   const fetchSkills = async () => {
     if (!studentId || !enabled) {
-      console.log(`⚠️ useStudentSkills (${skillType}): Skipping fetch`, { studentId, enabled });
       return;
     }
 
@@ -16,25 +15,17 @@ export const useStudentSkills = (studentId, skillType, enabled = true) => {
       setLoading(true);
       setError(null);
 
-      console.log(`🔄 useStudentSkills (${skillType}): Fetching skills for student:`, studentId);
-
       const { data, error: fetchError } = await supabase
         .from('skills')
         .select('*')
         .eq('student_id', studentId)
         .eq('type', skillType)
-        .is('training_id', null)
-        // Fetch ALL skills (including hidden and pending) - filtering happens in display components
+        // Fetch ALL skills including those from trainings
         .order('created_at', { ascending: false });
 
       if (fetchError) {
         throw fetchError;
       }
-
-      console.log(`✅ useStudentSkills (${skillType}): Fetched skills:`, {
-        count: data?.length || 0,
-        skills: data
-      });
 
       // Transform data to match UI expectations
       // Include versioning fields for proper display logic

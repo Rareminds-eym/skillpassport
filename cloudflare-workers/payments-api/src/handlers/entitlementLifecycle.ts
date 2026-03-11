@@ -15,8 +15,7 @@
 import { createSupabaseAdmin } from '../helpers';
 import { Env } from '../types';
 import { jsonResponse } from '../utils';
-
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+import { EMAIL_API_URL } from '../config';
 
 /**
  * Send email via Cloudflare Worker (email-api)
@@ -107,7 +106,7 @@ function generateRenewalReminderEmail(
               </div>
               
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://skillpassport.rareminds.in/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Renew Now →</a>
+                <a href="/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Renew Now →</a>
               </div>
             </td>
           </tr>
@@ -154,7 +153,7 @@ function generateExpirationEmail(userName: string, featureName: string): string 
               </p>
               
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://skillpassport.rareminds.in/subscription/add-ons" style="display: inline-block; background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Resubscribe →</a>
+                <a href="/subscription/add-ons" style="display: inline-block; background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Resubscribe →</a>
               </div>
             </td>
           </tr>
@@ -217,7 +216,7 @@ function generateAutoRenewalSuccessEmail(
               </div>
               
               <div style="text-align: center; margin: 32px 0;">
-                <a href="https://skillpassport.rareminds.in/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Manage Subscription →</a>
+                <a href="/subscription/manage" style="display: inline-block; background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">Manage Subscription →</a>
               </div>
             </td>
           </tr>

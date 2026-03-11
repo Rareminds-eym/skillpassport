@@ -17,7 +17,8 @@ import { useSubscriptionPlansData } from '@/features/subscription/model';
 function BulkPurchasePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
 
   // Get mode from search params (e.g., ?mode=add-seats&subscriptionId=xxx)
   const mode = searchParams.get('mode');

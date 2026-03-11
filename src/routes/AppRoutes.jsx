@@ -13,9 +13,6 @@ import PublicLayout from "../layouts/PublicLayout";
 import RecruiterLayout from "../layouts/RecruiterLayout";
 import StudentLayout from "../layouts/StudentLayout";
 //digital passport - StudentDigitalPortfolioNav removed (merged into Header dropdown)
-import { PortfolioProvider } from '../context/PortfolioContext';
-import { ThemeProvider } from '../context/ThemeContext';
-import { TestProvider } from '../context/assessment/TestContext';
 import HomePage from '../pages/digital-pp/HomePage';
 import DigitalPassportPage from '../pages/digital-pp/PassportPage';
 import DigitalPortfolioPage from '../pages/digital-pp/PortfolioPage';
@@ -28,7 +25,7 @@ import DigitalThemeSettings from '../pages/digital-pp/settings/ThemeSettings';
 // Duplicate imports removed - using the Digital* prefixed imports above
 
 // Role constants to prevent re-renders
-const STUDENT_ROLES = ["student", "school_student", "college_student"];
+const STUDENT_ROLES = ["student", "school_student", "college_student", "learner"];
 const RECRUITER_ROLES = ["recruiter"];
 const EDUCATOR_ROLES = ["educator", "school_educator", "college_educator"];
 const COLLEGE_ADMIN_ROLES = ["college_admin"];
@@ -114,7 +111,6 @@ const UnifiedForgotPassword = lazy(() => import("../pages/auth/UnifiedForgotPass
 const PasswordReset = lazy(() => import("../pages/auth/PasswordReset"));
 const TokenPasswordReset = lazy(() => import("../pages/auth/TokenPasswordReset"));
 const ResetPassword = lazy(() => import("../pages/auth/ResetPassword"));
-const DebugRoles = lazy(() => import("../pages/auth/DebugRoles"));
 const SignupRecruiter = lazy(() =>
   import("../pages/auth/components/SignIn/recruitment/SignupRecruiter")
 );
@@ -158,7 +154,6 @@ const StudentDashboard = lazy(() => import("../pages/student/Dashboard"));
 const Profile = lazy(() => import("../pages/student/Profile"));
 const MySkills = lazy(() => import("../pages/student/MySkills"));
 const MyLearning = lazy(() => import("../pages/student/MyLearning"));
-const MyExperience = lazy(() => import("../pages/student/MyExperience"));
 const Courses = lazy(() => import("../pages/student/Courses"));
 const CoursePlayer = lazy(() => import("../pages/student/CoursePlayer"));
 const ComingSoon = lazy(() => import("../pages/student/ComingSoon"));
@@ -174,7 +169,6 @@ const Clubs = lazy(() => import("../pages/student/Clubs"))
 const TimelinePage = lazy(() => import("../pages/student/TimelinePage"));
 const AchievementsPage = lazy(() => import("../pages/student/AchievementsPage"));
 const CareerAI = lazy(() => import("../pages/student/CareerAI"));
-const DebugQRTest = lazy(() => import("../pages/DebugQRTest"));
 const StudentPublicViewer = lazy(() =>
   import("../components/Students/components/StudentPublicViewer")
 );
@@ -202,7 +196,6 @@ const EducatorMentorNotes = lazy(() => import("../pages/educator/MentorNotes"));
 const EducatorMyMentees = lazy(() => import("../pages/educator/MyMentees"));
 const EducatorSettings = lazy(() => import("../pages/educator/Settings"));
 const EducatorProfile = lazy(() => import("../pages/educator/ProfileFixed"));
-const EducatorProfileDebug = lazy(() => import("../pages/educator/ProfileDebug"));
 const EducatorManagement = lazy(() => import("../pages/educator/EducatorManagement"));
 const EducatorCommunication = lazy(() =>
   import("../pages/educator/Communication")
@@ -221,6 +214,7 @@ const EducatorDigitalPortfolio = lazy(() =>
 const EducatorAI = lazy(() => import("../pages/educator/EducatorAI"));
 const CourseAnalytics = lazy(() => import("../pages/educator/CourseAnalytics"));
 const MarkAttendance = lazy(() => import("../pages/educator/MarkAttendance"));
+
 
 // Teacher pages (for teachers using the system)
 const LessonPlanCreate = lazy(() => import("../pages/teacher/LessonPlanCreate"));
@@ -523,11 +517,12 @@ const AppRoutes = () => {
       <ScrollToTop />
       <Routes>
         {/* Skill Passport Pre-Registration - Main landing page */}
-        <Route path="/register" element={<SkillPassportPreRegistration />} />
-        
+        <Route path="/register/student" element={<SkillPassportPreRegistration />} />
+        <Route path="/register/corporate" element={<SkillPassportPreRegistration />} />
+
         {/* Internal Testing Registration */}
         <Route path="/internal-testing" element={<InternalTestingRegistration />} />
-        
+
         {/* Receipt Page - Download PDF receipt */}
         <Route path="/receipt/:orderId" element={<Receipt />} />
 
@@ -557,7 +552,6 @@ const AppRoutes = () => {
           <Route path="/forgot-password" element={<UnifiedForgotPassword />} />
           <Route path="/password-reset" element={<TokenPasswordReset />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/debug-roles" element={<DebugRoles />} />
 
           {/* Deprecated login routes - redirect to unified login */}
           <Route path="/login/student" element={<Navigate to="/login" replace />} />
@@ -587,7 +581,6 @@ const AppRoutes = () => {
           <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
           <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
           <Route path="/accept-invitation" element={<AcceptInvitationPage />} />
-          <Route path="/debug-qr" element={<DebugQRTest />} />
           <Route path="/network-error" element={<NetworkError />} />
           <Route
             path="/student/profile/:studentId"
@@ -600,11 +593,7 @@ const AppRoutes = () => {
         <Route element={<PortfolioLayout />}>
           <Route
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <Outlet />
-                </PortfolioProvider>
-              </ThemeProvider>
+              <Outlet />
             }
           >
             <Route path="/portfolio" element={<DigitalPortfolioPage />} />
@@ -890,7 +879,6 @@ const AppRoutes = () => {
           <Route path="my-skills" element={<MySkills />} />
           <Route path="my-learning" element={<MyLearning />} />
           <Route path="my-training" element={<MyLearning />} /> {/* Redirect old route */}
-          <Route path="my-experience" element={<MyExperience />} />
           <Route path="courses" element={<Courses />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
           <Route path="coming-soon" element={<ComingSoon />} />
@@ -916,116 +904,80 @@ const AppRoutes = () => {
           <Route path="assessment/platform" element={<AssessmentStart />} />
           <Route path="assessment/dynamic" element={<DynamicAssessment />} />
           <Route path="adaptive-aptitude-test" element={<AdaptiveAptitudeTest />} />
-          <Route path="assessment/start" element={<TestProvider><AssessmentTestPage /></TestProvider>} />
-          <Route path="assessment/results" element={<TestProvider><AssessmentResults /></TestProvider>} />
+          <Route path="assessment/start" element={<AssessmentTestPage />} />
+          <Route path="assessment/results" element={<AssessmentResults />} />
 
           {/* Digital Portfolio routes with required providers */}
           <Route
             path="digital-portfolio"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div>
-                    <HomePage />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div>
+                <HomePage />
+              </div>
             }
           />
           <Route
             path="digital-portfolio/portfolio"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div>
-                    <DigitalPortfolioPage />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div>
+                <DigitalPortfolioPage />
+              </div>
             }
           />
           <Route
             path="digital-portfolio/passport"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div>
-                    <DigitalPassportPage />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div>
+                <DigitalPassportPage />
+              </div>
             }
           />
           <Route
             path="digital-portfolio/video"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div>
-                    <DigitalVideoPortfolioPage />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div>
+                <DigitalVideoPortfolioPage />
+              </div>
             }
           />
           <Route
             path="digital-portfolio/settings/theme"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div>
-                    <DigitalThemeSettings />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div>
+                <DigitalThemeSettings />
+              </div>
             }
           />
           <Route
             path="digital-portfolio/settings/layout"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div>
-                    <DigitalLayoutSettings />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div>
+                <DigitalLayoutSettings />
+              </div>
             }
           />
           <Route
             path="digital-portfolio/settings/export"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div>
-                    <DigitalExportSettings />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div>
+                <DigitalExportSettings />
+              </div>
             }
           />
           <Route
             path="digital-portfolio/settings/sharing"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <DigitalSharingSettings />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div className="-mx-6 -my-8">
+                <DigitalSharingSettings />
+              </div>
             }
           />
           <Route
             path="digital-portfolio/settings/profile"
             element={
-              <ThemeProvider>
-                <PortfolioProvider>
-                  <div className="-mx-6 -my-8">
-                    <DigitalProfileSettings />
-                  </div>
-                </PortfolioProvider>
-              </ThemeProvider>
+              <div className="-mx-6 -my-8">
+                <DigitalProfileSettings />
+              </div>
             }
           />
 
@@ -1058,22 +1010,21 @@ const AppRoutes = () => {
           <Route path="assessment-results" element={<EducatorAssessmentResults />} />
           <Route path="assignments" element={<EducatorAssessments />} />
           <Route path="college-assignments" element={<CollegeAssignments />} />
-          <Route path="mentornotes" element={<EducatorMentorNotes />} />
-          <Route path="my-mentees" element={<EducatorMyMentees />} />
+          <Route path="mentor-notes" element={<EducatorMentorNotes />} />
+          <Route path="mentees" element={<EducatorMyMentees />} />
           <Route path="digital-portfolio" element={<EducatorDigitalPortfolio />} />
           <Route path="settings" element={<EducatorSettings />} />
           <Route path="subscription/manage" element={<SubscriptionManage />} />
           <Route path="subscription/add-ons" element={<AddOns />} />
           <Route path="profile" element={<EducatorProfile />} />
           <Route path="courses/:courseId/learn" element={<CoursePlayer />} />
-          <Route path="profile-debug" element={<EducatorProfileDebug />} />
           <Route path="management" element={<EducatorManagement />} />
           <Route path="communication" element={<EducatorCommunication />} />
           <Route path="messages" element={<EducatorMessages />} />
           <Route path="analytics" element={<EducatorAnalytics />} />
           <Route path="activities" element={<EducatorActivities />} />
           <Route path="reports" element={<EducatorReports />} />
-          <Route path="media" element={<EducatorMediaManager />} />
+          <Route path="media-manager" element={<EducatorMediaManager />} />
           <Route path="lesson-plans" element={<LessonPlansList />} />
           <Route path="lesson-plans/create" element={<LessonPlanCreate />} />
           <Route path="my-timetable" element={<MyTimetable />} />

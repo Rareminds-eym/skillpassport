@@ -342,11 +342,7 @@ export const handleSettingsError = (error, context = {}) => {
 
   // Show toast if provided
   if (showToast && toast) {
-    toast({
-      title: 'Error',
-      description: response.message,
-      variant: 'destructive',
-    });
+    toast.error(response.message);
   }
 
   return response;
@@ -411,10 +407,7 @@ export const safeSave = async (saveFunction, options = {}) => {
 
     // Show success toast
     if (toast) {
-      toast({
-        title: 'Success',
-        description: response.message,
-      });
+      toast.success(response.message);
     }
 
     // Call success callback

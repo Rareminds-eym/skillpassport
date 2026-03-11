@@ -51,13 +51,16 @@ function getUserTypeFromPath(pathname) {
 const SubscriptionRouteGuard = ({ children, mode, showSkeleton = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading, role } = useAuth();
-  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
+  const { role } = useUserRole();
+  const user = useUser();
+  const authLoading = useAuthLoading();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionAccess();
   const [redirecting, setRedirecting] = useState(false);
   const managePath = useMemo(() => getManagePath(role), [role]);
 
   // Memoize active subscription check (including cancelled but not expired)
   const hasActiveSubscription = useMemo(() => {
+    if (!subscriptionData) return false;
     if (!user || !subscriptionData) return false;
     const status = subscriptionData.status;
     // Active or paused subscriptions

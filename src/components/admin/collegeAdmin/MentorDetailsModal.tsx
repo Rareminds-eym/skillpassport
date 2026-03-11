@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { XMarkIcon, UserIcon, AcademicCapIcon, DocumentTextIcon, ExclamationTriangleIcon, PhoneIcon, MapPinIcon, ClockIcon, EnvelopeIcon, ChatBubbleLeftEllipsisIcon, UserMinusIcon, CalendarIcon, ChevronDownIcon, ChevronUpIcon, CogIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserIcon, AcademicCapIcon, DocumentTextIcon, ExclamationTriangleIcon, PhoneIcon, MapPinIcon, ClockIcon, EnvelopeIcon, ChatBubbleLeftEllipsisIcon, UserMinusIcon, CalendarIcon, ChevronDownIcon, ChevronUpIcon, CogIcon, UserPlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 interface Student {
   id: number;
@@ -74,6 +74,8 @@ interface MentorDetailsDrawerProps {
   onReassignStudent?: (student: Student) => void;
   onConfigureAllocation?: (allocation: MentorAllocation) => void;
   onViewConversation?: (note: MentorNote) => void;
+  onAddStudentsToAllocation?: (mentor: Mentor, allocation: MentorAllocation) => void;
+  onRemoveStudent?: (student: Student, allocation: MentorAllocation) => void;
 }
 
 const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({ 
@@ -83,7 +85,9 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
   onLogIntervention,
   onReassignStudent,
   onConfigureAllocation,
-  onViewConversation
+  onViewConversation,
+  onAddStudentsToAllocation,
+  onRemoveStudent
 }) => {
   // State for accordion management
   const [expandedAllocations, setExpandedAllocations] = useState<Set<number>>(new Set());
@@ -482,21 +486,54 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                           }
                                         </p>
                                       </div>
-                                      {(() => {
-                                        // Only show configure button for active or upcoming periods
-                                        return (displayStatus === 'active' || displayStatus === 'upcoming') && (
-                                          <button
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              onConfigureAllocation?.(allocation);
-                                            }}
-                                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                            title="Configure this allocation"
-                                          >
-                                            <CogIcon className="h-4 w-4" />
-                                          </button>
-                                        );
-                                      })()}
+                                      <div className="flex items-center gap-1">
+                                        {(() => {
+                                          // Only show add students button for active or upcoming periods
+                                          return (displayStatus === 'active' || displayStatus === 'upcoming') && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                onAddStudentsToAllocation?.(mentor, allocation);
+                                              }}
+                                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                              title="Add students to this allocation"
+                                            >
+                                              <UserPlusIcon className="h-4 w-4" />
+                                            </button>
+                                          );
+                                        })()}
+                                        {(() => {
+                                          // Only show configure button for active or upcoming periods
+                                          return (displayStatus === 'active' || displayStatus === 'upcoming') && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                onConfigureAllocation?.(allocation);
+                                              }}
+                                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                              title="Configure this allocation"
+                                            >
+                                              <CogIcon className="h-4 w-4" />
+                                            </button>
+                                          );
+                                        })()}
+                                        {(() => {
+                                          // Only show delete button for upcoming periods
+                                          return displayStatus === 'upcoming' && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                // Call the delete handler passed from parent
+                                                (window as any).__deletePeriodHandler?.(allocation);
+                                              }}
+                                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                              title="Delete this period"
+                                            >
+                                              <TrashIcon className="h-4 w-4" />
+                                            </button>
+                                          );
+                                        })()}
+                                      </div>
                                       <div className="ml-2">
                                         {isExpanded ? (
                                           <ChevronUpIcon className="h-5 w-5 text-gray-400" />
@@ -526,17 +563,38 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
 
                                     {/* Students in this Allocation */}
                                     <div>
-                                      <h5 className="text-sm font-medium text-gray-700 mb-3">
-                                        Students ({allocation.students.length})
-                                      </h5>
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h5 className="text-sm font-medium text-gray-700">
+                                          Students ({allocation.students.length})
+                                        </h5>
+                                        {onAddStudentsToAllocation && (displayStatus === 'active' || displayStatus === 'upcoming') && (
+                                          <button
+                                            onClick={() => onAddStudentsToAllocation(mentor, allocation)}
+                                            className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-1"
+                                          >
+                                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                            </svg>
+                                            Add Students
+                                          </button>
+                                        )}
+                                      </div>
                                       {allocation.students.length === 0 ? (
                                         <div className="text-center py-4 text-gray-400 bg-gray-50 rounded-lg">
                                           <p className="text-sm">No students in this allocation period</p>
+                                          {onAddStudentsToAllocation && (displayStatus === 'active' || displayStatus === 'upcoming') && (
+                                            <button
+                                              onClick={() => onAddStudentsToAllocation(mentor, allocation)}
+                                              className="mt-2 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                                            >
+                                              Click to add students
+                                            </button>
+                                          )}
                                         </div>
                                       ) : (
                                         <div className="space-y-2 max-h-60 overflow-y-auto">
-                                          {allocation.students.map((student: Student) => (
-                                            <div key={student.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow">
+                                          {allocation.students.map((student: Student, index: number) => (
+                                            <div key={`${allocation.id}-${student.id}-${index}`} className="bg-gray-50 border border-gray-100 rounded-lg p-3 hover:shadow-sm transition-shadow">
                                               <div className="flex items-start justify-between">
                                                 <div className="flex-1">
                                                   <div className="flex items-center gap-2 mb-2">
@@ -604,6 +662,15 @@ const MentorDetailsDrawer: React.FC<MentorDetailsDrawerProps> = ({
                                                       title="Reassign Student"
                                                     >
                                                       <UserMinusIcon className="h-3.5 w-3.5" />
+                                                    </button>
+                                                  )}
+                                                  {onRemoveStudent && (displayStatus === 'active' || displayStatus === 'upcoming') && (
+                                                    <button
+                                                      onClick={() => onRemoveStudent(student, allocation)}
+                                                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                      title="Remove from this allocation"
+                                                    >
+                                                      <TrashIcon className="h-3.5 w-3.5" />
                                                     </button>
                                                   )}
                                                 </div>

@@ -28,7 +28,7 @@ import {
 import { TrophyIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useUserRole, useUser } from "../../stores";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -44,9 +44,8 @@ interface SidebarProps {
 const Sidebar = ({ activeTab, setActiveTab, showMobileMenu, onMobileMenuClose }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-
-  const role = user?.role || "college_admin";
+  const { role } = useUserRole();
+  const user = useUser();
 
   // Initialize all groups as open by default
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {

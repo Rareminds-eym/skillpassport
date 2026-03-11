@@ -6,7 +6,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { useStudents } from '../../../../hooks/useStudents';
-import { useToast } from '../Toast';
+import toast from 'react-hot-toast';
 import { addCandidateToPipeline } from '../../../../services/pipelineService';
 import { createNotification } from '../../../../services/notificationService.ts';
 
@@ -26,7 +26,6 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
   onSuccess
 }) => {
   const { students, loading: studentsLoading } = useStudents();
-  const { addToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStudents, setSelectedStudents] = useState<any[]>([]);
   const [adding, setAdding] = useState(false);
@@ -92,11 +91,7 @@ export const AddFromTalentPoolModal: React.FC<AddFromTalentPoolModalProps> = ({
       }
 
       if (successCount > 0 && currentRecruiterId) {
-        addToast(
-          'success',
-          'Candidates Added!',
-          `Successfully added ${successCount} candidate(s) to ${targetStage} stage`
-        );
+        toast.success(`Successfully added ${successCount} candidate(s) to ${targetStage} stage`);
 
         await createNotification(
           currentRecruiterId,

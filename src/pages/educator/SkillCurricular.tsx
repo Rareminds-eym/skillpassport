@@ -27,6 +27,9 @@ import { useEducatorSchool } from "../../hooks/useEducatorSchool";
 import * as clubsService from "../../services/clubsService";
 import * as competitionsService from "../../services/competitionsService";
 import * as XLSX from 'xlsx';
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('SkillCurricular');
 
 const categories = [
     { id: "all", label: "All Categories" },
@@ -77,7 +80,7 @@ function formatDate(d: string | Date | null | undefined): string {
 
 function downloadCSV(filename: string, rows: Record<string, any>[]): void {
     if (!rows || !rows.length) {
-        console.warn('No data available for CSV export');
+        logger.warn('No data available for CSV export');
         return;
     }
     
@@ -103,9 +106,9 @@ function downloadCSV(filename: string, rows: Record<string, any>[]): void {
         link.click();
         link.remove();
         
-        console.log(`✅ CSV exported successfully: ${filename}`);
+        logger.info('CSV exported successfully', { filename });
     } catch (error: any) {
-        console.error('❌ Error exporting CSV:', error);
+        logger.error('Error exporting CSV', error);
         throw new Error('Failed to export CSV file');
     }
 }
@@ -615,7 +618,7 @@ export default function ClubsActivitiesPage() {
                 setClubs(clubsData);
                 setCompetitions(competitionsData);
             } catch (error: any) {
-                console.error('Error fetching data:', error);
+                logger.error('Error fetching data', error);
                 // Silently handle error - don't show notice to user
             }
         };
@@ -668,14 +671,14 @@ export default function ClubsActivitiesPage() {
                     return;
                 }
 
-                console.log('🔍 [SkillCurricular] Fetching students for educator type:', educatorType);
+                logger.info('Fetching students for educator type', { educatorType });
                 
                 let students: Student[] = [];
                 
                 if (educatorType === 'school' && educatorSchool) {
                     // For school educators, filter by assigned classes
                     if (assignedClassIds && assignedClassIds.length > 0) {
-                        console.log('📚 [SkillCurricular] Fetching students for assigned classes:', assignedClassIds);
+                        logger.info('Fetching students for assigned classes', { assignedClassIds });
                         const { data, error } = await supabase
                             .from('students')
                             .select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id')
@@ -685,13 +688,13 @@ export default function ClubsActivitiesPage() {
                             .order('name');
 
                         if (error) {
-                            console.error('❌ [SkillCurricular] Error fetching students:', error);
+                            logger.error('Error fetching students', error);
                         } else {
                             students = (data || []) as any[];
                         }
                     } else {
                         // Fallback for admins or educators without class assignments
-                        console.log('👨‍💼 [SkillCurricular] Fetching all school students (admin/no assignments)');
+                        logger.info('Fetching all school students (admin/no assignments)');
                         const { data, error } = await supabase
                             .from('students')
                             .select('id, user_id, email, name, grade, section, roll_number, school_id, school_class_id')
@@ -700,14 +703,14 @@ export default function ClubsActivitiesPage() {
                             .order('name');
 
                         if (error) {
-                            console.error('❌ [SkillCurricular] Error fetching students:', error);
+                            logger.error('Error fetching students', error);
                         } else {
                             students = (data || []) as any[];
                         }
                     }
                 } else if (educatorType === 'college' && educatorCollege) {
                     // For college educators, filter by college
-                    console.log('🎓 [SkillCurricular] Fetching college students for college:', educatorCollege.id);
+                    logger.info('Fetching college students', { collegeId: educatorCollege.id });
                     const { data, error } = await supabase
                         .from('students')
                         .select('id, user_id, email, name, grade, section, roll_number, college_id')
@@ -716,14 +719,14 @@ export default function ClubsActivitiesPage() {
                         .order('name');
 
                     if (error) {
-                        console.error('❌ [SkillCurricular] Error fetching college students:', error);
+                        logger.error('Error fetching college students', error);
                     } else {
                         students = (data || []) as any[];
                     }
                 }
 
                 if (students.length === 0) {
-                    console.log('⚠️ [SkillCurricular] No students found for educator');
+                    logger.info('No students found for educator');
                     setAllStudents([]);
                     setLoadingStudents(false);
                     return;
@@ -742,12 +745,12 @@ export default function ClubsActivitiesPage() {
                     school_class_id: student.school_class_id
                 }));
                 
-                console.log(`✅ [SkillCurricular] Loaded ${mappedStudents.length} students for ${educatorType || 'unknown'} educator`);
-                console.log('📋 [SkillCurricular] Sample student:', mappedStudents[0]);
+                logger.info('Loaded students', { count: mappedStudents.length, educatorType });
+                logger.info('Sample student', { student: mappedStudents[0] });
                 setAllStudents(mappedStudents);
                 
             } catch (err) {
-                console.error('❌ [SkillCurricular] Error loading students:', err);
+                logger.error('Error loading students', err);
                 setAllStudents([]);
             } finally {
                 setLoadingStudents(false);
@@ -915,7 +918,7 @@ export default function ClubsActivitiesPage() {
             setAttendanceModal({ open: false, club: null });
             setAttendanceRecords({});
         } catch (error: any) {
-            console.error('Error saving attendance:', error);
+            logger.error('Error saving attendance', error);
             
             // Provide specific error messages
             let errorMessage = "Failed to save attendance. Please try again.";
@@ -944,7 +947,7 @@ export default function ClubsActivitiesPage() {
 
         try {
             // Double-check enrollment status by fetching fresh data from server
-            console.log('🔍 Checking enrollment status for:', student.email, 'in club:', club.club_id);
+            logger.info('Checking enrollment status', { email: student.email, clubId: club.club_id });
             const { data: existingMembership } = await supabase
                 .from('club_memberships')
                 .select('*')
@@ -954,7 +957,7 @@ export default function ClubsActivitiesPage() {
                 .single();
 
             if (existingMembership) {
-                console.log('⚠️ Student already enrolled (found in database):', existingMembership);
+                logger.info('Student already enrolled (found in database)', { existingMembership });
                 setNotice({ type: "warning", text: `${student.name} is already enrolled in this club.` });
                 
                 // Refresh club data to sync local state
@@ -965,7 +968,7 @@ export default function ClubsActivitiesPage() {
 
             // Check if student is already enrolled (using email, not ID) - local check
             if (club.members?.includes(student.email)) {
-                console.log('⚠️ Student already enrolled (found in local state)');
+                logger.info('Student already enrolled (found in local state)');
                 setNotice({ type: "warning", text: `${student.name} is already enrolled in this club.` });
                 return;
             }
@@ -981,12 +984,12 @@ export default function ClubsActivitiesPage() {
                 return;
             }
 
-            console.log('✅ Proceeding with enrollment for:', student.email);
+            logger.info('Proceeding with enrollment', { email: student.email });
             
             // Enroll student in database first
             await clubsService.enrollStudent(club.club_id, student.email);
             
-            console.log('✅ Database enrollment successful, updating local state');
+            logger.info('Database enrollment successful, updating local state');
             
             // Only update local state after successful database operation
             const updated = clubs.map((c) => 
@@ -1003,7 +1006,7 @@ export default function ClubsActivitiesPage() {
             setNotice({ type: "success", text: `${student.name} enrolled in ${club?.name || 'club'}` });
             
         } catch (error: any) {
-            console.error('Error enrolling student:', error);
+            logger.error('Error enrolling student', error);
             
             // Check for specific error messages from the backend
             let errorMessage = "Failed to enroll student. Please try again.";
@@ -1015,11 +1018,11 @@ export default function ClubsActivitiesPage() {
                 
                 // Refresh club data from server to ensure we have the latest state
                 try {
-                    console.log('🔄 Refreshing club data due to duplicate key error');
+                    logger.info('Refreshing club data due to duplicate key error');
                     const refreshedClubs = await clubsService.fetchClubs();
                     setClubs(refreshedClubs);
                 } catch (refreshError: any) {
-                    console.error('Error refreshing club data:', refreshError);
+                    logger.error('Error refreshing club data', refreshError);
                 }
                 
             } else if (error?.message?.includes('duplicate key')) {
@@ -1027,11 +1030,11 @@ export default function ClubsActivitiesPage() {
                 
                 // Refresh club data from server to ensure we have the latest state
                 try {
-                    console.log('🔄 Refreshing club data due to duplicate key error');
+                    logger.info('Refreshing club data due to duplicate key error');
                     const refreshedClubs = await clubsService.fetchClubs();
                     setClubs(refreshedClubs);
                 } catch (refreshError: any) {
-                    console.error('Error refreshing club data:', refreshError);
+                    logger.error('Error refreshing club data', refreshError);
                 }
                 
             } else if (error?.message) {
@@ -1068,14 +1071,14 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
         setStudentDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) || null });
         setNotice({ type: "info", text: `${student.name} removed from ${club?.name || 'club'}` });
     } catch (error: any) {
-        console.error('Error removing student:', error);
+        logger.error('Error removing student', error);
         setNotice({ type: "error", text: "Failed to remove student. Please try again." });
     }
 };
 
     const buildClubParticipationRows = async () => {
         try {
-            console.log('📊 Building club participation report...');
+            logger.info('Building club participation report...');
             
             // Try to fetch from Supabase views first
             const { data: reportData, error } = await supabase
@@ -1083,7 +1086,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 .select('*');
             
             if (!error && reportData && reportData.length > 0) {
-                console.log('✅ Using database report data:', reportData.length, 'records');
+                logger.info('Using database report data', { count: reportData.length });
                 return reportData.map(row => ({
                     "Club Name": row.club_name || 'N/A',
                     "Category": row.category || 'N/A',
@@ -1097,11 +1100,11 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 }));
             }
             
-            console.log('⚠️ Database report not available, using local data');
+            logger.info('Database report not available, using local data');
             
             // Fallback to local clubs data with enhanced information
             if (!clubs || clubs.length === 0) {
-                console.warn('No clubs data available for export');
+                logger.warn('No clubs data available for export');
                 return [];
             }
             
@@ -1124,7 +1127,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             });
             
         } catch (err) {
-            console.error('❌ Error building club report:', err);
+            logger.error('Error building club report', err);
             
             // Final fallback with minimal data
             return clubs?.map((club) => ({
@@ -1139,7 +1142,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
 
     const buildCompetitionPerformanceRows = async () => {
         try {
-            console.log('🏆 Building competition performance report...');
+            logger.info('Building competition performance report...');
             
             // Try to fetch from Supabase views first
             const { data: reportData, error } = await supabase
@@ -1147,7 +1150,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 .select('*');
             
             if (!error && reportData && reportData.length > 0) {
-                console.log('✅ Using database competition report:', reportData.length, 'records');
+                logger.info('Using database competition report', { count: reportData.length });
                 return reportData.map(row => ({
                     "Competition Name": row.competition_name || 'N/A',
                     "Level": row.level || 'N/A',
@@ -1162,11 +1165,11 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 }));
             }
             
-            console.log('⚠️ Database competition report not available, using local data');
+            logger.info('Database competition report not available, using local data');
             
             // Fallback to local competitions data
             if (!competitions || competitions.length === 0) {
-                console.warn('No competitions data available for export');
+                logger.warn('No competitions data available for export');
                 return [];
             }
             
@@ -1190,7 +1193,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             });
             
         } catch (err) {
-            console.error('❌ Error building competition report:', err);
+            logger.error('Error building competition report', err);
             
             // Final fallback with minimal data
             return competitions?.map((comp) => ({
@@ -1214,7 +1217,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 setNotice({ type: "error", text: "No club data available to export" });
             }
         } catch (error: any) {
-            console.error('❌ Export clubs CSV error:', error);
+            logger.error('Export clubs CSV error', error);
             setNotice({ type: "error", text: "Failed to export clubs data. Please try again." });
         } finally {
             setShowExportMenu(false);
@@ -1233,7 +1236,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 setNotice({ type: "error", text: "No competition data available to export" });
             }
         } catch (error: any) {
-            console.error('❌ Export competitions CSV error:', error);
+            logger.error('Export competitions CSV error', error);
             setNotice({ type: "error", text: "Failed to export competitions data. Please try again." });
         } finally {
             setShowExportMenu(false);
@@ -1279,7 +1282,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 setNotice({ type: "error", text: "No club data available to export" });
             }
         } catch (error: any) {
-            console.error('❌ Export clubs Excel error:', error);
+            logger.error('Export clubs Excel error', error);
             setNotice({ type: "error", text: "Failed to export clubs Excel. Please try again." });
         } finally {
             setShowExportMenu(false);
@@ -1325,7 +1328,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                 setNotice({ type: "error", text: "No competition data available to export" });
             }
         } catch (error: any) {
-            console.error('❌ Export competitions Excel error:', error);
+            logger.error('Export competitions Excel error', error);
             setNotice({ type: "error", text: "Failed to export competitions Excel. Please try again." });
         } finally {
             setShowExportMenu(false);
@@ -1526,7 +1529,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             setNewClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
             setClubFormErrors({});
         } catch (error: any) {
-            console.error('Error creating club:', error);
+            logger.error('Error creating club', error);
             setClubFormErrors({ submit: "Failed to create club. Please try again." });
         }
     };
@@ -1627,7 +1630,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             setEditClubForm({ name: "", category: "arts", description: "", capacity: 30, meeting_day: "", meeting_time: "", location: "" });
             setClubFormErrors({});
         } catch (error: any) {
-            console.error('Error updating club:', error);
+            logger.error('Error updating club', error);
             setClubFormErrors({ submit: "Failed to update club. Please try again." });
         }
     };
@@ -1645,7 +1648,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             
             setNotice({ type: "success", text: `${club?.name || 'Club'} has been deleted successfully!` });
         } catch (error: any) {
-            console.error('Error deleting club:', error);
+            logger.error('Error deleting club', error);
             setNotice({ type: "error", text: "Failed to delete club. Please try again." });
         }
     };
@@ -1659,12 +1662,12 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
 
     const loadCompetitionRegistrations = async (compId: string) => {
         try {
-            console.log('🔍 [Educator] Loading registrations for competition:', compId);
+            logger.info('Loading registrations for competition', { compId });
             const registrations = await competitionsService.getCompetitionRegistrations(compId);
-            console.log('📋 [Educator] Loaded registrations:', registrations.length, registrations);
+            logger.info('Loaded registrations', { count: registrations.length, registrations });
             setCompetitionRegistrations(registrations);
         } catch (error: any) {
-            console.error('❌ [Educator] Error loading registrations:', error);
+            logger.error('Error loading registrations', error);
         }
     };
 
@@ -1741,7 +1744,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             setRegistrationForm({ studentEmail: "", teamMembers: "", notes: "", status: "upcoming" });
             setEditingRegistration(null);
         } catch (error: any) {
-            console.error('Error registering for competition:', error);
+            logger.error('Error registering for competition', error);
             setNotice({ type: "error", text: error.message || "Failed to register. Please try again." });
         }
     };
@@ -1766,7 +1769,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             setNotice({ type: "success", text: "Registration deleted successfully" });
             await loadCompetitionRegistrations(registerCompModal?.comp_id || '');
         } catch (error: any) {
-            console.error('Error deleting registration:', error);
+            logger.error('Error deleting registration', error);
             setNotice({ type: "error", text: "Failed to delete registration" });
         }
     };
@@ -1865,7 +1868,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
                     setBulkUploadProgress(`Processed ${i + 1}/${jsonData.length} registrations...`);
                     
                 } catch (error: any) {
-                    console.error(`Error processing row ${i + 2}:`, error);
+                    logger.error('Error processing row', error, { row: i + 2 });
                     errors.push(`Row ${i + 2}: ${error.message || 'Registration failed'}`);
                     errorCount++;
                 }
@@ -1889,7 +1892,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
 
             // Show detailed errors if any
             if (errors.length > 0 && errors.length <= 5) {
-                console.log("Upload errors:", errors);
+                logger.info('Upload errors', { errors });
                 setTimeout(() => {
                     alert("Upload errors:\n" + errors.join('\n'));
                 }, 1000);
@@ -1900,7 +1903,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             setBulkUploadProgress(null);
             
         } catch (error) {
-            console.error('Bulk upload error:', error);
+            logger.error('Bulk upload error', error);
             setNotice({ type: "error", text: "Failed to process bulk upload. Please check file format." });
             setBulkUploadProgress(null);
         }
@@ -2156,7 +2159,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             });
             setCompFormErrors({});
         } catch (error: any) {
-            console.error('Error creating competition:', error);
+            logger.error('Error creating competition', error);
             setCompFormErrors({ submit: "Failed to create competition. Please try again." });
         }
     };
@@ -2267,7 +2270,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             });
             setCompFormErrors({});
         } catch (error: any) {
-            console.error('Error updating competition:', error);
+            logger.error('Error updating competition', error);
             setCompFormErrors({ submit: "Failed to update competition. Please try again." });
         }
     };
@@ -2285,7 +2288,7 @@ const handleStudentLeave = async (studentId: string, club: Club) => {
             
             setNotice({ type: "success", text: `${comp?.name || 'Competition'} has been deleted successfully!` });
         } catch (error: any) {
-            console.error('Error deleting competition:', error);
+            logger.error('Error deleting competition', error);
             setNotice({ type: "error", text: "Failed to delete competition. Please try again." });
         }
     };

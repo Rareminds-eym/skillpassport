@@ -28,6 +28,9 @@ import { useAuth } from "@/features/auth"
 import { supabase } from "../../lib/supabaseClient"
 import { createClass, EducatorClass, updateClass } from "../../services/classService"
 import ProgramSectionsPage from "./ProgramSectionsPage"
+import { getLogger } from "../../config/logging"
+
+const logger = getLogger('EducatorClassesPage')
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -463,7 +466,7 @@ const AddEditClassModal = ({
 
   const handleSubmit = async () => {
     // Debug logging
-    console.log('🔍 Modal Submit Debug:', {
+    logger.info('Modal Submit Debug', {
       educatorInfo,
       educatorSchool,
       educatorCollege,
@@ -797,7 +800,8 @@ const ClassesPage = () => {
   const navigate = useNavigate()
   
   // Get auth context
-  const { user, isAuthenticated } = useAuth()
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
   
   // Get educator's school/college information
   const { school: educatorSchool, college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool()
@@ -812,7 +816,7 @@ const ClassesPage = () => {
     const fetchEducatorInfo = async () => {
       if (!user || !educatorId) return
       
-      console.log('🔍 Fetching educator info:', { user: user.email, educatorId, educatorType })
+      logger.info('Fetching educator info', { userEmail: user.email, educatorId, educatorType })
       
       try {
         // Check if school or college educator
@@ -829,7 +833,7 @@ const ClassesPage = () => {
               name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
               email: educatorData.email
             }
-            console.log('✅ School educator info loaded:', info)
+            logger.info('School educator info loaded', info)
             setEducatorInfo(info)
           }
         } else if (educatorType === 'college') {
@@ -845,12 +849,12 @@ const ClassesPage = () => {
               name: `${educatorData.first_name || ''} ${educatorData.last_name || ''}`.trim() || educatorData.email,
               email: educatorData.email
             }
-            console.log('✅ College educator info loaded:', info)
+            logger.info('College educator info loaded', info)
             setEducatorInfo(info)
           }
         }
       } catch (err) {
-        console.error('❌ Error fetching educator info:', err)
+        logger.error('Error fetching educator info', err)
       }
     }
 
@@ -865,7 +869,7 @@ const ClassesPage = () => {
     }
     
     if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
-      console.error('Unauthorized access attempt to educator classes page')
+      logger.error('Unauthorized access attempt to educator classes page')
       navigate('/auth/login')
       return
     }

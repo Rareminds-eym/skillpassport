@@ -8,15 +8,12 @@ export const useStudentEducation = (studentId, enabled = true) => {
 
   const fetchEducation = async () => {
     if (!studentId || !enabled) {
-      console.log('⚠️ useStudentEducation: Skipping fetch', { studentId, enabled });
       return;
     }
 
     try {
       setLoading(true);
       setError(null);
-
-      console.log('🔄 useStudentEducation: Fetching education for student:', studentId);
 
       const { data, error: fetchError } = await supabase
         .from('education')
@@ -28,11 +25,6 @@ export const useStudentEducation = (studentId, enabled = true) => {
       if (fetchError) {
         throw fetchError;
       }
-
-      console.log('✅ useStudentEducation: Fetched education:', {
-        count: data?.length || 0,
-        education: data
-      });
 
       // Transform data to match UI expectations
       // Include versioning fields for proper display logic

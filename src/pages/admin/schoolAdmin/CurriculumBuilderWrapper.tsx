@@ -4,6 +4,9 @@ import toast from 'react-hot-toast';
 import { FeatureGate } from '../../../components/Subscription/FeatureGate';
 import { useCurriculum } from '../../../hooks/useCurriculum';
 import * as curriculumService from '../../../services/curriculumService';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-curriculum-wrapper');
 
 // Import all the modal and card components from the original file
 import CurriculumBuilder from './CurriculumBuilder';
@@ -46,19 +49,19 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
       try {
         subjectsData = await curriculumService.getSubjects();
       } catch (err) {
-        console.error('Error loading subjects:', err);
+        logger.error('Error loading subjects', err);
       }
 
       try {
         classesData = await curriculumService.getClasses();
       } catch (err) {
-        console.error('Error loading classes:', err);
+        logger.error('Error loading classes', err);
       }
 
       try {
         yearsData = await curriculumService.getAcademicYears();
       } catch (err) {
-        console.error('Error loading academic years:', err);
+        logger.error('Error loading academic years', err);
       }
       
       setSubjects(subjectsData);
@@ -72,20 +75,20 @@ const CurriculumBuilderWrapperContent: React.FC = () => {
           setSelectedAcademicYear(currentYear);
         }
       } catch (err) {
-        console.error('Error loading current academic year:', err);
+        logger.error('Error loading current academic year', err);
       }
 
       // Show warning if no data was loaded
       if (subjectsData.length === 0 || classesData.length === 0 || yearsData.length === 0) {
-        console.warn('Some configuration data is missing:', {
+        logger.warn('Some configuration data is missing', {
           subjects: subjectsData.length,
           classes: classesData.length,
           years: yearsData.length,
         });
       }
     } catch (error: any) {
-      console.error('Error loading configuration:', error);
-      toast.error('Failed to load configuration data. Please check the console for details.');
+      logger.error('Error loading configuration', error);
+      toast.error('Failed to load configuration data');
     }
   };
 

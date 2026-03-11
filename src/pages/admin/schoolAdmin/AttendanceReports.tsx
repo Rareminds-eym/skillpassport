@@ -24,6 +24,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import toast from 'react-hot-toast';
+import { getLogger } from '../../../config/logging';
 import KPICard from "../../../components/admin/KPICard";
 import Pagination from "../../../components/admin/Pagination";
 import SearchBar from "../../../components/common/SearchBar";
@@ -164,6 +165,8 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 // ==================== MAIN COMPONENT ====================
+const logger = getLogger('school-admin-attendance-reports');
+
 const AttendanceReports: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"daily" | "student" | "chronic" | "classwise" | "rawlogs">("daily");
   const [showFilters, setShowFilters] = useState(false);
@@ -204,10 +207,10 @@ const AttendanceReports: React.FC = () => {
             const userData = JSON.parse(storedUser);
             if (userData.role === 'school_admin' && userData.schoolId) {
               currentSchoolId = userData.schoolId;
-              console.log('✅ School admin detected, using schoolId:', currentSchoolId);
+              logger.info('School admin detected, using schoolId', { schoolId: currentSchoolId });
             }
           } catch (e) {
-            console.error('Error parsing stored user:', e);
+            logger.error('Error parsing stored user', e as Error);
           }
         }
 
@@ -240,14 +243,14 @@ const AttendanceReports: React.FC = () => {
         }
 
         if (!currentSchoolId) {
-          console.error('❌ No school_id found for this user');
+          logger.error('No school_id found for this user');
         } else {
-          console.log('✅ Using school_id:', currentSchoolId);
+          logger.info('Using school_id', { schoolId: currentSchoolId });
         }
 
         setSchoolId(currentSchoolId);
       } catch (error) {
-        console.error('Error fetching school ID:', error);
+        logger.error('Error fetching school ID', error as Error);
       }
     };
 
@@ -262,14 +265,14 @@ const AttendanceReports: React.FC = () => {
       try {
         setLoading(true);
         
-        console.log('📊 Fetching attendance for school:', schoolId);
+        logger.info('Fetching attendance for school', { schoolId });
         
         // Calculate date range (last 30 days)
         const endDate = new Date().toISOString().split('T')[0];
         const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
         
-        console.log('📅 Date range:', startDate, 'to', endDate);
-        console.log('🔍 Query params:', { schoolId, startDate, endDate });
+        logger.info('Date range', { startDate, endDate });
+        logger.info('Query params', { schoolId, startDate, endDate });
         
         // Fetch ALL attendance records for this school (last 60 days to be safe)
         const safeStartDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -282,11 +285,11 @@ const AttendanceReports: React.FC = () => {
           .order('date', { ascending: false });
 
         if (error) {
-          console.error('❌ Error fetching attendance:', error);
+          logger.error('Error fetching attendance', error);
           return;
         }
 
-        console.log('✅ Fetched attendance records:', attendanceData?.length || 0);
+        logger.info('Fetched attendance records', { count: attendanceData?.length || 0 });
         
         // Fetch students separately
         const { data: studentsData } = await supabase
@@ -320,14 +323,14 @@ const AttendanceReports: React.FC = () => {
           };
         });
 
-        console.log('✅ Transformed records:', transformedRecords.length);
+        logger.info('Transformed records', { count: transformedRecords.length });
         if (transformedRecords.length > 0) {
-          console.log('📝 Sample record:', transformedRecords[0]);
+          logger.info('Sample record', { record: transformedRecords[0] });
         }
 
         setAttendanceRecords(transformedRecords);
       } catch (err) {
-        console.error('Error:', err);
+        logger.error('Error', err as Error);
       } finally {
         setLoading(false);
       }
@@ -344,7 +347,7 @@ const AttendanceReports: React.FC = () => {
 
     const fetchStudents = async () => {
       try {
-        console.log('👥 Fetching students for school:', schoolId);
+        logger.info('Fetching students for school', { schoolId });
         
         const { data, error } = await supabase
           .from('students')
@@ -352,11 +355,11 @@ const AttendanceReports: React.FC = () => {
           .eq('school_id', schoolId);
 
         if (error) {
-          console.error('❌ Error fetching students:', error);
+          logger.error('Error fetching students', error);
           return;
         }
 
-        console.log('✅ Fetched students:', data?.length || 0);
+        logger.info('Fetched students', { count: data?.length || 0 });
 
         const transformedStudents: Student[] = (data || []).map((s: any) => ({
           id: s.id,
@@ -370,7 +373,7 @@ const AttendanceReports: React.FC = () => {
 
         setStudents(transformedStudents);
       } catch (err) {
-        console.error('Error:', err);
+        logger.error('Error', err as Error);
       }
     };
 
@@ -379,7 +382,7 @@ const AttendanceReports: React.FC = () => {
 
   // Filtered records (MUST be defined before analytics)
   const filteredRecords = useMemo(() => {
-    console.log('🔍 Filtering', attendanceRecords.length, 'records with filters:', filters, 'search:', searchQuery);
+    logger.info('Filtering records', { totalRecords: attendanceRecords.length, filters, searchQuery });
     const filtered = attendanceRecords.filter((record) => {
       const matchesSearch =
         searchQuery === "" ||
@@ -399,7 +402,7 @@ const AttendanceReports: React.FC = () => {
 
       return matchesSearch && matchesClass && matchesSection && matchesTeacher && matchesStatus && matchesSource && matchesDateRange;
     });
-    console.log('✅ Filtered to', filtered.length, 'records');
+    logger.info('Filtered records', { filteredCount: filtered.length });
     return filtered;
   }, [attendanceRecords, searchQuery, filters, dateRange]);
 
@@ -510,7 +513,7 @@ const AttendanceReports: React.FC = () => {
   };
 
   const printReport = () => {
-    console.log('🖨️ Opening print dialog');
+    logger.info('Opening print dialog');
     // Add print-friendly class to body
     document.body.classList.add('printing');
     window.print();
@@ -581,7 +584,7 @@ const AttendanceReports: React.FC = () => {
             </button>
             <button
               onClick={() => {
-                console.log('📥 Exporting CSV with', filteredRecords.length, 'records');
+                logger.info('Exporting CSV', { recordCount: filteredRecords.length });
                 if (filteredRecords.length === 0) {
                   toast.error('No data to export. Please adjust your filters or date range.');
                   return;
@@ -1535,7 +1538,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
 
   const submitMeeting = () => {
     // In production, this would call an API
-    console.log("Scheduling meeting:", {
+    logger.info('Scheduling meeting', {
       student: selectedStudentForAction,
       date: meetingDate,
       time: meetingTime,
@@ -1550,7 +1553,7 @@ const ChronicAbsenteeTab = ({ attendanceRecords, students, filters, searchQuery,
 
   const submitCounselor = () => {
     // In production, this would call an API
-    console.log("Assigning counselor:", {
+    logger.info('Assigning counselor', {
       student: selectedStudentForAction,
       counselor: selectedCounselor,
     });

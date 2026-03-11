@@ -11,7 +11,7 @@ import { useProfileCompletionPrompt } from '../../hooks/useProfileCompletionProm
 const PassportPage: React.FC = () => {
   const navigate = useNavigate();
   const { student, isLoading } = usePortfolio();
-  const { role } = useAuth();
+  const { role } = useUserRole();
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);

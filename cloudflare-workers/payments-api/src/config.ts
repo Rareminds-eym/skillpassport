@@ -12,11 +12,8 @@ export const corsHeaders = {
 export const VALID_AMOUNTS = [100, 49900, 99900, 199900];
 export const MAX_AMOUNT = 1000000;
 
-// Production domain for live payments
-export const PRODUCTION_DOMAIN = 'skillpassport.rareminds.in';
-
 // External service URLs
-export const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+export const EMAIL_API_URL = 'https://skillpassport.rareminds.in/api/email';
 export const STORAGE_API_URL = 'https://storage-api.dark-mode-d021.workers.dev';
 
 // Plan configuration

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useToast } from '../Toast';
+import toast from 'react-hot-toast';
 import { updateNextAction } from '../../../../services/pipelineService';
 import { createNotification } from '../../../../services/notificationService.ts';
 import { NEXT_ACTIONS, PipelineCandidate } from './types';
@@ -18,7 +18,6 @@ export const NextActionModal: React.FC<NextActionModalProps> = ({
   candidate,
   onSuccess
 }) => {
-  const { addToast } = useToast();
   const [action, setAction] = useState('send_email');
   const [date, setDate] = useState('');
   const [notes, setNotes] = useState('');
@@ -36,11 +35,7 @@ export const NextActionModal: React.FC<NextActionModalProps> = ({
         notes || null
       );
 
-      addToast(
-        'success',
-        'Next Action Set',
-        NEXT_ACTIONS.find(a => a.value === action)?.label || 'Action updated successfully'
-      );
+      toast.success(NEXT_ACTIONS.find(a => a.value === action)?.label || 'Action updated successfully');
 
       await createNotification(
         candidate.id,
@@ -58,7 +53,7 @@ export const NextActionModal: React.FC<NextActionModalProps> = ({
       setNotes('');
     } catch (error) {
       console.error('Error setting next action:', error);
-      addToast('error', 'Error', 'Failed to set next action. Please try again.');
+      toast.error('Failed to set next action. Please try again.');
     } finally {
       setSaving(false);
     }

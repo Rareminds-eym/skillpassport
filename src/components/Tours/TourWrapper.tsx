@@ -1,22 +1,35 @@
-import React, { useMemo } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useEffect, useMemo } from 'react';
+import { useUser } from '../../stores';
 import { useLocation } from 'react-router-dom';
 import After10AssessmentResultTour from './components/After10AssessmentResultTour';
 import After12AssessmentResultTour from './components/After12AssessmentResultTour';
 import GenericAssessmentResultTour from './components/GenericAssessmentResultTour';
 import AssessmentTestTour from './components/AssessmentTestTour';
 import StudentDashboardTour from './components/StudentDashboardTour';
-import { TourProvider } from './TourProvider';
+import { useTourStore } from '../../stores';
 
 /**
  * TourWrapper Component - Optimized
  * 
  * Only renders the tour component relevant to the current route.
  * Prevents multiple tours from competing and reduces unnecessary renders.
+ * Uses Zustand store for tour state management.
  */
 const TourWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const location = useLocation();
+  const { loadTourProgress, reset } = useTourStore();
+  
+  // Load tour progress when user is available - only once per user
+  useEffect(() => {
+    if (user?.id) {
+      console.log(`🎯 StudentId available, initializing tour system: ${user.id}`);
+      loadTourProgress(user.id);
+    } else {
+      // Reset tour state when no user
+      reset();
+    }
+  }, [user?.id, loadTourProgress, reset]);
   
   // Determine which tour to render based on current route
   const activeTour = useMemo(() => {
@@ -46,10 +59,10 @@ const TourWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [location.pathname]);
   
   return (
-    <TourProvider studentId={user?.id} userEmail={user?.email}>
+    <>
       {activeTour}
       {children}
-    </TourProvider>
+    </>
   );
 };
 

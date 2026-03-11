@@ -13,6 +13,9 @@ import {
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/features/auth";
 import { supabase } from "../../lib/supabaseClient";
+import { getLogger } from "../../config/logging";
+
+const logger = getLogger('RecruiterProfile');
 
 function formatDate(isoLike: string) {
   try {
@@ -36,7 +39,7 @@ const initials = (name: string) =>
     .toUpperCase();
 
 const RecruiterProfile: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [recruiter, setRecruiter] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<{ field: "email" | "phone" | null }>({
@@ -64,7 +67,7 @@ const RecruiterProfile: React.FC = () => {
         .maybeSingle();
 
       if (error) {
-        console.error("❌ Error fetching recruiter:", error);
+        logger.error("❌ Error fetching recruiter", error);
       } else {
         setRecruiter(data);
       }

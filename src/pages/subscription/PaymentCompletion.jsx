@@ -207,7 +207,10 @@ PaymentMethods.displayName = 'PaymentMethods';
 function PaymentCompletion() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated, loading: authLoading, role } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
+  const authLoading = useAuthLoading();
+  const { role } = useUserRole();
   const managePath = useMemo(() => getManagePath(role), [role]);
 
   const { plan, studentType, isUpgrade, isRenewal } = useMemo(() => location.state || {}, [location.state]);

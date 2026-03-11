@@ -10,6 +10,9 @@ import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { supabase } from '../../../lib/supabaseClient';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-library');
 
 interface Book {
   id: string;
@@ -164,7 +167,7 @@ export default function LibraryModule() {
           }
         }
       } catch (error) {
-        console.error('Error getting school ID:', error);
+        logger.error('Error getting school ID', error);
       }
     };
 
@@ -216,7 +219,7 @@ export default function LibraryModule() {
         .maybeSingle();
 
       if (statsError || !statsData) {
-        console.warn('Stats view not available, calculating manually');
+        logger.warn('Stats view not available, calculating manually');
         // Calculate stats manually
         const totalBooks = booksData?.length || 0;
         const totalCopies = booksData?.reduce((sum, book) => sum + book.total_copies, 0) || 0;
@@ -236,7 +239,7 @@ export default function LibraryModule() {
       }
 
     } catch (error) {
-      console.error('Error fetching library data:', error);
+      logger.error('Error fetching library data', error);
       toast.error('Failed to load library data');
     } finally {
       setLoading(false);
@@ -257,7 +260,7 @@ export default function LibraryModule() {
       if (error) throw error;
       setCategories(categoriesData || []);
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      logger.error('Error fetching categories', error);
     }
   };
 
@@ -293,7 +296,7 @@ export default function LibraryModule() {
       setEditingBook(null);
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
-      console.error('Error updating book:', error);
+      logger.error('Error updating book', error);
       if (error.code === '23505') {
         toast.error('A book with this ISBN already exists');
       } else {
@@ -325,7 +328,7 @@ export default function LibraryModule() {
       toast.success('Book deleted successfully!');
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
-      console.error('Error deleting book:', error);
+      logger.error('Error deleting book', error);
       if (error.code === '23503') {
         toast.error('Cannot delete book: It has been issued to students');
       } else {
@@ -370,7 +373,7 @@ export default function LibraryModule() {
       if (error) throw error;
       setHistoryData(historyData || []);
     } catch (error) {
-      console.error('Error fetching history data:', error);
+      logger.error('Error fetching history data', error);
       toast.error('Failed to load history data');
     } finally {
       setHistoryLoading(false);
@@ -406,7 +409,7 @@ export default function LibraryModule() {
 
       setOverdueBooks(overdueWithFines);
     } catch (error) {
-      console.error('Error fetching overdue books:', error);
+      logger.error('Error fetching overdue books', error);
       toast.error('Failed to load overdue books');
     } finally {
       setOverdueLoading(false);
@@ -480,7 +483,7 @@ export default function LibraryModule() {
       fetchOverdueBooks(); // Refresh overdue data
       fetchLibraryData(); // Refresh main data
     } catch (error: any) {
-      console.error('Error marking book as overdue:', error);
+      logger.error('Error marking book as overdue', error);
       toast.error('Failed to mark book as overdue');
     } finally {
       setLoading(false);
@@ -540,7 +543,7 @@ export default function LibraryModule() {
       });
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
-      console.error('Error adding book:', error);
+      logger.error('Error adding book', error);
       if (error.code === '23505') {
         toast.error('A book with this ISBN already exists');
       } else {
@@ -601,7 +604,7 @@ export default function LibraryModule() {
       
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
-      console.error('Error issuing book:', error);
+      logger.error('Error issuing book', error);
       toast.error('Failed to issue book');
     } finally {
       setLoading(false);
@@ -630,7 +633,7 @@ export default function LibraryModule() {
       toast.success('Book returned successfully');
       fetchLibraryData(); // Refresh data
     } catch (error: any) {
-      console.error('Error returning book:', error);
+      logger.error('Error returning book', error);
       toast.error('Failed to return book');
     } finally {
       setLoading(false);

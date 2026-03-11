@@ -17,14 +17,18 @@ import {
   User,
   X
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import OTPInput from '../OTPInput';
 import paymentsApiService from '../../services/paymentsApiService';
 import { ShinyButton } from '../ui/shiny-button';
 
-const REGISTRATION_FEE = 250;
-const EMAIL_API_URL = 'https://email-api.dark-mode-d021.workers.dev';
+const REGISTRATION_FEE_STUDENT = 499;
+const REGISTRATION_FEE_CORPORATE = 7500;
+const EMAIL_API_URL = import.meta.env.DEV 
+  ? 'http://localhost:8788/api/email'
+  : 'https://skillpassport.rareminds.in/api/email';
 
 const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -147,21 +151,26 @@ const InputField = ({ label, icon: Icon, error, verified, disabled, rightElement
 
 const TermsModal = ({ isOpen, onClose, onAccept }) => {
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const scrollRef = useCallback((node) => {
-    if (node) {
-      const handleScroll = () => {
-        const { scrollTop, scrollHeight, clientHeight } = node;
-        if (scrollTop + clientHeight >= scrollHeight - 10) {
-          setHasScrolledToBottom(true);
-        }
-      };
-      node.addEventListener('scroll', handleScroll);
-      if (node.scrollHeight <= node.clientHeight) {
+  const scrollContainerRef = useRef(null);
+
+  useEffect(() => {
+    const node = scrollContainerRef.current;
+    if (!node) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = node;
+      if (scrollTop + clientHeight >= scrollHeight - 10) {
         setHasScrolledToBottom(true);
       }
-      return () => node.removeEventListener('scroll', handleScroll);
+    };
+
+    node.addEventListener('scroll', handleScroll);
+    if (node.scrollHeight <= node.clientHeight) {
+      setHasScrolledToBottom(true);
     }
-  }, []);
+
+    return () => node.removeEventListener('scroll', handleScroll);
+  }, [isOpen]);
 
   return (
     <AnimatePresence>
@@ -186,11 +195,11 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
                 <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
-            <div ref={scrollRef} className="p-4 sm:p-6 md:p-8 overflow-y-auto max-h-[55vh] sm:max-h-[60vh] prose prose-sm max-w-none">
-              <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Pre-Registration Terms</h4>
+            <div ref={scrollContainerRef} className="p-4 sm:p-6 md:p-8 overflow-y-auto max-h-[55vh] sm:max-h-[60vh] prose prose-sm max-w-none">
+              <h4 className="text-gray-900 font-bold text-base sm:text-lg mb-2 sm:mb-3">Registration Terms</h4>
               <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">By signing up, you agree to the following:</p>
               <ul className="text-gray-600 text-sm sm:text-base space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                <li>The pre-registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
+                <li>The registration fee is ₹{REGISTRATION_FEE} and cannot be refunded once paid.</li>
                 <li>Your personal details will be used only for registration and official communication.</li>
                 <li>You will receive emails about your registration status and upcoming updates/events.</li>
                 <li>Access to the platform will be provided after successful verification.</li>
@@ -236,6 +245,10 @@ const TermsModal = ({ isOpen, onClose, onAccept }) => {
 };
 
 export default function RegistrationForm({ campaign = 'skill-passport' }) {
+  const location = useLocation();
+  const isCorporate = location.pathname.includes('/register/corporate');
+  const REGISTRATION_FEE = isCorporate ? REGISTRATION_FEE_CORPORATE : REGISTRATION_FEE_STUDENT;
+  
   const [form, setForm] = useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -337,8 +350,8 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
         key: orderData.key,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Skill Passport',
-        description: 'Pre-Registration Fee',
+        name: isCorporate ? 'Skill Ecosystem' : 'Skill Passport',
+        description: 'Registration Fee',
         order_id: orderData.id,
         prefill: {
           name: form.name.trim(),
@@ -397,7 +410,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
             orderId: orderData.id,
             status: 'failed',
             error: response.error?.description,
-            planName: `Pre-Registration - ${campaign}`
+            planName: `Registration - ${campaign}`
           });
         } catch (err) {
           console.error('Failed to update payment failure:', err);
@@ -437,7 +450,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   <Check className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-emerald-600" strokeWidth={3} />
                 </motion.div>
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2 sm:mb-3">Payment Successful!</h2>
-                <p className="text-emerald-100 text-base sm:text-lg">Welcome to Skill Passport</p>
+                <p className="text-emerald-100 text-base sm:text-lg">Welcome to {isCorporate ? 'Skill Ecosystem' : 'Skill Passport'}</p>
               </div>
             </div>
 
@@ -486,30 +499,34 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
           transition={{ duration: 0.5 }}
           className="text-center mb-6 sm:mb-8"
         >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
-          >
-            <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
-              <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
-                <DotLottieReact
-                  src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
-                  loop
-                  autoplay
-                  style={{ width: '32px', height: '32px' }}
-                />
+          {!isCorporate && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-5 py-2 sm:py-2.5 bg-white border-2 border-gray-300 rounded-full mb-3 sm:mb-4"
+            >
+              <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 flex items-center justify-center">
+                <div style={{ transform: 'scale(1.5)', transformOrigin: 'center' }}>
+                  <DotLottieReact
+                    src="https://lottie.host/1689bbd3-291d-4b13-9da5-2882f580c526/7rNvhtQCvu.lottie"
+                    loop
+                    autoplay
+                    style={{ width: '32px', height: '32px' }}
+                  />
+                </div>
               </div>
-            </div>
-            <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
-          </motion.div>
+              <span className="text-gray-900 text-sm sm:text-base font-bold">For Students Only</span>
+            </motion.div>
+          )}
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-3 px-4">
-            Pre-Registration
+            {isCorporate ? 'Corporate Registration' : 'Registration'}
           </h2>
           <p className="text-gray-600 text-sm sm:text-base leading-relaxed max-w-md mx-auto px-4">
-            Secure your access to Skill Passport today
+            {isCorporate 
+              ? 'Access skilled talent and hire confidently' 
+              : 'Secure your access to Skill Ecosystem today'}
           </p>
         </motion.div>
 
@@ -741,7 +758,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
                   </motion.span>
                 </button>
                 <span className={`${!hasReadTerms ? 'text-gray-400' : 'text-gray-700'}`}>
-                  {' '}and consent to the payment of ₹{REGISTRATION_FEE} for pre-registration.
+                  {' '}and consent to the payment of ₹{REGISTRATION_FEE} for registration.
                 </span>
                 {!hasReadTerms && (
                   <span className="block mt-1 text-xs text-amber-600 font-medium">
@@ -796,7 +813,7 @@ export default function RegistrationForm({ campaign = 'skill-passport' }) {
               ) : (
                 <div className="flex items-center justify-center gap-2">
                   <Lock className="w-4 h-4" />
-                  <span>Pre-register Now</span>
+                  <span>Register Now</span>
                   <ChevronRight className="w-4 h-4" />
                 </div>
               )}

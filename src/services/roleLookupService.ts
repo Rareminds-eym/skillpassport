@@ -26,7 +26,6 @@ export interface RoleLookupResult {
  */
 export const getUserRole = async (userId: string, email: string): Promise<RoleLookupResult> => {
   try {
-    console.log('🔍 getUserRole called with:', { userId, email });
     const foundRoles: UserRole[] = [];
     const foundUserData: UserData[] = [];
 
@@ -94,7 +93,6 @@ export const getUserRole = async (userId: string, email: string): Promise<RoleLo
 
     // 5. Check users table for admin roles
     // Note: users table uses 'id' column that references auth.users(id) directly
-    console.log('🔍 Checking users table for admin roles, userId:', userId, 'email:', email);
     
     const { data: userData, error: userError } = await supabase
       .from('users')

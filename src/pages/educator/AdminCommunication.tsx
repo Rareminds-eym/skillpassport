@@ -46,7 +46,7 @@ const AdminCommunication = () => {
   const markedAsReadRef = useRef<Set<string>>(new Set());
   
   // Get educator ID from auth
-  const { user } = useAuth();
+  const user = useUser();
   const educatorId = user?.id;
   const educatorName = user?.name || 'Educator';
   const queryClient = useQueryClient();
@@ -171,7 +171,7 @@ const AdminCommunication = () => {
     if (!educatorRecordId || !schoolId) return;
     
     try {
-      console.log('🆕 Creating new conversation with school admin:', { educatorRecordId, schoolId, subject });
+      logger.info('Creating new conversation with school admin', { educatorRecordId, schoolId, subject });
       
       // Check if conversation already exists
       const existingConversation = activeConversations.find(conv => 
@@ -179,7 +179,7 @@ const AdminCommunication = () => {
       );
       
       if (existingConversation) {
-        console.log('✅ Found existing conversation:', existingConversation.id);
+        logger.info('Found existing conversation', { conversationId: existingConversation.id });
         setSelectedConversationId(existingConversation.id);
         setShowNewConversationModal(false);
         toast.success('Opened existing conversation');
@@ -193,7 +193,7 @@ const AdminCommunication = () => {
         subject
       );
       
-      console.log('✅ New conversation created:', conversation);
+      logger.info('New conversation created', { conversationId: conversation });
       
       // Refresh conversations to include the new one
       await refetchActive();
@@ -205,7 +205,7 @@ const AdminCommunication = () => {
       toast.success('New conversation started with school admin');
       
     } catch (error) {
-      console.error('❌ Error creating conversation:', error);
+      logger.error('Error creating conversation', error);
       toast.error('Failed to start conversation');
     }
   }, [educatorRecordId, schoolId, activeConversations, refetchActive]);
@@ -221,10 +221,10 @@ const AdminCommunication = () => {
         // Only handle educator-admin conversations
         if (conversation.conversation_type !== 'educator_admin') return;
         
-        console.log('🔄 [Educator] Realtime UPDATE detected:', conversation);
+        logger.info('🔄 [Educator] Realtime UPDATE detected', { conversationId: conversation.id });
         
         if (conversation.deleted_by_educator) {
-          console.log('❌ [Educator] Ignoring UPDATE for deleted conversation:', conversation.id);
+          logger.info('❌ [Educator] Ignoring UPDATE for deleted conversation', { conversationId: conversation.id });
           return;
         }
         
@@ -279,7 +279,7 @@ const AdminCommunication = () => {
         });
       })
       .catch(err => {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read', err);
         markedAsReadRef.current.delete(markKey);
         refetchActive();
       });
@@ -345,7 +345,7 @@ const AdminCommunication = () => {
       
       await Promise.all([refetchActive(), refetchArchived()]);
     } catch (error) {
-      console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
+      logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation`, error);
       refetchActive();
       refetchArchived();
     } finally {
@@ -467,7 +467,7 @@ const AdminCommunication = () => {
       setMessageInput('');
       setTyping(false);
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message', error);
     }
   }, [messageInput, currentChat, educatorId, sendMessage, sendNotification, selectedConversationId, setTyping]);
 

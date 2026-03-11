@@ -200,8 +200,9 @@ async function createRoleSpecificRecord(
 
   switch (role) {
     case 'school_student':
-    case 'college_student': {
-      const studentType = role === 'school_student' ? 'school' : 'college';
+    case 'college_student':
+    case 'learner': {
+      const studentType = role === 'school_student' ? 'school' : role === 'college_student' ? 'college' : 'learner';
       const { error } = await supabaseAdmin.from('students').insert({
         user_id: userId,
         name: fullName,
@@ -209,7 +210,7 @@ async function createRoleSpecificRecord(
         contact_number: phone,
         date_of_birth: dateOfBirth || null,
         student_type: studentType,
-        approval_status: 'pending',
+        approval_status: role === 'learner' ? 'approved' : 'pending', // Auto-approve learners
       });
       if (error) {
         throw new Error(`Failed to create student record: ${error.message}`);

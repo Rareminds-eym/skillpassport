@@ -3,6 +3,10 @@
  * Handles parsing resumes using Claude AI
  */
 
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('resume-parser');
+
 export const parseResumeWithAI = async (resumeText) => {
   try {
     // Call backend API directly
@@ -18,17 +22,17 @@ export const parseResumeWithAI = async (resumeText) => {
       );
 
       if (!hasData) {
-        console.log('⚠️ AI returned empty data, using fallback parser');
+        logger.warn('AI returned empty data, using fallback parser');
         return parseFallback(resumeText);
       }
 
       return result;
     } catch (aiError) {
-      console.error('❌ AI parsing failed:', aiError.message);
+      logger.error('AI parsing failed', aiError);
       return parseFallback(resumeText);
     }
   } catch (error) {
-    console.error('Error parsing resume:', error);
+    logger.error('Error parsing resume', error);
     throw error;
   }
 };
@@ -72,7 +76,7 @@ const parseWithClaude = async (resumeText) => {
       throw new Error('Invalid response from server');
     }
 
-    console.log('✅ Resume parsing successful via backend');
+    logger.info('Resume parsing successful via backend');
 
     let parsedData = result.data;
 
@@ -82,7 +86,7 @@ const parseWithClaude = async (resumeText) => {
 
     return addMetadata(parsedData);
   } catch (error) {
-    console.error('Backend parsing failed:', error);
+    logger.error('Backend parsing failed', error);
     throw error;
   }
 };

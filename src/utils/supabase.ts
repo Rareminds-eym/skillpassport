@@ -1,5 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { Student } from '../types/student';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('supabase-utils');
+
+// TEST: Prove logger is working
+logger.info('✅ Logger is working! This is from supabase-utils');
 
 const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
@@ -30,13 +36,13 @@ export const studentService = {
         .single();
 
       if (error) {
-        console.error('Error fetching student:', error);
+        logger.error('Error fetching student', error as Error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error fetching student:', error);
+      logger.error('Error fetching student', error as Error);
       return null;
     }
   },
@@ -50,13 +56,13 @@ export const studentService = {
         .single();
 
       if (error) {
-        console.error('Error fetching student by email:', error);
+        logger.error('Error fetching student by email', error as Error);
         return null;
       }
 
       return data;
     } catch (error) {
-      console.error('Error fetching student by email:', error);
+      logger.error('Error fetching student by email', error as Error);
       return null;
     }
   },
@@ -69,13 +75,13 @@ export const studentService = {
         .eq('id', id);
 
       if (error) {
-        console.error('Error updating student profile:', error);
+        logger.error('Error updating student profile', error as Error);
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Error updating student profile:', error);
+      logger.error('Error updating student profile', error as Error);
       return false;
     }
   },
@@ -90,7 +96,7 @@ export const studentService = {
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) {
-        console.error('Error uploading image:', uploadError);
+        logger.error('Error uploading image', uploadError as Error);
         return null;
       }
 
@@ -100,7 +106,7 @@ export const studentService = {
 
       return data.publicUrl;
     } catch (error) {
-      console.error('Error uploading profile image:', error);
+      logger.error('Error uploading profile image', error as Error);
       return null;
     }
   }

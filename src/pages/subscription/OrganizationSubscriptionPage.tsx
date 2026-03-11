@@ -42,7 +42,8 @@ interface OrganizationDetails {
 
 function OrganizationSubscriptionPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
   
   // Determine organization type and ID from user context
   const organizationType = useMemo(() => {

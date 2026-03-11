@@ -10,6 +10,10 @@ import {
 } from "@heroicons/react/24/outline"
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { getLogger } from "../../config/logging"
+
+const logger = getLogger('ProgramSectionsPage');
+
 import SearchBar from "../../components/common/SearchBar"
 import { useProgramSections } from "../../hooks/useProgramSections"
 import { useEducatorSchool } from "../../hooks/useEducatorSchool"
@@ -186,7 +190,8 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 
 const ProgramSectionsPage = () => {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  const user = useUser()
+  const isAuthenticated = useIsAuthenticated()
   const { college: educatorCollege, loading: schoolLoading } = useEducatorSchool()
   
   // Permission controls for Classroom Management module
@@ -217,7 +222,7 @@ const ProgramSectionsPage = () => {
     }
     
     if (user?.role !== 'educator' && user?.role !== 'college_educator') {
-      console.error('Unauthorized access attempt to program sections page')
+      logger.error('Unauthorized access attempt to program sections page')
       navigate('/auth/login')
       return
     }
@@ -226,7 +231,7 @@ const ProgramSectionsPage = () => {
   // Permission check - redirect if no view permission
   useEffect(() => {
     if (!canView) {
-      console.warn('Access denied: No view permission for Classroom Management')
+      logger.warn('Access denied: No view permission for Classroom Management')
       navigate('/educator/dashboard')
       return
     }

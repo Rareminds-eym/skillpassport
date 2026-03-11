@@ -23,6 +23,9 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import SearchBar from "../../../components/common/SearchBar";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('school-admin-curriculum-builder');
 
 /* ==============================
    TYPES & INTERFACES
@@ -854,7 +857,7 @@ const CopyCurriculumModal = ({
           .order('grade');
 
         if (error) {
-          console.error('Error fetching source classes:', error);
+          logger.error('Error fetching source classes', error);
           setAvailableSourceClasses([]);
           return;
         }
@@ -865,17 +868,17 @@ const CopyCurriculumModal = ({
         );
 
         if (!filteredData || filteredData.length === 0) {
-          console.log(`No source classes found for ${sourceAcademicYear}`);
+          logger.info('No source classes found', { academicYear: sourceAcademicYear });
           setAvailableSourceClasses([]);
           return;
         }
 
         const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
           .sort((a, b) => parseInt(a) - parseInt(b));
-        console.log(`Found ${uniqueGrades.length} source classes for ${sourceAcademicYear}:`, uniqueGrades);
+        logger.info('Found source classes', { count: uniqueGrades.length, academicYear: sourceAcademicYear });
         setAvailableSourceClasses(uniqueGrades);
       } catch (err) {
-        console.error('Error fetching source classes:', err);
+        logger.error('Error fetching source classes', err as Error);
         setAvailableSourceClasses([]);
       } finally {
         setLoadingSourceClasses(false);
@@ -906,7 +909,7 @@ const CopyCurriculumModal = ({
           .order('grade');
 
         if (error) {
-          console.error('Error fetching target classes:', error);
+          logger.error('Error fetching target classes', error);
           setAvailableTargetClasses([]);
           return;
         }
@@ -917,17 +920,17 @@ const CopyCurriculumModal = ({
         );
 
         if (!filteredData || filteredData.length === 0) {
-          console.log(`No target classes found for ${targetAcademicYear}`);
+          logger.info('No target classes found', { academicYear: targetAcademicYear });
           setAvailableTargetClasses([]);
           return;
         }
 
         const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
           .sort((a, b) => parseInt(a) - parseInt(b));
-        console.log(`Found ${uniqueGrades.length} target classes for ${targetAcademicYear}:`, uniqueGrades);
+        logger.info('Found target classes', { count: uniqueGrades.length, academicYear: targetAcademicYear });
         setAvailableTargetClasses(uniqueGrades);
       } catch (err) {
-        console.error('Error fetching target classes:', err);
+        logger.error('Error fetching target classes', err as Error);
         setAvailableTargetClasses([]);
       } finally {
         setLoadingTargetClasses(false);
@@ -986,7 +989,7 @@ const CopyCurriculumModal = ({
           setError(`No curriculum found for Class ${sourceClass} - ${sourceSubject} (${sourceAcademicYear})`);
         }
       } catch (err: any) {
-        console.error('Error fetching curriculums:', err);
+        logger.error('Error fetching curriculums', err);
         setError(err.message || 'Failed to fetch curriculums');
       } finally {
         setLoading(false);
@@ -1028,13 +1031,13 @@ const CopyCurriculumModal = ({
 
         if (fetchError) throw fetchError;
         if (!data) {
-          console.error('Curriculum not found');
+          logger.error('Curriculum not found');
           return;
         }
 
         setCurriculumPreview(data);
       } catch (err: any) {
-        console.error('Error fetching preview:', err);
+        logger.error('Error fetching preview', err);
       }
     };
 
@@ -1421,7 +1424,7 @@ const ExportCurriculumModal = ({
       await onExport(selectedFormat);
       onClose();
     } catch (error) {
-      console.error('Export failed:', error);
+      logger.error('Export failed', error as Error);
     } finally {
       setExporting(false);
     }
@@ -1617,7 +1620,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
           }
         }
       } catch (error) {
-        console.error('Error initializing user:', error);
+        logger.error('Error initializing user', error as Error);
       }
     };
     initializeUser();
@@ -1757,7 +1760,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         );
 
         if (error) {
-          console.error('Error fetching classes:', error);
+          logger.error('Error fetching classes', error);
           setAvailableClasses([]);
           return;
         }
@@ -1766,15 +1769,15 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
           // Extract unique grades and sort numerically
           const uniqueGrades = [...new Set(filteredData.map(c => c.grade))]
             .sort((a, b) => parseInt(a) - parseInt(b));
-          console.log(`Found ${uniqueGrades.length} classes for ${selectedAcademicYear}:`, uniqueGrades);
+          logger.info('Found classes', { count: uniqueGrades.length, academicYear: selectedAcademicYear });
           setAvailableClasses(uniqueGrades);
         } else {
           // No classes found for this academic year, show empty
-          console.log(`No classes found for ${selectedAcademicYear}, showing empty list`);
+          logger.info('No classes found', { academicYear: selectedAcademicYear });
           setAvailableClasses([]);
         }
       } catch (err) {
-        console.error('Error in fetchAvailableClasses:', err);
+        logger.error('Error in fetchAvailableClasses', err as Error);
         setAvailableClasses([]);
       } finally {
         setLoadingClasses(false);
@@ -2154,7 +2157,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         }
       );
     } catch (err: any) {
-      console.error('Error copying curriculum:', err);
+      logger.error('Error copying curriculum', err);
       throw new Error(err.message || 'Failed to copy curriculum');
     }
   };
@@ -2211,7 +2214,7 @@ const CurriculumBuilder: React.FC<CurriculumBuilderProps> = (props) => {
         icon: '📥',
       });
     } catch (error: any) {
-      console.error('Export error:', error);
+      logger.error('Export error', error);
       toast.error(`Failed to export curriculum: ${error.message || 'Unknown error'}`, {
         duration: 5000,
       });

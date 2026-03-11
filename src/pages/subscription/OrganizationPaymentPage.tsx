@@ -67,7 +67,8 @@ interface LocationState {
 function OrganizationPaymentPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
   
   const state = location.state as LocationState | null;
   const { plan, organizationConfig, organizationId: stateOrgId } = state || {};

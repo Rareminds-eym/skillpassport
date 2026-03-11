@@ -21,24 +21,30 @@ import { useState } from 'react';
 
 const PublicLayoutContent = () => {
   const location = useLocation();
-  const { isAuthenticated, role: userRole, user } = useAuth();
-  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
+  const isAuthenticated = useIsAuthenticated();
+  const { role: userRole } = useUserRole();
+  const user = useUser();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionAccess();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('subscription');
-  
-  const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();
-  const { 
-    showBanner: showAssessmentBanner, 
+
+  const { event, showBanner, dismissBanner, getTimeRemaining } = useCurrentPromotional();
+  const {
+    showBanner: showAssessmentBanner,
     dismissBanner: dismissAssessmentBanner,
     getTimeRemaining: getAssessmentTimeRemaining
-  } = useAssessmentPromotionalContext();
+  } = useAssessmentPromotional();
+
+  // Don't show assessment banner for learners
+  const isLearner = userRole === 'learner';
+  const shouldShowAssessmentBanner = showAssessmentBanner && !isLearner;
 
   // Show assessment banner if assessment modal was dismissed, otherwise show promo banner
-  const hasAnyBanner = showAssessmentBanner || showBanner;
+  const hasAnyBanner = shouldShowAssessmentBanner || showBanner;
 
   // Check if we're on a subscription page
   const isSubscriptionPage = location.pathname.startsWith('/subscription/');
-  
+
   // Check if user has active subscription
   const hasActiveSubscription = subscriptionData && isActiveOrPaused(subscriptionData.status);
 
@@ -50,12 +56,12 @@ const PublicLayoutContent = () => {
       if (subscriptionLoading) {
         return <SubscriptionPurchaseHeader userEmail={user?.email} hasBanner={hasAnyBanner} />;
       }
-      
+
       // If user doesn't have active subscription, show simplified purchase header
       if (!hasActiveSubscription) {
         return <SubscriptionPurchaseHeader userEmail={user?.email} hasBanner={hasAnyBanner} />;
       }
-      
+
       // If user has active subscription, show role-specific header
       if (userRole) {
         // Student roles
@@ -74,8 +80,8 @@ const PublicLayoutContent = () => {
         }
 
         // Admin roles
-        if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'rm_admin' || 
-            userRole === 'school_admin' || userRole === 'college_admin' || userRole === 'university_admin') {
+        if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'rm_admin' ||
+          userRole === 'school_admin' || userRole === 'college_admin' || userRole === 'university_admin') {
           return (
             <AdminHeader
               onMenuToggle={() => setShowMobileMenu(!showMobileMenu)}
@@ -104,13 +110,13 @@ const PublicLayoutContent = () => {
     <div className="min-h-screen flex flex-col">
       {/* Assessment Promotional Banner - Shows after modal is dismissed */}
       <AssessmentPromotionalBanner
-        isOpen={showAssessmentBanner}
+        isOpen={shouldShowAssessmentBanner}
         onClose={dismissAssessmentBanner}
         getTimeRemaining={getAssessmentTimeRemaining}
       />
 
       {/* Promotional Banner - Shows after promo modal is dismissed (only if assessment banner not showing) */}
-      {!showAssessmentBanner && (
+      {!shouldShowAssessmentBanner && (
         <PromotionalBanner
           event={event}
           isOpen={showBanner}
@@ -132,13 +138,7 @@ const PublicLayoutContent = () => {
 };
 
 const PublicLayout = () => {
-  return (
-    <PromotionalEventProvider>
-      <AssessmentPromotionalProvider>
-        <PublicLayoutContent />
-      </AssessmentPromotionalProvider>
-    </PromotionalEventProvider>
-  );
+  return <PublicLayoutContent />;
 };
 
 export default PublicLayout;

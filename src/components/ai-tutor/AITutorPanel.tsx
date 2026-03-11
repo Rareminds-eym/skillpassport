@@ -19,8 +19,8 @@ import {
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useTutorChat } from '../../hooks/useTutorChat';
-// @ts-ignore - AuthContext is a JSX file
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
+import { Link } from 'react-router-dom';
 
 interface LessonContext {
   lessonId?: string;
@@ -41,7 +41,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   lessonContext,
   defaultExpanded = false
 }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);

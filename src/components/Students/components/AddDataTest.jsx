@@ -10,7 +10,7 @@ import { useStudentDataByEmail } from '../../../hooks/useStudentDataByEmail';
 import { useAuth } from '../../../context/AuthContext';
 
 const AddDataTest = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = user?.email;
   
   const {

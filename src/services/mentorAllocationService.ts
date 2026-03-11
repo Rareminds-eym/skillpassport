@@ -251,7 +251,8 @@ export const getMentorAllocations = async (collegeId: string): Promise<MentorAll
         college_id
       )
     `)
-    .eq('college_mentor_periods.college_id', collegeId);
+    .eq('college_mentor_periods.college_id', collegeId)
+    .in('status', ['active', 'pending']); // Only fetch active and pending allocations
 
   if (error) {
     console.error('Error fetching mentor allocations:', error);
@@ -275,7 +276,7 @@ export const findAllocationId = async (
     .eq('status', status)
     .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error finding allocation ID:', error);
@@ -348,6 +349,28 @@ export const createMentorPeriod = async (period: Omit<MentorPeriod, 'id' | 'crea
 export const createMentorAllocations = async (
   allocations: Omit<MentorAllocation, 'id' | 'created_at'>[]
 ): Promise<MentorAllocation[]> => {
+  // Check for existing active or pending allocations before inserting
+  const studentIds = allocations.map(a => a.student_id);
+  const { data: existing } = await supabase
+    .from('college_mentor_student_allocations')
+    .select('student_id, status, mentor_id')
+    .in('student_id', studentIds)
+    .in('status', ['active', 'pending']);
+
+  if (existing && existing.length > 0) {
+    // Filter out students that are being re-allocated to the same mentor
+    const conflictingStudents = existing.filter(e => {
+      const newAllocation = allocations.find(a => a.student_id === e.student_id);
+      // Only consider it a conflict if it's a different mentor
+      return newAllocation && newAllocation.mentor_id !== e.mentor_id;
+    });
+
+    if (conflictingStudents.length > 0) {
+      const conflictingIds = conflictingStudents.map(e => e.student_id);
+      throw new Error(`Some students already have active allocations with different mentors: ${conflictingIds.join(', ')}`);
+    }
+  }
+
   const { data, error } = await supabase
     .from('college_mentor_student_allocations')
     .insert(allocations)

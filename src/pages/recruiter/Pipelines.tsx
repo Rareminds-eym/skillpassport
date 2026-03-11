@@ -12,6 +12,9 @@ import { usePipelineData } from '../../hooks/usePipelineData';
 import { createNotification } from '../../services/notificationService.ts';
 import { addCandidateToPipeline, moveCandidateToStage } from '../../services/pipelineService';
 import { PipelineFilters, PipelineSortOptions } from '../../types/recruiter';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Pipelines');
 
 // Pipeline components
 import {
@@ -38,7 +41,6 @@ interface PipelinesProps {
  */
 const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   const { opportunities, loading: opportunitiesLoading } = useOpportunities();
-  const { addToast } = useToast();
 
   // State
   const [selectedJob, setSelectedJob] = useState<number | null>(null);
@@ -159,11 +161,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
           }
           return newData;
         });
-        addToast('error', 'Move Failed', (result.error as any).message || 'Unknown error');
+        toast.error((result.error as any).message || 'Unknown error');
         return;
       }
 
-      addToast('success', 'Candidate Moved!', `Successfully moved to ${newStage.replace('_', ' ')}`);
+      toast.success(`Successfully moved to ${newStage.replace('_', ' ')}`);
 
       if (currentRecruiterId && movedCandidate) {
         await createNotification(
@@ -183,7 +185,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         }
         return newData;
       });
-      addToast('error', 'Error', 'Failed to move candidate. Please try again.');
+      toast.error('Failed to move candidate. Please try again.');
     } finally {
       setMovingCandidates(prev => prev.filter(id => id !== candidateId));
     }
@@ -196,38 +198,38 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     }).filter(Boolean);
 
     if (candidateNames.length === 0) {
-      addToast('warning', 'No Selection', 'Please select candidates first');
+      toast.error('Please select candidates first');
       return;
     }
 
-    addToast('success', 'Bulk Email Sent!', `Emails queued for ${candidateNames.length} candidate(s)`);
+    toast.success(`Emails queued for ${candidateNames.length} candidate(s)`);
     setSelectedCandidates([]);
   };
 
   const handleBulkWhatsApp = () => {
     const count = selectedCandidates.length;
     if (count === 0) {
-      addToast('warning', 'No Selection', 'Please select candidates first');
+      toast.error('Please select candidates first');
       return;
     }
-    addToast('success', 'WhatsApp Messages Sent!', `Messages delivered to ${count} candidate(s)`);
+    toast.success(`Messages delivered to ${count} candidate(s)`);
     setSelectedCandidates([]);
   };
 
   const handleAssignInterviewer = () => {
     const count = selectedCandidates.length;
     if (count === 0) {
-      addToast('warning', 'No Selection', 'Please select candidates first');
+      toast.error('Please select candidates first');
       return;
     }
-    addToast('success', 'Interviewer Assignment', `Ready to assign interviewer to ${count} candidate(s)`);
+    toast.success(`Ready to assign interviewer to ${count} candidate(s)`);
     setSelectedCandidates([]);
   };
 
   const handleBulkReject = async () => {
     const count = selectedCandidates.length;
     if (count === 0) {
-      addToast('warning', 'No Selection', 'Please select candidates first');
+      toast.error('Please select candidates first');
       return;
     }
 
@@ -244,7 +246,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         return newData;
       });
 
-      addToast('success', 'Candidates Rejected', `${count} candidate(s) removed from pipeline`);
+      toast.success(`${count} candidate(s) removed from pipeline`);
 
       if (selectedJob) {
         await createNotification(
@@ -265,7 +267,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     );
 
     if (allCandidates.length === 0) {
-      addToast('warning', 'No Data', 'No candidates in pipeline to export');
+      toast.error('No candidates in pipeline to export');
       return;
     }
 
@@ -284,7 +286,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
     link.click();
     document.body.removeChild(link);
 
-    addToast('success', 'Pipeline Exported!', `${allCandidates.length} candidates exported successfully`);
+    toast.success(`${allCandidates.length} candidates exported successfully`);
   };
 
   const toggleCandidateSelection = (candidateId: string) => {
@@ -294,7 +296,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   };
 
   const handleSendEmail = (candidate: PipelineCandidate) => {
-    addToast('success', 'Email Sent', `Email sent to ${candidate.name}`);
+    toast.success(`Email sent to ${candidate.name}`);
   };
 
   const handleCandidateView = (candidate: PipelineCandidate) => {
@@ -305,7 +307,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
   // Handle moving AI recommended candidate to screened stage
   const handleMoveAIRecommendedToScreened = async (rec: AIRecommendation, pipelineCandidate: any) => {
     if (!selectedJob) {
-      addToast('error', 'Error', 'Please select a job first');
+      toast.error('Please select a job first');
       return;
     }
 
@@ -328,7 +330,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         // Candidate exists in pipeline, move them
         await handleCandidateMove(existingPipelineId, 'screened');
       } else if (existingPipelineId && existingStage === 'screened') {
-        addToast('info', 'Already Screened', `${rec.studentName} is already in the Screened stage`);
+        toast(`${rec.studentName} is already in the Screened stage`);
       } else {
         // Candidate not in pipeline, add them directly to screened
         const result = await addCandidateToPipeline({
@@ -344,20 +346,20 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         if (result.error) {
           const errorMsg = (result.error as any)?.message || 'Failed to add candidate';
           if (errorMsg.includes('already in this pipeline')) {
-            addToast('info', 'Already Added', `${rec.studentName} is already in the pipeline`);
+            toast(`${rec.studentName} is already in the pipeline`);
           } else {
-            addToast('error', 'Error', errorMsg);
+            toast.error(errorMsg);
           }
           return;
         }
 
         // Refresh pipeline data
         loadPipelineCandidates();
-        addToast('success', 'Moved to Screened', `${rec.studentName} has been added to Screened stage`);
+        toast.success(`${rec.studentName} has been added to Screened stage`);
       }
     } catch (error) {
-      console.error('Error moving AI recommended candidate:', error);
-      addToast('error', 'Error', 'Failed to move candidate. Please try again.');
+      logger.error('Error moving AI recommended candidate:', error);
+      toast.error('Failed to move candidate. Please try again.');
     }
   };
 
@@ -429,11 +431,11 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         selectedJob={selectedJob}
         setSelectedJob={setSelectedJob}
         getTotalCandidates={getTotalCandidates}
-        onAddCandidates={() => addToast('info', 'Feature Coming Soon', 'Add candidates modal will be available shortly')}
+        onAddCandidates={() => toast('Add candidates modal will be available shortly')}
         onExportPipeline={handleExportPipeline}
         onRefresh={() => {
           loadPipelineCandidates();
-          addToast('info', 'Refreshing', 'Loading latest candidate data...');
+          toast('Loading latest candidate data...');
         }}
       />
 
@@ -495,7 +497,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         totalAIRecommended={totalAIRecommended}
         globalSearch={globalSearch}
         setGlobalSearch={setGlobalSearch}
-        onShowToast={addToast}
+        onShowToast={(message: string) => toast(message)}
       />
 
       {/* Kanban Board */}
@@ -568,7 +570,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
           if (selectedCandidate) onViewProfile(selectedCandidate);
         }}
         onSendEmail={handleSendEmail}
-        onScheduleCall={(candidate: PipelineCandidate) => addToast('info', 'Schedule Call', `Opening calendar for ${candidate.name}`)}
+        onScheduleCall={(candidate: PipelineCandidate) => toast(`Opening calendar for ${candidate.name}`)}
         onNextAction={(candidate) => {
           setShowQuickView(false);
           handleNextAction(candidate);

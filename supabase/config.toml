@@ -94,7 +94,8 @@ sql_paths = [
   "./seed_adaptive_questions_ug.sql",
   "./seed_adaptive_questions_pg.sql",
   "./seed_factory_visits.sql",
-  "./seed_school_courses.sql"
+  "./seed_school_courses.sql",
+  "./seed_imported_courses_only.sql",
 ]
 
 [db.network_restrictions]

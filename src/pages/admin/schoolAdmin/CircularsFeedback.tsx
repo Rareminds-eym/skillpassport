@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from "react";
+import { getLogger } from '../../../config/logging';
 import {
   PlusCircleIcon,
   XMarkIcon,
@@ -40,6 +41,8 @@ interface Circular {
   acknowledgedBy: number;
   priority: "low" | "medium" | "high";
 }
+
+const logger = getLogger('school-admin-circulars-feedback');
 
 interface Feedback {
   id: string;
@@ -721,7 +724,7 @@ const GrievanceDetailsModal = ({
 
   const handleSubmitComment = () => {
     if (!newComment.trim()) return;
-    console.log("New comment:", newComment);
+    logger.info('New comment submitted', { commentLength: newComment.length });
     setNewComment("");
   };
 
@@ -730,7 +733,7 @@ const GrievanceDetailsModal = ({
       toast.error("Please provide resolution details");
       return;
     }
-    console.log("Resolving grievance:", { grievanceId: grievance.id, resolution });
+    logger.info('Resolving grievance', { grievanceId: grievance.id, hasResolution: !!resolution });
     onClose();
   };
 
@@ -1486,7 +1489,7 @@ const CircularsFeedback: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreated={(circular) => {
-          console.log("New circular:", circular);
+          logger.info('New circular created', { circularId: circular.id });
           setShowCreateModal(false);
         }}
       />

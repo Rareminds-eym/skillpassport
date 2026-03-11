@@ -122,7 +122,8 @@ export const courseEnrollmentService = {
           completed_lessons: [],
           total_lessons: totalLessons,
           status: 'active',
-          last_accessed: new Date().toISOString()
+          last_accessed: new Date().toISOString(),
+          skills_acquired: []  // Initialize empty, will be populated on completion
         })
         .select()
         .single();
@@ -218,16 +219,38 @@ export const courseEnrollmentService = {
         status = 'in_progress';
       }
 
+      // Prepare update data
+      const updateData = {
+        completed_lessons: completedLessons,
+        progress: progress,
+        status: status,
+        last_accessed: new Date().toISOString(),
+        completed_at: progress >= 100 ? new Date().toISOString() : null
+      };
+
+      // If course is being completed, fetch and add skills from course_skills
+      if (progress >= 100 && (!enrollment.skills_acquired || enrollment.skills_acquired.length === 0)) {
+        console.log('📚 Course completed! Fetching skills from course_skills for course:', courseId);
+        const { data: courseSkills, error: skillsError } = await supabase
+          .from('course_skills')
+          .select('skill_name')
+          .eq('course_id', courseId);
+
+        console.log('📚 Course skills fetched:', courseSkills);
+        console.log('📚 Skills error:', skillsError);
+
+        if (courseSkills && courseSkills.length > 0) {
+          updateData.skills_acquired = courseSkills.map(s => s.skill_name);
+          console.log('📚 Adding skills to enrollment:', updateData.skills_acquired);
+        } else {
+          console.log('⚠️ No course skills found for this course');
+        }
+      }
+
       // Update enrollment
       const { data: updated, error: updateError } = await supabase
         .from('course_enrollments')
-        .update({
-          completed_lessons: completedLessons,
-          progress: progress,
-          status: status,
-          last_accessed: new Date().toISOString(),
-          completed_at: progress >= 100 ? new Date().toISOString() : null
-        })
+        .update(updateData)
         .eq('id', enrollment.id)
         .select()
         .single();

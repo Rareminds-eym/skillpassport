@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { getLogger } from '../../../config/logging';
 import {
   PlusCircleIcon,
   CheckCircleIcon,
@@ -16,7 +17,7 @@ import {
 import SearchBar from "../../../components/common/SearchBar";
 import toast from 'react-hot-toast';
 import { useExams, UIExam, UIStudentMark } from "../../../hooks/useExams";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from "../../../stores";
 import { supabase } from "../../../lib/supabaseClient";
 
 // Import components
@@ -32,8 +33,11 @@ import { EXAM_STATUSES } from "../../../components/exams/types";
 // Types
 type StudentMark = UIStudentMark;
 type Exam = UIExam;
+
+const logger = getLogger('school-admin-exams-assessments');
+
 const ExamsAssessments: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [schoolId, setSchoolId] = useState<string | undefined>(undefined);
   const [loadingSchoolId, setLoadingSchoolId] = useState(true);
   
@@ -56,10 +60,10 @@ const ExamsAssessments: React.FC = () => {
       if (!error && educatorData?.school_id) {
         setSchoolId(educatorData.school_id);
       } else {
-        console.warn('No school_id found for user - this user may not be a school admin');
+        logger.warn('No school_id found for user - this user may not be a school admin');
       }
     } catch (error) {
-      console.error('Error fetching user school ID:', error);
+      logger.error('Error fetching user school ID', error as Error);
     } finally {
       setLoadingSchoolId(false);
     }
@@ -192,7 +196,7 @@ const ExamsAssessments: React.FC = () => {
       setEditingExam(null);
       setShowCreateModal(false);
     } catch (error: unknown) {
-      console.error('Error saving exam:', error);
+      logger.error('Error saving exam', error as Error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to save exam: ${message}. Please try again.`);
     }
@@ -203,7 +207,7 @@ const ExamsAssessments: React.FC = () => {
       await updateExam(updatedExam.id, updatedExam);
       setManagingExam(updatedExam);
     } catch (error: unknown) {
-      console.error('Error updating exam:', error);
+      logger.error('Error updating exam', error as Error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       toast.error(`Failed to update exam: ${message}. Please try again.`);
     }

@@ -80,8 +80,10 @@ function MySubscription() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, role, loading: authLoading } = useAuth();
-  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
+  const user = useUser();
+  const { role } = useUserRole();
+  const authLoading = useAuthLoading();
+  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionAccess();
 
   // Get settings, dashboard paths, and user type from current URL (more reliable than role)
   const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);

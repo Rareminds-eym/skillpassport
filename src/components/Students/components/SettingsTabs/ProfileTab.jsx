@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { User, FileText, Briefcase, Shield, Globe, Upload, Save, CheckCircle, Award, FolderGit2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { isLearner } from "../../../../utils/studentType";
 
 // Import sub-components
 import PersonalInfoTab from "./ProfileSubTabs/PersonalInfoTab";
@@ -20,6 +21,7 @@ const ProfileTab = ({
   handleProfileChange,
   handleInstitutionChange,
   isSaving,
+  initialActiveSubTab,
   // Tab-specific save handlers
   handleSavePersonalInfo,
   handleSaveAdditionalInfo,
@@ -82,10 +84,17 @@ const ProfileTab = ({
   onToggleTechnicalSkillEnabled,
   onToggleSoftSkillEnabled,
 }) => {
-  const [profileActiveTab, setProfileActiveTab] = useState("personal");
+  const [profileActiveTab, setProfileActiveTab] = useState(initialActiveSubTab || "personal");
   const [showLeftIndicator, setShowLeftIndicator] = useState(false);
   const [showRightIndicator, setShowRightIndicator] = useState(true);
   const scrollContainerRef = useRef(null);
+
+  // Update active tab when initialActiveSubTab changes
+  useEffect(() => {
+    if (initialActiveSubTab) {
+      setProfileActiveTab(initialActiveSubTab);
+    }
+  }, [initialActiveSubTab]);
 
   // Check scroll position to show/hide indicators
   const checkScrollPosition = () => {
@@ -134,18 +143,27 @@ const ProfileTab = ({
     }
   }, []);
 
-  const profileTabs = [
-    { id: "personal", label: "Personal Info", icon: User },
-    { id: "additional", label: "Additional Info", icon: FileText },
-    { id: "institution", label: "Institution Details", icon: Briefcase },
-    { id: "academic", label: "Academic Details", icon: Briefcase },
-    { id: "skills", label: "Skills", icon: CheckCircle },
-    { id: "experience", label: "My Experience", icon: Briefcase },
-    { id: "certificates", label: "Certificates", icon: Award },
-    { id: "projects", label: "Projects/Internships", icon: FolderGit2 },
-    { id: "guardian", label: "Guardian Info", icon: Shield },
-    { id: "social", label: "Social Links", icon: Globe },
-  ];
+  const profileTabs = useMemo(() => {
+    const allTabs = [
+      { id: "personal", label: "Personal Info", icon: User },
+      { id: "additional", label: "Additional Info", icon: FileText },
+      { id: "institution", label: "Institution Details", icon: Briefcase },
+      { id: "academic", label: "Academic Details", icon: Briefcase },
+      { id: "skills", label: "Skills", icon: CheckCircle },
+      { id: "experience", label: "My Experience", icon: Briefcase },
+      { id: "certificates", label: "Certificates", icon: Award },
+      { id: "projects", label: "Projects/Internships", icon: FolderGit2 },
+      { id: "guardian", label: "Guardian Info", icon: Shield },
+      { id: "social", label: "Social Links", icon: Globe },
+    ];
+
+    // For learners, hide Institution Details tab
+    if (isLearner(studentData)) {
+      return allTabs.filter(tab => tab.id !== "institution");
+    }
+
+    return allTabs;
+  }, [studentData]);
 
   const renderActiveTab = () => {
     switch (profileActiveTab) {
@@ -217,6 +235,7 @@ const ProfileTab = ({
             setShowEducationModal={setShowEducationModal}
             handleSaveProfile={handleSaveAcademicDetails}
             isSaving={isSaving}
+            studentData={studentData}
           />
         );
       case "skills":

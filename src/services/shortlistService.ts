@@ -1,4 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('shortlist');
 
 // ==================== SHORTLIST CRUD OPERATIONS ====================
 
@@ -25,7 +28,7 @@ export const getShortlists = async () => {
 
     return { data: formattedData, error: null };
   } catch (error) {
-    console.error('Error fetching shortlists:', error);
+    logger.error('Error fetching shortlists', error as Error);
     return { data: null, error };
   }
 };
@@ -44,7 +47,7 @@ export const getShortlistById = async (shortlistId: string) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching shortlist:', error);
+    logger.error('Error fetching shortlist', error as Error, { shortlistId });
     return { data: null, error };
   }
 };
@@ -69,7 +72,7 @@ export const createShortlist = async (shortlistData: {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error creating shortlist:', error);
+    logger.error('Error creating shortlist', error as Error, { name: shortlistData.name });
     return { data: null, error };
   }
 };
@@ -103,7 +106,7 @@ export const updateShortlist = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating shortlist:', error);
+    logger.error('Error updating shortlist', error as Error, { shortlistId });
     return { data: null, error };
   }
 };
@@ -121,7 +124,7 @@ export const deleteShortlist = async (shortlistId: string) => {
     if (error) throw error;
     return { error: null };
   } catch (error) {
-    console.error('Error deleting shortlist:', error);
+    logger.error('Error deleting shortlist', error as Error, { shortlistId });
     return { error };
   }
 };
@@ -142,7 +145,7 @@ export const getShortlistCandidates = async (shortlistId: string) => {
       .single();
     
     if (shortlistError) {
-      console.error('Error checking shortlist:', shortlistError);
+      logger.error('Error checking shortlist', shortlistError as Error, { shortlistId });
     }
     
     // Query the shortlist_candidates junction table
@@ -158,7 +161,7 @@ export const getShortlistCandidates = async (shortlistId: string) => {
       .eq('shortlist_id', shortlistId);
 
     if (error) {
-      console.error('Supabase query error:', error);
+      logger.error('Supabase query error', error as Error, { shortlistId });
       throw error;
     }
 
@@ -174,7 +177,7 @@ export const getShortlistCandidates = async (shortlistId: string) => {
         .in('id', studentIds);
       
       if (studentsError) {
-        console.error('Error fetching students:', studentsError);
+        logger.error('Error fetching students', studentsError as Error, { shortlistId });
         throw studentsError;
       }
       
@@ -195,7 +198,7 @@ export const getShortlistCandidates = async (shortlistId: string) => {
           try {
             profile = JSON.parse(profile);
           } catch (e) {
-            console.error('Error parsing profile JSON:', e);
+            logger.error('Error parsing profile JSON', e as Error);
             profile = {};
           }
         }
@@ -243,7 +246,7 @@ export const getShortlistCandidates = async (shortlistId: string) => {
 
     return { data: [], error: null };
   } catch (error) {
-    console.error('Error fetching shortlist candidates:', error);
+    logger.error('Error fetching shortlist candidates', error as Error, { shortlistId });
     return { data: null, error };
   }
 };
@@ -287,7 +290,7 @@ export const addCandidateToShortlist = async (
 
     return { data, error: null };
   } catch (error) {
-    console.error('Error adding candidate to shortlist:', error);
+    logger.error('Error adding candidate to shortlist', error as Error, { shortlistId, studentId });
     return { data: null, error };
   }
 };
@@ -309,7 +312,7 @@ export const removeCandidateFromShortlist = async (
     if (error) throw error;
     return { error: null };
   } catch (error) {
-    console.error('Error removing candidate from shortlist:', error);
+    logger.error('Error removing candidate from shortlist', error as Error, { shortlistId, studentId });
     return { error };
   }
 };
@@ -332,7 +335,7 @@ export const isStudentInShortlist = async (
     if (error) throw error;
     return { data: !!data, error: null };
   } catch (error) {
-    console.error('Error checking candidate in shortlist:', error);
+    logger.error('Error checking candidate in shortlist', error as Error, { shortlistId, studentId });
     return { data: false, error };
   }
 };
@@ -361,7 +364,7 @@ export const getShortlistsForStudent = async (studentId: string) => {
     const formattedData = data?.map(item => item.shortlists) || [];
     return { data: formattedData, error: null };
   } catch (error) {
-    console.error('Error fetching shortlists for student:', error);
+    logger.error('Error fetching shortlists for student', error as Error, { studentId });
     return { data: null, error };
   }
 };
@@ -386,7 +389,7 @@ export const updateCandidateNotes = async (
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error updating candidate notes:', error);
+    logger.error('Error updating candidate notes', error as Error, { shortlistId, studentId });
     return { data: null, error };
   }
 };
@@ -413,7 +416,7 @@ export const logExportActivity = async (exportData: {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error logging export activity:', error);
+    logger.error('Error logging export activity', error as Error, { shortlistId: exportData.shortlist_id });
     return { data: null, error };
   }
 };
@@ -432,7 +435,7 @@ export const getExportHistory = async (shortlistId: string) => {
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
-    console.error('Error fetching export history:', error);
+    logger.error('Error fetching export history', error as Error, { shortlistId });
     return { data: null, error };
   }
 };

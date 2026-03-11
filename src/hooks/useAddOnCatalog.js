@@ -16,8 +16,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
-import { useSubscriptionContextSafe } from '../context/SubscriptionContext';
-import { useSupabaseAuth } from '../context/SupabaseAuthContext';
+import { useUserEntitlements, useUser } from '../stores';
 import addOnCatalogService from '../services/addOnCatalogService';
 
 // Query keys
@@ -38,9 +37,8 @@ const CACHE_TIME = 10 * 60 * 1000; // 10 minutes
  * @returns {Object} Add-on catalog data and helpers
  */
 export function useAddOnCatalog(options = {}) {
-  const { user } = useSupabaseAuth();
-  const subscriptionContext = useSubscriptionContextSafe();
-  const activeEntitlements = subscriptionContext?.activeEntitlements || [];
+  const user = useUser();
+  const { activeEntitlements } = useUserEntitlements();
   const queryClient = useQueryClient();
 
   // Determine user role from profile or options
@@ -264,8 +262,7 @@ export function useAddOnCatalog(options = {}) {
  * @returns {Object} Add-on data and loading state
  */
 export function useAddOn(featureKey) {
-  const subscriptionContext = useSubscriptionContextSafe();
-  const activeEntitlements = subscriptionContext?.activeEntitlements || [];
+  const { activeEntitlements } = useUserEntitlements();
 
   const {
     data: addOn,
@@ -317,8 +314,7 @@ export function useAddOn(featureKey) {
  * @returns {Object} Bundle data and loading state
  */
 export function useBundle(bundleId) {
-  const subscriptionContext = useSubscriptionContextSafe();
-  const activeEntitlements = subscriptionContext?.activeEntitlements || [];
+  const { activeEntitlements } = useUserEntitlements();
 
   const {
     data: bundle,

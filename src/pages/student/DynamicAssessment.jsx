@@ -41,7 +41,7 @@ import { useAuth } from '../../context/AuthContext';
 const DynamicAssessment = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const user = useUser();
   
   // Get course info from navigation state
   const courseName = location.state?.courseName || 'General Skills';

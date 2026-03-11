@@ -18,6 +18,9 @@ import {
   XMarkIcon,
   CheckIcon
 } from "@heroicons/react/24/outline";
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-performance-monitoring');
 
 interface PerformanceMetric {
   id: string;
@@ -127,33 +130,33 @@ const PerformanceMonitoring: React.FC = () => {
 
   const handleRefreshData = () => {
     // Simulate data refresh
-    console.log("Refreshing performance data...");
+    logger.info("Refreshing performance data...");
     alert("Performance data refreshed successfully!");
   };
 
   const handleExportReport = () => {
     // Simulate export functionality
-    console.log("Exporting performance report...");
+    logger.info("Exporting performance report...");
     alert("Performance report exported successfully!");
   };
 
   const handleGenerateRankings = () => {
-    console.log("Generating college rankings...");
+    logger.info("Generating college rankings...");
     alert("College rankings generated successfully!");
   };
 
   const handleGeneratePerformanceReport = () => {
-    console.log("Generating detailed performance report...");
+    logger.info("Generating detailed performance report...");
     alert("Detailed performance report generated successfully!");
   };
 
   const handleRiskAssessment = () => {
-    console.log("Running risk assessment...");
+    logger.info("Running risk assessment...");
     alert("Risk assessment completed successfully!");
   };
 
   const handleScheduleReview = () => {
-    console.log("Scheduling performance review...");
+    logger.info("Scheduling performance review...");
     alert("Performance review scheduled successfully!");
   };
 
@@ -176,7 +179,7 @@ const PerformanceMonitoring: React.FC = () => {
   const handleSaveEdit = () => {
     if (editFormData) {
       // Here you would typically make an API call to save the data
-      console.log("Saving edited data:", editFormData);
+      logger.info("Saving edited data:", { editFormData });
       setShowEditModal(false);
       setEditFormData(null);
       // Show success message
@@ -186,7 +189,7 @@ const PerformanceMonitoring: React.FC = () => {
 
   const handleDeleteRecord = (collegeId: string) => {
     if (window.confirm("Are you sure you want to delete this performance record?")) {
-      console.log("Deleting record for college:", collegeId);
+      logger.info("Deleting record for college:", { collegeId });
       // Here you would typically make an API call to delete the record
       alert("Performance record deleted successfully!");
     }

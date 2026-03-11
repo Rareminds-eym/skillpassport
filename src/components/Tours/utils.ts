@@ -240,7 +240,6 @@ export const lockScroll = (): void => {
   document.body.classList.add('tour-scroll-locked');
   
   isScrollLocked = true;
-  console.log('🔒 Tour scroll lock enabled (full lock with scrollbar hidden)');
 };
 
 /**
@@ -300,7 +299,6 @@ export const forceUnlockScroll = (): void => {
   }
   
   isScrollLocked = false;
-  console.log('🔓 Tour scroll force unlocked');
 };
 
 /**
@@ -316,7 +314,6 @@ export const isScrollCurrentlyLocked = (): boolean => {
 export const initializeScrollUtils = (): void => {
   // Force unlock on initialization to ensure clean state
   forceUnlockScroll();
-  console.log('🔄 Scroll utilities initialized');
 };
 
 /**

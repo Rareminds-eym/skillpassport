@@ -15,7 +15,6 @@ const PersonalInfoEditModal = ({
   data, 
   onSave 
 }) => {
-  const { toast } = useToast();
   
   const [formData, setFormData] = useState({
     name: "",
@@ -129,11 +128,7 @@ const PersonalInfoEditModal = ({
 
   const validateForm = () => {
     if (!formData.name?.trim() || !formData.email?.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in at least name and email fields.",
-        variant: "destructive",
-      });
+      toast.error("Please fill in at least name and email fields.");
       return false;
     }
     return true;
@@ -145,21 +140,14 @@ const PersonalInfoEditModal = ({
     setIsSaving(true);
     try {
       await onSave(formData);
-      toast({
-        title: "Success! ✅",
-        description: "Your personal information has been saved and updated.",
-      });
+      toast.success("Your personal information has been saved and updated.");
       // Wait a moment for the refresh to complete before closing
       setTimeout(() => {
         onClose();
       }, 500);
     } catch (error) {
       console.error("❌ Error saving personal info:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save personal information. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to save personal information. Please try again.");
     } finally {
       setIsSaving(false);
     }

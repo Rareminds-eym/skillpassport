@@ -12,6 +12,7 @@ import {
     Lightbulb,
     Link as LinkIcon,
     Loader,
+    Plus,
     PlusCircle,
     Sparkles,
     X
@@ -128,8 +129,8 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
-  const [skillTags, setSkillTags] = useState([]);
-  const [skillInput, setSkillInput] = useState('');
+  const [skills, setSkills] = useState([]);
+  const [currentSkill, setCurrentSkill] = useState({ name: '', type: 'technical', level: 2, description: '' });
   const [extracting, setExtracting] = useState(false);
   const [extractionSuccess, setExtractionSuccess] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
@@ -169,23 +170,19 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
     }
   };
 
-  const handleAddSkill = (skill) => {
-    const trimmed = skill.trim();
-    if (trimmed && !skillTags.includes(trimmed)) {
-      setSkillTags(prev => [...prev, trimmed]);
-      setSkillInput('');
+  const handleAddSkill = () => {
+    if (currentSkill.name.trim()) {
+      setSkills(prev => [...prev, { ...currentSkill, id: Date.now() }]);
+      setCurrentSkill({ name: '', type: 'technical', level: 2, description: '' });
     }
   };
 
-  const handleRemoveSkill = (skillToRemove) => {
-    setSkillTags(prev => prev.filter(skill => skill !== skillToRemove));
+  const handleRemoveSkill = (skillId) => {
+    setSkills(prev => prev.filter(skill => skill.id !== skillId));
   };
 
-  const handleSkillKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault();
-      handleAddSkill(skillInput);
-    }
+  const handleSkillChange = (field, value) => {
+    setCurrentSkill(prev => ({ ...prev, [field]: value }));
   };
 
 
@@ -345,19 +342,17 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
         });
       }
 
-      if (skillTags.length > 0) {
-        const levelMap = { beginner: 1, intermediate: 2, advanced: 3, expert: 4 };
+      if (skills.length > 0) {
         await supabase.from('skills').insert(
-          skillTags.map(skill => ({
+          skills.map(skill => ({
             student_id: studentId,
             training_id: training.id,
-            name: skill,
-            type: 'technical',
-            level: levelMap[formData.difficulty] || 2,
+            name: skill.name,
+            type: skill.type,
+            level: skill.level,
+            description: skill.description || null,
             approval_status: 'pending',
-            enabled: true,
-            source: 'external_certificate',
-            platform: selectedPlatform?.id
+            enabled: true
           }))
         );
       }
@@ -381,8 +376,8 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
       certificate_url: '', title: '', organization: '', instructor: '',
       completion_date: '', certificate_id: '', description: '', category: '', difficulty: ''
     });
-    setSkillTags([]);
-    setSkillInput('');
+    setSkills([]);
+    setCurrentSkill({ name: '', type: 'technical', level: 2, description: '' });
     setError('');
     setVerifying(false);
     setVerificationResult(null);
@@ -507,7 +502,8 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
                     onClick={() => {
                       if (selectedPlatform?.id !== platform.id) {
                         setFormData({ certificate_url: '', title: '', organization: '', instructor: '', completion_date: '', certificate_id: '', description: '', category: '', difficulty: '' });
-                        setSkillTags([]);
+                        setSkills([]);
+                        setCurrentSkill({ name: '', type: 'technical', level: 2, description: '' });
                         setExtractionSuccess(false);
                         setVerificationStatus(null);
                         setVerificationResult(null);
@@ -647,25 +643,142 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
           {currentStep === 4 && (
             <div className="space-y-4">
               <div className="text-center mb-6">
-                <h3 className="text-lg font-semibold text-gray-900">Skills & Learning</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Skills Covered</h3>
                 <p className="text-gray-500 text-sm mt-1">Add the skills you learned (optional)</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Skills Learned</label>
-                <div className="border border-gray-300 rounded-lg p-3 focus-within:ring-2 focus-within:ring-indigo-500">
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {skillTags.map((skill, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">
-                        {skill}
-                        <button onClick={() => handleRemoveSkill(skill)} className="hover:text-indigo-900"><X size={14} /></button>
-                      </span>
-                    ))}
-                  </div>
-                  <input type="text" value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyDown={handleSkillKeyDown} onBlur={() => skillInput && handleAddSkill(skillInput)} placeholder="Type a skill and press Enter..." className="w-full outline-none text-sm" />
+
+              {/* Added Skills List */}
+              {skills.length > 0 && (
+                <div className="space-y-3 mb-4">
+                  {skills.map((skill) => (
+                    <div key={skill.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg hover:shadow-sm transition-all">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-semibold text-blue-900">{skill.name}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            skill.type === 'technical' 
+                              ? 'bg-purple-100 text-purple-700' 
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {skill.type === 'technical' ? 'Technical' : 'Soft Skill'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <span>Level:</span>
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3, 4, 5].map(level => (
+                                <div
+                                  key={level}
+                                  className={`w-2 h-2 rounded-full ${
+                                    level <= (skill.level || 2) 
+                                      ? 'bg-blue-500' 
+                                      : 'bg-gray-200'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="ml-1 font-medium">({skill.level || 2}/5)</span>
+                          </div>
+                        </div>
+                        {skill.description && (
+                          <p className="text-xs text-gray-600 mt-1 line-clamp-1">{skill.description}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSkill(skill.id)}
+                        className="ml-3 p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+                        title="Remove skill"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-1.5">Press Enter or comma to add each skill</p>
+              )}
+
+              {/* Add New Skill Form */}
+              <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-2 mb-3">
+                  <Plus className="w-4 h-4 text-gray-600" />
+                  <div className="text-sm font-semibold text-gray-800">Add New Skill</div>
+                </div>
+
+                <div className="space-y-3">
+                  {/* Skill Name */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Skill Name *</label>
+                    <input
+                      type="text"
+                      value={currentSkill.name}
+                      onChange={(e) => handleSkillChange('name', e.target.value)}
+                      placeholder="e.g., JavaScript, Communication, Project Management"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Type and Level Row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Type</label>
+                      <select
+                        value={currentSkill.type}
+                        onChange={(e) => handleSkillChange('type', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="soft">Soft Skill</option>
+                        <option value="technical">Technical</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Proficiency Level</label>
+                      <select
+                        value={currentSkill.level}
+                        onChange={(e) => handleSkillChange('level', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="1">Level 1 - Beginner</option>
+                        <option value="2">Level 2 - Basic</option>
+                        <option value="3">Level 3 - Intermediate</option>
+                        <option value="4">Level 4 - Advanced</option>
+                        <option value="5">Level 5 - Expert</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Description (Optional)</label>
+                    <input
+                      type="text"
+                      value={currentSkill.description}
+                      onChange={(e) => handleSkillChange('description', e.target.value)}
+                      placeholder="Brief description of your experience with this skill"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+
+                  {/* Add Button */}
+                  <button
+                    onClick={handleAddSkill}
+                    disabled={!currentSkill.name.trim()}
+                    type="button"
+                    className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
+                      currentSkill.name.trim()
+                        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Plus size={16} /> Add Skill
+                    </div>
+                  </button>
+                </div>
               </div>
-              {skillTags.length > 0 && (
+
+              {skills.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                   <div className="flex items-start gap-3">
                     <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -676,6 +789,7 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
                   </div>
                 </div>
               )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
@@ -716,11 +830,15 @@ export default function AddLearningCourseModal({ isOpen, onClose, studentId, onS
                     )}
                   </div>
                 </div>
-                {skillTags.length > 0 && (
+                {skills.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <p className="text-xs font-medium text-gray-500 mb-2">SKILLS</p>
                     <div className="flex flex-wrap gap-2">
-                      {skillTags.map((skill, idx) => <span key={idx} className="px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">{skill}</span>)}
+                      {skills.map((skill) => (
+                        <span key={skill.id} className="px-2.5 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+                          {skill.name} (L{skill.level})
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}

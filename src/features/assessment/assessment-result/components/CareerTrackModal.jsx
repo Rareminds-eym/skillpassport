@@ -12,7 +12,7 @@ import jsPDF from 'jspdf';
  * Multi-step wizard with VERTICAL sidebar navigation
  * Steps: Role Selection → Overview → Roadmap → Courses → Strengths → Get Started
  */
-const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }) => {
+const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, attemptId }) => {
     const navigate = useNavigate();
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
@@ -79,9 +79,11 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
     };
 
     // Get AI-generated role overview (responsibilities + industry demand + career progression + learning roadmap + action items + suggested projects) in a single API call
+    console.log('[CareerTrackModal] attemptId prop:', attemptId);
     const { responsibilities, demandData, careerProgression, learningRoadmap, actionItems, suggestedProjects, loading: overviewLoading, error: overviewError } = useRoleOverview(
         selectedRole ? getRoleName(selectedRole) : null,
-        selectedTrack.cluster?.title || ''
+        selectedTrack.cluster?.title || '',
+        attemptId
     );
 
     // Log error for debugging
@@ -243,6 +245,40 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results }
 
     // Use RAG-matched courses (or empty array while loading)
     const relevantCourses = aiMatchedCourses;
+
+    // Store matched courses to DB when they're generated
+    useEffect(() => {
+        const storeMatchedCourses = async () => {
+            if (!aiMatchedCourses || aiMatchedCourses.length === 0 || !selectedRole || !attemptId) {
+                return;
+            }
+
+            const roleName = getRoleName(selectedRole);
+            console.log(`[CareerTrackModal] Storing ${aiMatchedCourses.length} matched courses for: ${roleName}`);
+
+            try {
+                const response = await fetch('/api/role-overview/storage', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        attemptId,
+                        roleName,
+                        roleOverview: {
+                            matchedPlatformCourses: aiMatchedCourses
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    console.error('[CareerTrackModal] Failed to store matched courses:', await response.text());
+                }
+            } catch (error) {
+                console.error('[CareerTrackModal] Error storing matched courses:', error);
+            }
+        };
+
+        storeMatchedCourses();
+    }, [aiMatchedCourses, selectedRole, attemptId]);
 
     const getSalary = (role) => {
         if (typeof role === 'object' && role?.salary) {

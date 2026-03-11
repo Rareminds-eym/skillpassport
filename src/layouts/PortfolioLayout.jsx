@@ -8,19 +8,20 @@ import {
 import { AssessmentPromotionalProvider, useAssessmentPromotionalContext } from '../contexts/AssessmentPromotionalContext';
 import { useAuth } from '@/features/auth';
 
-const PortfolioLayoutContent = () => {
-  const { event, showBanner, dismissBanner, getTimeRemaining } = usePromotionalEventContext();
+const PortfolioLayout = () => {
+  const { event, showBanner, dismissBanner, getTimeRemaining } = useCurrentPromotional();
   const { 
     showBanner: showAssessmentBanner, 
     dismissBanner: dismissAssessmentBanner,
     getTimeRemaining: getAssessmentTimeRemaining
-  } = useAssessmentPromotionalContext();
-  const { role } = useAuth();
+  } = useAssessmentPromotional();
+  const { role } = useUserRole();
 
-  // Don't show promotional banners for admin users
+  // Don't show promotional banners for admin users or learners
   const isAdminUser = role && (role.includes('admin') || role === 'admin');
-  const shouldShowAssessmentBanner = showAssessmentBanner && !isAdminUser;
-  const shouldShowPromoBanner = showBanner && !isAdminUser;
+  const isLearner = role === 'learner';
+  const shouldShowAssessmentBanner = showAssessmentBanner && !isAdminUser && !isLearner;
+  const shouldShowPromoBanner = showBanner && !isAdminUser && !isLearner;
 
   // Show assessment banner if assessment modal was dismissed, otherwise show promo banner
   const hasAnyBanner = shouldShowAssessmentBanner || shouldShowPromoBanner;
@@ -53,16 +54,6 @@ const PortfolioLayoutContent = () => {
         {/* No Footer for portfolio pages */}
       </div>
     </div>
-  );
-};
-
-const PortfolioLayout = () => {
-  return (
-    <PromotionalEventProvider>
-      <AssessmentPromotionalProvider>
-        <PortfolioLayoutContent />
-      </AssessmentPromotionalProvider>
-    </PromotionalEventProvider>
   );
 };
 

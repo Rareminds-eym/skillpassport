@@ -153,10 +153,10 @@ async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
 /** Format date for display */
 const formatDate = (d) => {
   try {
-    return new Date(d).toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return new Date(d).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   } catch {
     return 'N/A';
@@ -166,10 +166,10 @@ const formatDate = (d) => {
 /** Format amount for display */
 const formatAmount = (a) => {
   try {
-    return new Intl.NumberFormat('en-IN', { 
-      style: 'currency', 
-      currency: 'INR', 
-      minimumFractionDigits: 0 
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0
     }).format(a || 0);
   } catch {
     return '₹0';
@@ -178,10 +178,10 @@ const formatAmount = (a) => {
 
 /** Get user role from various sources */
 const getUserRole = (user, role) => {
-  return user?.user_metadata?.user_role 
-    || role 
-    || user?.user_metadata?.role 
-    || user?.raw_user_meta_data?.user_role 
+  return user?.user_metadata?.user_role
+    || role
+    || user?.user_metadata?.role
+    || user?.raw_user_meta_data?.user_role
     || user?.raw_user_meta_data?.role
     || 'student';
 };
@@ -199,7 +199,7 @@ function useCacheRefresh(refreshAccess, refreshSubscription) {
     attempts: 0,
     error: null,
   });
-  
+
   const mountedRef = useRef(true);
   const refreshPromiseRef = useRef(null);
 
@@ -270,7 +270,7 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
     status: NAV_STATES.IDLE,
     error: null,
   });
-  
+
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -296,11 +296,11 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
       if (!mountedRef.current) return;
 
       setState({ status: NAV_STATES.NAVIGATING, error: null });
-      
+
       // Navigate with post-payment flag
       const dashboardUrl = getDashboardUrl();
       log.info('Navigating to:', dashboardUrl);
-      navigate(dashboardUrl, { 
+      navigate(dashboardUrl, {
         state: { fromPayment: true },
         replace: false,
       });
@@ -361,7 +361,7 @@ const ReceiptCard = ({ header, children }) => (
 /** Confetti animation */
 const Confetti = ({ show }) => {
   if (!show) return null;
-  
+
   return (
     <div className="fixed inset-0 pointer-events-none z-50">
       {[...Array(40)].map((_, i) => (
@@ -388,7 +388,7 @@ const EmailStatus = ({ status }) => {
     [EMAIL_STATES.SENDING]: { icon: Loader2, color: 'text-[#2663EB]', text: 'Sending confirmation...', spin: true },
     [EMAIL_STATES.SENT]: { icon: MailCheck, color: 'text-emerald-500', text: 'Confirmation email sent' },
     [EMAIL_STATES.SKIPPED]: { icon: MailCheck, color: 'text-gray-400', text: 'Email already sent previously' },
-    [EMAIL_STATES.FAILED]: { icon: AlertCircle, color: 'text-amber-500', text: 'Could not send email' },
+    [EMAIL_STATES.FAILED]: { icon: MailCheck, color: 'text-gray-600', text: 'You will receive a receipt in your email' },
   };
 
   const { icon: Icon, color, text, spin } = config[status] || config[EMAIL_STATES.PENDING];
@@ -422,8 +422,8 @@ const ErrorScreen = ({ message, onRetry }) => (
       </div>
       <h2 className="text-lg font-bold text-gray-900 mb-1">Verification Failed</h2>
       <p className="text-sm text-gray-500 mb-5">{message || 'Please try again'}</p>
-      <button 
-        onClick={onRetry} 
+      <button
+        onClick={onRetry}
         className="w-full py-2.5 bg-[#2663EB] text-white rounded-lg font-medium text-sm hover:bg-[#1D4ED8] flex items-center justify-center gap-2"
       >
         <RefreshCw className="w-4 h-4" /> Retry
@@ -439,9 +439,9 @@ const ErrorScreen = ({ message, onRetry }) => (
 function PaymentSuccess() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, role } = useAuth();
-  const { refreshAccess } = useSubscriptionContext();
-  const { refreshSubscription } = useSubscriptionQuery();
+  const user = useUser();
+  const { role } = useUserRole();
+  const { refreshSubscription } = useSubscription();
 
   // State
   const [activationStatus, setActivationStatus] = useState(ACTIVATION_STATES.PENDING);
@@ -499,7 +499,7 @@ function PaymentSuccess() {
   }, [user, role]);
 
   // Cache refresh hook
-  const cacheRefresh = useCacheRefresh(refreshAccess, refreshSubscription);
+  const cacheRefresh = useCacheRefresh(refreshSubscription, refreshSubscription);
 
   // Navigation state hook
   const navigation = useNavigationState(cacheRefresh, getDashboardUrl, navigate);
@@ -518,14 +518,14 @@ function PaymentSuccess() {
   // Upload receipt to R2
   const uploadReceiptToR2 = useCallback(async (receiptData, paymentId, userId) => {
     if (!mountedRef.current) return;
-    
+
     try {
       setReceiptUploading(true);
       const pdfBase64 = await generateReceiptBase64(receiptData);
       const filename = `Receipt-${paymentId?.slice(-8) || 'payment'}-${new Date().toISOString().split('T')[0]}.pdf`;
-      
+
       const result = await uploadPaymentReceipt(pdfBase64, paymentId, userId, filename);
-      
+
       if (result.success && result.fileKey && mountedRef.current) {
         const downloadUrl = getPaymentReceiptUrl(result.fileKey, 'download');
         setReceiptUrl(downloadUrl);
@@ -623,7 +623,7 @@ function PaymentSuccess() {
         clearPendingUserData();
         setEmailStatus(EMAIL_STATES.SKIPPED);
 
-        const storedReceiptUrl = transactionDetails.receipt_url || 
+        const storedReceiptUrl = transactionDetails.receipt_url ||
           localStorage.getItem(`receipt_url_${transactionDetails.payment_id}`);
         if (storedReceiptUrl) {
           setReceiptUrl(storedReceiptUrl);
@@ -665,11 +665,13 @@ function PaymentSuccess() {
     }
   }, [verificationError, user, navigate]);
 
-  // Handle receipt download
+  // Handle receipt download using presigned URL
   const handleDownloadReceipt = useCallback(async () => {
     try {
       if (receiptUrl) {
-        window.open(receiptUrl, '_blank');
+        // Use presigned URL for download (no auth required)
+        const presignedUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
+        window.open(presignedUrl, '_blank');
         toast.success('Receipt downloading!');
         return;
       }
@@ -695,9 +697,9 @@ function PaymentSuccess() {
           email: transactionDetails?.user_email || user?.email || '',
           phone: user?.user_metadata?.phone || null,
         },
-        company: { 
-          name: 'RareMinds', 
-          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001', 
+        company: {
+          name: 'RareMinds',
+          address: '231, 2nd stage, 13th Cross Road\nHoysala Nagar, Indiranagar\nBengaluru, Karnataka 560001',
           taxId: 'GSTIN: 29ABCDE1234F1Z5',
           phone: '+91 9902326951',
           email: 'marketing@rareminds.in'
@@ -810,7 +812,7 @@ function PaymentSuccess() {
               </>
             )}
           </button>
-          
+
           <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={() => managePath && navigate(managePath)}

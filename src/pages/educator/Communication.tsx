@@ -65,11 +65,11 @@ const Communication = () => {
   });
   
   // Get educator ID from auth
-  const { user } = useAuth();
-  console.log('🔍 Raw user object from auth:', user);
+  const user = useUser();
+  logger.info('🔍 Raw user object from auth:', user);
   const userId = user?.id;
 
-  console.log('🔍 Final userId value:', userId);
+  logger.info('🔍 Final userId value:', userId);
   const educatorName = user?.name || 'Educator';
   const queryClient = useQueryClient();
   
@@ -85,8 +85,8 @@ const Communication = () => {
     queryKey: ['educator-details', user?.email],
     queryFn: async () => {
       if (!user?.email) return null;
-      console.log('🔍 Querying educator details with email:', user.email);
-      console.log('🔍 Auth user ID from session:', userId);
+      logger.info('🔍 Querying educator details with email:', user.email);
+      logger.info('🔍 Auth user ID from session:', userId);
       
       // First try with the auth user ID
       let { data, error } = await supabase
@@ -97,7 +97,7 @@ const Communication = () => {
       
       // If not found with auth user ID, try with email
       if (error && error.code === 'PGRST116') {
-        console.log('🔄 Auth user ID not found, trying with email:', user.email);
+        logger.info('🔄 Auth user ID not found, trying with email:', user.email);
         const result = await supabase
           .from('school_educators')
           .select('id, school_id, first_name, last_name, email, user_id')
@@ -108,17 +108,17 @@ const Communication = () => {
         error = result.error;
         
         if (data) {
-          console.log('⚠️ Found educator by email but user_id mismatch:');
-          console.log('  - Auth user ID:', userId);
-          console.log('  - Database user_id:', data.user_id);
+          logger.info('⚠️ Found educator by email but user_id mismatch:');
+          logger.info('  - Auth user ID:', userId);
+          logger.info('  - Database user_id:', data.user_id);
         }
       }
       
       if (error) {
-        console.error('❌ Error fetching educator details:', error);
+        logger.error('❌ Error fetching educator details:', error);
         throw error;
       }
-      console.log('✅ Educator details found:', data);
+      logger.info('✅ Educator details found:', data);
       return data;
     },
     enabled: !!user?.email,
@@ -131,17 +131,17 @@ const Communication = () => {
   // Debug logging
   useEffect(() => {
     if (user) {
-      console.log('🔍 [AUTH-DEBUG] Current user from auth:', {
+      logger.info('🔍 [AUTH-DEBUG] Current user from auth:', {
         id: user.id,
         email: user.email,
         name: user.name
       });
-      console.log('🔍 [AUTH-DEBUG] userId variable (from auth):', userId);
-      console.log('🔍 [AUTH-DEBUG] userAuthId variable (corrected):', userAuthId);
-      console.log('🔍 [AUTH-DEBUG] educatorData:', educatorData);
+      logger.info('🔍 [AUTH-DEBUG] userId variable (from auth):', userId);
+      logger.info('🔍 [AUTH-DEBUG] userAuthId variable (corrected):', userAuthId);
+      logger.info('🔍 [AUTH-DEBUG] educatorData:', educatorData);
       
       if (educatorData) {
-        console.log('🔍 [AUTH-DEBUG] Database vs Auth ID comparison:', {
+        logger.info('🔍 [AUTH-DEBUG] Database vs Auth ID comparison:', {
           auth_user_id: userId,
           database_user_id: educatorData.user_id,
           school_educators_record_id: educatorData.id,
@@ -162,10 +162,10 @@ const Communication = () => {
     queryKey: ['educator-conversations', educatorRecordId, 'active'],
     queryFn: async () => {
       if (!educatorRecordId) return [];
-      console.log('🔍 Fetching student conversations for educator record ID:', educatorRecordId);
+      logger.info('🔍 Fetching student conversations for educator record ID:', educatorRecordId);
       const allConversations = await MessageService.getUserConversations(educatorRecordId, 'educator', false);
       const studentConversations = allConversations.filter(conv => conv.conversation_type === 'student_educator');
-      console.log('📚 Found student conversations:', studentConversations.length);
+      logger.info('📚 Found student conversations:', studentConversations.length);
       return studentConversations;
     },
     enabled: !!educatorRecordId,
@@ -198,15 +198,15 @@ const Communication = () => {
   const { data: activeAdminConversations = [], isLoading: loadingActiveAdmin, refetch: refetchActiveAdmin } = useQuery({
     queryKey: ['educator-admin-conversations', educatorRecordId, 'active'],
     queryFn: async () => {
-      console.log('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG START ===');
-      console.log('📋 Educator Record ID:', educatorRecordId);
+      logger.info('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG START ===');
+      logger.info('📋 Educator Record ID:', educatorRecordId);
       
       if (!educatorRecordId) {
-        console.log('❌ No educator record ID, returning empty array');
+        logger.info('❌ No educator record ID, returning empty array');
         return [];
       }
       
-      console.log('📤 Executing query for active admin conversations...');
+      logger.info('📤 Executing query for active admin conversations...');
       
       // 1. Get conversations
       const { data: conversations, error } = await supabase
@@ -217,26 +217,26 @@ const Communication = () => {
         .eq('deleted_by_educator', false)
         .order('last_message_at', { ascending: false, nullsFirst: false });
       
-      console.log('📥 Admin conversations query result:', { conversations, error, dataLength: conversations?.length });
+      logger.info('📥 Admin conversations query result:', { conversations, error, dataLength: conversations?.length });
       
       if (error) {
-        console.error('❌ Admin conversations query error:', error);
+        logger.error('❌ Admin conversations query error:', error);
         throw error;
       }
       
       if (!conversations || conversations.length === 0) {
-        console.log('✅ No admin conversations found, returning empty array');
-        console.log('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
+        logger.info('✅ No admin conversations found, returning empty array');
+        logger.info('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
         return [];
       }
       
       // 2. Get school admin user IDs for online status
       const schoolIds = conversations.map(c => c.school_id).filter(Boolean);
-      console.log('📋 School IDs to fetch admin user IDs for:', schoolIds);
+      logger.info('📋 School IDs to fetch admin user IDs for:', schoolIds);
       
       if (schoolIds.length === 0) {
-        console.log('✅ No school IDs found, returning conversations without admin user IDs');
-        console.log('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
+        logger.info('✅ No school IDs found, returning conversations without admin user IDs');
+        logger.info('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
         return conversations;
       }
       
@@ -246,10 +246,10 @@ const Communication = () => {
         .in('school_id', schoolIds)
         .eq('role', 'school_admin');
       
-      console.log('📥 School admins query result:', { schoolAdmins, adminError, adminsLength: schoolAdmins?.length });
+      logger.info('📥 School admins query result:', { schoolAdmins, adminError, adminsLength: schoolAdmins?.length });
       
       if (adminError) {
-        console.error('❌ School admins query error:', adminError);
+        logger.error('❌ School admins query error:', adminError);
         // Return conversations without admin user IDs rather than failing completely
         return conversations;
       }
@@ -260,8 +260,8 @@ const Communication = () => {
         school_admin_user_id: schoolAdmins?.find(admin => admin.school_id === conv.school_id)?.user_id || null
       }));
       
-      console.log('✅ Final admin conversations with admin user IDs:', conversationsWithAdminIds);
-      console.log('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
+      logger.info('✅ Final admin conversations with admin user IDs:', conversationsWithAdminIds);
+      logger.info('🔍 [EDUCATOR-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
       return conversationsWithAdminIds;
     },
     enabled: !!educatorRecordId,
@@ -276,15 +276,15 @@ const Communication = () => {
   const { data: archivedAdminConversations = [], isLoading: loadingArchivedAdmin, refetch: refetchArchivedAdmin } = useQuery({
     queryKey: ['educator-admin-conversations', educatorRecordId, 'archived'],
     queryFn: async () => {
-      console.log('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG START ===');
-      console.log('📋 Educator Record ID:', educatorRecordId);
+      logger.info('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG START ===');
+      logger.info('📋 Educator Record ID:', educatorRecordId);
       
       if (!educatorRecordId) {
-        console.log('❌ No educator record ID, returning empty array');
+        logger.info('❌ No educator record ID, returning empty array');
         return [];
       }
       
-      console.log('📤 Executing query for archived admin conversations...');
+      logger.info('📤 Executing query for archived admin conversations...');
       
       // 1. Get conversations
       const { data: conversations, error } = await supabase
@@ -295,26 +295,26 @@ const Communication = () => {
         .eq('status', 'archived')
         .order('last_message_at', { ascending: false, nullsFirst: false });
       
-      console.log('📥 Archived admin conversations query result:', { conversations, error, dataLength: conversations?.length });
+      logger.info('📥 Archived admin conversations query result:', { conversations, error, dataLength: conversations?.length });
       
       if (error) {
-        console.error('❌ Archived admin conversations query error:', error);
+        logger.error('❌ Archived admin conversations query error:', error);
         throw error;
       }
       
       if (!conversations || conversations.length === 0) {
-        console.log('✅ No archived admin conversations found, returning empty array');
-        console.log('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
+        logger.info('✅ No archived admin conversations found, returning empty array');
+        logger.info('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
         return [];
       }
       
       // 2. Get school admin user IDs for online status
       const schoolIds = conversations.map(c => c.school_id).filter(Boolean);
-      console.log('�  Archived school IDs to fetch admin user IDs for:', schoolIds);
+      logger.info('�  Archived school IDs to fetch admin user IDs for:', schoolIds);
       
       if (schoolIds.length === 0) {
-        console.log('✅ No archived school IDs found, returning conversations without admin user IDs');
-        console.log('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
+        logger.info('✅ No archived school IDs found, returning conversations without admin user IDs');
+        logger.info('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
         return conversations;
       }
       
@@ -324,10 +324,10 @@ const Communication = () => {
         .in('school_id', schoolIds)
         .eq('role', 'school_admin');
       
-      console.log('📥 Archived school admins query result:', { schoolAdmins, adminError, adminsLength: schoolAdmins?.length });
+      logger.info('📥 Archived school admins query result:', { schoolAdmins, adminError, adminsLength: schoolAdmins?.length });
       
       if (adminError) {
-        console.error('❌ Archived school admins query error:', adminError);
+        logger.error('❌ Archived school admins query error:', adminError);
         // Return conversations without admin user IDs rather than failing completely
         return conversations;
       }
@@ -338,8 +338,8 @@ const Communication = () => {
         school_admin_user_id: schoolAdmins?.find(admin => admin.school_id === conv.school_id)?.user_id || null
       }));
       
-      console.log('✅ Final archived admin conversations with admin user IDs:', conversationsWithAdminIds);
-      console.log('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
+      logger.info('✅ Final archived admin conversations with admin user IDs:', conversationsWithAdminIds);
+      logger.info('🔍 [EDUCATOR-ARCHIVED-ADMIN-CONVERSATIONS] === FETCH DEBUG END ===');
       return conversationsWithAdminIds;
     },
     enabled: !!educatorRecordId,
@@ -353,7 +353,7 @@ const Communication = () => {
   // Debug logging - placed after all useQuery hooks
   useEffect(() => {
     if (educatorData) {
-      console.log('👨‍🏫 Educator data:', {
+      logger.info('👨‍🏫 Educator data:', {
         id: educatorData.id,
         school_id: educatorData.school_id,
         name: `${educatorData.first_name} ${educatorData.last_name}`,
@@ -365,9 +365,9 @@ const Communication = () => {
   }, [educatorData, userId, educatorRecordId, educatorId]);
 
   useEffect(() => {
-    console.log('💬 Active admin conversations:', activeAdminConversations?.length || 0);
+    logger.info('💬 Active admin conversations:', activeAdminConversations?.length || 0);
     activeAdminConversations?.forEach(conv => {
-      console.log(`  - ID: ${conv.id}, Subject: ${conv.subject}, School: ${conv.school?.name}`);
+      logger.info(`  - ID: ${conv.id}, Subject: ${conv.subject}, School: ${conv.school?.name}`);
     });
   }, [activeAdminConversations]);
 
@@ -410,7 +410,7 @@ const Communication = () => {
   // Use shared global presence context
   const { isUserOnline: isUserOnlineGlobal, onlineUsers: globalOnlineUsers } = useGlobalPresence();
 // ADD THIS DEBUG LOG HERE:
-console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
+logger.info('🔍 [EDUCATOR] GlobalPresence Debug:', {
   isUserOnlineGlobal: typeof isUserOnlineGlobal,
   globalOnlineUsers: globalOnlineUsers,
   currentUserId: educatorId,
@@ -465,14 +465,14 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
     const newTab = tabFromUrl === 'admin' ? 'admin' : 'students';
     
     if (newTab !== activeTab) {
-      console.log('🔄 Tab switching from', activeTab, 'to', newTab);
+      logger.info('🔄 Tab switching from', activeTab, 'to', newTab);
       setIsTabSwitching(true);
       setActiveTab(newTab);
       setSelectedConversationId(null);
       
       // Force fetch data for the new tab
       if (educatorId) {
-        console.log('🚀 Triggering fetch for new tab:', newTab);
+        logger.info('🚀 Triggering fetch for new tab:', newTab);
         
         let fetchPromise = Promise.resolve();
         
@@ -494,15 +494,15 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
   // Handle new conversation creation
   const handleNewConversation = useCallback(async (studentId: string, subject: string) => {
     if (!educatorId) {
-      console.error('❌ No educatorId available for conversation creation');
+      logger.error('❌ No educatorId available for conversation creation');
       toast.error('Unable to create conversation - educator not found');
       return;
     }
     
     try {
       // Create new conversation
-      console.log('🆕 Creating new conversation with student:', studentId, 'subject:', subject);
-      console.log('🔍 Using educatorId for conversation:', educatorId, 'type:', typeof educatorId);
+      logger.info('🆕 Creating new conversation with student:', studentId, 'subject:', subject);
+      logger.info('🔍 Using educatorId for conversation:', educatorId, 'type:', typeof educatorId);
       
       // Check if conversation already exists
       const existingConversation = (activeTab === 'students' ? activeStudentConversations : activeAdminConversations).find(conv => 
@@ -510,7 +510,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
       );
       
       if (existingConversation) {
-        console.log('✅ Found existing conversation:', existingConversation.id);
+        logger.info('✅ Found existing conversation:', existingConversation.id);
         setSelectedConversationId(existingConversation.id);
         setShowNewConversationModal(false);
         toast.success('Opened existing conversation');
@@ -525,7 +525,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
         subject
       );
       
-      console.log('✅ New conversation created:', conversation);
+      logger.info('✅ New conversation created:', conversation);
       
       // Refresh conversations to include the new one
       await (activeTab === 'students' ? refetchActiveStudents() : refetchActiveAdmin());
@@ -537,7 +537,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
       toast.success('New conversation started');
       
     } catch (error) {
-      console.error('❌ Error creating conversation:', error);
+      logger.error('❌ Error creating conversation:', error);
       toast.error('Failed to start conversation');
     }
   }, [educatorId, activeStudentConversations, activeAdminConversations, refetchActiveStudents, refetchActiveAdmin, activeTab]);
@@ -547,7 +547,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
     if (!educatorId || !educatorRecordId) return;
     
     try {
-      console.log('🆕 Creating new conversation with school admin:', { schoolId, subject });
+      logger.info('🆕 Creating new conversation with school admin:', { schoolId, subject });
       
       // Check if conversation already exists
       const existingConversation = activeAdminConversations.find(conv => 
@@ -555,7 +555,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
       );
       
       if (existingConversation) {
-        console.log('✅ Found existing conversation:', existingConversation.id);
+        logger.info('✅ Found existing conversation:', existingConversation.id);
         setSelectedConversationId(existingConversation.id);
         setShowNewAdminConversationModal(false);
         toast.success('Opened existing conversation');
@@ -569,7 +569,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
         subject
       );
       
-      console.log('✅ New admin conversation created:', conversation);
+      logger.info('✅ New admin conversation created:', conversation);
       
       // Send the initial message
       if (initialMessage.trim()) {
@@ -582,7 +582,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
           .single();
         
         if (adminError || !schoolAdmin) {
-          console.warn('Could not find school admin for initial message');
+          logger.warn('Could not find school admin for initial message');
         } else {
           await MessageService.sendMessage(
             conversation.id,
@@ -607,7 +607,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
       toast.success('New conversation started with school administration');
       
     } catch (error) {
-      console.error('❌ Error creating admin conversation:', error);
+      logger.error('❌ Error creating admin conversation:', error);
       toast.error('Failed to start conversation with school administration');
     }
   }, [educatorId, educatorRecordId, activeAdminConversations, refetchActiveAdmin, setSearchParams]);
@@ -623,10 +623,10 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
         // Only handle student-educator conversations
         if (conversation.conversation_type !== 'student_educator') return;
         
-        console.log('🔄 [Educator] Realtime UPDATE detected:', conversation);
+        logger.info('🔄 [Educator] Realtime UPDATE detected:', conversation);
         
         if (conversation.deleted_by_educator) {
-          console.log('❌ [Educator] Ignoring UPDATE for deleted conversation:', conversation.id);
+          logger.info('❌ [Educator] Ignoring UPDATE for deleted conversation:', conversation.id);
           return;
         }
         
@@ -654,7 +654,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
       }
 
       try {
-        console.log('🎯 Auto-creating conversation with student:', targetStudent);
+        logger.info('🎯 Auto-creating conversation with student:', targetStudent);
         
         // Check if conversation already exists
         const existingConversation = activeStudentConversations.find(conv => 
@@ -662,14 +662,14 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
         );
         
         if (existingConversation) {
-          console.log('✅ Found existing conversation:', existingConversation.id);
+          logger.info('✅ Found existing conversation:', existingConversation.id);
           setSelectedConversationId(existingConversation.id);
           toast.success(`Opened conversation with ${targetStudent.targetStudentName}`);
           return;
         }
         
         // Create new conversation
-        console.log('🆕 Creating new conversation...');
+        logger.info('🆕 Creating new conversation...');
         const conversation = await MessageService.getOrCreateStudentEducatorConversation(
           targetStudent.targetStudentId,
           educatorId,
@@ -677,7 +677,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
           'General Discussion' // default subject
         );
         
-        console.log('✅ Conversation created:', conversation);
+        logger.info('✅ Conversation created:', conversation);
         
         // Refresh conversations to include the new one
         await refetchActiveStudents();
@@ -688,7 +688,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
         toast.success(`Started conversation with ${targetStudent.targetStudentName}`);
         
       } catch (error) {
-        console.error('❌ Error creating conversation:', error);
+        logger.error('❌ Error creating conversation:', error);
         toast.error(`Failed to start conversation with ${targetStudent.targetStudentName}`);
       }
     };
@@ -735,7 +735,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
         });
       })
       .catch(err => {
-        console.error('Failed to mark as read:', err);
+        logger.error('Failed to mark as read:', err);
         markedAsReadRef.current.delete(markKey);
         refetchConversations();
       });
@@ -816,7 +816,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
           : (showArchived ? refetchArchivedAdmin() : refetchActiveAdmin())
       ]);
     } catch (error) {
-      console.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
+      logger.error(`Error ${isArchiving ? 'archiving' : 'unarchiving'} conversation:`, error);
       refetchConversations();
     } finally {
       setTimeout(() => setIsTransitioning(false), 300);
@@ -867,7 +867,7 @@ console.log('🔍 [EDUCATOR] GlobalPresence Debug:', {
         const studentUniversity = conv.student?.university || '';
         const studentBranch = conv.student?.branch_field || '';
         // ADD THIS DEBUG LOG HERE:
-console.log('🔍 Checking online for student:', {
+logger.info('🔍 Checking online for student:', {
   student_id: conv.student_id,
   student_user_id: conv.student?.id,
   online_users: globalOnlineUsers
@@ -912,7 +912,7 @@ console.log('🔍 Checking online for student:', {
         };
       } else {
         // Admin conversations
-        console.log('🔄 Processing admin conversation:', {
+        logger.info('🔄 Processing admin conversation:', {
           conv_id: conv.id,
           school_id: conv.school_id,
           school_admin_user_id: conv.school_admin_user_id,
@@ -923,7 +923,7 @@ console.log('🔍 Checking online for student:', {
         const schoolName = 'School Administration'; // Default fallback
         const subject = conv.subject || 'General Discussion';
         
-        console.log('📋 Admin data extracted:', {
+        logger.info('📋 Admin data extracted:', {
           schoolName,
           subject,
           school_admin_user_id: conv.school_admin_user_id,
@@ -1031,7 +1031,7 @@ console.log('🔍 Checking online for student:', {
       setMessageInput('');
       setTyping(false);
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message:', error);
     }
   }, [messageInput, currentChat, userAuthId, sendMessage, sendNotification, selectedConversationId, setTyping, activeTab]);
 
@@ -1143,7 +1143,7 @@ console.log('🔍 Checking online for student:', {
                           {/* Students Tab */}
                           <button
                             onClick={async () => {
-                              console.log('🔄 Switching to students tab');
+                              logger.info('🔄 Switching to students tab');
                               setIsTabSwitching(true);
                               setActiveTab('students');
                               setSelectedConversationId(null);
@@ -1152,7 +1152,7 @@ console.log('🔍 Checking online for student:', {
                               
                               // Force refetch for students tab
                               if (educatorId && refetchActiveStudents) {
-                                console.log('🚀 Refetching student conversations');
+                                logger.info('🚀 Refetching student conversations');
                                 try {
                                   await refetchActiveStudents();
                                 } finally {
@@ -1181,7 +1181,7 @@ console.log('🔍 Checking online for student:', {
                           {/* School Admin Tab */}
                           <button
                             onClick={async () => {
-                              console.log('🔄 Switching to admin tab');
+                              logger.info('🔄 Switching to admin tab');
                               setIsTabSwitching(true);
                               setActiveTab('admin');
                               setSelectedConversationId(null);
@@ -1190,7 +1190,7 @@ console.log('🔍 Checking online for student:', {
                               
                               // Force refetch for admin tab
                               if (educatorRecordId && refetchActiveAdmin) {
-                                console.log('🚀 Refetching admin conversations');
+                                logger.info('🚀 Refetching admin conversations');
                                 try {
                                   await refetchActiveAdmin();
                                 } finally {

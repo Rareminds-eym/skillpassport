@@ -43,7 +43,8 @@ const AVAILABLE_ADDONS = [
 
 function MemberSubscriptionPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const user = useUser();
+  const isAuthenticated = useIsAuthenticated();
   
   // Check if user has organization subscription
   const hasOrganizationSubscription = useMemo(() => {

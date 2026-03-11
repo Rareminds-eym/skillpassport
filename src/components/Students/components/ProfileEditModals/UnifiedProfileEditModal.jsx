@@ -1,15 +1,15 @@
 import { useToast } from "@/shared/lib/hooks";
 import {
-    Award, Calendar,
-    CheckCircle,
-    Clock,
-    Eye, EyeOff,
-    Loader2,
-    PenSquare,
-    Plus,
-    Save,
-    Trash2,
-    Briefcase
+  Award, Calendar,
+  CheckCircle,
+  Clock,
+  Eye, EyeOff,
+  Loader2,
+  PenSquare,
+  Plus,
+  Save,
+  Trash2,
+  Briefcase
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "../ui/badge";
@@ -34,27 +34,26 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 
-const UnifiedProfileEditModal = ({ 
-  isOpen, 
-  onClose, 
-  type, 
-  data, 
+const UnifiedProfileEditModal = ({
+  isOpen,
+  onClose,
+  type,
+  data,
   onSave,
-  singleEditMode = false 
+  singleEditMode = false
 }) => {
   const config = FIELD_CONFIGS[type];
-  const { toast } = useToast();
-  
+
   const [items, setItems] = useState([]);
   const [formData, setFormData] = useState(config?.getDefaultValues?.() || {});
   const [editingIndex, setEditingIndex] = useState(singleEditMode ? 0 : null);
   const [isFormOpen, setIsFormOpen] = useState(singleEditMode);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // State for separate item modal
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  
+
   // State for confirmation dialogs
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -65,7 +64,7 @@ const UnifiedProfileEditModal = ({
 
   // Track if modal was just opened to prevent reloading data while user is editing
   const [modalJustOpened, setModalJustOpened] = useState(false);
-  
+
   useEffect(() => {
     if (isOpen) {
       setModalJustOpened(true);
@@ -73,56 +72,34 @@ const UnifiedProfileEditModal = ({
   }, [isOpen]);
 
   useEffect(() => {
-    console.log(`🔍 UnifiedProfileEditModal [${type}] - useEffect triggered:`, {
-      modalJustOpened,
-      hasData: !!data,
-      dataLength: Array.isArray(data) ? data.length : 'not array'
-    });
-    
+
     // Only load data when modal first opens, not when data changes while editing
     if (!modalJustOpened) return;
-    
+
     if (data) {
       const normalizedData = Array.isArray(data) ? data : [data];
-      
-      console.log(`🔍 UnifiedProfileEditModal [${type}] - Processing data:`, {
-        dataCount: normalizedData.length,
-        data: normalizedData,
-        configFields: config.fields.map(f => f.name)
-      });
-      
+
+
+
       // VERSIONING FIX: Process items to show pending edits in the list
       const processedItems = normalizedData.map(item => {
-        console.log(`🔍 UnifiedProfileEditModal [${type}] - Checking item:`, {
-          id: item.id,
-          title: config.getDisplayTitle(item),
-          has_pending_edit: item.has_pending_edit,
-          pending_edit_data: item.pending_edit_data,
-          verified_data: item.verified_data,
-          approval_status: item.approval_status
-        });
-        
+
+
         // If there's a pending edit, merge it with the item for display in edit modal
         if (item.has_pending_edit && item.pending_edit_data) {
-          console.log(`🔄 UnifiedProfileEditModal [${type}] - Item with pending edit:`, {
-            id: item.id,
-            has_pending_edit: item.has_pending_edit,
-            pending_edit_data: item.pending_edit_data,
-            verified_data: item.verified_data
-          });
-          
+
+
           // CRITICAL: Only merge valid fields from pending_edit_data to avoid old fields like org_name
           const validFieldNames = config.fields.map(f => f.name);
           const cleanPendingData = {};
-          
+
           Object.keys(item.pending_edit_data).forEach(key => {
             if (validFieldNames.includes(key)) {
               cleanPendingData[key] = item.pending_edit_data[key];
             }
           });
-          
-          console.log(`✅ UnifiedProfileEditModal [${type}] - Setting _hasPendingEdit=true for item:`, item.id);
-          
+
+
           return {
             ...item,
             // Show pending edit data in the edit list (not on dashboard)
@@ -139,56 +116,74 @@ const UnifiedProfileEditModal = ({
         }
         return item;
       });
-      
+
       setItems(processedItems);
-      
+
       if (singleEditMode && processedItems.length > 0) {
         // In singleEditMode, populate form with existing data
         const item = processedItems[0];
         const editData = { ...config.getDefaultValues() };
-        
+
         // IMPORTANT: Only copy fields that are defined in the config to avoid old/invalid fields
         const validFieldNames = config.fields.map(f => f.name);
         const metadataFields = ['id', 'student_id', 'created_at', 'updated_at', 'approval_status', 'enabled', 'verified', 'has_pending_edit', 'verified_data', 'pending_edit_data'];
         const allowedFields = [...validFieldNames, ...metadataFields];
-        
+
         // Copy only valid fields from the item
         Object.keys(item).forEach(key => {
           if (item[key] !== undefined && allowedFields.includes(key)) {
             if (key === 'skills') {
-              // Handle skills - support both array and string formats
+              // Handle skills - support both array of objects and array of strings
               let skillsArray = [];
               if (Array.isArray(item[key])) {
                 skillsArray = item[key];
               } else if (typeof item[key] === 'string' && item[key].trim()) {
                 skillsArray = item[key].split(',').map(s => s.trim()).filter(s => s);
               }
-              
-              // Remove duplicates and convert to skillsList for the form
-              const uniqueSkills = [...new Set(skillsArray)]; // Remove duplicates
-              editData.skillsList = uniqueSkills.map(skillName => ({
-                name: skillName,
-                type: 'soft', // Default type
-                level: 3, // Default level
-                description: '',
-                verified: true,
-                enabled: true,
-                approval_status: 'approved'
-              }));
+
+              // Convert to skillsList format, preserving type/level/description if present
+              editData.skillsList = skillsArray.map(skill => {
+                // If skill is already an object with full data
+                if (typeof skill === 'object' && skill !== null && skill.name) {
+                  return {
+                    name: skill.name,
+                    type: skill.type || 'technical',
+                    level: skill.level || 3,
+                    description: skill.description || '',
+                    verified: true,
+                    enabled: true,
+                    approval_status: 'approved'
+                  };
+                }
+                // If skill is just a string (legacy format)
+                return {
+                  name: typeof skill === 'string' ? skill : String(skill),
+                  type: 'technical',
+                  level: 3,
+                  description: '',
+                  verified: true,
+                  enabled: true,
+                  approval_status: 'approved'
+                };
+              });
             } else {
-              editData[key] = Array.isArray(item[key]) 
-                ? item[key].join(", ") 
-                : item[key];
+              // Special handling for numeric fields to ensure they're properly set
+              if (key === 'completedModules' || key === 'totalModules' || key === 'hoursSpent') {
+                editData[key] = item[key] || 0;
+              } else {
+                editData[key] = Array.isArray(item[key])
+                  ? item[key].join(", ")
+                  : item[key];
+              }
             }
           }
         });
-        
-        console.log('🔧 UnifiedProfileEditModal: Loading initial data for editing:', editData);
+
         setFormData(editData);
         setEditingIndex(0);
         setIsFormOpen(true);
       }
-      
+
       // Reset the flag after loading data
       setModalJustOpened(false);
     } else {
@@ -206,61 +201,43 @@ const UnifiedProfileEditModal = ({
 
   const handleInputChange = (field) => (e) => {
     const value = e.target.value;
-    
-    console.log(`🔧 UnifiedProfileEditModal: Input changed - field: ${field}, value: ${value}`);
-    
+
+
     // Additional validation for date fields
     if (e.target.type === 'date' && value) {
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Validate start dates and issue dates cannot be in future
       if ((field === 'startDate' || field === 'start_date' || field === 'issuedOn') && value > today) {
-        toast({
-          title: "Invalid Date",
-          description: "Date cannot be in the future.",
-          variant: "destructive",
-        });
+        toast.error("Date cannot be in the future.");
         return; // Don't update the state
       }
-      
+
       // Validate end date is not before start date
       if (field === 'endDate' || field === 'end_date') {
         const startDateValue = formData.startDate || formData.start_date;
         if (startDateValue && value < startDateValue) {
-          toast({
-            title: "Invalid Date",
-            description: "End date cannot be before start date.",
-            variant: "destructive",
-          });
+          toast.error("End date cannot be before start date.");
           return; // Don't update the state
         }
         if (value > today) {
-          toast({
-            title: "Invalid Date",
-            description: "End date cannot be in the future.",
-            variant: "destructive",
-          });
+          toast.error("End date cannot be in the future.");
           return; // Don't update the state
         }
       }
-      
+
       // Validate expiry date is not before issue date
       if (field === 'expiryDate') {
         const issuedOnValue = formData.issuedOn;
         if (issuedOnValue && value < issuedOnValue) {
-          toast({
-            title: "Invalid Date",
-            description: "Expiry date cannot be before issue date.",
-            variant: "destructive",
-          });
+          toast.error("Expiry date cannot be before issue date.");
           return; // Don't update the state
         }
       }
     }
-    
+
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
-      console.log(`🔧 UnifiedProfileEditModal: Updated formData:`, updated);
       return updated;
     });
   };
@@ -275,22 +252,14 @@ const UnifiedProfileEditModal = ({
   const addSkill = () => {
     const skillName = formData.newSkillName?.trim();
     if (!skillName) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a skill name.",
-        variant: "destructive",
-      });
+      toast.error("Please enter a skill name.");
       return;
     }
 
     // Check for duplicate skills
     const existingSkills = formData.skillsList || [];
     if (existingSkills.some(skill => skill.name.toLowerCase() === skillName.toLowerCase())) {
-      toast({
-        title: "Duplicate Skill",
-        description: "This skill has already been added.",
-        variant: "destructive",
-      });
+      toast.error("This skill has already been added.");
       return;
     }
 
@@ -306,7 +275,7 @@ const UnifiedProfileEditModal = ({
 
     setFormData(prev => {
       const newSkillsList = [...(prev.skillsList || []), newSkill];
-      
+
       return {
         ...prev,
         skillsList: newSkillsList,
@@ -317,15 +286,12 @@ const UnifiedProfileEditModal = ({
       };
     });
 
-    toast({
-      title: "Skill Added",
-      description: `${skillName} has been added to your skills.`,
-    });
+    toast.success(`${skillName} has been added to your skills.`);
   };
 
   const removeSkill = (index) => {
     const skillToRemove = formData.skillsList?.[index];
-    
+
     setFormData(prev => {
       const newSkillsList = prev.skillsList?.filter((_, i) => i !== index) || [];
       return {
@@ -336,10 +302,7 @@ const UnifiedProfileEditModal = ({
 
     // Show toast notification
     if (skillToRemove) {
-      toast({
-        title: "Skill Removed",
-        description: `${skillToRemove.name} has been removed from your skills.`,
-      });
+      toast.success(`${skillToRemove.name} has been removed from your skills.`);
     }
   };
 
@@ -352,23 +315,28 @@ const UnifiedProfileEditModal = ({
   const startEditing = (index) => {
     const item = items[index];
     if (!item) return;
-    
+
     const editData = { ...config.getDefaultValues() };
-    
+
     // IMPORTANT: Only copy fields that are defined in the config to avoid old/invalid fields
     const validFieldNames = config.fields.map(f => f.name);
     const metadataFields = ['id', 'student_id', 'created_at', 'updated_at', 'approval_status', 'enabled', 'verified', 'has_pending_edit', 'verified_data', 'pending_edit_data'];
     const allowedFields = [...validFieldNames, ...metadataFields];
-    
+
     // Copy only valid fields from the item
     Object.keys(item).forEach(key => {
       if (item[key] !== undefined && allowedFields.includes(key)) {
-        editData[key] = Array.isArray(item[key]) 
-          ? item[key].join(", ") 
-          : item[key];
+        // Special handling for numeric fields to ensure they're properly set
+        if (key === 'completedModules' || key === 'totalModules' || key === 'hoursSpent') {
+          editData[key] = item[key] || 0;
+        } else {
+          editData[key] = Array.isArray(item[key])
+            ? item[key].join(", ")
+            : item[key];
+        }
       }
     });
-    
+
     setFormData(editData);
     setEditingIndex(index);
     setIsFormOpen(true);
@@ -379,55 +347,41 @@ const UnifiedProfileEditModal = ({
     const requiredFields = config.fields.filter(f => f.required);
     for (const field of requiredFields) {
       if (!formData[field.name]?.toString().trim()) {
-        toast({
-          title: "Validation Error",
-          description: `${field.label.replace(" *", "")} is required.`,
-          variant: "destructive",
-        });
+        toast.error(`${field.label.replace(" *", "")} is required.`);
         return false;
       }
     }
-    
+
     // Validate URL fields
     const urlFields = config.fields.filter(f => f.type === "url");
     for (const field of urlFields) {
       const value = formData[field.name];
       if (value && !isValidUrl(value)) {
-        toast({
-          title: "Validation Error",
-          description: `${field.label} must be a valid URL (e.g., https://example.com)`,
-          variant: "destructive",
-        });
+        toast.error(`${field.label} must be a valid URL (e.g., https://example.com)`);
         return false;
       }
     }
-    
+
     return true;
   };
 
   // Process form data and return the processed item
   const processFormData = useCallback(() => {
     const processedData = { ...formData };
-    
+
     // Process special field types
     config.fields.forEach(field => {
       if (field.type === "tags" && typeof processedData[field.name] === "string") {
         processedData[field.name] = parseSkills(processedData[field.name]);
       }
       if (field.type === "skills_manager") {
-        // Convert skillsList to skills array for compatibility
-        const skillsArray = processedData.skillsList?.map(skill => skill.name) || [];
-        processedData.skills = skillsArray;
-        
-        // Keep skillsList for detailed skill data
-        processedData.skillsData = processedData.skillsList || [];
-        
-        // IMPORTANT: Set the field name to the skills array for database storage
-        // The field name is 'skills' in the config, so we need to set that
-        processedData[field.name] = skillsArray;
-        
-        // Also ensure backward compatibility
-        processedData.skills = skillsArray;
+        // Keep the full skillsList with type, level, description
+
+        processedData.skills = processedData.skillsList || [];
+
+        // Set the field name to the full skills array
+        processedData[field.name] = processedData.skillsList || [];
+
       }
       if (field.type === "number") {
         processedData[field.name] = parsePositiveNumber(processedData[field.name]);
@@ -443,18 +397,13 @@ const UnifiedProfileEditModal = ({
       }
     }
 
-    // DEBUG: Log processed data for projects
-    if (config.title === "Projects") {
-      console.log('🔍 Processing project data:', processedData);
-      console.log('🔍 Role field value:', processedData.role);
-    }
 
     // Calculate progress for training type
     if (config.hasProgress) {
       const completed = parsePositiveNumber(processedData.completedModules);
       const total = parsePositiveNumber(processedData.totalModules);
       processedData.progress = total > 0 ? calculateProgress(completed, total) : 0;
-      
+
       // Auto-determine status based on modules
       if (total > 0 && completed >= total) {
         processedData.status = "completed";
@@ -463,56 +412,54 @@ const UnifiedProfileEditModal = ({
     }
 
     // Special processing for skills: map fields correctly to database
-    if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' || 
-        config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
-      console.log('🔧 UnifiedProfileEditModal: Processing skills data');
-      console.log('🔧 Config title:', config.title);
-      console.log('🔧 Before processing:', processedData);
-      
+    if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' ||
+      config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
+
       // Map rating (1-5) to level field in database
       if (processedData.rating) {
         processedData.level = parseInt(processedData.rating) || 3;
       }
-      
+
       // Map level text ("Intermediate", "Advanced") to proficiency_level field in database
       if (processedData.level && typeof processedData.level === 'string') {
         processedData.proficiency_level = processedData.level;
         // Set level to the rating value instead
         processedData.level = parseInt(processedData.rating) || 3;
       }
-      
-      console.log('🔧 After processing:', processedData);
+
     }
 
     return processedData;
   }, [formData, config]);
 
   const saveItem = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     const processedData = processFormData();
 
     if (editingIndex !== null) {
       // Update existing item
       const existingItem = items[editingIndex];
-      
+
       // Preserve important metadata from existing item
-      const updatedItem = { 
-        ...existingItem, 
+      const updatedItem = {
+        ...existingItem,
         ...processedData,
         // Keep these fields from existing item
         id: existingItem.id,
         student_id: existingItem.student_id,
         created_at: existingItem.created_at,
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString()
       };
-      
-      const updatedItems = items.map((item, idx) => 
+
+      const updatedItems = items.map((item, idx) =>
         idx === editingIndex ? updatedItem : item
       );
-      
+
       setItems(updatedItems);
-      
+
       // AUTO-SAVE: Save to database immediately to prevent data loss on Cancel
       try {
         await onSave(updatedItems);
@@ -520,19 +467,10 @@ const UnifiedProfileEditModal = ({
         if (typeof onSave === 'function' && onSave.refresh) {
           await onSave.refresh();
         }
-        toast({ 
-          title: "Saved!", 
-          description: `${config.title} updated successfully.`,
-          duration: 3000
-        });
+        toast.success(`${config.title} updated successfully.`);
       } catch (error) {
         console.error('Error auto-saving:', error);
-        toast({ 
-          title: "Updated Locally", 
-          description: `${config.title} updated. Click 'Save All Changes' to save to database.`,
-          duration: 4000,
-          variant: "destructive"
-        });
+        toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
       }
     } else {
       // Add new item
@@ -544,10 +482,10 @@ const UnifiedProfileEditModal = ({
         approval_status: 'pending', // New items need approval
         created_at: new Date().toISOString(),
       };
-      
+
       const updatedItems = [...items, newItem];
       setItems(updatedItems);
-      
+
       // AUTO-SAVE: Save new items immediately too
       try {
         await onSave(updatedItems);
@@ -555,19 +493,10 @@ const UnifiedProfileEditModal = ({
         if (typeof onSave === 'function' && onSave.refresh) {
           await onSave.refresh();
         }
-        toast({ 
-          title: "Saved!", 
-          description: `${config.title} added successfully.`,
-          duration: 3000
-        });
+        toast.success(`${config.title} added successfully.`);
       } catch (error) {
         console.error('Error auto-saving:', error);
-        toast({ 
-          title: "Added Locally", 
-          description: `${config.title} added. Click 'Save All Changes' to save to database.`,
-          duration: 4000,
-          variant: "destructive"
-        });
+        toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
       }
     }
 
@@ -579,58 +508,43 @@ const UnifiedProfileEditModal = ({
 
     setIsSaving(true);
     const processedData = processFormData();
-    
-    console.log('🔧 UnifiedProfileEditModal saveAndClose: formData before processing:', formData);
-    console.log('🔧 UnifiedProfileEditModal saveAndClose: processedData after processing:', processedData);
 
     try {
       // Get the existing item to preserve its id and other fields
       const existingItem = items[editingIndex] || {};
-      
+
       // Ensure id is preserved - use existingItem.id or formData.id as fallback
       const itemId = existingItem.id || formData.id || processedData.id;
-      
-      const updatedItem = { 
-        ...existingItem, 
+
+      const updatedItem = {
+        ...existingItem,
         ...processedData,
         id: itemId, // Explicitly ensure id is set
-        updated_at: new Date().toISOString() 
+        updated_at: new Date().toISOString()
       };
-      
-      console.log('🔧 UnifiedProfileEditModal saveAndClose: existingItem:', existingItem);
-      console.log('🔧 UnifiedProfileEditModal saveAndClose: updatedItem being saved:', updatedItem);
-      console.log('🔧 UnifiedProfileEditModal saveAndClose: ID check:', {
-        existingItemId: existingItem.id,
-        formDataId: formData.id,
-        processedDataId: processedData.id,
-        finalId: itemId
-      });
+
 
       if (!updatedItem.id) {
         console.error('❌ CRITICAL: No ID found for item!');
         console.error('❌ existingItem:', existingItem);
         console.error('❌ formData:', formData);
         console.error('❌ processedData:', processedData);
-        toast({
-          title: "Error",
-          description: "Cannot save: Missing item ID. Please try again.",
-          variant: "destructive"
-        });
+        toast.error("Cannot save: Missing item ID. Please try again.");
         return;
       }
 
       // Save directly to database
       await onSave([updatedItem]);
-      
-      toast({ title: "Saved!", description: `${config.title} saved successfully.` });
-      
+
+      toast.success(`${config.title} saved successfully.`);
+
       // Close modal after a brief delay to allow refresh to complete
       setTimeout(() => {
         onClose();
       }, 300);
     } catch (error) {
       console.error("Error saving:", error);
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
+      toast.error("Failed to save. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -639,7 +553,7 @@ const UnifiedProfileEditModal = ({
   const deleteItem = async (index) => {
     const item = items[index];
     const itemTitle = config.getDisplayTitle(item);
-    
+
     // Show confirmation dialog
     setConfirmDialog({
       isOpen: true,
@@ -648,19 +562,19 @@ const UnifiedProfileEditModal = ({
       itemTitle: itemTitle
     });
   };
-  
+
   const handleConfirmDelete = async () => {
     const index = confirmDialog.itemIndex;
-    
+
     // Close dialog
     setConfirmDialog({ isOpen: false, type: null, itemIndex: null, itemTitle: '' });
-    
+
     // Remove item from list
     const updatedItems = items.filter((_, idx) => idx !== index);
     setItems(updatedItems);
-    
+
     if (editingIndex === index) resetForm();
-    
+
     // Auto-save to database
     try {
       await onSave(updatedItems);
@@ -668,18 +582,10 @@ const UnifiedProfileEditModal = ({
       if (typeof onSave === 'function' && onSave.refresh) {
         await onSave.refresh();
       }
-      toast({ 
-        title: "Deleted!", 
-        description: `${config.title} has been deleted successfully.`,
-        duration: 3000
-      });
+      toast.success(`${config.title} has been deleted successfully.`);
     } catch (error) {
       console.error('Error deleting:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to delete. Please try again.", 
-        variant: "destructive" 
-      });
+      toast.error("Failed to delete. Please try again.");
     }
   };
 
@@ -687,18 +593,13 @@ const UnifiedProfileEditModal = ({
     const item = items[index];
     const newState = !item.enabled;
     const itemTitle = config.getDisplayTitle(item);
-    
+
     // Don't allow hiding/showing items that are pending verification or approval
     if (item.approval_status === 'pending' || item._hasPendingEdit) {
-      toast({ 
-        title: "Cannot Hide/Show", 
-        description: `You cannot hide or show ${config.title.toLowerCase()} that are pending verification or approval.`,
-        variant: "destructive",
-        duration: 4000,
-      });
+      toast.error(`You cannot hide or show ${config.title.toLowerCase()} that are pending verification or approval.`);
       return;
     }
-    
+
     // Show confirmation dialog
     const action = newState ? "show" : "hide";
     setConfirmDialog({
@@ -708,52 +609,44 @@ const UnifiedProfileEditModal = ({
       itemTitle: itemTitle
     });
   };
-  
+
   const handleConfirmToggle = async () => {
     const index = confirmDialog.itemIndex;
     const item = items[index];
     const newState = confirmDialog.type === 'show';
-    
+
     // Close dialog
     setConfirmDialog({ isOpen: false, type: null, itemIndex: null, itemTitle: '' });
-    
+
     // Update item state locally
-    const updatedItems = items.map((item, idx) => 
+    const updatedItems = items.map((item, idx) =>
       idx === index ? { ...item, enabled: newState } : item
     );
     setItems(updatedItems);
-    
+
     // For hide/show, we need to update the database directly without triggering versioning
     // We'll update just the enabled field for this specific item
     try {
       // Get table name from config (defaults to 'certificates' for backward compatibility)
       const tableName = config.tableName || 'certificates';
-      
+
       // Update only the enabled field directly in database
       const { error } = await supabase
         .from(tableName)
         .update({ enabled: newState })
         .eq('id', item.id);
-      
+
       if (error) throw error;
-      
+
       // Trigger parent refresh if available
       if (typeof onSave === 'function' && onSave.refresh) {
         await onSave.refresh();
       }
-      
-      toast({ 
-        title: newState ? "Visibility Enabled" : "Visibility Disabled", 
-        description: `${config.title} ${newState ? 'is now visible' : 'is now hidden'} on your profile.`,
-        duration: 3000,
-      });
+
+      toast.success(`${config.title} ${newState ? 'is now visible' : 'is now hidden'} on your profile.`);
     } catch (error) {
       console.error('Error toggling visibility:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to update visibility. Please try again.", 
-        variant: "destructive" 
-      });
+      toast.error("Failed to update visibility. Please try again.");
       // Restore original state on error
       setItems(items);
     }
@@ -771,58 +664,40 @@ const UnifiedProfileEditModal = ({
   };
 
   const handleSaveItem = async (savedItem) => {
-    console.log('🔧 UnifiedProfileEditModal: handleSaveItem called with:', savedItem);
-    
+
     if (editingItem && editingItem.index !== undefined) {
       // Update existing item
-      const updatedItems = items.map((item, idx) => 
-        idx === editingItem.index 
+      const updatedItems = items.map((item, idx) =>
+        idx === editingItem.index
           ? { ...savedItem }
           : item
       );
       setItems(updatedItems);
-      
+
       // IMPORTANT: Auto-save to database immediately to prevent data loss
       // This ensures changes persist even if user clicks Cancel
       try {
         await onSave(updatedItems);
-        toast({ 
-          title: "Saved!", 
-          description: `${config.title} updated successfully.`,
-          duration: 3000
-        });
+        toast.success(`${config.title} updated successfully.`);
       } catch (error) {
         console.error('Error auto-saving:', error);
-        toast({ 
-          title: "Updated Locally", 
-          description: `${config.title} updated. Click 'Save All Changes' to save to database.`,
-          duration: 4000
-        });
+        toast.error(`${config.title} updated. Click 'Save All Changes' to save to database.`);
       }
     } else {
       // Add new item
       const newItem = {
         ...savedItem,
       };
-      console.log('🔧 UnifiedProfileEditModal: Adding new item:', newItem);
       const updatedItems = [...items, newItem];
       setItems(updatedItems);
-      
+
       // Auto-save new items too
       try {
         await onSave(updatedItems);
-        toast({ 
-          title: "Saved!", 
-          description: `${config.title} added successfully.`,
-          duration: 3000
-        });
+        toast.success(`${config.title} added successfully.`);
       } catch (error) {
         console.error('Error auto-saving:', error);
-        toast({ 
-          title: "Added Locally", 
-          description: `${config.title} added. Click 'Save All Changes' to save to database.`,
-          duration: 4000
-        });
+        toast.error(`${config.title} added. Click 'Save All Changes' to save to database.`);
       }
     }
     setIsItemModalOpen(false);
@@ -831,11 +706,8 @@ const UnifiedProfileEditModal = ({
 
   const handleSubmit = async () => {
     setIsSaving(true);
-    
-    console.log('🔧 UnifiedProfileEditModal: handleSubmit called');
-    console.log('🔧 Current formData:', formData);
-    console.log('🔧 Current items before processing:', items);
-    
+
+
     try {
       // Process all items with field mapping for skills
       let processedItems = items.map(item => {
@@ -843,57 +715,45 @@ const UnifiedProfileEditModal = ({
         const { _hasLocalChanges, _hasPendingEdit, _verifiedData, processing, ...cleanItem } = item;
         return cleanItem;
       });
-      
-      if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' || 
-          config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
-        console.log('🔧 UnifiedProfileEditModal: Processing skills array for save');
-        console.log('🔧 Original items:', items);
-        console.log('🔧 Config:', config);
-        
+
+      if (config.title === 'Skills' || config.title === 'Technical Skills' || config.title === 'Soft Skills' ||
+        config.listKey === 'skillsList' || config.listKey === 'technicalSkillsList' || config.listKey === 'softSkillsList') {
+
+
         processedItems = processedItems.map((item, index) => {
-          console.log(`🔧 Processing item ${index}:`, item);
           const processedItem = { ...item };
-          
+
           // Check what fields exist on the original item
-          console.log('🔧 Item keys:', Object.keys(item));
-          console.log('🔧 Item.level:', item.level, 'type:', typeof item.level);
-          console.log('🔧 Item.rating:', item.rating, 'type:', typeof item.rating);
-          console.log('🔧 Item.proficiency_level:', item.proficiency_level);
-          
+
           // Store original level text as proficiency_level
           if (processedItem.level && typeof processedItem.level === 'string') {
             processedItem.proficiency_level = processedItem.level;
-            console.log('🔧 Set proficiency_level to:', processedItem.proficiency_level);
           }
-          
+
           // Map rating (1-5) to level field in database
           if (processedItem.rating) {
             processedItem.level = parseInt(processedItem.rating) || 3;
-            console.log('🔧 Set level to rating:', processedItem.level);
           } else if (processedItem.level && typeof processedItem.level === 'string') {
             // If no rating but has text level, default to 3
             processedItem.level = 3;
-            console.log('🔧 Set level to default 3');
           }
-          
-          console.log('🔧 Final processed item:', processedItem);
+
           return processedItem;
         });
-        
-        console.log('🔧 All processed items:', processedItems);
+
       }
-      
+
       await onSave(processedItems);
-      
-      toast({ title: "Saved!", description: `${config.title} saved successfully.` });
-      
+
+      toast.success(`${config.title} saved successfully.`);
+
       // Close modal after a brief delay to allow refresh to complete
       setTimeout(() => {
         onClose();
       }, 300);
     } catch (error) {
       console.error("Error saving:", error);
-      toast({ title: "Error", description: "Failed to save. Please try again.", variant: "destructive" });
+      toast.error("Failed to save. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -931,14 +791,14 @@ const UnifiedProfileEditModal = ({
       case "date":
         // Add date validation for start and end dates
         const dateProps = { ...commonProps, type: "date" };
-        
+
         const today = new Date().toISOString().split('T')[0];
-        
+
         // For start date: max is today (cannot select future dates)
         if (field.name === "startDate" || field.name === "start_date") {
           dateProps.max = today;
         }
-        
+
         // For end date: min is start date, max is today
         if (field.name === "endDate" || field.name === "end_date") {
           const startDateValue = formData.startDate || formData.start_date;
@@ -947,12 +807,12 @@ const UnifiedProfileEditModal = ({
           }
           dateProps.max = today;
         }
-        
+
         // For certificates: issuedOn cannot be in the future
         if (field.name === "issuedOn") {
           dateProps.max = today;
         }
-        
+
         // For certificates: expiryDate must be after issuedOn
         if (field.name === "expiryDate") {
           const issuedOnValue = formData.issuedOn;
@@ -961,7 +821,7 @@ const UnifiedProfileEditModal = ({
           }
           // Expiry date can be in the future (no max constraint)
         }
-        
+
         return <Input {...dateProps} />;
       case "number":
         return <Input {...commonProps} type="number" min="0" />;
@@ -987,11 +847,10 @@ const UnifiedProfileEditModal = ({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-semibold text-blue-900">{skill.name}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            skill.type === 'technical' 
-                              ? 'bg-purple-100 text-purple-700' 
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${skill.type === 'technical'
+                              ? 'bg-purple-100 text-purple-700'
                               : 'bg-green-100 text-green-700'
-                          }`}>
+                            }`}>
                             {skill.type === 'technical' ? 'Technical' : 'Soft Skill'}
                           </span>
                         </div>
@@ -1002,11 +861,10 @@ const UnifiedProfileEditModal = ({
                               {[1, 2, 3, 4, 5].map(level => (
                                 <div
                                   key={level}
-                                  className={`w-2 h-2 rounded-full ${
-                                    level <= (skill.level || 3) 
-                                      ? 'bg-blue-500' 
+                                  className={`w-2 h-2 rounded-full ${level <= (skill.level || 3)
+                                      ? 'bg-blue-500'
                                       : 'bg-gray-200'
-                                  }`}
+                                    }`}
                                 />
                               ))}
                             </div>
@@ -1030,14 +888,14 @@ const UnifiedProfileEditModal = ({
                 </div>
               </div>
             )}
-            
+
             {/* Add New Skill Form */}
             <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 bg-gray-50/50 hover:bg-gray-50 transition-colors">
               <div className="flex items-center gap-2 mb-3">
                 <Plus className="w-4 h-4 text-gray-600" />
                 <div className="text-sm font-semibold text-gray-800">Add New Skill</div>
               </div>
-              
+
               <div className="space-y-3">
                 {/* Skill Name */}
                 <div>
@@ -1050,7 +908,7 @@ const UnifiedProfileEditModal = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
-                
+
                 {/* Type and Level Row */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1064,7 +922,7 @@ const UnifiedProfileEditModal = ({
                       <option value="technical">Technical</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Proficiency Level</label>
                     <select
@@ -1080,7 +938,7 @@ const UnifiedProfileEditModal = ({
                     </select>
                   </div>
                 </div>
-                
+
                 {/* Description */}
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Description (Optional)</label>
@@ -1092,24 +950,23 @@ const UnifiedProfileEditModal = ({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   />
                 </div>
-                
+
                 {/* Add Button */}
                 <button
                   type="button"
                   onClick={addSkill}
                   disabled={!formData.newSkillName?.trim()}
-                  className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${
-                    formData.newSkillName?.trim()
+                  className={`w-full py-2.5 px-4 rounded-lg text-sm font-semibold transition-all ${formData.newSkillName?.trim()
                       ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }`}
+                    }`}
                 >
                   <Plus className="w-4 h-4 inline mr-2" />
                   Add Skill
                 </button>
               </div>
             </div>
-            
+
             {/* Empty State */}
             {(!formData.skillsList || formData.skillsList.length === 0) && (
               <div className="text-center py-6 text-gray-500">
@@ -1147,12 +1004,12 @@ const UnifiedProfileEditModal = ({
         <h4 className="font-semibold text-blue-700">
           {editingIndex !== null ? `Edit ${config.title}` : `Add ${config.title}`}
         </h4>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {config.fields.map(field => {
             const renderedField = renderField(field);
             if (!renderedField) return null;
-            
+
             return (
               <div key={field.name} className={field.type === "textarea" || field.type === "tags" || field.type === "skills_manager" ? "md:col-span-2" : ""}>
                 <Label htmlFor={field.name}>{field.label}</Label>
@@ -1185,9 +1042,8 @@ const UnifiedProfileEditModal = ({
   const renderItemCard = (item, index) => (
     <div
       key={item.id || index}
-      className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow ${
-        item.enabled === false ? "opacity-50 bg-gray-50" : "bg-white"
-      }`}
+      className={`p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow ${item.enabled === false ? "opacity-50 bg-gray-50" : "bg-white"
+        }`}
     >
       <div className="flex justify-between items-start gap-4">
         <div className="flex-1">
@@ -1228,11 +1084,7 @@ const UnifiedProfileEditModal = ({
             </div>
           )}
           {/* Debug logging for note visibility */}
-          {console.log(`🔍 Note visibility check for ${config.getDisplayTitle(item)}:`, {
-            _hasPendingEdit: item._hasPendingEdit,
-            _hasLocalChanges: item._hasLocalChanges,
-            shouldShowNote: item._hasPendingEdit && !item._hasLocalChanges
-          })}
+
           {item.duration && <p className="text-xs text-gray-500 mt-1"><Calendar className="w-3 h-3 inline mr-1" />{item.duration}</p>}
 
           {/* Description */}
@@ -1244,25 +1096,33 @@ const UnifiedProfileEditModal = ({
           {(item.technologies || item.tech || item.tech_stack || item.skills) && (
             <div className="flex flex-wrap gap-2 mt-3">
               {(() => {
-                const techArray = Array.isArray(item.technologies)
-                  ? item.technologies
-                  : Array.isArray(item.tech)
-                    ? item.tech
-                    : Array.isArray(item.tech_stack)
-                      ? item.tech_stack
-                      : Array.isArray(item.skills)
-                        ? item.skills
-                        : typeof item.skills === 'string' && item.skills.trim()
-                          ? item.skills.split(',').map(t => t.trim())
-                          : typeof item.technologies === 'string' && item.technologies.trim()
-                            ? item.technologies.split(',').map(t => t.trim())
-                            : typeof item.tech === 'string' && item.tech.trim()
-                              ? item.tech.split(',').map(t => t.trim())
-                              : typeof item.tech_stack === 'string' && item.tech_stack.trim()
-                                ? item.tech_stack.split(',').map(t => t.trim())
-                                : [];
+                let techArray = [];
+                
+                if (Array.isArray(item.technologies)) {
+                  techArray = item.technologies;
+                } else if (Array.isArray(item.tech)) {
+                  techArray = item.tech;
+                } else if (Array.isArray(item.tech_stack)) {
+                  techArray = item.tech_stack;
+                } else if (Array.isArray(item.skills)) {
+                  // Handle skills array - extract names from skill objects
+                  techArray = item.skills.map(skill => {
+                    if (typeof skill === 'object' && skill !== null && skill.name) {
+                      return skill.name;
+                    }
+                    return typeof skill === 'string' ? skill : String(skill);
+                  });
+                } else if (typeof item.skills === 'string' && item.skills.trim()) {
+                  techArray = item.skills.split(',').map(t => t.trim());
+                } else if (typeof item.technologies === 'string' && item.technologies.trim()) {
+                  techArray = item.technologies.split(',').map(t => t.trim());
+                } else if (typeof item.tech === 'string' && item.tech.trim()) {
+                  techArray = item.tech.split(',').map(t => t.trim());
+                } else if (typeof item.tech_stack === 'string' && item.tech_stack.trim()) {
+                  techArray = item.tech_stack.split(',').map(t => t.trim());
+                }
 
-                return techArray.map((tech, i) => (
+                return techArray.filter(tech => tech && tech.trim()).map((tech, i) => (
                   <Badge key={i} variant="outline" className="bg-blue-50 text-blue-800 border-blue-300 text-xs font-semibold shadow-sm hover:bg-blue-100">
                     {tech}
                   </Badge>
@@ -1273,9 +1133,9 @@ const UnifiedProfileEditModal = ({
         </div>
 
         <div className="flex gap-1">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => {
               const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
               if (usesSeparateModal.includes(type)) {
@@ -1283,7 +1143,7 @@ const UnifiedProfileEditModal = ({
               } else {
                 startEditing(index);
               }
-            }} 
+            }}
             className="text-blue-600 hover:bg-blue-50"
           >
             <PenSquare className="w-4 h-4" />
@@ -1340,7 +1200,7 @@ const UnifiedProfileEditModal = ({
                 {config.fields.map(field => {
                   const renderedField = renderField(field);
                   if (!renderedField) return null;
-                  
+
                   return (
                     <div key={field.name} className={field.type === "textarea" || field.type === "tags" || field.type === "skills_manager" ? "md:col-span-2" : ""}>
                       <Label htmlFor={field.name} className="text-sm font-medium text-gray-700 mb-1.5 block">
@@ -1376,8 +1236,8 @@ const UnifiedProfileEditModal = ({
 
           {/* Fixed Action Buttons at Bottom */}
           <div className="flex-shrink-0 flex gap-3 pt-4 border-t border-gray-200 bg-white">
-            <Button 
-              onClick={saveAndClose} 
+            <Button
+              onClick={saveAndClose}
               disabled={isSaving}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white h-11"
             >
@@ -1393,9 +1253,9 @@ const UnifiedProfileEditModal = ({
                 </>
               )}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={onClose} 
+            <Button
+              variant="outline"
+              onClick={onClose}
               disabled={isSaving}
               className="px-6 h-11"
             >
@@ -1422,7 +1282,7 @@ const UnifiedProfileEditModal = ({
                 const usesSeparateModal = ['education', 'experience', 'training', 'projects', 'certificates', 'skills', 'technicalSkills', 'softSkills'];
                 if (usesSeparateModal.includes(type)) {
                   return (
-                    <Button 
+                    <Button
                       onClick={handleAddItem}
                       size="sm"
                       className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -1450,29 +1310,29 @@ const UnifiedProfileEditModal = ({
                         // For education
                         if (item.yearOfPassing) return new Date(item.yearOfPassing, 11, 31);
                         if (item.year) return new Date(item.year, 11, 31);
-                        
+
                         // For experience, training, projects
                         if (item.endDate) return new Date(item.endDate);
                         if (item.end_date) return new Date(item.end_date);
                         if (item.completedDate) return new Date(item.completedDate);
                         if (item.completed_date) return new Date(item.completed_date);
-                        
+
                         // For certificates
                         if (item.issueDate) return new Date(item.issueDate);
                         if (item.issue_date) return new Date(item.issue_date);
                         if (item.issuedOn) return new Date(item.issuedOn);
                         if (item.date) return new Date(item.date);
-                        
+
                         // Fallback to start dates
                         if (item.startDate) return new Date(item.startDate);
                         if (item.start_date) return new Date(item.start_date);
-                        
+
                         // Fallback to creation date
                         if (item.created_at) return new Date(item.created_at);
-                        
+
                         return new Date(0); // Default to epoch if no date found
                       };
-                      
+
                       const dateA = getDate(a);
                       const dateB = getDate(b);
                       return dateB - dateA; // Descending order (most recent first)
@@ -1577,7 +1437,7 @@ const UnifiedProfileEditModal = ({
         }
         return null;
       })()}
-      
+
       {/* Confirmation Dialog */}
       <AlertDialog open={confirmDialog.isOpen} onOpenChange={(open) => !open && setConfirmDialog({ isOpen: false, type: null, itemIndex: null, itemTitle: '' })}>
         <AlertDialogContent className="bg-white rounded-xl max-w-md">
@@ -1605,11 +1465,10 @@ const UnifiedProfileEditModal = ({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDialog.type === 'delete' ? handleConfirmDelete : handleConfirmToggle}
-              className={`px-4 py-2 text-white rounded-lg ${
-                confirmDialog.type === 'delete' 
-                  ? 'bg-red-600 hover:bg-red-700' 
+              className={`px-4 py-2 text-white rounded-lg ${confirmDialog.type === 'delete'
+                  ? 'bg-red-600 hover:bg-red-700'
                   : 'bg-blue-600 hover:bg-blue-700'
-              }`}
+                }`}
             >
               {confirmDialog.type === 'delete' && 'Delete'}
               {confirmDialog.type === 'hide' && 'Hide'}

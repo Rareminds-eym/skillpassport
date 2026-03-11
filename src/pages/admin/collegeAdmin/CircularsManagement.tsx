@@ -22,6 +22,9 @@ import {
 import { circularsService, Circular, CreateCircularData, CircularsFilters } from "../../../services/circularsService";
 import { uploadFile, validateFile, getDocumentUrl, deleteFile } from "../../../services/fileUploadService";
 import { ConfirmModal } from "../../../components/shared/ConfirmModal";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('college-admin-circulars');
 
 
 
@@ -130,7 +133,7 @@ const CircularsManagement: React.FC = () => {
     
     if (error) {
       setError('Failed to load circulars');
-      console.error('Error loading circulars:', error);
+      logger.error('Error loading circulars:', error as Error);
     } else {
       setCirculars(data || []);
     }
@@ -143,7 +146,7 @@ const CircularsManagement: React.FC = () => {
     const { data, error } = await circularsService.getCircularsStats();
     
     if (error) {
-      console.error('Error loading stats:', error);
+      logger.error('Error loading stats:', error as Error);
     } else if (data) {
       setStats(data);
     }
@@ -212,7 +215,7 @@ const CircularsManagement: React.FC = () => {
         
         if (error) {
           setError('Failed to update circular');
-          console.error('Error updating circular:', error);
+          logger.error('Error updating circular:', error as Error);
         } else {
           await loadCirculars();
           await loadStats();
@@ -225,7 +228,7 @@ const CircularsManagement: React.FC = () => {
         
         if (error) {
           setError('Failed to create circular');
-          console.error('Error creating circular:', error);
+          logger.error('Error creating circular:', error as Error);
         } else {
           await loadCirculars();
           await loadStats();
@@ -265,7 +268,7 @@ const CircularsManagement: React.FC = () => {
     
     if (error) {
       setError('Failed to update circular status');
-      console.error('Error toggling status:', error);
+      logger.error('Error toggling status:', error as Error);
     } else {
       await loadCirculars();
       await loadStats();
@@ -294,13 +297,13 @@ const CircularsManagement: React.FC = () => {
       try {
         // If there's an attachment URL and it's an uploaded file (R2), delete it first
         if (hasAttachment && circularToDelete?.attachment_url) {
-          console.log('Deleting associated file:', circularToDelete.attachment_url);
+          logger.info('Deleting associated file:', { value: circularToDelete.attachment_url });
           
           const fileDeleteResult = await deleteFile(circularToDelete.attachment_url);
           if (!fileDeleteResult) {
-            console.warn('Failed to delete associated file, but continuing with circular deletion');
+            logger.warn('Failed to delete associated file, but continuing with circular deletion');
           } else {
-            console.log('Successfully deleted associated file');
+            logger.info('Successfully deleted associated file');
           }
         }
         
@@ -309,13 +312,13 @@ const CircularsManagement: React.FC = () => {
         
         if (error) {
           setError('Failed to delete circular');
-          console.error('Error deleting circular:', error);
+          logger.error('Error deleting circular:', error as Error);
         } else {
           await loadCirculars();
           await loadStats();
         }
       } catch (error) {
-        console.error('Error in delete process:', error);
+        logger.error('Error in delete process:', error as Error);
         setError('Failed to delete circular and associated files');
       }
       
@@ -414,12 +417,12 @@ const CircularsManagement: React.FC = () => {
       // If we're editing and there's an existing uploaded file, delete it first
       const oldAttachmentUrl = selectedCircular?.attachment_url || formData.attachment_url;
       if (oldAttachmentUrl && (oldAttachmentUrl.includes('.r2.dev') || oldAttachmentUrl.includes('r2.cloudflarestorage.com'))) {
-        console.log('Deleting old file before uploading new one:', oldAttachmentUrl);
+        logger.info('Deleting old file before uploading new one:', { value: oldAttachmentUrl });
         const deleteResult = await deleteFile(oldAttachmentUrl);
         if (deleteResult) {
-          console.log('Successfully deleted old file');
+          logger.info('Successfully deleted old file');
         } else {
-          console.warn('Failed to delete old file, but continuing with new upload');
+          logger.warn('Failed to delete old file, but continuing with new upload');
         }
       }
 
@@ -447,7 +450,7 @@ const CircularsManagement: React.FC = () => {
         alert(`Failed to upload file: ${result.error}`);
       }
     } catch (error) {
-      console.error('File upload error:', error);
+      logger.error('File upload error:', error as Error);
       alert('Error uploading file. Please try again.');
     } finally {
       setUploadingFile(false);
@@ -473,15 +476,15 @@ const CircularsManagement: React.FC = () => {
       const fileUrl = uploadedFile?.url || formData.attachment_url;
       if (fileUrl && (fileUrl.includes('.r2.dev') || fileUrl.includes('r2.cloudflarestorage.com'))) {
         try {
-          console.log('Deleting file from R2:', fileUrl);
+          logger.info('Deleting file from R2:', { value: fileUrl });
           const deleteResult = await deleteFile(fileUrl);
           if (deleteResult) {
-            console.log('Successfully deleted file from R2');
+            logger.info('Successfully deleted file from R2');
           } else {
-            console.warn('Failed to delete file from R2');
+            logger.warn('Failed to delete file from R2');
           }
         } catch (error) {
-          console.error('Error deleting file from R2:', error);
+          logger.error('Error deleting file from R2:', error as Error);
         }
       }
       
@@ -1001,9 +1004,9 @@ const CircularsManagement: React.FC = () => {
                           if (uploadedFile.url.includes('.r2.dev') || uploadedFile.url.includes('r2.cloudflarestorage.com')) {
                             try {
                               await deleteFile(uploadedFile.url);
-                              console.log('Deleted file when switching to URL mode');
+                              logger.info('Deleted file when switching to URL mode');
                             } catch (error) {
-                              console.error('Failed to delete file when switching modes:', error);
+                              logger.error('Failed to delete file when switching modes:', error as Error);
                             }
                           }
                           
@@ -1328,3 +1331,4 @@ const CircularsManagement: React.FC = () => {
 };
 
 export default CircularsManagement;
+

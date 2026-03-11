@@ -1,4 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('university-college');
 
 /**
  * University College Service
@@ -23,7 +26,7 @@ export const getCollegesByUniversity = async (universityId) => {
             .order('name');
 
         if (error) {
-            console.error('Error fetching colleges by university:', error);
+            logger.error('Error fetching colleges by university', error, { universityId });
             return {
                 success: false,
                 data: null,
@@ -37,7 +40,7 @@ export const getCollegesByUniversity = async (universityId) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching colleges by university:', error);
+        logger.error('Unexpected error fetching colleges by university', error, { universityId });
         return {
             success: false,
             data: null,
@@ -64,7 +67,7 @@ export const addCollegeToUniversity = async (universityId, organizationId, addit
             .single();
 
         if (orgError) {
-            console.error('Error fetching organization:', orgError);
+            logger.error('Error fetching organization', orgError, { organizationId });
             return {
                 success: false,
                 data: null,
@@ -115,7 +118,7 @@ export const addCollegeToUniversity = async (universityId, organizationId, addit
             .single();
 
         if (error) {
-            console.error('Error adding college to university:', error);
+            logger.error('Error adding college to university', error, { universityId, organizationId });
             return {
                 success: false,
                 data: null,
@@ -129,7 +132,7 @@ export const addCollegeToUniversity = async (universityId, organizationId, addit
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error adding college to university:', error);
+        logger.error('Unexpected error adding college to university', error, { universityId, organizationId });
         return {
             success: false,
             data: null,
@@ -155,7 +158,7 @@ export const getAvailableColleges = async (universityId) => {
             .order('name');
 
         if (collegesError) {
-            console.error('Error fetching all colleges:', collegesError);
+            logger.error('Error fetching all colleges', collegesError);
             return {
                 success: false,
                 data: null,
@@ -170,7 +173,7 @@ export const getAvailableColleges = async (universityId) => {
             .eq('university_id', universityId);
 
         if (linkedError) {
-            console.error('Error fetching linked colleges:', linkedError);
+            logger.error('Error fetching linked colleges', linkedError, { universityId });
             return {
                 success: false,
                 data: null,
@@ -194,7 +197,7 @@ export const getAvailableColleges = async (universityId) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching available colleges:', error);
+        logger.error('Unexpected error fetching available colleges', error, { universityId });
         return {
             success: false,
             data: null,
@@ -219,7 +222,7 @@ export const updateUniversityCollege = async (collegeId, updateData) => {
             .single();
 
         if (error) {
-            console.error('Error updating university college:', error);
+            logger.error('Error updating university college', error, { collegeId });
             return {
                 success: false,
                 data: null,
@@ -233,7 +236,7 @@ export const updateUniversityCollege = async (collegeId, updateData) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error updating university college:', error);
+        logger.error('Unexpected error updating university college', error, { collegeId });
         return {
             success: false,
             data: null,
@@ -257,7 +260,7 @@ export const removeCollegeFromUniversity = async (collegeId) => {
             .single();
 
         if (error) {
-            console.error('Error removing college from university:', error);
+            logger.error('Error removing college from university', error, { collegeId });
             return {
                 success: false,
                 data: null,
@@ -271,7 +274,7 @@ export const removeCollegeFromUniversity = async (collegeId) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error removing college from university:', error);
+        logger.error('Unexpected error removing college from university', error, { collegeId });
         return {
             success: false,
             data: null,
@@ -302,7 +305,7 @@ export const checkCollegeCodeUnique = async (universityId, code, excludeId = nul
         const { data, error } = await query.maybeSingle();
 
         if (error) {
-            console.error('Error checking college code uniqueness:', error);
+            logger.error('Error checking college code uniqueness', error, { universityId, code });
             return { isUnique: false, error: error.message };
         }
 
@@ -311,7 +314,7 @@ export const checkCollegeCodeUnique = async (universityId, code, excludeId = nul
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error checking college code uniqueness:', error);
+        logger.error('Unexpected error checking college code uniqueness', error, { universityId, code });
         return { isUnique: false, error: error.message };
     }
 };
@@ -357,7 +360,7 @@ export const getUniversityCollegeStats = async (universityId) => {
             .eq('university_id', universityId);
 
         if (error) {
-            console.error('Error fetching college stats:', error);
+            logger.error('Error fetching college stats', error, { universityId });
             return {
                 success: false,
                 data: null,
@@ -378,7 +381,7 @@ export const getUniversityCollegeStats = async (universityId) => {
             error: null
         };
     } catch (error) {
-        console.error('Unexpected error fetching college stats:', error);
+        logger.error('Unexpected error fetching college stats', error, { universityId });
         return {
             success: false,
             data: null,

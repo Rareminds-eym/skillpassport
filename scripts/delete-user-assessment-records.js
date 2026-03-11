@@ -21,21 +21,18 @@ import { createClient } from '@supabase/supabase-js';
 import readline from 'readline';
 import dotenv from 'dotenv';
 
-// Load environment variables from .env.development file ONLY
-dotenv.config({ path: '.env.development' });
+// Load environment variables from .env file
+dotenv.config();
 
-// Initialize Supabase client with DEVELOPMENT credentials only
+// Initialize Supabase client
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Error: Missing Supabase credentials');
-  console.error('Please set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.development');
+  console.error('Please set VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables');
   process.exit(1);
 }
-
-console.log('🔧 Using DEVELOPMENT environment from .env.development');
-console.log(`📍 Supabase URL: ${supabaseUrl}\n`);
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

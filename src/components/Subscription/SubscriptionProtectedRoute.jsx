@@ -23,8 +23,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { ACCESS_REASONS, useSubscriptionContext } from '../../context/SubscriptionContext';
+import { useIsAuthenticated, useUserRole, useAuthLoading, useUser, useSubscription, ACCESS_REASONS } from '../../stores';
 import Loader from '../Loader';
 import SubscriptionBanner from './SubscriptionBanner';
 
@@ -101,7 +100,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  */
 async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
   let lastError;
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
@@ -114,7 +113,7 @@ async function retryWithBackoff(fn, maxRetries, baseDelayMs, onRetry) {
       }
     }
   }
-  
+
   throw lastError;
 }
 
@@ -132,7 +131,7 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
     attempts: 0,
     error: null,
   });
-  
+
   const syncStartedRef = useRef(false);
   const timeoutRef = useRef(null);
   const mountedRef = useRef(true);
@@ -175,7 +174,7 @@ function usePostPaymentSync(isPostPayment, hasAccess, refreshAccess) {
     retryWithBackoff(
       async () => {
         await refreshAccess();
-        // Small delay to ensure React Query cache is updated
+        // Small delay to ensure Zustand store state has propagated
         await sleep(100);
       },
       CONFIG.POST_PAYMENT_MAX_RETRIES,
@@ -263,7 +262,7 @@ function useGuardState({
       // Check if this is an admin role mismatch that should be allowed
       const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
       const userIsAdmin = role === 'admin' || role?.includes('_admin');
-      
+
       if (!(isAdminRoute && userIsAdmin)) {
         // Not an admin exception, deny access
         return GUARD_STATES.ACCESS_DENIED;
@@ -338,16 +337,19 @@ function useGuardState({
 // MAIN COMPONENT
 // ============================================================================
 
-const SubscriptionProtectedRoute = ({ 
-  children, 
+const SubscriptionProtectedRoute = ({
+  children,
   allowedRoles = [],
   requireSubscription = true,
   subscriptionFallbackPath = '/subscription/plans',
   loginFallbackPath = '/login',
 }) => {
-  const { isAuthenticated, role, loading: authLoading, user } = useAuth();
+  const isAuthenticated = useIsAuthenticated();
+  const { role } = useUserRole();
+  const loading = useAuthLoading();
+  const user = useUser();
   const location = useLocation();
-  
+
   // Debug logging for redirect loop investigation
   useEffect(() => {
     if (DEBUG) {
@@ -355,14 +357,14 @@ const SubscriptionProtectedRoute = ({
         path: location.pathname,
         isAuthenticated,
         role,
-        authLoading,
+        authLoading: loading,
         userId: user?.id,
         allowedRoles,
         requireSubscription,
       });
     }
-  }, [location.pathname, isAuthenticated, role, authLoading, user?.id, allowedRoles, requireSubscription]);
-  
+  }, [location.pathname, isAuthenticated, role, loading, user?.id, allowedRoles, requireSubscription]);
+
   const {
     hasAccess,
     accessReason,
@@ -373,7 +375,7 @@ const SubscriptionProtectedRoute = ({
     error: subscriptionError,
     isRefetching,
     refreshAccess,
-  } = useSubscriptionContext();
+  } = useSubscription();
 
   // Detect post-payment navigation
   const isPostPayment = location.state?.fromPayment === true;
@@ -383,7 +385,7 @@ const SubscriptionProtectedRoute = ({
 
   // Guard state machine
   const guardState = useGuardState({
-    authLoading,
+    authLoading: loading,
     isAuthenticated,
     role,
     allowedRoles,
@@ -433,7 +435,7 @@ const SubscriptionProtectedRoute = ({
     log.error('Subscription check error, allowing access with warning:', subscriptionError);
     return (
       <>
-        <SubscriptionBanner 
+        <SubscriptionBanner
           type="error"
           message="Unable to verify subscription status. Some features may be limited."
         />
@@ -446,8 +448,8 @@ const SubscriptionProtectedRoute = ({
   if (guardState === GUARD_STATES.ACCESS_DENIED) {
     // Not authenticated
     if (!isAuthenticated) {
-      const redirectPath = location.pathname.includes('student') 
-        ? loginFallbackPath 
+      const redirectPath = location.pathname.includes('student')
+        ? loginFallbackPath
         : '/';
       log.info('Not authenticated, redirecting to:', redirectPath);
       return <Navigate to={redirectPath} state={{ from: location }} replace />;
@@ -460,7 +462,7 @@ const SubscriptionProtectedRoute = ({
     const isAdminRoute = allowedRoles.some(r => r.includes('_admin'));
     const userIsAdmin = role === 'admin' || role?.includes('_admin');
     const adminRoleException = isAdminRoute && userIsAdmin;
-    
+
     if (!roleMatches && !adminRoleException) {
       // Role doesn't match and no admin exception applies
       const expectedRole = allowedRoles[0] || 'student';
@@ -480,10 +482,10 @@ const SubscriptionProtectedRoute = ({
 
     log.info('No subscription access, redirecting to:', fallbackUrl, 'Reason:', accessReason, 'Role:', role, 'AdminException:', adminRoleException);
     return (
-      <Navigate 
-        to={fallbackUrl} 
+      <Navigate
+        to={fallbackUrl}
         state={buildRedirectState(message)}
-        replace 
+        replace
       />
     );
   }
@@ -494,7 +496,7 @@ const SubscriptionProtectedRoute = ({
     return (
       <>
         {showWarning && (
-          <SubscriptionBanner 
+          <SubscriptionBanner
             type={warningType}
             message={warningMessage}
           />

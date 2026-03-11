@@ -35,7 +35,7 @@ function getUserTypeFromPath(pathname) {
 const SubscriptionStatusWidget = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { subscriptionData, loading } = useSubscriptionQuery();
+  const { subscriptionData, loading } = useSubscriptionAccess();
   const basePath = getSubscriptionBasePath(location.pathname);
   const userType = getUserTypeFromPath(location.pathname);
 

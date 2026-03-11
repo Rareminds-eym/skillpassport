@@ -59,7 +59,9 @@ function AddOns() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { user, role, loading: authLoading } = useAuth();
+  const user = useUser();
+  const { role } = useUserRole();
+  const authLoading = useAuthLoading();
   
   // Get base path for subscription routes from URL (more reliable)
   const basePath = useMemo(() => getSubscriptionBasePath(location.pathname), [location.pathname]);

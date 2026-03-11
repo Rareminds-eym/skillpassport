@@ -3,6 +3,7 @@ import { reportsService } from "@/services/college/reportsService";
 import { ApexOptions } from "apexcharts";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getLogger } from "../../../config/logging";
 import {
     Activity,
     Award,
@@ -49,7 +50,8 @@ interface ReportData {
 }
 
 const ReportsAnalytics: React.FC = () => {
-  const { user } = useAuth();
+  const logger = getLogger('college-admin-reports');
+  const user = useUser();
   const [selectedCategory, setSelectedCategory] = useState("attendance");
   const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
   const [filters, setFilters] = useState<FilterState>({
@@ -143,7 +145,7 @@ const ReportsAnalytics: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('Error fetching college ID:', error);
+        logger.error('Error fetching college ID:', error as Error);
       }
     };
     fetchCollegeId();
@@ -198,7 +200,7 @@ const ReportsAnalytics: React.FC = () => {
 
         setReportData(data);
       } catch (error) {
-        console.error('Error fetching report data:', error);
+        logger.error('Error fetching report data:', error as Error);
       } finally {
         setLoading(false);
       }
@@ -436,9 +438,9 @@ const ReportsAnalytics: React.FC = () => {
       // Save file
       XLSX.writeFile(wb, filename);
 
-      console.log('✅ Excel file exported successfully:', filename);
+      logger.info('Excel file exported successfully:', { filename });
     } catch (error) {
-      console.error('❌ Error exporting to Excel:', error);
+      logger.error('Error exporting to Excel:', error as Error);
       toast.error('Failed to export Excel file. Please try again.');
     }
   };
@@ -518,9 +520,9 @@ const ReportsAnalytics: React.FC = () => {
       link.click();
       document.body.removeChild(link);
 
-      console.log('✅ CSV file exported successfully:', filename);
+      logger.info('CSV file exported successfully:', { filename });
     } catch (error) {
-      console.error('❌ Error exporting to CSV:', error);
+      logger.error('Error exporting to CSV:', error as Error);
       toast.error('Failed to export CSV file. Please try again.');
     }
   };
@@ -759,9 +761,9 @@ const ReportsAnalytics: React.FC = () => {
       const filename = `${categoryName.replace(/\s+/g, '_')}_Report_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(filename);
 
-      console.log('✅ PDF file exported successfully:', filename);
+      logger.info('PDF file exported successfully:', { filename });
     } catch (error) {
-      console.error('❌ Error exporting to PDF:', error);
+      logger.error('Error exporting to PDF:', error as Error);
       toast.error('Failed to export PDF file. Please try again.');
     }
   };

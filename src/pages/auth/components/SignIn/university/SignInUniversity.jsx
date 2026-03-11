@@ -14,7 +14,7 @@ const SignInUniversity = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [generalError, setGeneralError] = useState('');
 
-  const { login } = useAuth();
+  const { login } = useAuthActions();
   const navigate = useNavigate();
 
   const validateField = (name, value) => {

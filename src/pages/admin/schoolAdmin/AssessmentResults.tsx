@@ -13,9 +13,12 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import SearchBar from '../../../components/common/SearchBar';
 import AssessmentReportDrawer from '../../../components/shared/AssessmentReportDrawer';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
 import { formatStreamId } from '../../../utils/formatters';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('school-admin-assessment-results');
 
 // Types
 interface AssessmentResult {
@@ -307,7 +310,7 @@ END OF OLD Detail Modal Component */
 // Main Component
 const SchoolAdminAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
-  const { user } = useAuth();
+  const user = useUser();
 
   // State
   const [results, setResults] = useState<AssessmentResult[]>([]);
@@ -334,16 +337,16 @@ const SchoolAdminAssessmentResults: React.FC = () => {
   // Test Supabase connection
   const testConnection = async () => {
     try {
-      console.log('🧪 Testing Supabase connection...');
+      logger.info('Testing Supabase connection');
       const { data, error } = await supabase
         .from('organizations')
         .select('count')
         .limit(1);
       
-      console.log('✅ Supabase connection test result:', { data, error });
+      logger.info('Supabase connection test result', { hasData: !!data, hasError: !!error });
       return !error;
     } catch (err) {
-      console.log('❌ Supabase connection test failed:', err);
+      logger.error('Supabase connection test failed', err as Error);
       return false;
     }
   };
@@ -357,13 +360,13 @@ const SchoolAdminAssessmentResults: React.FC = () => {
       // Get current user's email
       const userEmail = user?.email;
       if (!userEmail) {
-        console.error('❌ User not authenticated');
+        logger.error('User not authenticated');
         setError('User not authenticated. Please log in again.');
         setLoading(false);
         return;
       }
 
-      console.log('🔍 Fetching results for user:', userEmail);
+      logger.info('Fetching results for user', { userEmail });
 
       // Find school by matching email in organizations table (case-insensitive)
       const { data: org, error: orgError } = await supabase
@@ -374,7 +377,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
         .maybeSingle();
 
       if (orgError) {
-        console.error('❌ Organization fetch error:', orgError);
+        logger.error('Organization fetch error', orgError as Error);
         
         // Handle specific error types
         if (orgError.message?.includes('Invalid login credentials')) {
@@ -392,13 +395,13 @@ const SchoolAdminAssessmentResults: React.FC = () => {
       }
 
       if (!org?.id) {
-        console.error('❌ No school found for email:', userEmail);
+        logger.error('No school found for email');
         setError('No school associated with your account. Please contact support.');
         setLoading(false);
         return;
       }
 
-      console.log('✅ Found school:', org.name);
+      logger.info('Found school', { schoolName: org.name, schoolId: org.id });
       const schoolId = org.id;
       
       // Set school name from the already fetched organization data
@@ -504,7 +507,7 @@ const SchoolAdminAssessmentResults: React.FC = () => {
 
       setResults(enrichedResults as AssessmentResult[]);
     } catch (err: any) {
-      console.error('Error fetching assessment results:', err);
+      logger.error('Error fetching assessment results', err);
       setError(err?.message || 'Failed to load assessment results');
     } finally {
       setLoading(false);
@@ -512,16 +515,17 @@ const SchoolAdminAssessmentResults: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log('🔍 Auth Debug - School Admin Assessment Results:');
-    console.log('User object:', user);
-    console.log('User email:', user?.email);
-    console.log('User authenticated:', !!user);
+    logger.info('Auth Debug - School Admin Assessment Results', { 
+      hasUser: !!user, 
+      userEmail: user?.email, 
+      authenticated: !!user 
+    });
     
     if (user?.email) {
-      console.log('✅ User authenticated, fetching results...');
+      logger.info('User authenticated, fetching results');
       fetchResults();
     } else {
-      console.log('❌ User not authenticated');
+      logger.warn('User not authenticated');
       setError('Please log in to view assessment results');
       setLoading(false);
     }

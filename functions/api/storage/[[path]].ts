@@ -31,15 +31,16 @@ import { handleDelete } from './handlers/delete';
 import { handlePresigned, handleConfirm, handleGetFileUrl } from './handlers/presigned';
 import { handleDocumentAccess } from './handlers/document-access';
 import { handleSignedUrl, handleSignedUrls } from './handlers/signed-url';
-import { handleUploadPaymentReceipt, handleGetPaymentReceipt } from './handlers/payment-receipt';
+import { handleUploadPaymentReceipt, handleGetPaymentReceipt, handleGetPaymentReceiptPresigned } from './handlers/payment-receipt';
 import { handleCourseCertificate } from './handlers/certificate';
 import { handleExtractContent } from './handlers/extract-content';
 import { handleListFiles } from './handlers/list-files';
 import { handleGetAuthenticatedUrl } from './handlers/get-authenticated-url';
 import { handleMediaProxy } from './handlers/media-proxy';
 
-// Define public endpoints that don't require authentication
-const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content'];
+// Define public endpoints that don't require JWT authentication
+// Note: /media-proxy uses token-based auth in URL params, not JWT
+const PUBLIC_ENDPOINTS = ['/', '/course-certificate', '/extract-content', '/media-proxy'];
 
 /**
  * Check if the given path is a public endpoint
@@ -164,6 +165,9 @@ export const onRequest: PagesFunction = async (context) => {
       case '/upload-payment-receipt':
         return handleUploadPaymentReceipt(authenticatedContext as any);
 
+      case '/payment-receipt/presigned':
+        return handleGetPaymentReceiptPresigned(authenticatedContext as any);
+
       case '/payment-receipt':
         return handleGetPaymentReceipt(authenticatedContext as any);
 
@@ -197,6 +201,7 @@ export const onRequest: PagesFunction = async (context) => {
               '/media-proxy (SECURE)',
               '/upload-payment-receipt',
               '/payment-receipt',
+              '/payment-receipt/presigned',
               '/course-certificate',
               '/extract-content',
               '/files/:courseId/:lessonId',

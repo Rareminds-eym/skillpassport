@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
-  const { role, user } = useAuth();
+  const { role } = useUserRole();
+  const user = useUser();
   const location = useLocation();
 
   // Fetch student data to check school/college association

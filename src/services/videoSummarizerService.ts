@@ -1,5 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
 import { getPagesApiUrl, getAuthHeaders } from '../utils/pagesUrl';
+import { getLogger } from '../config/logging';
+
+const logger = getLogger('video-summarizer');
 
 // ==================== API URL CONFIGURATION ====================
 const API_URL = getPagesApiUrl('course');
@@ -147,7 +150,7 @@ export async function processVideo(
   const POLL_INTERVAL_MS = 3000;
   const MAX_POLL_TIME_MS = 300000;
 
-  console.log('[VideoSummarizer] Starting enhanced video processing:', request.videoUrl);
+  logger.info('Starting enhanced video processing', { videoUrl: request.videoUrl });
   onProgress?.('Connecting to AI service...', 5);
 
   const { data: { session } } = await supabase.auth.getSession();
@@ -261,13 +264,13 @@ export async function getVideoSummaryByLesson(lessonId: string): Promise<VideoSu
       .maybeSingle();
 
     if (error) {
-      console.warn('Error querying video_summaries by lesson_id:', error);
+      logger.warn('Error querying video_summaries by lesson_id', { error, lessonId });
       return null;
     }
 
     return data ? transformVideoSummary(data) : null;
   } catch (err) {
-    console.warn('Exception querying video_summaries by lesson_id:', err);
+    logger.warn('Exception querying video_summaries by lesson_id', { err, lessonId });
     return null;
   }
 }
@@ -279,7 +282,7 @@ export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string
   // Strategy 1: Try lesson_id first (most reliable for presigned URLs)
   if (lessonId) {
     try {
-      console.log('[VideoSummary] Attempting lesson_id lookup:', lessonId);
+      logger.info('Attempting lesson_id lookup', { lessonId });
       
       // Get ANY status (completed, failed, processing) to check what exists
       const { data, error } = await supabase
@@ -291,9 +294,9 @@ export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string
         .maybeSingle();
 
       if (error) {
-        console.warn('[VideoSummary] Lesson_id query error:', error);
+        logger.warn('Lesson_id query error', { error, lessonId });
       } else if (data) {
-        console.log('[VideoSummary] Found by lesson_id, status:', data.processing_status);
+        logger.info('Found by lesson_id', { status: data.processing_status, lessonId });
         
         // Return completed summaries
         if (data.processing_status === 'completed') {
@@ -311,14 +314,14 @@ export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string
         }
       }
     } catch (err) {
-      console.warn('[VideoSummary] Lesson_id lookup failed:', err);
+      logger.warn('Lesson_id lookup failed', { err, lessonId });
     }
   }
 
   // Strategy 2: Try video_url if lesson_id failed (less reliable for presigned URLs)
   if (videoUrl) {
     try {
-      console.log('[VideoSummary] Attempting video_url lookup');
+      logger.info('Attempting video_url lookup');
       
       // Extract the base file path from presigned URL (remove query params)
       const baseUrl = videoUrl.split('?')[0];
@@ -333,19 +336,19 @@ export async function getVideoSummaryRobust(lessonId?: string, videoUrl?: string
         .maybeSingle();
 
       if (data) {
-        console.log('[VideoSummary] Found by video_url');
+        logger.info('Found by video_url');
         return transformVideoSummary(data);
       }
       
       if (error) {
-        console.warn('[VideoSummary] Video_url query error:', error);
+        logger.warn('Video_url query error', { error });
       }
     } catch (err) {
-      console.warn('[VideoSummary] Video_url lookup failed:', err);
+      logger.warn('Video_url lookup failed', { err });
     }
   }
 
-  console.log('[VideoSummary] No summary found with any strategy');
+  logger.info('No summary found with any strategy');
   return null;
 }
 
@@ -376,13 +379,13 @@ export async function getVideoSummaryByUrl(videoUrl: string): Promise<VideoSumma
     }
 
     if (error) {
-      console.warn('Error querying video_summaries by video_url:', error);
+      logger.warn('Error querying video_summaries by video_url', { error, videoUrl });
       return null;
     }
 
     return data ? transformVideoSummary(data) : null;
   } catch (err) {
-    console.warn('Exception querying video_summaries by video_url:', err);
+    logger.warn('Exception querying video_summaries by video_url', { err, videoUrl });
     return null;
   }
 }
@@ -396,13 +399,13 @@ export async function getVideoSummary(id: string): Promise<VideoSummary | null> 
       .maybeSingle();
 
     if (error) {
-      console.warn('Error querying video_summaries by id:', error);
+      logger.warn('Error querying video_summaries by id', { error, id });
       return null;
     }
 
     return data ? transformVideoSummary(data) : null;
   } catch (err) {
-    console.warn('Exception querying video_summaries by id:', err);
+    logger.warn('Exception querying video_summaries by id', { err, id });
     return null;
   }
 }
@@ -414,10 +417,10 @@ export async function deleteVideoSummary(id: string): Promise<void> {
       .delete()
       .eq('id', id);
     if (error) {
-      console.warn('Error deleting video summary:', error);
+      logger.warn('Error deleting video summary', { error, id });
     }
   } catch (err) {
-    console.warn('Exception deleting video summary:', err);
+    logger.warn('Exception deleting video summary', { err, id });
   }
 }
 
@@ -433,7 +436,7 @@ export async function checkProcessingStatus(id: string): Promise<{
       .maybeSingle();
 
     if (error) {
-      console.warn('Error checking processing status:', error);
+      logger.warn('Error checking processing status', { error, id });
       return { status: 'not_found' };
     }
 
@@ -444,7 +447,7 @@ export async function checkProcessingStatus(id: string): Promise<{
       summary: data.processing_status === 'completed' ? transformVideoSummary(data) : undefined,
     };
   } catch (err) {
-    console.warn('Exception checking processing status:', err);
+    logger.warn('Exception checking processing status', { err, id });
     return { status: 'not_found' };
   }
 }

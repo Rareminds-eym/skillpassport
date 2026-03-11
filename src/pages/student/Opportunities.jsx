@@ -37,7 +37,7 @@ import OpportunityPreview from '../../components/Students/components/Opportunity
 import RecommendedJobs from '../../components/Students/components/RecommendedJobs';
 import IndustrialVisitPreview from '../../components/Students/components/IndustrialVisitPreview';
 import Pagination from '../../components/educator/Pagination';
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 import { useOpportunities } from '../../hooks/useOpportunities';
 import { useStudentProfile } from '@/features/student-profile';
 import { useStudentDataByEmail } from '@/hooks/useStudentDataByEmail';
@@ -45,21 +45,242 @@ import { useProfileCompletion } from '../../hooks/useProfileCompletion';
 import AppliedJobsService from '../../services/appliedJobsService';
 import SavedJobsService from '../../services/savedJobsService';
 import factoryVisitsService from '../../services/factoryVisitsService';
-import { isSchoolStudent, isCollegeStudent } from '../../utils/studentType';
+import { isSchoolStudent, isCollegeStudent, isLearner } from '../../utils/studentType';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('Opportunities');
 
 // Import Applications component content
 import useMessageNotifications from '../../hooks/useMessageNotifications';
 import { MessageService } from '@/features/messaging';
 import { studentPipelineService as StudentPipelineService } from '@/features/student-profile/api';
 
+// Helper function to check if institution details are complete
+const checkInstitutionDetailsComplete = (studentData) => {
+  if (!studentData) return false;
+  
+  // Learners don't need institution details
+  if (isLearner(studentData)) return true;
+  
+  logger.info('Checking institution details:', {
+    universityId: studentData.universityId,
+    university: studentData.university,
+    university_college_id: studentData.university_college_id,
+    college_school_name: studentData.college_school_name,
+    college: studentData.college,
+    program_id: studentData.program_id,
+    branch_field: studentData.branch_field,
+    branch: studentData.branch,
+    program_section_id: studentData.program_section_id,
+    section: studentData.section,
+    semester: studentData.semester,
+    grade: studentData.grade,
+    school_id: studentData.school_id
+  });
+  
+  const gradeStr = String(studentData.grade || '').toUpperCase().trim();
+  const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
+  const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
+                    gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
+                    gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
+                    gradeStr.includes('MASTER');
+  
+  if (isSchool && !isCollege) {
+    // School students need: school_id OR college/college_school_name (custom school)
+    const isComplete = !!(studentData.school_id || studentData.college || studentData.college_school_name);
+   
+    return isComplete;
+  } else if (isCollege) {
+    // College students need: college + program (university is optional for custom entries)
+    const hasCollege = !!(studentData.university_college_id || studentData.college || studentData.college_school_name);
+    const hasProgram = !!(studentData.program_id || studentData.branch_field || studentData.branch);
+    
+    // Consider complete if at least college and program are filled
+    const isComplete = hasCollege && hasProgram;
+    logger.info('College student check:', { 
+      isComplete, 
+      hasCollege, 
+      hasProgram,
+      universityId: studentData.universityId,
+      university: studentData.university,
+      university_college_id: studentData.university_college_id,
+      college: studentData.college,
+      college_school_name: studentData.college_school_name,
+      program_id: studentData.program_id,
+      branch_field: studentData.branch_field,
+      branch: studentData.branch
+    });
+    return isComplete;
+  }
+  
+  return false;
+};
+
+// Empty state component with modal
+const EmptyOpportunitiesState = ({ studentData, navigate }) => {
+  const [showModal, setShowModal] = useState(false);
+  const isComplete = checkInstitutionDetailsComplete(studentData);
+  
+  useEffect(() => {
+    // Show modal automatically if institution details are incomplete
+    if (!isComplete) {
+      setShowModal(true);
+    }
+  }, [isComplete]);
+  
+  const handleCompleteDetails = () => {
+    navigate('/student/settings', { 
+      state: { 
+        activeTab: 'profile',
+        activeSubTab: 'institution'
+      } 
+    });
+  };
+  
+  if (!isComplete && showModal) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          {/* Modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Icon */}
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="w-8 h-8 text-blue-600" />
+            </div>
+            
+            {/* Content */}
+            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Complete Your Institution Details
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              To view relevant opportunities, please complete your institution information in your profile settings.
+            </p>
+            
+            {/* Required fields info */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
+              {(() => {
+                const gradeStr = String(studentData?.grade || '').toUpperCase().trim();
+                const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
+                const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
+                                  gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
+                                  gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
+                                  gradeStr.includes('MASTER');
+                
+                if (isSchool && !isCollege) {
+                  return (
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        School Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Section (A, B, C, etc.)
+                      </li>
+                    </ul>
+                  );
+                } else if (isCollege) {
+                  return (
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        University Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        College Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Program/Course Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Current Semester & Section
+                      </li>
+                    </ul>
+                  );
+                }
+                
+                return (
+                  <p className="text-sm text-gray-700">
+                    Please complete your institution details
+                  </p>
+                );
+              })()}
+            </div>
+            
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Later
+              </button>
+              <button
+                onClick={handleCompleteDetails}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Complete Now
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        
+        {/* Background empty state */}
+        <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+          <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
+          <p className="text-gray-500 text-sm">Complete your profile to see relevant opportunities</p>
+        </div>
+      </>
+    );
+  }
+  
+  // If details are complete, show regular empty state
+  return (
+    <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
+      <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+      <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
+      <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+    </div>
+  );
+};
+
 const Opportunities = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const user = useUser();
   const userEmail = localStorage.getItem('userEmail') || user?.email;
   const { studentData } = useStudentDataByEmail(userEmail);
   const studentId = studentData?.id; // Use students.id (database ID)
+
+  // Check institution details completion
+  const [showInstitutionModal, setShowInstitutionModal] = useState(false);
+  const isInstitutionComplete = checkInstitutionDetailsComplete(studentData);
+
+  // Show modal on mount if institution details are incomplete
+  useEffect(() => {
+    if (studentData && !isInstitutionComplete) {
+      setShowInstitutionModal(true);
+    }
+  }, [studentData, isInstitutionComplete]);
 
   // Check profile completion status
   const { canApplyToJobs, needsProfileCompletion, isLoading: profileCheckLoading } = useProfileCompletion(studentId, !!studentId);
@@ -172,10 +393,11 @@ const Opportunities = () => {
 
   // Memoize student type to prevent unnecessary recalculations
   const studentType = React.useMemo(() => {
-    if (!studentData) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false };
+    if (!studentData) return { isSchoolStudent: false, isUniversityStudent: false, isMiddleSchool: false, isHighSchool: false, isLearner: false };
     
     const isSchool = isSchoolStudent(studentData);
     const isUniversity = isCollegeStudent(studentData);
+    const isLearnerType = isLearner(studentData);
     
     // Determine specific school level
     let isMiddleSchool = false;
@@ -212,7 +434,8 @@ const Opportunities = () => {
       isSchoolStudent: isSchool, 
       isUniversityStudent: isUniversity,
       isMiddleSchool,
-      isHighSchool
+      isHighSchool,
+      isLearner: isLearnerType
     };
   }, [studentData]);
 
@@ -228,6 +451,13 @@ const Opportunities = () => {
     } else if (studentType.isHighSchool) {
       // High school (9-12): Only internships
       filters.employmentType = ['Internship'];
+    } else if (studentType.isLearner) {
+      // Learners: Only full-time jobs and internships (no industrial visits)
+      if (advancedFilters.employmentType.length > 0) {
+        filters.employmentType = advancedFilters.employmentType;
+      } else {
+        filters.employmentType = ['Internship', 'Full-time'];
+      }
     } else if (studentType.isUniversityStudent) {
       // College: Both internships and full-time jobs
       if (advancedFilters.employmentType.length > 0) {
@@ -258,7 +488,7 @@ const Opportunities = () => {
     }
 
     return filters;
-  }, [advancedFilters, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent]);
+  }, [advancedFilters, studentType.isMiddleSchool, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isLearner]);
 
   // Fetch opportunities with server-side pagination
   // IMPORTANT: Only fetch after studentData is loaded to ensure correct filters
@@ -267,9 +497,9 @@ const Opportunities = () => {
   // Determine if we should fetch opportunities based on student type and active tab
   const shouldFetchOpportunities = React.useMemo(() => {
     if (!studentData) return false;
-    // Fetch opportunities for high school and college students when on my-jobs tab
-    return (studentType.isHighSchool || studentType.isUniversityStudent) && activeTab === 'my-jobs';
-  }, [studentData, studentType.isHighSchool, studentType.isUniversityStudent, activeTab]);
+    // Fetch opportunities for high school, college students, and learners when on my-jobs tab
+    return (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && activeTab === 'my-jobs';
+  }, [studentData, studentType.isHighSchool, studentType.isUniversityStudent, studentType.isLearner, activeTab]);
   
   const {
     opportunities,
@@ -388,7 +618,7 @@ const Opportunities = () => {
         setAppliedJobs(new Set(applicationsData.map(app => app.opportunity_id)));
         setSavedJobs(new Set(savedIds));
       } catch (error) {
-        console.error('Error loading jobs data:', error);
+        logger.error('Error loading jobs data:', error);
       }
     };
 
@@ -435,7 +665,7 @@ const Opportunities = () => {
       setApplications(transformedApplications);
       setFilteredApplications(transformedApplications);
     } catch (err) {
-      console.error('Error fetching applications:', err);
+      logger.error('Error fetching applications:', err);
     }
   }, [studentId, userEmail]);
 
@@ -463,25 +693,35 @@ const Opportunities = () => {
   // Fetch industrial visits when tab is industrial-visits or on initial load for middle/high school
   useEffect(() => {
     const fetchIndustrialVisits = async () => {
-      // Fetch if on industrial-visits tab OR if middle/high school student (since it's their default view)
-      if (activeTab === 'industrial-visits' || studentType.isMiddleSchool || studentType.isHighSchool) {
+      // Only fetch if on industrial-visits tab
+      // OR if middle/high school student AND on their default view (not on my-applications)
+      const shouldFetch = activeTab === 'industrial-visits' || 
+                         ((studentType.isMiddleSchool || studentType.isHighSchool) && activeTab !== 'my-applications');
+      
+      if (shouldFetch) {
         setIndustrialVisitsLoading(true);
         try {
-          const data = await factoryVisitsService.getAllFactoryVisits();
+          // Fetch visits and registrations in parallel
+          const promises = [factoryVisitsService.getAllFactoryVisits()];
+          if (studentId) {
+            promises.push(factoryVisitsService.getStudentRegistrations(studentId));
+          }
+          
+          const [data, registrations] = await Promise.all(promises);
+          
           setIndustrialVisits(data);
           // Auto-select first visit if none selected
           if (data && data.length > 0 && !selectedIndustrialVisit) {
             setSelectedIndustrialVisit(data[0]);
           }
           
-          // Fetch registered visits
-          if (studentId) {
-            const registrations = await factoryVisitsService.getStudentRegistrations(studentId);
+          // Set registered visits
+          if (registrations) {
             const registeredIds = new Set(registrations.map(r => r.opportunity_id));
             setRegisteredVisits(registeredIds);
           }
         } catch (error) {
-          console.error('Error fetching industrial visits:', error);
+          logger.error('Error fetching industrial visits:', error);
         } finally {
           setIndustrialVisitsLoading(false);
         }
@@ -546,13 +786,13 @@ const Opportunities = () => {
         }
       }
     } catch (error) {
-      console.error('Error toggling save:', error);
+      logger.error('Error toggling save:', error);
     }
   };
 
   const handleApply = async (opportunity) => {
     if (!studentId) {
-      console.error('Please log in to apply for jobs');
+      logger.error('Please log in to apply for jobs');
       return;
     }
 
@@ -591,10 +831,10 @@ const Opportunities = () => {
       if (result.success) {
         setAppliedJobs(prev => new Set([...prev, opportunity.id]));
       } else {
-        console.error('Application failed:', result.message);
+        logger.error('Application failed:', result.message);
       }
     } catch (error) {
-      console.error('Error applying to job:', error);
+      logger.error('Error applying to job:', error);
     } finally {
       setIsApplying(false);
     }
@@ -626,7 +866,7 @@ const Opportunities = () => {
         }
       }
     } catch (error) {
-      console.error('Error registering for visit:', error);
+      logger.error('Error registering for visit:', error);
       toast.error('An error occurred while registering');
     } finally {
       setIsRegistering(false);
@@ -635,6 +875,123 @@ const Opportunities = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Institution Details Modal - Shows on top of everything */}
+      {showInstitutionModal && !isInstitutionComplete && (
+        <>
+          {/* Full white background overlay */}
+          <div className="fixed inset-0 bg-white z-40"></div>
+          
+          {/* Modal backdrop and content */}
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative"
+          >
+            <button
+              onClick={() => {
+                setShowInstitutionModal(false);
+                navigate('/student/dashboard');
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Briefcase className="w-8 h-8 text-blue-600" />
+            </div>
+            
+            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Complete Your Institution Details
+            </h3>
+            <p className="text-gray-600 text-center mb-6">
+              To view relevant opportunities, please complete your institution information in your profile settings.
+            </p>
+            
+            <div className="bg-blue-50 rounded-lg p-4 mb-6">
+              <p className="text-sm font-semibold text-gray-800 mb-2">Required Information:</p>
+              {(() => {
+                const gradeStr = String(studentData?.grade || '').toUpperCase().trim();
+                const isSchool = gradeStr.match(/(\d+)/) || gradeStr.includes('DIPLOMA');
+                const isCollege = gradeStr.includes('UG') || gradeStr.includes('PG') || 
+                                  gradeStr.includes('YEAR') || gradeStr.includes('UNDERGRADUATE') || 
+                                  gradeStr.includes('POSTGRADUATE') || gradeStr.includes('BACHELOR') || 
+                                  gradeStr.includes('MASTER');
+                
+                if (isSchool && !isCollege) {
+                  return (
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        School Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Section (A, B, C, etc.)
+                      </li>
+                    </ul>
+                  );
+                } else if (isCollege) {
+                  return (
+                    <ul className="text-sm text-gray-700 space-y-1">
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        University Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        College Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Program/Course Name
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                        Current Semester & Section
+                      </li>
+                    </ul>
+                  );
+                }
+                
+                return (
+                  <p className="text-sm text-gray-700">
+                    Please complete your institution details
+                  </p>
+                );
+              })()}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowInstitutionModal(false);
+                  navigate('/student/dashboard');
+                }}
+                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Later
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/student/settings', { 
+                    state: { 
+                      activeTab: 'profile',
+                      activeSubTab: 'institution'
+                    } 
+                  });
+                }}
+                className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Complete Now
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        </>
+      )}
+
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
         {/* Loading State */}
         {isLoading && (
@@ -676,32 +1033,36 @@ const Opportunities = () => {
                 studentType.isMiddleSchool 
                   ? 'grid-cols-2' 
                   : studentType.isHighSchool 
-                    ? 'grid-cols-3' 
-                    : 'grid-cols-3'
+                    ? 'grid-cols-3'
+                    : studentType.isLearner
+                      ? 'grid-cols-3'
+                      : 'grid-cols-3'
               } gap-2`}>
-                {/* Industrial Visits Tab - Show for all students */}
-                <button
-                  onClick={() => setActiveTab('industrial-visits')}
-                  className={`relative text-left p-4 rounded-lg transition-all ${
-                    activeTab === 'industrial-visits'
-                      ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`p-2 rounded-lg ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
-                      <Factory className={`w-6 h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
+                {/* Industrial Visits Tab - Hide for learners */}
+                {!studentType.isLearner && (
+                  <button
+                    onClick={() => setActiveTab('industrial-visits')}
+                    className={`relative text-left p-4 rounded-lg transition-all ${
+                      activeTab === 'industrial-visits'
+                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 shadow-md'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg ${activeTab === 'industrial-visits' ? 'bg-indigo-600' : 'bg-gray-200'}`}>
+                        <Factory className={`w-6 h-6 ${activeTab === 'industrial-visits' ? 'text-white' : 'text-gray-600'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <h1 className={`font-bold text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
+                          Industrial Visits
+                        </h1>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Explore factory visits and learning opportunities
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h1 className={`font-bold text-lg ${activeTab === 'industrial-visits' ? 'text-indigo-600' : 'text-gray-700'}`}>
-                        Industrial Visits
-                      </h1>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Explore factory visits and learning opportunities
-                      </p>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                )}
 
                 {/* History Tab - Show for middle school only */}
                 {studentType.isMiddleSchool && (
@@ -729,8 +1090,8 @@ const Opportunities = () => {
                   </button>
                 )}
 
-                {/* My Jobs Tab - Show for high school and college */}
-                {(studentType.isHighSchool || studentType.isUniversityStudent) && (
+                {/* My Jobs Tab - Show for high school, college, and learners */}
+                {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-jobs')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
@@ -749,16 +1110,18 @@ const Opportunities = () => {
                         </h1>
                         <p className="text-sm text-gray-600 mt-1">
                           {studentType.isUniversityStudent 
-                            ? 'Browse internships and full-time opportunities' 
-                            : 'Explore internship opportunities'}
+                            ? 'Browse internships and full-time opportunities'
+                            : studentType.isLearner
+                              ? 'Explore job opportunities'
+                              : 'Explore internship opportunities'}
                         </p>
                       </div>
                     </div>
                   </button>
                 )}
 
-                {/* My Applications Tab - Show for high school and college */}
-                {(studentType.isHighSchool || studentType.isUniversityStudent) && (
+                {/* My Applications Tab - Show for high school, college, and learners */}
+                {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && (
                   <button
                     onClick={() => setActiveTab('my-applications')}
                     className={`relative text-left p-4 rounded-lg transition-all ${
@@ -790,8 +1153,8 @@ const Opportunities = () => {
         {/* Main Content Area */}
         {!isLoading && (
           <div>
-            {/* AI Recommended Jobs - Show for high school and college students only */}
-            {(studentType.isHighSchool || studentType.isUniversityStudent) && activeTab === 'my-jobs' && (
+            {/* AI Recommended Jobs - Show for high school, college, and learners only */}
+            {(studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && activeTab === 'my-jobs' && (
               <RecommendedJobs
                 studentProfile={{ ...studentData, id: studentId, profile: studentData }}
                 onSelectJob={setSelectedOpportunity}
@@ -802,8 +1165,8 @@ const Opportunities = () => {
               />
             )}
 
-            {/* My Jobs Tab - Show for high school and college */}
-            {activeTab === 'my-jobs' && (studentType.isHighSchool || studentType.isUniversityStudent) && (
+            {/* My Jobs Tab - Show for high school, college, and learners */}
+            {activeTab === 'my-jobs' && (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && (
               <MyJobsContent
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
@@ -837,8 +1200,8 @@ const Opportunities = () => {
               />
             )}
 
-            {/* My Applications Tab - Show for high school and college */}
-            {activeTab === 'my-applications' && (studentType.isHighSchool || studentType.isUniversityStudent) && (
+            {/* My Applications Tab - Show for high school, college, and learners */}
+            {activeTab === 'my-applications' && (studentType.isHighSchool || studentType.isUniversityStudent || studentType.isLearner) && (
               <MyApplicationsContent
                 applications={filteredApplications}
                 searchQuery={searchQuery}
@@ -1400,7 +1763,7 @@ const MyJobsContent = ({
       )}
 
       {/* Search and Filters */}
-      <div className="relative z-10 mb-8 space-y-4">
+      <div className="mb-8 space-y-4">
         {/* Search and Primary Controls - Responsive Layout */}
         <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
           {/* Search Bar */}
@@ -1550,11 +1913,10 @@ const MyJobsContent = ({
                   )}
                 </>
               ) : (
-                <div className="text-center py-20 bg-white rounded-2xl border border-gray-200">
-                  <MapPin className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-600 mb-2">No opportunities found</h3>
-                  <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
-                </div>
+                <EmptyOpportunitiesState 
+                  studentData={studentData}
+                  navigate={navigate}
+                />
               )}
             </div>
 
@@ -1778,7 +2140,7 @@ const MyApplicationsContent = ({
 
   // Handle messaging
   const handleMessage = async (app) => {
-    console.log('🔍 handleMessage called with:', {
+    logger.info('handleMessage called with:', {
       appId: app.id,
       recruiterId: app.recruiterId,
       opportunityId: app.opportunityId,
@@ -1816,8 +2178,8 @@ const MyApplicationsContent = ({
         }
       });
     } catch (error) {
-      console.error('❌ Error opening message:', error);
-      console.error('Error details:', {
+      logger.error('Error opening message:', error);
+      logger.error('Error details:', {
         message: error.message,
         code: error.code,
         details: error.details,

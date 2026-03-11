@@ -1,7 +1,7 @@
 import { Download, FileText, Save } from 'lucide-react';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usePortfolio } from '../../../context/PortfolioContext';
+import { usePortfolio } from '../../../stores';
 import { exportAsJSON, exportResume } from '../../../utils/exportppUtils';
 
 const ExportSettings: React.FC = () => {

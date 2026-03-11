@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Joyride, { CallBackProps, STATUS } from 'react-joyride';
-import { useTour } from '../TourProvider';
+import { useTour } from '../../../stores';
 import { TOUR_KEYS } from '../constants';
 import { waitForElement } from '../utils';
 import {
@@ -123,7 +123,6 @@ const StudentDashboardTour: React.FC = () => {
       setShouldRun(false);
       completeTour(TOUR_KEYS.DASHBOARD);
     } else if (status === STATUS.SKIPPED) {
-      console.log('⏭️ Dashboard tour: Skipped');
       setShouldRun(false);
       skipTour(TOUR_KEYS.DASHBOARD);
     }

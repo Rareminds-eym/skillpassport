@@ -7,6 +7,10 @@ import {
     XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('EducatorManagement');
+
 import { supabase } from '../../lib/supabaseClient';
 
 interface SchoolEducator {
@@ -71,7 +75,7 @@ const EducatorManagement = () => {
       if (error) throw error;
       setEducators(data || []);
     } catch (error) {
-      console.error('Error loading educators:', error);
+      logger.error('Error loading educators:', error);
     } finally {
       setLoading(false);
     }
@@ -88,7 +92,7 @@ const EducatorManagement = () => {
       if (error) throw error;
       setSchools(data || []);
     } catch (error) {
-      console.error('Error loading schools:', error);
+      logger.error('Error loading schools:', error);
     }
   };
 
@@ -98,7 +102,7 @@ const EducatorManagement = () => {
       if (error) throw error;
       setUsers(data?.users || []);
     } catch (error) {
-      console.error('Error loading users:', error);
+      logger.error('Error loading users:', error);
     }
   };
 
@@ -147,21 +151,20 @@ const EducatorManagement = () => {
       delete cleanData.created_at;
       delete cleanData.updated_at;
 
-      console.log('Saving data:', cleanData);
-      console.log('Editing ID:', editingId);
+      logger.info('Saving educator data', { editingId });
 
       if (editingId) {
         // Update existing record
-        console.log('Attempting UPDATE for ID:', editingId);
+        logger.info('Attempting UPDATE', { educatorId: editingId });
         const { data, error } = await supabase
           .from('school_educators')
           .update(cleanData)
           .eq('id', editingId)
           .select();
 
-        console.log('Update response:', { data, error });
+        logger.info('Update response', { success: !error });
         if (error) {
-          console.error('Update error details:', error);
+          logger.error('Update error details:', error);
           throw new Error(`Update failed: ${error.message}`);
         }
         if (!data || data.length === 0) {
@@ -169,15 +172,15 @@ const EducatorManagement = () => {
         }
       } else {
         // Create new record
-        console.log('Attempting INSERT with data:', cleanData);
+        logger.info('Attempting INSERT');
         const { data, error } = await supabase
           .from('school_educators')
           .insert([cleanData])
           .select();
 
-        console.log('Insert response:', { data, error });
+        logger.info('Insert response', { success: !error });
         if (error) {
-          console.error('Insert error details:', error);
+          logger.error('Insert error details:', error);
           throw new Error(`Insert failed: ${error.message}`);
         }
         if (!data || data.length === 0) {
@@ -189,7 +192,7 @@ const EducatorManagement = () => {
       await loadEducators();
       handleCloseModal();
     } catch (error) {
-      console.error('Error saving educator:', error);
+      logger.error('Error saving educator:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       alert(`Error saving educator:\n\n${errorMessage}\n\nPlease check the browser console for more details.`);
     }
@@ -207,7 +210,7 @@ const EducatorManagement = () => {
       if (error) throw error;
       loadEducators();
     } catch (error) {
-      console.error('Error deleting educator:', error);
+      logger.error('Error deleting educator:', error);
       alert('Error deleting educator. Please try again.');
     }
   };

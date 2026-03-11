@@ -21,7 +21,10 @@ import {
 import KPICard from "../../../components/admin/KPICard";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../../lib/supabaseClient";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser } from "../../../stores";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('college-admin-dashboard');
 
 interface DashboardStats {
   totalStudents: number;
@@ -36,7 +39,7 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const user = useUser();
   const [filterOpen, setFilterOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats>({
@@ -82,7 +85,7 @@ const Dashboard: React.FC = () => {
         }
 
         if (!collegeId) {
-          console.log('No college_id found for user');
+          logger.info('No college_id found for user');
           setLoading(false);
           return;
         }
@@ -204,7 +207,7 @@ const Dashboard: React.FC = () => {
           placementRateChange: placementRateChange,
         });
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        logger.error('Error fetching dashboard data:', error as Error);
       } finally {
         setLoading(false);
       }
@@ -365,3 +368,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+

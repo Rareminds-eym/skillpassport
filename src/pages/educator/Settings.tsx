@@ -274,7 +274,9 @@ const SettingSelect: React.FC<{
 );
 
 const Settings: React.FC = () => {
-  const { user, userRole, loading: authLoading } = useAuth();
+  const user = useUser();
+  const userRole = useUserRole();
+  const authLoading = false; // Zustand doesn't have loading state for auth
   const userEmail = (user as any)?.email;
   const userId = (user as any)?.user_id || (user as any)?.id;
   
@@ -372,7 +374,7 @@ const Settings: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching educator data for user_id:', userId, 'Email:', userEmail, 'Role:', userRole);
+      logger.info('Fetching educator data', { userId, userEmail, userRole });
       
       // Try school educators first
       const { data: schoolData, error: schoolError } = await supabase
@@ -388,7 +390,7 @@ const Settings: React.FC = () => {
         .maybeSingle();
 
       if (schoolData) {
-        console.log('Found school educator data:', schoolData);
+        logger.info('Found school educator data', { schoolData });
         setEducatorData(schoolData);
         
         // Map school educator fields to form fields
@@ -439,7 +441,7 @@ const Settings: React.FC = () => {
         .maybeSingle();
 
       if (collegeData) {
-        console.log('Found college lecturer data:', collegeData);
+        logger.info('Found college lecturer data', { collegeData });
         setEducatorData(collegeData);
         
         // Parse address - it's already a JSONB object, not a string
@@ -495,13 +497,11 @@ const Settings: React.FC = () => {
       }
 
       // No data found in either table
-      console.warn('No educator data found in any table for user_id:', userId);
-      console.log('School error:', schoolError);
-      console.log('College error:', collegeError);
+      logger.warn('No educator data found', { userId, schoolError, collegeError });
       setError('No educator profile found. Please contact your administrator.');
       
     } catch (error) {
-      console.error('Error in fetchEducatorData:', error);
+      logger.error('Error in fetchEducatorData', error);
       setError('Failed to load profile data');
     } finally {
       setLoading(false);
@@ -563,7 +563,7 @@ const Settings: React.FC = () => {
       setTimeout(() => setSaveStatus('idle'), 3000);
 
     } catch (error) {
-      console.error('Photo upload error:', error);
+      logger.error('Photo upload error', error);
       setPhotoError(error instanceof Error ? error.message : 'Failed to upload photo');
     } finally {
       setPhotoUploading(false);
@@ -769,7 +769,7 @@ const Settings: React.FC = () => {
       setTimeout(() => setSaveStatus('idle'), 3000);
 
     } catch (error) {
-      console.error(`${documentType} upload error:`, error);
+      logger.error('Document upload error', error, { documentType });
       setDocumentErrors(prev => ({
         ...prev,
         [documentType]: error instanceof Error ? error.message : 'Upload failed'
@@ -846,7 +846,7 @@ const Settings: React.FC = () => {
       await fetchEducatorData();
 
     } catch (error) {
-      console.error('Error removing experience letter:', error);
+      logger.error('Error removing experience letter', error);
       setDocumentErrors(prev => ({
         ...prev,
         experience: error instanceof Error ? error.message : 'Failed to remove document'
@@ -894,7 +894,7 @@ const Settings: React.FC = () => {
       setTimeout(() => setSaveStatus('idle'), 3000);
 
     } catch (error) {
-      console.error('Photo removal error:', error);
+      logger.error('Photo removal error', error);
       setPhotoError(error instanceof Error ? error.message : 'Failed to remove photo');
     } finally {
       setPhotoRemoving(false);
@@ -965,7 +965,7 @@ const Settings: React.FC = () => {
           .eq('user_id', userId);
 
         if (error) {
-          console.error('Error updating college profile:', error);
+          logger.error('Error updating college profile', error);
           setSaveStatus('error');
           return;
         }
@@ -1003,7 +1003,7 @@ const Settings: React.FC = () => {
           .eq('user_id', userId);
 
         if (error) {
-          console.error('Error updating school profile:', error);
+          logger.error('Error updating school profile', error);
           setSaveStatus('error');
           return;
         }
@@ -1015,7 +1015,7 @@ const Settings: React.FC = () => {
       await fetchEducatorData();
       
     } catch (error) {
-      console.error('Error in handleSave:', error);
+      logger.error('Error in handleSave', error);
       setSaveStatus('error');
     }
     
@@ -1250,7 +1250,7 @@ const Settings: React.FC = () => {
                               }}
                               onError={(e) => {
                                 // Hide image and show fallback
-                                console.error('Failed to load profile image:', getPhotoUrl());
+                                logger.error('Failed to load profile image', { url: getPhotoUrl() });
                                 e.currentTarget.style.opacity = '0';
                                 const fallback = e.currentTarget.nextElementSibling as HTMLElement;
                                 if (fallback) fallback.style.display = 'flex';

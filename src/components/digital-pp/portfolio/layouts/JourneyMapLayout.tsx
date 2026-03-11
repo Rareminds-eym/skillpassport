@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GraduationCap, Briefcase, Award, Code, Trophy, MapPin, Calendar, Github, ExternalLink, ChevronRight, BookOpen } from 'lucide-react';
-import { usePortfolio } from '../../../../context/PortfolioContext';
+import { usePortfolio } from '../../../../stores';
 import type { Student, AnimationType, DisplayPreferences } from '../../../../types/student';
 
 interface JourneyMapLayoutProps {

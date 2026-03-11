@@ -9,6 +9,7 @@ import {
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { getLogger } from '../../../config/logging';
 import { supabase } from '../../../lib/supabaseClient';
 import { attendanceService, studentReportService } from '@/features/student-profile/api';
 
@@ -26,6 +27,8 @@ interface StudentReportData {
   assessmentCount: number;
   averageScore: number;
 }
+
+const logger = getLogger('school-admin-student-reports');
 
 const StudentReports: React.FC = () => {
   const [students, setStudents] = useState<StudentReportData[]>([]);
@@ -50,10 +53,10 @@ const StudentReports: React.FC = () => {
           const userData = JSON.parse(storedUser);
           if (userData.role === 'school_admin' && userData.schoolId) {
             currentSchoolId = userData.schoolId;
-            console.log('✅ School admin detected, using schoolId:', currentSchoolId);
+            logger.info('School admin detected, using schoolId', { schoolId: currentSchoolId });
           }
         } catch (e) {
-          console.error('Error parsing stored user:', e);
+          logger.error('Error parsing stored user', e as Error);
         }
       }
 
@@ -86,13 +89,13 @@ const StudentReports: React.FC = () => {
       }
 
       if (!currentSchoolId) {
-        console.error('No school_id found for this user');
+        logger.error('No school_id found for this user');
         setLoading(false);
         return;
       }
 
       setSchoolId(currentSchoolId);
-      console.log('Fetching reports for school_id:', currentSchoolId);
+      logger.info('Fetching reports for school_id', { schoolId: currentSchoolId });
 
       // Fetch students with their data
       const { data: studentsData, error: studentsError } = await supabase
@@ -145,7 +148,7 @@ const StudentReports: React.FC = () => {
 
       setStudents(enrichedStudents);
     } catch (error) {
-      console.error('Error fetching student reports:', error);
+      logger.error('Error fetching student reports', error as Error);
     } finally {
       setLoading(false);
     }
@@ -178,7 +181,7 @@ const StudentReports: React.FC = () => {
         // Optionally download or display the report
       }
     } catch (error) {
-      console.error('Error generating report:', error);
+      logger.error('Error generating report', error as Error);
       toast.error('Failed to generate report');
     }
   };

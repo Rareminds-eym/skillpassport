@@ -621,8 +621,11 @@ function SubscriptionPlans() {
     });
   }, [setSearchParams]);
 
-  // Use new authentication hook
-  const { isAuthenticated, user, loading: authLoading, role: userRole } = useAuth();
+  // Use Zustand auth hooks
+  const isAuthenticated = useIsAuthenticated();
+  const user = useUser();
+  const authLoading = useAuthLoading();
+  const { role: userRole } = useUserRole();
 
   // Debug logging for redirect loop investigation
   const DEBUG = import.meta.env.DEV || localStorage.getItem('DEBUG_SUBSCRIPTION') === 'true';
@@ -702,7 +705,7 @@ function SubscriptionPlans() {
 
   const studentType = type || 'student';
 
-  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionQuery();
+  const { subscriptionData, loading: subscriptionLoading, error: subscriptionError, refreshSubscription } = useSubscriptionAccess();
   const daysRemaining = useMemo(() => calculateDaysRemaining(subscriptionData?.endDate), [subscriptionData?.endDate]);
 
   // Combined loading state — wait for auth, subscription, AND plans from API.

@@ -11,15 +11,16 @@ import { useResponsive } from '../hooks/useresponsive';
 import { Candidate } from '../types/recruiter';
 import { useUnreadMessagesCount } from '../hooks/useUnreadMessagesCount';
 
-const RecruiterLayout = () => {
+const RecruiterLayout: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const user = useUser();
   const { isMobile } = useResponsive();
-  const { user } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showCandidateDrawer, setShowCandidateDrawer] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
-  const navigate = useNavigate();
   
   // Get unread messages count for sidebar badge
   const { unreadCount } = useUnreadMessagesCount(user?.id);
@@ -43,7 +44,6 @@ const RecruiterLayout = () => {
   };
 
   return (
-    <GlobalPresenceProvider userType="recruiter">
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <Header
@@ -107,7 +107,6 @@ const RecruiterLayout = () => {
       {/* Floating AI Button */}
       <FloatingRecruiterAIButton />
       </div>
-    </GlobalPresenceProvider>
   );
 };
 

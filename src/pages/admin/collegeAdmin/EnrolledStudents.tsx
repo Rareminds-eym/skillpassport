@@ -16,11 +16,14 @@ import { useAuth } from "../../../context/AuthContext";
 import toast from "react-hot-toast";
 import Pagination from "../../../components/admin/Pagination";
 import SearchBar from "../../../components/common/SearchBar";
+import { getLogger } from "../../../config/logging";
+
+const logger = getLogger('college-admin-enrolled-students');
 
 const ITEMS_PER_PAGE = 10;
 
 const EnrolledStudents: React.FC = () => {
-  const { user } = useAuth();
+  const user = useUser();
   const [collegeId, setCollegeId] = useState<string | null>(null);
   
   const [students, setStudents] = useState<EnrolledStudentView[]>([]);
@@ -81,7 +84,7 @@ const EnrolledStudents: React.FC = () => {
           setCollegeId(orgData.id);
         }
       } catch (error) {
-        console.error('Error fetching college ID:', error);
+        logger.error('Error fetching college ID:', error as Error);
       }
     };
 
@@ -128,7 +131,7 @@ const EnrolledStudents: React.FC = () => {
       if (error) throw error;
       setDepartments(data || []);
     } catch (error) {
-      console.error("Error loading departments:", error);
+      logger.error("Error loading departments:", error as Error);
     }
   };
 
@@ -144,7 +147,7 @@ const EnrolledStudents: React.FC = () => {
       if (error) throw error;
       setPrograms(data || []);
     } catch (error) {
-      console.error("Error loading programs:", error);
+      logger.error("Error loading programs:", error as Error);
     }
   };
 
@@ -173,7 +176,7 @@ const EnrolledStudents: React.FC = () => {
         toast.error(result.error?.message || "Failed to load students");
       }
     } catch (error: any) {
-      console.error("Error loading students:", error);
+      logger.error("Error loading students:", error);
       toast.error("Failed to load enrolled students");
     } finally {
       setLoading(false);
@@ -535,7 +538,7 @@ const EnrollStudentsModal: React.FC<{
       if (error) throw error;
       setPrograms(data || []);
     } catch (error) {
-      console.error("Error loading programs:", error);
+      logger.error("Error loading programs:", error as Error);
       toast.error("Failed to load programs");
     } finally {
       setLoading(false);
@@ -562,7 +565,7 @@ const EnrollStudentsModal: React.FC<{
         setSelectedSemester("");
       }
     } catch (error) {
-      console.error("Error loading semesters:", error);
+      logger.error("Error loading semesters:", error as Error);
       // Fallback to default semesters if query fails
       setAvailableSemesters([1, 2, 3, 4, 5, 6, 7, 8]);
     }
@@ -603,7 +606,7 @@ const EnrollStudentsModal: React.FC<{
         setSections([]);
       }
     } catch (error) {
-      console.error("Error loading sections:", error);
+      logger.error("Error loading sections:", error as Error);
     }
   };
 
@@ -630,7 +633,7 @@ const EnrollStudentsModal: React.FC<{
       if (error) throw error;
       setAvailableStudents(data || []);
     } catch (error: any) {
-      console.error("Error loading students:", error);
+      logger.error("Error loading students:", error);
       toast.error("Failed to load students");
     } finally {
       setLoadingStudents(false);
@@ -667,7 +670,7 @@ const EnrollStudentsModal: React.FC<{
         toast.error(result.error?.message || "Failed to enroll students");
       }
     } catch (error: any) {
-      console.error("Error enrolling students:", error);
+      logger.error("Error enrolling students:", error);
       toast.error("Failed to enroll students");
     } finally {
       setEnrolling(false);

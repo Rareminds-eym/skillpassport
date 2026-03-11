@@ -35,7 +35,7 @@ interface OrganizationSetupProps {
 }
 
 const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType, onComplete }) => {
-  const { user } = useAuth();
+  const user = useUser();
   const [step, setStep] = useState<'form' | 'creating' | 'success' | 'error'>('form');
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<OrganizationFormData>({

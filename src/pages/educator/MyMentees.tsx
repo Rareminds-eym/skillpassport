@@ -1,6 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { getLogger } from '../../config/logging';
+
+const logger = getLogger('MyMentees');
+
 import {
   UserGroupIcon,
   AcademicCapIcon,
@@ -35,7 +39,7 @@ interface AuthUser {
 
 const MyMentees: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth() as { user: AuthUser | null };
+  const user = useUser() as AuthUser | null;
   
   const collegeId = useMemo(() => {
     if (!user) return '';
@@ -46,7 +50,7 @@ const MyMentees: React.FC = () => {
            (user as any).collegeId || 
            (user as any).user_metadata?.college_id || 
            '';
-    console.log('🔍 [MyMentees] College ID extracted:', id, 'from user:', user);
+    logger.info('College ID extracted', { id, userId: user?.id });
     return id;
   }, [user]);
 
@@ -61,10 +65,9 @@ const MyMentees: React.FC = () => {
 
   const currentMentor = useMemo(() => {
     if (!user?.id) return null;
-    console.log('🔍 [MyMentees] Looking for mentor with user_id:', user.id);
-    console.log('🔍 [MyMentees] Available mentors:', mentors.length);
+    logger.info('Looking for mentor', { userId: user.id, mentorsCount: mentors.length });
     const mentor = mentors.find(m => m.user_id === user.id);
-    console.log('🔍 [MyMentees] Found mentor:', mentor ? 'Yes' : 'No', mentor);
+    logger.info('Mentor search result', { found: !!mentor });
     return mentor;
   }, [mentors, user]);
 
@@ -80,7 +83,7 @@ const MyMentees: React.FC = () => {
     const relevantAllocations = myAllocations.filter(allocation => {
       const period = allocation.period;
       if (!period) {
-        console.log('🔍 [MyMentees] Filtering out allocation - no period:', allocation.id);
+        logger.warn('Filtering out allocation - no period', { allocationId: allocation.id });
         return false;
       }
       
@@ -101,8 +104,9 @@ const MyMentees: React.FC = () => {
       const shouldInclude = period.is_active && (isCurrentPeriod || isPastPeriod);
       
       if (!shouldInclude) {
-        console.log('🔍 [MyMentees] Filtering out allocation - not active/completed:', allocation.id, {
-          is_active: period.is_active,
+        logger.info('Filtering out allocation - not active/completed', { 
+          allocationId: allocation.id,
+          isActive: period.is_active,
           isCurrentPeriod,
           isPastPeriod
         });
@@ -111,7 +115,10 @@ const MyMentees: React.FC = () => {
       return shouldInclude;
     });
     
-    console.log('🔍 [MyMentees] Relevant allocations (active/completed):', relevantAllocations.length, 'out of', myAllocations.length);
+    logger.info('Relevant allocations', { 
+      relevantCount: relevantAllocations.length, 
+      totalCount: myAllocations.length 
+    });
     
     // Get students from relevant allocations with period info
     const studentsWithPeriod = relevantAllocations.flatMap(allocation => 
@@ -126,7 +133,7 @@ const MyMentees: React.FC = () => {
       new Map(studentsWithPeriod.map(s => [s.id, s])).values()
     );
     
-    console.log('🔍 [MyMentees] Active/Completed students:', uniqueStudents.length);
+    logger.info('Active/Completed students', { count: uniqueStudents.length });
     return uniqueStudents;
   }, [myAllocations, currentMentor]);
 
@@ -273,7 +280,7 @@ const MyMentees: React.FC = () => {
       toast.success('Response saved successfully');
       handleCloseModal();
     } catch (error: any) {
-      console.error('Error saving response:', error);
+      logger.error('Error saving response:', error);
       const errorMessage = error?.message || 'Failed to save response. Please try again.';
       toast.error(errorMessage);
       throw error;

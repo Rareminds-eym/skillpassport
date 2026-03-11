@@ -60,18 +60,14 @@ const OpportunityCard = ({
 
   return (
     <div 
-      className={`bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 relative ${
-        isSelected 
-          ? 'shadow-lg ring-2 ring-blue-500' 
-          : 'shadow-sm hover:shadow-md border border-gray-100'
-      }`}
+      className="bg-white rounded-lg sm:rounded-xl p-3 sm:p-6 cursor-pointer transition-all duration-200 relative shadow-sm hover:shadow-md border border-gray-100"
       onClick={onClick}
     >
       {/* Bookmark Button */}
       {onToggleSave && (
         <button
           onClick={handleSaveClick}
-          className="absolute top-2 left-2 p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-all z-10"
+          className="absolute top-2 left-2 p-2 rounded-full bg-white shadow-sm hover:shadow-md transition-all"
           title={isSaved ? 'Unsave job' : 'Save job'}
         >
           <Bookmark
@@ -84,7 +80,7 @@ const OpportunityCard = ({
       
       {/* Applied Badge */}
       {isApplied && (
-        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
+        <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
           ✓ Applied
         </div>
       )}

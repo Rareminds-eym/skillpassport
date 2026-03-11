@@ -17,9 +17,10 @@ import {
 } from "@heroicons/react/24/outline";
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../../context/AuthContext";
+import { useUser, useAuthActions } from "../../../stores";
 import { useNotifications } from "../../../hooks/useNotifications";
 import { useStudentDataByEmail } from "../../../hooks/useStudentDataByEmail";
+import { isLearner } from "../../../utils/studentType";
 import DigitalPortfolioSideDrawer from "./DigitalPortfolioSideDrawer";
 import NotificationPanel from "./NotificationPanel";
 
@@ -29,7 +30,8 @@ const Header = ({ activeTab, setActiveTab }) => {
   const [sideDrawerOpen, setSideDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useAuth();
+  const user = useUser();
+  const { logout } = useAuthActions();
   const notificationRef = useRef(null);
   const profileRef = useRef(null);
 
@@ -41,8 +43,12 @@ const Header = ({ activeTab, setActiveTab }) => {
   const { unreadCount } = useNotifications(userEmail);
 
   // Fetch student data to check school/college association
-  const { studentData } = useStudentDataByEmail(userEmail);
-  const isPartOfSchoolOrCollege = studentData?.school_id || studentData?.university_college_id;
+  const { studentData, loading: studentDataLoading } = useStudentDataByEmail(userEmail);
+  const isPartOfSchoolOrCollege = !studentDataLoading && (studentData?.school_id || studentData?.university_college_id) && !isLearner(studentData);
+  
+  
+  
+
 
   // Close modals when clicking outside
   useEffect(() => {

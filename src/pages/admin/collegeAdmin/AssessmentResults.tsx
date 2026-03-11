@@ -10,9 +10,12 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import SearchBar from '../../../components/common/SearchBar';
 import AssessmentReportDrawer from '../../../components/shared/AssessmentReportDrawer';
-import { useAuth } from '../../../context/AuthContext';
+import { useUser } from '../../../stores';
 import { supabase } from '../../../lib/supabaseClient';
 import { formatStreamId } from '../../../utils/formatters';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('college-admin-assessment-results');
 
 // Types
 interface AssessmentResult {
@@ -289,7 +292,7 @@ END OF OLD Detail Modal Component */
 // Main Component
 const CollegeAdminAssessmentResults: React.FC = () => {
   // @ts-ignore - AuthContext is a .jsx file
-  const { user } = useAuth();
+  const user = useUser();
 
   // State
   const [results, setResults] = useState<AssessmentResult[]>([]);
@@ -336,7 +339,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
         .maybeSingle();
 
       if (orgError || !org?.id) {
-        console.error('Error fetching organization:', orgError, 'for email:', userEmail);
+        logger.error('Error fetching organization:', orgError, 'for email:', userEmail as Error);
         setError('No college associated with your account');
         setLoading(false);
         return;
@@ -446,7 +449,7 @@ const CollegeAdminAssessmentResults: React.FC = () => {
 
       setResults(enrichedResults as AssessmentResult[]);
     } catch (err: any) {
-      console.error('Error fetching assessment results:', err);
+      logger.error('Error fetching assessment results:', err as Error);
       setError(err?.message || 'Failed to load assessment results');
     } finally {
       setLoading(false);
@@ -1006,3 +1009,4 @@ const CollegeAdminAssessmentResults: React.FC = () => {
 };
 
 export default CollegeAdminAssessmentResults;
+

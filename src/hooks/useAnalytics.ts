@@ -93,7 +93,7 @@ interface UseAnalyticsOptions {
 
 export const useAnalytics = (options: UseAnalyticsOptions = {}) => {
   const { schoolId, collegeId, educatorType, educatorRole, assignedClassIds } = options;
-  const { user } = useAuth();
+  const user = useUser();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   

@@ -44,7 +44,7 @@ const StudentLayout = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => getActiveTabFromPath(location.pathname));
   const [activeModal, setActiveModal] = useState(null);
-  const { user } = useAuth();
+  const user = useUser();
 
   // Sync activeTab with current route
   useEffect(() => {
@@ -119,51 +119,50 @@ const StudentLayout = () => {
         {!isAssessmentTestPage && <FloatingAIButton />}
         <Toaster />
 
-        {/* Edit Modals - Only show if not viewing someone else's profile */}
-        {!isViewingOthersProfile && (
-          <>
-            <EducationEditModal
-              isOpen={activeModal === 'education'}
-              onClose={() => setActiveModal(null)}
-              data={userData.education}
-              onSave={(data) => handleSave('education', data)}
-            />
+      {/* Edit Modals - Only show if not viewing someone else's profile */}
+      {!isViewingOthersProfile && (
+        <>
+          <EducationEditModal
+            isOpen={activeModal === 'education'}
+            onClose={() => setActiveModal(null)}
+            data={userData.education}
+            onSave={(data) => handleSave('education', data)}
+          />
 
-            <TrainingEditModal
-              isOpen={activeModal === 'training'}
-              onClose={() => setActiveModal(null)}
-              data={userData.training}
-              onSave={(data) => handleSave('training', data)}
-            />
+          <TrainingEditModal
+            isOpen={activeModal === 'training'}
+            onClose={() => setActiveModal(null)}
+            data={userData.training}
+            onSave={(data) => handleSave('training', data)}
+          />
 
-            <ExperienceEditModal
-              isOpen={activeModal === 'experience'}
-              onClose={() => setActiveModal(null)}
-              data={userData.experience}
-              onSave={(data) => handleSave('experience', data)}
-            />
+          <ExperienceEditModal
+            isOpen={activeModal === 'experience'}
+            onClose={() => setActiveModal(null)}
+            data={userData.experience}
+            onSave={(data) => handleSave('experience', data)}
+          />
 
-            <SkillsEditModal
-              isOpen={activeModal === 'softSkills'}
-              onClose={() => setActiveModal(null)}
-              data={userData.softSkills}
-              title="Soft Skills"
-              type="Skill"
-              onSave={(data) => handleSave('softSkills', data)}
-            />
+          <SkillsEditModal
+            isOpen={activeModal === 'softSkills'}
+            onClose={() => setActiveModal(null)}
+            data={userData.softSkills}
+            title="Soft Skills"
+            type="Skill"
+            onSave={(data) => handleSave('softSkills', data)}
+          />
 
-            <SkillsEditModal
-              isOpen={activeModal === 'technicalSkills'}
-              onClose={() => setActiveModal(null)}
-              data={userData.technicalSkills}
-              title="Technical Skills"
-              type="Skill"
-              onSave={(data) => handleSave('technicalSkills', data)}
-            />
-          </>
-        )}
-      </div>
-    </GlobalPresenceProvider>
+          <SkillsEditModal
+            isOpen={activeModal === 'technicalSkills'}
+            onClose={() => setActiveModal(null)}
+            data={userData.technicalSkills}
+            title="Technical Skills"
+            type="Skill"
+            onSave={(data) => handleSave('technicalSkills', data)}
+          />
+        </>
+      )}
+    </div>
   );
 };
 

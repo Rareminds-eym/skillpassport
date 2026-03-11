@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useUserRole } from '../../hooks/useUserRole';
-// @ts-ignore - AuthContext is a .jsx file
-import { useAuth } from '../../context/AuthContext';
+import { useUser } from '../../stores';
 
 const RoleDebugger: React.FC = () => {
-  const { user: authUser, role: authRole } = useAuth();
+  const authUser = useUser();
+  const { role: authRole } = useUserRole();
   const [userInfo, setUserInfo] = useState<any>(null);
   const [teacherData, setTeacherData] = useState<any>(null);
   const [educatorData, setEducatorData] = useState<any>(null);

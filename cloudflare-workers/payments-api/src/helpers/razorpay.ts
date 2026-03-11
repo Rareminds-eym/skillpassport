@@ -3,13 +3,18 @@
  */
 
 import { Env } from '../types';
-import { PRODUCTION_DOMAIN } from '../config';
 
 /**
- * Get Razorpay Key ID with fallback
+ * Get Razorpay Key ID with RAZORPAY_MODE support
+ * If RAZORPAY_MODE=test, uses RAZORPAY_KEY_ID_TEST
+ * Otherwise uses RAZORPAY_KEY_ID (live)
  */
 export function getRazorpayKeyId(env: Env): string {
-  const key = env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID;
+  const isTestMode = env.RAZORPAY_MODE === 'test';
+  const key = isTestMode
+    ? (env.RAZORPAY_KEY_ID_TEST || env.RAZORPAY_KEY_ID)
+    : (env.RAZORPAY_KEY_ID || env.VITE_RAZORPAY_KEY_ID);
+  
   if (!key) {
     throw new Error('RAZORPAY_KEY_ID is not configured. Set it as a Cloudflare secret via: wrangler secret put RAZORPAY_KEY_ID');
   }
@@ -17,44 +22,60 @@ export function getRazorpayKeyId(env: Env): string {
 }
 
 /**
- * Check if request is from production site
+ * Get Razorpay Key Secret with RAZORPAY_MODE support
+ * If RAZORPAY_MODE=test, uses RAZORPAY_KEY_SECRET_TEST
+ * Otherwise uses RAZORPAY_KEY_SECRET (live)
  */
-export function isProductionRequest(request: Request): boolean {
-  const origin = request.headers.get('origin') || request.headers.get('referer') || '';
-  return origin.includes(PRODUCTION_DOMAIN) && !origin.includes('dev-');
+export function getRazorpayKeySecret(env: Env): string {
+  const isTestMode = env.RAZORPAY_MODE === 'test';
+  const secret = isTestMode
+    ? (env.RAZORPAY_KEY_SECRET_TEST || env.RAZORPAY_KEY_SECRET)
+    : env.RAZORPAY_KEY_SECRET;
+  
+  if (!secret) {
+    throw new Error('RAZORPAY_KEY_SECRET is not configured');
+  }
+  return secret;
 }
 
 /**
- * Get Razorpay credentials based on request origin
- * - Production (skillpassport.rareminds.in): Uses LIVE keys
- * - Everything else (localhost, netlify, dev): Uses TEST keys
+ * Check if using test mode via RAZORPAY_MODE env var
+ */
+export function isTestMode(env: Env): boolean {
+  return env.RAZORPAY_MODE === 'test';
+}
+
+/**
+ * Get Razorpay credentials based on RAZORPAY_MODE
+ * - RAZORPAY_MODE=test: Uses TEST keys
+ * - RAZORPAY_MODE=live or unset: Uses LIVE keys
  */
 export function getRazorpayCredentialsForRequest(
   request: Request, 
   env: Env
 ): { keyId: string; keySecret: string; isProduction: boolean } {
-  const isProduction = isProductionRequest(request);
+  const isTest = isTestMode(env);
   
   let keyId: string;
   let keySecret: string;
   
-  if (isProduction) {
-    // Production: Use LIVE credentials
-    keyId = getRazorpayKeyId(env);
-    keySecret = env.RAZORPAY_KEY_SECRET;
-    console.log('[RAZORPAY] Using LIVE credentials for production');
+  if (isTest) {
+    // Test mode: Use TEST credentials (with fallback to production)
+    keyId = env.RAZORPAY_KEY_ID_TEST || getRazorpayKeyId(env);
+    keySecret = env.RAZORPAY_KEY_SECRET_TEST || getRazorpayKeySecret(env);
+    console.log('[RAZORPAY] Using TEST credentials (RAZORPAY_MODE=test)');
   } else {
-    // Development/Test: Use TEST credentials (with fallback to production)
-    keyId = env.TEST_RAZORPAY_KEY_ID || getRazorpayKeyId(env);
-    keySecret = env.TEST_RAZORPAY_KEY_SECRET || env.RAZORPAY_KEY_SECRET;
-    console.log('[RAZORPAY] Using TEST credentials for development');
+    // Production/Live mode: Use LIVE credentials
+    keyId = getRazorpayKeyId(env);
+    keySecret = getRazorpayKeySecret(env);
+    console.log('[RAZORPAY] Using LIVE credentials (RAZORPAY_MODE=live)');
   }
   
   if (!keySecret) {
     throw new Error('RAZORPAY_KEY_SECRET is not configured');
   }
   
-  return { keyId, keySecret, isProduction };
+  return { keyId, keySecret, isProduction: !isTest };
 }
 
 /**

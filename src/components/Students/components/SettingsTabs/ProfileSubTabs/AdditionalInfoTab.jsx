@@ -3,6 +3,7 @@ import { FileText, Save, AlertCircle, Plus, X } from "lucide-react";
 import { Button } from "../../ui/button";
 import { useFormValidation } from "../../../../../hooks/useFormValidation";
 import FormField from "../FormField";
+import { isLearner } from "../../../../../utils/studentType";
 
 const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile, isSaving }) => {
   const {
@@ -11,6 +12,9 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
     getFieldError,
     hasErrors,
   } = useFormValidation();
+
+  // Check if user is a learner
+  const isLearnerUser = isLearner(profileData);
 
   // Helper function to parse JSON fields
   const parseJsonField = (field) => {
@@ -213,39 +217,43 @@ const AdditionalInfoTab = ({ profileData, handleProfileChange, handleSaveProfile
           />
         </div>
 
-        {/* Current Backlogs */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Current Backlogs <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            min="0"
-            max="50"
-            value={profileData.currentBacklogs}
-            onChange={(e) =>
-              handleProfileChange("currentBacklogs", parseInt(e.target.value) || 0)
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-            placeholder="Number of current pending backlogs"
-          />
-        </div>
+        {/* Current Backlogs - Hide for learners */}
+        {!isLearnerUser && (
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Current Backlogs <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="50"
+              value={profileData.currentBacklogs}
+              onChange={(e) =>
+                handleProfileChange("currentBacklogs", parseInt(e.target.value) || 0)
+              }
+              className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+              placeholder="Number of current pending backlogs"
+            />
+          </div>
+        )}
 
-        {/* Backlogs History */}
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-gray-700">
-            Backlogs History
-          </label>
-          <textarea
-            value={profileData.backlogsHistory}
-            onChange={(e) =>
-              handleProfileChange("backlogsHistory", e.target.value)
-            }
-            rows={3}
-            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
-            placeholder="Describe your academic backlogs history, subjects, reasons, and how you cleared them (if applicable)"
-          />
-        </div>
+        {/* Backlogs History - Hide for learners */}
+        {!isLearnerUser && (
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Backlogs History
+            </label>
+            <textarea
+              value={profileData.backlogsHistory}
+              onChange={(e) =>
+                handleProfileChange("backlogsHistory", e.target.value)
+              }
+              rows={3}
+              className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm resize-none"
+              placeholder="Describe your academic backlogs history, subjects, reasons, and how you cleared them (if applicable)"
+            />
+          </div>
+        )}
 
         {/* Interests */}
         <div className="space-y-2 md:col-span-2">

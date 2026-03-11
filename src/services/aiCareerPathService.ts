@@ -1083,20 +1083,55 @@ const ROLE_OVERVIEW_API_URL = import.meta.env.VITE_ROLE_OVERVIEW_API_URL ||
 
 /**
  * Generate combined role overview data via Cloudflare Worker
- * The worker handles the fallback chain: OpenRouter → Gemini → Static fallback
+ * Flow: Check DB → Generate via AI → Store in DB
  * @param roleName - The specific job role name
  * @param clusterTitle - The career cluster context
+ * @param attemptId - Optional attempt ID to check/store in DB
  * @returns Promise<RoleOverviewData> - Combined responsibilities and industry demand
  */
 export async function generateRoleOverview(
   roleName: string,
-  clusterTitle: string
+  clusterTitle: string,
+  attemptId?: string
 ): Promise<RoleOverviewData> {
   if (!roleName || roleName.trim() === '') {
     console.warn('[RoleOverview] Empty role name provided, using fallback');
     return getFallbackRoleOverview('professional');
   }
 
+  // Step 1: Check if data exists in DB
+  if (attemptId) {
+    try {
+      console.log(`[RoleOverview] Checking DB for: ${roleName} (attempt: ${attemptId})`);
+      const storageUrl = `${ROLE_OVERVIEW_API_URL}/storage?attemptId=${encodeURIComponent(attemptId)}&roleName=${encodeURIComponent(roleName)}`;
+      console.log(`[RoleOverview] Storage URL: ${storageUrl}`);
+      const dbResponse = await fetch(storageUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log(`[RoleOverview] DB response status: ${dbResponse.status}`);
+      if (dbResponse.ok) {
+        const dbResult = await dbResponse.json() as { exists: boolean; data: RoleOverviewData | null };
+        console.log(`[RoleOverview] DB result:`, dbResult);
+        if (dbResult.exists && dbResult.data) {
+          console.log(`[RoleOverview] ✅ Found in DB for: ${roleName}`);
+          return dbResult.data;
+        }
+        console.log(`[RoleOverview] Cache miss for ${roleName}`);
+      } else {
+        console.warn(`[RoleOverview] DB check failed with status: ${dbResponse.status}`);
+      }
+    } catch (dbError: any) {
+      console.warn('[RoleOverview] DB check failed, proceeding to AI generation:', dbError.message);
+    }
+  } else {
+    console.log(`[RoleOverview] No attemptId provided, skipping DB check`);
+  }
+
+  // Step 2: Generate via AI
   console.log(`[RoleOverview] Calling worker API for: ${roleName} in ${clusterTitle}`);
 
   try {
@@ -1130,6 +1165,33 @@ export async function generateRoleOverview(
     }
 
     console.log(`[RoleOverview] Success via ${result.source} for: ${roleName}`);
+
+    // Step 3: Store in DB if attemptId provided
+    if (attemptId && result.data) {
+      try {
+        console.log(`[RoleOverview] Storing in DB for: ${roleName}`);
+        const storeResponse = await fetch(`${ROLE_OVERVIEW_API_URL}/storage`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            attemptId,
+            roleName: roleName.trim(),
+            roleOverview: result.data,
+          }),
+        });
+
+        if (storeResponse.ok) {
+          console.log(`[RoleOverview] ✅ Stored in DB for: ${roleName}`);
+        } else {
+          console.warn('[RoleOverview] Failed to store in DB, but continuing with generated data');
+        }
+      } catch (storeError: any) {
+        console.warn('[RoleOverview] DB storage failed:', storeError.message);
+      }
+    }
+
     return result.data;
   } catch (error: any) {
     console.error('[RoleOverview] Worker API call failed:', error.message);

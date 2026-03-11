@@ -442,7 +442,14 @@ class OpportunitiesService {
         countQuery = countQuery.gte('created_at', dateThreshold.toISOString());
       }
       
-      const { data: allIds, error: countError } = await countQuery;
+      // Run count and data queries in parallel
+      const [countResult, dataResult] = await Promise.all([
+        countQuery,
+        buildQuery('*', true)
+      ]);
+      
+      const { data: allIds, error: countError } = countResult;
+      const { data, error } = dataResult;
       
       if (countError) {
         console.error('❌ Error fetching count:', countError);
@@ -458,9 +465,6 @@ class OpportunitiesService {
           count: realCount
         };
       }
-
-      // Fetch the actual paginated data
-      const { data, error } = await buildQuery('*', true);
 
       // Handle 416 Range Not Satisfiable error gracefully
       if (error) {

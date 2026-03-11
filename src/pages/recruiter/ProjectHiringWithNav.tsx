@@ -156,7 +156,7 @@ const ProjectHiringWithNavContent = () => {
   });
 
   const handleViewProject = (id: string) => {
-    console.log('View project:', id);
+    logger.info('View project', { id });
     alert(`Project Details\n\nNavigating to project details for: ${id}\n\nThis will open a full project details page with:\n- Overview\n- Proposals\n- Milestones\n- Activity timeline`);
   };
 

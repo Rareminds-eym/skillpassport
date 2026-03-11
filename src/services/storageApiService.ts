@@ -3,7 +3,7 @@
  * Connects to Cloudflare Pages Function for file storage API calls
  */
 
-import { getPagesApiUrl, getAuthHeaders as getBaseAuthHeaders } from '../utils/pagesUrl';
+import { getPagesApiUrl } from '../utils/pagesUrl';
 import { supabase } from '../lib/supabaseClient';
 
 const API_URL = getPagesApiUrl('storage');
@@ -339,10 +339,63 @@ export async function uploadPaymentReceipt(
 }
 
 /**
- * Get payment receipt download URL
+ * Get payment receipt download URL (requires auth)
  */
 export function getPaymentReceiptUrl(fileKey: string, mode: 'download' | 'inline' = 'download'): string {
   return `${API_URL}/payment-receipt?key=${encodeURIComponent(fileKey)}&mode=${mode}`;
+}
+
+/**
+ * Get presigned URL for payment receipt download (temporary access without auth)
+ * @param fileKeyOrUrl - The file key or full URL of the receipt
+ * @param expiresIn - Expiration time in seconds (default: 3600 = 1 hour, max: 604800 = 7 days)
+ * @returns Presigned URL for direct download
+ */
+export async function getPaymentReceiptPresignedUrl(fileKeyOrUrl: string, expiresIn: number = 3600): Promise<string> {
+  const authToken = await getAuthToken();
+  
+  if (!authToken) {
+    throw new Error('Authentication required. Please log in.');
+  }
+  
+  // Extract file key from full URL if needed
+  let fileKey = fileKeyOrUrl;
+  if (fileKeyOrUrl.includes('/api/storage/payment-receipt?key=')) {
+    try {
+      const url = new URL(fileKeyOrUrl);
+      const keyFromUrl = url.searchParams.get('key');
+      if (keyFromUrl) {
+        fileKey = keyFromUrl;
+      }
+    } catch {
+      // If URL parsing fails, use as-is
+    }
+  }
+  
+  const response = await fetch(
+    `${API_URL}/payment-receipt/presigned?key=${encodeURIComponent(fileKey)}&expires=${expiresIn}`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(authToken),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    
+    if (response.status === 401) {
+      throw new Error('Authentication failed. Please log in again.');
+    } else if (response.status === 403) {
+      throw new Error('You do not have permission to access this receipt.');
+    } else if (response.status === 404) {
+      throw new Error('Receipt not found.');
+    }
+    
+    throw new Error(error.error || 'Failed to generate receipt download URL');
+  }
+
+  const data = await response.json();
+  return data.presignedUrl;
 }
 
 export default {
@@ -355,4 +408,5 @@ export default {
   listFiles,
   uploadPaymentReceipt,
   getPaymentReceiptUrl,
+  getPaymentReceiptPresignedUrl,
 };
