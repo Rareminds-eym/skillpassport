@@ -1,8 +1,9 @@
 import { ArrowLeft, CheckCircle, Clock, FileText, Target, Zap } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useUser } from '../../stores';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import { checkAssessmentStatus } from '../../services/externalAssessmentService';
 import { getLogger } from '../../config/logging';
 
@@ -21,29 +22,28 @@ const AssessmentStart = () => {
   const [inProgressAttempt, setInProgressAttempt] = React.useState(null);
   const [showExitDialog, setShowExitDialog] = useState(false);
 
-  const userEmail = user?.email;
-  const { studentData } = useStudentDataByEmail(userEmail, false);
+  const { student } = useStudentData();
 
-  // Get certificate/course data from navigation state
-  const certificateName = location.state?.certificateName || location.state?.courseName || 'General Assessment';
-  const courseId = location.state?.courseId || 'default';
-  const certificateId = location.state?.certificateId;
-  const useDynamicGeneration = location.state?.useDynamicGeneration || false;
-  const level = location.state?.level || 'Intermediate';
+  // Memoize navigation state to prevent recalculation
+  const navigationState = React.useMemo(() => ({
+    certificateName: location.state?.certificateName || location.state?.courseName || 'General Assessment',
+    courseId: location.state?.courseId || 'default',
+    certificateId: location.state?.certificateId,
+    useDynamicGeneration: location.state?.useDynamicGeneration || false,
+    level: location.state?.level || 'Intermediate'
+  }), [location.state]);
+
+  const { certificateName, courseId, certificateId, useDynamicGeneration, level } = navigationState;
 
   // Check for in-progress assessment on mount
   useEffect(() => {
     const checkStatus = async () => {
-      if (studentData?.id && certificateName) {
+      if (student?.id && certificateName) {
         setCheckingStatus(true);
-        logger.info('Checking assessment status', {
-          studentId: studentData.id,
-          courseName: certificateName
-        });
+      
         
-        const result = await checkAssessmentStatus(studentData.id, certificateName);
+        const result = await checkAssessmentStatus(student.id, certificateName);
         
-        logger.info('Assessment status result', result);
         
         if (result.status === 'in_progress' && result.attempt) {
           logger.info('Found in-progress attempt', {
@@ -56,7 +56,7 @@ const AssessmentStart = () => {
           setInProgressAttempt(result.attempt);
         } else if (result.status === 'completed') {
           // Already completed, go back
-          alert('You have already completed this assessment');
+          toast.error('You have already completed this assessment');
           navigate('/student/my-learning');
           return;
         } else {
@@ -69,7 +69,7 @@ const AssessmentStart = () => {
     };
     
     checkStatus();
-  }, [studentData?.id, certificateName, navigate]);
+  }, [student?.id, certificateName, navigate]);
 
   const handleStartAssessment = async () => {
     setIsStarting(true);
@@ -127,7 +127,7 @@ const AssessmentStart = () => {
         });
       } catch (error) {
         logger.error('Error loading questions', error);
-        alert('Failed to load assessment. Please try again.');
+        toast.error('Failed to load assessment. Please try again.');
         setIsStarting(false);
       }
     } else {

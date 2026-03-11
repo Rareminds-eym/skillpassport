@@ -10,6 +10,8 @@ const logger = getLogger('trainings-service');
 
 export async function getTrainingsByStudentId(studentId: string): Promise<ServiceResponse<Training[]>> {
   try {
+    console.log('🔵 [trainingsService] getTrainingsByStudentId called', { studentId });
+    
     const { data, error } = await supabase
       .from('trainings')
       .select('*')
@@ -18,12 +20,38 @@ export async function getTrainingsByStudentId(studentId: string): Promise<Servic
 
     if (error) {
       logger.error('Failed to fetch trainings', error, { studentId });
+      console.error('🔴 [trainingsService] Failed to fetch trainings from DB', error);
       return { success: false, data: null, error: error.message };
+    }
+
+    console.log('🔵 [trainingsService] Trainings fetched from DB', { count: data?.length, trainings: data });
+
+    // Fetch related skills for each training
+    if (data && Array.isArray(data)) {
+      const trainingsWithSkills = await Promise.all(
+        data.map(async (training) => {
+          const { data: skills } = await supabase
+            .from('skills')
+            .select('*')
+            .eq('training_id', training.id);
+          
+          console.log('🔵 [trainingsService] Skills fetched for training', { trainingId: training.id, skillsCount: skills?.length, skills });
+          
+          return {
+            ...training,
+            skills: skills || []
+          };
+        })
+      );
+      
+      console.log('🔵 [trainingsService] All trainings with skills loaded', { count: trainingsWithSkills.length });
+      return { success: true, data: trainingsWithSkills, error: null };
     }
 
     return { success: true, data: data || [], error: null };
   } catch (err: any) {
     logger.error('Exception in getTrainingsByStudentId', err, { studentId });
+    console.error('🔴 [trainingsService] Exception in getTrainingsByStudentId', err);
     return { success: false, data: null, error: err.message };
   }
 }
@@ -228,7 +256,13 @@ export async function bulkUpsertTrainings(
       'created_at', 'updated_at'
     ];
     
+    // Store skills separately before cleaning records
+    const skillsByTrainingId: { [key: string]: any[] } = {};
+    
     const records = trainingRecords.map(record => {
+      // Extract skills separately
+      const skills = record.skills || record.skillsList || [];
+      
       const cleanRecord: any = {
         student_id: studentId,
         updated_at: new Date().toISOString(),
@@ -253,6 +287,11 @@ export async function bulkUpsertTrainings(
         }
       });
       
+      // Store skills for later processing (don't include in upsert)
+      if (cleanRecord.id) {
+        skillsByTrainingId[cleanRecord.id] = skills;
+      }
+      
       return cleanRecord;
     });
 
@@ -264,6 +303,68 @@ export async function bulkUpsertTrainings(
     if (error) {
       logger.error('Failed to bulk upsert trainings', error, { studentId });
       return { success: false, data: null, error: error.message };
+    }
+
+    // Handle skills synchronization for each training record
+    if (data && Array.isArray(data)) {
+      for (const training of data) {
+        const skills = skillsByTrainingId[training.id] || [];
+
+        if (Array.isArray(skills) && skills.length > 0) {
+          // Get existing skills for this training
+          const { data: existingSkills } = await supabase
+            .from('skills')
+            .select('*')
+            .eq('training_id', training.id);
+
+          const existingSkillsMap = new Map(
+            (existingSkills || []).map((s: any) => [s.name.toLowerCase(), s])
+          );
+
+          const newSkillNames = new Set(
+            skills.map((skill: any) => (skill.name || skill).toLowerCase())
+          );
+
+          // Delete skills that are no longer in the list
+          const skillsToDelete = (existingSkills || []).filter(
+            (s: any) => !newSkillNames.has(s.name.toLowerCase())
+          );
+
+          if (skillsToDelete.length > 0) {
+            const idsToDelete = skillsToDelete.map((s: any) => s.id);
+            await supabase
+              .from('skills')
+              .delete()
+              .in('id', idsToDelete);
+          }
+
+          // Add new skills that don't exist yet
+          const newSkills = skills.filter((skill: any) => {
+            const skillName = (skill.name || skill).toLowerCase();
+            return !existingSkillsMap.has(skillName);
+          });
+
+          if (newSkills.length > 0) {
+            const skillRecords = newSkills.map((skill: any) => ({
+              student_id: training.student_id,
+              training_id: training.id,
+              name: skill.name || skill,
+              type: skill.type || 'technical',
+              level: skill.level || null,
+              proficiency_level: skill.proficiency_level || null,
+              description: skill.description || null,
+              verified: false,
+              enabled: true,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }));
+
+            await supabase
+              .from('skills')
+              .insert(skillRecords);
+          }
+        }
+      }
     }
 
     return { success: true, data: data || [], error: null };

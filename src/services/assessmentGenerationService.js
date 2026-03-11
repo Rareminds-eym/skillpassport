@@ -66,12 +66,6 @@ IMPORTANT: Generate questions that someone studying {{COURSE_NAME}} would expect
 export async function saveGeneratedAssessment(courseName, courseId, assessment) {
   try {
     const { supabase } = await import('../lib/supabaseClient');
-    
-    console.log('💾 Saving generated assessment to database...', {
-      courseName,
-      courseId,
-      questionCount: assessment.questions?.length
-    });
 
     const { data, error } = await supabase
       .from('generated_external_assessment')
@@ -89,13 +83,11 @@ export async function saveGeneratedAssessment(courseName, courseId, assessment) 
     if (error) {
       // If duplicate (already exists), that's okay
       if (error.code === '23505') {
-        console.log('ℹ️ Assessment already exists in database');
         return { success: true, data: null, alreadyExists: true };
       }
       throw error;
     }
 
-    console.log('✅ Assessment saved to database:', data.id);
     return { success: true, data, alreadyExists: false };
   } catch (error) {
     console.error('❌ Error saving assessment to database:', error);
@@ -109,8 +101,6 @@ export async function saveGeneratedAssessment(courseName, courseId, assessment) 
 export async function loadGeneratedAssessment(courseName) {
   try {
     const { supabase } = await import('../lib/supabaseClient');
-    
-    console.log('🔍 Loading generated assessment from database...', courseName);
 
     const { data, error } = await supabase
       .from('generated_external_assessment')
@@ -120,17 +110,10 @@ export async function loadGeneratedAssessment(courseName) {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        console.log('ℹ️ No generated assessment found in database');
         return null;
       }
       throw error;
     }
-
-    console.log('✅ Loaded assessment from database:', {
-      id: data.id,
-      questionCount: data.questions?.length,
-      generatedAt: data.generated_at
-    });
 
     // Transform to expected format
     return {
@@ -150,14 +133,9 @@ export async function loadGeneratedAssessment(courseName) {
  */
 export async function generateAssessment(courseName, level = 'Intermediate', questionCount = 15, courseId = null) {
   try {
-    console.log('🎯 Generating assessment for:', courseName, 'Level:', level);
-
     // Call backend API (Cloudflare Worker) to generate assessment
-    // Use unified question generation API
     const { getPagesApiUrl } = await import('../utils/pagesUrl');
     const apiUrl = `${getPagesApiUrl('question-generation')}/generate`;
-
-    console.log('📡 Calling backend API:', apiUrl);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -173,7 +151,6 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('❌ API Error:', errorData);
       
       if (response.status === 401) {
         throw new Error('Invalid API key on server. Please check server configuration.');
@@ -184,21 +161,12 @@ export async function generateAssessment(courseName, level = 'Intermediate', que
 
     const assessment = await response.json();
     
-    console.log('✅ Generated assessment with AI:', {
-      course: assessment.course,
-      level: assessment.level,
-      questionCount: assessment.questions?.length,
-      firstQuestion: assessment.questions?.[0]?.question?.substring(0, 50) + '...'
-    });
-    
     // Validate the assessment
     const validation = validateAssessment(assessment);
     if (!validation.valid) {
       console.error('❌ Validation errors:', validation.errors);
       throw new Error('Generated assessment is invalid: ' + validation.errors.join(', '));
     }
-
-    console.log('✅ Assessment validated successfully');
 
     return assessment;
   } catch (error) {
@@ -220,8 +188,16 @@ export function validateAssessment(assessment) {
   if (!assessment.questions || assessment.questions.length === 0) {
     errors.push('No questions found');
   }
-  if (assessment.questions && assessment.questions.length !== assessment.total_questions) {
-    errors.push('Question count mismatch');
+  
+  // If total_questions is missing, set it from questions array length
+  if (!assessment.total_questions && assessment.questions) {
+    assessment.total_questions = assessment.questions.length;
+  }
+  
+  // Check if question count matches
+  if (assessment.questions && assessment.total_questions && assessment.questions.length !== assessment.total_questions) {
+    // Auto-fix: set total_questions to actual question count
+    assessment.total_questions = assessment.questions.length;
   }
   
   if (assessment.questions) {

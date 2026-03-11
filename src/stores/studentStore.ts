@@ -85,12 +85,12 @@ interface StudentState {
   loadCertificates: (studentId: string) => Promise<void>;
   
   // Bulk update actions
-  updateEducationBulk: (records: Partial<Education>[]) => Promise<void>;
-  updateExperienceBulk: (records: Partial<Experience>[]) => Promise<void>;
-  updateSkillsBulk: (records: Partial<Skill>[]) => Promise<void>;
-  updateProjectsBulk: (records: Partial<Project>[]) => Promise<void>;
-  updateTrainingsBulk: (records: Partial<Training>[]) => Promise<void>;
-  updateCertificatesBulk: (records: Partial<Certificate>[]) => Promise<void>;
+  updateEducationBulk: (records: Partial<Education>[]) => Promise<{ success: boolean; data?: Education[] | null; error?: string | null }>;
+  updateExperienceBulk: (records: Partial<Experience>[]) => Promise<{ success: boolean; data?: Experience[] | null; error?: string | null }>;
+  updateSkillsBulk: (records: Partial<Skill>[]) => Promise<{ success: boolean; data?: Skill[] | null; error?: string | null }>;
+  updateProjectsBulk: (records: Partial<Project>[]) => Promise<{ success: boolean; data?: Project[] | null; error?: string | null }>;
+  updateTrainingsBulk: (records: Partial<Training>[]) => Promise<{ success: boolean; data?: Training[] | null; error?: string | null }>;
+  updateCertificatesBulk: (records: Partial<Certificate>[]) => Promise<{ success: boolean; data?: Certificate[] | null; error?: string | null }>;
   
   // Single entity CRUD
   addEducation: (input: Partial<CreateEducationInput>) => Promise<void>;
@@ -110,7 +110,7 @@ interface StudentState {
   deleteProjectItem: (id: string) => Promise<void>;
   
   addTraining: (input: Partial<CreateTrainingInput>) => Promise<void>;
-  updateTrainingItem: (id: string, updates: Partial<CreateTrainingInput>) => Promise<void>;
+  updateTrainingItem: (id: string, updates: Partial<CreateTrainingInput>) => Promise<{ success: boolean; data?: Training | null; error?: string | null }>;
   deleteTrainingItem: (id: string) => Promise<void>;
   
   addCertificate: (input: Partial<CreateCertificateInput>) => Promise<void>;
@@ -400,6 +400,8 @@ export const useStudentStore = create<StudentState>()(
       },
       
       loadTrainings: async (studentId) => {
+        console.log('🔵 [studentStore] loadTrainings called', { studentId });
+        
         set((state) => {
           state.isLoadingTrainings = true;
         });
@@ -407,17 +409,21 @@ export const useStudentStore = create<StudentState>()(
         try {
           const result = await trainingsService.getTrainingsByStudentId(studentId);
           
+          console.log('🔵 [studentStore] loadTrainings result', { success: result.success, count: result.data?.length, trainings: result.data });
+          
           if (result.success) {
             set((state) => {
               state.trainings = result.data || [];
               state.isLoadingTrainings = false;
             });
           } else {
+            console.error('🔴 [studentStore] loadTrainings failed', result.error);
             set((state) => {
               state.isLoadingTrainings = false;
             });
           }
         } catch (err) {
+          console.error('🔴 [studentStore] loadTrainings error', err);
           set((state) => {
             state.isLoadingTrainings = false;
           });
@@ -453,7 +459,7 @@ export const useStudentStore = create<StudentState>()(
       
       updateEducationBulk: async (records) => {
         const { studentId } = get();
-        if (!studentId) return;
+        if (!studentId) return { success: false, error: 'No student ID' };
         
         try {
           const result = await educationService.bulkUpsertEducation(studentId, records);
@@ -461,15 +467,18 @@ export const useStudentStore = create<StudentState>()(
             set((state) => {
               state.education = result.data || [];
             });
+            return { success: true, data: result.data };
           }
+          return { success: false, error: result.error };
         } catch (err) {
           console.error('Failed to bulk update education', err);
+          return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
         }
       },
       
       updateExperienceBulk: async (records) => {
         const { studentId } = get();
-        if (!studentId) return;
+        if (!studentId) return { success: false, error: 'No student ID' };
         
         try {
           const result = await experienceService.bulkUpsertExperience(studentId, records);
@@ -477,15 +486,18 @@ export const useStudentStore = create<StudentState>()(
             set((state) => {
               state.experience = result.data || [];
             });
+            return { success: true, data: result.data };
           }
+          return { success: false, error: result.error };
         } catch (err) {
           console.error('Failed to bulk update experience', err);
+          return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
         }
       },
       
       updateSkillsBulk: async (records) => {
         const { studentId } = get();
-        if (!studentId) return;
+        if (!studentId) return { success: false, error: 'No student ID' };
         
         try {
           const result = await skillsService.bulkUpsertSkills(studentId, records);
@@ -493,15 +505,18 @@ export const useStudentStore = create<StudentState>()(
             set((state) => {
               state.skills = result.data || [];
             });
+            return { success: true, data: result.data };
           }
+          return { success: false, error: result.error };
         } catch (err) {
           console.error('Failed to bulk update skills', err);
+          return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
         }
       },
       
       updateProjectsBulk: async (records) => {
         const { studentId } = get();
-        if (!studentId) return;
+        if (!studentId) return { success: false, error: 'No student ID' };
         
         try {
           const result = await projectsService.bulkUpsertProjects(studentId, records);
@@ -509,15 +524,18 @@ export const useStudentStore = create<StudentState>()(
             set((state) => {
               state.projects = result.data || [];
             });
+            return { success: true, data: result.data };
           }
+          return { success: false, error: result.error };
         } catch (err) {
           console.error('Failed to bulk update projects', err);
+          return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
         }
       },
       
       updateTrainingsBulk: async (records) => {
         const { studentId } = get();
-        if (!studentId) return;
+        if (!studentId) return { success: false, error: 'No student ID' };
         
         try {
           const result = await trainingsService.bulkUpsertTrainings(studentId, records);
@@ -525,15 +543,18 @@ export const useStudentStore = create<StudentState>()(
             set((state) => {
               state.trainings = result.data || [];
             });
+            return { success: true, data: result.data };
           }
+          return { success: false, error: result.error };
         } catch (err) {
           console.error('Failed to bulk update trainings', err);
+          return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
         }
       },
       
       updateCertificatesBulk: async (records) => {
         const { studentId } = get();
-        if (!studentId) return;
+        if (!studentId) return { success: false, error: 'No student ID' };
         
         try {
           const result = await certificatesService.bulkUpsertCertificates(studentId, records);
@@ -541,9 +562,12 @@ export const useStudentStore = create<StudentState>()(
             set((state) => {
               state.certificates = result.data || [];
             });
+            return { success: true, data: result.data };
           }
+          return { success: false, error: result.error };
         } catch (err) {
           console.error('Failed to bulk update certificates', err);
+          return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
         }
       },
       
@@ -665,6 +689,7 @@ export const useStudentStore = create<StudentState>()(
         if (result.success && get().studentId) {
           await get().loadTrainings(get().studentId!);
         }
+        return result;
       },
       
       deleteTrainingItem: async (id) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Briefcase,
@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUser, useAuthLoading } from "../../stores";
-import { useStudentDataByEmail } from "../../hooks/useStudentDataByEmail";
+import { useStudentData } from "../../hooks/useStudentData";
 import { getLogger } from "../../config/logging";
 
 const logger = getLogger('TimelinePage');
@@ -43,22 +43,23 @@ const TimelinePage = () => {
   const navigate = useNavigate();
   const user = useUser();
   const authLoading = useAuthLoading();
-  logger.info('TimelinePage loaded', { userEmail: user?.email });
-  
-  // Get email for fetching detailed timeline data
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
   
   // Fetch detailed timeline data from database
-  const { studentData: timelineData, loading: timelineLoading } = useStudentDataByEmail(userEmail);
+  const { student, education, experience, projects, trainings, certificates, isLoading: timelineLoading } = useStudentData({ loadRelated: true });
   
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [activeTab, setActiveTab] = useState("all"); // all, education, experience, project, certificate, achievement
   
-  // Combine auth user data with timeline data for complete profile
-  const studentData = {
+  // Memoize studentData to prevent unnecessary re-renders
+  const studentData = useMemo(() => ({
     ...user, // Basic profile info from auth
-    ...timelineData, // Timeline arrays from database
-  };
+    ...student, // Student profile from database
+    education,
+    experience,
+    projects,
+    trainings,
+    certificates,
+  }), [user, student, education, experience, projects, trainings, certificates]);
   
   // Get role label based on user role
   const getRoleLabel = (role) => {
@@ -80,17 +81,9 @@ const TimelinePage = () => {
 
   // Create comprehensive milestone data from user data
   const createMilestones = () => {
-    if (!studentData) return [];
-    
-    // Debug: Log the data structure
-    logger.info('📊 Student Data Structure', {
-      education: studentData.education,
-      experience: studentData.experience,
-      projects: studentData.projects,
-      certificates: studentData.certificates,
-      achievements: studentData.achievements,
-      availableKeys: Object.keys(studentData)
-    });
+    if (!studentData) {
+      return [];
+    }
     
     const milestones = [];
 
@@ -103,7 +96,6 @@ const TimelinePage = () => {
     
     // If no timeline data exists, create some sample milestones from basic user info
     if (education.length === 0 && experience.length === 0 && projects.length === 0 && certificates.length === 0 && achievements.length === 0) {
-      logger.info('🔄 No timeline data found, creating basic milestones from user info');
       
       // Add basic education milestone if we have university info
       if (studentData.university || studentData.college_school_name) {

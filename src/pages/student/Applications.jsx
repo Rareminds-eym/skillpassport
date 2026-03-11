@@ -22,7 +22,7 @@ import {
   Bell,
   FileText
 } from 'lucide-react';
-import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
+import { useStudentData } from '../../hooks/useStudentData';
 import AppliedJobsService from '../../services/appliedJobsService';
 import StudentPipelineService from '../../services/studentPipelineService';
 import MessageService from '../../services/messageService';
@@ -38,9 +38,7 @@ const Applications = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useUser();
-  const userEmail = localStorage.getItem('userEmail') || user?.email;
-  const { studentData } = useStudentDataByEmail(userEmail);
-  const studentId = studentData?.id || user?.id;
+  const { student, studentId } = useStudentData({ loadRelated: false });
 
   const [applications, setApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
@@ -76,8 +74,7 @@ const Applications = () => {
 
         // Fetch applications with pipeline data
         const applicationsData = await StudentPipelineService.getStudentApplicationsWithPipeline(
-          studentId,
-          userEmail
+          studentId
         );
 
         if (applicationsData[0]) {
@@ -144,7 +141,7 @@ const Applications = () => {
     };
 
     fetchApplications();
-  }, [studentId, userEmail]);
+  }, [studentId]);
 
   // Subscribe to real-time pipeline updates
   useEffect(() => {

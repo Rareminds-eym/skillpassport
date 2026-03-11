@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Outlet, useParams, useLocation, Link } from 'react-router-dom';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import { useUser } from '../stores';
-import { useStudentDataByEmail } from '../hooks/useStudentDataByEmail';
+import { useStudentData } from '../hooks/useStudentData';
 import Header from '../components/Students/components/Header';
 import ProfileHeroEdit from '../components/Students/components/ProfileHeroEdit';
 import FloatingAIButton from '../components/FloatingAIButton';
@@ -12,97 +12,108 @@ import {
   ExperienceEditModal,
   SkillsEditModal
 } from '../components/Students/components/ProfileEditModals';
-import {
-  educationData,
-  trainingData,
-  experienceData,
-  technicalSkills,
-  softSkills
-} from '../components/Students/data/mockData';
+
+// Route patterns for page detection
+const ROUTE_PATTERNS = {
+  training: '/my-learning',
+  courses: '/courses',
+  portfolio: '/digital-portfolio',
+  opportunities: '/opportunities',
+  careerAI: '/career-ai',
+  assignments: ['/assignments', '/my-class'],
+  messages: '/messages',
+  skills: '/my-skills',
+  experience: '/my-experience',
+  applications: '/applications',
+  profile: '/profile',
+  savedJobs: '/saved-jobs',
+  settings: '/settings',
+  dashboard: ['/student/dashboard', '/student', '/student/']
+};
 
 // Helper function to get active tab from pathname
 const getActiveTabFromPath = (pathname) => {
-  if (pathname.includes('/my-learning')) return 'training';
-  if (pathname.includes('/courses')) return 'courses';
-  if (pathname.includes('/digital-portfolio')) return 'digital-portfolio';
-  if (pathname.includes('/opportunities')) return 'opportunities';
-  if (pathname.includes('/career-ai')) return 'career-ai';
-  if (pathname.includes('/assignments') || pathname.includes('/my-class')) return 'assignments';
-  if (pathname.includes('/messages')) return 'messages';
-  if (pathname.includes('/my-skills')) return 'skills';
-  if (pathname.includes('/my-experience')) return 'experience';
-  if (pathname.includes('/applications')) return 'applications';
-  if (pathname.includes('/profile')) return 'profile';
-  if (pathname.includes('/saved-jobs')) return 'saved-jobs';
-  if (pathname.includes('/settings')) return 'settings';
-  if (pathname.includes('/dashboard') || pathname === '/student' || pathname === '/student/') return 'dashboard';
+  for (const [tab, patterns] of Object.entries(ROUTE_PATTERNS)) {
+    const patternArray = Array.isArray(patterns) ? patterns : [patterns];
+    if (patternArray.some(pattern => pathname.includes(pattern))) {
+      return tab;
+    }
+  }
   return 'dashboard';
+};
+
+// Helper function to check if page is assessment
+const isAssessmentPage = (pathname) => {
+  const assessmentPaths = ['/assessment/platform', '/assessment/start', '/assessment/result', '/assessment/test', '/assessment-report'];
+  return assessmentPaths.some(path => pathname.includes(path));
 };
 
 const StudentLayout = () => {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState(() => getActiveTabFromPath(location.pathname));
-  const [activeModal, setActiveModal] = useState(null);
   const user = useUser();
+  const [activeModal, setActiveModal] = useState(null);
 
-  // Sync activeTab with current route
-  useEffect(() => {
-    const tabFromPath = getActiveTabFromPath(location.pathname);
-    setActiveTab(tabFromPath);
-  }, [location.pathname]);
+  // Get real student data from state management
+  const {
+    student,
+    education,
+    experience,
+    projects,
+    trainings,
+    skills,
+    isLoading
+  } = useStudentData({ loadRelated: true });
 
-  // Check if viewing someone else's profile
-  const isViewingOthersProfile = location.pathname.includes('/student/profile/');
+  // Memoize active tab calculation
+  const activeTab = useMemo(() => getActiveTabFromPath(location.pathname), [location.pathname]);
 
-  const [userData, setUserData] = useState({
-    education: educationData,
-    training: trainingData,
-    experience: experienceData,
-    technicalSkills: technicalSkills,
-    softSkills: softSkills
-  });
+  // Memoize page detection
+  const pageState = useMemo(() => ({
+    isViewingOthersProfile: location.pathname.includes('/student/profile/'),
+    isDashboardPage: location.pathname === '/student/dashboard' || location.pathname === '/student' || location.pathname === '/student/',
+    isCareerAIPage: location.pathname.includes('/career-ai'),
+    isAssessmentPage: isAssessmentPage(location.pathname),
+    isAssessmentTestPage: ['/assessment/test', '/assessment-report', '/assessment/start', '/assessment/platform'].some(path => location.pathname.includes(path)),
+    isAssessmentResultPage: location.pathname.includes('/assessment/result')
+  }), [location.pathname]);
 
-  const handleSave = (section, data) => {
-    setUserData(prev => ({
-      ...prev,
-      [section]: data
-    }));
-  };
+  // Memoize full screen assessment check
+  const isFullScreenAssessment = useMemo(() =>
+    pageState.isAssessmentPage && !pageState.isAssessmentResultPage,
+    [pageState.isAssessmentPage, pageState.isAssessmentResultPage]
+  );
 
-  const handleEditClick = (sectionId) => {
-    if (sectionId === 'profile') {
-      // Navigate to profile edit or handle profile editing
-      setActiveTab('profile');
-    } else {
-      // Open specific modal
+  // Memoize user data from real sources
+  const userData = useMemo(() => ({
+    education: education || [],
+    training: trainings || [],
+    experience: experience || [],
+    technicalSkills: skills?.filter(s => s.type === 'technical') || [],
+    softSkills: skills?.filter(s => s.type === 'soft') || []
+  }), [education, trainings, experience, skills]);
+
+  // Handle modal close
+  const handleModalClose = useCallback(() => {
+    setActiveModal(null);
+  }, []);
+
+  // Handle edit click - open modal
+  const handleEditClick = useCallback((sectionId) => {
+    if (sectionId !== 'profile') {
       setActiveModal(sectionId);
     }
-  };
-
-  // Check if current page is dashboard
-  const isDashboardPage = location.pathname === '/student/dashboard' || location.pathname === '/student' || location.pathname === '/student/';
-
-  // Check if current page is Career AI
-  const isCareerAIPage = location.pathname === '/student/career-ai' || location.pathname.includes('/career-ai');
-
-  // Check if current page is Assessment (should be full-screen without padding)
-  const isAssessmentPage = location.pathname.includes('/assessment/platform') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/result') || location.pathname.includes('/assessment/test') || location.pathname.includes('/assessment-report');
-
-  // Hide navbar only for assessment test pages (not result pages)
-  const isAssessmentTestPage = location.pathname.includes('/assessment/test') || location.pathname.includes('/assessment-report') || location.pathname.includes('/assessment/start') || location.pathname.includes('/assessment/platform');
-
-  // Assessment result page needs scrolling, unlike test/platform pages
-  const isAssessmentResultPage = location.pathname.includes('/assessment/result');
-  const isFullScreenAssessment = isAssessmentPage && !isAssessmentResultPage;
+  }, []);
 
   return (
-    <div className={`${isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
-      {!isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={setActiveTab} />}
-      {!isViewingOthersProfile && isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
-      <main className={isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
-        <Outlet context={{ activeTab, userData, handleSave, setActiveModal }} />
+    <div className={`${pageState.isCareerAIPage || isFullScreenAssessment ? "h-screen bg-gray-50 flex flex-col" : "min-h-screen bg-gray-50 flex flex-col"}`}>
+      {!pageState.isAssessmentTestPage && <Header activeTab={activeTab} setActiveTab={() => { }} />}
+      {!pageState.isViewingOthersProfile && pageState.isDashboardPage && <ProfileHeroEdit onEditClick={handleEditClick} />}
+
+      <main className={pageState.isCareerAIPage ? "flex-1 overflow-hidden" : ""}>
+        <Outlet context={{ activeTab, userData }} />
       </main>
-      {!isCareerAIPage && (
+
+      {!pageState.isCareerAIPage && (
         <footer className="bg-white border-t border-gray-200 py-4 px-6">
           <div className="flex items-center justify-between text-sm text-gray-500">
             <span>© {new Date().getFullYear()} Learner Portal. All rights reserved.</span>
@@ -114,52 +125,9 @@ const StudentLayout = () => {
           </div>
         </footer>
       )}
-      {!isAssessmentTestPage && <FloatingAIButton />}
+
+      {!pageState.isAssessmentTestPage && <FloatingAIButton />}
       <Toaster />
-
-      {/* Edit Modals - Only show if not viewing someone else's profile */}
-      {!isViewingOthersProfile && (
-        <>
-          <EducationEditModal
-            isOpen={activeModal === 'education'}
-            onClose={() => setActiveModal(null)}
-            data={userData.education}
-            onSave={(data) => handleSave('education', data)}
-          />
-
-          <TrainingEditModal
-            isOpen={activeModal === 'training'}
-            onClose={() => setActiveModal(null)}
-            data={userData.training}
-            onSave={(data) => handleSave('training', data)}
-          />
-
-          <ExperienceEditModal
-            isOpen={activeModal === 'experience'}
-            onClose={() => setActiveModal(null)}
-            data={userData.experience}
-            onSave={(data) => handleSave('experience', data)}
-          />
-
-          <SkillsEditModal
-            isOpen={activeModal === 'softSkills'}
-            onClose={() => setActiveModal(null)}
-            data={userData.softSkills}
-            title="Soft Skills"
-            type="Skill"
-            onSave={(data) => handleSave('softSkills', data)}
-          />
-
-          <SkillsEditModal
-            isOpen={activeModal === 'technicalSkills'}
-            onClose={() => setActiveModal(null)}
-            data={userData.technicalSkills}
-            title="Technical Skills"
-            type="Skill"
-            onSave={(data) => handleSave('technicalSkills', data)}
-          />
-        </>
-      )}
     </div>
   );
 };
