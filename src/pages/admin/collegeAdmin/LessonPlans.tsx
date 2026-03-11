@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { getLogger } from '../../../config/logging';
 
 // Import the college lesson plan UI
 import CollegeLessonPlanUI from '../../../components/admin/collegeAdmin/CollegeLessonPlanUI';
@@ -12,6 +13,7 @@ import { lessonPlanService, type CollegeLessonPlan } from '../../../services/col
  * Follows the same pattern as CurriculumBuilder with department → program → semester → course flow
  */
 const CollegeLessonPlans: React.FC = () => {
+  const logger = getLogger('college-lesson-plans');
   // Local state for college-specific selections
   const [selectedCourse, setSelectedCourse] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
@@ -112,7 +114,7 @@ const CollegeLessonPlans: React.FC = () => {
       }
 
     } catch (error: any) {
-      console.error('Error loading configuration:', error);
+      logger.error('Error loading configuration', error);
       toast.error('Failed to load configuration data');
     } finally {
       setLoading(false);
@@ -129,7 +131,7 @@ const CollegeLessonPlans: React.FC = () => {
         setPrograms([]);
       }
     } catch (error) {
-      console.error('Error loading programs:', error);
+      logger.error('Error loading programs', error as Error);
       toast.error('Failed to load programs');
       setPrograms([]);
     }
@@ -145,7 +147,7 @@ const CollegeLessonPlans: React.FC = () => {
         setSemesters([]);
       }
     } catch (error) {
-      console.error('Error loading semesters:', error);
+      logger.error('Error loading semesters', error as Error);
       toast.error('Failed to load semesters');
       setSemesters([]);
     }
@@ -161,7 +163,7 @@ const CollegeLessonPlans: React.FC = () => {
         setCourses([]);
       }
     } catch (error) {
-      console.error('Error loading courses:', error);
+      logger.error('Error loading courses', error as Error);
       toast.error('Failed to load courses');
       setCourses([]);
     }
@@ -186,7 +188,7 @@ const CollegeLessonPlans: React.FC = () => {
         setLessonPlans([]);
       }
     } catch (error) {
-      console.error('Error loading lesson plans:', error);
+      logger.error('Error loading lesson plans', error as Error);
       toast.error('Failed to load lesson plans');
       setLessonPlans([]);
     } finally {
@@ -196,7 +198,7 @@ const CollegeLessonPlans: React.FC = () => {
 
   // Handler for department change in form
   const handleDepartmentChange = async (departmentId: string) => {
-    console.log('🔄 Department changed to:', departmentId);
+    logger.info('Department changed', { departmentId });
     
     if (departmentId) {
       const result = await lessonPlanService.getPrograms(departmentId);
@@ -216,7 +218,7 @@ const CollegeLessonPlans: React.FC = () => {
 
   // Handler for program change in form
   const handleProgramChange = async (programId: string) => {
-    console.log('🔄 Program changed to:', programId);
+    logger.info('Program changed', { programId });
     
     if (programId) {
       const semesterResult = await lessonPlanService.getSemesters(programId);
@@ -238,7 +240,7 @@ const CollegeLessonPlans: React.FC = () => {
 
   // Handler for semester change in form
   const handleSemesterChange = async (semester: string, programId: string) => {
-    console.log('🔄 Semester changed to:', semester, 'for program:', programId);
+    logger.info('Semester changed', { semester, programId });
     
     if (semester && programId) {
       const result = await lessonPlanService.getCourses(programId, parseInt(semester));
@@ -256,7 +258,7 @@ const CollegeLessonPlans: React.FC = () => {
 
   // Handler for curriculum context change (course + program + academic year)
   const handleCurriculumContextChange = async (courseId: string, programId: string, academicYear: string) => {
-    console.log('🔄 Curriculum context changed:', { courseId, programId, academicYear });
+    logger.info('Curriculum context changed', { courseId, programId, academicYear });
     
     if (courseId && programId && academicYear) {
       try {
@@ -265,7 +267,7 @@ const CollegeLessonPlans: React.FC = () => {
         if (unitsResult.success) {
           setUnits(unitsResult.data || []);
           setCurrentCurriculumId(unitsResult.curriculumId);
-          console.log('📚 Loaded curriculum:', unitsResult.curriculumId, 'with', unitsResult.data?.length, 'units');
+          logger.info('Loaded curriculum', { curriculumId: unitsResult.curriculumId, unitCount: unitsResult.data?.length });
           
           // Clear learning outcomes since unit hasn't been selected yet
           setLearningOutcomes([]);
@@ -275,7 +277,7 @@ const CollegeLessonPlans: React.FC = () => {
           setCurrentCurriculumId(undefined);
         }
       } catch (error) {
-        console.error('Error loading curriculum context:', error);
+        logger.error('Error loading curriculum context', error as Error);
         setUnits([]);
         setLearningOutcomes([]);
         setCurrentCurriculumId(undefined);
@@ -289,7 +291,7 @@ const CollegeLessonPlans: React.FC = () => {
 
   // Handler for unit selection change
   const handleUnitChange = async (unitId: string) => {
-    console.log('🔄 Unit changed to:', unitId);
+    logger.info('Unit changed', { unitId });
     
     if (unitId) {
       try {
@@ -300,7 +302,7 @@ const CollegeLessonPlans: React.FC = () => {
           setLearningOutcomes([]);
         }
       } catch (error) {
-        console.error('Error loading learning outcomes:', error);
+        logger.error('Error loading learning outcomes', error as Error);
         setLearningOutcomes([]);
       }
     } else {
@@ -387,7 +389,7 @@ const CollegeLessonPlans: React.FC = () => {
       // Reset save status after a delay
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error: any) {
-      console.error('Error saving lesson plan:', error);
+      logger.error('Error saving lesson plan', error);
       setSaveStatus("idle");
       toast.error('Failed to save lesson plan');
     }
@@ -404,7 +406,7 @@ const CollegeLessonPlans: React.FC = () => {
         toast.error(result.error?.message || 'Failed to delete lesson plan');
       }
     } catch (error: any) {
-      console.error('Error deleting lesson plan:', error);
+      logger.error('Error deleting lesson plan', error);
       toast.error('Failed to delete lesson plan');
     }
   };
@@ -424,7 +426,7 @@ const CollegeLessonPlans: React.FC = () => {
         toast.error(result.error?.message || 'Failed to publish lesson plan');
       }
     } catch (error: any) {
-      console.error('Error publishing lesson plan:', error);
+      logger.error('Error publishing lesson plan', error);
       toast.error('Failed to publish lesson plan');
     }
   };
