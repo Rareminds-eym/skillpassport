@@ -1,15 +1,35 @@
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { BrowserRouter } from 'react-router-dom';
 import { useEffect } from 'react';
-import SubscriptionPrefetch from './components/Subscription/SubscriptionPrefetch';
-import { SubscriptionStoreSync } from './components/Subscription/SubscriptionStoreSync';
 import TourWrapper from './components/Tours/TourWrapper';
 import TokenRefreshErrorNotification from './components/TokenRefreshErrorNotification';
 import AppRoutes from './routes/AppRoutes';
 
-
 // Zustand stores - state management migrated from Context
-import { initializeStores } from './stores';
+import { initializeStores, useUser } from './stores';
+import { useSubscriptionStore } from './stores/subscriptionStore';
+
+/**
+ * SubscriptionInitializer
+ * 
+ * Triggers subscription fetch when user changes.
+ * Replaces SubscriptionStoreSync + SubscriptionPrefetch with a single useEffect.
+ */
+function SubscriptionInitializer() {
+  const user = useUser();
+  const fetchSubscription = useSubscriptionStore((s) => s.fetchSubscription);
+  const clearAccessCache = useSubscriptionStore((s) => s.clearAccessCache);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchSubscription(user.id);
+    } else {
+      clearAccessCache();
+    }
+  }, [user?.id, fetchSubscription, clearAccessCache]);
+
+  return null;
+}
 
 function App() {
   // Initialize stores on mount
@@ -21,8 +41,7 @@ function App() {
 
     <BrowserRouter>
       <TourWrapper>
-        <SubscriptionPrefetch />
-        <SubscriptionStoreSync />
+        <SubscriptionInitializer />
         <TokenRefreshErrorNotification />
         <AppRoutes />
         <HotToaster
