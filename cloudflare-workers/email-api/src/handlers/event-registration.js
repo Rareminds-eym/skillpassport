@@ -43,7 +43,8 @@ export async function handleEventConfirmation(body, env) {
       phone,
       amount,
       orderId,
-      campaign: campaign || 'direct'
+      campaign: campaign || 'direct',
+      appUrl: env.APP_URL || 'https://skillpassport.rareminds.in'
     });
 
     const adminHtml = generateAdminNotificationHtml({
