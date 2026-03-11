@@ -18,6 +18,9 @@ import StudentProfileDrawer from '@/components/shared/StudentProfileDrawer';
 import CareerPathDrawer from '@/components/admin/components/CareerPathDrawer';
 import { useStudents } from '../../../hooks/useAdminStudents';
 import { generateCareerPath, type CareerPathResponse, type StudentProfile } from '@/services/aiCareerPathService';
+import { getLogger } from '../../../config/logging';
+
+const logger = getLogger('university-admin-student-enrollments');
 
 const FilterSection = ({ title, children, defaultOpen = false }: any) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -448,7 +451,7 @@ const StudentEnrollments = () => {
         education,
       };
 
-      console.log('Generating career path for:', studentProfile.name);
+      logger.info('Generating career path for:', { studentName: studentProfile.name });
 
       const generatedPath = await generateCareerPath(studentProfile);
 
@@ -456,10 +459,10 @@ const StudentEnrollments = () => {
         throw new Error('No career path was generated');
       }
 
-      console.log('Career path generated successfully');
+      logger.info('Career path generated successfully');
       setCareerPath(generatedPath);
     } catch (err) {
-      console.error('Error generating career path:', err);
+      logger.error('Error generating career path:', err as Error);
 
       // Provide user-friendly error messages
       let errorMessage = 'Failed to generate career path';

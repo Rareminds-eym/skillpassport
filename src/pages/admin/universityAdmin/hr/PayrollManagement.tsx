@@ -12,6 +12,9 @@ import {
   XCircleIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
+import { getLogger } from '../../../../config/logging';
+
+const logger = getLogger('university-admin-hr-payroll-management');
 import {
   Users,
   AlertTriangle,
@@ -305,7 +308,7 @@ const PayrollManagement: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Payroll Records ({filteredRecords.length})</h3>
         <button 
-          onClick={() => console.log('Process payroll functionality would be implemented here')}
+          onClick={() => logger.info('Process payroll functionality would be implemented here')}
           className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
         >
           <Plus className="h-4 w-4" />

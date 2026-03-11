@@ -35,6 +35,7 @@ import {
   ThumbsDown,
   Archive,
 } from "lucide-react";
+import { getLogger } from "../../../config/logging";
 
 interface SkillCourse {
   id: string;
@@ -311,6 +312,7 @@ const NotificationModalComponent: React.FC<{
 };
 
 const SkillDevelopment: React.FC = () => {
+  const logger = getLogger('college-admin-skill-development');
   const [activeTab, setActiveTab] = useState("courses");
   const [showAddCourseModal, setShowAddCourseModal] = useState(false);
   const [showEditCourseModal, setShowEditCourseModal] = useState(false);
@@ -1162,7 +1164,7 @@ const SkillDevelopment: React.FC = () => {
         return;
       }
 
-      console.log("Skill course data to submit:", formData);
+      logger.info("Skill course data to submit", { formData });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1172,7 +1174,7 @@ const SkillDevelopment: React.FC = () => {
       showNotification('success', 'Success', 'Skill course added successfully!');
       
     } catch (error) {
-      console.error("Error adding skill course:", error);
+      logger.error("Error adding skill course:", error as Error);
       showNotification('error', 'Error', 'Error adding skill course. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1203,12 +1205,12 @@ const SkillDevelopment: React.FC = () => {
 
   const handleToggleStatus = async (courseId: string, currentStatus: boolean) => {
     try {
-      console.log(`Toggling course ${courseId} from ${currentStatus} to ${!currentStatus}`);
+      logger.info("Toggling course status", { courseId, currentStatus, newStatus: !currentStatus });
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 500));
       showNotification('success', 'Success', `Course ${!currentStatus ? 'activated' : 'deactivated'} successfully!`);
     } catch (error) {
-      console.error("Error toggling course status:", error);
+      logger.error("Error toggling course status:", error as Error);
       showNotification('error', 'Error', 'Error updating course status. Please try again.');
     }
   };
@@ -1401,8 +1403,8 @@ const SkillDevelopment: React.FC = () => {
         return;
       }
 
-      console.log("Allocation data to submit:", {
-        ...allocationFormData,
+      logger.info("Allocation data to submit", {
+        allocationFormData,
         studentsToAllocate,
         studentCount: studentsToAllocate.length
       });
@@ -1415,7 +1417,7 @@ const SkillDevelopment: React.FC = () => {
       showNotification('success', 'Success', `Course allocated successfully to ${studentsToAllocate.length} students!`);
       
     } catch (error) {
-      console.error("Error allocating course:", error);
+      logger.error("Error allocating course:", error as Error);
       showNotification('error', 'Error', 'Error allocating course. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1571,7 +1573,7 @@ const SkillDevelopment: React.FC = () => {
         }
       }
 
-      console.log("Progress update data:", progressUpdateFormData);
+      logger.info("Progress update data", { progressUpdateFormData });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1582,7 +1584,7 @@ const SkillDevelopment: React.FC = () => {
       showNotification('success', 'Success', 'Progress updated successfully!');
       
     } catch (error) {
-      console.error("Error updating progress:", error);
+      logger.error("Error updating progress:", error as Error);
       showNotification('error', 'Error', 'Error updating progress. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1600,7 +1602,7 @@ const SkillDevelopment: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      console.log("Uploading file:", bulkUploadFile.name);
+      logger.info("Uploading file", { fileName: bulkUploadFile.name });
       
       // Simulate file processing
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1610,7 +1612,7 @@ const SkillDevelopment: React.FC = () => {
       showNotification('success', 'Success', 'Progress data uploaded successfully!');
       
     } catch (error) {
-      console.error("Error uploading file:", error);
+      logger.error("Error uploading file:", error as Error);
       showNotification('error', 'Error', 'Error uploading file. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1832,7 +1834,7 @@ const SkillDevelopment: React.FC = () => {
         }
       }
 
-      console.log("Student feedback data:", feedbackFormData);
+      logger.info("Student feedback data", { feedbackFormData });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1842,7 +1844,7 @@ const SkillDevelopment: React.FC = () => {
       showNotification('success', 'Success', 'Feedback submitted successfully!');
       
     } catch (error) {
-      console.error("Error submitting feedback:", error);
+      logger.error("Error submitting feedback:", error as Error);
       showNotification('error', 'Error', 'Error submitting feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1865,7 +1867,7 @@ const SkillDevelopment: React.FC = () => {
         }
       }
 
-      console.log("Trainer feedback data:", trainerFeedbackFormData);
+      logger.info("Trainer feedback data", { trainerFeedbackFormData });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -1875,7 +1877,7 @@ const SkillDevelopment: React.FC = () => {
       showNotification('success', 'Success', 'Trainer feedback submitted successfully!');
       
     } catch (error) {
-      console.error("Error submitting trainer feedback:", error);
+      logger.error("Error submitting trainer feedback:", error as Error);
       showNotification('error', 'Error', 'Error submitting trainer feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1892,7 +1894,7 @@ const SkillDevelopment: React.FC = () => {
     setIsSubmitting(true);
     
     try {
-      console.log("Generating certificates for:", selectedCertificates);
+      logger.info("Generating certificates", { selectedCertificates });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -1901,7 +1903,7 @@ const SkillDevelopment: React.FC = () => {
       showNotification('success', 'Success', `${selectedCertificates.length} certificates generated successfully!`);
       
     } catch (error) {
-      console.error("Error generating certificates:", error);
+      logger.error("Error generating certificates:", error as Error);
       showNotification('error', 'Error', 'Error generating certificates. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -1919,7 +1921,7 @@ const SkillDevelopment: React.FC = () => {
       return;
     }
 
-    console.log("Downloading certificates:", issuedCertificates);
+    logger.info("Downloading certificates", { issuedCertificates });
     showNotification('info', 'Downloading', `Downloading ${issuedCertificates.length} certificates as ZIP file...`);
   };
 
@@ -2312,7 +2314,7 @@ const SkillDevelopment: React.FC = () => {
                               <button
                                 onClick={() => {
                                   if (confirm("Are you sure you want to cancel this allocation?")) {
-                                    console.log("Cancelling allocation:", allocation.id);
+                                    logger.info("Cancelling allocation", { allocationId: allocation.id });
                                     showNotification('success', 'Success', 'Allocation cancelled successfully!');
                                   }
                                 }}
@@ -2968,7 +2970,7 @@ const SkillDevelopment: React.FC = () => {
                                 {feedback.status === 'Submitted' && (
                                   <button
                                     onClick={() => {
-                                      console.log("Marking feedback as reviewed:", feedback.id);
+                                      logger.info("Marking feedback as reviewed", { feedbackId: feedback.id });
                                       showNotification('success', 'Success', 'Feedback marked as reviewed!');
                                     }}
                                     className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
@@ -3080,7 +3082,7 @@ const SkillDevelopment: React.FC = () => {
                                 {feedback.status === 'Submitted' && (
                                   <button
                                     onClick={() => {
-                                      console.log("Marking trainer feedback as reviewed:", feedback.id);
+                                      logger.info("Marking trainer feedback as reviewed", { feedbackId: feedback.id });
                                       showNotification('success', 'Success', 'Trainer feedback marked as reviewed!');
                                     }}
                                     className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
@@ -3213,7 +3215,7 @@ const SkillDevelopment: React.FC = () => {
                               <div className="flex items-center gap-2">
                                 <button
                                   onClick={() => {
-                                    console.log("Viewing certificate:", certificate.certificateNumber);
+                                    logger.info("Viewing certificate", { certificateNumber: certificate.certificateNumber });
                                     showNotification('info', 'Certificate', `Viewing certificate ${certificate.certificateNumber}`);
                                   }}
                                   className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
@@ -3224,7 +3226,7 @@ const SkillDevelopment: React.FC = () => {
                                 {certificate.status === 'Issued' && (
                                   <button
                                     onClick={() => {
-                                      console.log("Downloading certificate:", certificate.filePath);
+                                      logger.info("Downloading certificate", { filePath: certificate.filePath });
                                       showNotification('info', 'Downloading', `Downloading certificate for ${certificate.studentName}`);
                                     }}
                                     className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-50"
@@ -3544,7 +3546,7 @@ const SkillDevelopment: React.FC = () => {
               setIsSubmitting(true);
               
               try {
-                console.log("Updating course:", selectedCourse.id, formData);
+                logger.info("Updating course", { courseId: selectedCourse.id, formData });
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
                 setShowEditCourseModal(false);
@@ -3553,7 +3555,7 @@ const SkillDevelopment: React.FC = () => {
                 showNotification('success', 'Success', 'Course updated successfully!');
                 
               } catch (error) {
-                console.error("Error updating course:", error);
+                logger.error("Error updating course:", error as Error);
                 showNotification('error', 'Error', 'Error updating course. Please try again.');
               } finally {
                 setIsSubmitting(false);
@@ -5299,7 +5301,7 @@ const SkillDevelopment: React.FC = () => {
                         <div className="flex gap-2">
                           <button
                             onClick={() => {
-                              console.log("Previewing template:", template.id);
+                              logger.info("Previewing template", { templateId: template.id });
                               showNotification('info', 'Preview', `Previewing ${template.name} template`);
                             }}
                             className="text-blue-600 hover:text-blue-800 text-sm"
@@ -5308,7 +5310,7 @@ const SkillDevelopment: React.FC = () => {
                           </button>
                           <button
                             onClick={() => {
-                              console.log("Editing template:", template.id);
+                              logger.info("Editing template", { templateId: template.id });
                               showNotification('info', 'Edit', `Editing ${template.name} template`);
                             }}
                             className="text-indigo-600 hover:text-indigo-800 text-sm"
@@ -5503,7 +5505,7 @@ const SkillDevelopment: React.FC = () => {
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => {
-                      console.log("Previewing certificates");
+                      logger.info("Previewing certificates");
                       showNotification('info', 'Preview', 'Certificate preview will be generated');
                     }}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
@@ -5512,7 +5514,7 @@ const SkillDevelopment: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      console.log("Generating certificates");
+                      logger.info("Generating certificates");
                       setIsSubmitting(true);
                       setTimeout(() => {
                         setIsSubmitting(false);
@@ -5564,7 +5566,7 @@ const SkillDevelopment: React.FC = () => {
                         {getCertificateStatusBadge(certificate.status)}
                         <button
                           onClick={() => {
-                            console.log("Viewing certificate:", certificate.id);
+                            logger.info("Viewing certificate", { certificateId: certificate.id });
                             showNotification('info', 'Certificate', `Viewing certificate for ${certificate.studentName}`);
                           }}
                           className="text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50"
@@ -5575,7 +5577,7 @@ const SkillDevelopment: React.FC = () => {
                         {certificate.status === 'Issued' && (
                           <button
                             onClick={() => {
-                              console.log("Downloading certificate:", certificate.id);
+                              logger.info("Downloading certificate", { certificateId: certificate.id });
                               showNotification('info', 'Downloading', `Downloading certificate for ${certificate.studentName}`);
                             }}
                             className="text-green-600 hover:text-green-800 p-1 rounded hover:bg-green-50"
@@ -5746,7 +5748,7 @@ const SkillDevelopment: React.FC = () => {
                       {selectedFeedback.status === 'Submitted' && (
                         <button
                           onClick={() => {
-                            console.log("Marking feedback as reviewed:", selectedFeedback.id);
+                            logger.info("Marking feedback as reviewed", { feedbackId: selectedFeedback.id });
                             showNotification('success', 'Success', 'Feedback marked as reviewed!');
                             setSelectedFeedback(null);
                           }}
@@ -5853,7 +5855,7 @@ const SkillDevelopment: React.FC = () => {
                       {selectedFeedback.status === 'Submitted' && (
                         <button
                           onClick={() => {
-                            console.log("Marking trainer feedback as reviewed:", selectedFeedback.id);
+                            logger.info("Marking trainer feedback as reviewed", { feedbackId: selectedFeedback.id });
                             showNotification('success', 'Success', 'Trainer feedback marked as reviewed!');
                             setSelectedFeedback(null);
                           }}

@@ -33,8 +33,10 @@ import { CollegeAdminNotificationService } from '@/services/collegeAdminNotifica
 import TrainingDetailsModal from '@/components/admin/schoolAdmin/TrainingDetailsModal';
 import ExperienceDetailsModal from '@/components/admin/schoolAdmin/ExperienceDetailsModal';
 import ProjectDetailsModal from '@/components/admin/schoolAdmin/ProjectDetailsModal';
+import { getLogger } from '@/config/logging';
 
 const CollegeVerifications = () => {
+  const logger = getLogger('college-admin-verifications');
   const [activeTab, setActiveTab] = useState('trainings');
   const [pendingTrainings, setPendingTrainings] = useState([]);
   const [pendingExperiences, setPendingExperiences] = useState([]);
@@ -61,14 +63,14 @@ const CollegeVerifications = () => {
   // Fetch pending trainings for college admin (Using database approval_authority)
   const fetchPendingTrainings = async () => {
     try {
-      console.log('🎓 Fetching pending trainings using CollegeAdminNotificationService...');
+      logger.info('Fetching pending trainings using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
       
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
-        console.log('🔍 Looking up college_id for user:', user?.id);
+        logger.info('Looking up college_id for user:', user?.id);
         const { data: educatorData } = await supabase
           .from('college_lecturers')
           .select('collegeId')
@@ -91,20 +93,20 @@ const CollegeVerifications = () => {
       }
       
       if (!collegeId) {
-        console.log('⚠️ No college ID found - showing empty list');
+        logger.warn('No college ID found - showing empty list');
         setPendingTrainings([]);
         return;
       }
       
-      console.log('🏫 Using college_id:', collegeId);
+      logger.info('Using college_id:', collegeId);
       
       // Use the notification service which now uses approval_authority
       const trainings = await CollegeAdminNotificationService.getPendingTrainings(collegeId);
       
-      console.log('✅ Trainings fetched via notification service:', trainings.length);
+      logger.info('Trainings fetched via notification service:', trainings.length);
       setPendingTrainings(trainings);
     } catch (error) {
-      console.error('❌ Error in fetchPendingTrainings:', error);
+      logger.error('Error in fetchPendingTrainings:', error);
       toast.error("Failed to fetch pending trainings");
     }
   };
@@ -112,14 +114,14 @@ const CollegeVerifications = () => {
   // Fetch pending experiences for college admin (Using database approval_authority)
   const fetchPendingExperiences = async () => {
     try {
-      console.log('🎓 Fetching pending experiences using CollegeAdminNotificationService...');
+      logger.info('Fetching pending experiences using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
       
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
-        console.log('🔍 Looking up college_id for user:', user?.id);
+        logger.info('Looking up college_id for user:', user?.id);
         const { data: educatorData } = await supabase
           .from('college_lecturers')
           .select('collegeId')
@@ -142,20 +144,20 @@ const CollegeVerifications = () => {
       }
       
       if (!collegeId) {
-        console.log('⚠️ No college ID found - showing empty list');
+        logger.warn('No college ID found - showing empty list');
         setPendingExperiences([]);
         return;
       }
       
-      console.log('🏫 Using college_id:', collegeId);
+      logger.info('Using college_id:', collegeId);
       
       // Use the notification service which now uses approval_authority
       const experiences = await CollegeAdminNotificationService.getPendingExperiences(collegeId);
       
-      console.log('✅ Experiences fetched via notification service:', experiences.length);
+      logger.info('Experiences fetched via notification service:', experiences.length);
       setPendingExperiences(experiences);
     } catch (error) {
-      console.error('❌ Error in fetchPendingExperiences:', error);
+      logger.error('Error in fetchPendingExperiences:', error);
       toast.error("Failed to fetch pending experiences");
     }
   };
@@ -163,14 +165,14 @@ const CollegeVerifications = () => {
   // Fetch pending projects for college admin (Using database approval_authority)
   const fetchPendingProjects = async () => {
     try {
-      console.log('🏗️ Fetching pending projects using CollegeAdminNotificationService...');
+      logger.info('Fetching pending projects using CollegeAdminNotificationService...');
       
       // Get college_id from user or college_lecturers table
       let collegeId = user?.college_id;
       
       if (!collegeId) {
         // Fallback: get college_id from college_lecturers table
-        console.log('🔍 Looking up college_id for user:', user?.id);
+        logger.info('Looking up college_id for user:', user?.id);
         const { data: educatorData } = await supabase
           .from('college_lecturers')
           .select('collegeId')
@@ -193,7 +195,7 @@ const CollegeVerifications = () => {
       }
 
       if (!collegeId) {
-        console.log('⚠️ No college ID found - showing empty list');
+        logger.warn('No college ID found - showing empty list');
         setPendingProjects([]);
         return;
       }
@@ -202,15 +204,15 @@ const CollegeVerifications = () => {
         throw new Error('College ID not found for current user');
       }
       
-      console.log('🏫 Using college_id:', collegeId);
+      logger.info('Using college_id:', collegeId);
       
       // Use the notification service which now uses approval_authority
       const projects = await CollegeAdminNotificationService.getPendingProjects(collegeId);
       
-      console.log('✅ Projects fetched via notification service:', projects.length);
+      logger.info('Projects fetched via notification service:', projects.length);
       setPendingProjects(projects);
     } catch (error) {
-      console.error('❌ Error in fetchPendingProjects:', error);
+      logger.error('Error in fetchPendingProjects:', error);
       toast.error(error.message || "Failed to load pending projects");
     }
   };
