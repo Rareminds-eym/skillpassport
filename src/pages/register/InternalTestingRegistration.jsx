@@ -23,9 +23,9 @@ import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { signupStudent } from '../../services/studentAuthService';
 import { supabase } from '../../lib/supabaseClient';
 
-const EMAIL_API_URL = import.meta.env.DEV 
-  ? 'http://localhost:9001'
-  : 'https://email-api.dark-mode-d021.workers.dev';
+import { API_CONFIG } from '../../config/api';
+
+const EMAIL_API_URL = API_CONFIG.EMAIL_API_URL;
 
 const validateForm = (form) => {
   const errors = {};
