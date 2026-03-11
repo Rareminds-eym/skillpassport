@@ -11,7 +11,7 @@ import { getLogger } from "../../../config/logging";
 import { useUsers } from "../../../hooks/college/useUsers";
 import { departmentService } from "../../../services/college";
 import { supabase } from "../../../lib/supabaseClient";
-import { getLogger } from "../../../config/logging";
+
 import UserFormModal from "./components/UserFormModal";
 import { ConfirmModal } from "../../../components/shared/ConfirmModal";
 import type { User } from "../../../types/college";
@@ -163,7 +163,7 @@ const UserManagement: React.FC = () => {
           setDepartments(result.map(d => ({ id: d.id, name: d.name })));
         }
       } catch (error) {
-        logger.error('Error fetching departments:', error);
+        logger.error('Error fetching departments:', error as Error);
       }
     };
     fetchDepartments();
