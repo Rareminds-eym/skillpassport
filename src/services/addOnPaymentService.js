@@ -13,24 +13,24 @@ async function fetchWithRetry(url, options, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       console.log(`[AddOnPayment] Fetch attempt ${attempt} to ${url}`);
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
       return response;
     } catch (error) {
       console.error(`[AddOnPayment] Fetch attempt ${attempt} failed:`, error);
-      
+
       if (attempt === retries) {
         throw error;
       }
-      
+
       // Wait before retrying (exponential backoff)
       const delay = attempt * 1000;
       console.log(`[AddOnPayment] Retrying in ${delay}ms...`);
@@ -45,7 +45,7 @@ async function fetchWithRetry(url, options, retries = 3) {
  */
 export const addOnPaymentService = {
   /**
-   * Create an add-on order (used by SubscriptionContext) with retry logic
+   * Create an add-on order (used by purchaseAddOn in subscriptionStore) with retry logic
    * @param {Object} params - Order parameters
    * @param {string} params.featureKey - Feature key from subscription_plan_features
    * @param {string} params.userId - User ID
@@ -57,16 +57,16 @@ export const addOnPaymentService = {
   async createAddOnOrder({ featureKey, userId, billingPeriod, userEmail, userName }) {
     try {
       console.log('[AddOnPayment] Creating order:', { featureKey, userId, billingPeriod });
-      
+
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         console.error('[AddOnPayment] No session found');
         return { success: false, error: 'User not authenticated' };
       }
 
       console.log('[AddOnPayment] Calling API:', `${PAYMENTS_API_URL}/create-addon-order`);
-      
+
       const response = await fetchWithRetry(`${PAYMENTS_API_URL}/create-addon-order`, {
         method: 'POST',
         headers: {
@@ -118,7 +118,7 @@ export const addOnPaymentService = {
   async createBundleOrder({ bundleId, userId, billingPeriod, userEmail, userName }) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         return { success: false, error: 'User not authenticated' };
       }
@@ -170,16 +170,16 @@ export const addOnPaymentService = {
    * @returns {Promise<Object>} - Payment initiation result
    */
   async initiateAddonPurchase(userId, featureKey, billingPeriod = 'monthly') {
-    const result = await this.createAddOnOrder({ 
-      featureKey, 
-      userId, 
-      billingPeriod 
+    const result = await this.createAddOnOrder({
+      featureKey,
+      userId,
+      billingPeriod
     });
-    
+
     if (!result.success) {
       return result;
     }
-    
+
     return {
       success: true,
       razorpayOrderId: result.data.orderId,
@@ -201,9 +201,9 @@ export const addOnPaymentService = {
     const attemptVerification = async (attempt) => {
       try {
         console.log(`[AddOnPayment] Verification attempt ${attempt} for order: ${razorpayOrderId}`);
-        
+
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (!session) {
           throw new Error('User not authenticated');
         }
@@ -243,14 +243,14 @@ export const addOnPaymentService = {
         };
       } catch (error) {
         console.error(`[AddOnPayment] Verification attempt ${attempt} failed:`, error);
-        
+
         // If we have retries left and it's a network error, retry
         if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
           console.log(`[AddOnPayment] Retrying in ${attempt * 1000}ms...`);
           await new Promise(resolve => setTimeout(resolve, attempt * 1000));
           return attemptVerification(attempt + 1);
         }
-        
+
         throw error;
       }
     };
@@ -280,9 +280,9 @@ export const addOnPaymentService = {
     const attemptVerification = async (attempt) => {
       try {
         console.log(`[AddOnPayment] Bundle verification attempt ${attempt} for order: ${razorpayOrderId}`);
-        
+
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (!session) {
           throw new Error('User not authenticated');
         }
@@ -324,14 +324,14 @@ export const addOnPaymentService = {
         };
       } catch (error) {
         console.error(`[AddOnPayment] Bundle verification attempt ${attempt} failed:`, error);
-        
+
         // If we have retries left and it's a network error, retry
         if (attempt < retries && (error.name === 'AbortError' || error.message === 'Failed to fetch')) {
           console.log(`[AddOnPayment] Retrying in ${attempt * 1000}ms...`);
           await new Promise(resolve => setTimeout(resolve, attempt * 1000));
           return attemptVerification(attempt + 1);
         }
-        
+
         throw error;
       }
     };

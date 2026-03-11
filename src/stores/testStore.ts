@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { immer } from 'zustand/middleware/immer';
 
 // Types
@@ -13,11 +14,11 @@ interface TestState {
   // Data
   questions: Question[];
   selectedAnswers: (string | null)[];
-  
+
   // Loading
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   setQuestions: (questions: Question[]) => void;
   setSelectedAnswers: (answers: (string | null)[]) => void;
@@ -29,7 +30,7 @@ interface TestState {
   setError: (error: string | null) => void;
   reset: () => void;
   submitTest: () => void;
-  
+
   // Computed methods
   getCurrentQuestionIndex: () => number;
   getCurrentQuestion: () => Question | null;
@@ -109,11 +110,7 @@ export const useTestStore = create<TestState>()(
     },
 
     goToPreviousQuestion: () => {
-      set((state) => {
-        const current = state.selectedAnswers.filter((a) => a !== null).length;
-        const prev = Math.max(current - 1, 0);
-        // This is just logical navigation, actual index is computed
-      });
+      // Navigation is computed from answered count — no state mutation needed
     },
 
     goToQuestion: (index) => {
@@ -164,15 +161,15 @@ export const useTestQuestions = () => useTestStore((state) => state.questions);
 export const useTestAnswers = () => useTestStore((state) => state.selectedAnswers);
 export const useTestLoading = () => useTestStore((state) => state.isLoading);
 export const useTestProgress = () =>
-  useTestStore((state) => ({
+  useTestStore(useShallow((state) => ({
     answeredCount: useTestStore.getState().getAnsweredCount(),
     totalQuestions: useTestStore.getState().getTotalQuestions(),
     currentQuestion: state.getCurrentQuestion(),
     isComplete: state.getIsComplete(),
-  }));
+  })));
 
 export const useTestActions = () =>
-  useTestStore((state) => ({
+  useTestStore(useShallow((state) => ({
     setQuestions: state.setQuestions,
     setAnswer: state.setAnswer,
     goToNextQuestion: state.goToNextQuestion,
@@ -180,9 +177,9 @@ export const useTestActions = () =>
     goToQuestion: state.goToQuestion,
     reset: state.reset,
     submitTest: state.submitTest,
-  }));
+  })));
 
-// Combined hook that mimics the old Context API
+// Combined convenience hook
 export const useTest = () => {
   const questions = useTestQuestions();
   const selectedAnswers = useTestAnswers();

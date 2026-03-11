@@ -3,8 +3,7 @@ import Header from './Header';
 import Footer from '../components/Footer';
 import { PromotionalBanner, AssessmentPromotionalBanner } from '../components/Homepage';
 import { useAssessmentPromotional, useCurrentPromotional } from '../stores';
-import { useIsAuthenticated, useUserRole, useUser } from '../stores';
-import { useSubscriptionQuery } from '../hooks/Subscription/useSubscriptionQuery';
+import { useIsAuthenticated, useUserRole, useUser, useSubscriptionAccess } from '../stores';
 import { isActiveOrPaused } from '../utils/subscriptionHelpers';
 
 // Import role-specific headers
@@ -20,13 +19,13 @@ const PublicLayoutContent = () => {
   const isAuthenticated = useIsAuthenticated();
   const { role: userRole } = useUserRole();
   const user = useUser();
-  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionQuery();
+  const { subscriptionData, loading: subscriptionLoading } = useSubscriptionAccess();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeTab, setActiveTab] = useState('subscription');
-  
+
   const { event, showBanner, dismissBanner, getTimeRemaining } = useCurrentPromotional();
-  const { 
-    showBanner: showAssessmentBanner, 
+  const {
+    showBanner: showAssessmentBanner,
     dismissBanner: dismissAssessmentBanner,
     getTimeRemaining: getAssessmentTimeRemaining
   } = useAssessmentPromotional();
@@ -40,7 +39,7 @@ const PublicLayoutContent = () => {
 
   // Check if we're on a subscription page
   const isSubscriptionPage = location.pathname.startsWith('/subscription/');
-  
+
   // Check if user has active subscription
   const hasActiveSubscription = subscriptionData && isActiveOrPaused(subscriptionData.status);
 
@@ -52,12 +51,12 @@ const PublicLayoutContent = () => {
       if (subscriptionLoading) {
         return <SubscriptionPurchaseHeader userEmail={user?.email} hasBanner={hasAnyBanner} />;
       }
-      
+
       // If user doesn't have active subscription, show simplified purchase header
       if (!hasActiveSubscription) {
         return <SubscriptionPurchaseHeader userEmail={user?.email} hasBanner={hasAnyBanner} />;
       }
-      
+
       // If user has active subscription, show role-specific header
       if (userRole) {
         // Student roles
@@ -76,8 +75,8 @@ const PublicLayoutContent = () => {
         }
 
         // Admin roles
-        if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'rm_admin' || 
-            userRole === 'school_admin' || userRole === 'college_admin' || userRole === 'university_admin') {
+        if (userRole === 'admin' || userRole === 'super_admin' || userRole === 'rm_admin' ||
+          userRole === 'school_admin' || userRole === 'college_admin' || userRole === 'university_admin') {
           return (
             <AdminHeader
               onMenuToggle={() => setShowMobileMenu(!showMobileMenu)}

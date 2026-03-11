@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 // Auth & Database
-import { useUser } from '../../../stores';
+import { useUser, useTour } from '../../../stores';
 // @ts-ignore - JS file without type declarations
 import { useAssessment } from '../../../hooks/useAssessment';
 import { useAdaptiveAptitude } from '../../../hooks/useAdaptiveAptitude';
@@ -88,9 +88,6 @@ import {
   highSchoolAptitudeQuestions,
 } from '../../assessment/data/questions';
 import { supabase } from '@/lib/supabaseClient';
-
-// Tour context to detect when tour is running
-import { useTour } from '../../../stores/index.ts'
 
 /**
  * Get icon image path for a section based on section ID
