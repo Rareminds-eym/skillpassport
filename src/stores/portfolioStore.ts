@@ -336,7 +336,7 @@ export const usePortfolioActions = () =>
 export const useIsViewingOtherStudent = () =>
   usePortfolioStore((state) => state.isManuallySet && state.student !== null);
 
-// Combined hook that mimics the old Context API
+// Combined convenience hook
 export const usePortfolio = () => {
   const student = usePortfolioStudent();
   const settings = usePortfolioSettings();

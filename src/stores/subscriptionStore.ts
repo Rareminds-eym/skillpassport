@@ -3,7 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { getActiveSubscription } from '../services/Subscriptions/subscriptionService';
 import addOnPaymentService from '../services/addOnPaymentService';
 import { supabase } from '../lib/supabaseClient';
-import { isActiveOrPaused } from '../utils/subscriptionHelpers';
+import { entitlementService } from '../services/entitlementService';
 
 // ============================================================================
 // Types
@@ -117,6 +117,7 @@ interface SubscriptionState {
   // Core actions
   fetchSubscription: (userId: string) => Promise<void>;
   refreshSubscription: () => Promise<void>;
+  fetchUserEntitlements: (userId?: string) => Promise<void>;
   setAccessData: (data: Partial<SubscriptionState>) => void;
   setEntitlementsData: (data: Partial<SubscriptionState>) => void;
   setPurchaseState: (state: { isPurchasing?: boolean; isCancelling?: boolean; purchaseError?: string | null }) => void;
@@ -203,6 +204,18 @@ function computeAccessState(sub: Subscription | null) {
     showWarning = true;
     warningType = 'paused';
     warningMessage = 'Your subscription is paused. Some features may be limited.';
+  } else if (status === 'grace_period') {
+    accessReason = 'grace_period';
+    hasAccess = true;
+    showWarning = true;
+    warningType = 'grace_period';
+    const endDate = sub.endDate || sub.end_date;
+    const daysLeft = endDate
+      ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
+    warningMessage = daysLeft != null && daysLeft > 0
+      ? `Your subscription is in a grace period. Renew within ${daysLeft} day${daysLeft !== 1 ? 's' : ''} to avoid losing access.`
+      : 'Your subscription is in a grace period. Please renew to continue access.';
   } else if (status === 'cancelled') {
     accessReason = 'cancelled';
     // Cancelled but not expired — user keeps access until end date
@@ -300,6 +313,9 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       try {
         const result = await getActiveSubscription();
 
+        // Race condition guard: if user changed while we were fetching, discard
+        if (get()._currentUserId !== userId) return;
+
         if (result.success && result.data) {
           const subscription = formatSubscriptionData(result.data);
           const accessState = computeAccessState(subscription);
@@ -351,6 +367,46 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       // Clear stale time to force refetch
       set((s) => { s._lastFetchTime = null; });
       await get().fetchSubscription(userId);
+    },
+
+    // Fetch user entitlements from the DB (separate from subscription)
+    // Accepts optional explicit userId to prevent stale reads during sequential calls
+    fetchUserEntitlements: async (explicitUserId?: string) => {
+      const userId = explicitUserId || get()._currentUserId;
+      if (!userId) return;
+
+      set((s) => { s.isLoadingEntitlements = true; s.entitlementsError = null; });
+      try {
+        const result = await entitlementService.getUserEntitlements(userId);
+
+        // Race condition guard
+        if (get()._currentUserId !== userId) return;
+
+        if (result.success && result.data) {
+          const entitlements = result.data;
+          const now = new Date();
+          set((s) => {
+            s.userEntitlements = entitlements as any;
+            s.activeEntitlements = (entitlements as any[]).filter((ent) => {
+              if (ent.status === 'active' || ent.status === 'grace_period') return true;
+              if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
+              return false;
+            });
+            s.isLoadingEntitlements = false;
+          });
+        } else {
+          set((s) => {
+            s.isLoadingEntitlements = false;
+            s.entitlementsError = new Error(result.error || 'Failed to fetch entitlements');
+          });
+        }
+      } catch (err) {
+        if (get()._currentUserId !== userId) return;
+        set((s) => {
+          s.isLoadingEntitlements = false;
+          s.entitlementsError = err instanceof Error ? err : new Error(String(err));
+        });
+      }
     },
 
     // Manual setter (for edge cases or testing)
@@ -445,6 +501,17 @@ export const useSubscriptionAccess = () => {
   const isExpired = useSubscriptionStore((s) => s.getIsExpired());
   const hasNoSubscription = useSubscriptionStore((s) => s.getHasNoSubscription());
   const refreshSubscription = useSubscriptionStore((s) => s.refreshSubscription);
+  const fetchEntitlements = useSubscriptionStore((s) => s.fetchUserEntitlements);
+
+  // refreshAccess refreshes BOTH subscription + entitlements
+  // Captures userId upfront to prevent stale reads between sequential calls
+  const refreshAccess = async () => {
+    const userId = useSubscriptionStore.getState()._currentUserId;
+    if (!userId) return;
+    await refreshSubscription();
+    // Pass userId explicitly — _currentUserId may have changed during refreshSubscription
+    await fetchEntitlements(userId);
+  };
 
   return {
     hasAccess, accessReason, subscription, isLoading, isRefetching, error,
@@ -453,10 +520,10 @@ export const useSubscriptionAccess = () => {
     // Aliases for consumer compatibility (useSubscriptionQuery used these names)
     subscriptionData: subscription,
     loading: isLoading,
-    // Alias: some consumers call refreshAccess instead of refreshSubscription
-    refreshAccess: refreshSubscription,
-    // Alias: entitlements are fetched as part of subscription fetch
-    fetchUserEntitlements: refreshSubscription,
+    // refreshAccess refreshes both subscription and entitlements
+    refreshAccess,
+    // fetchUserEntitlements fetches only entitlements from the DB
+    fetchUserEntitlements: fetchEntitlements,
   };
 };
 

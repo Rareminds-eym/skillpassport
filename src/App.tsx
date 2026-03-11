@@ -18,15 +18,33 @@ import { useSubscriptionStore } from './stores/subscriptionStore';
 function SubscriptionInitializer() {
   const user = useUser();
   const fetchSubscription = useSubscriptionStore((s) => s.fetchSubscription);
+  const fetchUserEntitlements = useSubscriptionStore((s) => s.fetchUserEntitlements);
   const clearAccessCache = useSubscriptionStore((s) => s.clearAccessCache);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (user?.id) {
-      fetchSubscription(user.id);
+      const uid = user.id;
+      // Fetch subscription then entitlements for the SAME userId
+      // Pass uid explicitly to prevent stale _currentUserId reads
+      fetchSubscription(uid)
+        .then(() => {
+          if (!cancelled) fetchUserEntitlements(uid);
+        })
+        .catch((err) => {
+          if (!cancelled) {
+            console.error('SubscriptionInitializer: fetch failed', err);
+          }
+        });
     } else {
       clearAccessCache();
     }
-  }, [user?.id, fetchSubscription, clearAccessCache]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, fetchSubscription, fetchUserEntitlements, clearAccessCache]);
 
   return null;
 }
