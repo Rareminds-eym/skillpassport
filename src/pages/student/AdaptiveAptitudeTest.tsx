@@ -19,11 +19,15 @@ import {
   Brain,
   TrendingUp,
   Info,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '../../components/Students/components/ui/button';
 import { Card, CardContent } from '../../components/Students/components/ui/card';
+// @ts-ignore - JSX components with incomplete TypeScript definitions
 import { RadioGroup, RadioGroupItem } from '../../components/Students/components/ui/radio-group';
+// @ts-ignore - JSX components with incomplete TypeScript definitions
 import { Label } from '../../components/Students/components/ui/label';
+// @ts-ignore - JSX components with incomplete TypeScript definitions
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +42,7 @@ import { useAdaptiveAptitude } from '../../hooks/useAdaptiveAptitude';
 import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { useAntiCheating } from '../../hooks/useAntiCheating';
+import { SessionLockGuard } from '../../components/assessment/SessionLockGuard';
 import { GradeLevel, TestPhase, Subtag, DifficultyLevel, ConfidenceTag } from '../../types/adaptiveAptitude';
 import { getLogger } from '../../config/logging';
 
@@ -104,7 +109,10 @@ const AdaptiveAptitudeTest = () => {
   const gradeLevel: GradeLevel = location.state?.gradeLevel || 'high_school';
   
   // Get student data
-  const { studentData, loading: studentLoading } = useStudentDataByEmail(user?.email || '', false);
+  const { studentData, loading: studentLoading } = useStudentDataByEmail(user?.email || '', false) as {
+    studentData: { id: string; name?: string; email?: string } | null;
+    loading: boolean;
+  };
   
   // Local state
   const [selectedAnswer, setSelectedAnswer] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
@@ -131,10 +139,10 @@ const AdaptiveAptitudeTest = () => {
     studentId: studentData?.id || '',
     gradeLevel,
     onTestComplete: (testResults) => {
-      logger.info('Adaptive aptitude test completed', testResults);
+      logger.info('Adaptive aptitude test completed', { testResults });
     },
     onError: (err) => {
-      logger.error('Adaptive aptitude test error', err);
+      logger.error('Adaptive aptitude test error: ' + String(err));
     },
   });
 
@@ -188,7 +196,7 @@ const AdaptiveAptitudeTest = () => {
             logger.info('Resumed existing session');
           }
         } catch (err) {
-          logger.error('Failed to initialize test', err);
+          logger.error('Failed to initialize test: ' + (err instanceof Error ? err.message : String(err)));
         }
       } else {
         logger.info('Waiting for conditions', {
@@ -500,6 +508,197 @@ const AdaptiveAptitudeTest = () => {
     );
   }
 
+  // If we don't have student data yet, show loading
+  if (!studentData?.id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading student data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const assessmentSessionId = `adaptive-aptitude-${gradeLevel}-${studentData.id}`;
+
+  return (
+    <SessionLockGuard
+      assessmentId={assessmentSessionId}
+      studentId={studentData.id}
+      studentName={studentData.name || user?.email?.split('@')[0] || 'Student'}
+      enabled={true}
+      onLockAcquired={() => {
+        logger.info('Adaptive aptitude session lock acquired');
+      }}
+      onLockLost={() => {
+        logger.warn('Adaptive aptitude session lock lost');
+        // Could pause the test or show a warning
+      }}
+      onLockBlocked={(holderName) => {
+        logger.warn('Adaptive aptitude session blocked by: ' + holderName);
+      }}
+    >
+      <AdaptiveAptitudeTestContent
+        currentQuestion={currentQuestion}
+        session={session}
+        progress={progress}
+        phase={phase}
+        loading={loading}
+        submitting={submitting}
+        error={error}
+        isTestComplete={isTestComplete}
+        results={results}
+        selectedAnswer={selectedAnswer}
+        setSelectedAnswer={setSelectedAnswer}
+        showExitDialog={showExitDialog}
+        setShowExitDialog={setShowExitDialog}
+        gradeLevel={gradeLevel}
+        handleSubmitAnswer={handleSubmitAnswer}
+        handleExit={handleExit}
+        user={user}
+        studentData={studentData}
+        testInitialized={testInitialized}
+        studentLoading={studentLoading}
+      />
+    </SessionLockGuard>
+  );
+};
+
+// =============================================================================
+// TYPES FOR CONTENT COMPONENT
+// =============================================================================
+
+interface AdaptiveAptitudeTestContentProps {
+  currentQuestion: any;
+  session: any;
+  progress: any;
+  phase: any;
+  loading: boolean;
+  submitting: boolean;
+  error: string | null;
+  isTestComplete: boolean;
+  results: any;
+  selectedAnswer: 'A' | 'B' | 'C' | 'D' | null;
+  setSelectedAnswer: (answer: 'A' | 'B' | 'C' | 'D' | null) => void;
+  showExitDialog: boolean;
+  setShowExitDialog: (show: boolean) => void;
+  gradeLevel: GradeLevel;
+  handleSubmitAnswer: () => Promise<void>;
+  handleExit: () => Promise<void>;
+  user: any;
+  studentData: { id: string; name?: string; email?: string } | null;
+  testInitialized: boolean;
+  studentLoading: boolean;
+}
+
+// Extract the main content into a separate component
+const AdaptiveAptitudeTestContent: React.FC<AdaptiveAptitudeTestContentProps> = ({
+  currentQuestion,
+  session,
+  progress,
+  phase,
+  loading,
+  submitting,
+  error,
+  isTestComplete,
+  results,
+  selectedAnswer,
+  setSelectedAnswer,
+  showExitDialog,
+  setShowExitDialog,
+  gradeLevel,
+  handleSubmitAnswer,
+  handleExit,
+  user,
+  studentData,
+  testInitialized,
+  studentLoading,
+}) => {
+  // Loading state
+  if (loading || !testInitialized) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 mx-auto mb-6 bg-blue-100 rounded-full flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              <Brain className="w-5 h-5 text-blue-600" />
+              <p className="text-lg font-bold text-blue-600">Adaptive Aptitude Test</p>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              Grade Level: {gradeLevel === 'middle_school' ? 'Middle School' : 'High School'}
+            </p>
+          </div>
+          <p className="text-sm text-gray-400">This may take a few seconds...</p>
+          
+          {/* Debug Panel */}
+          {DEBUG_MODE && (
+            <div className="mt-6 p-4 bg-gray-100 rounded-lg text-left text-xs">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-4 h-4 text-orange-500" />
+                <span className="font-bold text-orange-600">Debug Info</span>
+              </div>
+              <div className="space-y-1 font-mono">
+                <p>User Email: {user?.email || 'Not logged in'}</p>
+                <p>Student ID: {studentData?.id || 'Loading...'}</p>
+                <p>Student Loading: {studentLoading ? 'Yes' : 'No'}</p>
+                <p>Hook Loading: {loading ? 'Yes' : 'No'}</p>
+                <p>Test Initialized: {testInitialized ? 'Yes' : 'No'}</p>
+                <p>Grade Level: {gradeLevel}</p>
+                <p>Error: {error || 'None'}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    // Check for common error types and provide helpful messages
+    let errorMessage = error;
+    let helpText = '';
+    
+    if (error.includes('relation') || error.includes('does not exist') || error.includes('42P01')) {
+      errorMessage = 'Database tables not found';
+      helpText = 'The adaptive aptitude test database tables need to be created. Please run the migration script.';
+    } else if (error.includes('API key') || error.includes('401') || error.includes('Unauthorized')) {
+      errorMessage = 'API configuration error';
+      helpText = 'The AI question generation service is not properly configured.';
+    } else if (error.includes('permission') || error.includes('RLS') || error.includes('policy')) {
+      errorMessage = 'Permission denied';
+      helpText = 'You may not have permission to access this test. Please contact support.';
+    }
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Test Error</h3>
+            <p className="text-red-600 mb-2 font-medium">{errorMessage}</p>
+            {helpText && (
+              <p className="text-sm text-gray-600 mb-4">{helpText}</p>
+            )}
+            <Button
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   // Calculate progress percentage
   const progressPercentage = progress ? progress.completionPercentage : 0;
 
@@ -517,20 +716,28 @@ const AdaptiveAptitudeTest = () => {
           </button>
 
           {/* Exit Confirmation Dialog */}
+          {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
           <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+            {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
             <AlertDialogContent className="bg-white rounded-xl max-w-md">
-              <AlertDialogHeader>
+              {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
+              <AlertDialogHeader className="">
+                {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
                 <AlertDialogTitle className="text-lg font-semibold text-gray-900">
                   Exit Adaptive Test?
                 </AlertDialogTitle>
+                {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
                 <AlertDialogDescription className="text-gray-600">
                   Your progress will be saved. You can resume this test later.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter>
+              {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
+              <AlertDialogFooter className="">
+                {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
                 <AlertDialogCancel className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
                   Cancel
                 </AlertDialogCancel>
+                {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
                 <AlertDialogAction
                   onClick={handleExit}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -546,7 +753,7 @@ const AdaptiveAptitudeTest = () => {
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-blue-100 rounded-full">
               <Brain className="w-4 h-4 text-blue-600" />
               <span className="text-sm font-medium text-blue-700">
-                {phase ? PHASE_DISPLAY_NAMES[phase] : 'Loading...'}
+                {phase ? PHASE_DISPLAY_NAMES[phase as TestPhase] : 'Loading...'}
               </span>
             </div>
           </div>
@@ -612,7 +819,7 @@ const AdaptiveAptitudeTest = () => {
                       </p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-xs font-medium text-gray-600 capitalize">
-                          {SUBTAG_DISPLAY_NAMES[currentQuestion.subtag]}
+                          {SUBTAG_DISPLAY_NAMES[currentQuestion.subtag as Subtag]}
                         </span>
                       </div>
                     </div>
@@ -620,6 +827,7 @@ const AdaptiveAptitudeTest = () => {
                 </div>
 
                 {/* Options */}
+                {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
                 <RadioGroup
                   value={selectedAnswer || ''}
                   onValueChange={(value: string) => setSelectedAnswer(value as 'A' | 'B' | 'C' | 'D')}
@@ -635,7 +843,9 @@ const AdaptiveAptitudeTest = () => {
                       }`}
                       onClick={() => setSelectedAnswer(option)}
                     >
+                      {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
                       <RadioGroupItem value={option} id={`option-${option}`} />
+                      {/* @ts-ignore - JSX component with incomplete TypeScript definitions */}
                       <Label
                         htmlFor={`option-${option}`}
                         className="flex-1 cursor-pointer text-gray-700"
@@ -673,11 +883,11 @@ const AdaptiveAptitudeTest = () => {
 
                 if (DEBUG_MODE) {
                   logger.info('Button logic', {
-                    currentQuestionNumber,
-                    totalQuestions,
+                    currentQuestionNumber: currentQuestionNumber,
+                    totalQuestions: totalQuestions,
                     questionsAnswered: progress?.questionsAnswered,
-                    isLastQuestion,
-                    submitting
+                    isLastQuestion: isLastQuestion,
+                    submitting: submitting
                   });
                 }
 

@@ -5,6 +5,7 @@ import { useUser } from '../../stores';
 import { useStudentDataByEmail } from '../../hooks/useStudentDataByEmail';
 import { checkAssessmentStatus } from '../../services/externalAssessmentService';
 import { getLogger } from '../../config/logging';
+import { SessionLockGuard } from '../../components/assessment/SessionLockGuard';
 
 const logger = getLogger('AssessmentStart');
 
@@ -145,6 +146,62 @@ const AssessmentStart = () => {
     }
   };
 
+  // If we don't have student data yet, show loading
+  if (!studentData?.id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const assessmentSessionId = `${certificateId || courseId}-${studentData.id}`;
+
+  return (
+    <SessionLockGuard
+      assessmentId={assessmentSessionId}
+      studentId={studentData.id}
+      studentName={studentData.name || user?.email?.split('@')[0] || 'Student'}
+      enabled={true}
+      onLockAcquired={() => {
+        console.log('Assessment session lock acquired');
+      }}
+      onLockLost={() => {
+        console.log('Assessment session lock lost');
+        // Could show a warning or redirect
+      }}
+      onLockBlocked={(holderName) => {
+        console.log('Assessment session blocked by:', holderName);
+      }}
+    >
+      <AssessmentStartContent
+        navigate={navigate}
+        user={user}
+        studentData={studentData}
+        certificateName={certificateName}
+        inProgressAttempt={inProgressAttempt}
+        handleStartAssessment={handleStartAssessment}
+        isStarting={isStarting}
+        checkingStatus={checkingStatus}
+      />
+    </SessionLockGuard>
+  );
+};
+
+// Extract the main content into a separate component
+const AssessmentStartContent = ({
+  navigate,
+  user,
+  studentData,
+  certificateName,
+  inProgressAttempt,
+  handleStartAssessment,
+  isStarting,
+  checkingStatus,
+}) => {
   return (
     <div className="h-screen flex overflow-hidden">
       {/* Left Side - White with Illustration */}
