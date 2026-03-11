@@ -6,16 +6,210 @@
 
 import { supabase } from '../lib/supabaseClient';
 
+// Type definitions
+interface Education {
+  level?: string;
+  degree?: string;
+  department?: string;
+  university?: string;
+  yearOfPassing?: string;
+  cgpa?: string;
+  status?: string;
+}
+
+interface Experience {
+  organization?: string;
+  role?: string;
+  duration?: string;
+  verified?: boolean;
+}
+
+interface Skill {
+  name?: string;
+  level?: number;
+  category?: string;
+  description?: string;
+  type?: string;
+  verified?: boolean;
+}
+
+interface Certificate {
+  title?: string;
+  issuer?: string;
+  level?: string;
+  credentialId?: string;
+  link?: string;
+  issuedOn?: string | null;
+  description?: string;
+  status?: string;
+}
+
+interface Project {
+  title?: string;
+  organization?: string;
+  duration?: string;
+  description?: string;
+  status?: string;
+  technologies?: string[];
+  techStack?: string[];
+  tech?: string[];
+  skills?: string[];
+  demoLink?: string;
+  demo?: string;
+  link?: string;
+  url?: string;
+  github?: string;
+}
+
+interface Training {
+  course?: string;
+  skill?: string;
+  trainer?: string;
+  status?: string;
+  progress?: number;
+}
+
+interface ParsedResumeData {
+  name?: string;
+  contact_number?: string;
+  alternate_number?: string;
+  age?: string | number;
+  date_of_birth?: string;
+  university?: string;
+  branch_field?: string;
+  college_school_name?: string;
+  registration_number?: string;
+  district_name?: string;
+  education?: Education[];
+  experience?: Experience[];
+  technicalSkills?: Skill[];
+  softSkills?: Skill[];
+  certificates?: Certificate[];
+  projects?: Project[];
+  training?: Training[];
+}
+
+interface SaveResult {
+  success: boolean;
+  saved: {
+    education: number;
+    experience: number;
+    skills: number;
+    certificates: number;
+    projects: number;
+    trainings: number;
+  };
+  errors: Array<{ table?: string; error?: string; general?: string }>;
+  error?: string;
+}
+
+interface DatabaseEducation {
+  id: string;
+  student_id: string;
+  level: string;
+  degree: string;
+  department: string;
+  university: string;
+  year_of_passing: string;
+  cgpa: string;
+  status: string;
+  approval_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseExperience {
+  id: string;
+  student_id: string;
+  organization: string;
+  role: string;
+  duration: string;
+  verified: boolean;
+  approval_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseSkill {
+  id: string;
+  student_id: string;
+  name: string;
+  type: 'technical' | 'soft';
+  level: number;
+  description: string;
+  verified: boolean;
+  approval_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseCertificate {
+  id: string;
+  student_id: string;
+  title: string;
+  issuer: string;
+  level: string;
+  credential_id: string;
+  link: string;
+  issued_on: string | null;
+  description: string;
+  status: string;
+  approval_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseProject {
+  id: string;
+  student_id: string;
+  title: string;
+  organization: string;
+  duration: string;
+  description: string;
+  status: string;
+  tech_stack: string[];
+  demo_link: string;
+  github_link: string;
+  approval_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface DatabaseTraining {
+  id: string;
+  student_id: string;
+  title: string;
+  organization: string;
+  status: string;
+  description: string;
+  approval_status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ResumeDataSummary {
+  education: DatabaseEducation[];
+  experience: DatabaseExperience[];
+  skills: DatabaseSkill[];
+  certificates: DatabaseCertificate[];
+  projects: DatabaseProject[];
+  trainings: DatabaseTraining[];
+}
+
 /**
  * Save parsed resume data to separate tables
- * @param {Object} parsedData - The parsed resume data
- * @param {string} studentId - The student's ID (from students table)
- * @param {string} userEmail - The student's email
- * @returns {Promise<Object>} Result with success status and details
+ * @param parsedData - The parsed resume data
+ * @param studentId - The student's ID (from students table)
+ * @param userEmail - The student's email
+ * @returns Result with success status and details
  */
-export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
+export const saveResumeToTables = async (
+  parsedData: ParsedResumeData,
+  studentId: string,
+  userEmail: string
+): Promise<SaveResult> => {
   try {
-    const results = {
+    const results: SaveResult = {
       success: true,
       saved: {
         education: 0,
@@ -52,7 +246,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         results.saved.education = data?.length || 0;
       } catch (error) {
         console.error('Error saving education:', error);
-        results.errors.push({ table: 'education', error: error.message });
+        results.errors.push({ table: 'education', error: (error as Error).message });
       }
     }
 
@@ -77,12 +271,20 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         results.saved.experience = data?.length || 0;
       } catch (error) {
         console.error('Error saving experience:', error);
-        results.errors.push({ table: 'experience', error: error.message });
+        results.errors.push({ table: 'experience', error: (error as Error).message });
       }
     }
 
     // 3. Save Skills (Technical + Soft)
-    const allSkills = [];
+    const allSkills: Array<{
+      student_id: string;
+      name: string;
+      type: 'technical' | 'soft';
+      level: number;
+      description: string;
+      verified: boolean;
+      approval_status: string;
+    }> = [];
     
     // Technical Skills
     if (parsedData.technicalSkills && Array.isArray(parsedData.technicalSkills)) {
@@ -125,7 +327,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         results.saved.skills = data?.length || 0;
       } catch (error) {
         console.error('Error saving skills:', error);
-        results.errors.push({ table: 'skills', error: error.message });
+        results.errors.push({ table: 'skills', error: (error as Error).message });
       }
     }
 
@@ -154,7 +356,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         results.saved.certificates = data?.length || 0;
       } catch (error) {
         console.error('Error saving certificates:', error);
-        results.errors.push({ table: 'certificates', error: error.message });
+        results.errors.push({ table: 'certificates', error: (error as Error).message });
       }
     }
 
@@ -183,7 +385,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         results.saved.projects = data?.length || 0;
       } catch (error) {
         console.error('Error saving projects:', error);
-        results.errors.push({ table: 'projects', error: error.message });
+        results.errors.push({ table: 'projects', error: (error as Error).message });
       }
     }
 
@@ -208,18 +410,30 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
         results.saved.trainings = data?.length || 0;
       } catch (error) {
         console.error('Error saving trainings:', error);
-        results.errors.push({ table: 'trainings', error: error.message });
+        results.errors.push({ table: 'trainings', error: (error as Error).message });
       }
     }
 
     // 7. Update basic profile info in students table (non-JSONB columns)
     try {
-      const updateData = {};
+      const updateData: {
+        name?: string;
+        contact_number?: string;
+        alternate_number?: string;
+        age?: number;
+        date_of_birth?: string;
+        university?: string;
+        branch_field?: string;
+        college_school_name?: string;
+        registration_number?: string;
+        district_name?: string;
+        resume_imported_at?: string;
+      } = {};
       
       if (parsedData.name) updateData.name = parsedData.name;
       if (parsedData.contact_number) updateData.contact_number = parsedData.contact_number;
       if (parsedData.alternate_number) updateData.alternate_number = parsedData.alternate_number;
-      if (parsedData.age) updateData.age = parseInt(parsedData.age);
+      if (parsedData.age) updateData.age = parseInt(String(parsedData.age));
       if (parsedData.date_of_birth) updateData.date_of_birth = parsedData.date_of_birth;
       if (parsedData.university) updateData.university = parsedData.university;
       if (parsedData.branch_field) updateData.branch_field = parsedData.branch_field;
@@ -240,7 +454,7 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
       }
     } catch (error) {
       console.error('Error updating student profile:', error);
-      results.errors.push({ table: 'students', error: error.message });
+      results.errors.push({ table: 'students', error: (error as Error).message });
     }
 
     // Check if there were any errors
@@ -253,19 +467,26 @@ export const saveResumeToTables = async (parsedData, studentId, userEmail) => {
     console.error('Error in saveResumeToTables:', error);
     return {
       success: false,
-      error: error.message,
-      saved: {},
-      errors: [{ general: error.message }]
+      error: (error as Error).message,
+      saved: {
+        education: 0,
+        experience: 0,
+        skills: 0,
+        certificates: 0,
+        projects: 0,
+        trainings: 0
+      },
+      errors: [{ error: (error as Error).message }]
     };
   }
 };
 
 /**
  * Get summary of student's resume data from all tables
- * @param {string} studentId - The student's ID
- * @returns {Promise<Object>} Summary of all resume data
+ * @param studentId - The student's ID
+ * @returns Summary of all resume data
  */
-export const getResumeDataSummary = async (studentId) => {
+export const getResumeDataSummary = async (studentId: string): Promise<ResumeDataSummary | null> => {
   try {
     const [education, experience, skills, certificates, projects, trainings] = await Promise.all([
       supabase.from('education').select('*').eq('student_id', studentId),
